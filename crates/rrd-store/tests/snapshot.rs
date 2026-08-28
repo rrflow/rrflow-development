@@ -72,7 +72,16 @@ fn item(scope: &ScopeId, expected_cursor: u64, id: &str) -> RuntimeCommit {
 
 fn assert_snapshot_contract(engine: &dyn Engine) {
     let scope = ScopeId::new("instance:snapshot").unwrap();
-    engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+    let bootstrap = engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+    assert_eq!(
+        engine
+            .runtime_audit(&bootstrap.commit_id)
+            .unwrap()
+            .unwrap()
+            .read,
+        None,
+        "ordinary runtime commits must not claim a read stamp"
+    );
 
     let read = engine.runtime_read_stamp(&scope).unwrap();
     assert_eq!(read.schema_revision, Some(1));
@@ -271,6 +280,12 @@ fn assert_data_transaction_contract(engine: &dyn Engine) {
     assert_eq!(digest.len(), 64);
     let outcome = engine.commit_data_transaction(&transaction).unwrap();
     assert_eq!(outcome.last_cursor, 1);
+    let audit = engine
+        .runtime_audit(&outcome.commit_id)
+        .unwrap()
+        .expect("accepted data transaction audit");
+    assert_eq!(audit.read, Some(read.clone()));
+    audit.validate().unwrap();
 
     let stale = DataTransaction::new(read, bootstrap(&scope, 0)).unwrap();
     assert!(matches!(

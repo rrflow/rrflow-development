@@ -12,10 +12,13 @@
 //! `SyncAll` never reaches a disk and the result would be meaningless, so the
 //! database is placed beside the compiled binary in the target directory.
 
-use rrd_store::Store;
+use rrd_core::{RuntimeMutation, ScopeId};
+use rrd_store::{Engine, NativeEngine, Store};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc;
+use std::time::Duration;
 
 /// A directory on the same filesystem as the build output, avoiding tmpfs.
 fn scratch(name: &str) -> PathBuf {
@@ -29,7 +32,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 /// Runs the child to readiness, then terminates it with SIGKILL.
-fn run_and_kill(db: &PathBuf, count: usize, mode: &str) {
+fn start_child(db: &PathBuf, count: usize, mode: &str) -> Child {
     let mut child = Command::new(env!("CARGO_BIN_EXE_durability-child"))
         .arg(db)
         .arg(count.to_string())
@@ -45,9 +48,17 @@ fn run_and_kill(db: &PathBuf, count: usize, mode: &str) {
         .expect("read readiness signal");
     assert_eq!(line.trim(), "READY", "child did not reach readiness");
 
+    child
+}
+
+fn kill(mut child: Child) {
     // SIGKILL: no destructors, no unwinding, no shutdown path.
     child.kill().expect("kill child");
     child.wait().expect("reap child");
+}
+
+fn run_and_kill(db: &PathBuf, count: usize, mode: &str) {
+    kill(start_child(db, count, mode));
 }
 
 #[test]
@@ -122,4 +133,79 @@ fn a_reopened_store_continues_the_sequence_rather_than_restarting_it() {
         200,
         "sequence restarted after termination, which would overwrite claims"
     );
+}
+
+#[test]
+fn native_mixed_family_transaction_survives_sigkill_as_one_stamped_commit() {
+    let db = scratch("native-mixed-family");
+    run_and_kill(&db, 0, "native-transaction");
+
+    let engine = NativeEngine::open(&db).expect("reopen native after kill");
+    let scope = ScopeId::new("instance:native-durability").unwrap();
+    let page = engine
+        .runtime_changes_since(0, 32, Some(&scope))
+        .expect("read recovered native changes");
+    assert_eq!(page.head_cursor, 9);
+    assert_eq!(page.changes.len(), 9);
+    assert_eq!(engine.sequence().unwrap(), 1);
+    assert!(matches!(
+        page.changes[0].mutation,
+        RuntimeMutation::Schema { .. }
+    ));
+    assert!(page
+        .changes
+        .iter()
+        .any(|change| matches!(change.mutation, RuntimeMutation::Vector { .. })));
+    assert!(page
+        .changes
+        .iter()
+        .any(|change| matches!(change.mutation, RuntimeMutation::Geo { .. })));
+    assert!(page
+        .changes
+        .iter()
+        .any(|change| matches!(change.mutation, RuntimeMutation::Claim { .. })));
+
+    let commit_id = page.changes[0].commit_id.clone();
+    assert!(page
+        .changes
+        .iter()
+        .all(|change| change.commit_id == commit_id));
+    let outcome = engine
+        .runtime_commit_outcome(&commit_id)
+        .unwrap()
+        .expect("recovered native outcome");
+    assert_eq!(outcome.count, 9);
+    let audit = engine
+        .runtime_audit(&commit_id)
+        .unwrap()
+        .expect("recovered stamped audit");
+    assert_eq!(audit.read.as_ref().unwrap().scope, scope);
+    assert_eq!(audit.read.as_ref().unwrap().commit_cursor, 0);
+    audit.validate().unwrap();
+}
+
+#[test]
+fn native_writer_lock_fails_promptly_and_recovers_after_owner_death() {
+    let db = scratch("native-writer-lock");
+    let owner = start_child(&db, 0, "native-lock");
+    let probe = db.clone();
+    let (send, receive) = mpsc::channel();
+    let waiter = std::thread::spawn(move || {
+        let result = NativeEngine::open(&probe)
+            .map(drop)
+            .map_err(|error| error.to_string());
+        send.send(result).unwrap();
+    });
+    let result = receive
+        .recv_timeout(Duration::from_secs(2))
+        .expect("independent writer blocked instead of failing promptly");
+    let error = result.expect_err("independent writer acquired an owned native root");
+    assert!(
+        error.contains("active writer"),
+        "unexpected lock error: {error}"
+    );
+    waiter.join().unwrap();
+
+    kill(owner);
+    NativeEngine::open(&db).expect("writer lock was not released after owner death");
 }

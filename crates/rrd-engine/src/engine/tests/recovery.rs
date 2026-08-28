@@ -41,6 +41,20 @@ fn commit_reopens_replays_and_does_not_duplicate_claims() {
         .unwrap();
     assert!(!first.idempotent_replay);
     assert_eq!(service.storage.sequence().unwrap(), 1);
+    let audit = service
+        .storage
+        .runtime_audit(
+            first
+                .runtime_commit_sha256
+                .as_deref()
+                .expect("data commit identity"),
+        )
+        .unwrap()
+        .expect("data commit audit");
+    let read = audit.read.as_ref().expect("stamped data commit audit");
+    assert_eq!(read.commit_cursor, transaction.read_cursor);
+    assert_eq!(read.scope.as_str(), "instance:test-instance");
+    audit.validate().unwrap();
     drop(service);
 
     let service = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();

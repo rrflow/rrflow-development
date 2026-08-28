@@ -30,7 +30,13 @@ pub enum Error {
     TornTail {
         offset: u64,
     },
+    DatabaseWriterLock {
+        path: PathBuf,
+    },
     PoisonedWriter,
+    RecoveryRequired {
+        boundary: &'static str,
+    },
     InjectedFailure {
         mode: &'static str,
         boundary: &'static str,
@@ -70,9 +76,18 @@ impl fmt::Display for Error {
                 formatter,
                 "WAL has an incomplete tail at byte {offset}; explicit repair is required"
             ),
+            Self::DatabaseWriterLock { path } => write!(
+                formatter,
+                "RRD database already has an active writer: {}",
+                path.display()
+            ),
             Self::PoisonedWriter => write!(
                 formatter,
                 "WAL writer is poisoned after a failed append and must be reopened"
+            ),
+            Self::RecoveryRequired { boundary } => write!(
+                formatter,
+                "RRD database handle crossed {boundary} without applying the durable WAL frame; reopen is required"
             ),
             Self::InjectedFailure { mode, boundary } => {
                 write!(formatter, "injected {mode} failure at {boundary}")

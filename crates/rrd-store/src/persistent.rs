@@ -376,10 +376,16 @@ impl Engine for PersistentEngine {
         }
     }
 
-    fn commit_runtime(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
+    fn commit_runtime_at_read(
+        &self,
+        commit: &RuntimeCommit,
+        read: Option<&ReadStamp>,
+    ) -> Result<RuntimeCommitOutcome> {
         match self {
-            Self::Native(engine) => Engine::commit_runtime(engine, commit),
-            Self::FjallCompatibility(engine) => Engine::commit_runtime(engine, commit),
+            Self::Native(engine) => Engine::commit_runtime_at_read(engine, commit, read),
+            Self::FjallCompatibility(engine) => {
+                Engine::commit_runtime_at_read(engine, commit, read)
+            }
         }
     }
 

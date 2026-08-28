@@ -2724,3 +2724,41 @@ index.
   server/client/MCP/Connectome target suites pass. Full workspace, strict
   Clippy, exact work-plan verification, publication, and remote matrices remain
   the closing gates.
+
+## 2026-08-27 — G02-W01 native durability qualification slice
+
+- Board authority: G02-W01 is the only active item. Its reviewed plan is bound
+  to the clean `b21e8408c9fd2170f40383da7b86f9dd868fc160` source tree and the
+  frozen eleven-command verifier. This entry records implemented behavior; only
+  the RRD `workitem.verified` transition may cross the item off.
+- Writer ownership: `ManifestStore` now attempts one non-blocking native root
+  lock and returns the explicit `DatabaseWriterLock` error when another process
+  owns it. Same-process and independent-process tests prove prompt denial,
+  release on normal drop, and recovery after forced owner death.
+- Ordinary WAL boundary: `WriteBoundary::{BeforeWalAppend, WalSynced}` covers
+  crash and storage-full injection around a normal atomic batch. A pre-append
+  failure publishes none of the batch and leaves the handle usable. A complete
+  authoritative WAL frame survives reopen as all of the batch; the interrupted
+  in-process handle refuses further writes until reopened so its memtable cannot
+  diverge from durable truth.
+- Stamped transaction authority: the shared `Engine` port now distinguishes an
+  ordinary commit from a read-bound data transaction. Native RRD, Fjall
+  compatibility, and the memory reference validate the supplied stamp at their
+  compare-and-swap boundary and seal it into the audit envelope written with
+  the mutations, commit outcome, outbox, cursor, and audit-chain head. Ordinary
+  commits retain `read = None` instead of manufacturing evidence.
+- Forced-death proof: the durability child commits one nine-mutation native
+  transaction spanning schema, records, relation, event, vector, time-series,
+  geospatial, and claim families, announces readiness only after the
+  authoritative commit returns, and is then killed without unwinding. Reopen
+  recovers one commit identity, all nine cursor positions, the claim watermark,
+  outcome, and the exact validated audit read stamp.
+- Cohesive engine regression: `RrdEngine` session/transaction commit, reopen,
+  and idempotent replay retain the stamped audit identity through the sole
+  `PersistentEngine` composition boundary. Focused `rrd-lsm`, `rrd-store`, and
+  `RrdEngine` recovery tests pass before the frozen full verifier is executed.
+- Isolation note: another live process twice restored the primary checkout
+  while this slice was compiling. Implementation therefore continued in a
+  dedicated Git worktree at the recorded source commit; no vanished patch or
+  partially restored tree is counted as evidence. The finished commit must be
+  applied to the authoritative checkout before work-plan verification.

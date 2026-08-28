@@ -892,9 +892,16 @@ impl Engine for NativeEngine {
         Ok(page)
     }
 
-    fn commit_runtime(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
+    fn commit_runtime_at_read(
+        &self,
+        commit: &RuntimeCommit,
+        read: Option<&ReadStamp>,
+    ) -> Result<RuntimeCommitOutcome> {
         let mut database = self.lock()?;
-        let plan = prepare_native_runtime_commit(&database, commit)?;
+        if let Some(read) = read {
+            validate_native_read_stamp(&database, database.snapshot(), read)?;
+        }
+        let plan = prepare_native_runtime_commit_with_read(&database, commit, read)?;
         let (outcome, operations) = plan.into_parts();
         write(&mut database, operations, Durability::Authoritative)?;
         Ok(outcome)
@@ -1048,6 +1055,14 @@ impl NativeRuntimeCommitPlan {
 pub fn prepare_native_runtime_commit(
     database: &Database,
     commit: &RuntimeCommit,
+) -> Result<NativeRuntimeCommitPlan> {
+    prepare_native_runtime_commit_with_read(database, commit, None)
+}
+
+fn prepare_native_runtime_commit_with_read(
+    database: &Database,
+    commit: &RuntimeCommit,
+    read: Option<&ReadStamp>,
 ) -> Result<NativeRuntimeCommitPlan> {
     commit.validate()?;
     let snapshot = database.snapshot();
@@ -1345,7 +1360,13 @@ pub fn prepare_native_runtime_commit(
         keyspaces::RUNTIME_ACCUMULATOR_STATE,
         serde_json::to_vec(&accumulator)?,
     );
-    let audit = AuditEnvelope::accepted_commit(commit, &commit_id, cursor, previous_audit_digest)?;
+    let audit = AuditEnvelope::accepted_commit_at_read(
+        commit,
+        read,
+        &commit_id,
+        cursor,
+        previous_audit_digest,
+    )?;
     put(
         &mut operations,
         keyspaces::RUNTIME_AUDIT,
