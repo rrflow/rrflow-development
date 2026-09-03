@@ -113,7 +113,7 @@ full workspace and operating-system matrix may be called verified.
 ## Required execution order after this matrix
 
 1. Run all 16 scenarios independently and record exact pass/fail evidence in
-   `docs/implementation-journal.md`.
+   the retained test output for the qualifying run.
 2. Run `cargo fmt --all -- --check`.
 3. Run `cargo test --workspace --all-features --locked` with the disposable
    pgvector integration environment enabled.

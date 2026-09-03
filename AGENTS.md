@@ -1,20 +1,19 @@
-# OpenAI Codex CLI
+# RRFlow engineering instructions
 
-<!-- rrflow:begin -->
-## RRFlow project context
+`README.md` is the sole authority for product identity, architecture, current
+status, and roadmap. Other Markdown files are supporting design notes,
+contracts, evidence, or history and cannot override it.
 
-This project has provider-neutral RRFlow runtime state at `.rrflow/rrd`.
-RRD persists bi-temporal claims with provenance, project routing,
-reasoning lifecycle evidence, and exact tool authorization.
+For project work:
 
-- Load the `rrflow-engine-development` skill from `.agents/skills/rrflow-engine-development/SKILL.md` for project work.
-- Recall before broad search, then inspect the current code, tests, worktree diff, and enforced board.
-- Sync and activate only dependency-ready work: `rrflow --db .rrflow/rrd work-plan sync --root .`
-then `rrflow --db .rrflow/rrd work-plan activate --item <id>`.
-- Persist a reviewed goal and plan, then attune with `rrflow --db .rrflow/rrd preflight --root .`.
-- Record one exact attempt before each mutation; observe and decide before the next attempt.
-- Record what you decide: `rrflow --db .rrflow/rrd assert --subject <s> --predicate <p> --object <text>`
-- If an RRFlow gate denies a tool call, follow the reported recovery
-action. For projection divergence, run `rrflow --db .rrflow/rrd ground`
-and review its evidence before `rrflow --db .rrflow/rrd reset-projection`.
-<!-- rrflow:end -->
+1. Read the relevant section of `README.md`, then inspect the current worktree,
+   implementation, tests, and existing diff before changing files.
+2. Preserve unrelated user changes. Keep each change coherent and reviewable.
+3. Use the existing `rrd-engine` composition boundary and provider-neutral
+   contracts; do not add provider-specific state or a parallel source of truth.
+4. Verify with the smallest relevant test first, then the owning package suite.
+5. Report what actually passed, what failed, and what was not run.
+
+RRFlow has no editor- or provider-owned automatic hooks. Recall, reasoning
+lifecycle, and mutation authorization are explicit capabilities composed
+through `rrd-engine`; clients must not create a parallel lifecycle authority.

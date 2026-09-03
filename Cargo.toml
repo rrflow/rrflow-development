@@ -18,7 +18,6 @@ members = [
     "crates/rrd-kubernetes",
     "crates/rrd-maintenance",
     "crates/rrd-lsm",
-    "crates/rrd-graph",
     "crates/rrflow-cli",
     "crates/rrflow-mcp",
     "crates/rrflow-eval",
@@ -26,7 +25,7 @@ members = [
 ]
 
 # Remaining future member. Current dependency arrows point inward:
-# core <- {store, graph} <- runtime <- {cli, MCP}; eval is standalone.
+# core <- store <- engine <- {CLI, MCP, server}; eval is standalone.
 
 [workspace.package]
 version = "0.1.0"

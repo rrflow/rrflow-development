@@ -45,19 +45,8 @@ pub enum RrdOperation {
     FunctionExecute,
     DiagnosticsRead,
     MemoryContextRead,
-    MemoryInspect,
-    MemoryRecall,
-    MemoryRetire,
-    MemoryWrite,
-    LifecycleApply,
-    ProjectAttune,
-    ProjectRoute,
     ReasoningRead,
     ReasoningWrite,
-    WorkPlanRead,
-    WorkPlanControl,
-    WorkPlanVerifyExecute,
-    RuntimeToolCatalogueRead,
 }
 
 impl RrdOperation {
@@ -84,14 +73,7 @@ impl RrdOperation {
                 | Self::VectorCollectionDelete
                 | Self::VectorPayloadIndexEnsure
                 | Self::VectorPayloadIndexDelete
-                | Self::MemoryRetire
-                | Self::MemoryWrite
-                | Self::LifecycleApply
-                | Self::ProjectAttune
-                | Self::ProjectRoute
                 | Self::ReasoningWrite
-                | Self::WorkPlanControl
-                | Self::WorkPlanVerifyExecute
         )
     }
 
@@ -137,19 +119,8 @@ impl RrdOperation {
             Self::FunctionExecute => SecurityAction::FunctionExecute,
             Self::DiagnosticsRead => SecurityAction::DiagnosticsRead,
             Self::MemoryContextRead => SecurityAction::MemoryContextRead,
-            Self::MemoryInspect => SecurityAction::MemoryInspect,
-            Self::MemoryRecall => SecurityAction::MemoryRecall,
-            Self::MemoryRetire => SecurityAction::MemoryRetire,
-            Self::MemoryWrite => SecurityAction::MemoryWrite,
-            Self::LifecycleApply => SecurityAction::LifecycleApply,
-            Self::ProjectAttune => SecurityAction::ProjectAttune,
-            Self::ProjectRoute => SecurityAction::ProjectRoute,
             Self::ReasoningRead => SecurityAction::ReasoningRead,
             Self::ReasoningWrite => SecurityAction::ReasoningWrite,
-            Self::WorkPlanRead => SecurityAction::WorkPlanRead,
-            Self::WorkPlanControl => SecurityAction::WorkPlanControl,
-            Self::WorkPlanVerifyExecute => SecurityAction::WorkPlanVerifyExecute,
-            Self::RuntimeToolCatalogueRead => SecurityAction::RuntimeToolCatalogueRead,
         }
     }
 }

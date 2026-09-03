@@ -4,20 +4,19 @@
 //! integration tests through the same path the operator uses, rather than
 //! through a parallel test-only entry point.
 
-use crate::workplan::WorkPlanAction;
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
+use rrd_contract::{
+    AssembleContext, CanonicalId, CloseSession, CorrelationId, CreateSession, DataReference,
+    SessionLimits,
+};
 use rrd_engine::{
-    digest, Claim, CoreResult, Effectiveness, GroundingReport, Millis, Outcome, Predicate,
-    Producer, Reader, ReasoningPayload, RecallOutcome, RecallQuery, RrdEngine, ScopeId, Subject,
-    Trigger,
+    digest, Claim, Millis, Outcome, Predicate, Producer, Reader, ReasoningPayload, RrdEngine,
+    ScopeId, Subject, Trigger,
 };
 
-/// What a command produced: the operator-facing text, the `SPEC.md` §13.1
-/// effectiveness fields for recall-carrying commands, and a detail line for
-/// the invocation record.
+/// What a command produced for the operator and invocation audit.
 pub struct Execution {
     pub text: String,
-    pub effectiveness: Option<Effectiveness>,
     pub detail: Option<String>,
     /// Process success is explicit so diagnostic commands can emit their full
     /// machine-readable report while still failing CI on a blocked topology.
@@ -28,7 +27,6 @@ impl From<String> for Execution {
     fn from(text: String) -> Self {
         Execution {
             text,
-            effectiveness: None,
             detail: None,
             success: true,
         }
@@ -39,8 +37,7 @@ impl From<String> for Execution {
 #[command(
     name = "rrflow",
     about = "RRFlow operator and development surface",
-    long_about = "Every invocation is recorded (SPEC.md §13). No trigger may be \
-                  automated before its recorded invocations justify it."
+    long_about = "RRFlow operator and development surface. Context retrieval is composed by the engine."
 )]
 pub struct Cli {
     /// Database directory.
@@ -66,19 +63,6 @@ pub enum Command {
     Dev {
         #[command(subcommand)]
         action: DevAction,
-    },
-    /// Inspect and advance the RRD-enforced project work plan.
-    WorkPlan {
-        #[command(subcommand)]
-        action: WorkPlanAction,
-    },
-    /// List or invoke the generated runtime catalogue through one explicit
-    /// embedded engine or authenticated daemon authority.
-    Runtime {
-        #[command(flatten)]
-        authority: RuntimeAuthorityArgs,
-        #[command(subcommand)]
-        action: RuntimeAction,
     },
     /// Record a claim.
     Assert {
@@ -128,109 +112,15 @@ pub enum Command {
         #[arg(long, default_value_t = 0)]
         since: Millis,
     },
-    /// Resolve the claims in force for a subject set into a recall set
-    /// (`SPEC.md` §10). Semantic content with provenance; rendering to a
-    /// prompt belongs to the consuming adapter.
-    Recall {
-        /// Subject to recall. Repeatable.
-        #[arg(long = "subject", required = true)]
-        subjects: Vec<String>,
-        /// Narrow to these predicates. Repeatable; absent recalls all.
-        #[arg(long = "predicate")]
-        predicates: Vec<String>,
-        /// Instant to resolve at. Defaults to now.
-        #[arg(long)]
-        at: Option<Millis>,
-        /// Token budget for the recall set.
-        #[arg(long, default_value_t = 1500)]
-        budget: usize,
-        /// Consumer the recall set is destined for, recorded in the ledger.
-        #[arg(long, default_value = "frontier:claude")]
-        provider: String,
-    },
-    /// Judge a recorded recall after the fact (`SPEC.md` §13.1): accepted,
-    /// corrected, or discarded. This is the signal trigger policy derives from.
-    Outcome {
-        /// Ordinal of the recall invocation being judged.
-        #[arg(long)]
-        ordinal: u64,
-        /// accepted | corrected | discarded | unknown
-        #[arg(long)]
-        outcome: String,
-    },
-    /// The effectiveness ledger: recall records and their outcome distribution.
-    Ledger {
-        #[arg(long, default_value_t = 0)]
-        since: Millis,
-    },
-    /// Advance the current-state projection over the claim log (`SPEC.md`
-    /// §8.2). Applies the interval above the watermark and advances the
-    /// watermark in the same write.
-    Rebuild,
-    /// Rebuild to the current sequence, then difference the projection
-    /// against a full recomputation (`SPEC.md` §8.3). Divergence halts and
-    /// quarantines the projection; it is never repaired here.
-    Ground,
-    /// Discard the current-state projection and recompute it from the claim
-    /// log. The only exit from quarantine, and an explicit operator decision.
-    ResetProjection,
-    /// Explicitly discard and rebuild the persisted source-routing index.
-    /// This is the recovery path for corrupt state and the only way to rebind
-    /// one database to a different project root.
-    ResetRouting {
-        #[arg(long, default_value = ".")]
-        root: std::path::PathBuf,
-    },
-    /// The moment of attunement (`PLAN.md` Step P): detect the stack, check
-    /// estate health and adapter verification, and assemble a task-specific
-    /// bounded source and memory context.
-    Preflight {
-        /// Project root for stack detection.
-        #[arg(long, default_value = ".")]
-        root: std::path::PathBuf,
-        /// Harness adapter in use, so its verification drift can make noise.
-        #[arg(long)]
-        harness: Option<String>,
-        /// Prompt or task used for deterministic source and claim routing.
-        /// When absent, the active work item supplies the task.
-        #[arg(long)]
-        task: Option<String>,
-        #[arg(long, default_value_t = 1500)]
-        budget: usize,
-    },
-    /// Harness lifecycle dispatch: reads the harness JSON on stdin, answers
-    /// on stdout. Wired by `rrflow init`; recorded with trigger `event`.
-    Hook {
-        /// session-start | user-prompt-submit | pre-tool-use |
-        /// post-tool-use | stop | pre-compact | session-end
-        event: String,
-        #[arg(long)]
-        harness: Option<String>,
-        /// Project root override; defaults to the `cwd` field of the hook
-        /// input, then the working directory.
-        #[arg(long)]
-        root: Option<std::path::PathBuf>,
-        #[arg(long, default_value_t = 1500)]
-        budget: usize,
-    },
-    /// Write the harness wiring for this project: context-file block, plus
-    /// hook configuration where the harness supports it. Refuses retired
-    /// harnesses.
-    Init {
-        #[arg(long)]
-        harness: String,
-        #[arg(long, default_value = ".")]
-        root: std::path::PathBuf,
-    },
     /// Execute one explicit, durably traced RRFlowQL query. Raw query and
     /// parameter values are returned but never persisted as trace attributes.
     Query {
         /// Project root used to prove this database belongs to one instance.
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
-        /// One concrete runtime scope. Cross-scope queries are not implicit.
-        #[arg(long, default_value = "instance:default")]
-        scope: String,
+        /// One concrete runtime scope. Defaults to this engine's bound instance.
+        #[arg(long)]
+        scope: Option<String>,
         /// RRFlowQL source text.
         #[arg(long)]
         ql: String,
@@ -246,96 +136,38 @@ pub enum Command {
         #[arg(long, default_value_t = 256)]
         max_batch_rows: usize,
     },
-    /// Execute one exact argv vector through RRFlow's durable lifecycle gate.
-    /// No shell parses, expands, redirects, or composes this command.
-    Exec {
-        /// Project root whose attunement, work plan, and instance bind this run.
+    /// Assemble one temporal, lexical, semantic, and graph context packet.
+    Context {
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
-        /// Canonical RRFlow lifecycle session. Required when the project has
-        /// a checked-in work plan; may also be supplied by RRFLOW_SESSION_ID.
-        #[arg(long, env = "RRFLOW_SESSION_ID")]
-        session_id: Option<String>,
-        /// Working directory, relative to the project root unless absolute.
+        /// Runtime scope. Defaults to this engine's bound instance.
         #[arg(long)]
-        cwd: Option<std::path::PathBuf>,
-        /// Maximum child runtime before RRFlow kills it.
-        #[arg(long, default_value_t = 15 * 60 * 1_000)]
-        timeout_ms: u64,
-        /// Maximum bytes retained from each output stream. Both streams are
-        /// fully drained and hashed even when their displayed prefix truncates.
-        #[arg(long, default_value_t = 1024 * 1024)]
-        max_output_bytes: usize,
-        /// Executable followed by its exact arguments. The `--` separator is
-        /// mandatory so RRFlow flags cannot be confused with child flags.
-        #[arg(last = true, required = true, num_args = 1.., allow_hyphen_values = true)]
-        exact_argv: Vec<String>,
+        scope: Option<String>,
+        #[arg(long)]
+        query: String,
+        /// Optional KIND:ID record anchor. Repeatable.
+        #[arg(long = "seed")]
+        seeds: Vec<String>,
+        #[arg(long)]
+        valid_at: Option<Millis>,
+        #[arg(long, default_value_t = 2)]
+        max_graph_depth: u8,
+        #[arg(long, default_value_t = 32)]
+        max_items: u64,
+        #[arg(long, default_value_t = 256 * 1024)]
+        max_output_bytes: u64,
+        #[arg(long, default_value_t = 100_000)]
+        max_scanned_changes: u64,
     },
     /// Record or inspect the typed operational reasoning contract.
     Reasoning {
         #[command(subcommand)]
         action: ReasoningAction,
     },
-    /// The harness registry and its drift alarm.
-    Harness {
-        #[command(subcommand)]
-        action: HarnessAction,
-    },
     /// Offline storage migration and recovery operations.
     Storage {
         #[command(subcommand)]
         action: StorageAction,
-    },
-}
-
-#[derive(Args, Debug, Clone)]
-pub struct RuntimeAuthorityArgs {
-    /// Runtime authority. Embedded owns the bound store; daemon owns no
-    /// storage and authenticates to rrd-server through rrd-client.
-    #[arg(long, value_enum, default_value_t = RuntimeMode::Embedded)]
-    pub mode: RuntimeMode,
-    /// Project root for embedded authority discovery.
-    #[arg(long)]
-    pub root: Option<std::path::PathBuf>,
-    /// Loopback HTTP URL for daemon authority.
-    #[arg(long)]
-    pub url: Option<String>,
-    /// Canonical instance identifier for daemon authority.
-    #[arg(long)]
-    pub instance: Option<String>,
-    /// Canonical security principal for daemon authority.
-    #[arg(long)]
-    pub principal: Option<String>,
-    /// Absolute owner-only API-key file for daemon authentication.
-    #[arg(long)]
-    pub api_key_file: Option<std::path::PathBuf>,
-}
-
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RuntimeMode {
-    Embedded,
-    Daemon,
-}
-
-impl RuntimeMode {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Embedded => "embedded",
-            Self::Daemon => "daemon",
-        }
-    }
-}
-
-#[derive(Subcommand, Debug, Clone)]
-pub enum RuntimeAction {
-    /// Emit the exact generated runtime-tool catalogue.
-    List,
-    /// Invoke one generated runtime tool with a JSON object argument.
-    Call {
-        #[arg(long)]
-        tool: String,
-        #[arg(long, default_value = "{}")]
-        arguments: String,
     },
 }
 
@@ -403,21 +235,6 @@ pub enum ReasoningAction {
         #[arg(long)]
         run: Option<String>,
     },
-}
-
-#[derive(Subcommand, Debug, Clone)]
-pub enum HarnessAction {
-    /// Record a verification for an adapter: a claim valid for 21 days. The
-    /// evidence names what was checked, because an audit without evidence is
-    /// an assertion.
-    Audit {
-        #[arg(long)]
-        name: String,
-        #[arg(long)]
-        evidence: String,
-    },
-    /// Every registry row with its verification state at now.
-    Status,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -489,45 +306,20 @@ impl Command {
             Command::Dev {
                 action: DevAction::Stop { .. },
             } => "dev-stop",
-            Command::WorkPlan { action } => action.name(),
-            Command::Runtime {
-                action: RuntimeAction::List,
-                ..
-            } => "runtime-list",
-            Command::Runtime {
-                action: RuntimeAction::Call { .. },
-                ..
-            } => "runtime-call",
             Command::Assert { .. } => "assert",
             Command::AsOf { .. } => "as-of",
             Command::History { .. } => "history",
             Command::Status => "status",
             Command::Gc { .. } => "gc",
             Command::Invocations { .. } => "invocations",
-            Command::Recall { .. } => "recall",
-            Command::Outcome { .. } => "outcome",
-            Command::Ledger { .. } => "ledger",
-            Command::Rebuild => "rebuild",
-            Command::Ground => "ground",
-            Command::ResetProjection => "reset-projection",
-            Command::ResetRouting { .. } => "reset-routing",
-            Command::Preflight { .. } => "preflight",
-            Command::Hook { .. } => "hook",
-            Command::Init { .. } => "init",
             Command::Query { .. } => "query",
-            Command::Exec { .. } => "exec",
+            Command::Context { .. } => "context",
             Command::Reasoning {
                 action: ReasoningAction::Record { .. },
             } => "reasoning-record",
             Command::Reasoning {
                 action: ReasoningAction::Show { .. },
             } => "reasoning-show",
-            Command::Harness {
-                action: HarnessAction::Audit { .. },
-            } => "harness-audit",
-            Command::Harness {
-                action: HarnessAction::Status,
-            } => "harness-status",
             Command::Storage {
                 action: StorageAction::Migrate,
             } => "storage-migrate",
@@ -567,14 +359,8 @@ impl Command {
         }
     }
 
-    /// What caused the invocation. Hook dispatches are the promoted
-    /// automation: they record `Event`, exactly as the `Trigger` enum
-    /// anticipated — a change of value, not of schema.
     pub fn trigger(&self) -> Trigger {
-        match self {
-            Command::Hook { .. } => Trigger::Event,
-            _ => Trigger::Manual,
-        }
+        Trigger::Manual
     }
 
     /// Arguments recorded alongside the invocation, so a recorded run can be
@@ -626,67 +412,6 @@ impl Command {
             Command::Status => Vec::new(),
             Command::Gc { since } => vec![format!("since={since}")],
             Command::Invocations { since } => vec![format!("since={since}")],
-            Command::Recall {
-                subjects,
-                predicates,
-                at,
-                budget,
-                provider,
-            } => {
-                let mut a: Vec<String> = subjects.iter().map(|s| format!("subject={s}")).collect();
-                a.extend(predicates.iter().map(|p| format!("predicate={p}")));
-                if let Some(t) = at {
-                    a.push(format!("at={t}"));
-                }
-                a.push(format!("budget={budget}"));
-                a.push(format!("provider={provider}"));
-                a
-            }
-            Command::Outcome { ordinal, outcome } => {
-                vec![format!("ordinal={ordinal}"), format!("outcome={outcome}")]
-            }
-            Command::Ledger { since } => vec![format!("since={since}")],
-            Command::Rebuild | Command::Ground | Command::ResetProjection => Vec::new(),
-            Command::ResetRouting { root } => vec![format!("root={}", root.display())],
-            Command::Preflight {
-                root,
-                harness,
-                task,
-                budget,
-            } => {
-                let mut a = vec![
-                    format!("root={}", root.display()),
-                    format!("budget={budget}"),
-                ];
-                if let Some(h) = harness {
-                    a.push(format!("harness={h}"));
-                }
-                if let Some(task) = task {
-                    a.push(format!("task={task}"));
-                }
-                a
-            }
-            Command::Hook {
-                event,
-                harness,
-                root,
-                budget,
-            } => {
-                let mut a = vec![format!("event={event}"), format!("budget={budget}")];
-                if let Some(h) = harness {
-                    a.push(format!("harness={h}"));
-                }
-                if let Some(r) = root {
-                    a.push(format!("root={}", r.display()));
-                }
-                a
-            }
-            Command::Init { harness, root } => {
-                vec![
-                    format!("harness={harness}"),
-                    format!("root={}", root.display()),
-                ]
-            }
             Command::Query {
                 root,
                 scope,
@@ -698,7 +423,7 @@ impl Command {
                 max_batch_rows,
             } => vec![
                 format!("root={}", root.display()),
-                format!("scope={scope}"),
+                format!("scope={}", scope.as_deref().unwrap_or("bound-instance")),
                 format!("query_digest={}", digest::sha256_hex(ql.as_bytes())),
                 format!(
                     "parameter_input_digest={}",
@@ -710,35 +435,26 @@ impl Command {
                 format!("max_output_bytes={max_output_bytes}"),
                 format!("max_batch_rows={max_batch_rows}"),
             ],
-            Command::Exec {
+            Command::Context {
                 root,
-                session_id,
-                cwd,
-                timeout_ms,
+                scope,
+                query,
+                seeds,
+                valid_at,
+                max_graph_depth,
+                max_items,
                 max_output_bytes,
-                exact_argv,
+                max_scanned_changes,
             } => vec![
                 format!("root={}", root.display()),
-                format!(
-                    "session_id_sha256={}",
-                    session_id.as_deref().map_or_else(
-                        || "none".into(),
-                        |value| digest::sha256_hex(value.as_bytes())
-                    )
-                ),
-                format!(
-                    "cwd={}",
-                    cwd.as_deref()
-                        .unwrap_or_else(|| std::path::Path::new("."))
-                        .display()
-                ),
-                format!("timeout_ms={timeout_ms}"),
+                format!("scope={}", scope.as_deref().unwrap_or("bound-instance")),
+                format!("query_sha256={}", digest::sha256_hex(query.as_bytes())),
+                format!("seed_count={}", seeds.len()),
+                format!("valid_at={}", valid_at.unwrap_or(0)),
+                format!("max_graph_depth={max_graph_depth}"),
+                format!("max_items={max_items}"),
                 format!("max_output_bytes={max_output_bytes}"),
-                format!("argc={}", exact_argv.len()),
-                format!(
-                    "exact_argv_sha256={}",
-                    digest::sha256_hex(&serde_json::to_vec(exact_argv).unwrap_or_default())
-                ),
+                format!("max_scanned_changes={max_scanned_changes}"),
             ],
             Command::Reasoning {
                 action:
@@ -757,14 +473,6 @@ impl Command {
             Command::Reasoning {
                 action: ReasoningAction::Show { run },
             } => run.iter().map(|run| format!("run={run}")).collect(),
-            Command::Harness {
-                action: HarnessAction::Audit { name, evidence },
-            } => {
-                vec![format!("name={name}"), format!("evidence={evidence}")]
-            }
-            Command::Harness {
-                action: HarnessAction::Status,
-            } => Vec::new(),
             Command::Storage {
                 action:
                     StorageAction::ArchiveExport { archive }
@@ -840,40 +548,6 @@ impl Command {
                 format!("root={}", root.display()),
                 format!("timeout_ms={timeout_ms}"),
             ],
-            Command::WorkPlan { action } => action.arguments(),
-            Command::Runtime { authority, action } => {
-                let mut arguments = vec![format!("mode={}", authority.mode.as_str())];
-                if let Some(root) = &authority.root {
-                    arguments.push(format!("root={}", root.display()));
-                }
-                if let Some(url) = &authority.url {
-                    arguments.push(format!("url={url}"));
-                }
-                if let Some(instance) = &authority.instance {
-                    arguments.push(format!("instance={instance}"));
-                }
-                if let Some(principal) = &authority.principal {
-                    arguments.push(format!("principal={principal}"));
-                }
-                if let Some(api_key_file) = &authority.api_key_file {
-                    arguments.push(format!("api_key_file={}", api_key_file.display()));
-                }
-                match action {
-                    RuntimeAction::List => arguments.push("action=list".into()),
-                    RuntimeAction::Call {
-                        tool,
-                        arguments: input,
-                    } => {
-                        arguments.push("action=call".into());
-                        arguments.push(format!("tool={tool}"));
-                        arguments.push(format!(
-                            "arguments_sha256={}",
-                            digest::sha256_hex(input.as_bytes())
-                        ));
-                    }
-                }
-                arguments
-            }
         }
     }
 }
@@ -899,7 +573,6 @@ pub fn execute_offline(
                 };
                 Ok(Execution {
                     text,
-                    effectiveness: None,
                     detail: Some(format!(
                         "{} passed, {} blocked, {} warnings",
                         report.passed, report.blocked, report.warnings
@@ -941,7 +614,6 @@ pub fn execute_offline(
                 };
                 Ok(Execution {
                     text,
-                    effectiveness: None,
                     detail: Some(format!("topology status: {}", report.status)),
                     success,
                 })
@@ -1157,208 +829,6 @@ pub fn execute(
     json: bool,
 ) -> Result<Execution, Box<dyn std::error::Error>> {
     match command {
-        Command::Runtime { .. } => {
-            return Err("runtime commands require the selected runtime authority".into());
-        }
-        Command::WorkPlan { action } => {
-            return crate::workplan::execute(store, action, reader, now, json);
-        }
-        Command::Exec {
-            root,
-            session_id,
-            cwd,
-            timeout_ms,
-            max_output_bytes,
-            exact_argv,
-        } => {
-            verify_instance_store(store, root)?;
-            return crate::command_proxy::execute(
-                store,
-                crate::command_proxy::ExactCommandRequest {
-                    root,
-                    session_id: session_id.as_deref(),
-                    requested_cwd: cwd.as_deref(),
-                    exact_argv,
-                    timeout_ms: *timeout_ms,
-                    max_output_bytes: *max_output_bytes,
-                },
-                reader,
-                now,
-                json,
-            );
-        }
-        Command::Recall {
-            subjects,
-            predicates,
-            at,
-            budget,
-            provider,
-        } => {
-            let query = RecallQuery {
-                subjects: subjects
-                    .iter()
-                    .map(|s| Subject::new(s.clone()))
-                    .collect::<CoreResult<Vec<_>>>()?,
-                predicates: if predicates.is_empty() {
-                    None
-                } else {
-                    Some(
-                        predicates
-                            .iter()
-                            .map(|p| Predicate::new(p.clone()))
-                            .collect::<CoreResult<Vec<_>>>()?,
-                    )
-                },
-                as_of: at.unwrap_or(now),
-            };
-            let set = store.recall(&query, *budget)?;
-            // Every recalled claim is a read, recorded per SPEC.md §7.
-            for claim in &set.claims {
-                store.observe(reader, &claim.subject, &claim.predicate, now)?;
-            }
-            let effectiveness = Effectiveness {
-                query: query
-                    .subjects
-                    .iter()
-                    .map(|s| s.as_str())
-                    .collect::<Vec<_>>()
-                    .join(","),
-                claims_returned: set.claims.len(),
-                tokens_emitted: set.token_estimate as u64,
-                // A manual recall has no baseline arm; the reduction is
-                // unverified until the A/B harness supplies one (§13.1).
-                baseline_tokens: None,
-                baseline_mode: None,
-                provider: provider.clone(),
-                outcome: RecallOutcome::Unknown,
-            };
-            let text = if json {
-                serde_json::to_string_pretty(&set)?
-            } else {
-                let mut lines: Vec<String> = set
-                    .claims
-                    .iter()
-                    .map(|c| {
-                        format!(
-                            "{} {} = {}  [valid_from={} tx={} by {}]",
-                            c.subject.as_str(),
-                            c.predicate.as_str(),
-                            c.object,
-                            c.valid_from,
-                            c.tx_time,
-                            c.producer.actor,
-                        )
-                    })
-                    .collect();
-                lines.push(format!(
-                    "-- {} claim(s), ~{} token(s), digest {}{}",
-                    set.claims.len(),
-                    set.token_estimate,
-                    set.digest,
-                    if set.truncated {
-                        ", TRUNCATED by budget"
-                    } else {
-                        ""
-                    },
-                ));
-                lines.join("\n")
-            };
-            return Ok(Execution {
-                text,
-                effectiveness: Some(effectiveness),
-                detail: None,
-                success: true,
-            });
-        }
-
-        Command::Outcome { ordinal, outcome } => {
-            let judged = match outcome.as_str() {
-                "accepted" => RecallOutcome::Accepted,
-                "corrected" => RecallOutcome::Corrected,
-                "discarded" => RecallOutcome::Discarded,
-                "unknown" => RecallOutcome::Unknown,
-                other => {
-                    return Err(format!(
-                    "unknown outcome {other:?}: expected accepted | corrected | discarded | unknown"
-                )
-                    .into())
-                }
-            };
-            let record = store.set_recall_outcome(*ordinal, judged)?;
-            return Ok(if json {
-                serde_json::to_string_pretty(&record)?.into()
-            } else {
-                record.render().into()
-            });
-        }
-
-        Command::Preflight {
-            root,
-            harness,
-            task,
-            budget,
-        } => {
-            verify_instance_store(store, root)?;
-            let flight = store.runtime_task_preflight(
-                root,
-                harness.as_deref(),
-                reader,
-                now,
-                *budget,
-                task.as_deref(),
-            )?;
-            let detail = (!flight.warnings.is_empty())
-                .then(|| format!("{} warning(s)", flight.warnings.len()));
-            return Ok(Execution {
-                text: flight.context,
-                effectiveness: Some(flight.effectiveness),
-                detail,
-                success: true,
-            });
-        }
-
-        Command::Hook {
-            event,
-            harness,
-            root,
-            budget,
-        } => {
-            let event = rrd_engine::HookEvent::parse(event)
-                .ok_or_else(|| format!("unknown hook event {event:?}"))?;
-            let mut raw = String::new();
-            std::io::Read::read_to_string(&mut std::io::stdin(), &mut raw)?;
-            let input: serde_json::Value = if raw.trim().is_empty() {
-                serde_json::Value::Object(Default::default())
-            } else {
-                serde_json::from_str(&raw)?
-            };
-            // Root precedence: explicit flag, then the harness's `cwd`, then
-            // the working directory the hook process inherited.
-            let root = root.clone().unwrap_or_else(|| {
-                input
-                    .get("cwd")
-                    .and_then(serde_json::Value::as_str)
-                    .map(Into::into)
-                    .unwrap_or_else(|| ".".into())
-            });
-            verify_instance_store(store, &root)?;
-            let response = store.handle_runtime_hook(rrd_engine::RuntimeHookRequest {
-                root: &root,
-                harness: harness.as_deref(),
-                reader,
-                now,
-                budget: *budget,
-                event,
-                input: &input,
-            })?;
-            return Ok(Execution {
-                text: response.stdout,
-                effectiveness: response.effectiveness,
-                detail: response.detail,
-                success: true,
-            });
-        }
-
         Command::Query {
             root,
             scope,
@@ -1370,7 +840,11 @@ pub fn execute(
             max_batch_rows,
         } => {
             verify_instance_store(store, root)?;
-            let scope = ScopeId::new(scope.clone())?;
+            let scope = ScopeId::new(
+                scope
+                    .clone()
+                    .unwrap_or_else(|| format!("instance:{}", store.instance_id())),
+            )?;
             let parameter_json = query_parameter_object(parameters)?;
             let parameters = rrd_engine::query_parameters_from_json(&parameter_json)?;
             let budget = rrd_engine::ExecutionBudget {
@@ -1415,43 +889,79 @@ pub fn execute(
             };
             return Ok(Execution {
                 text,
-                effectiveness: None,
                 detail: Some(format!("plan={}", result.plan.digest)),
                 success: true,
             });
         }
 
-        Command::Ledger { since } => {
-            let records: Vec<_> = store
-                .invocations_since(*since)?
-                .into_iter()
-                .filter(|i| i.effectiveness.is_some())
-                .collect();
-            let mut distribution: std::collections::BTreeMap<String, usize> =
-                std::collections::BTreeMap::new();
-            for record in &records {
-                let outcome = record.effectiveness.as_ref().expect("filtered").outcome;
-                *distribution.entry(outcome.to_string()).or_insert(0) += 1;
-            }
-            return Ok(if json {
-                serde_json::to_string_pretty(&serde_json::json!({
-                    "records": records,
-                    "outcome_distribution": distribution,
-                }))?
-                .into()
-            } else if records.is_empty() {
-                "no recall records".to_string().into()
+        Command::Context {
+            root,
+            scope,
+            query,
+            seeds,
+            valid_at,
+            max_graph_depth,
+            max_items,
+            max_output_bytes,
+            max_scanned_changes,
+        } => {
+            verify_instance_store(store, root)?;
+            let request = AssembleContext {
+                scope: scope
+                    .clone()
+                    .unwrap_or_else(|| format!("instance:{}", store.instance_id())),
+                query: query.clone(),
+                valid_at: valid_at.unwrap_or(now),
+                seeds: seeds
+                    .iter()
+                    .map(|seed| parse_data_reference(seed))
+                    .collect::<Result<Vec<_>, _>>()?,
+                max_graph_depth: *max_graph_depth,
+                max_items: *max_items,
+                max_output_bytes: *max_output_bytes,
+                max_scanned_changes: *max_scanned_changes,
+            };
+            let session_key = CorrelationId::new(format!("cli-context-session-{now}"))?;
+            let lease = store.create_session(
+                &CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 30_000,
+                        absolute_timeout_ms: 60_000,
+                        max_open_transactions: 1,
+                    },
+                },
+                &session_key,
+                now,
+                "cli-context-session",
+                "cli-context-session",
+            )?;
+            let packet = store.assemble_context(
+                &lease.session_id,
+                &lease.token,
+                &request,
+                now,
+                "cli-context",
+                "cli-context",
+            );
+            let _ = store.close_session(
+                &lease.session_id,
+                &lease.token,
+                &CloseSession {},
+                &CorrelationId::new(format!("cli-context-close-{now}"))?,
+                now,
+                "cli-context-close",
+                "cli-context-close",
+            );
+            let packet = packet?;
+            let text = if json {
+                serde_json::to_string_pretty(&packet)?
             } else {
-                let mut lines: Vec<String> = records.iter().map(|i| i.render()).collect();
-                lines.push(format!(
-                    "-- outcomes: {}",
-                    distribution
-                        .iter()
-                        .map(|(k, v)| format!("{k}={v}"))
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                ));
-                lines.join("\n").into()
+                serde_json::to_string(&packet)?
+            };
+            return Ok(Execution {
+                text,
+                detail: Some(format!("context={}", packet.packet_sha256)),
+                success: true,
             });
         }
 
@@ -1461,41 +971,11 @@ pub fn execute(
     // Text-only commands, converted to an `Execution` in one place below.
     let text = (|| -> Result<String, Box<dyn std::error::Error>> {
         match command {
-            Command::Recall { .. }
-            | Command::Outcome { .. }
-            | Command::Ledger { .. }
-            | Command::Preflight { .. }
-            | Command::Hook { .. }
-            | Command::Query { .. }
-            | Command::Exec { .. }
+            Command::Query { .. }
+            | Command::Context { .. }
             | Command::Dev { .. }
-            | Command::WorkPlan { .. }
-            | Command::Runtime { .. }
             | Command::Storage { .. } => {
                 unreachable!("handled above with an early return")
-            }
-
-            Command::Init { harness, root } => {
-                let registry = rrd_engine::Registry::builtin();
-                let adapter = registry.get(harness).ok_or_else(|| {
-                    format!(
-                        "no harness named {harness:?}; registry knows: {}",
-                        registry
-                            .all()
-                            .iter()
-                            .map(|h| h.name.as_str())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                })?;
-                let report = store.initialize_runtime(root, adapter, now)?;
-                let mut lines: Vec<String> = report
-                    .written
-                    .iter()
-                    .map(|p| format!("wrote {}", p.display()))
-                    .collect();
-                lines.extend(report.notes.iter().map(|n| format!("note: {n}")));
-                Ok(lines.join("\n"))
             }
 
             Command::Reasoning {
@@ -1558,145 +1038,6 @@ pub fn execute(
                 })
             }
 
-            Command::Harness {
-                action: HarnessAction::Audit { name, evidence },
-            } => {
-                let registry = rrd_engine::Registry::builtin();
-                let claim = store.record_harness_verification(
-                    &registry,
-                    name,
-                    now,
-                    evidence,
-                    reader.as_str(),
-                )?;
-                Ok(format!(
-                    "recorded: {} verified until {} ({})",
-                    name,
-                    claim.valid_to.expect("verification claims carry an expiry"),
-                    evidence
-                ))
-            }
-
-            Command::Harness {
-                action: HarnessAction::Status,
-            } => {
-                let registry = rrd_engine::Registry::builtin();
-                let mut lines = Vec::new();
-                for adapter in registry.all() {
-                    let state = if let Some(when) = &adapter.retired {
-                        format!("RETIRED ({when})")
-                    } else {
-                        match store.harness_verification(&registry, adapter, now)? {
-                            rrd_engine::Verification::Current { until } => format!(
-                                "verified until {}",
-                                until
-                                    .map(|u| u.to_string())
-                                    .unwrap_or_else(|| "open".into())
-                            ),
-                            rrd_engine::Verification::Expired { days } => {
-                                format!("EXPIRED {days} day(s) ago — re-audit")
-                            }
-                            rrd_engine::Verification::Never => "never audited".to_string(),
-                        }
-                    };
-                    lines.push(format!(
-                        "{:<12} hooks={:<5} mcp={:<5} billing={:<24} {}",
-                        adapter.name,
-                        adapter.hooks,
-                        adapter.mcp_client,
-                        adapter.billing.join("+"),
-                        state,
-                    ));
-                }
-                Ok(lines.join("\n"))
-            }
-            Command::Rebuild => {
-                let outcome = store.rebuild_current()?;
-                Ok(if json {
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "from": outcome.from,
-                        "to": outcome.to,
-                        "applied": outcome.applied,
-                    }))?
-                } else {
-                    format!(
-                        "applied {} claim(s), watermark {} -> {}",
-                        outcome.applied, outcome.from, outcome.to
-                    )
-                })
-            }
-
-            Command::Ground => {
-                // §8.3 reaches `as_of = now` by rebuilding first: grounding itself
-                // verifies incremental-equals-batch at the projection's watermark,
-                // and the rebuild carries that watermark to the current sequence.
-                store.rebuild_current()?;
-                let report = store.ground_current(now)?;
-                Ok(match (&report, json) {
-                    (GroundingReport::Grounded(stamp), true) => {
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "grounded": { "at": stamp.at, "sequence": stamp.sequence, "digest": stamp.digest },
-                        }))?
-                    }
-                    (GroundingReport::Grounded(stamp), false) => format!(
-                        "grounded at={} sequence={} digest={:016x}",
-                        stamp.at, stamp.sequence, stamp.digest
-                    ),
-                    (GroundingReport::Divergence { differences }, true) => {
-                        serde_json::to_string_pretty(&serde_json::json!({
-                            "divergence": differences,
-                            "quarantined": true,
-                        }))?
-                    }
-                    (GroundingReport::Divergence { differences }, false) => {
-                        let mut lines = vec![format!(
-                            "DIVERGENCE: {} difference(s); projection quarantined",
-                            differences.len()
-                        )];
-                        lines.extend(differences.iter().map(|d| format!("  {d}")));
-                        lines.push("recover with `rrflow reset-projection`".into());
-                        lines.join("\n")
-                    }
-                })
-            }
-
-            Command::ResetProjection => {
-                let outcome = store.reset_current()?;
-                Ok(if json {
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "recomputed": outcome.applied,
-                        "watermark": outcome.to,
-                    }))?
-                } else {
-                    format!(
-                        "projection recomputed from the log: {} claim(s), watermark {}",
-                        outcome.applied, outcome.to
-                    )
-                })
-            }
-            Command::ResetRouting { root } => {
-                verify_instance_store(store, root)?;
-                let ready = store.reset_project_routing(root)?;
-                Ok(if json {
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "generation": ready.generation,
-                        "files": ready.files,
-                        "symbols": ready.symbols,
-                        "topology_sha256": ready.topology_sha256,
-                        "profile_sha256": ready.profile_sha256,
-                        "refresh": {
-                            "added": ready.refresh.added,
-                            "changed": ready.refresh.changed,
-                            "removed": ready.refresh.removed,
-                            "skipped_unread": ready.refresh.skipped_unread,
-                            "read_but_identical": ready.refresh.read_but_identical,
-                            "duration_ms": ready.refresh.duration_ms,
-                        },
-                    }))?
-                } else {
-                    format!("routing projection rebuilt: {}", ready.render())
-                })
-            }
             Command::Assert {
                 subject,
                 predicate,
@@ -1739,7 +1080,6 @@ pub fn execute(
                 let predicate = Predicate::new(predicate.clone())?;
                 let at = at.unwrap_or(now);
                 let resolved = store.claim_as_of(&subject, &predicate, at)?;
-                // A read is recorded, per SPEC.md §7.
                 store.observe(reader, &subject, &predicate, now)?;
                 Ok(match (&resolved, json) {
                     (_, true) => serde_json::to_string_pretty(&resolved)?,
@@ -1860,6 +1200,16 @@ fn verify_instance_store(
     root: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     store.verify_project_store(root)
+}
+
+fn parse_data_reference(value: &str) -> Result<DataReference, Box<dyn std::error::Error>> {
+    let (kind, id) = value
+        .split_once(':')
+        .ok_or("context seed must use KIND:ID")?;
+    Ok(DataReference {
+        kind: CanonicalId::new(kind)?,
+        id: CanonicalId::new(id)?,
+    })
 }
 
 fn query_parameter_object(

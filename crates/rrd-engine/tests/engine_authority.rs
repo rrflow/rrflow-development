@@ -1,14 +1,11 @@
 use rrd_contract::{
-    runtime_tool_arguments_sha256, transaction_operation_sha256, AuditDecision, AuditPhase,
-    BeginTransaction, CanonicalId, CloseSession, CommitTransaction, CorrelationId, CreateSession,
-    DataCatalogueIdentity, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
-    DataSchemaRegistry, DataValueType, DataVectorValue, EnsureQueryIndex, EnsureVectorCollection,
-    EstateDesiredPhase, LifecycleEnforcementLevelV1, LifecycleEventCommandV1, LifecycleEventTypeV1,
-    LifecyclePayloadV1, LifecycleSessionSnapshotV1, LifecycleTraceContextV1, NamedVectorDefinition,
-    QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
-    RequestContext, ResourceId, ResourceKind, ResourcePath, RuntimeToolInvocation, SecurityAction,
+    transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction, CanonicalId,
+    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataCatalogueIdentity,
+    DataProperties, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaRegistry,
+    DataValueType, DataVectorValue, EnsureQueryIndex, EnsureVectorCollection, EstateDesiredPhase,
+    NamedVectorDefinition, QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed,
+    ReadDiagnosticSnapshot, RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction,
     SessionLimits, TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
-    RUNTIME_TOOL_CATALOGUE_VERSION,
 };
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
@@ -81,7 +78,7 @@ fn engine_exposes_only_the_reviewed_native_format_successor() {
 }
 
 #[test]
-fn one_authority_coordinates_security_data_catalogues_lifecycle_audit_and_reopen() {
+fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");
     fs::create_dir(&project).unwrap();
@@ -104,7 +101,6 @@ fn one_authority_coordinates_security_data_catalogues_lifecycle_audit_and_reopen
         SecurityAction::TransactionCommit,
         SecurityAction::VectorCollectionEnsure,
         SecurityAction::QueryIndexEnsure,
-        SecurityAction::LifecycleApply,
         SecurityAction::ChangefeedRead,
         SecurityAction::AuditRead,
         SecurityAction::DiagnosticsRead,
@@ -326,62 +322,6 @@ fn one_authority_coordinates_security_data_catalogues_lifecycle_audit_and_reopen
     assert_eq!(commit.mutation_count, 4);
     assert_eq!(commit.claim_mutation_count, Some(1));
 
-    let lifecycle_command = LifecycleEventCommandV1 {
-        event_type: LifecycleEventTypeV1::SessionOpened,
-        occurred_at_unix_ms: 1_400,
-        instance_id: instance.to_string(),
-        project_id: instance.to_string(),
-        member_id: None,
-        session_id: "authority-lifecycle".into(),
-        turn_id: None,
-        reasoning_run_id: None,
-        attempt_id: None,
-        tool_call_id: None,
-        correlation_id: "authority-lifecycle-open".into(),
-        actor: "agent:authority-test".into(),
-        adapter_kind: "integration-test".into(),
-        adapter_version: "1.0.0".into(),
-        enforcement_level: LifecycleEnforcementLevelV1::Cooperative,
-        scope: scope.clone(),
-        payload: LifecyclePayloadV1::SessionOpened {
-            resumed: false,
-            provider_session_sha256: None,
-        },
-        read_stamp: None,
-        trace: LifecycleTraceContextV1 {
-            trace_id: format!("{:032x}", 1_400),
-            span_id: format!("{:016x}", 1_400),
-            parent_span_id: None,
-        },
-    };
-    let lifecycle_arguments = json!({"command": lifecycle_command, "recorded_at_unix_ms": 1_400});
-    let lifecycle_request = RuntimeToolInvocation {
-        catalogue_version: RUNTIME_TOOL_CATALOGUE_VERSION,
-        tool: canonical("rrflow_lifecycle"),
-        arguments_sha256: runtime_tool_arguments_sha256(&lifecycle_arguments).unwrap(),
-        arguments: lifecycle_arguments,
-    };
-    let lifecycle_invocation = Invocation {
-        context: context("request-lifecycle", "operation-lifecycle", "lifecycle-key"),
-        resource: resource(&instance),
-        observed_at_unix_ms: 1_400,
-        attempt: 1,
-        request_sha256: digest::sha256_hex(&serde_json::to_vec(&lifecycle_request).unwrap()),
-    };
-    let lifecycle = engine
-        .invoke_runtime_tool(
-            &project,
-            &lifecycle_request,
-            lifecycle_invocation,
-            InvocationCredential::Session {
-                session_id: &lease.session_id,
-                token: &lease.token,
-            },
-        )
-        .unwrap();
-    let lifecycle: LifecycleSessionSnapshotV1 = serde_json::from_str(&lifecycle.content).unwrap();
-    assert_eq!(lifecycle.event_count, 1);
-
     let runtime_before_denial = engine.readiness(1_450).unwrap().runtime_cursor;
     let denied = engine.begin_invocation(
         Invocation {
@@ -523,15 +463,6 @@ fn one_authority_coordinates_security_data_catalogues_lifecycle_audit_and_reopen
         )
         .unwrap();
     audit.validate().unwrap();
-    let lifecycle_audit = audit
-        .records
-        .iter()
-        .filter(|record| record.action == SecurityAction::LifecycleApply)
-        .collect::<Vec<_>>();
-    assert_eq!(lifecycle_audit.len(), 2);
-    assert_eq!(lifecycle_audit[0].phase, AuditPhase::Authorized);
-    assert_eq!(lifecycle_audit[1].phase, AuditPhase::Completed);
-    assert_eq!(lifecycle_audit[1].decision, AuditDecision::Allowed);
     let denied_backup = audit
         .records
         .iter()

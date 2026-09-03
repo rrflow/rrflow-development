@@ -1,7 +1,6 @@
-use crate::runtime::runtime_tool_catalogue;
 use rrd_contract::{
     endpoint_catalogue, EndpointAction, ProductCapability, ProductCapabilityCatalogue,
-    ProductSurface, SurfaceBinding, SurfaceDisposition, WorkPlanOperation, PROTOCOL_VERSION,
+    ProductSurface, SurfaceBinding, SurfaceDisposition, PROTOCOL_VERSION,
 };
 
 /// Builds the single cross-surface capability truth from executable engine and
@@ -17,9 +16,6 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
             let engine_binding = match endpoint.action {
                 EndpointAction::Fixed { action } => {
                     format!("rrd-engine:RrdOperation::{action:?}")
-                }
-                EndpointAction::RuntimeToolDescriptor => {
-                    "rrd-engine:runtime-tool-descriptor-action".into()
                 }
             };
             ProductCapability {
@@ -102,96 +98,6 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
         });
     }
 
-    for tool in runtime_tool_catalogue() {
-        let suffix = tool.name.trim_start_matches("rrflow_").replace('_', "-");
-        let id = tool
-            .capability_id
-            .map(str::to_owned)
-            .unwrap_or_else(|| format!("runtime-{suffix}"));
-        if let Some(capability) = capabilities
-            .iter_mut()
-            .find(|capability| capability.id == id)
-        {
-            expose(
-                binding(capability, ProductSurface::Engine),
-                format!("rrd-engine:runtime/{}", tool.name),
-            );
-            expose(
-                binding(capability, ProductSurface::RrdHttp),
-                format!("POST /v1/runtime/tools/invoke#{}", tool.name),
-            );
-            expose(binding(capability, ProductSurface::Mcp), tool.name);
-            expose(
-                binding(capability, ProductSurface::Cli),
-                format!("rrflow runtime call --tool {}", tool.name),
-            );
-            expose(
-                binding(capability, ProductSurface::Sdk),
-                format!("openapi:runtime-tool-invoke#{}", tool.name),
-            );
-            expose(
-                binding(capability, ProductSurface::Connectome),
-                format!("/api/runtime/tools/invoke#{}", tool.name),
-            );
-            if let Some(operation) = WorkPlanOperation::ALL
-                .into_iter()
-                .find(|operation| operation.runtime_tool_name() == tool.name)
-            {
-                expose(
-                    binding(capability, ProductSurface::Cli),
-                    operation.cli_command(),
-                );
-            }
-            continue;
-        }
-        capabilities.push(ProductCapability {
-            id,
-            label: title(&suffix),
-            category: "ai_runtime".into(),
-            summary: tool.description.into(),
-            bindings: {
-                surface_bindings(
-                    unavailable(NO_SURFACE_BINDING_REASON),
-                    [
-                        (
-                            ProductSurface::Engine,
-                            available(format!("rrd-engine:runtime/{}", tool.name)),
-                        ),
-                        (
-                            ProductSurface::RrdHttp,
-                            available(format!("POST /v1/runtime/tools/invoke#{}", tool.name)),
-                        ),
-                        (ProductSurface::Mcp, available(tool.name)),
-                        (
-                            ProductSurface::Cli,
-                            available(format!("rrflow runtime call --tool {}", tool.name)),
-                        ),
-                        (
-                            ProductSurface::Sdk,
-                            available(format!("openapi:runtime-tool-invoke#{}", tool.name)),
-                        ),
-                        (
-                            ProductSurface::Connectome,
-                            available(format!("/api/runtime/tools/invoke#{}", tool.name)),
-                        ),
-                    ],
-                )
-            },
-        });
-        if let Some(operation) = WorkPlanOperation::ALL
-            .into_iter()
-            .find(|operation| operation.runtime_tool_name() == tool.name)
-        {
-            let capability = capabilities
-                .last_mut()
-                .expect("runtime capability was appended");
-            expose(
-                binding(capability, ProductSurface::Cli),
-                operation.cli_command(),
-            );
-        }
-    }
-
     let mut embedded_functions = ProductCapability {
         id: "embedded-functions".into(),
         label: "Embedded functions".into(),
@@ -252,10 +158,10 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
             "Retire or delete ingested documents and all governed projections without orphaned indexes.",
         ),
         (
-            "hybrid-memory-recall",
-            "Hybrid memory recall",
+            "context-assembly",
+            "Context assembly",
             "retrieval",
-            "Fuse lexical, dense, sparse, provenance, recency, and graph evidence in one bounded recall plan.",
+            "Fuse temporal claims and records with lexical, compatible local-vector, and graph evidence in one bounded stamped packet.",
         ),
         (
             "memory-reflect",

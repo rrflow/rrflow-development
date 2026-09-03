@@ -8,6 +8,7 @@ description = "RRFlow composition root and authoritative embedded RRD engine API
 
 [features]
 default = ["full"]
+cluster-transfer = ["full", "rrd-cluster/openraft-adapter"]
 edge = [
     "dep:rrd-core",
     "dep:rrd-inference",
@@ -21,7 +22,6 @@ full = [
     "dep:rrd-cluster",
     "dep:rrd-contract",
     "dep:rrd-estate",
-    "dep:rrd-graph",
     "dep:rrd-operator-knowledge",
     "dep:rrd-query",
     "dep:rrd-security",
@@ -44,7 +44,6 @@ rrd-core = { path = "../rrd-core", optional = true }
 rrd-query = { path = "../rrd-query", optional = true }
 rrd-store = { path = "../rrd-store", optional = true }
 rrd-vector = { path = "../rrd-vector", optional = true }
-rrd-graph = { path = "../rrd-graph", optional = true }
 rrd-inference = { path = "../rrd-inference", optional = true }
 rrd-operator-knowledge = { path = "../rrd-operator-knowledge", optional = true }
 rrd-cluster = { path = "../rrd-cluster", features = ["object-transfer"], optional = true }

@@ -45,7 +45,6 @@ fn seed(path: &std::path::Path) {
             outcome: Outcome::Ok,
             duration_ms: 1,
             detail: Some("seed".into()),
-            effectiveness: None,
         })
         .unwrap();
 }

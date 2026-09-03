@@ -28,7 +28,6 @@ fn engine_has_exact_composition() {
             "rrd-security",
             "rrd-cluster",
             "rrd-core",
-            "rrd-graph",
             "rrd-inference",
             "rrd-operator-knowledge",
             "rrd-query",
@@ -83,7 +82,6 @@ fn outward_consumers_cannot_bypass_the_engine_boundary() {
         "rrd-cluster",
         "rrd-core",
         "rrd-inference",
-        "rrd-graph",
         "rrd-lsm",
         "rrd-query",
         "rrd-operator-knowledge",
@@ -269,30 +267,20 @@ fn outward_cli_owns_product_executables_while_physical_crates_own_none() {
 }
 
 #[test]
-fn outward_tool_surfaces_serialize_the_authoritative_runtime_catalogue() {
+fn outward_surfaces_use_the_authoritative_context_operation() {
     let metadata = workspace_metadata();
     let mcp = fs::read_to_string(metadata.root.join("crates/rrflow-mcp/src/main.rs"))
         .expect("MCP source must be readable");
-    let compact_mcp = mcp.split_whitespace().collect::<String>();
     assert!(
-        compact_mcp.contains("authority.catalogue().tools"),
-        "MCP tools/list must serialize the authority catalogue"
-    );
-    assert!(
-        !mcp.contains("RuntimeToolDescriptor {") && !mcp.contains("RuntimeToolDefinition {"),
-        "MCP must not define a second hardcoded runtime-tool registry"
+        mcp.contains("rrflow_context") && mcp.contains("authority.assemble_context"),
+        "MCP must expose only the engine context assembly boundary"
     );
 
     let connectome = fs::read_to_string(metadata.root.join("crates/connectome-ui/src/lib.rs"))
         .expect("Connectome source must be readable");
     assert!(
-        connectome.contains("runtime_tool_catalogue"),
-        "Connectome must fetch the authoritative runtime-tool catalogue"
-    );
-    assert!(
-        !connectome.contains("RuntimeToolDescriptor {")
-            && !connectome.contains("RuntimeToolDefinition {"),
-        "Connectome must not define a second hardcoded runtime-tool registry"
+        connectome.contains("client.assemble_context") && connectome.contains("/api/context"),
+        "Connectome must use the authenticated engine context assembly operation"
     );
 }
 

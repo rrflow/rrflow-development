@@ -1,4 +1,4 @@
-//! Sequence-ordered scan. `SPEC.md` §8.2 and §8.4; `PLAN.md` Step 1.
+//! Sequence-ordered scan over the canonical committed log.
 //!
 //! The index maps an append sequence to the claim key written at that sequence.
 //! It is written in the transaction that writes the claim, so it cannot diverge

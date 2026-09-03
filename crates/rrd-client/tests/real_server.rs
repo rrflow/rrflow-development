@@ -4,11 +4,12 @@ use rcgen::{
 };
 use rrd_client::{is_unauthenticated, ClientConfig, Error, RequestOptions, RrdClient, Session};
 use rrd_contract::{
-    transaction_operation_sha256, AbortTransaction, BeginTransaction, CanonicalId,
-    CloseSubscription, CommitTransaction, CreateSession, DeploymentConformanceCorpus,
-    DeploymentMode, ExecuteQuery, ExportAudit, OpenSubscription, PreviewTransaction, QueryBudget,
-    ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, ResourceId, ResourceKind, ResourcePath,
-    SessionLimits, SubscriptionServerFrame, SubscriptionStream, TransactionMutation,
+    transaction_operation_sha256, AbortTransaction, AssembleContext, BeginTransaction, CanonicalId,
+    CloseSubscription, CommitTransaction, ContextEvidenceKind, CreateSession,
+    DeploymentConformanceCorpus, DeploymentMode, ExecuteQuery, ExportAudit, OpenSubscription,
+    PreviewTransaction, QueryBudget, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, ResourceId,
+    ResourceKind, ResourcePath, SessionLimits, SubscriptionServerFrame, SubscriptionStream,
+    TransactionMutation,
 };
 use rrd_core::{
     digest, RuntimeCommit, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
@@ -282,7 +283,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             Action::SubscriptionConnect,
             Action::SubscriptionAck,
             Action::SubscriptionClose,
-            Action::RuntimeToolCatalogueRead,
+            Action::MemoryContextRead,
             Action::ServiceInspect,
             Action::DiagnosticsRead,
         ]
@@ -368,9 +369,12 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         rrd_engine::product_capability_catalogue()
     );
     let catalogue = client.endpoint_catalogue().await.unwrap();
-    assert_eq!(catalogue.endpoints.len(), 34);
+    assert!(catalogue
+        .endpoints
+        .iter()
+        .any(|endpoint| endpoint.path == "/v1/context/assemble"));
     let openapi = client.openapi_document().await.unwrap();
-    assert_eq!(openapi["x-rrd-endpoint-count"], 34);
+    assert_eq!(openapi["x-rrd-endpoint-count"], catalogue.endpoints.len());
 
     let session_request = CreateSession {
         limits: SessionLimits {
@@ -531,45 +535,31 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         closed.subscription.status,
         rrd_contract::SubscriptionStatus::Closed
     );
-    let runtime_catalogue = client
-        .runtime_tool_catalogue(
+    let context = client
+        .assemble_context(
             &session,
-            RequestOptions::read("request-runtime-list", "operation-runtime-list").unwrap(),
-        )
-        .await
-        .unwrap();
-    let service_status = client
-        .invoke_runtime_tool(
-            &session,
-            &runtime_catalogue,
-            &CanonicalId::new("rrflow_service_status").unwrap(),
-            json!({}),
-            RequestOptions::read("request-runtime-invoke", "operation-runtime-invoke").unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(service_status.tool.as_str(), "rrflow_service_status");
-    assert!(service_status.content.contains("sdk-test"));
-    let denied = client
-        .invoke_runtime_tool(
-            &session,
-            &runtime_catalogue,
-            &CanonicalId::new("rrflow_context").unwrap(),
-            json!({}),
-            RequestOptions::read("request-runtime-denied", "operation-runtime-denied").unwrap(),
-        )
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        denied,
-        Error::Api {
-            error: rrd_contract::ErrorBody {
-                code: rrd_contract::ErrorCode::PermissionDenied,
-                ..
+            AssembleContext {
+                scope: "instance:sdk-test".into(),
+                query: "Alpha".into(),
+                valid_at: 100,
+                seeds: Vec::new(),
+                max_graph_depth: 2,
+                max_items: 16,
+                max_output_bytes: 16_384,
+                max_scanned_changes: 1_024,
             },
-            ..
-        }
-    ));
+            RequestOptions::read("request-context", "operation-context").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(context
+        .items
+        .iter()
+        .any(|item| item.identity == "record:document:alpha"
+            && item
+                .evidence
+                .iter()
+                .any(|evidence| evidence.kind == ContextEvidenceKind::Text)));
     let query_request = ExecuteQuery {
         scope: "instance:sdk-test".into(),
         query: "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title EXPLAIN CONTRACT"
@@ -680,7 +670,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
                 changes_after_cursor: 0,
                 change_limit: 64,
                 audit_after_sequence: 0,
-                audit_limit: 32,
+                audit_limit: 128,
             },
             RequestOptions::read("request-diagnostics", "operation-diagnostics").unwrap(),
         )
@@ -736,7 +726,6 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         )
         .await;
     assert!(impossible_graph_cursor.is_err());
-    assert_eq!(diagnostics.runtime_tools, runtime_catalogue);
     assert!(diagnostics
         .sections
         .iter()
@@ -780,7 +769,8 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
     assert!(audit.records.iter().any(|record| {
         record.action == rrd_contract::SecurityAction::MemoryContextRead
             && record.principal_id.as_ref().map(CanonicalId::as_str) == Some("rust-sdk")
-            && record.decision == rrd_contract::AuditDecision::Denied
+            && record.phase == rrd_contract::AuditPhase::Completed
+            && record.decision == rrd_contract::AuditDecision::Allowed
     }));
     assert!(audit.records.iter().any(|record| {
         record.action == rrd_contract::SecurityAction::SubscriptionConnect

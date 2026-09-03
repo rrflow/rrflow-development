@@ -1,4 +1,4 @@
-//! Removal candidacy by query. `SPEC.md` §7 and §12; `PLAN.md` Step 2.
+//! Removal candidacy by query.
 
 use rrd_core::{Claim, Predicate, Producer, Reader, Subject};
 use rrd_store::{Store, Verdict};

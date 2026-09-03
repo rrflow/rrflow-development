@@ -17,6 +17,7 @@ use crate::{RrdEngine, ServiceError};
 
 pub const INSTANCE_FORMAT: u32 = 1;
 pub const INSTANCE_FILE: &str = ".rrflow/instance.toml";
+pub const STORE_DIR: &str = ".rrflow/rrd";
 pub const PROJECT_AUTHORITY_FORMAT: u16 = 1;
 const PROJECT_AUTHORITY_KEY_PREFIX: &str = "server/state/project-authority";
 static MANIFEST_STAGING_SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -314,7 +315,7 @@ impl InstanceBinding {
     }
 
     pub fn expected_store(&self) -> PathBuf {
-        self.instance_root.join(super::STORE_DIR)
+        self.instance_root.join(STORE_DIR)
     }
 
     /// Compares destinations after resolving their existing parent

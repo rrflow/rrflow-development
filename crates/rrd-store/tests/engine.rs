@@ -1,12 +1,11 @@
-//! The storage port, proven by differential (`PLAN.md` Step S, standing
-//! rule 3): the Fjall engine and the reference engine must be
-//! indistinguishable through the trait — same recall, same projection, same
+//! The storage port, proven by differential: the Fjall engine and the reference engine must be
+//! indistinguishable through the trait — same legacy claim reads, same projection, same
 //! grounding stamp digest. This test is what makes "fold in storage" a
 //! contract rather than a promise: a bbolt engine in Go, or a rrflow-native
 //! engine in Rust, is correct exactly when this differential (and the
 //! golden key vectors in rrd-core) holds for it.
 
-use rrd_core::{recall, Claim, ClaimReader, Predicate, Producer, RecallQuery, Subject};
+use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
 use rrd_store::{Engine, GroundingReport, MemoryEngine, NativeEngine, Store};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
@@ -96,26 +95,6 @@ fn all_engines_are_indistinguishable_through_the_port() {
     assert_eq!(
         Engine::subjects(&fjall).unwrap(),
         Engine::subjects(&native).unwrap()
-    );
-
-    // Same recall set, digest included.
-    let query = RecallQuery {
-        subjects: vec![Subject::new("wp3").unwrap(), Subject::new("wp4").unwrap()],
-        predicates: None,
-        as_of: 400,
-    };
-    let a = recall(&fjall, &query, 10_000).unwrap();
-    let b = recall(&memory, &query, 10_000).unwrap();
-    let c = recall(&native, &query, 10_000).unwrap();
-    assert_eq!(a.claims, b.claims);
-    assert_eq!(a.claims, c.claims);
-    assert_eq!(
-        a.digest, b.digest,
-        "the content digest is engine-independent"
-    );
-    assert_eq!(
-        a.digest, c.digest,
-        "the native digest is engine-independent"
     );
 
     // Same projection after rebuild, and the SAME grounding digest — the

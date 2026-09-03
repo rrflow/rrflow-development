@@ -38,7 +38,6 @@ pub mod error;
 pub mod ident;
 pub mod key;
 pub mod reasoning;
-pub mod recall;
 pub mod reference;
 pub mod runtime;
 pub mod schema;
@@ -61,7 +60,6 @@ pub use reasoning::{
     Check, CheckStatus, DecisionKind, Evidence, ReasoningEvent, ReasoningPayload, ReasoningRun,
     ReasoningState, RunOutcome,
 };
-pub use recall::{estimate_claim_tokens, recall, RecallQuery, RecallSet};
 pub use runtime::{
     projection_family, AuditDecision, AuditEnvelope, DataTransaction, DataTransactionView,
     OutboxId, ProjectionFamily, ProjectionId, ProjectionStamp, ProjectionState, ProjectionWork,

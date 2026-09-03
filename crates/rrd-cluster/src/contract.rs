@@ -117,6 +117,9 @@ macro_rules! string_id {
 string_id!(ClusterId, "cluster id");
 string_id!(NodeId, "node id");
 string_id!(ZoneId, "zone id");
+string_id!(RegionId, "region id");
+string_id!(TenantId, "tenant id");
+string_id!(LogicalTableId, "logical table id");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ShardId(pub u64);

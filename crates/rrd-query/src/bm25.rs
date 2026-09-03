@@ -192,9 +192,9 @@ impl Bm25Artifact {
         S: Into<String>,
     {
         config.validate()?;
-        if source_cursor == 0 || schema_revision == 0 {
+        if source_cursor == 0 {
             return Err(Error::Catalog(
-                "BM25 source cursor and schema revision must be greater than zero".into(),
+                "BM25 source cursor must be greater than zero".into(),
             ));
         }
         let mut source = documents
@@ -278,9 +278,9 @@ impl Bm25Artifact {
                 "BM25 configuration digest does not match".into(),
             ));
         }
-        if self.source_cursor == 0 || self.schema_revision == 0 {
+        if self.source_cursor == 0 {
             return Err(Error::Integrity(
-                "BM25 source cursor and schema revision must be greater than zero".into(),
+                "BM25 source cursor must be greater than zero".into(),
             ));
         }
         if self.documents.len() > MAX_DOCUMENTS || self.postings.len() > MAX_TERMS {
@@ -705,6 +705,16 @@ mod tests {
     fn empty_and_invalid_requests_fail_closed() {
         let artifact = artifact();
         assert!(artifact.search("beta", 0).is_err());
+        let schema_less = Bm25Artifact::build(
+            Bm25Config::default(),
+            1,
+            0,
+            1,
+            [("claim:a", "schema-less claim text")],
+        )
+        .unwrap();
+        assert_eq!(schema_less.schema_revision, 0);
+        assert_eq!(schema_less.search("claim", 1).unwrap().len(), 1);
         assert!(Bm25Artifact::build(
             Bm25Config {
                 analyzer: Bm25Analyzer::UnicodeLowercase,

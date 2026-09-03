@@ -282,11 +282,5 @@
     ],
     "state": "complete"
   },
-  "recall wp3 as_of=300 budget=10000": {
-    "claims_returned": 1,
-    "current_object": "active",
-    "digest": "0e8753cd7f5a518c11bdd922457fb16e7f4acd14de947f9a369025ad6380b01d",
-    "token_estimate": 6
-  },
   "sequence_key 42": "3030303030303030303030303030303030303432"
 }

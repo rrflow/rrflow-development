@@ -11,8 +11,8 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const REPORT_VERSION: u16 = 3;
-const CANONICAL_WORKSPACE_PACKAGES: [&str; 22] = [
+const REPORT_VERSION: u16 = 4;
+const CANONICAL_WORKSPACE_PACKAGES: [&str; 21] = [
     "connectome-ui",
     "rrd-client",
     "rrd-cluster",
@@ -20,7 +20,6 @@ const CANONICAL_WORKSPACE_PACKAGES: [&str; 22] = [
     "rrd-core",
     "rrd-engine",
     "rrd-estate",
-    "rrd-graph",
     "rrd-inference",
     "rrd-kubernetes",
     "rrd-lsm",
@@ -145,34 +144,6 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         ),
     ];
 
-    let capability_path = root.join("docs/rrd-engine-capability-coverage.md");
-    let capability_source = std::fs::read_to_string(&capability_path)?;
-    let workplan_source = std::fs::read_to_string(root.join("rrflow.workplan.toml"))?;
-    let stable_capabilities = (1..=20).all(|number| {
-        capability_source
-            .lines()
-            .any(|line| line.starts_with(&format!("{number}. `CAP-{number:02}`")))
-    });
-    let closure_gates = coverage_gate_ids(&capability_source);
-    let existing_closure_gates = closure_gates
-        .iter()
-        .filter(|gate| workplan_source.contains(&format!("id = \"{gate}\"")))
-        .count();
-    let closure_gates_exist =
-        !closure_gates.is_empty() && existing_closure_gates == closure_gates.len();
-    checks.push(check(
-        "capabilities.coverage-ledger",
-        stable_capabilities && closure_gates_exist,
-        "all twenty requested engine capabilities have stable IDs and real work-plan closure gates",
-        format!(
-            "{}: 20 ordered CAP rows; rrflow.workplan.toml: {}/{} referenced gates found",
-            relative(&root, &capability_path),
-            existing_closure_gates,
-            closure_gates.len(),
-        ),
-        "restore CAP-01 through CAP-20 one-for-one and repair every dangling Gxx-Wxx closure mapping",
-    ));
-
     let mcp_source_path = root.join("crates/rrflow-mcp/src/main.rs");
     let mcp_config_path = root.join("crates/rrflow-mcp/src/config.rs");
     let mcp_authority_path = root.join("crates/rrflow-mcp/src/authority.rs");
@@ -208,38 +179,7 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
                 relative(&root, &mcp_source_path)
             )
         },
-        "implement mutually exclusive embedded and daemon MCP modes; daemon mode must use authenticated rrd-client runtime invocation and must never open the database",
-    ));
-
-    let cli_runtime_path = root.join("crates/rrflow-cli/src/runtime.rs");
-    let cli_runtime_test = root.join("crates/rrflow-cli/tests/runtime_modes.rs");
-    let cli_runtime = std::fs::read_to_string(&cli_runtime_path).unwrap_or_default();
-    let cli_package = packages.iter().find(|package| package.name == "rrflow-cli");
-    let cli_has_runtime_modes = cli_package
-        .is_some_and(|package| package.dependencies.contains("rrd-client"))
-        && cli_runtime.contains("RuntimeMode::Embedded")
-        && cli_runtime.contains("RuntimeMode::Daemon")
-        && cli_runtime.contains("RrdClient")
-        && cli_runtime.contains("RrdEngine::open_bound")
-        && cli_runtime.contains("daemon runtime mode does not accept --db or --root")
-        && cli_runtime_test.is_file();
-    checks.push(check(
-        "surface.cli-daemon-mode",
-        cli_has_runtime_modes,
-        "the generated CLI catalogue uses one explicit embedded or authenticated daemon authority",
-        if cli_has_runtime_modes {
-            format!(
-                "{}, {}: strict embedded/daemon modes, authenticated rrd-client, and black-box parity test",
-                relative(&root, &cli_runtime_path),
-                relative(&root, &cli_runtime_test)
-            )
-        } else {
-            format!(
-                "{} lacks a complete mutually exclusive embedded/daemon runtime boundary",
-                relative(&root, &cli_runtime_path)
-            )
-        },
-        "implement generated runtime list/call commands with strict embedded and authenticated daemon modes, plus a black-box parity test",
+        "implement mutually exclusive embedded and daemon MCP modes; daemon mode must use authenticated rrd-client context assembly and must never open the database",
     ));
 
     let router = root.join("crates/rrd-server/src/http/router.rs");
@@ -385,22 +325,6 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
     ));
 
     let command_source = std::fs::read_to_string(root.join("crates/rrflow-cli/src/command.rs"))?;
-    let has_exec = command_source.contains("Exec {");
-    let has_exact_argv = command_source.contains("exact_argv");
-    checks.push(check(
-        "enforcement.command-proxy",
-        has_exec && has_exact_argv,
-        "provider-neutral mutations cross an exact-argv RRFlow command boundary",
-        if has_exec && has_exact_argv {
-            "crates/rrflow-cli/src/command.rs and command_proxy.rs bind an exact argv vector"
-        } else if has_exec {
-            "an exec command exists but exact argv binding was not detected"
-        } else {
-            "rrflow exec is absent"
-        },
-        "implement rrflow exec with one-shot attunement authorization, argv/cwd/environment/revision digests, observation, and verification",
-    ));
-
     let supervisor_path = root.join("crates/rrflow-cli/src/dev/supervisor.rs");
     let supervisor_source = std::fs::read_to_string(&supervisor_path).unwrap_or_default();
     let has_supervisor = supervisor_path.is_file()
@@ -413,13 +337,13 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         && supervisor_source.contains("wait_for_service")
         && supervisor_source.contains("shutdown_complete_file");
     checks.push(check(
-        "supervisor.lifecycle",
+        "supervisor.control-plane",
         has_supervisor,
         "one command owns build, start, readiness, status, logs, and graceful stop",
         if has_supervisor {
             "typed commands, security bootstrap, ordered child startup, readiness probes, and paired shutdown completion markers"
         } else {
-            "the supervisor command or one of its required lifecycle controls is absent"
+            "the supervisor command or one of its required controls is absent"
         },
         "implement rrflow dev up|status|logs|stop after every surface crosses the RRD boundary",
     ));
@@ -634,22 +558,6 @@ fn relative(root: &Path, path: &Path) -> String {
         .to_string()
 }
 
-fn coverage_gate_ids(source: &str) -> BTreeSet<String> {
-    source
-        .split(|character: char| !(character.is_ascii_alphanumeric() || character == '-'))
-        .filter(|token| {
-            let bytes = token.as_bytes();
-            bytes.len() == 7
-                && bytes[0] == b'G'
-                && bytes[1..3].iter().all(u8::is_ascii_digit)
-                && bytes[3] == b'-'
-                && bytes[4] == b'W'
-                && bytes[5..7].iter().all(u8::is_ascii_digit)
-        })
-        .map(str::to_owned)
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -669,12 +577,7 @@ mod tests {
             check.id == "surface.cli-engine-boundary" && check.status == CheckStatus::Passed
         }));
         assert!(report.checks.iter().any(|check| {
-            check.id == "supervisor.lifecycle" && check.status == CheckStatus::Passed
-        }));
-        assert!(report.checks.iter().any(|check| {
-            check.id == "capabilities.coverage-ledger"
-                && check.status == CheckStatus::Passed
-                && check.evidence.contains("referenced gates found")
+            check.id == "supervisor.control-plane" && check.status == CheckStatus::Passed
         }));
         assert!(report.checks.iter().any(|check| {
             check.id == "surface.mcp-engine-boundary" && check.status == CheckStatus::Passed
@@ -683,11 +586,6 @@ mod tests {
             check.id == "surface.mcp-daemon-mode"
                 && check.status == CheckStatus::Passed
                 && check.evidence.contains("black-box daemon test")
-        }));
-        assert!(report.checks.iter().any(|check| {
-            check.id == "surface.cli-daemon-mode"
-                && check.status == CheckStatus::Passed
-                && check.evidence.contains("black-box parity test")
         }));
     }
 }

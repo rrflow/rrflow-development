@@ -19,20 +19,19 @@ pub use capabilities::product_capability_catalogue;
 pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQueryResult};
 #[cfg(feature = "full")]
 pub use engine::{
-    load_or_create_api_key, load_or_create_token_key, AuthorizedInvocation, EstateAdminAction,
-    EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome, Invocation,
-    InvocationCompletion, InvocationCredential, Result, RrdEngine, RrdOperation,
+    load_or_create_api_key, load_or_create_token_key, AuthorizedInvocation,
+    DistributedAuthorityRead, DistributedReadRoute, EstateAdminAction, EstateAdminResult,
+    EstateBackupReconcileOutcome, EstateReconcileOutcome, Invocation, InvocationCompletion,
+    InvocationCredential, PreparedDistributedAuthority, Result, RrdEngine, RrdOperation,
     SecurityBootstrapOutcome, ServiceError, ServiceErrorKind, API_KEY_HEX_BYTES,
     MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{
-    digest, BackupCatalogue, BackupEntry, Claim, ClaimReader, CoreResult, Effectiveness,
-    FormatMigrationEdge, FormatMigrationLedger, GroundingReport, LogicalArchiveInventory,
-    LogicalRestoreReport, MigrationReport, Millis, NativeApplicationFormat, OperatorInvocation,
-    OperatorInvocationInput, OperatorResult, Outcome, Predicate, Producer, Reader,
-    ReasoningPayload, RecallOutcome, RecallQuery, RecallSet, RemovalReport, RuntimeHookRequest,
-    ScopeId, Subject, Trigger,
+    digest, BackupCatalogue, BackupEntry, Claim, ClaimReader, FormatMigrationEdge,
+    FormatMigrationLedger, LogicalArchiveInventory, LogicalRestoreReport, MigrationReport, Millis,
+    NativeApplicationFormat, OperatorInvocation, OperatorInvocationInput, OperatorResult, Outcome,
+    Predicate, Producer, Reader, ReasoningPayload, RemovalReport, ScopeId, Subject, Trigger,
 };
 #[cfg(feature = "full")]
 pub use runtime::*;

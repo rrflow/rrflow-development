@@ -88,7 +88,6 @@ impl RrdEngine {
                 usize::from(request.audit_limit),
             )?;
             let product_capabilities = crate::product_capability_catalogue();
-            let runtime_tools = crate::runtime_tool_contract_catalogue();
             let readiness = self.readiness(now)?;
             let after = capture_diagnostic_stamp(self, &scope, now)?;
 
@@ -105,7 +104,6 @@ impl RrdEngine {
             let sections = diagnostic_sections(
                 after.runtime.commit_cursor,
                 &product_capabilities,
-                &runtime_tools,
                 schema.as_ref(),
                 &models,
                 &graph,
@@ -136,7 +134,6 @@ impl RrdEngine {
                 },
                 readiness,
                 product_capabilities,
-                runtime_tools,
                 schema,
                 models,
                 graph,
@@ -597,7 +594,6 @@ fn diagnostic_audit(engine: &RrdEngine, after: u64, limit: usize) -> Result<Audi
 fn diagnostic_sections(
     known_at_cursor: u64,
     product_capabilities: &rrd_contract::ProductCapabilityCatalogue,
-    runtime_tools: &rrd_contract::RuntimeToolCatalogue,
     schema: Option<&DataSchemaRegistry>,
     models: &DiagnosticModelCatalogueSnapshot,
     graph: &DiagnosticGraphSnapshot,
@@ -680,14 +676,6 @@ fn diagnostic_sections(
             DiagnosticAuthority::Authoritative,
             DiagnosticCoverage::Complete,
             retention.leases.len().saturating_add(retention.pins.len()),
-            known_at_cursor,
-            None,
-        )?,
-        section(
-            "runtime-tools",
-            DiagnosticAuthority::Authoritative,
-            DiagnosticCoverage::Complete,
-            runtime_tools.tools.len(),
             known_at_cursor,
             None,
         )?,

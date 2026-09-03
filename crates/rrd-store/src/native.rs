@@ -12,7 +12,7 @@ use crate::control::{
 use crate::engine::{validate_idempotency, Engine, PhysicalStoreEvidence};
 use crate::error::{Error, Result};
 use crate::gc::{build_report, RemovalReport, Tally};
-use crate::invocation::{self, Invocation, InvocationInput, RecallOutcome};
+use crate::invocation::{self, Invocation, InvocationInput};
 use crate::keyspaces::{self, Durability};
 use crate::store::{AppendOutcome, IdempotentAppendOutcome};
 use rrd_core::{
@@ -30,6 +30,7 @@ use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
+use std::time::Instant;
 
 const RUNTIME_CHECKPOINT_PREFIX: &str = "runtime-";
 const NATIVE_SEQUENCE_VALUE_MAGIC: &[u8; 8] = b"RRDNSI01";
@@ -50,6 +51,7 @@ impl NativeEngine {
     /// Opens with explicit native cache and mutable-state bounds. Persistent
     /// format identity is unchanged; these are process-local operating limits.
     pub fn open_with_options(path: &Path, options: DatabaseOptions) -> Result<Self> {
+        let total_started = Instant::now();
         if !path.exists() {
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)
@@ -62,6 +64,7 @@ impl NativeEngine {
                 .map_err(|error| Error::Substrate(error.to_string()))?
                 .next()
                 .is_none();
+        let database_started = Instant::now();
         let mut database = if !path.exists() || empty {
             Database::create_with_application_format(
                 path,
@@ -76,6 +79,7 @@ impl NativeEngine {
                 ))
             })?
         };
+        let database_open_ms = database_started.elapsed().as_millis() as u64;
         let _codec = keyspaces::NativeKeyCodec::from_application_format(
             database.manifest().application_format,
         )
@@ -85,12 +89,22 @@ impl NativeEngine {
                 database.manifest().application_format
             ))
         })?;
+        let checkpoints_started = Instant::now();
         reconcile_runtime_checkpoints(&mut database, None, 0).map_err(|error| {
             Error::Substrate(format!(
                 "cannot reconcile runtime checkpoints while opening {}: {error}",
                 path.display()
             ))
         })?;
+        let checkpoint_reconcile_ms = checkpoints_started.elapsed().as_millis() as u64;
+        tracing::info!(
+            target: "rrd_store::open",
+            path = %path.display(),
+            database_open_ms,
+            checkpoint_reconcile_ms,
+            total_ms = total_started.elapsed().as_millis() as u64,
+            "native engine open phases completed"
+        );
         let path = database.root().to_owned();
         Ok(Self {
             path,
@@ -197,7 +211,6 @@ impl NativeEngine {
             outcome: input.outcome,
             duration_ms: input.duration_ms,
             detail: input.detail,
-            effectiveness: input.effectiveness,
         };
         let mut operations = Vec::with_capacity(2);
         put(
@@ -209,48 +222,6 @@ impl NativeEngine {
         put_sequence(&mut operations, keyspaces::INVOCATION_WATERMARK, ordinal);
         write(&mut database, operations, Durability::Authoritative)?;
         tracing::debug!(ordinal, "invocation recorded");
-        Ok(record)
-    }
-
-    pub fn set_recall_outcome(&self, ordinal: u64, outcome: RecallOutcome) -> Result<Invocation> {
-        let mut database = self.lock()?;
-        let snapshot = database.snapshot();
-        let mut found = None;
-        for (stored_key, value) in scan_space(&database, snapshot, keyspaces::INVOCATIONS, &[])? {
-            let record: Invocation = serde_json::from_slice(&value)?;
-            if record.ordinal == ordinal {
-                found = Some((
-                    strip_space(
-                        database_codec(&database)?,
-                        keyspaces::INVOCATIONS,
-                        &stored_key,
-                    )?
-                    .to_vec(),
-                    record,
-                ));
-                break;
-            }
-        }
-        let Some((invocation_key, mut record)) = found else {
-            return Err(Error::Substrate(format!(
-                "no invocation with ordinal {ordinal}"
-            )));
-        };
-        let Some(effectiveness) = record.effectiveness.as_mut() else {
-            return Err(Error::Substrate(format!(
-                "invocation {ordinal} is `{}`, not a recall — refusing to judge it",
-                record.command
-            )));
-        };
-        effectiveness.outcome = outcome;
-        write(
-            &mut database,
-            vec![Mutation::Put {
-                key: storage_key(keyspaces::INVOCATIONS, &invocation_key),
-                value: serde_json::to_vec(&record)?,
-            }],
-            Durability::Authoritative,
-        )?;
         Ok(record)
     }
 
@@ -326,6 +297,40 @@ impl ClaimSource for NativeEngine {
         let database = self.lock()?;
         let prefix = key::subject_prefix(subject);
         scan_claims(&database, prefix.clone(), prefix)
+    }
+
+    fn subject_versions_batch(&self, subjects: &[Subject]) -> Result<Vec<Vec<Claim>>> {
+        if subjects.is_empty() {
+            return Ok(Vec::new());
+        }
+        let database = self.lock()?;
+        if let [subject] = subjects {
+            let prefix = key::subject_prefix(subject);
+            return Ok(vec![scan_claims(&database, prefix.clone(), prefix)?]);
+        }
+
+        let mut unique_ranges = BTreeMap::new();
+        for subject in subjects {
+            let prefix =
+                encoded_storage_key(&database, keyspaces::CLAIMS, &key::subject_prefix(subject))?;
+            let end = prefix_end(&prefix)
+                .ok_or_else(|| Error::Substrate("native claim prefix has no upper bound".into()))?;
+            unique_ranges.insert(prefix, end);
+        }
+        let ranges = unique_ranges.into_iter().collect::<Vec<_>>();
+        let rows = database.scan_ranges(&ranges, database.snapshot())?;
+        let mut grouped = BTreeMap::<Subject, Vec<Claim>>::new();
+        for (_, value) in rows {
+            let claim: Claim = serde_json::from_slice(&value)?;
+            grouped
+                .entry(claim.subject.clone())
+                .or_default()
+                .push(claim);
+        }
+        Ok(subjects
+            .iter()
+            .map(|subject| grouped.get(subject).cloned().unwrap_or_default())
+            .collect())
     }
 }
 

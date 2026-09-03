@@ -14,6 +14,7 @@
 mod artifact_trace;
 #[cfg(feature = "object-transfer")]
 mod artifact_transfer;
+mod authority;
 mod contract;
 #[cfg(feature = "openraft-transport")]
 mod node_runtime;
@@ -27,6 +28,7 @@ mod transport;
 pub use artifact_trace::*;
 #[cfg(feature = "object-transfer")]
 pub use artifact_transfer::*;
+pub use authority::*;
 pub use contract::*;
 #[cfg(feature = "openraft-transport")]
 pub use node_runtime::*;

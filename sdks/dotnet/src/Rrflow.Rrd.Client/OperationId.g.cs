@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 9817762c1185131328eb7363a0702fe3d5da5983469b044edaadef4bb275f655
+// OpenAPI SHA-256: d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -11,6 +11,7 @@ public enum OperationId
     CapabilitiesRead,
     ChangefeedFollow,
     ChangefeedRead,
+    ContextAssemble,
     DiagnosticsRead,
     EndpointCatalogue,
     EstateRead,
@@ -22,8 +23,6 @@ public enum OperationId
     QueryIndexList,
     QueryLivePoll,
     RestoreCreate,
-    RuntimeToolCatalogueRead,
-    RuntimeToolInvoke,
     SessionClose,
     SessionCreate,
     SessionRenew,
@@ -56,7 +55,7 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const int Count = 34;
+    public const int Count = 33;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -67,6 +66,7 @@ public static class EndpointCatalog
         OperationId.CapabilitiesRead => new("capabilities-read", "GET", "/v1/capabilities", Authentication.Public, false),
         OperationId.ChangefeedFollow => new("changefeed-follow", "POST", "/v1/changes/follow", Authentication.SessionBearer, false),
         OperationId.ChangefeedRead => new("changefeed-read", "POST", "/v1/changes/read", Authentication.SessionBearer, false),
+        OperationId.ContextAssemble => new("context-assemble", "POST", "/v1/context/assemble", Authentication.SessionBearer, false),
         OperationId.DiagnosticsRead => new("diagnostics-read", "POST", "/v1/diagnostics/read", Authentication.SessionBearer, false),
         OperationId.EndpointCatalogue => new("endpoint-catalogue", "GET", "/v1/schema/endpoints", Authentication.Public, false),
         OperationId.EstateRead => new("estate-read", "POST", "/v1/estates/{estate}/read", Authentication.SessionBearer, false),
@@ -78,8 +78,6 @@ public static class EndpointCatalog
         OperationId.QueryIndexList => new("query-index-list", "POST", "/v1/query/indexes/list", Authentication.SessionBearer, false),
         OperationId.QueryLivePoll => new("query-live-poll", "POST", "/v1/query/live/poll", Authentication.SessionBearer, false),
         OperationId.RestoreCreate => new("restore-create", "POST", "/v1/restores", Authentication.SessionBearer, true),
-        OperationId.RuntimeToolCatalogueRead => new("runtime-tool-catalogue-read", "POST", "/v1/runtime/tools/list", Authentication.SessionBearer, false),
-        OperationId.RuntimeToolInvoke => new("runtime-tool-invoke", "POST", "/v1/runtime/tools/invoke", Authentication.SessionBearer, true),
         OperationId.SessionClose => new("session-close", "DELETE", "/v1/sessions/{session}", Authentication.SessionBearer, true),
         OperationId.SessionCreate => new("session-create", "POST", "/v1/sessions", Authentication.ApiKey, true),
         OperationId.SessionRenew => new("session-renew", "POST", "/v1/sessions/{session}/renew", Authentication.SessionBearer, true),

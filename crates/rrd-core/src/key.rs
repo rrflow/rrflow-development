@@ -82,8 +82,8 @@ pub fn version_prefix(subject: &Subject, predicate: &Predicate) -> Vec<u8> {
 /// Prefix covering every claim of one subject, across all predicates.
 ///
 /// A scan over this prefix yields claims ordered by predicate, and within each
-/// predicate newest first — the grouping recall relies on. One seek serves an
-/// entire subject, which is what makes a subject-set recall a bounded number of
+/// predicate newest first. One seek serves an entire subject, which makes a
+/// subject-set lookup a bounded number of
 /// seeks rather than a scan of the store.
 pub fn subject_prefix(subject: &Subject) -> Vec<u8> {
     let mut key = Vec::with_capacity(CLAIM_NS.len() + subject.as_str().len() + 1);

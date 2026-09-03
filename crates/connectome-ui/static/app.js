@@ -53,9 +53,9 @@
   function render() {
     if (!state.snapshot) return;
     $('#crumb-view').textContent = state.view;
-    const renderer = ({overview, models, graph, activity, capabilities, query, raw})[state.view] || overview;
+    const renderer = ({overview, models, graph, activity, capabilities, context, raw})[state.view] || overview;
     $('#main').innerHTML = renderer();
-    if (state.view === 'query') bindQuery();
+    if (state.view === 'context') bindContext();
   }
 
   function overview() {
@@ -86,24 +86,23 @@
 
   function capabilities() {
     const catalogue = state.snapshot.product_capabilities?.capabilities || [];
-    const tools = state.snapshot.runtime_tools?.tools || [];
-    return head('Surface dispositions', 'RRD owns this catalogue. Available, experimental, and planned labels are rendered without Connectome inventing maturity claims.', `<span class="badge">${tools.length} governed tools</span>`) + `<section class="cap-grid">${catalogue.map(cap => `<article class="cap"><header><div><span class="eyebrow">${esc(cap.category)}</span><h2>${esc(cap.label)}</h2></div><code>${esc(cap.id)}</code></header><p>${esc(cap.summary)}</p><div class="bindings">${cap.bindings.map(binding => `<span class="${esc(binding.disposition)}">${esc(binding.surface)} · ${esc(binding.disposition)}</span>`).join('')}</div></article>`).join('')}</section><h2>Runtime tools</h2><table><thead><tr><th>Tool</th><th>Mutation</th><th>Action</th><th>Description</th></tr></thead><tbody>${tools.map(tool => `<tr><td><code>${esc(tool.name)}</code></td><td>${tool.mutation ? 'yes' : 'no'}</td><td>${esc(tool.action)}</td><td>${esc(tool.description)}</td></tr>`).join('')}</tbody></table>`;
+    return head('Surface dispositions', 'RRD owns this catalogue. Available, experimental, and planned labels are rendered without Connectome inventing maturity claims.', '<span class="badge good">one authority</span>') + `<section class="cap-grid">${catalogue.map(cap => `<article class="cap"><header><div><span class="eyebrow">${esc(cap.category)}</span><h2>${esc(cap.label)}</h2></div><code>${esc(cap.id)}</code></header><p>${esc(cap.summary)}</p><div class="bindings">${cap.bindings.map(binding => `<span class="${esc(binding.disposition)}">${esc(binding.surface)} · ${esc(binding.disposition)}</span>`).join('')}</div></article>`).join('')}</section>`;
   }
 
-  function query() {
-    return head('RRFlowQL query', 'Queries are scope-bound by the gateway and executed through POST /v1/query with RRD policy, budgets, and audit.') + `<section class="panel query"><div class="panel-body"><textarea id="query-source" spellcheck="false">FROM record:document KNOWN HEAD PROJECT id EXPLAIN CONTRACT</textarea><div class="query-actions"><button class="primary" id="run-query">Run query</button></div><div id="query-result" class="query-result"><div class="empty">No query executed</div></div></div></section>`;
+  function context() {
+    return head('Context engine', 'Submit intent; RRD discovers temporal text, vector, and graph evidence at one read stamp within explicit resource bounds.') + `<section class="panel query"><div class="panel-body"><textarea id="context-query" spellcheck="false">What is relevant to alpha?</textarea><div class="query-actions"><button class="primary" id="assemble-context">Assemble context</button></div><div id="context-result" class="query-result"><div class="empty">No context assembled</div></div></div></section>`;
   }
 
   function raw() {
     return head('Raw diagnostic contract', 'Lossless JSON returned by the validated Rust client.') + `<pre class="raw">${json(state.snapshot)}</pre>`;
   }
 
-  function bindQuery() {
-    $('#run-query').addEventListener('click', async () => {
-      const result = $('#query-result');
-      result.innerHTML = '<div class="loading">Executing…</div>';
+  function bindContext() {
+    $('#assemble-context').addEventListener('click', async () => {
+      const result = $('#context-result');
+      result.innerHTML = '<div class="loading">Assembling…</div>';
       try {
-        const value = await fetchJson('/api/runtime/query', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:$('#query-source').value})});
+        const value = await fetchJson('/api/context', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:$('#context-query').value})});
         result.innerHTML = `<pre class="raw">${json(value)}</pre>`;
       } catch (error) {
         result.innerHTML = `<div class="empty">${esc(error.message)}</div>`;

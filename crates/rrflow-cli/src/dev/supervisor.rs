@@ -12,11 +12,18 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::thread;
 use std::time::{Duration, Instant};
+use sysinfo::{
+    Pid, ProcessRefreshKind, ProcessStatus, ProcessesToUpdate, Signal, System, UpdateKind,
+};
 
 const STATE_FORMAT: u16 = 1;
 const STATE_FILE: &str = "supervisor.json";
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
+const PROCESS_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(3);
+const FORCE_STOP_TIMEOUT: Duration = Duration::from_secs(5);
+const TERMINATE_GRACE: Duration = Duration::from_secs(2);
 const HTTP_TIMEOUT: Duration = Duration::from_millis(500);
 const MAX_PROBE_BYTES: u64 = 64 * 1024;
 const MAX_STATE_BYTES: u64 = 1024 * 1024;
@@ -107,6 +114,8 @@ impl SupervisorStatus {
 struct ServiceState {
     executable: PathBuf,
     pid: Option<u32>,
+    #[serde(default)]
+    process_start_time_unix_s: Option<u64>,
     bind: SocketAddr,
     probe_path: String,
     identity_path: String,
@@ -209,11 +218,16 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
 
     let mut rrd_child = spawn_rrd(&state)?;
     state.rrd.pid = Some(rrd_child.id());
+    state.rrd.process_start_time_unix_s = Some(capture_child_identity(
+        &mut rrd_child,
+        &state.rrd.executable,
+    )?);
     write_state(&state_path, &state)?;
     if let Err(error) = wait_for_service(&mut rrd_child, &state.rrd) {
         state.status = SupervisorStatus::Failed;
         write_state(&state_path, &state)?;
         request_shutdown(&state.rrd.shutdown_request_file)?;
+        terminate_child(&mut rrd_child);
         return Err(with_log_hint(error, &state.rrd.log_file));
     }
 
@@ -223,16 +237,30 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
             state.status = SupervisorStatus::Failed;
             write_state(&state_path, &state)?;
             request_shutdown(&state.rrd.shutdown_request_file)?;
+            terminate_child(&mut rrd_child);
             return Err(with_log_hint(error, &state.connectome.log_file));
         }
     };
     state.connectome.pid = Some(connectome_child.id());
+    state.connectome.process_start_time_unix_s =
+        match capture_child_identity(&mut connectome_child, &state.connectome.executable) {
+            Ok(started_at) => Some(started_at),
+            Err(error) => {
+                state.status = SupervisorStatus::Failed;
+                write_state(&state_path, &state)?;
+                request_shutdown(&state.rrd.shutdown_request_file)?;
+                terminate_child(&mut rrd_child);
+                return Err(with_log_hint(error, &state.connectome.log_file));
+            }
+        };
     write_state(&state_path, &state)?;
     if let Err(error) = wait_for_service(&mut connectome_child, &state.connectome) {
         state.status = SupervisorStatus::Failed;
         write_state(&state_path, &state)?;
         request_shutdown(&state.connectome.shutdown_request_file)?;
         request_shutdown(&state.rrd.shutdown_request_file)?;
+        terminate_child(&mut connectome_child);
+        terminate_child(&mut rrd_child);
         return Err(with_log_hint(error, &state.connectome.log_file));
     }
 
@@ -252,8 +280,17 @@ pub fn stop(root: &Path, timeout: Duration) -> Result<SupervisorReport> {
     let root = canonical_directory(root)?;
     let state_path = state_directory(&root).join(STATE_FILE);
     let mut state = read_state(&state_path)?;
+    authenticate_legacy_service(&mut state.connectome)?;
+    authenticate_legacy_service(&mut state.rrd)?;
     let initial = report(&state, &state_path);
-    if !initial.rrd_ready && !initial.connectome_ready {
+    if !initial.rrd_ready
+        && !initial.connectome_ready
+        && matches!(process_identity(&state.rrd)?, ProcessIdentity::Exited)
+        && matches!(
+            process_identity(&state.connectome)?,
+            ProcessIdentity::Exited
+        )
+    {
         state.status = SupervisorStatus::Stopped;
         write_state(&state_path, &state)?;
         return Ok(report(&state, &state_path));
@@ -269,6 +306,11 @@ pub fn stop(root: &Path, timeout: Duration) -> Result<SupervisorReport> {
             && state.rrd.shutdown_complete_file.is_file()
             && !probe(state.connectome.bind, &state.connectome.probe_path)
             && !probe(state.rrd.bind, &state.rrd.probe_path)
+            && matches!(
+                process_identity(&state.connectome)?,
+                ProcessIdentity::Exited
+            )
+            && matches!(process_identity(&state.rrd)?, ProcessIdentity::Exited)
         {
             state.status = SupervisorStatus::Stopped;
             write_state(&state_path, &state)?;
@@ -276,14 +318,11 @@ pub fn stop(root: &Path, timeout: Duration) -> Result<SupervisorReport> {
         }
         std::thread::sleep(Duration::from_millis(50));
     }
-    state.status = SupervisorStatus::Failed;
+    terminate_owned_process(&state.connectome)?;
+    terminate_owned_process(&state.rrd)?;
+    state.status = SupervisorStatus::Stopped;
     write_state(&state_path, &state)?;
-    Err(format!(
-        "development topology did not complete graceful shutdown within {} ms; state retained at {}",
-        timeout.as_millis(),
-        state_path.display()
-    )
-    .into())
+    Ok(report(&state, &state_path))
 }
 
 pub fn logs(root: &Path, service: &str, lines: usize) -> Result<String> {
@@ -348,6 +387,7 @@ fn service_state(
     ServiceState {
         executable,
         pid: None,
+        process_start_time_unix_s: None,
         bind,
         probe_path: probe_path.into(),
         identity_path: identity_path.into(),
@@ -413,23 +453,23 @@ fn resolve_binaries(no_build: bool) -> Result<Binaries> {
 }
 
 fn verify_binaries(directory: &Path, suffix: &str) -> Result<Binaries> {
-    let binaries = Binaries {
-        rrd: directory.join(format!("rrd-server{suffix}")),
-        connectome: directory.join(format!("connectome{suffix}")),
-        security_bootstrap: directory.join(format!("rrd-security-bootstrap{suffix}")),
-    };
-    for path in [
-        &binaries.rrd,
-        &binaries.connectome,
-        &binaries.security_bootstrap,
-    ] {
+    let requested = [
+        directory.join(format!("rrd-server{suffix}")),
+        directory.join(format!("connectome{suffix}")),
+        directory.join(format!("rrd-security-bootstrap{suffix}")),
+    ];
+    for path in &requested {
         if !path.is_file() {
             return Err(
                 format!("required development binary is missing: {}", path.display()).into(),
             );
         }
     }
-    Ok(binaries)
+    Ok(Binaries {
+        rrd: std::fs::canonicalize(&requested[0])?,
+        connectome: std::fs::canonicalize(&requested[1])?,
+        security_bootstrap: std::fs::canonicalize(&requested[2])?,
+    })
 }
 
 fn write_bootstrap_manifest(
@@ -438,21 +478,12 @@ fn write_bootstrap_manifest(
     credential_file: &Path,
     principal: &str,
 ) -> Result<()> {
-    let mut actions = BTreeSet::from([
+    let actions = BTreeSet::from([
         "session_create".to_owned(),
         "query_execute".to_owned(),
         "diagnostics_read".to_owned(),
-        "runtime_tool_catalogue_read".to_owned(),
+        "memory_context_read".to_owned(),
     ]);
-    for definition in rrd_engine::runtime_tool_catalogue() {
-        let encoded = serde_json::to_value(definition.action)?;
-        actions.insert(
-            encoded
-                .as_str()
-                .ok_or("runtime-tool security action did not serialize as a string")?
-                .to_owned(),
-        );
-    }
     let resource = serde_json::json!({
         "segments": [{"kind": "instance", "id": instance}],
     });
@@ -572,6 +603,170 @@ fn wait_for_service(child: &mut Child, service: &ServiceState) -> Result<()> {
         service.bind, service.probe_path, service.identity_marker
     )
     .into())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProcessIdentity {
+    Owned,
+    Exited,
+    Foreign,
+}
+
+fn capture_child_identity(child: &mut Child, expected_executable: &Path) -> Result<u64> {
+    let deadline = Instant::now() + PROCESS_DISCOVERY_TIMEOUT;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Err(
+                format!("service exited before process identity capture with {status}").into(),
+            );
+        }
+        let system = system_for(child.id());
+        if let Some(process) = system.process(Pid::from_u32(child.id())) {
+            if process
+                .exe()
+                .and_then(|path| std::fs::canonicalize(path).ok())
+                .as_deref()
+                == Some(expected_executable)
+            {
+                return Ok(process.start_time());
+            }
+        }
+        if Instant::now() >= deadline {
+            terminate_child(child);
+            return Err("spawned service identity could not be authenticated".into());
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn authenticate_legacy_service(service: &mut ServiceState) -> Result<()> {
+    if service.pid.is_none() || service.process_start_time_unix_s.is_some() {
+        return Ok(());
+    }
+    let pid = service.pid.expect("checked above");
+    let system = system_for(pid);
+    let Some(process) = system.process(Pid::from_u32(pid)) else {
+        service.pid = None;
+        return Ok(());
+    };
+    let executable = process
+        .exe()
+        .and_then(|path| std::fs::canonicalize(path).ok());
+    if executable.as_deref() != Some(service.executable.as_path()) || !service_ready(service) {
+        return Err(format!(
+            "refusing to adopt unauthenticated legacy process identity for pid {pid}"
+        )
+        .into());
+    }
+    service.process_start_time_unix_s = Some(process.start_time());
+    Ok(())
+}
+
+fn process_identity(service: &ServiceState) -> Result<ProcessIdentity> {
+    let Some(pid) = service.pid else {
+        return Ok(ProcessIdentity::Exited);
+    };
+    let Some(expected_start) = service.process_start_time_unix_s else {
+        return Ok(ProcessIdentity::Foreign);
+    };
+    let system = system_for(pid);
+    let Some(process) = system.process(Pid::from_u32(pid)) else {
+        return Ok(ProcessIdentity::Exited);
+    };
+    if matches!(
+        process.status(),
+        ProcessStatus::Dead | ProcessStatus::Zombie
+    ) {
+        return Ok(ProcessIdentity::Exited);
+    }
+    let executable = process
+        .exe()
+        .and_then(|path| std::fs::canonicalize(path).ok());
+    if process.start_time() != expected_start
+        || executable.as_deref() != Some(service.executable.as_path())
+    {
+        return Ok(ProcessIdentity::Foreign);
+    }
+    Ok(ProcessIdentity::Owned)
+}
+
+fn terminate_owned_process(service: &ServiceState) -> Result<()> {
+    match process_identity(service)? {
+        ProcessIdentity::Exited => return Ok(()),
+        ProcessIdentity::Foreign => {
+            return Err(format!(
+                "refusing to signal unauthenticated process identity for {}",
+                service.executable.display()
+            )
+            .into())
+        }
+        ProcessIdentity::Owned => {}
+    }
+    signal_owned_process(service, Signal::Term)?;
+    if wait_for_process_exit(service, TERMINATE_GRACE)? {
+        return Ok(());
+    }
+    signal_owned_process(service, Signal::Kill)?;
+    if wait_for_process_exit(service, FORCE_STOP_TIMEOUT)? {
+        return Ok(());
+    }
+    Err(format!(
+        "owned process {} did not exit after TERM and KILL",
+        service.pid.expect("owned process has a pid")
+    )
+    .into())
+}
+
+fn signal_owned_process(service: &ServiceState, signal: Signal) -> Result<()> {
+    match process_identity(service)? {
+        ProcessIdentity::Exited => return Ok(()),
+        ProcessIdentity::Foreign => return Err("managed PID identity changed before signal".into()),
+        ProcessIdentity::Owned => {}
+    }
+    let pid = service.pid.expect("owned process has a pid");
+    let system = system_for(pid);
+    let Some(process) = system.process(Pid::from_u32(pid)) else {
+        return Ok(());
+    };
+    let accepted = process.kill_with(signal).unwrap_or_else(|| process.kill());
+    if !accepted {
+        return Err(format!("operating system rejected {signal:?} for pid {pid}").into());
+    }
+    Ok(())
+}
+
+fn wait_for_process_exit(service: &ServiceState, timeout: Duration) -> Result<bool> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        match process_identity(service)? {
+            ProcessIdentity::Exited => return Ok(true),
+            ProcessIdentity::Foreign => {
+                return Err("managed PID identity changed while waiting for exit".into())
+            }
+            ProcessIdentity::Owned => {}
+        }
+        if Instant::now() >= deadline {
+            return Ok(false);
+        }
+        thread::sleep(Duration::from_millis(25));
+    }
+}
+
+fn system_for(pid: u32) -> System {
+    let mut system = System::new();
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&[Pid::from_u32(pid)]),
+        true,
+        ProcessRefreshKind::nothing()
+            .without_tasks()
+            .with_exe(UpdateKind::Always),
+    );
+    system
+}
+
+fn terminate_child(child: &mut Child) {
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 fn probe(address: SocketAddr, path: &str) -> bool {
@@ -796,5 +991,75 @@ mod tests {
         let tail = tail_log("service", &path, 2).unwrap();
         assert!(tail.ends_with("two\nthree"));
         assert!(!tail.contains("\none\n"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn authenticated_owned_process_is_forcibly_terminated_and_reaped() {
+        let executable = ["/usr/bin/sleep", "/bin/sleep"]
+            .into_iter()
+            .map(Path::new)
+            .find(|path| path.is_file())
+            .map(std::fs::canonicalize)
+            .transpose()
+            .unwrap()
+            .expect("sleep executable");
+        let mut child = Command::new(&executable).arg("60").spawn().unwrap();
+        let started_at = capture_child_identity(&mut child, &executable).unwrap();
+        let temporary = tempfile::tempdir().unwrap();
+        let service = ServiceState {
+            executable,
+            pid: Some(child.id()),
+            process_start_time_unix_s: Some(started_at),
+            bind: "127.0.0.1:9".parse().unwrap(),
+            probe_path: "/ready".into(),
+            identity_path: "/identity".into(),
+            identity_marker: "fixture".into(),
+            log_file: temporary.path().join("fixture.log"),
+            shutdown_request_file: temporary.path().join("shutdown.request"),
+            shutdown_complete_file: temporary.path().join("shutdown.complete"),
+        };
+
+        assert_eq!(process_identity(&service).unwrap(), ProcessIdentity::Owned);
+        terminate_owned_process(&service).unwrap();
+        let status = child.wait().unwrap();
+        assert!(!status.success());
+        assert_eq!(process_identity(&service).unwrap(), ProcessIdentity::Exited);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn changed_process_identity_is_never_signalled() {
+        let executable = ["/usr/bin/sleep", "/bin/sleep"]
+            .into_iter()
+            .map(Path::new)
+            .find(|path| path.is_file())
+            .map(std::fs::canonicalize)
+            .transpose()
+            .unwrap()
+            .expect("sleep executable");
+        let mut child = Command::new(&executable).arg("60").spawn().unwrap();
+        let started_at = capture_child_identity(&mut child, &executable).unwrap();
+        let temporary = tempfile::tempdir().unwrap();
+        let service = ServiceState {
+            executable,
+            pid: Some(child.id()),
+            process_start_time_unix_s: Some(started_at.saturating_add(1)),
+            bind: "127.0.0.1:9".parse().unwrap(),
+            probe_path: "/ready".into(),
+            identity_path: "/identity".into(),
+            identity_marker: "fixture".into(),
+            log_file: temporary.path().join("fixture.log"),
+            shutdown_request_file: temporary.path().join("shutdown.request"),
+            shutdown_complete_file: temporary.path().join("shutdown.complete"),
+        };
+
+        assert_eq!(
+            process_identity(&service).unwrap(),
+            ProcessIdentity::Foreign
+        );
+        assert!(terminate_owned_process(&service).is_err());
+        assert!(child.try_wait().unwrap().is_none());
+        terminate_child(&mut child);
     }
 }

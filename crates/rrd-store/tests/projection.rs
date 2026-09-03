@@ -1,4 +1,4 @@
-//! `SPEC.md` §8.2/§8.3 acceptance (`PLAN.md` Step 5): an induced divergence
+//! Projection acceptance: an induced divergence
 //! halts and quarantines; a matching projection emits `grounded` with a
 //! digest; a crash mid-rebuild replays the interval rather than skipping it.
 

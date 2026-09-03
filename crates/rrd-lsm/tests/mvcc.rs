@@ -319,6 +319,36 @@ fn database_snapshots_are_repeatable_across_writes_and_reopen() {
 }
 
 #[test]
+fn manifest_reopen_rejects_segment_tampering_before_any_lazy_read() {
+    let parent = tempfile::tempdir().unwrap();
+    let root = parent.path().join("native");
+    let mut database = Database::create(&root).unwrap();
+    database
+        .write(
+            &WriteBatch::new(vec![Mutation::Put {
+                key: b"key".to_vec(),
+                value: b"value".to_vec(),
+            }])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    let manifest = database.flush_memtable(1).unwrap().unwrap();
+    let segment = &manifest.segments[0];
+    drop(database);
+
+    let path = root.join("segments").join(format!("{}.seg", segment.id));
+    let mut bytes = std::fs::read(&path).unwrap();
+    bytes[64] ^= 0x01;
+    std::fs::write(path, bytes).unwrap();
+
+    assert!(matches!(
+        Database::open(&root),
+        Err(Error::InvalidSegment(_))
+    ));
+}
+
+#[test]
 fn batch_point_reads_match_individual_reads_across_segments_memtable_and_snapshots() {
     let parent = tempfile::tempdir().unwrap();
     let root = parent.path().join("native");
@@ -527,6 +557,65 @@ fn bounded_memtable_scan_preserves_mvcc_tombstones_over_segments() {
             (b"range:c".to_vec(), b"new".to_vec()),
         ]
     );
+}
+
+#[test]
+fn disjoint_multi_range_scan_matches_individual_scans_and_loads_shared_blocks_once() {
+    let parent = tempfile::tempdir().unwrap();
+    let root = parent.path().join("native");
+    let mut database = Database::create(&root).unwrap();
+    database
+        .write_owned(
+            WriteBatch::new(vec![
+                Mutation::Put {
+                    key: b"subject:a:one".to_vec(),
+                    value: b"a1".to_vec(),
+                },
+                Mutation::Put {
+                    key: b"subject:a:two".to_vec(),
+                    value: b"a2".to_vec(),
+                },
+                Mutation::Put {
+                    key: b"subject:b:one".to_vec(),
+                    value: b"b1".to_vec(),
+                },
+                Mutation::Put {
+                    key: b"subject:c:one".to_vec(),
+                    value: b"c1".to_vec(),
+                },
+            ])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+    let snapshot = database.snapshot();
+    let ranges = vec![
+        (b"subject:a:".to_vec(), b"subject:a;".to_vec()),
+        (b"subject:c:".to_vec(), b"subject:c;".to_vec()),
+    ];
+    let expected = ranges
+        .iter()
+        .flat_map(|(start, end)| database.scan(start, Some(end), snapshot).unwrap())
+        .collect::<Vec<_>>();
+
+    drop(database);
+    let database = Database::open(&root).unwrap();
+    let before = database.block_cache_stats();
+    let actual = database.scan_ranges(&ranges, database.snapshot()).unwrap();
+    let after = database.block_cache_stats();
+
+    assert_eq!(actual, expected);
+    assert_eq!(after.loads - before.loads, 1);
+    assert!(database
+        .scan_ranges(
+            &[
+                (b"z".to_vec(), b"zz".to_vec()),
+                (b"a".to_vec(), b"b".to_vec())
+            ],
+            database.snapshot(),
+        )
+        .is_err());
 }
 
 #[test]

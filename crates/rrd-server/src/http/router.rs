@@ -54,6 +54,7 @@ http_dispatch_catalogue! {
     CapabilitiesRead => ("capabilities-read", RrdOperation::ServiceInspect),
     ChangefeedFollow => ("changefeed-follow", RrdOperation::ChangefeedFollow),
     ChangefeedRead => ("changefeed-read", RrdOperation::ChangefeedRead),
+    ContextAssemble => ("context-assemble", RrdOperation::MemoryContextRead),
     DiagnosticsRead => ("diagnostics-read", RrdOperation::DiagnosticsRead),
     EndpointCatalogue => ("endpoint-catalogue", RrdOperation::ServiceInspect),
     EstateRead => ("estate-read", RrdOperation::EstateRead),
@@ -65,14 +66,6 @@ http_dispatch_catalogue! {
     QueryIndexList => ("query-index-list", RrdOperation::QueryIndexList),
     QueryLivePoll => ("query-live-poll", RrdOperation::QueryLivePoll),
     RestoreCreate => ("restore-create", RrdOperation::RestoreCreate),
-    RuntimeToolCatalogueRead => (
-        "runtime-tool-catalogue-read",
-        RrdOperation::RuntimeToolCatalogueRead
-    ),
-    // Tool invocation resolves its granular policy action from the versioned
-    // descriptor after decoding. Transport failures before that point cannot
-    // safely claim a broader operation.
-    RuntimeToolInvoke => ("runtime-tool-invoke", RrdOperation::UnknownRequest),
     SessionClose => ("session-close", RrdOperation::SessionClose),
     SessionCreate => ("session-create", RrdOperation::SessionCreate),
     SessionRenew => ("session-renew", RrdOperation::SessionRenew),
@@ -212,10 +205,7 @@ impl AppState {
             Some(HttpDispatch::QueryIndexEnsure) => self.ensure_query_index(&headers, &body, now),
             Some(HttpDispatch::QueryIndexList) => self.list_query_indexes(&headers, &body, now),
             Some(HttpDispatch::QueryLivePoll) => self.poll_live_query(&headers, &body, now),
-            Some(HttpDispatch::RuntimeToolCatalogueRead) => {
-                self.list_runtime_tools(&headers, &body, now)
-            }
-            Some(HttpDispatch::RuntimeToolInvoke) => self.invoke_runtime_tool(&headers, &body, now),
+            Some(HttpDispatch::ContextAssemble) => self.assemble_context(&headers, &body, now),
             Some(HttpDispatch::BackupCreate) => self.create_instance_backup(&headers, &body, now),
             Some(HttpDispatch::BackupList) => self.list_instance_backups(&headers, &body, now),
             Some(HttpDispatch::RestoreCreate) => self.restore_instance_backup(&headers, &body, now),

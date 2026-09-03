@@ -32,9 +32,23 @@ pub trait ClaimSource {
 
     /// Every claim of `subject` across all predicates, ordered by predicate and
     /// newest first within each predicate. Implementations do this as one seek
-    /// over `key::subject_prefix`. This is the port recall stands on: a
-    /// subject-set recall costs one seek per subject, never a store scan.
+    /// over `key::subject_prefix`. One subject lookup costs one bounded seek,
+    /// never a store scan.
     fn subject_versions(&self, subject: &Subject) -> Result<Vec<Claim>, Self::Error>;
+
+    /// Every claim for each requested subject, aligned with `subjects`.
+    ///
+    /// The compatibility default preserves the one-seek-per-subject contract.
+    /// Native engines may override it with one snapshot and a disjoint
+    /// multi-range scan so an N-subject lookup does not revisit the same
+    /// immutable blocks N times. Each inner vector has the exact ordering of
+    /// [`Self::subject_versions`].
+    fn subject_versions_batch(&self, subjects: &[Subject]) -> Result<Vec<Vec<Claim>>, Self::Error> {
+        subjects
+            .iter()
+            .map(|subject| self.subject_versions(subject))
+            .collect()
+    }
 }
 
 /// Resolves the claim in force at `as_of` from newest-first candidates.

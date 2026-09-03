@@ -14,21 +14,20 @@ use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use rrd_contract::{
-    AbortTransaction, AuditExport, AuditPage, BeginTransaction, CanonicalId,
+    AbortTransaction, AssembleContext, AuditExport, AuditPage, BeginTransaction, CanonicalId,
     ChangefeedFollowResult, ChangefeedPage, CloseSession, CloseSubscription,
-    CloseSubscriptionResult, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
-    CreateInstanceBackupResult, CreateSession, DiagnosticSnapshot, EndpointCatalogue,
-    EnsureVectorCollection, EnsureVectorCollectionResult, ErrorBody, ErrorCode, EstateSnapshot,
-    ExecuteQuery, ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot,
-    ListInstanceBackups, ListRuntimeTools, ListVectorCollections, OpenSubscription,
-    OpenSubscriptionResult, PreviewTransaction, QueryResult, ReadAudit, ReadChangefeed,
-    ReadDiagnosticSnapshot, ReadEstate, RenewSession, RequestContext, RequestEnvelope, ResourceId,
-    ResourceKind, ResourcePath, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
-    RestoreInstanceBackupResult, RetrieveVectorPoints, RuntimeToolCatalogue, RuntimeToolInvocation,
-    RuntimeToolInvocationResult, ScrollVectorPoints, SearchVectors, ServiceCapabilities,
-    SessionLease, SessionTermination, SubscriptionClientFrame, SubscriptionServerFrame,
-    SubscriptionSnapshot, TransactionLease, TransactionPreview, VectorCollectionCatalogueSnapshot,
-    VectorPointBatch, VectorPointPage, VectorSearchResult, PROTOCOL, PROTOCOL_VERSION,
+    CloseSubscriptionResult, CommitReceipt, CommitTransaction, ContextPacket, CorrelationId,
+    CreateInstanceBackup, CreateInstanceBackupResult, CreateSession, DiagnosticSnapshot,
+    EndpointCatalogue, EnsureVectorCollection, EnsureVectorCollectionResult, ErrorBody, ErrorCode,
+    EstateSnapshot, ExecuteQuery, ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot,
+    ListInstanceBackups, ListVectorCollections, OpenSubscription, OpenSubscriptionResult,
+    PreviewTransaction, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, ReadEstate,
+    RenewSession, RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath,
+    ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup, RestoreInstanceBackupResult,
+    RetrieveVectorPoints, ScrollVectorPoints, SearchVectors, ServiceCapabilities, SessionLease,
+    SessionTermination, SubscriptionClientFrame, SubscriptionServerFrame, SubscriptionSnapshot,
+    TransactionLease, TransactionPreview, VectorCollectionCatalogueSnapshot, VectorPointBatch,
+    VectorPointPage, VectorSearchResult, PROTOCOL, PROTOCOL_VERSION,
 };
 use rustls::ClientConfig as RustlsClientConfig;
 use serde::de::DeserializeOwned;
@@ -841,64 +840,24 @@ impl RrdClient {
         Ok(snapshot)
     }
 
-    pub async fn runtime_tool_catalogue(
+    pub async fn assemble_context(
         &self,
         session: &Session,
+        request: AssembleContext,
         options: RequestOptions,
-    ) -> Result<RuntimeToolCatalogue> {
-        let catalogue: RuntimeToolCatalogue = self
+    ) -> Result<ContextPacket> {
+        let packet: ContextPacket = self
             .session_call(
                 Method::POST,
-                "/v1/runtime/tools/list",
+                "/v1/context/assemble",
                 session,
-                ListRuntimeTools {},
+                request,
                 options,
                 false,
             )
             .await?;
-        catalogue.validate().map_err(contract)?;
-        Ok(catalogue)
-    }
-
-    /// Invokes one tool from a previously fetched, validated catalogue.
-    ///
-    /// The descriptor supplies the client-side idempotency requirement. The
-    /// server independently resolves the same tool name against its current
-    /// catalogue and rejects stale or weaker envelopes.
-    pub async fn invoke_runtime_tool(
-        &self,
-        session: &Session,
-        catalogue: &RuntimeToolCatalogue,
-        tool: &CanonicalId,
-        arguments: serde_json::Value,
-        options: RequestOptions,
-    ) -> Result<RuntimeToolInvocationResult> {
-        catalogue.validate().map_err(contract)?;
-        let descriptor = catalogue
-            .tools
-            .iter()
-            .find(|descriptor| &descriptor.name == tool)
-            .ok_or_else(|| Error::Contract("runtime tool is absent from catalogue".into()))?;
-        let request = RuntimeToolInvocation {
-            catalogue_version: catalogue.catalogue_version,
-            tool: tool.clone(),
-            arguments_sha256: rrd_contract::runtime_tool_arguments_sha256(&arguments)
-                .map_err(contract)?,
-            arguments,
-        };
-        request.validate().map_err(contract)?;
-        let result: RuntimeToolInvocationResult = self
-            .session_call(
-                Method::POST,
-                "/v1/runtime/tools/invoke",
-                session,
-                request,
-                options,
-                descriptor.mutation,
-            )
-            .await?;
-        result.validate().map_err(contract)?;
-        Ok(result)
+        packet.validate().map_err(contract)?;
+        Ok(packet)
     }
 
     async fn session_call<T, O>(

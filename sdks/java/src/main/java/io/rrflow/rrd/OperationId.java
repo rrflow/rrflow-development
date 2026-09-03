@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 9817762c1185131328eb7363a0702fe3d5da5983469b044edaadef4bb275f655
+// OpenAPI SHA-256: d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645
 package io.rrflow.rrd;
 
 public enum OperationId {
@@ -10,6 +10,7 @@ public enum OperationId {
     CAPABILITIES_READ("capabilities-read", "GET", "/v1/capabilities", Authentication.PUBLIC, false),
     CHANGEFEED_FOLLOW("changefeed-follow", "POST", "/v1/changes/follow", Authentication.SESSION_BEARER, false),
     CHANGEFEED_READ("changefeed-read", "POST", "/v1/changes/read", Authentication.SESSION_BEARER, false),
+    CONTEXT_ASSEMBLE("context-assemble", "POST", "/v1/context/assemble", Authentication.SESSION_BEARER, false),
     DIAGNOSTICS_READ("diagnostics-read", "POST", "/v1/diagnostics/read", Authentication.SESSION_BEARER, false),
     ENDPOINT_CATALOGUE("endpoint-catalogue", "GET", "/v1/schema/endpoints", Authentication.PUBLIC, false),
     ESTATE_READ("estate-read", "POST", "/v1/estates/{estate}/read", Authentication.SESSION_BEARER, false),
@@ -21,8 +22,6 @@ public enum OperationId {
     QUERY_INDEX_LIST("query-index-list", "POST", "/v1/query/indexes/list", Authentication.SESSION_BEARER, false),
     QUERY_LIVE_POLL("query-live-poll", "POST", "/v1/query/live/poll", Authentication.SESSION_BEARER, false),
     RESTORE_CREATE("restore-create", "POST", "/v1/restores", Authentication.SESSION_BEARER, true),
-    RUNTIME_TOOL_CATALOGUE_READ("runtime-tool-catalogue-read", "POST", "/v1/runtime/tools/list", Authentication.SESSION_BEARER, false),
-    RUNTIME_TOOL_INVOKE("runtime-tool-invoke", "POST", "/v1/runtime/tools/invoke", Authentication.SESSION_BEARER, true),
     SESSION_CLOSE("session-close", "DELETE", "/v1/sessions/{session}", Authentication.SESSION_BEARER, true),
     SESSION_CREATE("session-create", "POST", "/v1/sessions", Authentication.API_KEY, true),
     SESSION_RENEW("session-renew", "POST", "/v1/sessions/{session}/renew", Authentication.SESSION_BEARER, true),

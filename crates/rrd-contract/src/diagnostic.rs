@@ -1,8 +1,8 @@
 use crate::{
     invalid, AuditPage, CanonicalId, ChangefeedPage, DataObjectReceipt, DataProperties,
     DataSchemaRegistry, EstateSnapshot, ProductCapabilityCatalogue, QueryIndexCatalogueSnapshot,
-    Readiness, ResourceId, RuntimeToolCatalogue, VectorCollectionCatalogueSnapshot,
-    MAX_CHANGEFEED_PAGE, MAX_MESSAGE_BYTES, MAX_QUERY_SCANNED_CHANGES,
+    Readiness, ResourceId, VectorCollectionCatalogueSnapshot, MAX_CHANGEFEED_PAGE,
+    MAX_MESSAGE_BYTES, MAX_QUERY_SCANNED_CHANGES,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -297,7 +297,6 @@ pub struct DiagnosticSnapshot {
     pub read: DiagnosticReadStamp,
     pub readiness: Readiness,
     pub product_capabilities: ProductCapabilityCatalogue,
-    pub runtime_tools: RuntimeToolCatalogue,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schema: Option<DataSchemaRegistry>,
     pub models: DiagnosticModelCatalogueSnapshot,
@@ -351,7 +350,6 @@ impl DiagnosticSnapshot {
         }
         self.readiness.validate()?;
         self.product_capabilities.validate()?;
-        self.runtime_tools.validate()?;
         if self.models.scope != self.scope
             || self.models.schema_revision != self.read.schema_revision
             || self.schema.as_ref().map(|schema| schema.revision) != self.read.schema_revision

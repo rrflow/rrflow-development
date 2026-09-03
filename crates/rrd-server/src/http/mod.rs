@@ -8,23 +8,21 @@ use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use hyper_util::service::TowerToHyperService;
 use rrd_contract::{
-    AbortTransaction, AuditDecision, BeginTransaction, CanonicalId, CapabilityDescriptor,
-    CapabilityStatus, CloseSession, CloseSubscription, CommitTransaction, CorrelationId,
-    CreateInstanceBackup, CreateSession, DeploymentMode, EnsureQueryIndex, EnsureVectorCollection,
-    ErrorBody, ErrorCode, ExecuteQuery, ExportAudit, FollowChangefeed,
-    HttpMethod as ContractHttpMethod, ListInstanceBackups, ListQueryIndexes, ListRuntimeTools,
-    ListVectorCollections, Liveness, OpenSubscription, PollLiveQuery, PreviewTransaction,
-    ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, ReadEstate, Readiness, RenewSession,
-    RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResponseEnvelope, ResponseOutcome,
-    RestoreInstanceBackup, RetrieveVectorPoints, RuntimeToolInvocation, ScrollVectorPoints,
-    SearchVectors, ServiceCapabilities, SubscriptionClientFrame, SubscriptionServerFrame, PROTOCOL,
-    PROTOCOL_VERSION,
+    AbortTransaction, AssembleContext, AuditDecision, BeginTransaction, CanonicalId,
+    CapabilityDescriptor, CapabilityStatus, CloseSession, CloseSubscription, CommitTransaction,
+    CorrelationId, CreateInstanceBackup, CreateSession, DeploymentMode, EnsureQueryIndex,
+    EnsureVectorCollection, ErrorBody, ErrorCode, ExecuteQuery, ExportAudit, FollowChangefeed,
+    HttpMethod as ContractHttpMethod, ListInstanceBackups, ListQueryIndexes, ListVectorCollections,
+    Liveness, OpenSubscription, PollLiveQuery, PreviewTransaction, ReadAudit, ReadChangefeed,
+    ReadDiagnosticSnapshot, ReadEstate, Readiness, RenewSession, RequestContext, RequestEnvelope,
+    ResourceId, ResourceKind, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
+    RetrieveVectorPoints, ScrollVectorPoints, SearchVectors, ServiceCapabilities,
+    SubscriptionClientFrame, SubscriptionServerFrame, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_engine::{
-    product_capability_catalogue, runtime_tool_contract_catalogue, runtime_tool_operation,
-    AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential,
-    ProjectAuthorityBinding, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,
-    MAX_AUDIT_PAGE_RECORDS,
+    product_capability_catalogue, AuthorizedInvocation, Invocation, InvocationCompletion,
+    InvocationCredential, ProjectAuthorityBinding, RrdEngine, RrdOperation, ServiceError,
+    ServiceErrorKind, MAX_AUDIT_PAGE_RECORDS,
 };
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::server::WebPkiClientVerifier;

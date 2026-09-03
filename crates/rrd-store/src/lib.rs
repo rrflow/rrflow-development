@@ -62,7 +62,7 @@ pub use engine::{Engine, EngineBox, MemoryEngine, PhysicalStoreEvidence};
 pub use error::{Error, Result};
 pub use footprint::{measure_storage_footprint, FootprintBytes, StorageFootprint};
 pub use gc::{PairStatus, RemovalReport, Verdict};
-pub use invocation::{Effectiveness, Invocation, InvocationInput, Outcome, RecallOutcome, Trigger};
+pub use invocation::{Invocation, InvocationInput, Outcome, Trigger};
 pub use keyspaces::Durability;
 pub use migration::{
     migrate_fjall_to_native, migrate_fjall_to_native_with_fault, migration_status,

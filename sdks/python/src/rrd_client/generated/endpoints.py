@@ -1,5 +1,5 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 9817762c1185131328eb7363a0702fe3d5da5983469b044edaadef4bb275f655
+# OpenAPI SHA-256: d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645
 from typing import Final, Literal, TypedDict
 
 OperationId = Literal[
@@ -10,6 +10,7 @@ OperationId = Literal[
     "capabilities-read",
     "changefeed-follow",
     "changefeed-read",
+    "context-assemble",
     "diagnostics-read",
     "endpoint-catalogue",
     "estate-read",
@@ -21,8 +22,6 @@ OperationId = Literal[
     "query-index-list",
     "query-live-poll",
     "restore-create",
-    "runtime-tool-catalogue-read",
-    "runtime-tool-invoke",
     "session-close",
     "session-create",
     "session-renew",
@@ -90,6 +89,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": False,
         "path": "/v1/changes/read",
     },
+    "context-assemble": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/context/assemble",
+    },
     "diagnostics-read": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -155,18 +160,6 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/restores",
-    },
-    "runtime-tool-catalogue-read": {
-        "authentication": "session_bearer",
-        "method": "POST",
-        "mutation": False,
-        "path": "/v1/runtime/tools/list",
-    },
-    "runtime-tool-invoke": {
-        "authentication": "session_bearer",
-        "method": "POST",
-        "mutation": True,
-        "path": "/v1/runtime/tools/invoke",
     },
     "session-close": {
         "authentication": "session_bearer",

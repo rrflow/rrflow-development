@@ -4,38 +4,27 @@
 //! engine-owned value types, never a second storage-opening handle or an
 //! `rrd_store::Engine` escape.
 
-use crate::{
-    InstanceBinding, LifecycleSupervisorContextV1, LifecycleToolAuthorizationV1, RrdEngine,
-    ServiceError,
-};
+use crate::{load_or_create_token_key, InstanceBinding, RrdEngine, ServiceError};
+use rrd_contract::CanonicalId;
+use rrd_core::{RuntimeCommit, RuntimeMutation};
 use rrd_store::Engine as _;
-use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use rrd_core::{
-    digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ReasoningPayload, RecallQuery,
-    RecallSet, ScopeId, Subject,
+    digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ReasoningPayload, ScopeId,
+    Subject,
 };
 pub use rrd_store::{
-    BackupCatalogue, BackupEntry, Effectiveness, FormatMigrationEdge, FormatMigrationLedger,
-    GroundingReport, Invocation as OperatorInvocation, InvocationInput as OperatorInvocationInput,
+    BackupCatalogue, BackupEntry, FormatMigrationEdge, FormatMigrationLedger,
+    Invocation as OperatorInvocation, InvocationInput as OperatorInvocationInput,
     LogicalArchiveInventory, LogicalRestoreReport, MigrationReport, NativeApplicationFormat,
-    Outcome, RecallOutcome, RemovalReport, Trigger,
+    Outcome, RemovalReport, Trigger,
 };
 
-pub type CoreResult<T> = rrd_core::Result<T>;
 pub type OperatorResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-/// One bounded lifecycle hook request admitted by the engine authority.
-pub struct RuntimeHookRequest<'a> {
-    pub root: &'a Path,
-    pub harness: Option<&'a str>,
-    pub reader: &'a Reader,
-    pub now: Millis,
-    pub budget: usize,
-    pub event: crate::HookEvent,
-    pub input: &'a Value,
-}
+const LOCAL_TOKEN_KEY_FILE: &str = "RRD.SECRET";
 
 impl RrdEngine {
     fn persistent_storage(&self) -> OperatorResult<&rrd_store::PersistentEngine> {
@@ -75,6 +64,39 @@ impl RrdEngine {
         Self::open_bound(&binding)
     }
 
+    /// Opens the one embedded RRD authority bound to a discovered project.
+    pub fn open_bound(binding: &InstanceBinding) -> crate::Result<Self> {
+        binding
+            .require_runtime_ready()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let instance = CanonicalId::new(binding.manifest.id.clone())
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let database = binding.expected_store();
+        let mut engine = Self::open(&database, instance, [0_u8; 32])?;
+        engine.token_key = load_or_create_token_key(&database.join(LOCAL_TOKEN_KEY_FILE))
+            .map_err(|error| ServiceError::Storage(error.to_string()))?;
+        engine.bind_project_authority(binding, wall_clock_millis())?;
+        Ok(engine)
+    }
+
+    /// Opens a bound engine with caller-supplied token material.
+    pub fn open_bound_with_token_key(
+        binding: &InstanceBinding,
+        instance: CanonicalId,
+        token_key: [u8; 32],
+        at: u64,
+    ) -> crate::Result<Self> {
+        binding
+            .require_runtime_ready()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        binding
+            .verify_store_path(&binding.expected_store())
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let engine = Self::open(&binding.expected_store(), instance, token_key)?;
+        engine.bind_project_authority(binding, at)?;
+        Ok(engine)
+    }
+
     pub fn path(&self) -> OperatorResult<&Path> {
         self.storage_root
             .as_deref()
@@ -90,16 +112,6 @@ impl RrdEngine {
         input: OperatorInvocationInput<'_>,
     ) -> OperatorResult<OperatorInvocation> {
         Ok(self.persistent_storage()?.record_invocation(input)?)
-    }
-
-    pub fn set_recall_outcome(
-        &self,
-        ordinal: u64,
-        outcome: RecallOutcome,
-    ) -> OperatorResult<OperatorInvocation> {
-        Ok(self
-            .persistent_storage()?
-            .set_recall_outcome(ordinal, outcome)?)
     }
 
     pub fn invocations_since(&self, since: Millis) -> OperatorResult<Vec<OperatorInvocation>> {
@@ -128,12 +140,60 @@ impl RrdEngine {
         Ok(self.storage.observe(reader, subject, predicate, at)?)
     }
 
-    pub fn recall(&self, query: &RecallQuery, token_budget: usize) -> OperatorResult<RecallSet> {
-        Ok(rrd_core::recall(&self.storage, query, token_budget)?)
-    }
-
     pub fn assert_claim(&self, claim: &Claim) -> OperatorResult<rrd_store::AppendOutcome> {
-        Ok(self.storage.assert(claim)?)
+        claim.validate()?;
+        let _gate = self
+            .transaction_gate
+            .lock()
+            .map_err(|_| -> Box<dyn std::error::Error> {
+                "transaction gate lock is poisoned".into()
+            })?;
+        let scope = ScopeId::new(format!("instance:{}", self.instance_id()))?;
+        let read = self.storage.runtime_read_stamp(&scope)?;
+        let previous = self
+            .storage
+            .as_of(&claim.subject, &claim.predicate, claim.valid_from)?;
+        let claims = match previous {
+            Some(previous) if previous.valid_from < claim.valid_from => {
+                rrd_core::supersede(&previous, claim.clone())?.to_vec()
+            }
+            _ => vec![claim.clone()],
+        };
+        let mut mutations =
+            Vec::with_capacity(claims.len() + usize::from(read.schema_revision.is_none()));
+        if read.schema_revision.is_none() {
+            let mut schema = rrd_core::RuntimeSchemaRegistry::empty(
+                1,
+                "install canonical reasoning claim model",
+            );
+            schema.tables.insert(
+                rrd_core::RuntimeType::new("claim")?,
+                rrd_core::RuntimeTableSchema::strict(rrd_core::RuntimeLogicalModel::ReasoningClaim),
+            );
+            mutations.push(RuntimeMutation::Schema { registry: schema });
+        }
+        mutations.extend(
+            claims
+                .iter()
+                .cloned()
+                .map(|claim| RuntimeMutation::Claim { claim }),
+        );
+        let outcome = self.storage.commit_runtime(&RuntimeCommit {
+            scope,
+            at: claim.tx_time,
+            actor: claim.producer.actor.clone(),
+            expected_cursor: read.commit_cursor,
+            mutations,
+        })?;
+        Ok(rrd_store::AppendOutcome {
+            first_sequence: outcome
+                .first_claim_sequence
+                .ok_or("canonical claim commit did not assign a claim sequence")?,
+            last_sequence: outcome
+                .last_claim_sequence
+                .ok_or("canonical claim commit did not assign a claim sequence")?,
+            count: claims.len(),
+        })
     }
 
     pub fn claim_as_of(
@@ -151,18 +211,6 @@ impl RrdEngine {
         predicate: &Predicate,
     ) -> OperatorResult<Vec<Claim>> {
         Ok(self.storage.history(subject, predicate)?)
-    }
-
-    pub fn rebuild_current(&self) -> OperatorResult<rrd_store::RebuildOutcome> {
-        Ok(self.storage.rebuild_current()?)
-    }
-
-    pub fn ground_current(&self, at: Millis) -> OperatorResult<GroundingReport> {
-        Ok(self.storage.ground_current(at)?)
-    }
-
-    pub fn reset_current(&self) -> OperatorResult<rrd_store::RebuildOutcome> {
-        Ok(self.storage.reset_current()?)
     }
 
     pub fn removal_report(
@@ -206,83 +254,6 @@ impl RrdEngine {
         Ok(())
     }
 
-    pub fn runtime_preflight(
-        &self,
-        root: &Path,
-        harness: Option<&str>,
-        reader: &Reader,
-        now: Millis,
-        budget: usize,
-    ) -> OperatorResult<crate::Preflight> {
-        crate::preflight(&self.storage, root, harness, reader, now, budget)
-    }
-
-    pub fn runtime_task_preflight(
-        &self,
-        root: &Path,
-        harness: Option<&str>,
-        reader: &Reader,
-        now: Millis,
-        budget: usize,
-        task: Option<&str>,
-    ) -> OperatorResult<crate::Preflight> {
-        crate::preflight_task(&self.storage, root, harness, reader, now, budget, task)
-    }
-
-    pub fn runtime_review_architecture(
-        &self,
-        root: &Path,
-        task: &str,
-        assessment: crate::ArchitectureAssessmentV1,
-        now: Millis,
-    ) -> OperatorResult<crate::ArchitectureReview> {
-        crate::review_architecture(&self.storage, root, task, assessment, now)
-    }
-
-    pub fn handle_runtime_hook(
-        &self,
-        request: RuntimeHookRequest<'_>,
-    ) -> OperatorResult<crate::HookResponse> {
-        crate::handle(
-            &crate::HookContext {
-                store: &self.storage,
-                root: request.root,
-                harness: request.harness,
-                reader: request.reader,
-                now: request.now,
-                budget: request.budget,
-            },
-            request.event,
-            request.input,
-        )
-    }
-
-    pub fn consume_lifecycle_authorization(
-        &self,
-        context: &LifecycleSupervisorContextV1,
-        authorization: &LifecycleToolAuthorizationV1,
-        now: Millis,
-    ) -> OperatorResult<()> {
-        crate::consume_lifecycle_tool_authorization(&self.storage, context, authorization, now)
-    }
-
-    pub fn exact_execution_observation(
-        &self,
-        request_sha256: &str,
-    ) -> OperatorResult<Option<crate::ExactExecutionObservationV1>> {
-        crate::load_exact_execution_observation(&self.storage, request_sha256)
-    }
-
-    pub fn consume_attuned_authorization(
-        &self,
-        root: &Path,
-        tool_sha256: &str,
-        now: Millis,
-        actor: &str,
-    ) -> OperatorResult<crate::ProjectAttunementReceipt> {
-        crate::consume_attuned_tool_authorization(&self.storage, root, tool_sha256, now, actor)
-    }
-
     pub fn execute_operator_query(
         &self,
         scope: ScopeId,
@@ -293,15 +264,6 @@ impl RrdEngine {
         at: Millis,
     ) -> OperatorResult<crate::TracedQueryExecution> {
         crate::execute_traced_query(&self.storage, scope, source, parameters, budget, actor, at)
-    }
-
-    pub fn initialize_runtime(
-        &self,
-        root: &Path,
-        harness: &crate::Harness,
-        at: Millis,
-    ) -> OperatorResult<crate::InitReport> {
-        crate::init(&self.storage, root, harness, at)
     }
 
     pub fn record_reasoning_event(
@@ -320,96 +282,6 @@ impl RrdEngine {
 
     pub fn active_reasoning(&self) -> OperatorResult<Option<rrd_core::ReasoningRun>> {
         crate::active_reasoning_run(&self.storage)
-    }
-
-    pub fn record_harness_verification(
-        &self,
-        registry: &crate::Registry,
-        name: &str,
-        now: Millis,
-        evidence: &str,
-        actor: &str,
-    ) -> OperatorResult<Claim> {
-        Ok(registry.record_verification(&self.storage, name, now, evidence, actor)?)
-    }
-
-    pub fn harness_verification(
-        &self,
-        registry: &crate::Registry,
-        harness: &crate::Harness,
-        now: Millis,
-    ) -> OperatorResult<crate::Verification> {
-        Ok(registry.verification(&self.storage, harness, now)?)
-    }
-
-    pub fn reset_project_routing(&self, root: &Path) -> OperatorResult<crate::RoutingReady> {
-        crate::reset_routing(&self.storage, root)
-    }
-
-    pub fn install_operator_work_plan(
-        &self,
-        definition: rrd_contract::WorkPlanDefinition,
-        now: Millis,
-        actor: &str,
-        correlation_id: &str,
-    ) -> OperatorResult<crate::WorkPlanSnapshot> {
-        crate::install_work_plan(&self.storage, definition, now, actor, correlation_id)
-    }
-
-    pub fn operator_work_plan(
-        &self,
-        plan: &str,
-    ) -> OperatorResult<Option<crate::WorkPlanSnapshot>> {
-        crate::load_work_plan(&self.storage, plan)
-    }
-
-    pub fn activate_operator_work_item(
-        &self,
-        plan: &str,
-        item: &str,
-        now: Millis,
-        actor: &str,
-        correlation_id: &str,
-    ) -> OperatorResult<crate::WorkPlanSnapshot> {
-        crate::activate_work_item(&self.storage, plan, item, now, actor, correlation_id)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn record_operator_work_item_plan(
-        &self,
-        root: &Path,
-        plan: &str,
-        item: &str,
-        execution_mode: crate::WorkItemExecutionMode,
-        payload: &[u8],
-        commands: Vec<Vec<String>>,
-        now: Millis,
-        actor: &str,
-        correlation_id: &str,
-    ) -> OperatorResult<crate::WorkPlanSnapshot> {
-        crate::record_project_work_item_plan(
-            &self.storage,
-            root,
-            plan,
-            item,
-            execution_mode,
-            payload,
-            commands,
-            now,
-            actor,
-            correlation_id,
-        )
-    }
-
-    pub fn verify_operator_work_item(
-        &self,
-        root: &Path,
-        plan: &str,
-        now: Millis,
-        actor: &str,
-        correlation_id: &str,
-    ) -> OperatorResult<crate::WorkPlanSnapshot> {
-        crate::verify_recorded_work_item(&self.storage, root, plan, now, actor, correlation_id)
     }
 
     pub fn migrate_storage(db: &Path, now: Millis) -> OperatorResult<MigrationReport> {
@@ -489,4 +361,11 @@ impl RrdEngine {
             state.parent().ok_or("RRD store has no project root")?,
         )?)
     }
+}
+
+fn wall_clock_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
 }

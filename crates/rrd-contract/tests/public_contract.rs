@@ -297,7 +297,7 @@ fn supported_sdks_share_one_strict_semantic_corpus() {
     .unwrap();
     corpus.validate().unwrap();
     assert_eq!(corpus.required_domains.len(), 13);
-    assert_eq!(corpus.expected.endpoint_count, 34);
+    assert_eq!(corpus.expected.endpoint_count, 33);
     assert_eq!(
         rrd_contract::transaction_operation_sha256(&corpus.transaction.commit.mutations),
         corpus.transaction.commit.operation_sha256
@@ -1123,7 +1123,7 @@ fn diagnostic_read_contract_is_bounded_strict_and_separately_authorized() {
 fn endpoint_catalogue_is_complete_sorted_and_transport_neutral() {
     let catalogue = rrd_contract::endpoint_catalogue();
     catalogue.validate().unwrap();
-    assert_eq!(catalogue.endpoints.len(), 34);
+    assert_eq!(catalogue.endpoints.len(), 33);
     assert_eq!(catalogue.endpoints[0].operation.as_str(), "audit-export");
     let create = catalogue
         .endpoints
@@ -1139,25 +1139,16 @@ fn endpoint_catalogue_is_complete_sorted_and_transport_neutral() {
     assert!(catalogue.endpoints.iter().all(|endpoint| {
         !endpoint.request_type.contains("::") && !endpoint.response_type.contains("::")
     }));
-    let runtime_invoke = catalogue
+    let context = catalogue
         .endpoints
         .iter()
-        .find(|endpoint| endpoint.operation.as_str() == "runtime-tool-invoke")
+        .find(|endpoint| endpoint.operation.as_str() == "context-assemble")
         .unwrap();
     assert_eq!(
-        runtime_invoke.action,
-        rrd_contract::EndpointAction::RuntimeToolDescriptor
+        context.action.fixed_action(),
+        Some(rrd_contract::SecurityAction::MemoryContextRead)
     );
-    assert!(runtime_invoke.action.fixed_action().is_none());
-    let runtime_list = catalogue
-        .endpoints
-        .iter()
-        .find(|endpoint| endpoint.operation.as_str() == "runtime-tool-catalogue-read")
-        .unwrap();
-    assert_eq!(
-        runtime_list.action.fixed_action(),
-        Some(rrd_contract::SecurityAction::RuntimeToolCatalogueRead)
-    );
+    assert_eq!(context.path, "/v1/context/assemble");
     let encoded = serde_json::to_value(&catalogue).unwrap();
     assert_eq!(
         serde_json::from_value::<rrd_contract::EndpointCatalogue>(encoded).unwrap(),

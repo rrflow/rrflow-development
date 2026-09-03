@@ -6,12 +6,10 @@
 
 use rrd_client::{ClientConfig, RequestOptions, RrdClient, Session};
 use rrd_contract::{
-    CanonicalId, CreateSession, DiagnosticSnapshot, ExecuteQuery, QueryBudget, QueryResult,
-    QueryValue, ReadDiagnosticSnapshot, RuntimeToolCatalogue, RuntimeToolInvocationResult,
-    ServiceCapabilities, SessionLimits,
+    AssembleContext, CanonicalId, ContextPacket, CreateSession, DataReference, DiagnosticSnapshot,
+    ReadDiagnosticSnapshot, ServiceCapabilities, SessionLimits,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -133,58 +131,24 @@ impl ConnectomeBackend {
         ))?)
     }
 
-    pub fn runtime_tool_catalogue(&self) -> Result<RuntimeToolCatalogue> {
-        let session = self.current_session()?;
-        let (request, operation) = self.read_options("runtime-tools")?;
-        Ok(self.runtime.block_on(
-            self.client
-                .runtime_tool_catalogue(&session, RequestOptions::read(&request, &operation)?),
-        )?)
-    }
-
-    pub fn execute_query(&self, request: QueryRequest) -> Result<QueryResult> {
+    pub fn assemble_context(&self, request: ContextRequest) -> Result<ContextPacket> {
         request.validate()?;
         let session = self.current_session()?;
-        let (request_id, operation_id) = self.read_options("query")?;
-        Ok(self.runtime.block_on(self.client.execute_query(
+        let now = now_unix_ms()?;
+        let (request_id, operation_id) = self.read_options("context")?;
+        Ok(self.runtime.block_on(self.client.assemble_context(
             &session,
-            ExecuteQuery {
+            AssembleContext {
                 scope: self.scope.clone(),
                 query: request.query,
-                parameters: request.parameters,
-                budget: request.budget,
+                valid_at: request.valid_at.unwrap_or(now),
+                seeds: request.seeds,
+                max_graph_depth: request.max_graph_depth,
+                max_items: request.max_items,
+                max_output_bytes: request.max_output_bytes,
+                max_scanned_changes: request.max_scanned_changes,
             },
             RequestOptions::read(&request_id, &operation_id)?,
-        ))?)
-    }
-
-    pub fn invoke_runtime_tool(
-        &self,
-        request: InvokeToolRequest,
-    ) -> Result<RuntimeToolInvocationResult> {
-        request.validate()?;
-        let session = self.current_session()?;
-        let catalogue = self.runtime_tool_catalogue()?;
-        let descriptor = catalogue
-            .tools
-            .iter()
-            .find(|descriptor| descriptor.name == request.tool)
-            .ok_or("requested runtime tool is absent from the RRD catalogue")?;
-        let ordinal = self.next_sequence()?;
-        let request_id = format!("connectome-tool-request-{ordinal}");
-        let operation_id = format!("connectome-tool-operation-{ordinal}");
-        let options = if descriptor.mutation {
-            let key = format!("connectome-tool-key-{ordinal}");
-            RequestOptions::mutation(&request_id, &operation_id, &key)?
-        } else {
-            RequestOptions::read(&request_id, &operation_id)?
-        };
-        Ok(self.runtime.block_on(self.client.invoke_runtime_tool(
-            &session,
-            &catalogue,
-            &request.tool,
-            request.arguments,
-            options,
         ))?)
     }
 
@@ -232,45 +196,58 @@ impl ConnectomeBackend {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct QueryRequest {
+pub struct ContextRequest {
     pub query: String,
     #[serde(default)]
-    pub parameters: BTreeMap<String, QueryValue>,
+    pub seeds: Vec<DataReference>,
     #[serde(default)]
-    pub budget: QueryBudget,
+    pub valid_at: Option<u64>,
+    #[serde(default = "default_graph_depth")]
+    pub max_graph_depth: u8,
+    #[serde(default = "default_max_items")]
+    pub max_items: u64,
+    #[serde(default = "default_output_bytes")]
+    pub max_output_bytes: u64,
+    #[serde(default = "default_scanned_changes")]
+    pub max_scanned_changes: u64,
 }
 
-impl QueryRequest {
+impl ContextRequest {
     fn validate(&self) -> Result<()> {
-        if self.query.trim().is_empty() {
-            return Err("query is required".into());
+        AssembleContext {
+            scope: "validation".into(),
+            query: self.query.clone(),
+            valid_at: self.valid_at.unwrap_or(1),
+            seeds: self.seeds.clone(),
+            max_graph_depth: self.max_graph_depth,
+            max_items: self.max_items,
+            max_output_bytes: self.max_output_bytes,
+            max_scanned_changes: self.max_scanned_changes,
         }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct InvokeToolRequest {
-    pub tool: CanonicalId,
-    pub arguments: serde_json::Value,
-}
-
-impl InvokeToolRequest {
-    fn validate(&self) -> Result<()> {
-        if !self.tool.as_str().starts_with("rrflow_") || !self.arguments.is_object() {
-            return Err(
-                "tool must name an rrflow_* operation and arguments must be an object".into(),
-            );
-        }
-        Ok(())
+        .validate()
+        .map_err(Into::into)
     }
 }
 
 #[derive(Serialize)]
 struct CapabilityView {
     service: ServiceCapabilities,
-    runtime_tools: RuntimeToolCatalogue,
+}
+
+const fn default_graph_depth() -> u8 {
+    2
+}
+
+const fn default_max_items() -> u64 {
+    32
+}
+
+const fn default_output_bytes() -> u64 {
+    256 * 1024
+}
+
+const fn default_scanned_changes() -> u64 {
+    100_000
 }
 
 pub fn serve(config: ConnectomeConfig) -> Result<()> {
@@ -333,31 +310,14 @@ fn respond(mut request: Request, backend: &ConnectomeBackend) {
             Err(error) => gateway_error(error),
         },
         (&Method::Get | &Method::Head, "/api/runtime/capabilities") => {
-            match (
-                backend.service_capabilities(),
-                backend.runtime_tool_catalogue(),
-            ) {
-                (Ok(service), Ok(runtime_tools)) => json_response(
-                    StatusCode(200),
-                    &CapabilityView {
-                        service,
-                        runtime_tools,
-                    },
-                ),
-                (Err(error), _) | (_, Err(error)) => gateway_error(error),
+            match backend.service_capabilities() {
+                Ok(service) => json_response(StatusCode(200), &CapabilityView { service }),
+                Err(error) => gateway_error(error),
             }
         }
-        (&Method::Post, "/api/runtime/query") => {
-            match read_json::<QueryRequest>(&mut request)
-                .and_then(|value| backend.execute_query(value))
-            {
-                Ok(result) => json_response(StatusCode(200), &result),
-                Err(error) => request_error(error),
-            }
-        }
-        (&Method::Post, "/api/runtime/tools/invoke") => {
-            match read_json::<InvokeToolRequest>(&mut request)
-                .and_then(|value| backend.invoke_runtime_tool(value))
+        (&Method::Post, "/api/context") => {
+            match read_json::<ContextRequest>(&mut request)
+                .and_then(|value| backend.assemble_context(value))
             {
                 Ok(result) => json_response(StatusCode(200), &result),
                 Err(error) => request_error(error),
@@ -379,7 +339,7 @@ fn respond(mut request: Request, backend: &ConnectomeBackend) {
             StatusCode(501),
             &serde_json::json!({
                 "error": "this legacy projection is not part of the authoritative diagnostic snapshot",
-                "available": ["/api/snapshot", "/api/runtime/capabilities", "/api/runtime/query", "/api/runtime/tools/invoke"]
+                "available": ["/api/snapshot", "/api/runtime/capabilities", "/api/context"]
             }),
         ),
         (&Method::Get | &Method::Head, _) => {

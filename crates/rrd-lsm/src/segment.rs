@@ -3,13 +3,14 @@ use crate::{Error, Memtable, Result, SegmentDescriptor, SegmentIoPolicy, Version
 use lz4_flex::block::{compress_prepend_size, decompress_size_prepended};
 use memmap2::{Mmap, MmapOptions};
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap};
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 pub const SEGMENT_FORMAT_VERSION: u16 = 3;
 pub const DEFAULT_BLOCK_CACHE_BYTES: usize = 4 * 1024 * 1024;
@@ -179,6 +180,13 @@ impl BlockFilter {
         }
     }
 
+    /// Conservatively bypasses Bloom filtering when a segment is reopened
+    /// from its content-authenticated index. An empty filter can only add a
+    /// block read; it can never hide a present key.
+    fn allow_all() -> Self {
+        Self { bits: Vec::new() }
+    }
+
     fn insert(&mut self, key: &[u8]) {
         for bit in self.positions(key) {
             self.bits[bit / u64::BITS as usize] |= 1u64 << (bit % u64::BITS as usize);
@@ -186,6 +194,9 @@ impl BlockFilter {
     }
 
     fn may_contain(&self, key: &[u8]) -> bool {
+        if self.bits.is_empty() {
+            return true;
+        }
         self.positions(key).into_iter().all(|bit| {
             self.bits[bit / u64::BITS as usize] & (1u64 << (bit % u64::BITS as usize)) != 0
         })
@@ -405,6 +416,43 @@ impl Segment {
             decode_v3_file(path, metadata.len(), cache, io)
         } else {
             decode_legacy(std::fs::read(path)?)
+        }
+    }
+
+    /// Reopens a manifest-addressed immutable segment without reconstructing
+    /// every block-local Bloom filter. The complete file digest is still
+    /// verified before the authenticated index is accepted, and individual
+    /// blocks retain their own digest checks when read. Standalone opens and
+    /// snapshot intake continue to perform exhaustive block validation.
+    pub(crate) fn open_expected_with_cache_and_io(
+        path: &Path,
+        expected: &SegmentDescriptor,
+        cache: SharedBlockCache,
+        io: SharedIoContext,
+    ) -> Result<Self> {
+        let metadata = std::fs::metadata(path)?;
+        if metadata.len() != expected.bytes {
+            return invalid("segment physical size differs from its manifest descriptor");
+        }
+        if metadata.len() > MAX_SEGMENT_BYTES {
+            return invalid("segment exceeds the 1 GiB physical safety limit");
+        }
+        if metadata.len() < (V1_HEADER_BYTES + FOOTER_BYTES) as u64 {
+            return invalid("segment is shorter than its header and footer");
+        }
+        let mut file = File::open(path)?;
+        let mut prefix = [0u8; 10];
+        file.read_exact(&mut prefix)?;
+        let version = u16::from_be_bytes(prefix[8..10].try_into().expect("fixed version"));
+        if version == SEGMENT_FORMAT_VERSION && &prefix[..8] == SEGMENT_V3_MAGIC {
+            decode_v3_expected_file(path, metadata.len(), expected, cache, io)
+        } else {
+            let mut segment = decode_legacy(std::fs::read(path)?)?;
+            segment.descriptor.level = expected.level;
+            if &segment.descriptor != expected {
+                return invalid("legacy segment differs from its manifest descriptor");
+            }
+            Ok(segment)
         }
     }
 
@@ -778,6 +826,78 @@ impl Segment {
             .collect())
     }
 
+    /// Returns visible versions from sorted, disjoint half-open ranges while
+    /// decoding every intersecting immutable block at most once.
+    pub(crate) fn visible_ranges(
+        &self,
+        ranges: &[(Vec<u8>, Vec<u8>)],
+        read_sequence: u64,
+    ) -> Result<Vec<(Vec<u8>, VersionedValue)>> {
+        if ranges.is_empty() || read_sequence < self.descriptor.minimum_sequence {
+            return Ok(Vec::new());
+        }
+        let mut grouped = BTreeMap::<Vec<u8>, SegmentVersion>::new();
+        let mut collect = |record: Record<'_>| {
+            let after_start = ranges.partition_point(|(start, _)| start.as_slice() <= record.key);
+            let Some(range_index) = after_start.checked_sub(1) else {
+                return Ok(());
+            };
+            if record.key >= ranges[range_index].1.as_slice() {
+                return Ok(());
+            }
+            if record.sequence <= read_sequence {
+                let version = SegmentVersion {
+                    sequence: record.sequence,
+                    value: record.value.map(Box::<[u8]>::from),
+                };
+                if grouped
+                    .get(record.key)
+                    .is_none_or(|prior| version.sequence > prior.sequence)
+                {
+                    grouped.insert(record.key.to_vec(), version);
+                }
+            }
+            Ok(())
+        };
+        match &self.storage {
+            SegmentStorage::Legacy { records, .. } => visit_records(records, &mut collect)?,
+            SegmentStorage::Blocked { blocks, .. } => {
+                let mut selected_blocks = BTreeSet::new();
+                for (start, end) in ranges {
+                    if end.as_slice() <= self.descriptor.first_key.as_slice()
+                        || start.as_slice() > self.descriptor.last_key.as_slice()
+                    {
+                        continue;
+                    }
+                    let first = blocks
+                        .partition_point(|block| block.last_key.as_slice() < start.as_slice());
+                    for (index, descriptor) in blocks.iter().enumerate().skip(first) {
+                        selected_blocks.insert(index);
+                        if descriptor.last_key.as_slice() >= end.as_slice() {
+                            break;
+                        }
+                    }
+                }
+                for index in selected_blocks {
+                    let block = self.load_block(index)?;
+                    visit_decoded_records(&block, 0, &mut collect)?;
+                }
+            }
+        }
+        Ok(grouped
+            .into_iter()
+            .map(|(key, version)| {
+                (
+                    key,
+                    VersionedValue {
+                        sequence: version.sequence,
+                        value: version.value,
+                    },
+                )
+            })
+            .collect())
+    }
+
     fn load_block(&self, block_index: usize) -> Result<Arc<DecodedBlock>> {
         let SegmentStorage::Blocked {
             source,
@@ -1090,10 +1210,69 @@ fn decode_v3_file(
     cache: SharedBlockCache,
     io: SharedIoContext,
 ) -> Result<Segment> {
+    let total_started = Instant::now();
+    let verify_started = Instant::now();
     let actual = verify_file_digest(path, physical_bytes)?;
+    let verify_ms = verify_started.elapsed().as_millis() as u64;
     let mut file = File::open(path)?;
+    let metadata_started = Instant::now();
     let (descriptor, blocks, filters) = read_v3_metadata(&mut file, physical_bytes, actual)?;
+    let metadata_ms = metadata_started.elapsed().as_millis() as u64;
+    let block_count = blocks.len();
+    let source_started = Instant::now();
     let source = open_block_source(file, io)?;
+    let source_ms = source_started.elapsed().as_millis() as u64;
+    tracing::debug!(
+        target: "rrd_lsm::open",
+        path = %path.display(),
+        physical_bytes,
+        block_count,
+        verify_ms,
+        metadata_ms,
+        source_ms,
+        total_ms = total_started.elapsed().as_millis() as u64,
+        "immutable segment open phases completed"
+    );
+    build_blocked_segment(descriptor, source, blocks, filters, cache)
+}
+
+fn decode_v3_expected_file(
+    path: &Path,
+    physical_bytes: u64,
+    expected: &SegmentDescriptor,
+    cache: SharedBlockCache,
+    io: SharedIoContext,
+) -> Result<Segment> {
+    let total_started = Instant::now();
+    let verify_started = Instant::now();
+    let actual = verify_file_digest(path, physical_bytes)?;
+    let verify_ms = verify_started.elapsed().as_millis() as u64;
+    if actual != expected.checksum || actual != expected.id {
+        return invalid("segment content digest differs from its manifest descriptor");
+    }
+    let mut file = File::open(path)?;
+    let metadata_started = Instant::now();
+    let (descriptor, blocks) =
+        read_v3_expected_metadata(&mut file, physical_bytes, actual, expected)?;
+    let metadata_ms = metadata_started.elapsed().as_millis() as u64;
+    let block_count = blocks.len();
+    let filters = blocks.iter().map(|_| BlockFilter::allow_all()).collect();
+    let source_started = Instant::now();
+    let source = open_block_source(file, io)?;
+    let source_ms = source_started.elapsed().as_millis() as u64;
+    tracing::debug!(
+        target: "rrd_lsm::open",
+        path = %path.display(),
+        validation = "content-digest-plus-index",
+        filter_mode = "conservative",
+        physical_bytes,
+        block_count,
+        verify_ms,
+        metadata_ms,
+        source_ms,
+        total_ms = total_started.elapsed().as_millis() as u64,
+        "immutable segment manifest reopen phases completed"
+    );
     build_blocked_segment(descriptor, source, blocks, filters, cache)
 }
 
@@ -1183,6 +1362,52 @@ fn read_v3_metadata(
     physical_bytes: u64,
     actual: String,
 ) -> Result<(SegmentDescriptor, Vec<BlockDescriptor>, Vec<BlockFilter>)> {
+    let (descriptor, blocks, declared_record_bytes) =
+        read_v3_index(reader, physical_bytes, actual)?;
+    validate_v3_blocks(reader, descriptor, blocks, declared_record_bytes)
+}
+
+fn read_v3_expected_metadata(
+    reader: &mut (impl Read + Seek),
+    physical_bytes: u64,
+    actual: String,
+    expected: &SegmentDescriptor,
+) -> Result<(SegmentDescriptor, Vec<BlockDescriptor>)> {
+    let (mut descriptor, blocks, declared_record_bytes) =
+        read_v3_index(reader, physical_bytes, actual)?;
+    let indexed_entries = blocks.iter().try_fold(0u64, |total, block| {
+        total
+            .checked_add(block.entries)
+            .ok_or_else(|| Error::InvalidSegment("v3 indexed entry count overflow".into()))
+    })?;
+    let indexed_record_bytes = blocks.iter().try_fold(0u64, |total, block| {
+        total
+            .checked_add(block.record_bytes as u64)
+            .ok_or_else(|| Error::InvalidSegment("v3 indexed record bytes overflow".into()))
+    })?;
+    if indexed_entries != descriptor.entries || indexed_record_bytes != declared_record_bytes {
+        return invalid("v3 authenticated index counts disagree with its header");
+    }
+    if blocks
+        .last()
+        .is_none_or(|block| block.last_key != expected.last_key)
+    {
+        return invalid("v3 authenticated index range differs from its manifest descriptor");
+    }
+    descriptor.level = expected.level;
+    descriptor.first_key = expected.first_key.clone();
+    descriptor.last_key = expected.last_key.clone();
+    if &descriptor != expected {
+        return invalid("v3 segment differs from its manifest descriptor");
+    }
+    Ok((descriptor, blocks))
+}
+
+fn read_v3_index(
+    reader: &mut (impl Read + Seek),
+    physical_bytes: u64,
+    actual: String,
+) -> Result<(SegmentDescriptor, Vec<BlockDescriptor>, u64)> {
     let mut header = [0u8; V3_HEADER_BYTES];
     reader.seek(SeekFrom::Start(0))?;
     reader.read_exact(&mut header)?;
@@ -1308,7 +1533,7 @@ fn read_v3_metadata(
         bytes: physical_bytes,
         checksum: actual,
     };
-    validate_v3_blocks(reader, descriptor, blocks, declared_record_bytes)
+    Ok((descriptor, blocks, declared_record_bytes))
 }
 
 fn validate_v3_blocks(

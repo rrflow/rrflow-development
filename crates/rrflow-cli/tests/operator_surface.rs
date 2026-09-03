@@ -1,4 +1,4 @@
-//! Operator surface behaviour. `SPEC.md` §13; `PLAN.md` Step 3.
+//! Operator surface behavior through the public engine boundary.
 //!
 //! The tests drive the compiled binary, so they exercise the path an operator
 //! uses rather than a test-only entry point. That is what makes the recording
@@ -553,6 +553,50 @@ fn an_absent_claim_is_reported_rather_than_treated_as_an_error() {
 }
 
 #[test]
+fn context_reads_cli_claims_through_the_bound_engine_without_scope_wiring() {
+    let db = scratch("context-bound-engine");
+    let project = db.parent().unwrap().parent().unwrap();
+    let (ok, _, err) = rrflow(
+        &db,
+        &[
+            "assert",
+            "--subject",
+            "project-alpha",
+            "--predicate",
+            "status",
+            "--object",
+            "durable authentication recovery is operational",
+        ],
+    );
+    assert!(ok, "claim assertion failed: {err}");
+
+    let project = project.to_str().unwrap();
+    let (ok, out, err) = rrflow(
+        &db,
+        &[
+            "context",
+            "--root",
+            project,
+            "--query",
+            "authentication recovery",
+            "--json",
+        ],
+    );
+    assert!(ok, "context assembly failed: {err}");
+    let packet: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(packet["scope"], "instance:context-bound-engine");
+    assert!(packet["packet_sha256"].as_str().unwrap().len() == 64);
+    assert!(packet["items"].as_array().unwrap().iter().any(|item| {
+        item["values"]["object"]["value"] == "durable authentication recovery is operational"
+            && item["evidence"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|evidence| evidence["kind"] == "text")
+    }));
+}
+
+#[test]
 fn reasoning_contract_rejects_skips_and_is_queryable_as_typed_json() {
     let db = scratch("reasoning-contract");
     let goal = r#"{"kind":"goal","statement":"ship it","acceptance":["tests pass"]}"#;
@@ -576,197 +620,4 @@ fn reasoning_contract_rejects_skips_and_is_queryable_as_typed_json() {
     assert_eq!(value["state"], "needs_plan");
     assert_eq!(value["events"][0]["payload"]["kind"], "goal");
     assert_eq!(value["events"][0]["digest"].as_str().unwrap().len(), 64);
-}
-
-#[test]
-fn recall_returns_current_claims_and_records_the_ledger_entry() {
-    let db = scratch("recall-ledger");
-    rrflow(
-        &db,
-        &[
-            "assert",
-            "--subject",
-            "wp3",
-            "--predicate",
-            "status",
-            "--object",
-            "tested",
-            "--valid-from",
-            "1000",
-        ],
-    );
-    rrflow(
-        &db,
-        &[
-            "assert",
-            "--subject",
-            "wp3",
-            "--predicate",
-            "owner",
-            "--object",
-            "jessay",
-            "--valid-from",
-            "1000",
-        ],
-    );
-    rrflow(
-        &db,
-        &[
-            "assert",
-            "--subject",
-            "wp9",
-            "--predicate",
-            "status",
-            "--object",
-            "shipped",
-            "--valid-from",
-            "1000",
-        ],
-    );
-
-    let (ok, out, err) = rrflow(&db, &["recall", "--subject", "wp3"]);
-    assert!(ok, "recall failed: {err}");
-    assert!(
-        out.contains("tested") && out.contains("jessay"),
-        "missing claims:\n{out}"
-    );
-    assert!(!out.contains("shipped"), "foreign subject leaked:\n{out}");
-    assert!(out.contains("digest"), "digest missing:\n{out}");
-
-    // The §13.1 record exists, carries the token estimate, and says plainly
-    // that its reduction is unverified without a baseline.
-    let (ok, out, err) = rrflow(&db, &["ledger"]);
-    assert!(ok, "ledger failed: {err}");
-    assert!(
-        out.contains("recall \"wp3\""),
-        "ledger entry missing:\n{out}"
-    );
-    assert!(
-        out.contains("reduction unverified"),
-        "unverified baseline not stated:\n{out}"
-    );
-    assert!(
-        out.contains("unknown=1"),
-        "outcome distribution missing:\n{out}"
-    );
-}
-
-#[test]
-fn a_recall_can_be_judged_and_a_non_recall_cannot() {
-    let db = scratch("recall-outcome");
-    rrflow(
-        &db,
-        &[
-            "assert",
-            "--subject",
-            "wp3",
-            "--predicate",
-            "status",
-            "--object",
-            "tested",
-            "--valid-from",
-            "1000",
-        ],
-    );
-    let (ok, _, _) = rrflow(&db, &["recall", "--subject", "wp3"]);
-    assert!(ok);
-
-    // The recall was invocation ordinal 2 (assert was 1).
-    let (ok, out, err) = rrflow(&db, &["outcome", "--ordinal", "2", "--outcome", "accepted"]);
-    assert!(ok, "outcome failed: {err}");
-    assert!(out.contains("accepted"), "judgement not reflected:\n{out}");
-
-    let (ok, out, err) = rrflow(&db, &["ledger"]);
-    assert!(ok, "ledger failed: {err}");
-    assert!(
-        out.contains("accepted=1"),
-        "distribution not updated:\n{out}"
-    );
-
-    // Judging the assert (ordinal 1) must fail: it is not a recall, and a
-    // silent success here would poison the evidence base.
-    let (ok, _, err) = rrflow(&db, &["outcome", "--ordinal", "1", "--outcome", "accepted"]);
-    assert!(!ok, "judging a non-recall must fail");
-    assert!(err.contains("not a recall"), "unexpected error: {err}");
-}
-
-#[test]
-fn grounding_is_operable_and_divergence_halts_until_reset() {
-    let db = scratch("ground-flow");
-    rrflow(
-        &db,
-        &[
-            "assert",
-            "--subject",
-            "wp3",
-            "--predicate",
-            "status",
-            "--object",
-            "planned",
-            "--valid-from",
-            "1000",
-        ],
-    );
-    rrflow(
-        &db,
-        &[
-            "assert",
-            "--subject",
-            "wp3",
-            "--predicate",
-            "status",
-            "--object",
-            "active",
-            "--valid-from",
-            "2000",
-        ],
-    );
-
-    let (ok, out, err) = rrflow(&db, &["rebuild"]);
-    assert!(ok, "rebuild failed: {err}");
-    // The successor adds an immutable retirement correction and the new claim.
-    assert!(out.contains("watermark 0 -> 3"), "unexpected output: {out}");
-
-    let (ok, out, err) = rrflow(&db, &["ground"]);
-    assert!(ok, "ground failed: {err}");
-    assert!(out.contains("grounded"), "no grounded stamp: {out}");
-    assert!(out.contains("digest"), "stamp carries no digest: {out}");
-
-    // Induce §8.3's divergence by corrupting the stored blob between binary
-    // invocations, bypassing the projection's own write path.
-    {
-        let store = PersistentEngine::open(&db).expect("open store");
-        let bytes = store
-            .get_projection(rrd_store::CURRENT_PROJECTION)
-            .unwrap()
-            .expect("projection stored");
-        let corrupted = String::from_utf8(bytes)
-            .unwrap()
-            .replacen("\"active\"", "\"drifted\"", 1);
-        store
-            .put_projection(rrd_store::CURRENT_PROJECTION, corrupted.as_bytes())
-            .unwrap();
-    }
-
-    let (ok, out, err) = rrflow(&db, &["ground"]);
-    assert!(ok, "ground (diverged) failed to run: {err}");
-    assert!(out.contains("DIVERGENCE"), "divergence not reported: {out}");
-    assert!(out.contains("quarantined"), "quarantine not stated: {out}");
-    assert!(
-        out.contains("wp3/status"),
-        "differential does not name the pair: {out}"
-    );
-
-    // Halted: a rebuild refuses while quarantined.
-    let (ok, _, err) = rrflow(&db, &["rebuild"]);
-    assert!(!ok, "rebuild must refuse a quarantined projection");
-    assert!(err.contains("quarantined"), "unexpected error: {err}");
-
-    // The explicit reset recovers, and grounding passes again.
-    let (ok, out, err) = rrflow(&db, &["reset-projection"]);
-    assert!(ok, "reset failed: {err}");
-    assert!(out.contains("recomputed"), "unexpected output: {out}");
-    let (ok, out, err) = rrflow(&db, &["ground"]);
-    assert!(ok, "ground after reset failed: {err}");
-    assert!(out.contains("grounded"), "not grounded after reset: {out}");
 }

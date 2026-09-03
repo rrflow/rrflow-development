@@ -67,7 +67,6 @@ impl RrdMutualTlsServerConfig {
 pub(super) struct AppState {
     pub(super) service: RrdEngine,
     pub(super) capabilities: ServiceCapabilities,
-    pub(super) project_root: Option<std::path::PathBuf>,
     pub(super) jwt_verification_key: Option<RrdJwtVerificationKey>,
 }
 
@@ -216,11 +215,9 @@ impl RrdHttpServer {
         capabilities
             .validate()
             .map_err(|error| HttpError::Contract(error.to_string()))?;
-        let project_root = project.map(|binding| std::path::PathBuf::from(binding.project_root));
         let state = Arc::new(AppState {
             service: engine,
             capabilities,
-            project_root,
             jwt_verification_key,
         });
         let endpoint_catalogue = rrd_contract::endpoint_catalogue();

@@ -1,12 +1,16 @@
 use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
-use rrd_core::digest;
+use rrd_core::{
+    digest, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
+};
 use rrd_engine::{load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
     SECURITY_FORMAT,
 };
 use rrd_server::RrdHttpServer;
-use rrd_store::PersistentEngine;
+use rrd_store::{Engine, PersistentEngine};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::io::Write as _;
@@ -37,8 +41,7 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         grants: [
             Action::SessionCreate,
             Action::SessionClose,
-            Action::RuntimeToolCatalogueRead,
-            Action::ServiceInspect,
+            Action::MemoryContextRead,
         ]
         .into_iter()
         .map(|action| ResourceGrant {
@@ -49,6 +52,39 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .collect(),
     };
     let storage = PersistentEngine::open(&store).unwrap();
+    let mut registry = RuntimeSchemaRegistry::empty(1, "Daemon context fixture");
+    registry.records.insert(
+        RuntimeType::new("note").unwrap(),
+        RuntimeRecordSchema {
+            properties: BTreeMap::from([(
+                "body".into(),
+                RuntimePropertySchema::required(RuntimeValueType::String),
+            )]),
+            ..RuntimeRecordSchema::default()
+        },
+    );
+    storage
+        .commit_runtime(&RuntimeCommit {
+            scope: ScopeId::new("instance:mcp-daemon-test").unwrap(),
+            at: 100,
+            actor: "daemon-context-fixture".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        reference: RuntimeRef::new("note", "daemon-alpha").unwrap(),
+                        valid_from: 100,
+                        valid_to: None,
+                        properties: RuntimeProperties::from([(
+                            "body".into(),
+                            RuntimeValue::String("Authenticated daemon context flow".into()),
+                        )]),
+                    },
+                },
+            ],
+        })
+        .unwrap();
     SecurityRepository::new(&storage, instance.clone())
         .initialize(
             SecurityState {
@@ -110,8 +146,7 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .unwrap();
     for request in [
         json!({"jsonrpc":"2.0","id":1,"method":"tools/list"}),
-        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rrflow_service_status","arguments":{}}}),
-        json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rrflow_context","arguments":{}}}),
+        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rrflow_context","arguments":{"query":"authenticated daemon","valid_at":200}}}),
     ] {
         serde_json::to_writer(child.stdin.as_mut().unwrap(), &request).unwrap();
         child.stdin.as_mut().unwrap().write_all(b"\n").unwrap();
@@ -128,7 +163,7 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .lines()
         .map(|line| serde_json::from_str::<Value>(line).unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(responses.len(), 3);
+    assert_eq!(responses.len(), 2);
     let listed = responses[0]["result"]["tools"].as_array().unwrap();
     let profile = &responses[0]["result"]["_meta"]["io.rrflow/runtimeProfile"];
     assert_eq!(profile["mode"], "daemon");
@@ -138,44 +173,22 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         profile["caller_authentication"],
         "principal_api_key_session"
     );
-    assert_eq!(profile["security_enforced"], true);
-    assert_eq!(profile["tool_policy_enforced"], true);
-    assert_eq!(profile["enforcement_level"], "cooperative");
-    assert_eq!(profile["planning_enforced"], false);
-    assert_eq!(profile["mutation_enforced"], false);
-    assert_eq!(profile["host_tool_interception"], false);
-    let executable = rrd_engine::runtime_tool_contract_catalogue();
-    assert_eq!(listed.len(), executable.tools.len());
-    assert_eq!(
-        listed
-            .iter()
-            .map(|tool| tool["name"].as_str().unwrap())
-            .collect::<Vec<_>>(),
-        executable
-            .tools
-            .iter()
-            .map(|tool| tool.name.as_str())
-            .collect::<Vec<_>>()
-    );
-    let status: Value = serde_json::from_str(
+    assert_eq!(profile["context_engine"], "temporal_text_vector_graph");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0]["name"], "rrflow_context");
+    let packet: Value = serde_json::from_str(
         responses[1]["result"]["content"][0]["text"]
             .as_str()
             .unwrap(),
     )
     .unwrap();
     assert_eq!(responses[1]["result"]["isError"], false);
-    assert_eq!(status["instance_id"], instance.as_str());
-    assert_eq!(status["security_enforced"], true);
-    assert_eq!(
-        status["endpoint_count"],
-        rrd_contract::endpoint_catalogue().endpoints.len()
-    );
-    assert_eq!(responses[2]["result"]["isError"], true);
-    assert!(responses[2]["result"]["content"][0]["text"]
-        .as_str()
+    assert_eq!(packet["items"][0]["identity"], "record:note:daemon-alpha");
+    assert!(packet["items"][0]["evidence"]
+        .as_array()
         .unwrap()
-        .to_ascii_lowercase()
-        .contains("permission"));
+        .iter()
+        .any(|evidence| evidence["kind"] == "text"));
 
     shutdown.send(()).unwrap();
     server_thread.join().unwrap().unwrap();
@@ -185,15 +198,9 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .unwrap();
     assert!(audit.records.iter().any(|(_, record)| {
         record.principal_id.as_ref().map(CanonicalId::as_str) == Some("mcp-daemon-client")
-            && record.action == Action::ServiceInspect
-            && record.phase == rrd_contract::AuditPhase::Completed
-            && record.decision == rrd_contract::AuditDecision::Allowed
-    }));
-    assert!(audit.records.iter().any(|(_, record)| {
-        record.principal_id.as_ref().map(CanonicalId::as_str) == Some("mcp-daemon-client")
             && record.action == Action::MemoryContextRead
             && record.phase == rrd_contract::AuditPhase::Completed
-            && record.decision == rrd_contract::AuditDecision::Denied
+            && record.decision == rrd_contract::AuditDecision::Allowed
     }));
 }
 

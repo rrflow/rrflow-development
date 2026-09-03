@@ -3,9 +3,7 @@ use rrd_lsm::{
     DatabaseOptions, MaintenancePolicy, DEFAULT_MEMTABLE_MAX_VERSIONS,
     DEFAULT_WAL_PAYLOAD_MAX_BYTES,
 };
-use rrd_store::{
-    Effectiveness, Engine, InvocationInput, NativeEngine, Outcome, RecallOutcome, Store, Trigger,
-};
+use rrd_store::{Engine, InvocationInput, NativeEngine, Outcome, Store, Trigger};
 
 fn claim(subject: &str, object: &str) -> Claim {
     Claim::new(
@@ -26,20 +24,11 @@ fn invocation<'a>(arguments: &'a [String]) -> InvocationInput<'a> {
     InvocationInput {
         at: 6_000,
         trigger: Trigger::Event,
-        command: "recall",
+        command: "context-assemble",
         arguments,
         outcome: Outcome::Ok,
         duration_ms: 7,
         detail: Some("two claims".into()),
-        effectiveness: Some(Effectiveness {
-            query: "wp3 wp4".into(),
-            claims_returned: 2,
-            tokens_emitted: 11,
-            baseline_tokens: Some(90),
-            baseline_mode: Some("full".into()),
-            provider: "frontier:test".into(),
-            outcome: RecallOutcome::Unknown,
-        }),
     }
 }
 
@@ -99,14 +88,6 @@ fn native_operator_evidence_matches_fjall_and_survives_reopen() {
         native.invocation_count().unwrap()
     );
     assert_eq!(
-        fjall
-            .set_recall_outcome(1, RecallOutcome::Accepted)
-            .unwrap(),
-        native
-            .set_recall_outcome(1, RecallOutcome::Accepted)
-            .unwrap()
-    );
-    assert_eq!(
         fjall.invocations_since(0).unwrap(),
         native.invocations_since(0).unwrap()
     );
@@ -116,12 +97,8 @@ fn native_operator_evidence_matches_fjall_and_survives_reopen() {
     assert_eq!(reopened.invocation_count().unwrap(), 1);
     assert_eq!(reopened.access_count().unwrap(), 1);
     assert_eq!(
-        reopened.invocations_since(0).unwrap()[0]
-            .effectiveness
-            .as_ref()
-            .unwrap()
-            .outcome,
-        RecallOutcome::Accepted
+        reopened.invocations_since(0).unwrap()[0].command,
+        "context-assemble"
     );
     assert_eq!(
         reopened.removal_report(1_000, 9_000).unwrap(),

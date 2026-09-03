@@ -1,715 +1,205 @@
-# RRFlow — durable data and runtime for reasoning-ready AI
+# RRFlow
 
-**RRFlow means Reason Ready Flow and is the single product. RRD means Reason
-Ready Daemon and is RRFlow's native engine/runtime.** RRD is the actual Fjall competitor,
-not a wrapper around it. Persistence, transactions, catalogue, Arrow/DataFusion
-query execution, indexes, reasoning state, lifecycle enforcement, security,
-audit, recovery, and diagnostics must compose through that one engine.
-Connectome is the operator/developer client.
+RRFlow is one reasoning-data engine. RRD is the daemon and embedded runtime for
+that engine. Its job is to preserve temporal knowledge and assemble the bounded,
+relevant context an AI system needs without making callers understand storage
+fields, indexes, graph layout, embedding providers, or projection internals.
 
-The current RRFlow release-train version is `0.1.0`. Package versions inherit
-or mirror that value under the owner-controlled [version policy](docs/versioning.md).
-Internal protocol, schema, fixture, and persisted-format `v1` identifiers are
-compatibility domains, not RRFlow or Connectome product release numbers.
+This file is the authority for product identity, architecture, current status,
+and roadmap. Other documents are supporting contracts, design notes, evidence,
+or history. They do not define a second architecture.
 
-The pre-release identity cutover is in place: active packages, namespaces,
-protocol labels, persisted markers, fixtures, SDK surfaces, and documentation
-use RRFlow/RRD names without aliases or compatibility shims. The authoritative
-boundary is [RRFlow and the Reason Ready Daemon](docs/rrflow-rrd-architecture.md),
-and the executable no-retired-name gates are defined in the
-[identity cutover ledger](docs/rrflow-rename-ledger.md).
+The current release-train version is `0.1.0`.
 
-The provider-neutral Clyffy lifecycle, forced pre-planning topology and
-architecture gate, golden-pattern registry, planning permit, and exact mutation
-boundary are specified in the
-[RRFlow runtime foundation cheat sheet](docs/rrd-engine-foundation-cheat-sheet.md).
-That document records current implementation gaps; this README must not be read
-as evidence that the runtime foundation is already complete. Connectome and
-Purgato remain downstream diagnostic/presentation work governed by the
-[Connectome diagnostics recovery plan](docs/connectome-rrd-diagnostics-plan.md).
+## Non-negotiable architecture
 
-Native WAL/MVCC/LSM persistence is real. `rrd-query` now converts stamped
-authoritative snapshots to schema-stable, row-bounded Arrow batches and exposes
-them through an immutable RRD `TableProvider`. DataFusion 55 physically streams
-relational filter/projection/order/limit work with exact projection/limit hints,
-explicit unsupported-filter retention, elapsed cancellation, and shared
-snapshot/operator-memory and spill caps. `EXPLAIN ANALYZE` returns stable RRD
-evidence rather than persisted DataFusion internals. Lazy storage-to-Arrow scans
-and broader physical optimization remain open; reference row semantics remain
-the differential oracle.
-
-> **Full-stack baseline (2026-08-23).** RRFlow is a substantive local alpha
-> persistence/runtime kernel; it is not yet a complete SurrealDB- or
-> Qdrant-class product. Before further competitor optimization, the current
-> SurrealDB and Qdrant surfaces were inventoried and mapped to executable RRFlow
-> evidence. The authoritative dependency order, including true backup/restore,
-> estate reconciliation, public server transactions, security, SDKs, realtime,
-> vector lifecycle, inference, and Kubernetes operation, is in
-> [`docs/full-stack-gap-ledger.md`](docs/full-stack-gap-ledger.md). See the
-> [SurrealDB inventory](docs/surrealdb-capability-inventory.md) first and the
-> [Qdrant inventory](docs/qdrant-capability-inventory.md) second.
-
-The first F0 artifact is [`rrd-contract`](crates/rrd-contract): a
-transport-neutral, versioned public vocabulary with frozen JSON rather than an
-internal Rust API being mislabeled as an SDK. Its scope and limitations are in
-[`docs/rrd-public-contract.md`](docs/rrd-public-contract.md).
-
-The first F5 client is [`rrd-client`](crates/rrd-client), an asynchronous Rust
-consumer of that public contract. It negotiates capabilities, covers all 31
-currently published operations, bounds time and response bytes, preserves
-typed errors and request identity, and safely retries reads or
-idempotency-bound mutations after transport loss. Local HTTP is loopback-only;
-the Rust client and server now also have an experimental TLS 1.3 mutual-auth
-path with exact server-name verification. All six intended language clients now
-have executable walking skeletons; shared conformance and release qualification
-remain open.
-
-The TypeScript F5 walking skeleton is in [`sdks/typescript`](sdks/typescript).
-It generates exact operation/request/response types from the authoritative
-OpenAPI document, validates untrusted envelopes with ArkType, and uses Biome 2
-for formatting and linting. Its generated operation-keyed call covers the full
-current route catalogue; shared real-server conformance and release packaging
-remain open.
-
-The Python F5 walking skeleton is in [`sdks/python`](sdks/python). It derives
-the closed 28-operation route surface from the same OpenAPI authority, validates
-untrusted envelopes with Pydantic, and enforces the same bounded retry,
-identity, deadline, resource, idempotency, and loopback-cleartext rules. uv,
-Ruff, strict mypy, pytest, and package builds gate it; generated payload models,
-async transport, shared real-server conformance, and publication remain open.
-
-The Go F5 walking skeleton is in [`sdks/go`](sdks/go). It has no third-party
-runtime dependency, derives its closed operation set and route metadata from
-the OpenAPI authority, accepts caller cancellation through `context.Context`,
-and enforces strict envelopes, bounded I/O, deadlines, safe retries, resource
-identity, mutation idempotency, authentication, and loopback-only cleartext.
-Generated payload models, shared real-server conformance, and module release
-remain open.
-
-The Java 21 F5 walking skeleton is in [`sdks/java`](sdks/java). It generates a
-closed route enum from OpenAPI, uses the standard HTTP client plus Jackson 3.2,
-and enforces exact envelopes, bounded reads, deadlines, safe retries,
-authentication, resources, idempotency, redirect denial, and loopback-only
-cleartext. Maven compiles with warnings as errors and runs real-loopback JUnit 6
-tests; async transport, generated payload models, shared conformance, and
-publication remain open.
-
-The asynchronous .NET 10 F5 walking skeleton is in
-[`sdks/dotnet`](sdks/dotnet). It generates a closed route enum from OpenAPI and
-uses only `HttpClient`/`System.Text.Json` at runtime. Nullable analysis,
-warnings-as-errors, formatting, locked restore, xUnit v3 transport/auth/error
-tests, and NuGet packing pass. Generated payload models, shared conformance, and
-publication remain open.
-
-F6 query breadth has started on the existing atomic multi-model authority.
-RRFlowQL/RRD query executor now read records, relations, events, claims, time-series samples,
-and geospatial values through the same explicit valid/known time, stamped plan,
-budget, and authoritative-log execution path. Three-engine differential tests
-and a secured real-RRD test prove series/geo results and persistence. See
-[`docs/rrflowql-multimodel-v1.md`](docs/rrflowql-multimodel-v1.md). RRFlowQL now also
-has schema-bound, direction-explicit, depth-capped recursive graph expansion
-with deterministic shortest paths and cycle suppression. Typed scalar predicates
-support `=`, `!=`, `<`, `<=`, `>`, and `>=`; ordering is deliberately limited to
-integers, unsigned integers, and strings until an exact decimal ordering contract
-lands. A persistent CAS-backed index catalogue now validates compound scalar
-definitions, fences build generations, tracks freshness/lifecycle state, and
-publishes content-addressed exact snapshot artifacts. RRD query executor selects and
-revalidates an artifact only at its exact known cursor and valid-time, falls
-back after new writes, and fails closed on corrupted bytes. Authenticated,
-idempotent ensure/build and catalogue-list operations are now public through
-RRD and all SDK route maps. Uniqueness and incremental maintenance remain open. See
-[`docs/rrflowql-index-catalogue-v1.md`](docs/rrflowql-index-catalogue-v1.md).
-Full text, mutating statements, broader/incremental indexes, and push
-subscriptions remain open. RRD query executor now also computes deterministic resumable
-semantic live-query deltas (added/updated/removed rows) between exact runtime
-cursors. Authenticated polling is exposed through RRD and the generated route
-catalogues for all six SDKs. A bounded five-second server-side wait wakes when
-the authoritative cursor advances and returns explicit timeout/wait evidence;
-streaming/backpressure and retained subscriptions remain open. See
-[`docs/rrflowql-live-query-v1.md`](docs/rrflowql-live-query-v1.md).
-
-F7 now has its first public administration vertical. RRD persists a versioned,
-CAS-protected vector-collection catalogue with durable idempotency receipts and
-control-journal history. A collection binds one or more named dense, sparse, or
-multi-dense vector spaces to exact fields, dimensions, metrics, optional model
-digests, and pinned/cached/cold placement policy. Authenticated ensure/list
-routes have distinct deny-by-default actions, and collection-addressed search
-resolves and validates that contract before executing the exact oracle. Atomic
-`put_vector` point writes can bind collection plus vector name; commit validates
-field, kind, dimensions, and model provenance while retaining payload
-properties in the unified multi-model transaction. First-class point deletion
-and batch-mutation APIs remain open. Search now exposes the same bounded typed
-equals, inequality, membership, range, existence, all/any/not payload-filter
-algebra as the exact oracle. RRFlow now also has a deterministic MSE TurboQuant codec for
-4/2/1.5/1-bit packed vectors, seeded rotation, asymmetric scoring, and norm
-correction. Its authenticated binary artifact is catalogued as a planner-visible
-approximate path and proposes candidates for authoritative exact-f32 reranking.
-Public build/lifecycle administration, SIMD qualification, large-corpus quality
-matrices, payload indexes, persisted one-stage filtered ANN serving, and
-physical memory-tier enforcement remain open.
-Authenticated deterministic point scrolling is also public. It resolves a
-collection/name, captures one exact read stamp, reuses the search visibility
-primitive, applies valid-time/model/payload rules, orders by point reference,
-and returns bounded payload/vector pages with an explicit resume reference.
-Authenticated batch retrieval now returns requested points in request order and
-explicitly reports missing references at the same exact read coordinate.
-First-class point deletion remains open.
-
-F3 now has its first authority artifact in
-[`rrd-estate`](crates/rrd-estate): a bounded, versioned estate document whose
-desired state, observations, operation leases, idempotency bindings, receipts,
-and activity evidence advance through the authenticated RRFlow control journal.
-The state contract is documented in
-[`docs/estate-control-v1.md`](docs/estate-control-v1.md). A typed reconciler now
-advances one durable boundary per step and fences lease takeover. RRD and
-Connectome consume the same typed read-only `EstateSnapshot`; the panel labels
-absent authority as a synthetic fallback instead of implying persistence.
-
-The first local-process driver is implemented behind an operator-trusted
-catalogue: canonical absolute executable plus SHA-256, typed literal arguments
-without a shell, cleared environment, durable PID/start-time/executable
-identity, and fail-closed signaling. A real-RRD-child test proves restart replay
-and stop-without-data-deletion. Managed RRD children use a bounded request/
-completion-file graceful-shutdown handshake, reauthenticate ownership before
-forced fallback, and retain per-instance process logs. A black-box controller
-test kills the actual controller after every start/stop transition, including
-the effect-before-record gap, and proves deterministic recovery. The complete
-process matrix now passes on Linux, Windows, and macOS. Its evidence and
-remaining packaging, authorized mutation, backup/restore, and log-retention
-limits are in
-[`docs/local-process-driver-v1.md`](docs/local-process-driver-v1.md). Strict
-slice evidence is appended to
-[`docs/implementation-journal.md`](docs/implementation-journal.md).
-
-Installed layouts can generate that trusted catalogue without hand-authoring a
-path or digest: `rrd-deployment-catalog --output deployments.json` resolves the
-sibling `rrd-server`, authenticates its canonical bytes, writes the complete
-typed launch/shutdown template, and refuses to overwrite an existing target.
-
-Local estate mutations now have a separate deny-by-default operator boundary.
-`rrd-estate-admin` requires a validity-windowed, exact-estate/action policy and
-the matching owner-private 32-byte key before it opens storage. It also requires
-an explicit estate-control `--authority-instance`, keeping the RRD engine
-identity distinct from the estate it manages. The admin, estate-controller,
-backup-controller, and security-bootstrap executables are thin outward adapters
-owned by `rrflow-cli`; only `RrdEngine` constructs their repositories, drivers,
-or physical storage. Create and desired-state retries are durable and return the
-frozen public mutation result. Remote mutation remains disabled. See
-[`docs/local-estate-authorization-v1.md`](docs/local-estate-authorization-v1.md).
-
-The system makes operational reasoning observable and enforceable without
-claiming access to a model's hidden chain-of-thought. It records goals, plans,
-attempts, tool observations, decisions, verification, outcomes, context
-injection, routing, and provider-visible events.
-
-## Runtime contract
+`rrd-engine::RrdEngine` is the sole composition root and the only owner of
+context assembly. There is one canonical runtime change log and one temporal
+snapshot boundary. Claims, records, relations, vectors, schemas, and their
+valid-time history are not separate memory systems.
 
 ```text
-prompt
-  │
-  ├─ attune + recall current claims
-  ├─ refresh and ground source routing
-  └─ goal → plan → attempt → observation → decision → verification → outcome
-                         │
-                         └─ deny mutation when evidence or authorization is stale
+intent + optional anchors + explicit budgets
+                      |
+                      v
+        RrdEngine::assemble_context
+                      |
+          authenticate and authorize
+                      |
+       capture one runtime read stamp
+                      |
+     resolve one valid-time data snapshot
+       /              |               \
+dynamic BM25   matching local vector   bounded graph BFS
+records+claims   spaces, exact score    from discovered roots
+       \              |               /
+        deterministic reciprocal-rank fusion
+                      |
+      item/byte/scan/depth enforcement
+                      |
+  ContextPacket(items, evidence, stamp, digest)
 ```
 
-The current pre-migration implementation provides:
+Every returned item carries the retrieval source, source rank, source score,
+fusion contribution, plan digest, and evidence digest. The packet carries its
+runtime cursor, schema revision, catalogue revision, query digest, encoded byte
+count, truncation state, and content digest. A packet therefore identifies what
+was read and why it was selected; it is not an ungrounded text blob.
 
-- bi-temporal claims with immutable supersession and provenance;
-- atomic typed runtime commits spanning claims, graph records, relations,
-  lifecycle events, vectors, series samples, geospatial values, and verified
-  object references;
-- one hash-chained global runtime cursor with resumable, scope-filtered replay,
-  plus an RFC 9162-style authenticated accumulator for logarithmic point proofs;
-- bounded persisted runtime traces with W3C-width identities and typed links to
-  reasoning runs, cursors, read stamps, snapshots, plans, projections,
-  workflows, providers, and external operator-knowledge revisions; project
-  initialization installs their strict schema, while lifecycle hooks/MCP write
-  separate durable start and finish events so crashes remain visible;
-- observer-safe query, storage-read, vector-plan/search, projection-publication,
-  and embedding-inference/commit trace trees; native reads include bounded
-  manifest/memtable/segment/cache/block deltas plus configured mutable-state
-  limits, automatic-flush/backpressure deltas, block-filter effectiveness, and
-  leveled-compaction debt/byte-flow/buffer evidence, while raw queries,
-  parameters, vectors, filters, and embedding source bytes remain outside
-  persisted traces;
-- authoritative per-project vector artifact catalogs: exact, compact-dense, and
-  HNSW bytes are content-addressed first, then their strict catalog record and
-  verified object reference commit atomically through `RRD storage coordinator`; restart
-  reconstruction rejects revision gaps, substituted descriptors, non-atomic
-  bindings, corruption, and missing objects before serving;
-- a retention-filtered causal trace workbench that reconstructs complete,
-  incomplete, summary, and invalid lifecycles from the authoritative log,
-  identifies a non-double-counted measured critical-path candidate, and joins
-  real provider/tool envelopes by digest without retaining their content;
-- a versioned project-scoped shared operator-knowledge port for external
-  systems such as PostgreSQL/pgvector: exact model/tenant/config binding,
-  snapshot and stable-revision
-  evidence, explicit vector-kind and path-specific metric capabilities,
-  exact/HNSW/IVFFlat controls and fallback, parameterized SQL shapes, and
-  idempotent vector-outbox work without a cross-store ACID claim;
-- an opt-in live pgvector transport with repeatable-read snapshot/catalog
-  capture, atomic project revisions and applied-work receipts, exact/HNSW/
-  IVFFlat plan inspection, typed upsert/delete payloads, reconnect recovery,
-  and a TLS-only production connector that rejects downgrade-capable modes;
-- optimistic concurrency that rejects stale writers instead of losing updates;
-- content-addressed read stamps, persisted snapshot leases, and replay that is
-  bounded to the exact captured cursor/hash/schema state;
-- prospective transaction views that read pending typed mutations without
-  presenting them as committed evidence;
-- content-addressed local and capability-explicit S3-compatible object tiers,
-  with atomic reference visibility, deterministic projection outbox work,
-  chained accepted-operation audit, and idempotent commit retry;
-- hash-chained, typed reasoning runs;
-- one-attempt/one-observation mutation authorization;
-- freshness barriers and deny-by-default policy differentials;
-- parser-backed routing to complete source files;
-- rebuildable projections that quarantine on divergence;
-- an exact dense/sparse/multivector oracle plus freshness-gated, filter-aware
-  HNSW candidate generation with exact reranking and measured fallback;
-- provenance/CAS-bound embedding jobs, exact model-space binding, compact
-  dense mmap artifacts, scalar/AVX2 parity, and a no-network edge executable;
-- canonical Multi-AZ placement/snapshot/route/transfer contracts, a
-  deterministic quorum fault simulator, and a feature-gated real-consensus
-  adapter that atomically applies canonical runtime commits over native RRD LSM
-  and transfers that runtime truth to post-purge learners through authenticated
-  physical snapshots, with explicit membership-bound placement epochs and
-  bounded request identity retention; an opt-in TLS 1.3/mTLS transport binds
-  every RPC to canonical workload identity and bounded frames. A real node
-  executable and versioned local supervisor protocol now prove process-isolated
-  crash/restart, leader replacement during a live transport partition,
-  reconciliation, post-purge learner snapshot catch-up, identity confusion
-  denial, hot leaf and trust-root rotation, CRL revocation, stale restart denial,
-  corrupt-pointer refusal, and bounded file-backed snapshot transfer with
-  crash-orphan cleanup and disk-resident immutable segment v3 with bounded
-  shared-cache telemetry. Transport telemetry v1 adds reset-explicit
-  per-operation/per-identity decisions, byte/latency/in-flight accounting,
-  configurable global and identity rate bounds, and a golden JSON contract;
-  node control v4 binds it beside artifact-session and consensus-trace health
-  to the configured project, cluster, shard, Raft id, and canonical node id.
-  Connectome can validate and retain imported statuses as immutable per-node
-  hash chains with restart-aware deltas, alerts, runtime cursors, and audit
-  evidence. A typed Raft timing policy replaces fragile
-  library development defaults with per-project heartbeat/election bounds
-  (automatic workload issuance, retained exporters, and production clustering
-  remain gated);
-- grounded replica-artifact hydration for project-scoped vector/index bytes:
-  typed manifests bind source/target, placement epoch, shard snapshot, exact
-  runtime read, sorted object references, and digest closure. OpenRaft's real
-  mTLS path now hydrates that closure through durable, resumable, exact-offset
-  sessions with independently digested chunks before sending snapshot byte
-  zero; retries re-check the same closure and reuse verified content. The
-  target independently scans the authenticated RRD LSM snapshot and denies
-  activation if any referenced bytes are missing or corrupt. Typed bounded
-  observations expose attempts, progress, duration, counts, bytes, and receipt
-  identities without persisting object content; `rrd-engine` commits them as
-  causal project traces through the current Raft leader. Restart-reconstructed
-  receiver inventories enforce active-session/reserved-byte quotas, bounded
-  receipt retention and stale-session GC while allowing distinct sessions to
-  transfer concurrently;
-- identical lifecycle semantics through hooks, CLI, and MCP;
-- isolated per-platform instances with explicit store/root binding.
+The caller supplies only:
 
-The persisted runtime graph is structural and causal, not a BM25, embedding, or
-semantic-search feature. Records and relations have stable typed identities,
-valid-time windows, transaction order, provenance through their enclosing
-commit, and reference-integrity checks. See
-[`docs/runtime-graph.md`](docs/runtime-graph.md).
+- a scope and query;
+- an explicit valid-time coordinate;
+- optional record anchors;
+- graph-depth, item, output-byte, and scanned-change budgets.
 
-## Connectome workbench
+The caller does not choose fields, collections, vector names, embedding
+backends, or graph edges. The engine discovers eligible sources from the same
+captured snapshot and catalogue. Only installed deterministic text embedding
+backends that require no network access are eligible for automatic semantic
+retrieval.
 
-Start the local workbench:
+There are no editor/provider hook configurations, hook lifecycle engine,
+work-plan scheduler, source-attunement gate, provider registry, runtime-tool
+catalogue, or separate graph-routing database in the product architecture.
+Storage/index maintenance state is an internal physical concern and is not a
+reasoning lifecycle or a second source of truth.
 
-```bash
-cargo run -p connectome-ui -- --root .
-# http://127.0.0.1:4387
-```
+## Canonical context contract
 
-To inspect it from another machine on a trusted network, bind explicitly and
-open `http://HOST_OR_IP:4387` in the remote browser:
+The provider-neutral operation is `context-assemble` at
+`POST /v1/context/assemble`. Its request and response types live in
+`rrd-contract`; its implementation lives in `rrd-engine`. The Rust client,
+daemon handler, CLI, MCP server, and Connectome use that operation or call the
+same engine method in embedded mode.
 
-```bash
-cargo run -p connectome-ui -- --root . --bind 0.0.0.0:4387 --allow-remote
-```
+Current hard request ceilings are:
 
-The workbench has no authentication. Keep remote binding on a trusted network
-or tunnel the loopback address over SSH. Frontier runners remain disabled
-unless `--enable-runners` is also explicit.
+| Resource | Maximum |
+|---|---:|
+| query bytes | 64 KiB |
+| seed records | 256 |
+| returned items | 512 |
+| encoded item bytes | 768 KiB |
+| scanned runtime changes | 1,000,000 |
+| graph depth | 32 |
 
-Connectome Panel starts with four operator workspaces. The snapshot API makes
-their scope explicit: an estate is a project-owned runtime boundary, a table is
-a logical surface with named authority and boundedness, and each data model is
-paired with the runtime scope that owns its schema revision.
+Within a request, lexical results are capped to the item budget, matching
+vector sources and hits are capped to the item budget, and graph work is capped
+to `max_items * 16` edge steps. Any hidden result or work limit sets
+`truncated=true`; truncation is never presented as a complete answer.
 
-| Workspace | Purpose |
+The same request against the same persisted read coordinate is deterministic.
+Behavior tests cover temporal exclusion, lexical retrieval, automatic matching
+of a locally installed vector model and collection, graph expansion, claim
+resolution, fusion evidence, resource truncation, packet validation, exact
+cursor binding, and equality after closing and reopening the engine.
+
+## Authority and surfaces
+
+Dependency direction is inward toward the engine, never sideways into a new
+authority:
+
+| Component | Ownership |
 |---|---|
-| Estates | Inspect the local project boundary, instance/store ownership, observed nodes, and retained cluster state; cloud fleet control is intentionally not attached |
-| Tables | Browse claims, reasoning runs, prompt flights, temporal changes, traces, source, invocations, cluster samples, and vector artifacts without presenting projections as physical SQL tables |
-| Data models | Switch between scoped schema registries and inspect record, event, relation, property, uniqueness, endpoint, and cardinality rules |
-| Visuals | Choose one evidence-backed runtime visual, freeze its current event, and open the full prompt, temporal, trace, graph, or cluster lab |
+| `rrd-core` | temporal values, canonical mutations, snapshot resolution |
+| `rrd-lsm`, `rrd-store` | durable physical storage and canonical runtime log |
+| `rrd-query` | query execution and lexical scoring primitives |
+| `rrd-vector`, `rrd-inference` | vector contracts, exact scoring, installed local embedding backends |
+| `rrd-security` | identities, policy, authorization, and audit evidence |
+| `rrd-engine` | the single composition root and context planner |
+| `rrd-contract` | provider- and transport-neutral public protocol |
+| `rrd-server`, `rrd-client` | daemon transport and typed Rust client |
+| `rrflow-cli`, `rrflow-mcp`, `connectome-ui` | outward adapters; never data authorities |
+| remaining estate, cluster, maintenance, SDK, and evaluation crates | operational or client capabilities composed around the same authority |
 
-The panel also has a **Connections** workspace. It always shows the current
-embedded instance and can live-negotiate an independently running loopback RRD
-instance through the supported Rust client. Protocol and exact instance
-identity must match before the bounded profile is persisted through the native
-control journal. Profiles retain credential references, never secret values.
-This establishes the connection authority; authenticated remote data browsing,
-active-source switching, and remote TLS are still open and are not simulated by
-the UI.
+Direct query, transaction, backup, diagnostic, and administration operations
+remain valid database capabilities. They do not constitute alternate context
+engines. Any outward surface that needs model context must use
+`context-assemble` rather than constructing its own recall pipeline.
 
-The deeper labs remain available from the same panel:
+MCP exposes one context tool backed by this operation in both embedded and
+authenticated daemon modes. Automatic prompt insertion is possible only in a
+host that provides a turn/interception integration point. RRFlow does not claim
+to invisibly alter prompts in a host that provides no such API; where a host
+does provide that boundary, its adapter must invoke this same operation and
+must not implement retrieval itself.
 
-| Lens | Purpose |
-|---|---|
-| Prompt flights | Launch, replay, freeze, inspect, and compare prompt experiments |
-| Temporal stream | Freeze and scrub persisted mutations across instance scopes with their change and audit evidence |
-| Schema | Compatibility route for the reasoning schema; Data models is the multi-scope view |
-| Query lab | Parse, bind, explain, and execute exact bitemporal `RRFlowQL` reads |
-| Cluster | Freeze, rewind, and inspect validated project-node observations, topology, restart boundaries, deltas, alerts, and raw audit evidence |
-| Overview | Runtime health, freshness, grounding, and active work |
-| Causal traces | Parent/child span lifecycles, incomplete work, measured bottleneck candidates, exact cursors, and control-only JSON export |
-| Graph | Selection-centered claim, evidence, run, flight, and source topology |
-| Runs | Typed reasoning timelines |
-| Claims | Current bi-temporal state and provenance |
-| Routes | Ranked complete-file source routes with justification |
-| Activity | Lifecycle and operator invocation evidence |
+## Current status
 
-The local API also exposes the authoritative persistence layer:
+Implemented now:
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/runtime/capabilities` | Negotiate the versioned developer-diagnostics contract, replay controls, enabled runners, and evidence-backed engine maturity without presenting roadmap items as shipped |
-| `GET /api/changes?after=N&limit=N&scope=...` | Resume the verified global runtime changefeed, optionally restricted to one scope |
-| `GET /api/runtime/events?limit=N` | Read the newest bounded, audit-attached temporal event projection |
-| `GET /api/runtime/traces?limit=N&classes=control` | Export bounded per-project causal traces; operator/content classes require explicit inclusion |
-| `GET /api/runtime/vector-artifacts?scope=...` | Inspect typed artifact generations, projection/config/source coordinates, object receipts, byte digests, and catalog revisions without returning raw vectors |
-| `GET /api/runtime/schema?scope=...` | Read the active persisted schema revision for one scope |
-| `GET /api/runtime/retention` | Inspect live snapshot leases and their logical GC retention pins |
-| `GET /api/runtime/query?scope=...&ql=...` | Parse, bind, explain, and execute an exact bitemporal `RRFlowQL` query |
-| `GET /api/runtime/graph?scope=...&valid_at=T&cursor=N` | Freeze one scoped typed graph at valid time and transaction cursor |
-| `GET /api/runtime/diff?scope=...&from=A&to=B&valid_at=T` | Inspect exact scoped structural change between cursors |
-| `GET /api/cluster/history?limit=N` | Read bounded retained cluster observations plus the per-node baseline anchors needed for exact topology reconstruction |
-| `POST /api/cluster/samples` | Validate and commit one control-v4 project-node status as an immutable, source-digested observation |
-| `POST /api/demos/prompt-strength` | Persist a deterministic weak/strong trace pair for temporal playback |
+- native durable runtime changes with exact read stamps and valid-time reads;
+- active claims and typed records resolved into the same context snapshot;
+- dynamic lexical retrieval over discoverable textual properties;
+- deterministic automatic semantic retrieval over compatible installed local
+  embedding backends and vector collections;
+- bounded graph expansion from explicit and retrieved roots;
+- deterministic multi-source fusion, deduplication, evidence, digests, and
+  resource enforcement;
+- authenticated server/client, embedded/daemon MCP, CLI, and Connectome paths
+  converging on the same context operation;
+- persistence/reopen and real transport behavior tests.
 
-The Query Lab and its GET endpoint remain read-only inspection. When the query
-itself should become optimization evidence, use the explicit project-bound
-operator path (also exposed as MCP tool `rrflow_query`):
+Not implemented or not yet production-grade:
 
-```bash
-cargo run -p rrflow-cli -- \
-  --db .rrflow/store --json query --root . \
-  --scope instance:default \
-  --ql 'FROM event:runtime_trace AT VALID 18446744073709551615 KNOWN HEAD PROJECT name, phase EXPLAIN CONTRACT'
-```
+- lexical indexing is rebuilt from the bounded snapshot per request; it is not
+  yet an incrementally maintained persistent index;
+- context vector retrieval currently performs exact scoring over matching
+  snapshot vectors; the context planner does not yet select ANN candidates and
+  exact-rerank them;
+- graph expansion currently traverses relations in both directions without
+  relation-type policy or learned edge weights;
+- ingestion is still explicit typed transaction/claim input rather than an
+  automatic content normalization and entity-linking pipeline;
+- fusion weights are static and there is no feedback learner, query planner
+  cost model, or quality regression corpus tied to release gates;
+- automatic turn-boundary invocation still requires a supported host adapter.
 
-That path captures `KNOWN HEAD` before observability writes, then persists one
-parent query span and child parse/bind, planning, execution, and physical-store
-read spans. Query and parameter content remains caller-visible but trace and
-invocation state retain only digests, counts, budgets, plan/read coordinates,
-result metrics, and bounded storage counter deltas.
+These are material gaps. A successful compile is not evidence that context
+flows correctly, and none of the gaps above is represented as complete.
 
-The temporal stream is a read-only projection of the newest 512 authoritative
-runtime mutations in the snapshot (up to 4,096 through the event API), not an
-independent telemetry store. It attaches the full mutation and available
-hash-chained audit envelope. The lanes describe persisted logical mutations;
-search, embedding, and storage lanes now include their persisted runtime spans.
-The Causal traces lens rebuilds parent/child lifecycle state and exposes exact
-event/audit coordinates. The separate Cluster lens visualizes explicitly
-ingested node-status observations; it never upgrades process counters into
-consensus truth, and bounded history carries a pre-window anchor per node so
-rewind does not silently erase quiet nodes. Armed prompt flights add a durable
-provider root, digest-only observable-envelope annotations, and tool-envelope children. They
-do not imply per-operation physical WAL micro-events, automatic node polling,
-unpersisted activity, or private model chain-of-thought.
+## Roadmap
 
-At the Rust port today, `MemoryEngine` and the transitional Fjall adapter expose
-the same versioned read-stamp, snapshot, and data-transaction semantics. The
-portable JSON shapes are frozen in
-[`golden-vectors.json`](crates/rrd-core/fixtures/golden-vectors.json). This is
-the logical snapshot boundary: every live lease has a stable retention pin.
-Native `RRD LSM` must attach its physical manifests, segments, and objects to
-those pins before compaction or garbage collection may reclaim old bytes.
+Work proceeds in dependency order without introducing another authority:
 
-Prompt flights accept three controlled context arms:
-
-| Arm | Context delivered to the provider |
-|---|---|
-| `fresh` | New ephemeral session, zero RRFlow context |
-| `pruned` | Only claims matched by the prompt, within the token budget |
-| `full` | Full preflight context plus prompt-matched recall |
-
-Fresh mode purges the experiment's **input context**, not authoritative history.
-Claims, reasoning runs, and prior flights remain available for audit and replay.
-This separation makes same-prompt comparisons meaningful without destroying the
-evidence needed to explain them.
-
-The reasoning flight lab runs **one prompt at a time**. Start from the weak or
-strong example, or type a custom prompt, then choose an exact provider-effort
-profile. Default, High, Extreme, and Ultra request `medium`, `high`, `xhigh`,
-and `max` respectively. Ultra is RRFlow's label for provider `max`; it is not the
-separate Codex multi-agent “ultra mode.” Repeat identical prompt bytes at a
-different profile or context arm to form a comparable cohort.
-
-The visual stage renders every captured event in a typed context/model/tool/
-outcome lane. Packet height is derived from the visible event-detail and raw
-envelope byte count. Freeze any packet, scrub, rewind, resume, fast-forward, or
-jump to the first/latest event. The expanded micro-event exposes the complete
-captured provider envelope plus provider-reported input, output, cache, and
-reasoning-token fields when available. These are observable traces, never a
-claim to expose private chain-of-thought. Local prompt-contract indicators are
-lexical editing aids, not quality scores.
-
-The default `observe` provider assembles and visualizes the pipeline without
-launching a model. Frontier CLI execution requires an explicit opt-in:
-
-```bash
-cargo run -p connectome-ui -- --root . --enable-runners
-```
-
-Enabled Codex and Claude flights use new, non-persistent, read-only/plan-mode
-sessions. The server accepts only the prompt-flight write endpoint; it does not
-expose a general mutation API. It binds to loopback unless remote access is
-explicitly acknowledged.
-
-## Baseline experiments
-
-To determine how much vague context actually works:
-
-1. Write one prompt and one observable acceptance marker.
-2. Run the exact prompt in `fresh`, `pruned`, and `full` arms.
-3. Keep provider, repository revision, and context budget fixed.
-4. Compare acceptance, provider tokens, context tokens, tool calls, and latency.
-5. Repeat before promoting any result into a product claim.
-
-The prompt digest becomes the cohort identity, so exact-prompt arms are grouped
-automatically. Every event can be frozen and expanded; the event ledger contains
-only externally observable runtime/provider data. See
-[`docs/prompt-flight-experiments.md`](docs/prompt-flight-experiments.md) for the
-measurement contract.
-
-## Crates
-
-| Crate | Responsibility |
-|---|---|
-| `rrd-contract` | Stable versioned resource/envelope, lifecycle, health, capability, error, and canonical transaction-digest wire contracts |
-| `rrd-client` | Supported async Rust client for the public RRD protocol, including negotiation, auth/session, transaction, query, vector, changefeed, backup, estate, and audit operations |
-| `rrd-estate` | Persistent estate desired/observed authority, one-boundary reconciler, fenced operation leases, idempotency bindings, receipts, and activity classification |
-| `rrd-server` | Async loopback RRD process, persistent transport leases, prepared claim commits, bounded HTTP, and restart-idempotent lifecycle coordination |
-| `rrd-core` | Claim, reasoning, typed runtime graph, durable trace, traversal, and differential contracts; serde-only boundary |
-| `rrd-store` | `RRD storage coordinator` coordination plus native `RRD LSM`, transitional Fjall, and memory adapters; unified atomic commits, content-addressed objects, outbox/audit, sequences, projections |
-| `rrd-operator-knowledge` | External operator-knowledge contracts, exact reference adapter, optional live pgvector transport, SQL planning, and idempotent upsert/delete synchronization |
-| `rrd-graph` | Parsing, incremental freshness, grounding, source routing |
-| `rrd-engine` | Runtime lifecycle, instance binding, policy, append-only reasoning composition |
-| `rrflow-cli` | Operator surface |
-| `rrflow-mcp` | stdio MCP surface for hookless runtimes |
-| `rrflow-eval` | Paired frontier-runtime evaluation evidence |
-| `connectome-ui` | Prompt-flight recorder and runtime workbench |
-
-The local RRD alpha is a separate process boundary from `rrflow-mcp`:
-
-```bash
-cargo run -p rrd-server -- \
-  --db .rrflow/rrd \
-  --instance local-project \
-  --bind 127.0.0.1:9477
-```
-
-Plain HTTP refuses non-loopback binding. Remote binding is admitted only when
-the server has both TLS 1.3 mutual-auth material and initialized `rrd-security`
-policy; certificate reload/revocation and distributed qualification remain
-open. `GET
-/v1/capabilities` reports the exact shipped/limited surface; session bearer
-values are derived from an owner-private OS-random key and only their hashes
-enter the lifecycle journal. See
-[`docs/rrd-server-v1.md`](docs/rrd-server-v1.md) for the wire and recovery
-contract.
-
-Fresh instances can initialize that authority offline with
-`rrd-security-bootstrap`. Its versioned manifest contains only credential-file
-references; mounted credential bytes are bounded, hashed, never journaled, and
-identical retries converge while drift fails. See
-[`docs/rrd-security-bootstrap-v1.md`](docs/rrd-security-bootstrap-v1.md).
-
-F8 now also has an executable Kubernetes breadth baseline in
-[`rrd-kubernetes`](crates/rrd-kubernetes): a generated `RrdInstance` CRD, real
-kube-rs reconciliation loop/finalizer, least-privilege RBAC, retained single-
-node StatefulSet storage, mTLS bootstrap, disruption budget, default-deny
-network policy, and status contract. It deliberately does not deploy multiple
-independent RRD pods as a fake distributed database. Published images, real-
-cluster qualification, safe upgrades/CSI recovery, and RRD-to-Raft integration
-remain open. See
-[`docs/rrd-kubernetes-v1alpha1.md`](docs/rrd-kubernetes-v1alpha1.md).
-
-For JS/TanStack workflows, successful and failed tool runs are journaled under
-canonical, manager-specific subjects—`package:bun:*`, `package:pnpm:*`,
-`package:npm:*`, and `package:yarn:*`. Script names remain part of the identity,
-so `pnpm run typecheck` and `pnpm run test` do not overwrite each other. These
-events now cross a project-owned policy gate. `.rrflow/workflows.toml` binds exact
-direct argv to the instance scope, required source-routing projection, strict
-freshness, and verification policy. Preflight injects a scoped `ReadStamp`,
-pre-tool denies absent/corrupt/undeclared or shell-composed package execution,
-and post-tool commits the digest-bound observation, temporal status claim,
-runtime change, outcome, and audit atomically. See
-[`docs/package-workflows.md`](docs/package-workflows.md).
-
-RRD owns the target storage contract. The current legacy
-`rrd_store::NativeEngine` implements the same `Engine` port as the in-memory
-reference and transitional Fjall adapter;
-claim recall, projections, schema enforcement, hash-chained commits, snapshots,
-concurrent CAS, restart, and exact `RRFlowQL` results run through a three-backend
-differential. `RRD query executor` now lowers an event query with a bound built-in `cursor`
-to one stamped authoritative cursor result lookup; unbound records, relations,
-events, and claims retain the exact log-replay fallback. The planner publishes
-both the selected path and rejection reason, and execution revalidates the path
-against the logical filter and `ReadStamp` before storage access. Its contract
-advertises authenticated-proof support with a legacy replay fallback, while
-execution reports the path actually observed. Current stamped cursor lookup
-reads one authoritative change and verifies an RFC 9162 inclusion path; a
-4,096-event test bounds that path to 13 proof nodes. Historical prefixes can
-reconstruct their compact frontier from retained complete-subtree nodes, but
-still report replay-plus-proof while schema history lacks an authenticated
-absence/index proof. Legacy databases retain full replay until the first atomic
-accumulator bootstrap. Fjall remains live as a compatibility and performance
-oracle. The former M3 performance pass used asymmetric maintenance and treated
-Fjall's sparse 64 MiB journal as physically consumed space, so it is retained
-only as legacy diagnostic evidence. The corrected lifecycle harness measures
-both engines while active, after clean reopen, and after explicit maintenance,
-with apparent and allocated-byte accounting. Exact semantics pass, but the
-canonical local append/replay promotion is now green in a nine-trial bounded
-fixture. Compact sequence references, cached batch validation, exact-length
-values, one-or-many memtable chains, streaming one-pass WAL recovery,
-keyspace-local mutation ordering, and a bounded first-WAL extent reservation
-moved every strict cell ahead of Fjall. A borrowed memtable scan visitor now
-decodes bounded sequence pages without first materializing a second ordered
-range. Format-4 verification checks every corpus ordinal in read-width pages,
-so bounded-read RSS no longer includes an unrelated whole-database result. The
-current rerun records 1.238× write throughput, 0.781× write p95, 1.726×
-clean-reopen read throughput, 0.603× read p95, 0.154× recovery time, 0.874× peak
-RSS, and 0.915× allocated footprint.
-The dedicated eight-profile AI-read matrix passes its bounded correctness,
-throughput, p95, and clean-reopen allocation gates. See the
-[benchmark audit](docs/rrd-lsm-benchmark.md) and
-[corrected raw evidence](eval/results/2026-08-23-rrd-lsm-standard-streaming-scan-v4.json).
-A separate 20,000-operation
-physical differential now proves put/overwrite/delete behavior across reopen
-and compaction against both Fjall and an independent ordered-map oracle.
-Native compaction is now a bounded leveled streaming step with deterministic
-candidate selection, key-partitioned output, protected-snapshot pruning, and
-non-overlapping levels above L0. Segment-v3 validation derives authenticated
-block-local negative filters that reject point misses before block I/O without
-introducing another persisted truth. Manifest-authenticated compact keyspace
-tags now remove exactly 1,400,004 live key bytes in the extended profile; its
-fresh nine-trial row passes at 0.984× RSS and 0.945× allocated footprint. These
-are local fixture claims, not general database superiority: a fresh read-heavy
-write-p95 diagnostic, remote repetition, asynchronous immutable-memtable flush,
-and family-aware maintenance remain explicit gates before Fjall compatibility
-retirement.
-The canonical `PersistentEngine` now creates native stores for missing paths and
-reopens them by their authenticated `CURRENT` marker. CLI, `rrflow-mcp`, and
-Connectome use that selector. Existing non-native directories remain on the
-explicit `fjall_compatibility` path until migration; no bytes are guessed or
-silently converted. `rrflow storage migrate|status|rollback` provides an
-authenticated, resumable 18-keyspace migration with invisible staging,
-retained Fjall/archive evidence, divergence-safe rollback, and fail-closed
-normal opens during cutover. Native access/removal evidence and the invocation/
-effectiveness ledger now match Fjall and survive reopen, so the default does not
-drop trigger-optimization evidence.
-
-F1 now also has a backend-independent RRD logical archive and local backup
-catalogue. `storage archive-export|archive-inspect|archive-restore` streams
-bounded claim/runtime pages, preserves original commits and transaction audit
-envelopes, resumes from checksummed action receipts, and restores only into an
-absent root through verified hidden staging. `storage
-backup-create|backup-list|backup-restore` adds an authenticated catalogue and
-content-addressed retention. A logical-only backup declares object payloads as
-references; the engine's application-complete backup binds exact immutable
-object bytes and vector/index catalogue state to the archive identity while
-leaving projections rebuild-required. See
-[`docs/rrd-logical-archive.md`](docs/rrd-logical-archive.md).
-`storage format-upgrade|format-status` separately operates the authenticated,
-resumable exact-successor TextV1→TagV2 migration across all 18 physical logical
-keyspaces; it retains the predecessor and denies source drift before cutover.
-
-## Instance boundary
-
-Each major platform receives a dedicated RRFlow/Connectome instance. Related
-small projects may eventually share an explicitly enumerated umbrella, but
-filesystem proximity never grants membership. Runtime entry points refuse a
-foreign store/root pairing. See [`docs/instance-topology.md`](docs/instance-topology.md).
-
-Initialize a dedicated checkout:
-
-```bash
-cargo run -p rrflow-cli -- \
-  --db .rrflow/store \
-  init --harness claude-code --root .
-```
-
-## Evidence and status
-
-The current controlled evaluation contains 8/8 successful trials with zero
-paired regressions across two providers, two repositories, and stale-evidence
-and post-compaction scenarios. It validates the harness; it is not yet a
-statistically significant model-performance claim.
-
-- [`STATUS.md`](STATUS.md) — executable current state and deliberate limits
-- [`SPEC.md`](SPEC.md) — authoritative contract and vocabulary
-- [`PLAN.md`](PLAN.md) — historical execution journal and measured decisions
-- [`docs/clyffy-kernel-alpha.md`](docs/clyffy-kernel-alpha.md) — release gates,
-  lifecycle naming, deployment tiers, competitive proof, and clean Clyffy handoff
-- [`docs/runtime-tracing-operator-knowledge.md`](docs/runtime-tracing-operator-knowledge.md)
-  — persisted trace contract, HelixDB comparison, per-project operator surface,
-  and the non-authoritative pgvector knowledge-adapter boundary
-- [`docs/context-path-profiler.md`](docs/context-path-profiler.md) — boundary and
-  delivery gates for the future public prompt-to-context path visualizer,
-  SSOT diagnostics, replay, and evidence-gated pruning workflow
-- [`docs/rrflow-mcps-architecture-research.md`](docs/rrflow-mcps-architecture-research.md)
-  — pinned upstream research, target data-runtime boundaries, and gated build
-  sequence for `RRFlowQL`/`RRD query executor`/`RRD storage coordinator`/native `RRD LSM`
-- [`docs/rrflow-mcps-object-contract.md`](docs/rrflow-mcps-object-contract.md) — M4
-  canonical vector/series/geo/object values, object publication, atomic
-  visibility, outbox/audit, failure recovery, and adapter evidence
-- [`docs/rrd-vector-search.md`](docs/rrd-vector-search.md) — M5 exact/ANN
-  semantics, projection lifecycle, filtered recall/latency/memory evidence, and
-  explicit limits
-- [`docs/rrd-inferenceding-edge.md`](docs/rrd-inferenceding-edge.md) — M6
-  provenance-bound embedding jobs, model-space binding, compact mmap vectors,
-  accelerator admission, and offline edge evidence
-- [`docs/rrd-cluster-m7.md`](docs/rrd-cluster-m7.md) — M7 placement,
-  consistency, snapshot-vector, transfer, reshard, deterministic fault
-  simulation, and real-consensus adapter evidence with explicit production
-  limits
-- [`docs/rrd-lsm-format.md`](docs/rrd-lsm-format.md) — frozen native WAL, segment,
-  recovery, manifest, and authenticated physical snapshot-bundle contracts
-- [`docs/rrd-lsm-benchmark.md`](docs/rrd-lsm-benchmark.md) — isolated
-  Fjall/native methodology, baseline, and promotion verdict
-- [`docs/rrflow-surrealdb-differential.md`](docs/rrflow-surrealdb-differential.md)
-  — version-pinned external SurrealKV claim-runtime comparison, server/end-to-end
-  timings, measured wins, and the retained disk loss
-- [`docs/rrd-lsm-fjall-ai-audit.md`](docs/rrd-lsm-fjall-ai-audit.md) — exact
-  Fjall/native boundary, AI-specific physical opportunities, and hot-set proof
-- [`eval/results/2026-08-18-summary.json`](eval/results/2026-08-18-summary.json)
-  — retained evaluation evidence
+1. Define one ingestion contract that normalizes documents, conversations,
+   claims, entities, relations, and embedding work into canonical mutations.
+2. Add persistent incremental lexical indexing tied to runtime cursor and
+   schema revision, with exact fallback and corruption recovery.
+3. Add a costed semantic planner that can choose exact scan or bounded ANN
+   candidates, always followed by authoritative exact reranking.
+4. Make graph expansion direction- and relation-aware, with explicit traversal
+   policy and per-path evidence.
+5. Add snapshot- and query-digest caches with strict byte limits and cursor
+   invalidation so repeated turns do not rebuild unchanged work.
+6. Add relevance feedback, offline quality corpora, latency/memory budgets, and
+   regression gates before changing fusion behavior.
+7. Integrate automatic turn-boundary context invocation in each host that
+   exposes a supported interception point; keep unsupported hosts explicit.
 
 ## Verification
 
-```bash
-cargo test --locked --workspace
-cargo clippy --locked --workspace --all-targets -- -D warnings
-cargo run --locked -p rrflow-eval -- verify \
-  eval/results/2026-08-18-summary.json
-```
-
-Browser acceptance runs against a live workbench:
+The smallest semantic test is:
 
 ```bash
-CONNECTOME_URL=http://127.0.0.1:4387 \
-  bunx --bun playwright test \
-  crates/connectome-ui/tests/workbench.spec.js --workers=1
+cargo test -p rrd-engine --lib engine::tests::context -- --nocapture
 ```
 
-Pre-release. The runtime contract is executable and tested; umbrella execution,
-larger repeated frontier evaluations, and measured high-volume graph rendering
-remain open work.
+Real outward-boundary tests are:
+
+```bash
+cargo test -p rrflow-mcp --test stdio --test stdio_daemon
+cargo test -p connectome-ui --test client_boundary
+cargo test -p rrd-client --test real_server \
+  rust_client_negotiates_authenticates_queries_and_reads_audit
+```
+
+The full Rust compile gate is:
+
+```bash
+cargo check --workspace --all-targets
+```
+
+Passing the compile gate alone is insufficient. Context changes must pass the
+semantic engine test first and the affected real adapter tests afterward.

@@ -6,9 +6,9 @@
 //! resulting changes, and reject a commit whose expected cursor is stale.
 
 use crate::{
-    digest, Claim, Error, GeoValue, Millis, ObjectReference, Result, RuntimeGeo,
-    RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeVector, SeriesValue, VectorNormalization,
-    VectorValue,
+    digest, Claim, Error, GeoValue, Millis, ObjectReference, Predicate, Result, RuntimeGeo,
+    RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeVector, SeriesValue, Subject,
+    VectorNormalization, VectorValue,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -1355,6 +1355,7 @@ pub struct RuntimeDataSnapshot {
     pub valid_at: Millis,
     pub known_at_cursor: u64,
     pub schema_revision: u64,
+    pub claims: Vec<Claim>,
     pub records: Vec<RuntimeModelValue<RuntimeRecord>>,
     pub relations: Vec<RuntimeModelValue<RuntimeRelation>>,
     pub events: Vec<RuntimeModelValue<RuntimeEventValue>>,
@@ -1411,6 +1412,54 @@ impl RuntimeDataSnapshot {
         }
     }
 
+    /// Resolves a schema-less claim-only log into the same snapshot shape used
+    /// by typed runtime data. This preserves the original claim append path
+    /// without creating a parallel recall authority. Any schema-bound mutation
+    /// still fails closed until a schema is installed.
+    pub fn from_claim_changes(
+        changes: &[RuntimeChange],
+        scope: ScopeId,
+        valid_at: Millis,
+        known_at_cursor: u64,
+    ) -> Result<Self> {
+        let mut claims = BTreeMap::<(Subject, Predicate), Vec<Claim>>::new();
+        for change in changes
+            .iter()
+            .filter(|change| change.cursor <= known_at_cursor && change.scope == scope)
+        {
+            match &change.mutation {
+                RuntimeMutation::Claim { claim } => {
+                    claims
+                        .entry((claim.subject.clone(), claim.predicate.clone()))
+                        .or_default()
+                        .push(claim.clone());
+                }
+                _ => {
+                    return Err(Error::InvalidRuntime {
+                        reason: format!(
+                            "runtime mutation at cursor {} requires a schema before snapshot assembly",
+                            change.cursor
+                        ),
+                    });
+                }
+            }
+        }
+        Ok(Self {
+            scope,
+            valid_at,
+            known_at_cursor,
+            schema_revision: 0,
+            claims: resolve_snapshot_claims(claims, valid_at),
+            records: Vec::new(),
+            relations: Vec::new(),
+            events: Vec::new(),
+            vectors: Vec::new(),
+            series: Vec::new(),
+            geo: Vec::new(),
+            objects: Vec::new(),
+        })
+    }
+
     pub fn from_changes(
         changes: &[RuntimeChange],
         schema: &RuntimeSchemaRegistry,
@@ -1438,6 +1487,7 @@ impl RuntimeDataSnapshot {
         };
 
         let mut records = BTreeMap::<RuntimeRef, RuntimeModelValue<RuntimeRecord>>::new();
+        let mut claims = BTreeMap::<(Subject, Predicate), Vec<Claim>>::new();
         let mut relations = BTreeMap::<RuntimeRef, RuntimeModelValue<RuntimeRelation>>::new();
         let mut events = BTreeMap::<RuntimeRef, RuntimeModelValue<RuntimeEventValue>>::new();
         let mut vectors = BTreeMap::<RuntimeRef, RuntimeModelValue<RuntimeVector>>::new();
@@ -1450,6 +1500,12 @@ impl RuntimeDataSnapshot {
             .filter(|change| change.cursor <= known_at_cursor && change.scope == scope)
         {
             match &change.mutation {
+                RuntimeMutation::Claim { claim } => {
+                    claims
+                        .entry((claim.subject.clone(), claim.predicate.clone()))
+                        .or_default()
+                        .push(claim.clone());
+                }
                 RuntimeMutation::Record { record } if record.valid_from <= valid_at => {
                     let model =
                         model_for(&record.reference, crate::RuntimeLogicalModel::Relational)?;
@@ -1583,8 +1639,7 @@ impl RuntimeDataSnapshot {
                         &mut objects,
                     );
                 }
-                RuntimeMutation::Claim { .. }
-                | RuntimeMutation::Schema { .. }
+                RuntimeMutation::Schema { .. }
                 | RuntimeMutation::Record { .. }
                 | RuntimeMutation::Relation { .. }
                 | RuntimeMutation::Event { .. }
@@ -1596,11 +1651,14 @@ impl RuntimeDataSnapshot {
             }
         }
 
+        let claims = resolve_snapshot_claims(claims, valid_at);
+
         Ok(Self {
             scope,
             valid_at,
             known_at_cursor,
             schema_revision: schema.revision,
+            claims,
             records: records
                 .into_values()
                 .filter(|record| {
@@ -1630,6 +1688,25 @@ impl RuntimeDataSnapshot {
             objects: objects.into_values().collect(),
         })
     }
+}
+
+fn resolve_snapshot_claims(
+    claims: BTreeMap<(Subject, Predicate), Vec<Claim>>,
+    valid_at: Millis,
+) -> Vec<Claim> {
+    claims
+        .into_values()
+        .filter_map(|mut versions| {
+            versions.sort_by(|left, right| {
+                right
+                    .valid_from
+                    .cmp(&left.valid_from)
+                    .then_with(|| right.tx_time.cmp(&left.tx_time))
+                    .then_with(|| left.canonical_bytes().cmp(&right.canonical_bytes()))
+            });
+            crate::resolve_as_of(&versions, valid_at).cloned()
+        })
+        .collect()
 }
 
 fn runtime_event_reference(event: &RuntimeEvent, cursor: u64) -> RuntimeRef {
@@ -2386,6 +2463,7 @@ fn encode_optional_u64(out: &mut Vec<u8>, value: Option<u64>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Producer;
 
     fn record(kind: &str, id: &str, at: u64) -> RuntimeRecord {
         RuntimeRecord {
@@ -2605,5 +2683,43 @@ mod tests {
         let mut wrong_base = base;
         wrong_base.known_at_cursor = 2;
         assert!(transaction.preview(&wrong_base).is_err());
+    }
+
+    #[test]
+    fn claim_only_snapshot_needs_no_parallel_schema_or_recall_path() {
+        let scope = ScopeId::new("instance:claims").unwrap();
+        let claim = Claim::new(
+            Subject::new("project-alpha").unwrap(),
+            Predicate::new("status").unwrap(),
+            "durable authentication recovery",
+            10,
+            10,
+            Producer {
+                actor: "agent:test".into(),
+                on_behalf_of: None,
+                session: None,
+            },
+        );
+        let commit = RuntimeCommit {
+            scope: scope.clone(),
+            at: 10,
+            actor: "agent:test".into(),
+            expected_cursor: 0,
+            mutations: vec![RuntimeMutation::Claim {
+                claim: claim.clone(),
+            }],
+        };
+        let change = RuntimeChange::committed(
+            1,
+            &commit,
+            &commit.digest(),
+            0,
+            commit.mutations[0].clone(),
+            None,
+        );
+        let snapshot = RuntimeDataSnapshot::from_claim_changes(&[change], scope, 20, 1).unwrap();
+        assert_eq!(snapshot.schema_revision, 0);
+        assert_eq!(snapshot.claims, vec![claim]);
+        assert!(snapshot.records.is_empty());
     }
 }

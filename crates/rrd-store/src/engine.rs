@@ -1,4 +1,4 @@
-//! The storage port. `PLAN.md` Step S: the ability to fold in storage.
+//! The canonical storage port used by the RRFlow engine.
 //!
 //! rrflow's value is the semantic layer — bi-temporal claims, durability
 //! classes, projections that ground against their log, recall, the ledger.
@@ -313,14 +313,23 @@ pub trait Engine: ClaimSource<Error = Error> {
                 "runtime data snapshot requires more than {replay_limit} retained changes"
             )));
         }
-        let schema = schema_at_read(&read, &page)?;
-        let snapshot = RuntimeDataSnapshot::from_changes(
-            &page.changes,
-            &schema,
-            scope.clone(),
-            valid_at,
-            read.commit_cursor,
-        )?;
+        let snapshot = if read.schema_revision.is_some() {
+            let schema = schema_at_read(&read, &page)?;
+            RuntimeDataSnapshot::from_changes(
+                &page.changes,
+                &schema,
+                scope.clone(),
+                valid_at,
+                read.commit_cursor,
+            )?
+        } else {
+            RuntimeDataSnapshot::from_claim_changes(
+                &page.changes,
+                scope.clone(),
+                valid_at,
+                read.commit_cursor,
+            )?
+        };
         Ok((read, snapshot))
     }
 

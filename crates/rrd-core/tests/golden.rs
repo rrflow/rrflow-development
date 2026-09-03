@@ -1,10 +1,10 @@
-//! Golden vectors: the cross-language storage contract (`PLAN.md` Step S).
+//! Golden vectors for the cross-language storage contract.
 //!
 //! A parity engine in another language — the Go/bbolt engine for the LFG
 //! side first — is byte-compatible with rrflow exactly when it reproduces
 //! these vectors: key encodings (including the inverted-timestamp ordering
 //! that makes newest-first a forward scan), prefixes and their exclusive
-//! ends, and the recall content digest. The fixture is checked in; this
+//! ends, plus stamped runtime and reasoning envelopes. The fixture is checked in; this
 //! test regenerates every vector from the kernel and fails on any drift,
 //! so an encoding change cannot land silently and orphan a parity
 //! implementation.
@@ -13,13 +13,12 @@
 //! --test golden` — and treat a diff in the fixture as what it is: a wire
 //! format break that every engine must follow.
 
-use rrd_core::reference::MemoryClaims;
 use rrd_core::{
-    key, recall, AuditDecision, AuditEnvelope, Check, CheckStatus, Claim, DataTransaction,
-    DecisionKind, Evidence, Predicate, Producer, ProjectionId, ProjectionStamp, ProjectionState,
-    ReadStamp, Reader, ReasoningPayload, ReasoningRun, RecallQuery, RetentionPin, RunOutcome,
-    RuntimeCommit, RuntimeEvent, RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties,
-    RuntimeType, ScopeId, SnapshotHandle, Subject, DATA_RUNTIME_CONTRACT_VERSION,
+    key, AuditDecision, AuditEnvelope, Check, CheckStatus, Claim, DataTransaction, DecisionKind,
+    Evidence, Predicate, Producer, ProjectionId, ProjectionStamp, ProjectionState, ReadStamp,
+    Reader, ReasoningPayload, ReasoningRun, RetentionPin, RunOutcome, RuntimeCommit, RuntimeEvent,
+    RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeType, ScopeId, SnapshotHandle,
+    Subject, DATA_RUNTIME_CONTRACT_VERSION,
 };
 
 fn hex(bytes: &[u8]) -> String {
@@ -61,20 +60,6 @@ fn vectors() -> serde_json::Value {
     let older = key::claim_key(&wp3, &status, 1_000, 2_000);
     let newer = key::claim_key(&wp3, &status, 1_001, 2_000);
 
-    let mut reference = MemoryClaims::new();
-    let mut first = Claim::new(
-        wp3.clone(),
-        status.clone(),
-        "planned",
-        100,
-        100,
-        Producer {
-            actor: "golden".into(),
-            on_behalf_of: None,
-            session: None,
-        },
-    );
-    first.valid_to = Some(200);
     let second = Claim::new(
         wp3.clone(),
         status.clone(),
@@ -87,19 +72,6 @@ fn vectors() -> serde_json::Value {
             session: None,
         },
     );
-    reference.insert(first.clone()).unwrap();
-    reference.insert(second.clone()).unwrap();
-    let set = recall(
-        &reference,
-        &RecallQuery {
-            subjects: vec![wp3.clone()],
-            predicates: None,
-            as_of: 300,
-        },
-        10_000,
-    )
-    .unwrap();
-
     let runtime_scope = ScopeId::new("instance:golden").unwrap();
     let read_stamp =
         ReadStamp::new(runtime_scope.clone(), Some(3), 2, 7, Some("11".repeat(32))).unwrap();
@@ -266,12 +238,6 @@ fn vectors() -> serde_json::Value {
             "1000": key::invert(1_000),
         },
         "claim_json": serde_json::to_value(&second).unwrap(),
-        "recall wp3 as_of=300 budget=10000": {
-            "claims_returned": set.claims.len(),
-            "current_object": set.claims[0].object,
-            "digest": set.digest,
-            "token_estimate": set.token_estimate,
-        },
         "data_runtime_v1": {
             "read_stamp": read_stamp,
             "snapshot_handle": snapshot,

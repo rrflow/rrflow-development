@@ -9,11 +9,9 @@ mod capability_surface;
 mod diagnostic;
 mod function;
 mod inference;
-mod lifecycle;
+mod memory_context;
 mod platform;
-mod runtime_tool;
 mod sdk_conformance;
-mod workplan;
 
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
@@ -45,44 +43,17 @@ pub use inference::{
     GenerateEmbeddingsResult, GeneratedEmbedding, ListEmbeddingModels, MAX_EMBEDDING_BATCH_BYTES,
     MAX_EMBEDDING_BATCH_INPUTS, MAX_EMBEDDING_INPUT_BYTES,
 };
-pub use lifecycle::{
-    AdapterCoverageEntryV1, AdapterCoveragePointV1, AdapterCoverageStateV1,
-    AdapterCoverageVectorV1, AdapterKindV1, AdapterMutationClassV1, ArchitectureAnswerV1,
-    ArchitectureAssessmentV1, ArchitectureBoundaryDecisionV1, ArchitectureBoundaryKindV1,
-    ArchitectureEvidenceKindV1, ArchitectureEvidenceV1, ArchitectureImpactDispositionV1,
-    ArchitectureImplicationV1, BoundaryChoiceAnswerV1, CanonicalAdapterEventV1,
-    CapabilityOwnershipAnswerV1, CrossBoundaryImplicationsAnswerV1, ExactExecutionObservationV1,
-    ExactExecutionRepositoryV1, ExactExecutionRequestV1, ExactExecutionStreamV1,
-    GoldenPatternSelectionV1, LifecycleEnforcementLevelV1, LifecycleEventCommandV1,
-    LifecycleEventEnvelopeV1, LifecycleEventTypeV1, LifecyclePayloadV1, LifecyclePhaseV1,
-    LifecycleProjectionRefreshV1, LifecycleReadStampV1, LifecycleRiskV1,
-    LifecycleSessionSnapshotV1, LifecycleSupervisorContextV1, LifecycleTaskKindV1,
-    LifecycleToolAuthorizationV1, LifecycleToolCompletionV1, LifecycleToolRequestV1,
-    LifecycleTraceContextV1, LifecycleTurnStatusV1, PathOwnershipAnswerV1, PatternChoiceAnswerV1,
-    PublicContractAnswerV1, RejectedGoldenPatternV1, SelectedGoldenPatternV1,
-    VerificationMatrixAnswerV1, ADAPTER_CONFORMANCE_FORMAT_VERSION,
-    ARCHITECTURE_ASSESSMENT_FORMAT_VERSION, EXACT_EXECUTION_CONTRACT,
-    GOLDEN_PATTERN_REGISTRY_REVISION, LIFECYCLE_SPEC_VERSION, MAX_EXACT_EXECUTION_ARGV,
-    MAX_EXACT_EXECUTION_ARG_BYTES, MAX_EXACT_EXECUTION_CHANGED_PATHS,
-    MAX_EXACT_EXECUTION_OUTPUT_BYTES, MAX_EXACT_EXECUTION_TIMEOUT_MS, MAX_LIFECYCLE_EVENT_BYTES,
+pub use memory_context::{
+    context_packet_sha256, AssembleContext, ContextEvidence, ContextEvidenceKind, ContextItem,
+    ContextPacket, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
+    MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SCANNED_CHANGES,
+    MAX_CONTEXT_SEEDS,
 };
 pub use platform::{PlatformTermDefinition, PlatformTermRole, PLATFORM_TERMS};
-pub use runtime_tool::{
-    runtime_tool_arguments_sha256, runtime_tool_invocation_sha256, ListRuntimeTools,
-    RuntimeToolAuthorization, RuntimeToolCatalogue, RuntimeToolDescriptor, RuntimeToolInvocation,
-    RuntimeToolInvocationResult, RuntimeToolLifecyclePolicy, MAX_RUNTIME_TOOL_ARGUMENT_BYTES,
-    MAX_RUNTIME_TOOL_RESULT_BYTES, RUNTIME_TOOL_CATALOGUE_VERSION,
-};
 pub use sdk_conformance::{
     SdkConformanceBackup, SdkConformanceChangefeed, SdkConformanceCorpus, SdkConformanceExpected,
     SdkConformanceIdentity, SdkConformanceSession, SdkConformanceTransaction, SdkConformanceVector,
     SDK_CONFORMANCE_FORMAT_VERSION,
-};
-pub use workplan::{
-    WorkGateDefinition, WorkItemDefinition, WorkItemStatus, WorkItemStatusSnapshot,
-    WorkPlanDefinition, WorkPlanEventEnvelope, WorkPlanEventKind, WorkPlanOperation,
-    WorkPlanSnapshot, MAX_WORK_PLAN_GATES, MAX_WORK_PLAN_ITEMS, MAX_WORK_PLAN_TEXT_BYTES,
-    WORK_PLAN_SCHEMA_VERSION,
 };
 
 use schemars::JsonSchema;
@@ -94,7 +65,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "9817762c1185131328eb7363a0702fe3d5da5983469b044edaadef4bb275f655";
+    "d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -2921,19 +2892,8 @@ pub enum SecurityAction {
     DiagnosticsRead,
     SecurityAdmin,
     MemoryContextRead,
-    MemoryInspect,
-    MemoryRecall,
-    MemoryRetire,
-    MemoryWrite,
-    LifecycleApply,
-    ProjectAttune,
-    ProjectRoute,
     ReasoningRead,
     ReasoningWrite,
-    WorkPlanRead,
-    WorkPlanControl,
-    WorkPlanVerifyExecute,
-    RuntimeToolCatalogueRead,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -3179,16 +3139,10 @@ pub enum EndpointAuthentication {
     SessionBearer,
 }
 
-/// Source of the policy action enforced for an endpoint.
-///
-/// Runtime-tool invocation derives its mutation bit and granular action from
-/// the selected versioned tool descriptor. It deliberately has no broad
-/// dispatch action that a principal could be granted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "source", rename_all = "snake_case")]
 pub enum EndpointAction {
     Fixed { action: SecurityAction },
-    RuntimeToolDescriptor,
 }
 
 impl EndpointAction {
@@ -3199,7 +3153,6 @@ impl EndpointAction {
     pub const fn fixed_action(self) -> Option<SecurityAction> {
         match self {
             Self::Fixed { action } => Some(action),
-            Self::RuntimeToolDescriptor => None,
         }
     }
 }
@@ -3278,19 +3231,6 @@ impl EndpointCatalogue {
             }
             if endpoint.mutation && endpoint.method == HttpMethod::Get {
                 return invalid("mutating endpoints may not use GET");
-            }
-            if endpoint.action == EndpointAction::RuntimeToolDescriptor
-                && (endpoint.operation.as_str() != "runtime-tool-invoke"
-                    || endpoint.method != HttpMethod::Post
-                    || endpoint.path != "/v1/runtime/tools/invoke"
-                    || endpoint.authentication != EndpointAuthentication::SessionBearer
-                    || !endpoint.mutation
-                    || endpoint.request_type != "RuntimeToolInvocation"
-                    || endpoint.response_type != "RuntimeToolInvocationResult")
-            {
-                return invalid(
-                    "runtime-tool-derived authorization is restricted to the canonical invocation endpoint",
-                );
             }
         }
         if self
@@ -3424,6 +3364,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "ChangefeedPage",
         ),
         endpoint(
+            "context-assemble",
+            HttpMethod::Post,
+            "/v1/context/assemble",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::MemoryContextRead,
+            "AssembleContext",
+            "ContextPacket",
+        ),
+        endpoint(
             "diagnostics-read",
             HttpMethod::Post,
             "/v1/diagnostics/read",
@@ -3523,29 +3473,6 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "PollLiveQuery",
             "LiveQueryDeltaResult",
         ),
-        endpoint(
-            "runtime-tool-catalogue-read",
-            HttpMethod::Post,
-            "/v1/runtime/tools/list",
-            EndpointAuthentication::SessionBearer,
-            false,
-            SecurityAction::RuntimeToolCatalogueRead,
-            "ListRuntimeTools",
-            "RuntimeToolCatalogue",
-        ),
-        EndpointDescriptor {
-            operation: CanonicalId::new("runtime-tool-invoke")
-                .expect("static endpoint operation is canonical"),
-            method: HttpMethod::Post,
-            path: "/v1/runtime/tools/invoke".into(),
-            authentication: EndpointAuthentication::SessionBearer,
-            // The selected descriptor supplies the effective mutation bit.
-            // `true` keeps transport retries/idempotency conservative.
-            mutation: true,
-            action: EndpointAction::RuntimeToolDescriptor,
-            request_type: "RuntimeToolInvocation".into(),
-            response_type: "RuntimeToolInvocationResult".into(),
-        },
         endpoint(
             "restore-create",
             HttpMethod::Post,
@@ -4004,6 +3931,7 @@ fn schema_json<T: JsonSchema>() -> serde_json::Value {
 fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
     let schema = match name {
         "AbortTransaction" => schema_json::<RequestEnvelope<AbortTransaction>>(),
+        "AssembleContext" => schema_json::<RequestEnvelope<AssembleContext>>(),
         "BeginTransaction" => schema_json::<RequestEnvelope<BeginTransaction>>(),
         "CloseSession" => schema_json::<RequestEnvelope<CloseSession>>(),
         "CommitTransaction" => schema_json::<RequestEnvelope<CommitTransaction>>(),
@@ -4014,7 +3942,6 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EnsureQueryIndex" => schema_json::<RequestEnvelope<EnsureQueryIndex>>(),
         "EnsureVectorCollection" => schema_json::<RequestEnvelope<EnsureVectorCollection>>(),
         "ListQueryIndexes" => schema_json::<RequestEnvelope<ListQueryIndexes>>(),
-        "ListRuntimeTools" => schema_json::<RequestEnvelope<ListRuntimeTools>>(),
         "ListVectorCollections" => schema_json::<RequestEnvelope<ListVectorCollections>>(),
         "OpenSubscription" => schema_json::<RequestEnvelope<OpenSubscription>>(),
         "PollLiveQuery" => schema_json::<RequestEnvelope<PollLiveQuery>>(),
@@ -4027,7 +3954,6 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ReadEstate" => schema_json::<RequestEnvelope<ReadEstate>>(),
         "RenewSession" => schema_json::<RequestEnvelope<RenewSession>>(),
         "RestoreInstanceBackup" => schema_json::<RequestEnvelope<RestoreInstanceBackup>>(),
-        "RuntimeToolInvocation" => schema_json::<RequestEnvelope<RuntimeToolInvocation>>(),
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
@@ -4044,6 +3970,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ChangefeedFollowResult" => schema_json::<ResponseEnvelope<ChangefeedFollowResult>>(),
         "ChangefeedPage" => schema_json::<ResponseEnvelope<ChangefeedPage>>(),
         "CommitReceipt" => schema_json::<ResponseEnvelope<CommitReceipt>>(),
+        "ContextPacket" => schema_json::<ResponseEnvelope<ContextPacket>>(),
         "CloseSubscriptionResult" => schema_json::<ResponseEnvelope<CloseSubscriptionResult>>(),
         "CreateInstanceBackupResult" => {
             schema_json::<ResponseEnvelope<CreateInstanceBackupResult>>()
@@ -4069,10 +3996,6 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "Readiness" => schema_json::<ResponseEnvelope<Readiness>>(),
         "RestoreInstanceBackupResult" => {
             schema_json::<ResponseEnvelope<RestoreInstanceBackupResult>>()
-        }
-        "RuntimeToolCatalogue" => schema_json::<ResponseEnvelope<RuntimeToolCatalogue>>(),
-        "RuntimeToolInvocationResult" => {
-            schema_json::<ResponseEnvelope<RuntimeToolInvocationResult>>()
         }
         "ServiceCapabilities" => schema_json::<ResponseEnvelope<ServiceCapabilities>>(),
         "SessionLease" => schema_json::<ResponseEnvelope<SessionLease>>(),

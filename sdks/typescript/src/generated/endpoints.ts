@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 9817762c1185131328eb7363a0702fe3d5da5983469b044edaadef4bb275f655
+// OpenAPI SHA-256: d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645
 export const endpoints = {
   "audit-export": {
     "method": "POST",
@@ -40,6 +40,12 @@ export const endpoints = {
   "changefeed-read": {
     "method": "POST",
     "path": "/v1/changes/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "context-assemble": {
+    "method": "POST",
+    "path": "/v1/context/assemble",
     "authentication": "session_bearer",
     "mutation": false
   },
@@ -96,18 +102,6 @@ export const endpoints = {
     "path": "/v1/restores",
     "authentication": "session_bearer",
     "mutation": true
-  },
-  "runtime-tool-invoke": {
-    "method": "POST",
-    "path": "/v1/runtime/tools/invoke",
-    "authentication": "session_bearer",
-    "mutation": true
-  },
-  "runtime-tool-catalogue-read": {
-    "method": "POST",
-    "path": "/v1/runtime/tools/list",
-    "authentication": "session_bearer",
-    "mutation": false
   },
   "endpoint-catalogue": {
     "method": "GET",

@@ -1,6 +1,7 @@
 # RRFlow/RRD pre-release identity cutover
 
-Status: authoritative V1 naming contract.
+Status: supporting V1 naming record. `README.md` remains the product and
+architecture authority.
 
 RRFlow means **Reason Ready Flow** and is the product. RRD means **Reason Ready
 Daemon** and is RRFlow's single engine/runtime authority. The retired
@@ -24,16 +25,17 @@ is the recovery boundary. Runtime compatibility code is not.
    pre-release name.
 4. RRFlow owns product-facing surfaces. RRD owns the engine, daemon, protocol,
    storage/query/index internals, and their persisted identities.
-5. Specialized storage, graph, vector, inference, and query crates are physical
-   modules behind `rrd-engine`. They may not own a second catalogue,
+5. Specialized storage, vector, inference, and query crates are physical
+   modules behind `rrd-engine`. Graph traversal is owned directly by the
+   engine. These components may not own a second catalogue,
    transaction truth, security authority, event log, or public product.
 6. `rrflow-mcp`, `rrflow-cli`, SDKs, and Connectome consume authoritative RRD
    contracts; they do not duplicate registries or engine behavior.
 7. The source gate is case-insensitive and has no exception for active files.
    Historical Git objects and the enclosing checkout directory are outside the
    build/runtime surface.
-8. Capability completion is independent of naming completion. A renamed but
-   incomplete capability remains explicitly incomplete in the gap ledger.
+8. Capability completion is independent of naming completion. Current status
+   and incomplete capabilities are recorded only in `README.md`.
 
 ## Canonical names
 
@@ -49,7 +51,7 @@ is the recovery boundary. Runtime compatibility code is not.
 | Native WAL/MVCC/LSM | `rrd-lsm` / `rrd_lsm` |
 | Persistence port | `rrd-store` / `rrd_store` |
 | Query parser/planner/executor | `rrd-query` / `rrd_query`; public language RRFlowQL |
-| Graph | `rrd-graph` / `rrd_graph` |
+| Graph traversal | internal to `rrd-engine`; no separate graph crate or authority |
 | Vector and TurboQuant | `rrd-vector` / `rrd_vector` |
 | Inference | `rrd-inference` / `rrd_inference` |
 | Operator knowledge | `rrd-operator-knowledge` / `rrd_operator_knowledge` |

@@ -9,7 +9,7 @@ description = "Canonical Multi-AZ contracts and deterministic failure simulation
 [features]
 default = []
 object-transfer = ["dep:rrd-store"]
-openraft-adapter = ["dep:openraft", "dep:rrd-lsm", "object-transfer"]
+openraft-adapter = ["dep:openraft", "dep:rrd-lsm", "dep:tokio", "object-transfer"]
 openraft-transport = [
     "openraft-adapter",
     "dep:rustls",
@@ -32,6 +32,7 @@ x509-parser = { version = "0.18", optional = true }
 
 [dev-dependencies]
 rcgen = "0.14"
+rrd-store = { path = "../rrd-store" }
 tempfile = "3"
 tokio = { version = "1", features = ["fs", "io-util", "rt-multi-thread", "sync", "time"] }
 

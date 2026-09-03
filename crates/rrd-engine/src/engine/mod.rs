@@ -92,10 +92,12 @@ use std::time::{Duration, Instant};
 mod automation;
 mod backup;
 mod changefeed;
+mod context;
 mod control;
 mod core;
 mod data;
 mod diagnostic;
+mod distributed;
 mod error;
 mod estate;
 mod estate_control;
@@ -118,6 +120,9 @@ mod vector;
 use control::*;
 pub use core::RrdEngine;
 use data::public_data_snapshot;
+pub use distributed::{
+    DistributedAuthorityRead, DistributedReadRoute, PreparedDistributedAuthority,
+};
 pub use error::{Result, ServiceError, ServiceErrorKind};
 pub use estate_control::{
     EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,

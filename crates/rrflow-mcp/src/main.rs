@@ -7,7 +7,7 @@ use authority::RuntimeAuthority;
 use serde_json::{json, Value};
 use std::io::{BufRead, Write};
 
-const INSTRUCTIONS: &str = "Call rrflow_preflight before reasoning. Provider hook payloads use rrflow_hook; rrflow_lifecycle accepts only strict canonical lifecycle envelopes. Standalone MCP is cooperative and cannot intercept host-owned tools.";
+const INSTRUCTIONS: &str = "Use rrflow_context when durable context is needed. RRFlow assembles temporal, lexical, semantic, and graph evidence inside one engine read.";
 
 fn main() {
     if let Err(error) = run() {
@@ -98,7 +98,6 @@ fn dispatch(authority: &mut RuntimeAuthority, id: Value, request: &Value) -> Val
                 "result":{
                     "tools":tools(authority),
                     "_meta":{
-                        "io.rrflow/taskCatalogue":rrd_engine::mcp_task_catalogue(),
                         "io.rrflow/runtimeProfile":authority.profile()
                     }
                 }
@@ -110,19 +109,14 @@ fn dispatch(authority: &mut RuntimeAuthority, id: Value, request: &Value) -> Val
                 .get("name")
                 .and_then(Value::as_str)
                 .unwrap_or("unknown");
-            if !authority
-                .catalogue()
-                .tools
-                .iter()
-                .any(|descriptor| descriptor.name.as_str() == name)
-            {
+            if name != "rrflow_context" {
                 return rpc_error(id, -32602, &format!("unknown tool {name:?}"));
             }
             let args = params
                 .get("arguments")
                 .cloned()
                 .unwrap_or_else(|| json!({}));
-            let result = authority.call(name, &args);
+            let result = authority.assemble_context(&args);
             match result {
                 Ok(content) => json!({
                     "jsonrpc":"2.0","id":id,
@@ -138,31 +132,26 @@ fn dispatch(authority: &mut RuntimeAuthority, id: Value, request: &Value) -> Val
     }
 }
 
-fn tools(authority: &RuntimeAuthority) -> Value {
-    let definitions = rrd_engine::runtime_tool_catalogue();
-    Value::Array(
-        authority
-            .catalogue()
-            .tools
-            .iter()
-            .map(|descriptor| {
-                let definition = definitions
-                    .iter()
-                    .find(|definition| definition.name == descriptor.name.as_str())
-                    .expect("MCP authority catalogue must match the local executable registry");
-                json!({
-                    "name": descriptor.name,
-                    "description": descriptor.description,
-                    "inputSchema": descriptor.input_schema,
-                    "annotations": {
-                        "readOnlyHint": !descriptor.mutation,
-                        "destructiveHint": descriptor.name.as_str() == "rrflow_forget"
-                    },
-                    "_meta":{"io.rrflow/taskDomains":definition.task_domains}
-                })
-            })
-            .collect(),
-    )
+fn tools(_authority: &RuntimeAuthority) -> Value {
+    json!([{
+        "name":"rrflow_context",
+        "description":"Assemble bounded temporal, lexical, semantic, and graph context from the authoritative RRD engine.",
+        "inputSchema":{
+            "type":"object",
+            "additionalProperties":false,
+            "required":["query"],
+            "properties":{
+                "query":{"type":"string"},
+                "seeds":{"type":"array","items":{"type":"object","required":["kind","id"],"properties":{"kind":{"type":"string"},"id":{"type":"string"}}}},
+                "valid_at":{"type":"integer","minimum":1},
+                "max_graph_depth":{"type":"integer","minimum":0,"maximum":32,"default":2},
+                "max_items":{"type":"integer","minimum":1,"maximum":512,"default":32},
+                "max_output_bytes":{"type":"integer","minimum":1,"maximum":786432,"default":262144},
+                "max_scanned_changes":{"type":"integer","minimum":1,"maximum":1000000,"default":100000}
+            }
+        },
+        "annotations":{"readOnlyHint":true,"destructiveHint":false}
+    }])
 }
 
 fn rpc_error(id: Value, code: i64, message: &str) -> Value {

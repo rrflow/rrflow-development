@@ -167,7 +167,7 @@ impl RrdEngine {
             })
     }
 
-    fn generate_embeddings_at(
+    pub(in crate::engine) fn generate_embeddings_at(
         &self,
         request: &GenerateEmbeddings,
         read: ReadStamp,

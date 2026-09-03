@@ -16,7 +16,7 @@ pub const CLAIMS: &str = "claims";
 ///
 /// Replaces the `events` keyspace carried over from the prior runtime, which was
 /// allocated for a term the specification never defined and which nothing wrote
-/// to. See `PLAN.md` F1.
+/// to. The mapping is part of the persisted-format compatibility contract.
 pub const SEQUENCE_INDEX: &str = "sequence_index";
 /// Read telemetry. Loss on crash is acceptable.
 pub const ACCESS: &str = "access";

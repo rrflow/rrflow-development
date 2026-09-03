@@ -1,20 +1,9 @@
-//! Invocation records. `SPEC.md` §13.
-//!
-//! Stage 1 requires that every trigger be invoked explicitly and recorded, and
-//! that no trigger be automated before its recorded invocations justify it. This
-//! module is that record.
-//!
-//! Records are authoritative, not telemetry: they are the evidence from which
-//! automation policy is later derived, so losing them would remove the basis for
-//! the decision. The §13.1 effectiveness ledger extends this shape with token
-//! counts rather than introducing a second log.
+//! Operator invocation audit records.
 
 use rrd_core::Millis;
 use serde::{Deserialize, Serialize};
 
-/// What caused an invocation. Only `Manual` occurs at stage 1; the remaining
-/// variants exist so that promoting a trigger to automatic is a change of value
-/// rather than a change of schema.
+/// What caused an invocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Trigger {
@@ -42,55 +31,6 @@ pub enum Outcome {
     Error,
 }
 
-/// What became of a recall's content, judged after the fact. `SPEC.md` §13.1:
-/// this is the signal trigger policy is derived from — a recall that
-/// consistently precedes `corrected` is being invoked at the wrong point.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RecallOutcome {
-    Accepted,
-    Corrected,
-    Discarded,
-    /// The initial state of every record. Judgement arrives later, through the
-    /// operator, or not at all — and an unjudged record stays honest by saying
-    /// so.
-    #[default]
-    Unknown,
-}
-
-impl std::fmt::Display for RecallOutcome {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            RecallOutcome::Accepted => "accepted",
-            RecallOutcome::Corrected => "corrected",
-            RecallOutcome::Discarded => "discarded",
-            RecallOutcome::Unknown => "unknown",
-        })
-    }
-}
-
-/// The `SPEC.md` §13.1 effectiveness fields, carried by recall invocations.
-///
-/// The ledger extends the invocation record rather than introducing a second
-/// log (this module's header). Token reduction is a measurement and is never
-/// stated as a property without one: `baseline_tokens` is present only when a
-/// controlled comparison produced it, and absent it the reduction is
-/// unverified by definition.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Effectiveness {
-    pub query: String,
-    pub claims_returned: usize,
-    pub tokens_emitted: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub baseline_tokens: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub baseline_mode: Option<String>,
-    /// e.g. "frontier:claude", "local:llama".
-    pub provider: String,
-    #[serde(default)]
-    pub outcome: RecallOutcome,
-}
-
 /// One recorded invocation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Invocation {
@@ -105,9 +45,6 @@ pub struct Invocation {
     /// Failure reason, or a short result summary.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
-    /// `SPEC.md` §13.1 fields, present when the command was a recall.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub effectiveness: Option<Effectiveness>,
 }
 
 impl Invocation {
@@ -128,23 +65,7 @@ impl Invocation {
                 .as_ref()
                 .map(|d| format!("  {d}"))
                 .unwrap_or_default(),
-        ) + &self
-            .effectiveness
-            .as_ref()
-            .map(|e| {
-                format!(
-                    "\n        recall \"{}\": {} claim(s), {} token(s){}, {}, outcome {}",
-                    e.query,
-                    e.claims_returned,
-                    e.tokens_emitted,
-                    e.baseline_tokens
-                        .map(|b| format!(" vs {b} baseline"))
-                        .unwrap_or_else(|| " (baseline unmeasured — reduction unverified)".into()),
-                    e.provider,
-                    e.outcome,
-                )
-            })
-            .unwrap_or_default()
+        )
     }
 }
 
@@ -177,6 +98,4 @@ pub struct InvocationInput<'a> {
     pub outcome: Outcome,
     pub duration_ms: u64,
     pub detail: Option<String>,
-    /// `SPEC.md` §13.1 fields, supplied when the command is a recall.
-    pub effectiveness: Option<Effectiveness>,
 }

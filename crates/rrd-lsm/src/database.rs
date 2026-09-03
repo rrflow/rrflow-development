@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 const WAL_DIRECTORY: &str = "wal";
 const SEGMENT_DIRECTORY: &str = "segments";
@@ -370,23 +371,32 @@ impl Database {
     }
 
     pub fn open_with_options(root: &Path, options: DatabaseOptions) -> Result<Self> {
+        let total_started = Instant::now();
         let options = options.validate()?;
         let segment_io = IoContext::new(options.segment_io)?;
+        let manifest_started = Instant::now();
         let manifests = ManifestStore::open(root)?;
         let (_, manifest) = manifests
             .current()?
             .ok_or_else(|| Error::InvalidManifest("database has no CURRENT manifest".into()))?;
+        let manifest_ms = manifest_started.elapsed().as_millis() as u64;
         let block_cache = new_block_cache(options.block_cache_bytes);
+        let segment_bytes = manifest
+            .segments
+            .iter()
+            .map(|segment| segment.bytes)
+            .sum::<u64>();
+        let segments_started = Instant::now();
         let mut segments = Vec::with_capacity(manifest.segments.len());
         for expected in &manifest.segments {
-            let mut segment = Segment::open_with_cache_and_io(
+            let segment = Segment::open_expected_with_cache_and_io(
                 &root
                     .join(SEGMENT_DIRECTORY)
                     .join(format!("{}.seg", expected.id)),
+                expected,
                 Arc::clone(&block_cache),
                 Arc::clone(&segment_io),
             )?;
-            segment.descriptor.level = expected.level;
             if &segment.descriptor != expected {
                 return Err(Error::InvalidManifest(format!(
                     "segment {} does not match its manifest descriptor",
@@ -395,14 +405,17 @@ impl Database {
             }
             segments.push(segment);
         }
+        let segments_ms = segments_started.elapsed().as_millis() as u64;
         let path = wal_path(root, manifest.wal_start_sequence);
         let mut memtable = Memtable::at_sequence(manifest.durable_sequence);
+        let wal_started = Instant::now();
         let recovery = replay_from(&path, manifest.wal_start_sequence, |batch| {
             memtable.apply_owned_recovered(batch)
         })?;
         if let Some(offset) = recovery.torn_tail {
             return Err(Error::TornTail { offset });
         }
+        let wal_recovery_ms = wal_started.elapsed().as_millis() as u64;
         let wal_payload_bytes = recovery.payload_bytes;
         let maintenance_stats = MaintenanceStats {
             peak_wal_payload_bytes: wal_payload_bytes,
@@ -410,6 +423,18 @@ impl Database {
             ..MaintenanceStats::default()
         };
         let wal = WalWriter::open_after_recovery(&path, recovery)?;
+        tracing::info!(
+            target: "rrd_lsm::open",
+            path = %root.display(),
+            manifest_ms,
+            segment_count = manifest.segments.len(),
+            segment_bytes,
+            segments_ms,
+            wal_recovery_ms,
+            wal_payload_bytes,
+            total_ms = total_started.elapsed().as_millis() as u64,
+            "native LSM open phases completed"
+        );
         Ok(Self {
             root: root.to_owned(),
             manifests,
@@ -1522,6 +1547,54 @@ impl Database {
                 .is_none_or(|current| version.sequence > current.sequence)
             {
                 visible.insert(key, version);
+            }
+        }
+        Ok(visible
+            .into_iter()
+            .filter_map(|(key, version)| version.value.map(|value| (key, value.into_vec())))
+            .collect())
+    }
+
+    /// Scans sorted, disjoint half-open key ranges at one snapshot. Immutable
+    /// segments are visited once so ranges sharing a compressed block share
+    /// one authenticated read and decode.
+    pub fn scan_ranges(
+        &self,
+        ranges: &[(Vec<u8>, Vec<u8>)],
+        snapshot: Snapshot,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        if ranges.iter().any(|(start, end)| start >= end)
+            || ranges.windows(2).any(|ranges| ranges[0].1 > ranges[1].0)
+        {
+            return Err(Error::InvalidConfiguration(
+                "multi-range scan requires sorted, disjoint, non-empty half-open ranges".into(),
+            ));
+        }
+        if ranges.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut visible = BTreeMap::<Vec<u8>, VersionedValue>::new();
+        for segment in &self.segments {
+            for (key, version) in segment.visible_ranges(ranges, snapshot.sequence)? {
+                if visible
+                    .get(&key)
+                    .is_none_or(|current| version.sequence > current.sequence)
+                {
+                    visible.insert(key, version);
+                }
+            }
+        }
+        for (start, end) in ranges {
+            for (key, version) in self
+                .memtable
+                .visible_from(start, Some(end), snapshot.sequence)
+            {
+                if visible
+                    .get(&key)
+                    .is_none_or(|current| version.sequence > current.sequence)
+                {
+                    visible.insert(key, version);
+                }
             }
         }
         Ok(visible

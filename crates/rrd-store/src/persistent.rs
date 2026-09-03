@@ -7,7 +7,7 @@
 
 use crate::{
     migration_status, Durability, Engine, Error, Invocation, InvocationInput, MigrationPhase,
-    NativeEngine, PhysicalStoreEvidence, RecallOutcome, RemovalReport, Result, Store,
+    NativeEngine, PhysicalStoreEvidence, RemovalReport, Result, Store,
 };
 use rrd_core::{
     AuditEnvelope, Claim, ClaimSource, DataTransaction, DataTransactionView, Millis, Predicate,
@@ -99,13 +99,6 @@ impl PersistentEngine {
         match self {
             Self::Native(engine) => engine.record_invocation(input),
             Self::FjallCompatibility(engine) => engine.record_invocation(input),
-        }
-    }
-
-    pub fn set_recall_outcome(&self, ordinal: u64, outcome: RecallOutcome) -> Result<Invocation> {
-        match self {
-            Self::Native(engine) => engine.set_recall_outcome(ordinal, outcome),
-            Self::FjallCompatibility(engine) => engine.set_recall_outcome(ordinal, outcome),
         }
     }
 

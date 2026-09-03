@@ -1,24 +1,17 @@
-use connectome_ui::{ConnectomeBackend, ConnectomeConfig, InvokeToolRequest, QueryRequest};
-use rrd_contract::{
-    CanonicalId, QueryBudget, ResourceId, ResourceKind, ResourcePath, WorkGateDefinition,
-    WorkItemDefinition, WorkPlanDefinition,
-};
+use connectome_ui::{ConnectomeBackend, ConnectomeConfig, ContextRequest};
+use rrd_contract::{CanonicalId, ContextEvidenceKind, ResourceId, ResourceKind, ResourcePath};
 use rrd_core::{
     digest, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
     RuntimeValue, RuntimeValueType, ScopeId,
 };
-use rrd_engine::{
-    install_work_plan, load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine,
-    WorkPlanOperation,
-};
+use rrd_engine::{load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
     SECURITY_FORMAT,
 };
 use rrd_server::RrdHttpServer;
 use rrd_store::{Engine, PersistentEngine};
-use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -82,33 +75,6 @@ fn start_rrd() -> (tempfile::TempDir, RunningRrd) {
             ],
         })
         .unwrap();
-    install_work_plan(
-        &storage,
-        WorkPlanDefinition {
-            schema_version: 1,
-            plan_id: "connectome-plan".into(),
-            title: "Connectome generated work-plan contract".into(),
-            authority: "RRD".into(),
-            status_policy: "Evidence only".into(),
-            gate: vec![WorkGateDefinition {
-                id: "G00".into(),
-                title: "Control".into(),
-                depends_on: vec![],
-            }],
-            item: vec![WorkItemDefinition {
-                id: "G00-W05".into(),
-                gate: "G00".into(),
-                title: "Generated surfaces".into(),
-                depends_on: vec![],
-                acceptance: vec!["Connectome consumes RRD discovery".into()],
-            }],
-        },
-        101,
-        "connectome-fixture",
-        "connectome-plan-install",
-    )
-    .unwrap();
-
     let instance = CanonicalId::new("connectome-test").unwrap();
     let resource = ResourcePath {
         segments: vec![ResourceId::new(ResourceKind::Instance, instance.as_str()).unwrap()],
@@ -124,11 +90,10 @@ fn start_rrd() -> (tempfile::TempDir, RunningRrd) {
         role_ids: Default::default(),
         grants: [
             Action::SessionCreate,
+            Action::SessionClose,
             Action::DiagnosticsRead,
-            Action::RuntimeToolCatalogueRead,
             Action::ServiceInspect,
-            Action::QueryExecute,
-            Action::WorkPlanRead,
+            Action::MemoryContextRead,
         ]
         .into_iter()
         .map(|action| ResourceGrant {
@@ -208,29 +173,10 @@ fn connectome_uses_authenticated_public_rrd_contracts_end_to_end() {
         service.product_capabilities,
         rrd_engine::product_capability_catalogue()
     );
-    let tools = backend.runtime_tool_catalogue().unwrap();
-    for operation in WorkPlanOperation::ALL {
-        assert!(
-            tools
-                .tools
-                .iter()
-                .any(|tool| tool.name.as_str() == operation.runtime_tool_name()),
-            "Connectome omitted generated work-plan operation {:?}",
-            operation
-        );
-    }
-    let work_plan_status = backend
-        .invoke_runtime_tool(InvokeToolRequest {
-            tool: CanonicalId::new(WorkPlanOperation::Status.runtime_tool_name()).unwrap(),
-            arguments: json!({"plan_id":"connectome-plan"}),
-        })
-        .unwrap();
-    let work_plan: serde_json::Value = serde_json::from_str(&work_plan_status.content).unwrap();
-    assert_eq!(work_plan["plan_id"], "connectome-plan");
-    assert_eq!(work_plan["items"][0]["status"], "pending");
     let snapshot = backend.diagnostic_snapshot().unwrap();
     assert_eq!(snapshot.scope, "instance:connectome-test");
-    assert_eq!(snapshot.read.runtime_cursor, 2);
+    let diagnostic_cursor = snapshot.read.runtime_cursor;
+    assert_eq!(diagnostic_cursor, 2);
     assert_eq!(snapshot.graph.records.len(), 1);
     assert_eq!(snapshot.graph.records[0].reference.id, "alpha");
     assert!(snapshot
@@ -240,30 +186,23 @@ fn connectome_uses_authenticated_public_rrd_contracts_end_to_end() {
         .any(|model| model.id.as_str() == "document"));
     snapshot.validate().unwrap();
 
-    let query = backend
-        .execute_query(QueryRequest {
-            query:
-                "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title EXPLAIN CONTRACT"
-                    .into(),
-            parameters: BTreeMap::new(),
-            budget: QueryBudget {
-                max_scanned_changes: 100,
-                max_rows: 10,
-                max_output_bytes: 4_096,
-                max_batch_rows: 10,
-                ..QueryBudget::default()
-            },
+    let packet = backend
+        .assemble_context(ContextRequest {
+            query: "Alpha".into(),
+            seeds: Vec::new(),
+            valid_at: Some(100),
+            max_graph_depth: 2,
+            max_items: 10,
+            max_output_bytes: 4_096,
+            max_scanned_changes: 100,
         })
         .unwrap();
-    assert_eq!(query.rows.len(), 1);
-    assert_eq!(query.rows[0].identity, "record:document:alpha");
-
-    let status = backend
-        .invoke_runtime_tool(InvokeToolRequest {
-            tool: CanonicalId::new("rrflow_service_status").unwrap(),
-            arguments: json!({}),
-        })
-        .unwrap();
-    assert_eq!(status.tool.as_str(), "rrflow_service_status");
-    assert!(status.content.contains("connectome-test"));
+    packet.validate().unwrap();
+    assert_eq!(packet.read.runtime_cursor, diagnostic_cursor);
+    assert_eq!(packet.items.len(), 1);
+    assert_eq!(packet.items[0].identity, "record:document:alpha");
+    assert!(packet.items[0]
+        .evidence
+        .iter()
+        .any(|evidence| evidence.kind == ContextEvidenceKind::Text));
 }
