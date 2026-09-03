@@ -178,10 +178,11 @@ must not implement retrieval itself.
 
 ## Connectome bootstrap and project attunement
 
-Connectome is a standalone client repository and release boundary. A checkout
-may be mounted beside or beneath the engine repository during development, but
-the client does not own engine state or lifecycle. Its first runtime invariant
-is a real HTTP bootstrap against the public RRD endpoints, in order:
+[Connectome](https://github.com/EonsofStupid/rrflow-connectome) is a standalone
+client repository and release boundary. A checkout may be mounted beside the
+engine repository during development, but the client does not own engine state
+or lifecycle. Its first runtime invariant is a real HTTP bootstrap against the
+public RRD endpoints, in order:
 
 ```text
 GET /v1/health/live
