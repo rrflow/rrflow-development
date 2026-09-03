@@ -39,10 +39,45 @@ def main() -> int:
         fail(f"Cargo workspace version is {workspace_version!r}, expected {VERSION!r}", failures)
 
     manifests = sorted((ROOT / "crates").glob("*/Cargo.toml"))
+    workspace_package_names: set[str] = set()
     for manifest in manifests:
         package = load_toml(manifest)["package"]  # type: ignore[index]
+        workspace_package_names.add(package["name"])  # type: ignore[index]
         if package.get("version") != {"workspace": True}:  # type: ignore[union-attr]
             fail(f"{manifest.relative_to(ROOT)} must use `version.workspace = true`", failures)
+
+    cargo_lock = load_toml(ROOT / "Cargo.lock")
+    stale_locked_packages = sorted(
+        package["name"]
+        for package in cargo_lock["package"]  # type: ignore[index]
+        if package["name"] in workspace_package_names
+        and package["version"] != VERSION
+        and "source" not in package
+    )
+    if stale_locked_packages:
+        fail(
+            "Cargo.lock has stale workspace versions for "
+            + ", ".join(stale_locked_packages),
+            failures,
+        )
+
+    readme_version_line = f"The current release-train version is `{VERSION}`."
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    if readme_version_line not in readme:
+        fail("README.md does not declare the canonical VERSION", failures)
+
+    version_policy_line = (
+        f"RRFlow's canonical current release-train version is `{VERSION}`."
+    )
+    version_policy = (ROOT / "docs/versioning.md").read_text(encoding="utf-8")
+    if version_policy_line not in version_policy:
+        fail("docs/versioning.md does not declare the canonical VERSION", failures)
+
+    if (ROOT / "apps/connectome").exists():
+        fail(
+            "apps/connectome is not a supported layout; Connectome is a separate repository",
+            failures,
+        )
 
     typescript = json.loads((ROOT / "sdks/typescript/package.json").read_text(encoding="utf-8"))
     if typescript["version"] != VERSION:
@@ -87,28 +122,6 @@ def main() -> int:
             f"expected {VERSION!r}",
             failures,
         )
-
-    connectome = ROOT / "apps/connectome"
-    if connectome.exists():
-        package_path = connectome / "package.json"
-        tauri_manifest = connectome / "src-tauri/Cargo.toml"
-        if not package_path.is_file() or not tauri_manifest.is_file():
-            fail("apps/connectome is present but lacks canonical package manifests", failures)
-        else:
-            connectome_package = json.loads(package_path.read_text(encoding="utf-8"))
-            if connectome_package.get("version") != VERSION:
-                fail(
-                    f"Connectome package version is {connectome_package.get('version')!r}, "
-                    f"expected {VERSION!r}",
-                    failures,
-                )
-            connectome_tauri = load_toml(tauri_manifest)["package"]  # type: ignore[index]
-            if connectome_tauri.get("version") != VERSION:  # type: ignore[union-attr]
-                fail(
-                    f"Connectome Tauri version is {connectome_tauri.get('version')!r}, "  # type: ignore[union-attr]
-                    f"expected {VERSION!r}",
-                    failures,
-                )
 
     if failures:
         for message in failures:

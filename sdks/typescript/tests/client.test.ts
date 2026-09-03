@@ -10,7 +10,7 @@ const jsonResponse = (value: unknown, status = 200) =>
   });
 
 test("generated catalogue tracks all mutation boundaries", () => {
-  assert.equal(Object.keys(endpoints).length, 34);
+  assert.equal(Object.keys(endpoints).length, 33);
   assert.equal(endpoints["audit-export"].path, "/v1/audit/export");
   assert.equal(endpoints["backup-create"].mutation, true);
   assert.equal(endpoints["transaction-preview"].mutation, true);
@@ -34,7 +34,7 @@ test("public negotiation retries transport loss and validates the ArkType envelo
           protocol: "rrd",
           protocol_version: 1,
           implementation: "rrd-server",
-          implementation_version: "0.1.0",
+          implementation_version: "1.0.0",
           deployment_mode: "local_daemon",
           instance: { kind: "instance", id: "sdk-test" },
           capabilities: [],

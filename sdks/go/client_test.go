@@ -54,7 +54,7 @@ func TestCapabilitiesRetryAndIdentity(t *testing.T) {
 			}
 			return okEnvelope("server-request", "server-operation", map[string]any{
 				"protocol": "rrd", "protocol_version": 1,
-				"implementation": "rrd-server", "implementation_version": "0.1.0",
+				"implementation": "rrd-server", "implementation_version": "1.0.0",
 				"deployment_mode": "local_daemon",
 				"instance":        map[string]any{"kind": "instance", "id": "sdk-test"},
 				"capabilities":    []any{},
@@ -169,7 +169,7 @@ func TestSecurityDeadlinesErrorsAndGeneratedCoverage(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "deadline has expired") {
 		t.Fatalf("unexpected deadline result: %v", err)
 	}
-	if len(endpoints) != 34 || !endpoints[OperationBackupCreate].Mutation ||
+	if len(endpoints) != 33 || !endpoints[OperationBackupCreate].Mutation ||
 		!endpoints[OperationTransactionPreview].Mutation ||
 		endpoints[OperationCapabilitiesRead].Authentication != "public" {
 		t.Fatalf("generated endpoint catalogue is incomplete: %#v", endpoints)

@@ -93,9 +93,9 @@ routing variables. It does not write the token to argv or a values file.
 Prove physical execution after installation:
 
 ```bash
-gh workflow run ci.yml --repo EonsofStupid/rrflow \
+gh workflow run ci.yml --repo rrflow/rrflow \
   --ref agent/connectome-temporal-runtime-visualizer
-gh run watch --repo EonsofStupid/rrflow --exit-status
+gh run watch --repo rrflow/rrflow --exit-status
 ```
 
 The standard and heavy jobs must report `rrflow-standard` and `rrflow-heavy`

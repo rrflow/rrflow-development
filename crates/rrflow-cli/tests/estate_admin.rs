@@ -147,7 +147,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
             "--deployment",
             "rrd-server",
             "--version",
-            "0.1.0",
+            "1.0.0",
             "--configuration-sha256",
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         ]

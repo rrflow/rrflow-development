@@ -936,7 +936,7 @@ checksum = "cc14f565cf027a105f7a44ccf9e5b424348421a1d8952a8fc9d499d313107789"
 
 [[package]]
 name = "connectome-ui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rrd-client",
  "rrd-contract",
@@ -4448,7 +4448,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-client"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bytes",
  "futures-util",
@@ -4474,7 +4474,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-cluster"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "openraft",
  "rcgen",
@@ -4492,7 +4492,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-contract"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "schemars",
@@ -4503,7 +4503,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4511,7 +4511,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-engine"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.3.4",
@@ -4540,7 +4540,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-estate"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rrd-contract",
  "rrd-core",
@@ -4555,7 +4555,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-inference"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "fastembed",
  "rrd-core",
@@ -4566,7 +4566,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-kubernetes"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "futures",
  "k8s-openapi",
@@ -4585,7 +4585,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-lsm"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "crc32c",
  "io-uring",
@@ -4603,7 +4603,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-maintenance"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rrd-contract",
  "rrd-core",
@@ -4616,7 +4616,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-operator-knowledge"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "native-tls",
  "postgres",
@@ -4630,7 +4630,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-query"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "datafusion",
@@ -4649,7 +4649,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-security"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "hmac",
@@ -4664,7 +4664,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-server"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "hmac",
@@ -4692,7 +4692,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-store"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "fjall",
  "rrd-core",
@@ -4705,7 +4705,7 @@ dependencies = [
 
 [[package]]
 name = "rrd-vector"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "memmap2",
  "rrd-core",
@@ -4717,7 +4717,7 @@ dependencies = [
 
 [[package]]
 name = "rrflow-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "clap",
  "rrd-client",
@@ -4742,7 +4742,7 @@ dependencies = [
 
 [[package]]
 name = "rrflow-edge"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rrd-engine",
  "serde_json",
@@ -4751,7 +4751,7 @@ dependencies = [
 
 [[package]]
 name = "rrflow-eval"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4759,7 +4759,7 @@ dependencies = [
 
 [[package]]
 name = "rrflow-mcp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rrd-client",
  "rrd-contract",

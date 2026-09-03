@@ -155,7 +155,7 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
             .create(&context(10, "create-estate", "create-estate"))
             .unwrap();
         repository
-            .set_desired(&desired(20, "deploy-project-a", "0.1.0"))
+            .set_desired(&desired(20, "deploy-project-a", "1.0.0"))
             .unwrap();
     }
 
@@ -235,7 +235,7 @@ fn takeover_waits_for_expiry_and_preserves_the_prepared_boundary() {
             .create(&context(10, "create-estate", "create-estate"))
             .unwrap();
         repository
-            .set_desired(&desired(20, "deploy-project-a", "0.1.0"))
+            .set_desired(&desired(20, "deploy-project-a", "1.0.0"))
             .unwrap();
     }
     assert_boundary(
@@ -289,7 +289,7 @@ fn a_new_desired_generation_supersedes_unfinished_work() {
             .create(&context(10, "create-estate", "create-estate"))
             .unwrap();
         repository
-            .set_desired(&desired(20, "deploy-v1", "0.1.0"))
+            .set_desired(&desired(20, "deploy-v1", "1.0.0"))
             .unwrap();
         repository
             .set_desired(&desired(30, "deploy-v2", "0.2.0"))

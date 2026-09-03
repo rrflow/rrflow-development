@@ -34,7 +34,7 @@ public sealed class RrdClientTests
                     ["protocol"] = "rrd",
                     ["protocol_version"] = 1,
                     ["implementation"] = "rrd-server",
-                    ["implementation_version"] = "0.1.0",
+                    ["implementation_version"] = "1.0.0",
                     ["deployment_mode"] = "local_daemon",
                     ["instance"] = new Dictionary<string, object?>
                     {
@@ -202,7 +202,7 @@ public sealed class RrdClientTests
             },
             TestContext.Current.CancellationToken));
         Assert.Contains("deadline has expired", expired.Message, StringComparison.Ordinal);
-        Assert.Equal(34, EndpointCatalog.Count);
+        Assert.Equal(33, EndpointCatalog.Count);
         Assert.True(EndpointCatalog.Get(OperationId.BackupCreate).Mutation);
         Assert.True(EndpointCatalog.Get(OperationId.TransactionPreview).Mutation);
         Assert.Equal(

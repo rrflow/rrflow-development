@@ -25,7 +25,7 @@ return, and credentials are excluded from errors.
 The current gate runs generation drift, `gofmt`, `go vet`, ordinary tests, and
 the race detector. Tests cover retry and capability identity, API-key session
 creation, bearer query construction, resource envelopes, remote-cleartext and
-expired-deadline denial, typed permission errors, and all 34 generated routes.
+expired-deadline denial, typed permission errors, and all 33 generated routes.
 
 This is not the F5 exit gate. Complete generated request/result types, shared
 real-server fixtures, supported-version matrices, examples/API reference, and

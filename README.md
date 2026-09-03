@@ -9,7 +9,35 @@ This file is the authority for product identity, architecture, current status,
 and roadmap. Other documents are supporting contracts, design notes, evidence,
 or history. They do not define a second architecture.
 
-The current release-train version is `0.1.0`.
+The current release-train version is `1.0.0`.
+
+## Canonical RRFlow 1.0 terminology
+
+These names describe one system. They are not aliases for parallel engines or
+independent stores.
+
+| Term | Canonical meaning |
+|---|---|
+| **RRFlow** | The product and the complete reasoning-data engine. Cite the current release as **RRFlow 1.0**. |
+| **RRFlow database** | One persistent RRFlow data estate governed by the engine. It contains temporal knowledge and derived acceleration state; it is not an application database replacement. |
+| **RRD** | The daemon and embedded runtime boundary for RRFlow. RRD is not a second product or engine. |
+| **`RrdEngine`** | The sole in-process composition root and semantic authority for database, graph, memory, query, and context operations. |
+| **canonical runtime log** | The ordered source of truth for committed RRFlow changes. Temporal snapshots are resolved from this log. |
+| **native RRD LSM** | RRFlow's persistent physical storage implementation. One semantic engine commit becomes one atomic LSM write batch. |
+| **KV layer** | The internal ordered key/value representation used by the native RRD LSM. KV is not RRFlow's public data model or a second authority. |
+| **RRFlow temporal graph** | Typed records and relations resolved at a runtime read stamp and valid-time coordinate from the same canonical log. It is not a separate graph database. |
+| **RRFlow memory** | Durable temporal knowledge—claims, records, relations, schemas, vectors, and evidence—owned by the same engine. It is not a separate memory store. |
+| **RRFlowQL** | RRFlow's query language. Use **RRFlowQL**, not the ambiguous shorthand “QL,” in product documentation. |
+| **Arrow snapshot** | A typed, immutable, rebuildable query representation bound to an RRFlow read stamp. Arrow is not the source of truth. |
+| **DataFusion execution** | The physical evaluation stage over stamped Arrow data after RRFlow selects the authoritative access path. DataFusion is not the database authority. |
+| **index projection** | Derived acceleration state bound to its source cursor and relevant schema or catalogue revision. An index can be rebuilt and cannot outrank the canonical log. |
+| **context assembly** | Bounded retrieval and deterministic fusion performed by `RrdEngine::assemble_context`; the result is a `ContextPacket` with evidence and its read stamp. |
+| **Connectome** | RRFlow's separate client and operator workbench. It observes and invokes RRFlow through public RRD capabilities and never recreates engine logic. |
+
+For citations, use **RRFlow database**, **native RRD LSM/KV layer**, **RRFlow
+temporal graph**, **RRFlow memory**, **RRFlowQL**, **Arrow/DataFusion query
+execution**, and **Connectome**. Do not describe RRD, the graph, memory,
+indexes, or Connectome as additional engines or sources of truth.
 
 ## Non-negotiable architecture
 
@@ -222,8 +250,8 @@ Implemented now:
   resource enforcement;
 - durable provider-neutral seat identity, provider representation edges, and
   stable `rrflow://` record warp resolution through the context planner;
-- authenticated server/client, embedded/daemon MCP, CLI, and Connectome paths
-  converging on the same context operation;
+- authenticated server/client, embedded/daemon MCP, CLI, and the in-workspace
+  client boundary test converging on the same context operation;
 - persistence/reopen and real transport behavior tests.
 
 Not implemented or not yet production-grade:
@@ -242,6 +270,9 @@ Not implemented or not yet production-grade:
 - automatic turn-boundary invocation still requires a supported host adapter.
 - mesh endpoint discovery, the canonical attunement job, and engine-owned
   trigger/routine/hook-adapter/skill operations are not yet implemented.
+- standalone Connectome is not yet RRFlow 1.0-conformant: its inherited UI and
+  runtime paths have not been consolidated onto the public RRD client, so it
+  must not claim the 1.0 release version yet.
 
 These are material gaps. A successful compile is not evidence that context
 flows correctly, and none of the gaps above is represented as complete.

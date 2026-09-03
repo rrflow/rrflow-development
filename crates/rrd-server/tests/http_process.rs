@@ -2116,7 +2116,7 @@ fn authenticated_estate_read_returns_the_public_snapshot_only() {
                 target: rrd_estate::DesiredTarget {
                     phase: rrd_estate::DesiredPhase::Running,
                     deployment_ref: CanonicalId::new("local-rrd").unwrap(),
-                    version: "0.1.0".into(),
+                    version: "1.0.0".into(),
                     configuration_sha256: "a".repeat(64),
                 },
             })

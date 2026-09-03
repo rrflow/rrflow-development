@@ -34,7 +34,7 @@ fn target(phase: DesiredPhase) -> DesiredTarget {
     DesiredTarget {
         phase,
         deployment_ref: id("rrd-server"),
-        version: "0.1.0".into(),
+        version: "1.0.0".into(),
         configuration_sha256: "a".repeat(64),
     }
 }
@@ -94,7 +94,7 @@ fn catalog() -> LocalDeploymentCatalog {
                     "rrd-server".into(),
                     LocalDeployment {
                         id: id("rrd-server"),
-                        version: "0.1.0".into(),
+                        version: "1.0.0".into(),
                         executable_sha256: file_sha256(&executable),
                         executable,
                         preparation_arguments: vec![
@@ -353,7 +353,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
             generation: 1,
             phase: DesiredPhase::Running,
             deployment_ref: id("rrd-server"),
-            version: "0.1.0".into(),
+            version: "1.0.0".into(),
             configuration_sha256: "a".repeat(64),
             updated_at: 20,
         },
@@ -458,7 +458,7 @@ fn local_driver_refuses_to_signal_a_reused_or_forged_pid_identity() {
             "instance_id": "project-a",
             "operation_id": "old-operation",
             "deployment_ref": "rrd-server",
-            "version": "0.1.0",
+            "version": "1.0.0",
             "configuration_sha256": "a".repeat(64),
             "executable": current_executable,
             "executable_sha256": "b".repeat(64),
@@ -477,7 +477,7 @@ fn local_driver_refuses_to_signal_a_reused_or_forged_pid_identity() {
             generation: 2,
             phase: DesiredPhase::Stopped,
             deployment_ref: id("rrd-server"),
-            version: "0.1.0".into(),
+            version: "1.0.0".into(),
             configuration_sha256: "a".repeat(64),
             updated_at: 20,
         },
@@ -527,7 +527,7 @@ fn graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback() {
             generation: 1,
             phase: DesiredPhase::Running,
             deployment_ref: id("rrd-server"),
-            version: "0.1.0".into(),
+            version: "1.0.0".into(),
             configuration_sha256: "a".repeat(64),
             updated_at: 10,
         },

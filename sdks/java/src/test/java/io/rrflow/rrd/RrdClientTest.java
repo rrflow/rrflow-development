@@ -35,7 +35,7 @@ final class RrdClientTest {
                     "protocol", "rrd",
                     "protocol_version", 1,
                     "implementation", "rrd-server",
-                    "implementation_version", "0.1.0",
+                    "implementation_version", "1.0.0",
                     "deployment_mode", "local_daemon",
                     "instance", Map.of("kind", "instance", "id", "sdk-test"),
                     "capabilities", List.of())));
@@ -160,7 +160,7 @@ final class RrdClientTest {
                                     "request-expired", "operation-expired", null,
                                     Instant.ofEpochMilli(1), Map.of(), null, session, null)));
             assertTrue(expired.getMessage().contains("deadline has expired"));
-            assertEquals(34, OperationId.values().length);
+            assertEquals(33, OperationId.values().length);
             assertTrue(OperationId.BACKUP_CREATE.mutation());
             assertTrue(OperationId.TRANSACTION_PREVIEW.mutation());
             assertEquals(

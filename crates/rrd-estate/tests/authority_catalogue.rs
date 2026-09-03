@@ -211,7 +211,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
                 target: DesiredTarget {
                     phase: DesiredPhase::Running,
                     deployment_ref: id("local-rrd"),
-                    version: "0.1.0".into(),
+                    version: "1.0.0".into(),
                     configuration_sha256: "f".repeat(64),
                 },
             })

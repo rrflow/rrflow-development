@@ -7,8 +7,8 @@ use crate::ResourceKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlatformTermRole {
-    Product,
-    Engine,
+    ProductEngine,
+    RuntimeBoundary,
     ControlIdentity,
     ControlResource,
     WorkloadIdentity,
@@ -31,8 +31,8 @@ pub struct PlatformTermDefinition {
 }
 
 pub const PLATFORM_TERMS: [PlatformTermDefinition; 25] = [
-    term("RRFlow", PlatformTermRole::Product, None),
-    term("RRD", PlatformTermRole::Engine, None),
+    term("RRFlow", PlatformTermRole::ProductEngine, None),
+    term("RRD", PlatformTermRole::RuntimeBoundary, None),
     term(
         "organization",
         PlatformTermRole::ControlIdentity,

@@ -55,6 +55,16 @@ fn canonical_platform_terms_are_unique_complete_and_classified() {
             && definition.role == PlatformTermRole::BuildTopology
             && definition.resource_kind.is_none()
     }));
+    assert!(PLATFORM_TERMS.iter().any(|definition| {
+        definition.term == "RRFlow"
+            && definition.role == PlatformTermRole::ProductEngine
+            && definition.resource_kind.is_none()
+    }));
+    assert!(PLATFORM_TERMS.iter().any(|definition| {
+        definition.term == "RRD"
+            && definition.role == PlatformTermRole::RuntimeBoundary
+            && definition.resource_kind.is_none()
+    }));
 }
 
 #[test]

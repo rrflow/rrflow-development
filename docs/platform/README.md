@@ -1,16 +1,13 @@
 # RRFlow platform canon
 
-**Status:** authoritative terminology and hierarchy for the RRFlow `0.1` alpha
+**Status:** supporting machine terminology and hierarchy for RRFlow 1.0
 **Effective:** 2026-08-27
-**Authority:** this is the only normative platform-term list in the repository
+**Authority:** the repository root `README.md` is the sole product and architecture authority
 
-RRFlow is the product. RRD (Reason Ready Daemon) is the single logical engine
-and runtime inside an RRFlow instance. Every contract, crate, API, SDK,
-configuration file, test, document, and Connectome surface must use the terms
-below with the same meaning. Industry research is indexed separately in
-[`research/README.md`](research/README.md) and cannot redefine this vocabulary.
-The one end-to-end execution and implementation map is
-[`../rrflow-rrd-architecture.md`](../rrflow-rrd-architecture.md).
+RRFlow is the product and complete reasoning-data engine. RRD (Reason Ready
+Daemon) is its daemon and embedded runtime boundary. `RrdEngine` is the sole
+in-process composition root. This document mirrors the public platform
+resource terms in code and cannot define another engine, authority, or roadmap.
 
 ## Two deployment profiles, one product
 
@@ -35,7 +32,7 @@ topology, not instance tenancy.
 ```text
 RRFlow product
 ├── organization
-│   ├── project ── environment ──> instance ──> exactly one logical RRD authority
+│   ├── project ── environment ──> instance ──> exactly one RrdEngine authority
 │   └── estate
 │       ├── manages project instances
 │       └── manages clusters
@@ -60,8 +57,8 @@ partitions or dedicated shards.
 
 | Term | Kind and owner | Exact RRFlow meaning | Codebase direction |
 |---|---|---|---|
-| `RRFlow` | Product | The complete AI governance, knowledge, development, data, runtime, and operator system. | Keep as the only product brand. |
-| `RRD` | Engine/runtime | Reason Ready Daemon: the one logical engine authority within an instance. Specialized storage, graph, query, vector, and inference crates are internal operators. | `rrd-engine` becomes the sole composition and authority entry point. |
+| `RRFlow` | Product/engine | The complete AI governance, knowledge, development, data, runtime, and operator engine. | Keep as the only product brand and complete engine identity. |
+| `RRD` | Runtime boundary | Reason Ready Daemon: RRFlow's daemon and embedded runtime boundary within an instance. Specialized storage, graph, query, vector, and inference crates are internal operators. | `RrdEngine` is the sole composition and semantic authority entry point. |
 | `organization` | Control identity | The administrative owner of projects, estates, principals, policy, and billing/operations metadata. | Already a public `ResourceKind`; authoritative organization state is not implemented. |
 | `estate` | Control-plane resource | A managed fleet and lifecycle aggregate of instances and clusters owned by one organization. It owns desired state, reconciliation, fleet backup policy, and operational inventory. | Keep `rrd-estate`; never use estate as a database, tenant, namespace, or cluster synonym. |
 | `project` | Governed workload identity | One software/product codebase governed by RRFlow. | Each project deployment instance binds exactly one project; no umbrella membership. |

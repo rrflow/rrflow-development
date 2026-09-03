@@ -547,7 +547,7 @@ fn public_admin_phase_type_does_not_reintroduce_a_physical_estate_dependency() {
         idempotency_key: "desired-a".into(),
         phase: EstateDesiredPhase::Stopped,
         deployment: canonical("rrd-server"),
-        version: "0.1.0".into(),
+        version: "1.0.0".into(),
         configuration_sha256: "a".repeat(64),
     };
     assert!(matches!(action, EstateAdminAction::SetDesired { .. }));
@@ -613,7 +613,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
             target: DesiredTarget {
                 phase: DesiredPhase::Stopped,
                 deployment_ref: canonical("rrd-server"),
-                version: "0.1.0".into(),
+                version: "1.0.0".into(),
                 configuration_sha256: "a".repeat(64),
             },
         })

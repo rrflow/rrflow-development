@@ -32,7 +32,7 @@ fn set_request(at: u64, key: &str, operation: &str) -> SetDesired {
         context: context(at, &format!("request-{at}"), operation),
         instance_id: id("project-a"),
         idempotency_key: key.into(),
-        target: target(DesiredPhase::Running, "0.1.0"),
+        target: target(DesiredPhase::Running, "1.0.0"),
     }
 }
 

@@ -1,3 +1,3 @@
-module github.com/EonsofStupid/rrflow/sdks/go
+module github.com/rrflow/rrflow/sdks/go
 
 go 1.24

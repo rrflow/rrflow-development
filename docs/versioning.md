@@ -1,13 +1,16 @@
 # RRFlow version policy
 
-RRFlow's canonical current release-train version is `0.1.0`. The checked-in
+RRFlow's canonical current release-train version is `1.0.0`. The checked-in
 `VERSION` file is the human- and automation-readable source of truth.
 
 All Rust workspace crates inherit the same value from `[workspace.package]`.
 The supported TypeScript, Python, Java, and .NET client packages use the exact
-same release version. When the canonical Connectome repository is mounted at
-`apps/connectome`, its JavaScript and Tauri package versions must match this
-release train as well.
+same release version.
+
+Connectome is a separate repository and participates in the same public
+release train. Its own version gate must verify its JavaScript and Tauri
+manifests locally. RRFlow does not inspect a sibling checkout or support a
+second, mounted `apps/connectome` layout.
 
 The product release version is independent of internal protocol, contract,
 fixture, persisted-format, and schema identifiers such as `v1`. Those
@@ -27,6 +30,6 @@ or Connectome product release.
   branch protection must require Code Owner review for that approval rule to
   be enforced by GitHub.
 
-Until the canonical Connectome repository is mounted, this repository cannot
-enforce Connectome's external manifests. They must not be silently rewritten
-from a dirty or ambiguously named checkout.
+The RRFlow release gate verifies only declarations owned by this repository.
+Connectome conformance and version alignment are enforced in Connectome before
+the matching release is declared.

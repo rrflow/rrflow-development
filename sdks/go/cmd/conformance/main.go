@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	rrd "github.com/EonsofStupid/rrflow/sdks/go"
+	rrd "github.com/rrflow/rrflow/sdks/go"
 )
 
 type manifest struct {

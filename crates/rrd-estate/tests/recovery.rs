@@ -34,7 +34,7 @@ fn prepare_stopped_instance<E: Engine>(engine: &E) {
             target: DesiredTarget {
                 phase: DesiredPhase::Stopped,
                 deployment_ref: id("rrd-server"),
-                version: "0.1.0".into(),
+                version: "1.0.0".into(),
                 configuration_sha256: "a".repeat(64),
             },
         })

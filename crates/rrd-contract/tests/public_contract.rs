@@ -79,7 +79,7 @@ fn contract_fixture() -> ContractFixture {
             protocol: PROTOCOL.into(),
             protocol_version: PROTOCOL_VERSION,
             implementation: CanonicalId::new("rrflow").unwrap(),
-            implementation_version: "0.1.0".into(),
+            implementation_version: "1.0.0".into(),
             deployment_mode: DeploymentMode::Embedded,
             instance: ResourceId::new(ResourceKind::Instance, "project-alpha").unwrap(),
             capabilities: vec![
