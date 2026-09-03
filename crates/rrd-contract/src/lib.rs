@@ -45,8 +45,10 @@ pub use inference::{
     MAX_EMBEDDING_BATCH_INPUTS, MAX_EMBEDDING_INPUT_BYTES,
 };
 pub use memory_context::{
-    context_packet_sha256, AssembleContext, ContextEvidence, ContextEvidenceKind, ContextItem,
-    ContextPacket, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
+    context_packet_sha256, context_plan_sha256, context_plan_stage_sha256, context_request_sha256,
+    AssembleContext, ContextAccessPath, ContextEvidence, ContextEvidenceKind, ContextItem,
+    ContextPacket, ContextPlanSnapshot, ContextPlanStage, ContextPlanStageKind,
+    ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SCANNED_CHANGES,
     MAX_CONTEXT_SEEDS,
 };
@@ -72,7 +74,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645";
+    "489a2ccdd8db451b765a603a31f66fee739c1353b74123a9717351ce941bd7fb";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

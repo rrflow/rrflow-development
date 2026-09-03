@@ -1,7 +1,8 @@
 use super::*;
 use rrd_contract::{
-    AssembleContext, ContextEvidenceKind, DataCatalogueIdentity, DataLogicalModel, DataReference,
-    DataSchemaMode, DataSchemaRegistry, DataTableSchema, EmbeddingInput, EmbeddingNetworkPolicy,
+    AssembleContext, ContextAccessPath, ContextEvidenceKind, ContextPlanStageKind,
+    ContextPlanStageStatus, DataCatalogueIdentity, DataLogicalModel, DataReference, DataSchemaMode,
+    DataSchemaRegistry, DataTableSchema, EmbeddingInput, EmbeddingNetworkPolicy,
     EnsureVectorCollection, GenerateEmbeddings, ListEmbeddingModels, NamedVectorDefinition,
     QueryValue, VectorEmbeddingModel, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
 };
@@ -155,6 +156,34 @@ fn context_flows_through_one_engine_stamp_and_survives_reopen() {
         )
         .unwrap();
     packet.validate().unwrap();
+    let stage = |kind| {
+        packet
+            .plan
+            .stages
+            .iter()
+            .find(|stage| stage.kind == kind)
+            .unwrap()
+    };
+    assert_eq!(
+        stage(ContextPlanStageKind::Seed).status,
+        ContextPlanStageStatus::Skipped
+    );
+    assert_eq!(
+        stage(ContextPlanStageKind::Lexical).access_path,
+        Some(ContextAccessPath::SnapshotBm25)
+    );
+    assert_eq!(
+        stage(ContextPlanStageKind::Semantic).status,
+        ContextPlanStageStatus::Skipped
+    );
+    assert_eq!(
+        stage(ContextPlanStageKind::Graph).access_path,
+        Some(ContextAccessPath::SnapshotGraphBidirectionalBfs)
+    );
+    assert_eq!(
+        stage(ContextPlanStageKind::Fusion).access_path,
+        Some(ContextAccessPath::ReciprocalRankFusion)
+    );
     assert_eq!(
         packet.read.runtime_cursor,
         receipt.last_runtime_cursor.unwrap()
@@ -453,6 +482,16 @@ fn context_discovers_matching_local_vector_retrieval_without_caller_wiring() {
         .iter()
         .find(|item| item.identity == "record:note:semantic-alpha")
         .unwrap();
+    assert_eq!(
+        packet
+            .plan
+            .stages
+            .iter()
+            .find(|stage| stage.kind == ContextPlanStageKind::Semantic)
+            .unwrap()
+            .access_path,
+        Some(ContextAccessPath::SnapshotVectorExact)
+    );
     assert!(item
         .evidence
         .iter()

@@ -1,7 +1,9 @@
 use super::*;
 use rrd_contract::{
-    context_packet_sha256, AssembleContext, ContextEvidence, ContextEvidenceKind, ContextItem,
-    ContextPacket, ContextReadStamp,
+    context_packet_sha256, context_plan_sha256, context_plan_stage_sha256, context_request_sha256,
+    AssembleContext, ContextAccessPath, ContextEvidence, ContextEvidenceKind, ContextItem,
+    ContextPacket, ContextPlanSnapshot, ContextPlanStage, ContextPlanStageKind,
+    ContextPlanStageStatus, ContextReadStamp,
 };
 use std::collections::{BTreeSet, VecDeque};
 
@@ -89,17 +91,20 @@ impl RrdEngine {
             .map(|entry| (entry.value.reference.clone(), entry.value.clone()))
             .collect::<BTreeMap<_, _>>();
         let mut candidates = BTreeMap::<String, ContextCandidate>::new();
+        let mut stages = Vec::with_capacity(5);
         let mut retrieval_truncated = false;
         let seed_plan = context_digest(&(
             "rrd-context-seed-v1",
             read.manifest_id.as_str(),
             request.valid_at,
         ))?;
+        let mut visible_seed_count = 0_usize;
         for (ordinal, seed) in request.seeds.iter().enumerate() {
             let reference = runtime_ref(seed)?;
             let Some(record) = records.get(&reference) else {
                 continue;
             };
+            visible_seed_count += 1;
             let rank = u64::try_from(ordinal + 1)
                 .map_err(|_| ServiceError::Contract("context seed rank exceeds u64".into()))?;
             let evidence = ContextEvidence {
@@ -118,8 +123,28 @@ impl RrdEngine {
             };
             add_record_candidate(&mut candidates, &reference, record, evidence)?;
         }
+        stages.push(context_plan_stage(
+            ContextPlanStageKind::Seed,
+            if request.seeds.is_empty() {
+                ContextPlanStageStatus::Skipped
+            } else {
+                ContextPlanStageStatus::Selected
+            },
+            (!request.seeds.is_empty()).then_some(ContextAccessPath::RequestSeed),
+            !request.seeds.is_empty(),
+            if request.seeds.is_empty() {
+                "request supplied no record anchors".into()
+            } else {
+                format!(
+                    "resolved caller-supplied anchors against the captured temporal snapshot (requested={}, visible={})",
+                    request.seeds.len(),
+                    visible_seed_count
+                )
+            },
+        )?);
 
         let mut text_roots = Vec::<(RuntimeRef, u64)>::new();
+        let mut text_source_count = 0_usize;
         if !request.query.trim().is_empty() && (!records.is_empty() || !snapshot.claims.is_empty())
         {
             let mut sources = BTreeMap::<String, TextSource>::new();
@@ -156,6 +181,7 @@ impl RrdEngine {
                 .map(|(identity, source)| (identity.clone(), source.text.clone()))
                 .collect::<Vec<_>>();
             if !documents.is_empty() {
+                text_source_count = documents.len();
                 let artifact = rrd_query::Bm25Artifact::build(
                     rrd_query::Bm25Config::default(),
                     read.commit_cursor,
@@ -213,16 +239,62 @@ impl RrdEngine {
                 }
             }
         }
+        stages.push(context_plan_stage(
+            ContextPlanStageKind::Lexical,
+            if text_source_count == 0 {
+                ContextPlanStageStatus::Skipped
+            } else {
+                ContextPlanStageStatus::Selected
+            },
+            (text_source_count > 0).then_some(ContextAccessPath::SnapshotBm25),
+            text_source_count > 0,
+            if request.query.trim().is_empty() {
+                "request supplied no lexical intent".into()
+            } else if text_source_count == 0 {
+                "captured temporal snapshot contained no visible textual records or claims".into()
+            } else {
+                format!(
+                    "rebuilt BM25 over {text_source_count} visible textual source(s) from the captured temporal snapshot"
+                )
+            },
+        )?);
 
         let mut retrieval_roots = text_roots;
+        let mut vector_source_count = 0_usize;
         if !request.query.trim().is_empty() && !snapshot.vectors.is_empty() {
-            let (vector_roots, vector_truncated) =
+            let (vector_roots, vector_truncated, selected_sources) =
                 self.add_vector_context(request, &read, &snapshot, &records, &mut candidates)?;
             retrieval_roots.extend(vector_roots);
             retrieval_truncated |= vector_truncated;
+            vector_source_count = selected_sources;
         }
+        stages.push(context_plan_stage(
+            ContextPlanStageKind::Semantic,
+            if vector_source_count == 0 {
+                ContextPlanStageStatus::Skipped
+            } else {
+                ContextPlanStageStatus::Selected
+            },
+            (vector_source_count > 0).then_some(ContextAccessPath::SnapshotVectorExact),
+            vector_source_count > 0,
+            if request.query.trim().is_empty() {
+                "request supplied no semantic intent".into()
+            } else if snapshot.vectors.is_empty() {
+                "captured temporal snapshot contained no visible vectors".into()
+            } else if vector_source_count == 0 {
+                "no visible vector source matched an installed deterministic local text embedding backend"
+                    .into()
+            } else {
+                format!(
+                    "exact-scored {vector_source_count} compatible vector source(s) from the captured temporal snapshot"
+                )
+            },
+        )?);
 
-        if request.max_graph_depth > 0 && !snapshot.relations.is_empty() {
+        let graph_selected = request.max_graph_depth > 0
+            && !snapshot.relations.is_empty()
+            && (!request.seeds.is_empty() || !retrieval_roots.is_empty());
+        if graph_selected {
             retrieval_truncated |= add_graph_context(
                 request,
                 &read,
@@ -232,6 +304,37 @@ impl RrdEngine {
                 &mut candidates,
             )?;
         }
+        stages.push(context_plan_stage(
+            ContextPlanStageKind::Graph,
+            if graph_selected {
+                ContextPlanStageStatus::Selected
+            } else {
+                ContextPlanStageStatus::Skipped
+            },
+            graph_selected.then_some(ContextAccessPath::SnapshotGraphBidirectionalBfs),
+            graph_selected,
+            if request.max_graph_depth == 0 {
+                "request disabled graph expansion".into()
+            } else if snapshot.relations.is_empty() {
+                "captured temporal snapshot contained no visible relations".into()
+            } else if request.seeds.is_empty() && retrieval_roots.is_empty() {
+                "no visible seed or retrieval result supplied a graph root".into()
+            } else {
+                format!(
+                    "traversed visible relations in both directions to depth {} from {} root(s)",
+                    request.max_graph_depth,
+                    request.seeds.len().saturating_add(retrieval_roots.len())
+                )
+            },
+        )?);
+
+        stages.push(context_plan_stage(
+            ContextPlanStageKind::Fusion,
+            ContextPlanStageStatus::Selected,
+            Some(ContextAccessPath::ReciprocalRankFusion),
+            true,
+            "deterministically fused selected retrieval stages with reciprocal-rank fusion".into(),
+        )?);
 
         let mut items = candidates
             .into_iter()
@@ -282,16 +385,27 @@ impl RrdEngine {
             bounded.push(item);
         }
 
+        let context_read = ContextReadStamp {
+            runtime_manifest_sha256: read.manifest_id,
+            runtime_cursor: read.commit_cursor,
+            schema_revision: read.schema_revision,
+            catalogue_revision: read.catalog_revision,
+        };
+        let mut plan = ContextPlanSnapshot {
+            request_sha256: context_request_sha256(request)
+                .map_err(|error| ServiceError::Contract(error.to_string()))?,
+            read: context_read.clone(),
+            stages,
+            plan_sha256: String::new(),
+        };
+        plan.plan_sha256 = context_plan_sha256(&plan)
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
         let mut packet = ContextPacket {
             scope: request.scope.clone(),
             valid_at: request.valid_at,
             query_sha256: digest::sha256_hex(request.query.as_bytes()),
-            read: ContextReadStamp {
-                runtime_manifest_sha256: read.manifest_id,
-                runtime_cursor: read.commit_cursor,
-                schema_revision: read.schema_revision,
-                catalogue_revision: read.catalog_revision,
-            },
+            read: context_read,
+            plan,
             items: bounded,
             output_bytes,
             truncated,
@@ -312,7 +426,7 @@ impl RrdEngine {
         snapshot: &RuntimeDataSnapshot,
         records: &BTreeMap<RuntimeRef, RuntimeRecord>,
         candidates: &mut BTreeMap<String, ContextCandidate>,
-    ) -> Result<(Vec<(RuntimeRef, u64)>, bool)> {
+    ) -> Result<(Vec<(RuntimeRef, u64)>, bool, usize)> {
         let mut eligible = self
             .embedding_backends
             .lock()
@@ -332,7 +446,7 @@ impl RrdEngine {
             .collect::<Vec<_>>();
         eligible.sort_by(|left, right| left.id.cmp(&right.id));
         if eligible.is_empty() {
-            return Ok((Vec::new(), false));
+            return Ok((Vec::new(), false, 0));
         }
         let scope = self.query_scope(&request.scope)?;
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
@@ -495,8 +609,28 @@ impl RrdEngine {
                 }
             }
         }
-        Ok((roots, truncated))
+        Ok((roots, truncated, sources))
     }
+}
+
+fn context_plan_stage(
+    kind: ContextPlanStageKind,
+    status: ContextPlanStageStatus,
+    access_path: Option<ContextAccessPath>,
+    exact: bool,
+    reason: String,
+) -> Result<ContextPlanStage> {
+    let mut stage = ContextPlanStage {
+        kind,
+        status,
+        access_path,
+        exact,
+        reason,
+        decision_sha256: String::new(),
+    };
+    stage.decision_sha256 = context_plan_stage_sha256(&stage)
+        .map_err(|error| ServiceError::Contract(error.to_string()))?;
+    Ok(stage)
 }
 
 fn add_graph_context(

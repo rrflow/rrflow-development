@@ -164,6 +164,131 @@ pub struct ContextReadStamp {
     pub catalogue_revision: u64,
 }
 
+impl ContextReadStamp {
+    pub fn validate(&self) -> Result<()> {
+        validate_sha256(
+            &self.runtime_manifest_sha256,
+            "read.runtime_manifest_sha256",
+        )
+    }
+}
+
+/// A canonical stage in the engine-owned context plan.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextPlanStageKind {
+    Seed,
+    Lexical,
+    Semantic,
+    Graph,
+    Fusion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextPlanStageStatus {
+    Selected,
+    Skipped,
+}
+
+/// The physical access path actually selected for a context stage.
+///
+/// These names describe algorithms, never project-, provider-, or
+/// deployment-specific resources. New physical implementations extend this
+/// contract instead of being smuggled through free-form strings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextAccessPath {
+    RequestSeed,
+    SnapshotBm25,
+    SnapshotVectorExact,
+    SnapshotGraphBidirectionalBfs,
+    ReciprocalRankFusion,
+}
+
+/// One selected or skipped decision in the context execution plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ContextPlanStage {
+    pub kind: ContextPlanStageKind,
+    pub status: ContextPlanStageStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access_path: Option<ContextAccessPath>,
+    pub exact: bool,
+    pub reason: String,
+    pub decision_sha256: String,
+}
+
+impl ContextPlanStage {
+    pub fn validate(&self) -> Result<()> {
+        if self.reason.is_empty()
+            || self.reason.len() > 1_024
+            || self.reason.as_bytes().contains(&0)
+        {
+            return invalid("context plan stage reason is empty, oversized, or contains NUL");
+        }
+        match (self.status, self.access_path, self.exact) {
+            (ContextPlanStageStatus::Selected, Some(_), _) => {}
+            (ContextPlanStageStatus::Skipped, None, false) => {}
+            _ => {
+                return invalid(
+                    "selected context stages require an access path; skipped stages must not claim one or exact execution",
+                )
+            }
+        }
+        validate_sha256(&self.decision_sha256, "decision_sha256")?;
+        if self.decision_sha256 != context_plan_stage_sha256(self)? {
+            return invalid("context plan stage digest does not match its decision");
+        }
+        Ok(())
+    }
+}
+
+/// The complete, deterministic context execution plan at one read stamp.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ContextPlanSnapshot {
+    /// Digest of the complete request, including query, anchors, and all
+    /// resource budgets.
+    pub request_sha256: String,
+    pub read: ContextReadStamp,
+    pub stages: Vec<ContextPlanStage>,
+    pub plan_sha256: String,
+}
+
+impl ContextPlanSnapshot {
+    pub fn validate(&self) -> Result<()> {
+        validate_sha256(&self.request_sha256, "request_sha256")?;
+        self.read.validate()?;
+        validate_sha256(&self.plan_sha256, "plan_sha256")?;
+        if self.stages.len() != 5 {
+            return invalid("context plan must contain every canonical stage exactly once");
+        }
+        let expected = [
+            ContextPlanStageKind::Seed,
+            ContextPlanStageKind::Lexical,
+            ContextPlanStageKind::Semantic,
+            ContextPlanStageKind::Graph,
+            ContextPlanStageKind::Fusion,
+        ];
+        for (stage, expected_kind) in self.stages.iter().zip(expected) {
+            stage.validate()?;
+            if stage.kind != expected_kind {
+                return invalid("context plan stages are missing, duplicated, or out of order");
+            }
+        }
+        if self.stages[4].status != ContextPlanStageStatus::Selected {
+            return invalid("context fusion stage must be selected");
+        }
+        if self.plan_sha256 != context_plan_sha256(self)? {
+            return invalid("context plan digest does not match its content");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ContextPacket {
@@ -171,6 +296,7 @@ pub struct ContextPacket {
     pub valid_at: u64,
     pub query_sha256: String,
     pub read: ContextReadStamp,
+    pub plan: ContextPlanSnapshot,
     pub items: Vec<ContextItem>,
     pub output_bytes: u64,
     pub truncated: bool,
@@ -186,10 +312,11 @@ impl ContextPacket {
             return invalid("context packet valid_at must be greater than zero");
         }
         validate_sha256(&self.query_sha256, "query_sha256")?;
-        validate_sha256(
-            &self.read.runtime_manifest_sha256,
-            "read.runtime_manifest_sha256",
-        )?;
+        self.read.validate()?;
+        self.plan.validate()?;
+        if self.plan.read != self.read {
+            return invalid("context plan and packet read stamps differ");
+        }
         validate_sha256(&self.packet_sha256, "packet_sha256")?;
         if self.items.len() > MAX_CONTEXT_ITEMS as usize
             || self.output_bytes > MAX_CONTEXT_OUTPUT_BYTES
@@ -238,10 +365,35 @@ pub fn context_packet_sha256(packet: &ContextPacket) -> Result<String> {
         packet.valid_at,
         &packet.query_sha256,
         &packet.read,
+        &packet.plan,
         &packet.items,
         packet.output_bytes,
         packet.truncated,
     ))
     .map_err(|error| crate::ContractError(error.to_string()))?;
+    Ok(crate::sha256_bytes(&bytes))
+}
+
+pub fn context_request_sha256(request: &AssembleContext) -> Result<String> {
+    let bytes =
+        serde_json::to_vec(request).map_err(|error| crate::ContractError(error.to_string()))?;
+    Ok(crate::sha256_bytes(&bytes))
+}
+
+pub fn context_plan_stage_sha256(stage: &ContextPlanStage) -> Result<String> {
+    let bytes = serde_json::to_vec(&(
+        stage.kind,
+        stage.status,
+        stage.access_path,
+        stage.exact,
+        &stage.reason,
+    ))
+    .map_err(|error| crate::ContractError(error.to_string()))?;
+    Ok(crate::sha256_bytes(&bytes))
+}
+
+pub fn context_plan_sha256(plan: &ContextPlanSnapshot) -> Result<String> {
+    let bytes = serde_json::to_vec(&(&plan.request_sha256, &plan.read, &plan.stages))
+        .map_err(|error| crate::ContractError(error.to_string()))?;
     Ok(crate::sha256_bytes(&bytes))
 }

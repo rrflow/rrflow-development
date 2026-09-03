@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: d1ccf09119cd003745317281c82195623429cfd2c3fa862e02e3f69d9a1e7645
+// OpenAPI SHA-256: 489a2ccdd8db451b765a603a31f66fee739c1353b74123a9717351ce941bd7fb
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -7147,6 +7147,45 @@ export interface operations {
                                 /** Format: uint64 */
                                 output_bytes: number;
                                 packet_sha256: string;
+                                /** @description The complete, deterministic context execution plan at one read stamp. */
+                                plan: {
+                                    plan_sha256: string;
+                                    read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    /**
+                                     * @description Digest of the complete request, including query, anchors, and all
+                                     *     resource budgets.
+                                     */
+                                    request_sha256: string;
+                                    stages: {
+                                        /**
+                                         * @description The physical access path actually selected for a context stage.
+                                         *
+                                         *     These names describe algorithms, never project-, provider-, or
+                                         *     deployment-specific resources. New physical implementations extend this
+                                         *     contract instead of being smuggled through free-form strings.
+                                         * @enum {string|null}
+                                         */
+                                        access_path?: "request_seed" | "snapshot_bm25" | "snapshot_vector_exact" | "snapshot_graph_bidirectional_bfs" | "reciprocal_rank_fusion" | null;
+                                        decision_sha256: string;
+                                        exact: boolean;
+                                        /**
+                                         * @description A canonical stage in the engine-owned context plan.
+                                         * @enum {string}
+                                         */
+                                        kind: "seed" | "lexical" | "semantic" | "graph" | "fusion";
+                                        reason: string;
+                                        /** @enum {string} */
+                                        status: "selected" | "skipped";
+                                    }[];
+                                };
                                 query_sha256: string;
                                 read: {
                                     /** Format: uint64 */
@@ -7257,6 +7296,45 @@ export interface operations {
                                 /** Format: uint64 */
                                 output_bytes: number;
                                 packet_sha256: string;
+                                /** @description The complete, deterministic context execution plan at one read stamp. */
+                                plan: {
+                                    plan_sha256: string;
+                                    read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    /**
+                                     * @description Digest of the complete request, including query, anchors, and all
+                                     *     resource budgets.
+                                     */
+                                    request_sha256: string;
+                                    stages: {
+                                        /**
+                                         * @description The physical access path actually selected for a context stage.
+                                         *
+                                         *     These names describe algorithms, never project-, provider-, or
+                                         *     deployment-specific resources. New physical implementations extend this
+                                         *     contract instead of being smuggled through free-form strings.
+                                         * @enum {string|null}
+                                         */
+                                        access_path?: "request_seed" | "snapshot_bm25" | "snapshot_vector_exact" | "snapshot_graph_bidirectional_bfs" | "reciprocal_rank_fusion" | null;
+                                        decision_sha256: string;
+                                        exact: boolean;
+                                        /**
+                                         * @description A canonical stage in the engine-owned context plan.
+                                         * @enum {string}
+                                         */
+                                        kind: "seed" | "lexical" | "semantic" | "graph" | "fusion";
+                                        reason: string;
+                                        /** @enum {string} */
+                                        status: "selected" | "skipped";
+                                    }[];
+                                };
                                 query_sha256: string;
                                 read: {
                                     /** Format: uint64 */

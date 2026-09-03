@@ -71,8 +71,12 @@ records+claims   spaces, exact score    from discovered roots
 Every returned item carries the retrieval source, source rank, source score,
 fusion contribution, plan digest, and evidence digest. The packet carries its
 runtime cursor, schema revision, catalogue revision, query digest, encoded byte
-count, truncation state, and content digest. A packet therefore identifies what
-was read and why it was selected; it is not an ungrounded text blob.
+count, truncation state, and content digest. It also carries one canonical plan
+snapshot that records whether seed, lexical, semantic, graph, and fusion stages
+were selected or skipped, the physical path each selected stage used, and the
+reason for every decision. The plan and packet share the same read stamp. A
+packet therefore identifies what was read, which avenues were considered, and
+why each avenue was or was not selected; it is not an ungrounded text blob.
 
 The caller supplies only:
 
@@ -248,6 +252,8 @@ Implemented now:
 - bounded graph expansion from explicit and retrieved roots;
 - deterministic multi-source fusion, deduplication, evidence, digests, and
   resource enforcement;
+- a read-stamped context plan exposing every selected or skipped retrieval
+  stage, its current physical access path, and its decision reason;
 - durable provider-neutral seat identity, provider representation edges, and
   stable `rrflow://` record warp resolution through the context planner;
 - authenticated server/client, embedded/daemon MCP, CLI, and the in-workspace
