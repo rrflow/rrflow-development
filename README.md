@@ -59,11 +59,16 @@ captured snapshot and catalogue. Only installed deterministic text embedding
 backends that require no network access are eligible for automatic semantic
 retrieval.
 
-There are no editor/provider hook configurations, hook lifecycle engine,
-work-plan scheduler, source-attunement gate, provider registry, runtime-tool
-catalogue, or separate graph-routing database in the product architecture.
-Storage/index maintenance state is an internal physical concern and is not a
-reasoning lifecycle or a second source of truth.
+There are no editor- or provider-owned automatic hook configurations, parallel
+hook lifecycle engines, provider registries, runtime-tool catalogues, or
+separate graph-routing databases in the product architecture. Explicit
+automation capabilities may be added only as versioned `rrd-contract`
+operations composed through `RrdEngine`: a trigger is a condition over a
+canonical engine event, a routine is a resumable sequence of authorized engine
+operations, a hook adapter only submits typed host events, and a skill is a
+versioned instruction/resource reference resolved into governed context.
+Storage/index maintenance state remains an internal physical concern and is
+not a second source of truth.
 
 ## Canonical context contract
 
@@ -171,6 +176,37 @@ to invisibly alter prompts in a host that provides no such API; where a host
 does provide that boundary, its adapter must invoke this same operation and
 must not implement retrieval itself.
 
+## Connectome bootstrap and project attunement
+
+Connectome is a standalone client repository and release boundary. A checkout
+may be mounted beside or beneath the engine repository during development, but
+the client does not own engine state or lifecycle. Its first runtime invariant
+is a real HTTP bootstrap against the public RRD endpoints, in order:
+
+```text
+GET /v1/health/live
+GET /v1/health/ready
+GET /v1/capabilities
+```
+
+Connectome accepts the runtime only after validating the `rrd` protocol
+version and the returned instance resource. Plain HTTP is loopback-only;
+off-device and mesh-resolved endpoints require HTTPS. A Zuul Zero or
+shippin.ai mesh adapter may resolve a devspace endpoint and supply opaque
+transport attestation, but it does not become a database authority and network
+reachability alone does not establish RRD identity.
+
+Installation into an existing project will be an explicit, previewable,
+resumable attunement operation owned by `RrdEngine`, with a planning estimate
+of 30–45 minutes for a substantial estate rather than a completion guarantee.
+The intended checkpointed phases are connect, inventory, parse, normalize,
+entity-link, lexical index, embed, vector index, graph, ground, and verify.
+Every mutation phase must use the canonical transaction boundary, record its
+runtime cursor/schema/catalogue coordinates and source digests, and survive a
+process restart without silently repeating committed work. Connectome may
+start and observe that job only after the contract and engine implementation
+exist; client-side phase labels are not evidence of implementation.
+
 ## Current status
 
 Implemented now:
@@ -203,6 +239,8 @@ Not implemented or not yet production-grade:
 - fusion weights are static and there is no feedback learner, query planner
   cost model, or quality regression corpus tied to release gates;
 - automatic turn-boundary invocation still requires a supported host adapter.
+- mesh endpoint discovery, the canonical attunement job, and engine-owned
+  trigger/routine/hook-adapter/skill operations are not yet implemented.
 
 These are material gaps. A successful compile is not evidence that context
 flows correctly, and none of the gaps above is represented as complete.
@@ -211,8 +249,9 @@ flows correctly, and none of the gaps above is represented as complete.
 
 Work proceeds in dependency order without introducing another authority:
 
-1. Define one ingestion contract that normalizes documents, conversations,
-   claims, entities, relations, and embedding work into canonical mutations.
+1. Define one ingestion and resumable attunement contract that normalizes
+   documents, conversations, claims, entities, relations, and embedding work
+   into canonical mutations with durable phase checkpoints.
 2. Add persistent incremental lexical indexing tied to runtime cursor and
    schema revision, with exact fallback and corruption recovery.
 3. Add a costed semantic planner that can choose exact scan or bounded ANN
@@ -225,6 +264,9 @@ Work proceeds in dependency order without introducing another authority:
    regression gates before changing fusion behavior.
 7. Integrate automatic turn-boundary context invocation in each host that
    exposes a supported interception point; keep unsupported hosts explicit.
+8. Add engine-owned trigger, routine, typed hook-adapter, and skill operations
+   only after the event, authorization, idempotency, replay, and audit
+   contracts are behavior-tested at the `RrdEngine` boundary.
 
 ## Verification
 
