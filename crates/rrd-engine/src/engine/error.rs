@@ -41,6 +41,8 @@ pub enum ServiceError {
     FunctionLimit(String),
     FunctionNotFound,
     AutomationRevisionNotFound,
+    MemoryTargetNotFound,
+    SeatNotRepresented,
     Runtime(String),
     PermissionDenied,
     DeadlineExceeded,
@@ -76,7 +78,8 @@ impl ServiceError {
             Self::SessionNotFound
             | Self::TransactionNotFound
             | Self::SubscriptionNotFound
-            | Self::FunctionNotFound => ServiceErrorKind::NotFound,
+            | Self::FunctionNotFound
+            | Self::MemoryTargetNotFound => ServiceErrorKind::NotFound,
             Self::Unauthenticated => ServiceErrorKind::Unauthenticated,
             Self::PermissionDenied => ServiceErrorKind::PermissionDenied,
             Self::IdempotencyConflict => ServiceErrorKind::Conflict,
@@ -89,6 +92,7 @@ impl ServiceError {
             | Self::SubscriptionClosed
             | Self::SubscriptionConnectionReplaced
             | Self::AutomationRevisionNotFound
+            | Self::SeatNotRepresented
             | Self::ProjectBindingMismatch => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::RenewalQuota

@@ -95,6 +95,52 @@ of a locally installed vector model and collection, graph expansion, claim
 resolution, fusion evidence, resource truncation, packet validation, exact
 cursor binding, and equality after closing and reopening the engine.
 
+## Persistent seat identity and warp points
+
+An RRFlow seat is a durable identity in the canonical runtime graph. Provider
+accounts are temporal `rrflow-represents` edges into that seat; they do not own
+the identity and changing a provider does not change the seat. A seat resolves
+as self only while at least one provider identity represents it. Persisted
+provider identity records contain an opaque provider name and a subject digest,
+never provider credentials or provider runtime sessions.
+
+Every record has a stable, path-safe coordinate:
+
+```text
+rrflow://<instance>/data/<record-kind>/<record-id>
+```
+
+For this project, the primary identity coordinate is the
+[Clyffy seat](rrflow://rrflow-instance/data/rrflow-seat/clyffy). README links
+using this scheme are warp points into RRFlowDB, not copies of database state.
+The CLI resolves a warp by converting it to a record anchor and invoking the
+same `RrdEngine::assemble_context` planner and temporal snapshot used by normal
+context requests.
+
+Persist or update a seat and one provider representation explicitly:
+
+```bash
+rrflow identity bind \
+  --seat clyffy \
+  --provider openai \
+  --provider-identity codex \
+  --provider-subject '<provider-subject>' \
+  --representation codex-represents-clyffy
+```
+
+Resolve self or follow the README warp point:
+
+```bash
+rrflow identity resolve --seat clyffy
+rrflow context \
+  --warp rrflow://rrflow-instance/data/rrflow-seat/clyffy \
+  --max-graph-depth 1
+```
+
+`identity bind` plans strict seat/provider/relation schema plus mutations, then
+commits the plan through the ordinary authenticated data transaction boundary.
+It does not bypass mutation authorization or create a parallel identity store.
+
 ## Authority and surfaces
 
 Dependency direction is inward toward the engine, never sideways into a new
@@ -137,6 +183,8 @@ Implemented now:
 - bounded graph expansion from explicit and retrieved roots;
 - deterministic multi-source fusion, deduplication, evidence, digests, and
   resource enforcement;
+- durable provider-neutral seat identity, provider representation edges, and
+  stable `rrflow://` record warp resolution through the context planner;
 - authenticated server/client, embedded/daemon MCP, CLI, and Connectome paths
   converging on the same context operation;
 - persistence/reopen and real transport behavior tests.

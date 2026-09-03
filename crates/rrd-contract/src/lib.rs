@@ -10,6 +10,7 @@ mod diagnostic;
 mod function;
 mod inference;
 mod memory_context;
+mod memory_estate;
 mod platform;
 mod sdk_conformance;
 
@@ -48,6 +49,12 @@ pub use memory_context::{
     ContextPacket, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
     MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SCANNED_CHANGES,
     MAX_CONTEXT_SEEDS,
+};
+pub use memory_estate::{
+    MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
+    ProviderRepresentation, ProviderRepresentationDefinition, ResolveMemoryWarp,
+    ResolveSeatIdentity, ResolvedMemoryWarp, SeatIdentity, MAX_PROVIDER_REPRESENTATIONS,
+    MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
 };
 pub use platform::{PlatformTermDefinition, PlatformTermRole, PLATFORM_TERMS};
 pub use sdk_conformance::{

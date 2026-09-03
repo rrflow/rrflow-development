@@ -597,6 +597,91 @@ fn context_reads_cli_claims_through_the_bound_engine_without_scope_wiring() {
 }
 
 #[test]
+fn identity_bind_resolve_and_readme_warp_share_the_persistent_engine() {
+    let db = scratch("identity-warp");
+    let project = db.parent().unwrap().parent().unwrap().to_str().unwrap();
+    let provider_subject = "provider-subject-must-not-be-persisted";
+    let (ok, out, err) = rrflow(
+        &db,
+        &[
+            "identity",
+            "bind",
+            "--root",
+            project,
+            "--seat",
+            "clyffy",
+            "--provider",
+            "provider-alpha",
+            "--provider-identity",
+            "alpha-account",
+            "--provider-subject",
+            provider_subject,
+            "--representation",
+            "alpha-represents-clyffy",
+            "--json",
+        ],
+    );
+    assert!(ok, "identity bind failed: {err}");
+    assert!(!out.contains(provider_subject));
+    let bound: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let uri = bound["seat_uri"].as_str().unwrap();
+    assert_eq!(uri, "rrflow://identity-warp/data/rrflow-seat/clyffy");
+    assert!(bound["receipt"]["last_runtime_cursor"].as_u64().unwrap() > 0);
+
+    let (ok, out, err) = rrflow(
+        &db,
+        &[
+            "identity", "resolve", "--root", project, "--seat", "clyffy", "--json",
+        ],
+    );
+    assert!(ok, "identity resolve failed after reopen: {err}");
+    let identity: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(identity["uri"], uri);
+    assert_eq!(identity["seat_id"], "clyffy");
+    assert_eq!(identity["representations"][0]["provider"], "provider-alpha");
+    assert_eq!(
+        identity["representations"][0]["subject_sha256"]
+            .as_str()
+            .unwrap()
+            .len(),
+        64
+    );
+
+    let (ok, out, err) = rrflow(
+        &db,
+        &[
+            "context",
+            "--root",
+            project,
+            "--warp",
+            uri,
+            "--max-graph-depth",
+            "1",
+            "--json",
+        ],
+    );
+    assert!(ok, "warp resolution failed after reopen: {err}");
+    let resolved: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(resolved["uri"], uri);
+    let items = resolved["context"]["items"].as_array().unwrap();
+    assert!(items
+        .iter()
+        .any(|item| item["identity"] == "record:rrflow-seat:clyffy"));
+    assert!(items.iter().any(|item| {
+        item["identity"] == "record:rrflow-provider-identity:alpha-account"
+            && item["evidence"].as_array().unwrap().iter().any(|evidence| {
+                evidence["kind"] == "graph"
+                    && evidence["source"] == "relation:rrflow-represents:alpha-represents-clyffy"
+            })
+    }));
+
+    let (ok, out, err) = rrflow(&db, &["invocations", "--json"]);
+    assert!(ok, "invocation read failed: {err}");
+    assert!(!out.contains(provider_subject));
+    assert!(out.contains("provider_subject_sha256="));
+}
+
+#[test]
 fn reasoning_contract_rejects_skips_and_is_queryable_as_typed_json() {
     let db = scratch("reasoning-contract");
     let goal = r#"{"kind":"goal","statement":"ship it","acceptance":["tests pass"]}"#;

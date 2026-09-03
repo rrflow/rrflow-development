@@ -103,6 +103,7 @@ mod estate;
 mod estate_control;
 mod inference;
 mod invocation;
+mod memory_estate;
 mod model;
 mod query;
 mod query_transaction;

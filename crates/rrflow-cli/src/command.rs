@@ -6,8 +6,10 @@
 
 use clap::{Parser, Subcommand};
 use rrd_contract::{
-    AssembleContext, CanonicalId, CloseSession, CorrelationId, CreateSession, DataReference,
-    SessionLimits,
+    AssembleContext, BeginTransaction, CanonicalId, CloseSession, CommitTransaction, CorrelationId,
+    CreateSession, DataReference, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
+    ProviderRepresentationDefinition, RequestContext, ResolveMemoryWarp, ResolveSeatIdentity,
+    SessionLimits, MEMORY_SEAT_KIND,
 };
 use rrd_engine::{
     digest, Claim, Millis, Outcome, Predicate, Producer, Reader, ReasoningPayload, RrdEngine,
@@ -143,8 +145,11 @@ pub enum Command {
         /// Runtime scope. Defaults to this engine's bound instance.
         #[arg(long)]
         scope: Option<String>,
-        #[arg(long)]
+        #[arg(long, default_value = "")]
         query: String,
+        /// Stable rrflow:// record coordinate. Cannot be combined with --seed.
+        #[arg(long)]
+        warp: Option<String>,
         /// Optional KIND:ID record anchor. Repeatable.
         #[arg(long = "seed")]
         seeds: Vec<String>,
@@ -159,6 +164,11 @@ pub enum Command {
         #[arg(long, default_value_t = 100_000)]
         max_scanned_changes: u64,
     },
+    /// Persist or resolve a provider-independent RRFlow seat identity.
+    Identity {
+        #[command(subcommand)]
+        action: IdentityAction,
+    },
     /// Record or inspect the typed operational reasoning contract.
     Reasoning {
         #[command(subcommand)]
@@ -168,6 +178,47 @@ pub enum Command {
     Storage {
         #[command(subcommand)]
         action: StorageAction,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum IdentityAction {
+    /// Persist a seat and one provider representation in the canonical log.
+    Bind {
+        #[arg(long, default_value = ".")]
+        root: std::path::PathBuf,
+        #[arg(long, default_value = "clyffy")]
+        seat: String,
+        #[arg(long, default_value = "Clyffy")]
+        display_name: String,
+        #[arg(
+            long,
+            default_value = "Persistent RRFlow reasoning and recall identity"
+        )]
+        purpose: String,
+        /// Opaque provider name; no provider-specific contract is created.
+        #[arg(long)]
+        provider: String,
+        /// Stable local ID for the provider identity record.
+        #[arg(long)]
+        provider_identity: String,
+        /// Provider subject used only to derive a digest; plaintext is not stored.
+        #[arg(long)]
+        provider_subject: String,
+        /// Stable ID for the provider-to-seat representation edge.
+        #[arg(long)]
+        representation: String,
+    },
+    /// Resolve the durable seat represented as self at one valid-time instant.
+    Resolve {
+        #[arg(long, default_value = ".")]
+        root: std::path::PathBuf,
+        #[arg(long, default_value = "clyffy")]
+        seat: String,
+        #[arg(long)]
+        valid_at: Option<Millis>,
+        #[arg(long, default_value_t = 100_000)]
+        max_scanned_changes: u64,
     },
 }
 
@@ -314,6 +365,12 @@ impl Command {
             Command::Invocations { .. } => "invocations",
             Command::Query { .. } => "query",
             Command::Context { .. } => "context",
+            Command::Identity {
+                action: IdentityAction::Bind { .. },
+            } => "identity-bind",
+            Command::Identity {
+                action: IdentityAction::Resolve { .. },
+            } => "identity-resolve",
             Command::Reasoning {
                 action: ReasoningAction::Record { .. },
             } => "reasoning-record",
@@ -439,6 +496,7 @@ impl Command {
                 root,
                 scope,
                 query,
+                warp,
                 seeds,
                 valid_at,
                 max_graph_depth,
@@ -449,11 +507,51 @@ impl Command {
                 format!("root={}", root.display()),
                 format!("scope={}", scope.as_deref().unwrap_or("bound-instance")),
                 format!("query_sha256={}", digest::sha256_hex(query.as_bytes())),
+                format!("warp={}", warp.as_deref().unwrap_or("none")),
                 format!("seed_count={}", seeds.len()),
                 format!("valid_at={}", valid_at.unwrap_or(0)),
                 format!("max_graph_depth={max_graph_depth}"),
                 format!("max_items={max_items}"),
                 format!("max_output_bytes={max_output_bytes}"),
+                format!("max_scanned_changes={max_scanned_changes}"),
+            ],
+            Command::Identity {
+                action:
+                    IdentityAction::Bind {
+                        root,
+                        seat,
+                        display_name,
+                        purpose,
+                        provider,
+                        provider_identity,
+                        provider_subject,
+                        representation,
+                    },
+            } => vec![
+                format!("root={}", root.display()),
+                format!("seat={seat}"),
+                format!("display_name={display_name}"),
+                format!("purpose_sha256={}", digest::sha256_hex(purpose.as_bytes())),
+                format!("provider={provider}"),
+                format!("provider_identity={provider_identity}"),
+                format!(
+                    "provider_subject_sha256={}",
+                    digest::sha256_hex(provider_subject.as_bytes())
+                ),
+                format!("representation={representation}"),
+            ],
+            Command::Identity {
+                action:
+                    IdentityAction::Resolve {
+                        root,
+                        seat,
+                        valid_at,
+                        max_scanned_changes,
+                    },
+            } => vec![
+                format!("root={}", root.display()),
+                format!("seat={seat}"),
+                format!("valid_at={}", valid_at.unwrap_or(0)),
                 format!("max_scanned_changes={max_scanned_changes}"),
             ],
             Command::Reasoning {
@@ -898,6 +996,7 @@ pub fn execute(
             root,
             scope,
             query,
+            warp,
             seeds,
             valid_at,
             max_graph_depth,
@@ -906,21 +1005,12 @@ pub fn execute(
             max_scanned_changes,
         } => {
             verify_instance_store(store, root)?;
-            let request = AssembleContext {
-                scope: scope
-                    .clone()
-                    .unwrap_or_else(|| format!("instance:{}", store.instance_id())),
-                query: query.clone(),
-                valid_at: valid_at.unwrap_or(now),
-                seeds: seeds
-                    .iter()
-                    .map(|seed| parse_data_reference(seed))
-                    .collect::<Result<Vec<_>, _>>()?,
-                max_graph_depth: *max_graph_depth,
-                max_items: *max_items,
-                max_output_bytes: *max_output_bytes,
-                max_scanned_changes: *max_scanned_changes,
-            };
+            if warp.is_some() && !seeds.is_empty() {
+                return Err("--warp cannot be combined with --seed".into());
+            }
+            let scope = scope
+                .clone()
+                .unwrap_or_else(|| format!("instance:{}", store.instance_id()));
             let session_key = CorrelationId::new(format!("cli-context-session-{now}"))?;
             let lease = store.create_session(
                 &CreateSession {
@@ -935,14 +1025,56 @@ pub fn execute(
                 "cli-context-session",
                 "cli-context-session",
             )?;
-            let packet = store.assemble_context(
-                &lease.session_id,
-                &lease.token,
-                &request,
-                now,
-                "cli-context",
-                "cli-context",
-            );
+            let assembled = if let Some(uri) = warp {
+                store
+                    .resolve_memory_warp(
+                        &lease.session_id,
+                        &lease.token,
+                        &ResolveMemoryWarp {
+                            scope,
+                            uri: uri.clone(),
+                            query: query.clone(),
+                            valid_at: valid_at.unwrap_or(now),
+                            max_graph_depth: *max_graph_depth,
+                            max_items: *max_items,
+                            max_output_bytes: *max_output_bytes,
+                            max_scanned_changes: *max_scanned_changes,
+                        },
+                        now,
+                        "cli-context-warp",
+                        "cli-context-warp",
+                    )
+                    .map(|resolved| {
+                        let digest = resolved.context.packet_sha256.clone();
+                        (serde_json::to_value(resolved), digest)
+                    })
+            } else {
+                store
+                    .assemble_context(
+                        &lease.session_id,
+                        &lease.token,
+                        &AssembleContext {
+                            scope,
+                            query: query.clone(),
+                            valid_at: valid_at.unwrap_or(now),
+                            seeds: seeds
+                                .iter()
+                                .map(|seed| parse_data_reference(seed))
+                                .collect::<Result<Vec<_>, _>>()?,
+                            max_graph_depth: *max_graph_depth,
+                            max_items: *max_items,
+                            max_output_bytes: *max_output_bytes,
+                            max_scanned_changes: *max_scanned_changes,
+                        },
+                        now,
+                        "cli-context",
+                        "cli-context",
+                    )
+                    .map(|packet| {
+                        let digest = packet.packet_sha256.clone();
+                        (serde_json::to_value(packet), digest)
+                    })
+            };
             let _ = store.close_session(
                 &lease.session_id,
                 &lease.token,
@@ -952,15 +1084,188 @@ pub fn execute(
                 "cli-context-close",
                 "cli-context-close",
             );
-            let packet = packet?;
+            let (value, digest) = assembled?;
             let text = if json {
-                serde_json::to_string_pretty(&packet)?
+                serde_json::to_string_pretty(&value?)?
             } else {
-                serde_json::to_string(&packet)?
+                serde_json::to_string(&value?)?
             };
             return Ok(Execution {
                 text,
-                detail: Some(format!("context={}", packet.packet_sha256)),
+                detail: Some(format!("context={digest}")),
+                success: true,
+            });
+        }
+
+        Command::Identity {
+            action:
+                IdentityAction::Bind {
+                    root,
+                    seat,
+                    display_name,
+                    purpose,
+                    provider,
+                    provider_identity,
+                    provider_subject,
+                    representation,
+                },
+        } => {
+            verify_instance_store(store, root)?;
+            let session_key = CorrelationId::new(format!("cli-identity-bind-session-{now}"))?;
+            let lease = store.create_session(
+                &CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 30_000,
+                        absolute_timeout_ms: 60_000,
+                        max_open_transactions: 1,
+                    },
+                },
+                &session_key,
+                now,
+                "cli-identity-bind-session",
+                "cli-identity-bind-session",
+            )?;
+            let result = (|| {
+                let seat_id = CanonicalId::new(seat.clone())?;
+                let request = PersistMemoryEstate {
+                    scope: format!("instance:{}", store.instance_id()),
+                    seat: MemorySeatDefinition {
+                        id: seat_id.clone(),
+                        display_name: display_name.clone(),
+                        purpose: purpose.clone(),
+                    },
+                    representations: vec![ProviderRepresentationDefinition {
+                        id: CanonicalId::new(representation.clone())?,
+                        provider_identity: CanonicalId::new(provider_identity.clone())?,
+                        provider: CanonicalId::new(provider.clone())?,
+                        subject_sha256: digest::sha256_hex(provider_subject.as_bytes()),
+                    }],
+                    valid_from: now,
+                };
+                let plan = store.plan_memory_estate(
+                    &lease.session_id,
+                    &lease.token,
+                    &request,
+                    now,
+                    "cli-identity-plan",
+                    "cli-identity-plan",
+                )?;
+                let begin_context = RequestContext {
+                    request_id: CorrelationId::new(format!("cli-identity-begin-request-{now}"))?,
+                    operation_id: CorrelationId::new(format!(
+                        "cli-identity-begin-operation-{now}"
+                    ))?,
+                    idempotency_key: Some(CorrelationId::new(format!(
+                        "cli-identity-begin-idempotency-{now}"
+                    ))?),
+                    deadline_unix_ms: None,
+                };
+                let transaction = store.begin_transaction(
+                    &lease.session_id,
+                    &lease.token,
+                    &BeginTransaction {
+                        scope: CanonicalId::new("data")?,
+                        timeout_ms: 30_000,
+                    },
+                    &begin_context,
+                    now,
+                )?;
+                let receipt = store.commit_transaction(
+                    &lease.session_id,
+                    &lease.token,
+                    &transaction.transaction_id,
+                    &CorrelationId::new(format!("cli-identity-commit-{now}"))?,
+                    &CommitTransaction {
+                        operation_sha256: plan.operation_sha256,
+                        mutations: plan.mutations,
+                    },
+                    now,
+                    "cli-identity-commit",
+                    "cli-identity-commit",
+                )?;
+                let uri = MemoryWarp::new(
+                    store.instance_id().clone(),
+                    DataReference {
+                        kind: CanonicalId::new(MEMORY_SEAT_KIND)?,
+                        id: seat_id,
+                    },
+                )
+                .uri();
+                Ok::<_, Box<dyn std::error::Error>>((uri, receipt))
+            })();
+            close_cli_session(store, &lease, now, "identity-bind")?;
+            let (uri, receipt) = result?;
+            let text = if json {
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "seat_uri": uri,
+                    "receipt": receipt,
+                }))?
+            } else {
+                format!(
+                    "seat persisted: {uri}\nruntime cursor: {}",
+                    receipt.last_runtime_cursor.unwrap_or(0)
+                )
+            };
+            return Ok(Execution {
+                text,
+                detail: Some(format!("seat={uri}")),
+                success: true,
+            });
+        }
+
+        Command::Identity {
+            action:
+                IdentityAction::Resolve {
+                    root,
+                    seat,
+                    valid_at,
+                    max_scanned_changes,
+                },
+        } => {
+            verify_instance_store(store, root)?;
+            let session_key = CorrelationId::new(format!("cli-identity-resolve-session-{now}"))?;
+            let lease = store.create_session(
+                &CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 30_000,
+                        absolute_timeout_ms: 60_000,
+                        max_open_transactions: 1,
+                    },
+                },
+                &session_key,
+                now,
+                "cli-identity-resolve-session",
+                "cli-identity-resolve-session",
+            )?;
+            let identity = store.resolve_seat_identity(
+                &lease.session_id,
+                &lease.token,
+                &ResolveSeatIdentity {
+                    scope: format!("instance:{}", store.instance_id()),
+                    seat_id: CanonicalId::new(seat.clone())?,
+                    valid_at: valid_at.unwrap_or(now),
+                    max_scanned_changes: *max_scanned_changes,
+                },
+                now,
+                "cli-identity-resolve",
+                "cli-identity-resolve",
+            );
+            close_cli_session(store, &lease, now, "identity-resolve")?;
+            let identity = identity?;
+            let text = if json {
+                serde_json::to_string_pretty(&identity)?
+            } else {
+                format!(
+                    "self: {} ({})\nrepresented by: {} provider identity(s)\nread cursor: {}",
+                    identity.display_name,
+                    identity.uri,
+                    identity.representations.len(),
+                    identity.read.runtime_cursor
+                )
+            };
+            return Ok(Execution {
+                text,
+                detail: Some(format!("seat={}", identity.uri)),
                 success: true,
             });
         }
@@ -973,6 +1278,7 @@ pub fn execute(
         match command {
             Command::Query { .. }
             | Command::Context { .. }
+            | Command::Identity { .. }
             | Command::Dev { .. }
             | Command::Storage { .. } => {
                 unreachable!("handled above with an early return")
@@ -1200,6 +1506,24 @@ fn verify_instance_store(
     root: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     store.verify_project_store(root)
+}
+
+fn close_cli_session(
+    store: &RrdEngine,
+    lease: &rrd_contract::SessionLease,
+    now: Millis,
+    operation: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    store.close_session(
+        &lease.session_id,
+        &lease.token,
+        &CloseSession {},
+        &CorrelationId::new(format!("cli-{operation}-close-{now}"))?,
+        now,
+        &format!("cli-{operation}-close"),
+        &format!("cli-{operation}-close"),
+    )?;
+    Ok(())
 }
 
 fn parse_data_reference(value: &str) -> Result<DataReference, Box<dyn std::error::Error>> {
