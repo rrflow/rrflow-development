@@ -11,8 +11,8 @@ default = []
 accelerator = []
 
 [dependencies]
-rrd-core = { path = "../kernel/rrd-core" }
-rrd-store = { path = "../persistence/rrd-store" }
+rrd-core = { path = "../../kernel/rrd-core" }
+rrd-store = { path = "../../persistence/rrd-store" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 memmap2 = "0.9"

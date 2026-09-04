@@ -29,7 +29,7 @@ ordering semantics.
   descending. The borrowing exact API avoids a corpus copy on the hot path.
 
 The portable contract and projection identities are frozen by
-`crates/rrd-vector/fixtures/vector-search-v1.json`.
+`crates/compute/rrd-vector/fixtures/vector-search-v1.json`.
 
 ## Persistent collection control
 

@@ -285,7 +285,7 @@ fn fixed_quantization_bias_recall_memory_compression_and_latency_matrix_passes()
 #[test]
 fn checked_in_quantization_evidence_is_complete_and_honestly_scoped() {
     let evidence: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/evidence/g04-w04-quantization-local-512x64.json"
+        "../../../../docs/evidence/g04-w04-quantization-local-512x64.json"
     ))
     .unwrap();
     assert_eq!(evidence["schema"], "rrflow.quantization-evidence.v1");

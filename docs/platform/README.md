@@ -163,7 +163,7 @@ gap, while G01 must first preserve one security authority.
   accepts only the frozen format-1 `Dedicated` plus `members = ["."]` shape.
   Those fields remain serialized solely to preserve existing authority bytes;
   explicit environment identity requires a successor-format migration.
-- [`rrd-vector/collection.rs`](../../crates/rrd-vector/src/collection.rs)
+- [`rrd-vector/collection.rs`](../../crates/compute/rrd-vector/src/collection.rs)
   implements a separate vector collection catalogue that must become an
   internal operator of the unified RRD catalogue.
 - [`rrd-security`](../../crates/rrd-security/src/lib.rs) owns persistent policy

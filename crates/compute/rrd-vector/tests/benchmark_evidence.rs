@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 #[test]
 fn checked_in_m5_evidence_is_structurally_complete_and_meets_local_gate() {
     let evidence: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/evidence/m5-vector-local-10000x128.json"
+        "../../../../docs/evidence/m5-vector-local-10000x128.json"
     ))
     .unwrap();
     assert_eq!(evidence["schema"], "rrflow.vector-evidence.v1");

@@ -12,7 +12,7 @@ pgvector-postgres = ["dep:native-tls", "dep:postgres", "dep:postgres-native-tls"
 
 [dependencies]
 rrd-core = { path = "../kernel/rrd-core" }
-rrd-vector = { path = "../rrd-vector" }
+rrd-vector = { path = "../compute/rrd-vector" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 native-tls = { version = "0.2.14", optional = true }

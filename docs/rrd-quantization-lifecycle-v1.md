@@ -102,7 +102,7 @@ silently alter logical truth.
 
 ## Local qualification evidence
 
-`crates/rrd-vector/tests/quantization_matrix.rs` uses a fixed 512×64 corpus,
+`crates/compute/rrd-vector/tests/quantization_matrix.rs` uses a fixed 512×64 corpus,
 eight queries, top-10 results, and exact reranking over 96 candidates. It covers
 all 11 supported codec/ratio rows and asserts:
 
