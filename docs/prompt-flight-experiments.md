@@ -2,7 +2,8 @@
 
 Status: historical provider-experiment contract from the retired
 in-repository workbench. It is not a current engine lifecycle or Connectome
-implementation claim; `README.md` owns current status and roadmap.
+implementation claim; the root `README.md` owns current status and links the
+active [`RRFlow 1.0 roadmap`](roadmap/rrflow-1.0.md).
 
 Connectome prompt flights answer one narrow question: what observable effect
 does RRFlow context have on a frontier model for the same prompt and repository

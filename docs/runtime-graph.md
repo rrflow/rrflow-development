@@ -1,7 +1,7 @@
 # Temporal runtime graph
 
 Status: historical pre-1.0 architecture note. It does not describe the current
-RRFlow composition or roadmap; use `README.md` as the sole authority.
+RRFlow composition or roadmap; follow the root `README.md` knowledge map.
 
 ## Boundary
 

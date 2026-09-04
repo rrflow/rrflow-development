@@ -1,7 +1,7 @@
 # RRD public contract v1
 
-Status: supporting wire-contract record. `README.md` remains the sole product
-architecture, current-status, and roadmap authority.
+Status: supporting wire-contract record. The root `README.md` owns product
+architecture invariants and current status; the linked roadmap owns its gates.
 
 `rrd-contract` is the public transport-neutral boundary. It does not
 depend on RRFlow storage, query, cluster, node, or Connectome implementation.

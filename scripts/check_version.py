@@ -36,7 +36,10 @@ def main() -> int:
     workspace = load_toml(ROOT / "Cargo.toml")
     workspace_version = workspace["workspace"]["package"]["version"]  # type: ignore[index]
     if workspace_version != VERSION:
-        fail(f"Cargo workspace version is {workspace_version!r}, expected {VERSION!r}", failures)
+        fail(
+            f"Cargo workspace version is {workspace_version!r}, expected {VERSION!r}",
+            failures,
+        )
 
     manifests = sorted((ROOT / "crates").rglob("Cargo.toml"))
     declared_manifests = sorted(
@@ -55,7 +58,10 @@ def main() -> int:
         package = load_toml(manifest)["package"]  # type: ignore[index]
         workspace_package_names.add(package["name"])  # type: ignore[index]
         if package.get("version") != {"workspace": True}:  # type: ignore[union-attr]
-            fail(f"{manifest.relative_to(ROOT)} must use `version.workspace = true`", failures)
+            fail(
+                f"{manifest.relative_to(ROOT)} must use `version.workspace = true`",
+                failures,
+            )
 
     cargo_lock = load_toml(ROOT / "Cargo.lock")
     stale_locked_packages = sorted(
@@ -72,10 +78,10 @@ def main() -> int:
             failures,
         )
 
-    readme_version_line = f"The current release-train version is `{VERSION}`."
+    readme_version_line = f"The target release-train version is `{VERSION}`."
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     if readme_version_line not in readme:
-        fail("README.md does not declare the canonical VERSION", failures)
+        fail("README.md does not mirror the target VERSION", failures)
 
     version_policy_line = (
         f"RRFlow's canonical current release-train version is `{VERSION}`."
@@ -90,14 +96,21 @@ def main() -> int:
             failures,
         )
 
-    typescript = json.loads((ROOT / "sdks/typescript/package.json").read_text(encoding="utf-8"))
+    typescript = json.loads(
+        (ROOT / "sdks/typescript/package.json").read_text(encoding="utf-8")
+    )
     if typescript["version"] != VERSION:
-        fail(f"TypeScript SDK version is {typescript['version']!r}, expected {VERSION!r}", failures)
+        fail(
+            f"TypeScript SDK version is {typescript['version']!r}, expected {VERSION!r}",
+            failures,
+        )
 
     python_project = load_toml(ROOT / "sdks/python/pyproject.toml")
     python_version = python_project["project"]["version"]  # type: ignore[index]
     if python_version != VERSION:
-        fail(f"Python SDK version is {python_version!r}, expected {VERSION!r}", failures)
+        fail(
+            f"Python SDK version is {python_version!r}, expected {VERSION!r}", failures
+        )
 
     python_lock = load_toml(ROOT / "sdks/python/uv.lock")
     locked_versions = [
@@ -106,7 +119,10 @@ def main() -> int:
         if package["name"] == "rrflow-rrd-client"
     ]
     if locked_versions != [VERSION]:
-        fail(f"Python SDK lock versions are {locked_versions!r}, expected [{VERSION!r}]", failures)
+        fail(
+            f"Python SDK lock versions are {locked_versions!r}, expected [{VERSION!r}]",
+            failures,
+        )
 
     java_root = ET.parse(ROOT / "sdks/java/pom.xml").getroot()
     namespace = {"m": "http://maven.apache.org/POM/4.0.0"}
@@ -122,9 +138,9 @@ def main() -> int:
         fail(f".NET SDK version is {dotnet_version!r}, expected {VERSION!r}", failures)
 
     contract = json.loads(
-        (ROOT / "crates/transport/rrd-contract/fixtures/public-contract-v1.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            ROOT / "crates/transport/rrd-contract/fixtures/public-contract-v1.json"
+        ).read_text(encoding="utf-8")
     )
     implementation_version = contract["service"]["implementation_version"]
     if implementation_version != VERSION:

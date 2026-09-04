@@ -1,7 +1,7 @@
 # Instance topology
 
-Status: supporting deployment note. `README.md` is the sole authority for
-canonical platform terms, current architecture, status, and roadmap.
+Status: supporting deployment note. The root `README.md` owns platform terms,
+architecture invariants, current status, and the knowledge map.
 
 This document applies the root README terminology to deployment and does not
 define a second glossary.

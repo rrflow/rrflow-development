@@ -1,11 +1,10 @@
 # RRFlow kernel invariants
 
-Status: supporting semantic contract; `README.md` remains the sole authority
-for product architecture, current status, and roadmap.
+Status: supporting semantic contract; the root `README.md` owns product
+identity, architecture invariants, current status, and knowledge routing.
 
-This is a supporting semantic contract. `README.md` is the sole authority for
-product identity, architecture, current status, and roadmap. If this document
-and the README disagree, the README wins.
+This is a supporting semantic contract. If it conflicts with the root README
+or the linked RRFlow 1.0 roadmap owner, the applicable owning record wins.
 
 ## Canonical authority
 

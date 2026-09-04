@@ -1,7 +1,7 @@
 # Anytype-inspired connectome workbench
 
 Status: historical interaction research and retired in-repository workbench
-snapshot. Current Connectome status and roadmap live only in `README.md`.
+snapshot. Follow the root `README.md` knowledge map for current owners.
 
 Research date: 2026-08-18. This is an interaction study, not a proposal to
 copy Anytype's branding or source.

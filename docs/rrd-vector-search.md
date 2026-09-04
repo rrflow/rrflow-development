@@ -1,7 +1,7 @@
 # RRD vector/search, online HNSW, and unified retrieval contract
 
 Status: supporting implemented vector-search contract; remaining index and
-routing gates are defined only in `README.md`.
+routing gates live in [`roadmap/rrflow-1.0.md`](roadmap/rrflow-1.0.md).
 
 `rrd-vector` is the rebuildable search layer over canonical `RuntimeVector`
 versions. The data-runtime commit log remains truth. An index may accelerate a

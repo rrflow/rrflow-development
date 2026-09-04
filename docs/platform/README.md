@@ -2,7 +2,7 @@
 
 **Status:** supporting machine terminology and hierarchy for RRFlow 1.0
 **Effective:** 2026-08-27
-**Authority:** the repository root `README.md` is the sole product and architecture authority
+**Authority:** the root `README.md` owns product identity and architecture invariants
 
 RRFlow is the product and complete reasoning-data engine. RRD (Reason Ready
 Daemon) is its daemon and embedded runtime boundary. `RrdEngine` is the sole

@@ -1,7 +1,7 @@
 # RRD deployment modes v1
 
-Status: supporting protocol-v1 implementation contract. `README.md` remains
-the sole product architecture, current-status, and roadmap authority.
+Status: supporting protocol-v1 implementation contract. The root `README.md`
+owns product architecture invariants, current status, and knowledge routing.
 
 RRD is one logical engine with multiple composition and transport faces. A
 deployment mode may change ownership, durability, transport, and resource

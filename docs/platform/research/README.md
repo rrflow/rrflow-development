@@ -58,7 +58,7 @@ The following documents currently participate in this naming discussion:
 ## Historical research follow-ups
 
 These captured follow-ups are not the current roadmap; the executable gate
-order is defined only in the repository `README.md`.
+order lives in [`docs/roadmap/rrflow-1.0.md`](../../roadmap/rrflow-1.0.md).
 
 - Add a HelixDB capability inventory at
   `docs/platform/research/helixdb-capability-inventory.md`.

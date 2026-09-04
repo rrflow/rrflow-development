@@ -2,7 +2,8 @@
 
 Status: supporting low-level function and transaction-trigger contract. This
 does not satisfy the engine-event trigger, routine, hook-adapter, or skill gates
-in `README.md`, which remains the sole current-status and roadmap authority.
+in the RRFlow 1.0 roadmap. The root `README.md` remains the product and
+current-status owner.
 
 ## Authority and compatibility
 

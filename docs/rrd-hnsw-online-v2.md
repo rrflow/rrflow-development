@@ -1,7 +1,7 @@
 # RRD online filtered HNSW v2
 
-Status: supporting implemented projection contract. `README.md` remains the
-sole authority for current product capability and remaining release gates.
+Status: supporting implemented projection contract. The root `README.md` owns
+current product status; `docs/roadmap/rrflow-1.0.md` owns release gates.
 
 The implemented projection keeps HNSW inside RRD rather than introducing a vector
 sidecar or a second write authority. Canonical point versions remain in the

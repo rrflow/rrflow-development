@@ -1,7 +1,7 @@
 # RRFlowQL transactions and joins v1
 
-Status: supporting internal implementation contract. `README.md` remains the
-sole authority for current architecture, capability status, and roadmap.
+Status: supporting internal implementation contract. The root `README.md` owns
+architecture invariants and status; the linked roadmap owns release gates.
 
 This document records the internal engine contract. It does not add a second
 transaction coordinator or claim network and SDK conformance is complete.

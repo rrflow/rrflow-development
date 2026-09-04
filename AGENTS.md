@@ -1,13 +1,16 @@
 # RRFlow engineering instructions
 
-`README.md` is the sole authority for product identity, architecture, current
-status, and roadmap. Other Markdown files are supporting design notes,
-contracts, evidence, or history and cannot override it.
+`README.md` is the bootstrap product entry point and knowledge map. It owns
+product identity and current status, and it links to the single owning memory
+record for each detailed subject. The RRFlow 1.0 release checklist is owned by
+`docs/roadmap/rrflow-1.0.md`. Other Markdown files are supporting design notes,
+contracts, evidence, or history and cannot override either owning record.
 
 For project work:
 
-1. Read the relevant section of `README.md`, then inspect the current worktree,
-   implementation, tests, and existing diff before changing files.
+1. Read `README.md` and follow its relevant owner warp point, then inspect the
+   current worktree, implementation, tests, and existing diff before changing
+   files.
 2. Preserve unrelated user changes. Keep each change coherent and reviewable.
 3. Use the existing `rrd-engine` composition boundary and provider-neutral
    contracts; do not add provider-specific state or a parallel source of truth.

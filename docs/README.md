@@ -1,0 +1,67 @@
+# RRFlow knowledge map
+
+**Status:** active documentation index and migration scaffold
+**Coordinate:** `rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map`
+**Owner:** documentation memory structure; linked from the repository root `README.md`
+
+The checkout is the bootstrap form of RRFlow's project memory until the same
+records can be imported into and resolved from rrflowKV. The repository root
+[README](../README.md) is the product entry point. It links to one owning
+record per subject instead of duplicating long-lived knowledge in one file.
+
+## Record rules
+
+Every active knowledge record must have:
+
+- one stable, path-safe filename and one eventual `rrflow://` coordinate;
+- a lifecycle status in its first 12 lines;
+- one declared subject and owner, with no competing definition elsewhere;
+- links to the code boundary, decision, roadmap item, and evidence it affects;
+- explicit supersession links when replaced, rather than compatibility copies;
+- machine-checkable identifiers that survive Markdown-to-rrflowKV ingestion.
+
+A directory exists only when it owns at least one real record. Empty taxonomy
+scaffolding is not added merely to make the tree look complete.
+
+## Documentation taxonomy
+
+| Directory | Owns | Does not own |
+|---|---|---|
+| `architecture/` | system context, boundaries, dependency direction, and end-to-end data flows | delivery order or test results |
+| `decisions/` | accepted or superseded architecture decision records and rationale | speculative research |
+| `roadmap/` | versioned outcomes, ordered gates, acceptance criteria, and completion ledger | architecture definitions duplicated from their owner |
+| `reference/` | protocols, schemas, configuration, commands, and stable terminology detail | tutorials or planning |
+| `guides/` | task-oriented installation, development, attunement, and troubleshooting procedures | normative architecture |
+| `operations/` | deployment, observability, backup, recovery, and incident runbooks | product semantics |
+| `research/` | source-backed investigations, comparisons, and unresolved findings | accepted decisions unless linked to an ADR |
+| `evidence/` | generated or measured proof tied to an exact revision and gate | assertions without reproducible inputs |
+| `history/` | superseded designs retained for provenance | active guidance or current status |
+
+This separates explanation, decisions, reference, task guidance, delivery
+planning, and evidence. It also gives each record a stable identity suitable
+for later graph edges and retrieval.
+
+The structure is grounded in the standard Cargo workspace/package layout,
+DataFusion's recommendation to keep architecture close to source and extend
+through explicit interfaces, Diátaxis's separation of explanation, how-to,
+tutorial, and reference material, and MADR's one-decision-per-record model:
+
+- [Cargo workspaces](https://doc.rust-lang.org/cargo/reference/workspaces.html)
+  and [package layout](https://doc.rust-lang.org/cargo/guide/project-layout.html);
+- [DataFusion architecture and extension APIs](https://datafusion.apache.org/contributor-guide/architecture.html);
+- [Diátaxis documentation structure](https://diataxis.fr/);
+- [Markdown Architectural Decision Records](https://adr.github.io/madr/).
+
+## Active memory roots
+
+| Subject | Owner |
+|---|---|
+| RRFlow 1.0 delivery | [`roadmap/`](roadmap/) |
+| Operations and CI | [`operations/`](operations/) |
+| Platform vocabulary research | [`platform/research/`](platform/research/) |
+| Machine evidence | [`evidence/`](evidence/) |
+
+The remaining flat `docs/*.md` files are an acknowledged pre-release
+classification backlog. They must move in small, link-preserving batches only
+after their active, historical, or superseded status is verified. Bulk moves
+must not be used to imply that their content is correct.
