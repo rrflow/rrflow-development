@@ -209,20 +209,21 @@ fn one_engine_authority_owns_every_product_storage_opening() {
         "production code outside rrd-engine/rrd-store must not open physical storage or revive a second embedded handle: {violations:#?}"
     );
 
-    let engine_library = fs::read_to_string(metadata.root.join("crates/rrd-engine/src/lib.rs"))
-        .expect("rrd-engine library source must be readable");
+    let engine_library =
+        fs::read_to_string(metadata.root.join("crates/authority/rrd-engine/src/lib.rs"))
+            .expect("rrd-engine library source must be readable");
     assert!(
         !engine_library.contains("pub mod operator;"),
         "the engine-owned operator implementation must remain private"
     );
     let mut duplicate_handles = Vec::new();
     collect_rust_sources(
-        &metadata.root.join("crates/rrd-engine/src"),
+        &metadata.root.join("crates/authority/rrd-engine/src"),
         &mut duplicate_handles,
         "EmbeddedOperator",
     );
     collect_rust_sources(
-        &metadata.root.join("crates/rrd-engine/src"),
+        &metadata.root.join("crates/authority/rrd-engine/src"),
         &mut duplicate_handles,
         "pub fn runtime_store",
     );
@@ -316,7 +317,7 @@ fn legacy_service_name_is_absent() {
     let forbidden = ["Rrd", "Service"].concat();
     let mut violations = Vec::new();
 
-    for relative in ["crates/rrd-engine", "crates/rrd-server"] {
+    for relative in ["crates/authority/rrd-engine", "crates/rrd-server"] {
         collect_rust_sources(&metadata.root.join(relative), &mut violations, &forbidden);
     }
 
@@ -341,7 +342,7 @@ fn retired_fixed_reasoning_ledger_api_is_absent() {
     let mut violations = Vec::new();
     for relative in [
         "crates/kernel/rrd-core",
-        "crates/rrd-engine",
+        "crates/authority/rrd-engine",
         "crates/rrflow-cli",
     ] {
         for retired in &retired_symbols {
@@ -416,9 +417,11 @@ fn every_workspace_target_source_is_tracked() {
 fn workspace_metadata() -> WorkspaceMetadata {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let workspace_root = manifest_dir
-        .parent()
-        .and_then(Path::parent)
-        .expect("rrd-engine must live under the workspace crates directory");
+        .ancestors()
+        .find(|candidate| {
+            candidate.join("crates").is_dir() && candidate.join("Cargo.toml").is_file()
+        })
+        .expect("rrd-engine must live under the workspace crates tree");
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     let output = Command::new(cargo)
         .current_dir(workspace_root)

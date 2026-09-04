@@ -7,9 +7,9 @@ publish.workspace = true
 description = "Persistent RRD principals, deny-by-default policy, and authenticated audit."
 
 [dependencies]
-rrd-contract = { path = "../rrd-contract" }
-rrd-core = { path = "../kernel/rrd-core" }
-rrd-store = { path = "../persistence/rrd-store" }
+rrd-contract = { path = "../../rrd-contract" }
+rrd-core = { path = "../../kernel/rrd-core" }
+rrd-store = { path = "../../persistence/rrd-store" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 base64 = "0.22"

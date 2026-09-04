@@ -16,8 +16,8 @@ tokio = { version = "1", features = ["net", "rt", "sync", "time"] }
 
 [dev-dependencies]
 rrd-core = { path = "../kernel/rrd-core" }
-rrd-engine = { path = "../rrd-engine" }
-rrd-security = { path = "../rrd-security" }
+rrd-engine = { path = "../authority/rrd-engine" }
+rrd-security = { path = "../authority/rrd-security" }
 rrd-server = { path = "../rrd-server" }
 rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"

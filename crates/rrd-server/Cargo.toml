@@ -7,7 +7,7 @@ publish.workspace = true
 description = "RRD loopback server lifecycle and persistent session/transaction coordinator."
 
 [dependencies]
-rrd-engine = { path = "../rrd-engine" }
+rrd-engine = { path = "../authority/rrd-engine" }
 rrd-contract = { path = "../rrd-contract" }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -24,8 +24,8 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
-rrd-estate = { path = "../rrd-estate" }
-rrd-security = { path = "../rrd-security" }
+rrd-estate = { path = "../authority/rrd-estate" }
+rrd-security = { path = "../authority/rrd-security" }
 rrd-core = { path = "../kernel/rrd-core" }
 rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"

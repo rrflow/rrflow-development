@@ -9,14 +9,14 @@ description = "stdio MCP adapter for the RRFlow reasoning runtime"
 [dependencies]
 rrd-client = { path = "../rrd-client" }
 rrd-contract = { path = "../rrd-contract" }
-rrd-engine = { path = "../rrd-engine" }
+rrd-engine = { path = "../authority/rrd-engine" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt", "time"] }
 
 [dev-dependencies]
 rrd-core = { path = "../kernel/rrd-core" }
-rrd-security = { path = "../rrd-security" }
+rrd-security = { path = "../authority/rrd-security" }
 rrd-server = { path = "../rrd-server" }
 rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"

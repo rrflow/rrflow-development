@@ -7,7 +7,7 @@ publish.workspace = true
 description = "Thin no-network deployment face for the RRD edge profile."
 
 [dependencies]
-rrd-engine = { path = "../rrd-engine", default-features = false, features = ["edge"] }
+rrd-engine = { path = "../authority/rrd-engine", default-features = false, features = ["edge"] }
 serde_json = { workspace = true }
 
 [dev-dependencies]

@@ -159,17 +159,17 @@ gap, while G01 must first preserve one security authority.
   fail on term/order drift and rejected public resource synonyms. Resource-path
   validation still checks uniqueness rather than enforcing every hierarchy
   shown above.
-- [`runtime/instance.rs`](../../crates/rrd-engine/src/runtime/instance.rs)
+- [`runtime/instance.rs`](../../crates/authority/rrd-engine/src/runtime/instance.rs)
   accepts only the frozen format-1 `Dedicated` plus `members = ["."]` shape.
   Those fields remain serialized solely to preserve existing authority bytes;
   explicit environment identity requires a successor-format migration.
 - [`rrd-vector/collection.rs`](../../crates/compute/rrd-vector/src/collection.rs)
   implements a separate vector collection catalogue that must become an
   internal operator of the unified RRD catalogue.
-- [`rrd-security`](../../crates/rrd-security/src/lib.rs) owns persistent policy
+- [`rrd-security`](../../crates/authority/rrd-security/src/lib.rs) owns persistent policy
   truth but still uses per-principal direct grants and the warm-path behavior
   described above.
-- [`rrd-estate`](../../crates/rrd-estate/src/lib.rs) and
+- [`rrd-estate`](../../crates/authority/rrd-estate/src/lib.rs) and
   [`rrd-cluster`](../../crates/rrd-cluster/src/contract.rs) already model the
   distinct control-plane and physical-topology concepts; they must remain
   distinct while routing through `rrd-engine`.

@@ -3,9 +3,9 @@ resolver = "2"
 members = [
     "crates/rrd-contract",
     "crates/rrd-client",
-    "crates/rrd-estate",
-    "crates/rrd-security",
-    "crates/rrd-engine",
+    "crates/authority/rrd-estate",
+    "crates/authority/rrd-security",
+    "crates/authority/rrd-engine",
     "crates/rrd-server",
     "crates/kernel/rrd-core",
     "crates/compute/rrd-query",

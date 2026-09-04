@@ -9,7 +9,7 @@ use rrd_contract::{
 
 fn corpus() -> DeploymentConformanceCorpus {
     let corpus = serde_json::from_str(include_str!(
-        "../../../../../fixtures/rrd-deployment-conformance-v1.json"
+        "../../../../../../fixtures/rrd-deployment-conformance-v1.json"
     ))
     .unwrap();
     DeploymentConformanceCorpus::validate(&corpus).unwrap();

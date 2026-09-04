@@ -7,7 +7,7 @@ publish.workspace = true
 description = "rrflow operator surface: explicit, recorded invocation of every trigger."
 
 [dependencies]
-rrd-engine = { path = "../rrd-engine" }
+rrd-engine = { path = "../authority/rrd-engine" }
 rrd-contract = { path = "../rrd-contract" }
 rrd-client = { path = "../rrd-client" }
 clap = { version = "4", features = ["derive", "env"] }
@@ -25,8 +25,8 @@ tempfile = "3"
 rrd-core = { path = "../kernel/rrd-core" }
 rrd-store = { path = "../persistence/rrd-store" }
 rrd-lsm = { path = "../persistence/rrd-lsm" }
-rrd-security = { path = "../rrd-security" }
-rrd-estate = { path = "../rrd-estate" }
+rrd-security = { path = "../authority/rrd-security" }
+rrd-estate = { path = "../authority/rrd-estate" }
 rrd-server = { path = "../rrd-server" }
 
 [[bin]]

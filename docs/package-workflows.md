@@ -52,8 +52,8 @@ alpha does not claim that cross-process lease yet.
 
 ## Frozen evidence
 
-- `crates/rrd-engine/fixtures/workflow-v1.toml` freezes the manifest contract.
-- `crates/rrd-engine/fixtures/workflow-observation-v1.json` freezes the compact,
+- `crates/authority/rrd-engine/fixtures/workflow-v1.toml` freezes the manifest contract.
+- `crates/authority/rrd-engine/fixtures/workflow-observation-v1.json` freezes the compact,
   digest-bound observation envelope.
 - `workflow_lifecycle.rs` proves identical observation and audit evidence on
   Memory, Fjall, and native RRD LSM, plus denial when policy is absent.
