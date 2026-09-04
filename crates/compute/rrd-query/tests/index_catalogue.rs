@@ -10,7 +10,7 @@ use rrd_query::{
     IndexDefinition, IndexKind, IndexMutationContext, Parameters, ValueExpr,
 };
 use rrd_query::{parse, Source};
-use rrd_store::{Durability, Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Durability, Engine, NativeEngine, RrflowMxEngine, Store};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
@@ -289,7 +289,7 @@ fn exercise<E: Engine>(engine: &E) {
 
 #[test]
 fn lifecycle_is_identical_on_every_engine() {
-    exercise(&MemoryEngine::new());
+    exercise(&RrflowMxEngine::new());
     let fjall_root = tempfile::tempdir().unwrap();
     exercise(&Store::open(fjall_root.path()).unwrap());
     let native_root = tempfile::tempdir().unwrap();
@@ -356,7 +356,7 @@ fn native_catalogue_reopens_and_invalid_fields_fail_before_control_state_changes
 
 #[test]
 fn selected_index_fails_closed_when_artifact_bytes_are_corrupted() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let query_catalogue = seed(&engine);
     let index_id = ProjectionId::new("document-status-title").unwrap();
     let repository = IndexCatalogueRepository::new(&engine, scope());
@@ -406,7 +406,7 @@ fn selected_index_fails_closed_when_artifact_bytes_are_corrupted() {
 
 #[test]
 fn operation_receipts_replay_and_reject_idempotency_collisions() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let query_catalogue = seed(&engine);
     let index_id = ProjectionId::new("document-status-title").unwrap();
     let repository = IndexCatalogueRepository::new(&engine, scope());
@@ -447,7 +447,7 @@ fn operation_receipts_replay_and_reject_idempotency_collisions() {
 
 #[test]
 fn count_grouped_count_materialized_view_and_bm25_are_durable_artifacts() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let query_catalogue = seed(&engine);
     let repository = IndexCatalogueRepository::new(&engine, scope());
     let definitions = [
@@ -576,7 +576,7 @@ fn count_grouped_count_materialized_view_and_bm25_are_durable_artifacts() {
 
 #[test]
 fn compound_unique_constraint_rejects_a_prospective_commit_even_when_index_is_stale() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let query_catalogue = seed(&engine);
     let repository = IndexCatalogueRepository::new(&engine, scope());
     let mut unique = definition();
@@ -636,7 +636,7 @@ fn compound_unique_constraint_rejects_a_prospective_commit_even_when_index_is_st
 
 #[test]
 fn geo_index_builds_from_the_same_catalogue_and_read_stamp() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let geo_scope = ScopeId::new("instance:geo-index-test").unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "geo fixture");
     registry.records.insert(

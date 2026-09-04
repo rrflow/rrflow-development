@@ -109,7 +109,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "3cefe7116b2ed1415f1d06a5fe6a877bd94794d0086b64f9265574ff08ba39ea";
+    "e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -4820,7 +4820,7 @@ impl IdempotencyBinding {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DeploymentMode {
-    Memory,
+    RrflowMx,
     Embedded,
     LocalDaemon,
     Edge,

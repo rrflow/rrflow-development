@@ -13,10 +13,11 @@
 //! (`rrd-core/fixtures/golden-vectors.json` is the cross-language proof)
 //! and the semantic layer above it is a translation, not a redesign.
 //!
-//! Three engines ship in Rust today: [`Store`] (the transitional Fjall
-//! compatibility adapter), [`crate::NativeEngine`] (the Rrd-native target),
-//! and [`MemoryEngine`] (the reference, for conformance differentials per
-//! standing rule 3). Cache tiers (Moka in-process, Dragonfly shared)
+//! Two RRFlow storage profiles ship in Rust today: [`crate::NativeEngine`]
+//! implements persistent rrflowKV and [`RrflowMxEngine`] implements volatile
+//! rrflowMX. [`Store`] remains only as the transitional Fjall compatibility
+//! adapter scheduled for removal by the RRFlow 1.0 checklist. Cache tiers
+//! (Moka in-process, Dragonfly shared)
 //! compose *around* an engine rather than implementing this trait: they
 //! accelerate reads and must never be the system of record.
 
@@ -837,17 +838,20 @@ impl Engine for Store {
     }
 }
 
-/// The reference engine: `MemoryClaims` plus the primitives, behind a
-/// mutex. Exists so conformance is a differential across all engines
-/// (standing rule 3) and so the runtime layer is provably generic over the
-/// port. Not a production store — nothing here survives the process.
+/// rrflowMX: the process-local, volatile implementation of the complete
+/// semantic storage port.
+///
+/// rrflowMX is also the reference side of storage conformance differentials,
+/// but it is not a persistent RRFlow database: nothing here survives the
+/// process. Arrow working sets and DataFusion execution are layered above this
+/// port in `rrd-query`; they are not alternate state owned by rrflowMX.
 #[derive(Default)]
-pub struct MemoryEngine {
-    inner: Mutex<MemoryEngineInner>,
+pub struct RrflowMxEngine {
+    inner: Mutex<RrflowMxEngineInner>,
 }
 
 #[derive(Default)]
-struct MemoryEngineInner {
+struct RrflowMxEngineInner {
     claims: MemoryClaims,
     /// Append order, so `claims_in_range` replays exactly like a log.
     order: Vec<Claim>,
@@ -874,7 +878,7 @@ struct MemoryEngineInner {
     catalog_revisions: BTreeMap<ScopeId, u64>,
 }
 
-impl MemoryEngine {
+impl RrflowMxEngine {
     pub fn new() -> Self {
         Self::default()
     }
@@ -885,7 +889,7 @@ impl MemoryEngine {
     }
 }
 
-impl ClaimSource for MemoryEngine {
+impl ClaimSource for RrflowMxEngine {
     type Error = Error;
 
     fn versions_at_or_before(
@@ -940,9 +944,9 @@ pub(crate) fn validate_idempotency(key: &str, digest: &str) -> Result<()> {
     Ok(())
 }
 
-impl Engine for MemoryEngine {
+impl Engine for RrflowMxEngine {
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
-        Ok(PhysicalStoreEvidence::logical_only("memory"))
+        Ok(PhysicalStoreEvidence::logical_only("rrflow_mx"))
     }
 
     fn append_batch(&self, claims: &[Claim]) -> Result<AppendOutcome> {
@@ -1024,7 +1028,7 @@ impl Engine for MemoryEngine {
         transition: &ControlTransition,
     ) -> Result<ControlJournalEntry> {
         let mut inner = self.inner.lock().expect("engine mutex");
-        memory_commit_control_transition(&mut inner, transition, None).map(|(_, entry)| entry)
+        rrflow_mx_commit_control_transition(&mut inner, transition, None).map(|(_, entry)| entry)
     }
 
     fn commit_control_batch(
@@ -1085,7 +1089,7 @@ impl Engine for MemoryEngine {
     ) -> Result<(u64, ControlJournalEntry)> {
         let mut inner = self.inner.lock().expect("engine mutex");
         let (revision, entry) =
-            memory_commit_control_transition(&mut inner, transition, Some(scope))?;
+            rrflow_mx_commit_control_transition(&mut inner, transition, Some(scope))?;
         Ok((
             revision.expect("catalogue transition assigns a revision"),
             entry,
@@ -1196,7 +1200,7 @@ impl Engine for MemoryEngine {
 
     fn runtime_read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
         let inner = self.inner.lock().expect("engine mutex");
-        memory_read_stamp(&inner, scope)
+        rrflow_mx_read_stamp(&inner, scope)
     }
 
     fn open_runtime_snapshot(
@@ -1207,7 +1211,7 @@ impl Engine for MemoryEngine {
         ttl: Millis,
     ) -> Result<SnapshotHandle> {
         let mut inner = self.inner.lock().expect("engine mutex");
-        let handle = SnapshotHandle::new(memory_read_stamp(&inner, scope)?, owner, now, ttl)?;
+        let handle = SnapshotHandle::new(rrflow_mx_read_stamp(&inner, scope)?, owner, now, ttl)?;
         inner
             .runtime_snapshots
             .insert(handle.id.clone(), handle.clone());
@@ -1240,7 +1244,7 @@ impl Engine for MemoryEngine {
                 expired_at: snapshot.expires_at,
             });
         }
-        Ok(memory_change_page(
+        Ok(rrflow_mx_change_page(
             &inner.runtime_changes,
             snapshot.read.commit_cursor,
             after,
@@ -1291,9 +1295,9 @@ impl Engine for MemoryEngine {
             ));
         }
         let inner = self.inner.lock().expect("engine mutex");
-        let validation = memory_validate_read_stamp(&inner, read)?;
+        let validation = rrflow_mx_validate_read_stamp(&inner, read)?;
         if limit == 1 && after < read.commit_cursor {
-            let mut page = memory_authenticated_point_page(&inner, read, after + 1)?;
+            let mut page = rrflow_mx_authenticated_point_page(&inner, read, after + 1)?;
             if validation.method == "full_hash_chain_replay" {
                 page.validation.method = "full_hash_chain_replay_then_rfc9162_inclusion".into();
                 page.validation.change_reads = page
@@ -1303,7 +1307,7 @@ impl Engine for MemoryEngine {
             }
             return Ok(page);
         }
-        let mut page = memory_change_page(
+        let mut page = rrflow_mx_change_page(
             &inner.runtime_changes,
             read.commit_cursor,
             after,
@@ -1323,7 +1327,7 @@ impl Engine for MemoryEngine {
         validate_retirement_targets(self, commit)?;
         let mut inner = self.inner.lock().expect("engine mutex");
         if let Some(read) = read {
-            memory_validate_read_stamp(&inner, read)?;
+            rrflow_mx_validate_read_stamp(&inner, read)?;
         }
         let commit_id = commit.digest();
         let start = inner.runtime_changes.len() as u64;
@@ -1598,7 +1602,7 @@ impl Engine for MemoryEngine {
             ));
         }
         let inner = self.inner.lock().expect("engine mutex");
-        Ok(memory_change_page(
+        Ok(rrflow_mx_change_page(
             &inner.runtime_changes,
             inner.runtime_changes.len() as u64,
             after,
@@ -1648,13 +1652,13 @@ impl Engine for MemoryEngine {
 /// outward adapters from opening a second physical store or branching around
 /// the [`Engine`] contract.
 pub enum EngineBox {
-    Memory(MemoryEngine),
+    RrflowMx(RrflowMxEngine),
     Persistent(crate::PersistentEngine),
 }
 
 impl EngineBox {
-    pub fn memory() -> Self {
-        Self::Memory(MemoryEngine::new())
+    pub fn rrflow_mx() -> Self {
+        Self::RrflowMx(RrflowMxEngine::new())
     }
 
     pub fn persistent(engine: crate::PersistentEngine) -> Self {
@@ -1663,21 +1667,21 @@ impl EngineBox {
 
     pub fn as_persistent(&self) -> Option<&crate::PersistentEngine> {
         match self {
-            Self::Memory(_) => None,
+            Self::RrflowMx(_) => None,
             Self::Persistent(engine) => Some(engine),
         }
     }
 
     pub fn backend_name(&self) -> &'static str {
         match self {
-            Self::Memory(_) => "memory",
+            Self::RrflowMx(_) => "rrflow_mx",
             Self::Persistent(engine) => engine.backend().as_str(),
         }
     }
 
     fn engine(&self) -> &(dyn Engine + Send + Sync) {
         match self {
-            Self::Memory(engine) => engine,
+            Self::RrflowMx(engine) => engine,
             Self::Persistent(engine) => engine,
         }
     }
@@ -1872,7 +1876,7 @@ impl Engine for EngineBox {
     }
 }
 
-fn memory_read_stamp(inner: &MemoryEngineInner, scope: &ScopeId) -> Result<ReadStamp> {
+fn rrflow_mx_read_stamp(inner: &RrflowMxEngineInner, scope: &ScopeId) -> Result<ReadStamp> {
     ReadStamp::authenticated(
         scope.clone(),
         inner
@@ -1894,8 +1898,8 @@ fn memory_read_stamp(inner: &MemoryEngineInner, scope: &ScopeId) -> Result<ReadS
     .map_err(Error::from)
 }
 
-fn memory_validate_read_stamp(
-    inner: &MemoryEngineInner,
+fn rrflow_mx_validate_read_stamp(
+    inner: &RrflowMxEngineInner,
     read: &ReadStamp,
 ) -> Result<rrd_core::RuntimeReadValidation> {
     read.validate()?;
@@ -1971,8 +1975,8 @@ fn memory_validate_read_stamp(
     ))
 }
 
-fn memory_commit_control_transition(
-    inner: &mut MemoryEngineInner,
+fn rrflow_mx_commit_control_transition(
+    inner: &mut RrflowMxEngineInner,
     transition: &ControlTransition,
     catalog_scope: Option<&ScopeId>,
 ) -> Result<(Option<u64>, ControlJournalEntry)> {
@@ -2029,8 +2033,8 @@ fn memory_commit_control_transition(
     Ok((catalog_revision, entry))
 }
 
-fn memory_authenticated_point_page(
-    inner: &MemoryEngineInner,
+fn rrflow_mx_authenticated_point_page(
+    inner: &RrflowMxEngineInner,
     read: &ReadStamp,
     cursor: u64,
 ) -> Result<RuntimeChangePage> {
@@ -2067,7 +2071,7 @@ fn memory_authenticated_point_page(
     })
 }
 
-fn memory_change_page(
+fn rrflow_mx_change_page(
     changes: &[RuntimeChange],
     head: u64,
     after: u64,

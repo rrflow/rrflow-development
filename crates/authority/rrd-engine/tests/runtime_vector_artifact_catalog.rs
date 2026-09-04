@@ -6,7 +6,7 @@ use rrd_engine::{
     publish_traced_vector_artifact, reopen_vector_runtime, reopen_vector_runtime_metadata,
     vector_artifact_catalog_entries,
 };
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, MemoryEngine, NativeEngine, Store};
+use rrd_store::{DataRuntime, Engine, LocalObjectStore, NativeEngine, RrflowMxEngine, Store};
 use rrd_vector::{
     HnswConfig, HnswIndex, ScoreMetric, TurboQuantBits, TurboQuantSegment, TurboQuantSegmentConfig,
     VectorCandidate, VectorRuntime, VECTOR_ARTIFACT_RECORD_TYPE,
@@ -73,7 +73,7 @@ fn hnsw_generation(candidates: Vec<VectorCandidate>, generation: u64) -> HnswInd
 fn metadata_manifest_exposes_only_the_active_projection_generation() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -136,7 +136,7 @@ fn turboquant(candidates: Vec<VectorCandidate>) -> TurboQuantSegment {
 fn publication_atomically_binds_typed_record_object_and_serving_view() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -189,7 +189,7 @@ fn publication_atomically_binds_typed_record_object_and_serving_view() {
 fn generic_publication_rejects_turboquant_before_durable_or_serving_mutation() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -255,7 +255,7 @@ fn native_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
 fn authoritative_revision_conflict_does_not_mutate_a_fresh_serving_view() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -308,7 +308,7 @@ fn published_entry<E: Engine>(
 #[test]
 fn catalog_publication_is_logically_identical_across_memory_fjall_and_native() {
     let root = tempdir().unwrap();
-    let memory = published_entry(MemoryEngine::new(), &root.path().join("memory-objects"));
+    let memory = published_entry(RrflowMxEngine::new(), &root.path().join("memory-objects"));
     let fjall = published_entry(
         Store::open(&root.path().join("fjall-engine")).unwrap(),
         &root.path().join("fjall-objects"),

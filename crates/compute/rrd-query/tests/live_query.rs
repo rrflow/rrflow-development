@@ -5,7 +5,7 @@ use rrd_core::{
 };
 use rrd_query::parse;
 use rrd_query::{poll_live_query, Error, LiveQueryBudget, LiveQueryDelta, Parameters};
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
@@ -142,7 +142,7 @@ fn exercise<E: Engine>(engine: &E) -> LiveQueryDelta {
 
 #[test]
 fn semantic_deltas_are_identical_across_every_engine() {
-    let expected = exercise(&MemoryEngine::new());
+    let expected = exercise(&RrflowMxEngine::new());
     let fjall_root = tempfile::tempdir().unwrap();
     assert_eq!(expected, exercise(&Store::open(fjall_root.path()).unwrap()));
     let native_root = tempfile::tempdir().unwrap();
@@ -154,7 +154,7 @@ fn semantic_deltas_are_identical_across_every_engine() {
 
 #[test]
 fn resume_and_snapshot_contracts_fail_closed() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     seed(&engine);
     let fixed = parse("FROM record:document AT VALID 100 KNOWN 2 PROJECT id").unwrap();
     assert!(matches!(

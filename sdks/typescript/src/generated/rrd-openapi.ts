@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 3cefe7116b2ed1415f1d06a5fe6a877bd94794d0086b64f9265574ff08ba39ea
+// OpenAPI SHA-256: e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -2769,7 +2769,7 @@ export interface operations {
                                     status: "unavailable" | "experimental" | "available";
                                 }[];
                                 /** @enum {string} */
-                                deployment_mode: "memory" | "embedded" | "local_daemon" | "edge" | "remote" | "distributed";
+                                deployment_mode: "rrflow_mx" | "embedded" | "local_daemon" | "edge" | "remote" | "distributed";
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -2861,7 +2861,7 @@ export interface operations {
                                     status: "unavailable" | "experimental" | "available";
                                 }[];
                                 /** @enum {string} */
-                                deployment_mode: "memory" | "embedded" | "local_daemon" | "edge" | "remote" | "distributed";
+                                deployment_mode: "rrflow_mx" | "embedded" | "local_daemon" | "edge" | "remote" | "distributed";
                                 /**
                                  * @description A canonical public identifier component.
                                  *

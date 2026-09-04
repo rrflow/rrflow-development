@@ -4,7 +4,7 @@ use rrd_core::{
     RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType,
     ScopeId, Subject,
 };
-use rrd_store::{Engine, Error, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, Error, NativeEngine, RrflowMxEngine, Store};
 use std::collections::BTreeMap;
 
 fn record(kind: &str, id: &str) -> RuntimeRecord {
@@ -132,7 +132,7 @@ fn assert_schema_free_claim_contract(engine: &dyn Engine) {
 
 #[test]
 fn claim_only_runtime_commits_share_the_transaction_log_without_synthetic_schema() {
-    assert_schema_free_claim_contract(&MemoryEngine::new());
+    assert_schema_free_claim_contract(&RrflowMxEngine::new());
 
     let compatibility_root = tempfile::tempdir().unwrap();
     assert_schema_free_claim_contract(&Store::open(compatibility_root.path()).unwrap());
@@ -185,7 +185,7 @@ fn all_engines_enforce_the_same_runtime_contract() {
     let fjall = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
     let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     assert_runtime_contract(&fjall);
     assert_runtime_contract(&native);
     assert_runtime_contract(&memory);
@@ -448,7 +448,7 @@ fn all_engines_enforce_schema_types_cardinality_and_migrations() {
     let native_dir = tempfile::tempdir().unwrap();
     let native_path = native_dir.path().join("native");
     let native = NativeEngine::open(&native_path).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     assert_schema_contract(&fjall);
     assert_schema_contract(&native);
     assert_schema_contract(&memory);

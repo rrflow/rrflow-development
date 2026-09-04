@@ -1,5 +1,5 @@
 use rrd_core::{Claim, Predicate, Producer, Subject};
-use rrd_store::{Engine, Error, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, Error, NativeEngine, RrflowMxEngine, Store};
 
 const DIGEST_A: &str = "3c94150b4ea4f9dcb27d3b602e9f190debe656533c047b99e11367bc6a28017f";
 const DIGEST_B: &str = "4c94150b4ea4f9dcb27d3b602e9f190debe656533c047b99e11367bc6a28017f";
@@ -40,7 +40,7 @@ fn assert_contract(engine: &dyn Engine) {
 
 #[test]
 fn every_engine_enforces_the_same_idempotency_contract() {
-    assert_contract(&MemoryEngine::new());
+    assert_contract(&RrflowMxEngine::new());
     let native_root = tempfile::tempdir().unwrap();
     assert_contract(&NativeEngine::open(&native_root.path().join("native")).unwrap());
     let fjall_root = tempfile::tempdir().unwrap();

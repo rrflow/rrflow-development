@@ -266,7 +266,7 @@ fn deployment_modes_and_shared_conformance_corpus_are_versioned_and_strict() {
     assert_eq!(corpus.expected_ids[0].as_str(), "alpha");
     assert_eq!(
         serde_json::to_value([
-            DeploymentMode::Memory,
+            DeploymentMode::RrflowMx,
             DeploymentMode::Embedded,
             DeploymentMode::LocalDaemon,
             DeploymentMode::Edge,
@@ -275,7 +275,7 @@ fn deployment_modes_and_shared_conformance_corpus_are_versioned_and_strict() {
         ])
         .unwrap(),
         serde_json::json!([
-            "memory",
+            "rrflow_mx",
             "embedded",
             "local_daemon",
             "edge",

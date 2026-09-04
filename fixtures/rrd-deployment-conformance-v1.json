@@ -11,7 +11,7 @@
     }
   ],
   "query": {
-    "rrflowql": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"alpha\" PROJECT id, body EXPLAIN CONTRACT",
+    "rrflowql": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"alpha\" PROJECT id, body EXPLAIN ANALYZE",
     "edge_text": "alpha beta deterministic runtime",
     "valid_at": 100,
     "top_k": 1

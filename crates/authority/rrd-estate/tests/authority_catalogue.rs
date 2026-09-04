@@ -272,7 +272,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
 
 #[test]
 fn references_generations_and_idempotency_fail_closed() {
-    let engine = rrd_store::MemoryEngine::new();
+    let engine = rrd_store::RrflowMxEngine::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -344,7 +344,7 @@ fn references_generations_and_idempotency_fail_closed() {
 }
 
 fn document_resource(
-    repository: &EstateRepository<'_, rrd_store::MemoryEngine>,
+    repository: &EstateRepository<'_, rrd_store::RrflowMxEngine>,
     resource_id: &str,
     context: MutationContext,
     idempotency_key: &str,

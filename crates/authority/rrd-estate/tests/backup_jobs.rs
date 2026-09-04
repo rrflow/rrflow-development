@@ -4,7 +4,7 @@ use rrd_estate::{
     EstateRepository, LeaseRequest, MutationContext, ObservationRequest, ObservedPhase,
     ReceiptBoundary, ReceiptRequest, ScheduleBackup, SetDesired,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
@@ -142,7 +142,7 @@ fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
 
 #[test]
 fn backup_schedule_denies_an_unobserved_or_running_instance() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))

@@ -10,7 +10,7 @@ use rrd_core::{
     DataTransaction, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord,
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, MemoryEngine};
+use rrd_store::{DataRuntime, Engine, LocalObjectStore, RrflowMxEngine};
 use std::collections::BTreeSet;
 use std::sync::{Arc, Barrier};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -44,7 +44,7 @@ fn manifest_for(
     bytes: &[u8],
 ) -> rrd_cluster::ArtifactTransferManifest {
     let source = source_runtime(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(root.join(format!("source-{label}"))).unwrap(),
         bytes,
     );
@@ -68,10 +68,10 @@ fn policy(
 }
 
 fn source_runtime(
-    engine: MemoryEngine,
+    engine: RrflowMxEngine,
     objects: LocalObjectStore,
     bytes: &[u8],
-) -> DataRuntime<MemoryEngine, LocalObjectStore> {
+) -> DataRuntime<RrflowMxEngine, LocalObjectStore> {
     let runtime = DataRuntime::new(engine, objects);
     let scope = scope();
     let subject = RuntimeRef::new("document", "doc:one").unwrap();
@@ -163,7 +163,7 @@ fn manifest_streams_each_digest_once_and_retry_reuses_verified_target_bytes() {
     let root = tempfile::tempdir().unwrap();
     let bytes = vec![0xa5; 512 * 1024 + 31];
     let source = source_runtime(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(root.path().join("source")).unwrap(),
         &bytes,
     );
@@ -192,7 +192,7 @@ fn corruption_missing_source_and_manifest_substitution_fail_closed() {
     let bytes = b"grounded artifact bytes";
     let source_path = root.path().join("source");
     let source = source_runtime(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(&source_path).unwrap(),
         bytes,
     );
@@ -224,7 +224,7 @@ fn durable_chunk_session_resumes_rejects_wrong_offsets_and_completes_once() {
         .map(|index| (index % 251) as u8)
         .collect::<Vec<_>>();
     let source = source_runtime(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(root.path().join("source-resume")).unwrap(),
         &bytes,
     );
@@ -351,7 +351,7 @@ fn chunk_sessions_bind_authenticated_peers_and_discard_corrupt_completed_parts()
     let root = tempfile::tempdir().unwrap();
     let bytes = b"expected immutable bytes";
     let source = source_runtime(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         LocalObjectStore::open(root.path().join("source-corrupt-session")).unwrap(),
         bytes,
     );

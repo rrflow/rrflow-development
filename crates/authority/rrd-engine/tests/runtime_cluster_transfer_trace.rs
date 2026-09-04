@@ -8,7 +8,7 @@ use rrd_core::{
     RuntimeType, RuntimeValue, ScopeId,
 };
 use rrd_engine::{execute_traced_artifact_transfer, DurableArtifactTransferObserver};
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, MemoryEngine, NativeEngine, Store};
+use rrd_store::{DataRuntime, Engine, LocalObjectStore, NativeEngine, RrflowMxEngine, Store};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -133,7 +133,7 @@ fn exercise<E: Engine>(
 fn cluster_object_transfer_is_causal_private_and_equal_across_engines() {
     let root = tempfile::tempdir().unwrap();
     let (memory_receipt, memory) = exercise(
-        MemoryEngine::new(),
+        RrflowMxEngine::new(),
         &root.path().join("memory-source"),
         &root.path().join("memory-target"),
     );
@@ -170,7 +170,7 @@ fn cluster_object_transfer_is_causal_private_and_equal_across_engines() {
 fn transport_observations_persist_as_one_causal_project_trace() {
     let root = tempfile::tempdir().unwrap();
     let source = LocalObjectStore::open(root.path().join("observed-source")).unwrap();
-    let runtime = DataRuntime::new(MemoryEngine::new(), source);
+    let runtime = DataRuntime::new(RrflowMxEngine::new(), source);
     let object = runtime
         .stage_object(
             "vector:observed@1:bytes",

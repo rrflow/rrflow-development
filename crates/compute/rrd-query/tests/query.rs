@@ -13,7 +13,7 @@ use rrd_query::{
 use rrd_query::{
     parse, ComparisonOperator, CursorExpr, Projection, Query, Source, TemporalSelector, TimeExpr,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn value(value: &str) -> RuntimeValue {
@@ -283,7 +283,7 @@ fn historical_outcome<E: Engine>(engine: &E) -> (String, String, String, String,
 
 #[test]
 fn memory_fjall_and_native_return_identical_exact_rows() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let dir = tempfile::tempdir().unwrap();
     let store = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
@@ -331,7 +331,7 @@ fn memory_fjall_and_native_return_identical_exact_rows() {
 
 #[test]
 fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let scope = ScopeId::new("instance:test").unwrap();
     let read = engine.runtime_read_stamp(&scope).unwrap();
@@ -410,7 +410,7 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
 
 #[test]
 fn explain_analyze_reports_governed_streaming_plane_and_preserves_reference_rows() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query = parse(
@@ -477,7 +477,7 @@ fn equi_join_uses_one_stamp_matches_the_reference_oracle_and_is_strictly_bounded
         ("right.to_id".into(), RuntimeValue::String("b".into())),
     ])];
 
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let memory_execution = execute_fixture(&memory, text);
     assert_eq!(
         flattened_rows(&memory_execution)
@@ -554,7 +554,7 @@ fn equi_join_uses_one_stamp_matches_the_reference_oracle_and_is_strictly_bounded
 
 #[test]
 fn valid_time_and_known_at_are_stable_across_engines_and_native_reopen() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     seed_historical_corrections(&memory);
     let expected = historical_outcome(&memory);
 
@@ -599,7 +599,7 @@ fn series_and_geo_queries_match_every_persistent_engine() {
             RuntimeValue::Decimal("-122.4".into()),
         ),
     ] {
-        let memory = MemoryEngine::new();
+        let memory = RrflowMxEngine::new();
         let fjall_root = tempfile::tempdir().unwrap();
         let fjall = Store::open(fjall_root.path()).unwrap();
         let native_root = tempfile::tempdir().unwrap();
@@ -615,7 +615,7 @@ fn series_and_geo_queries_match_every_persistent_engine() {
         "FROM series:metric AT VALID 99 KNOWN HEAD PROJECT *",
         "FROM geo:location AT VALID 9 KNOWN HEAD PROJECT *",
     ] {
-        let engine = MemoryEngine::new();
+        let engine = RrflowMxEngine::new();
         assert_eq!(execute_fixture(&engine, text).returned_rows, 0, "{text}");
     }
 }
@@ -623,7 +623,7 @@ fn series_and_geo_queries_match_every_persistent_engine() {
 #[test]
 fn typed_comparisons_match_every_persistent_engine_and_reject_unsupported_ordering() {
     let text = "FROM series:metric AT VALID 100 KNOWN HEAD WHERE observed_at >= 100 AND series_id != \"other\" PROJECT series_id, observed_at EXPLAIN CONTRACT";
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -644,7 +644,7 @@ fn typed_comparisons_match_every_persistent_engine_and_reject_unsupported_orderi
         "observed_at > 99",
         "observed_at >= 100",
     ] {
-        let engine = MemoryEngine::new();
+        let engine = RrflowMxEngine::new();
         let query = format!(
             "FROM series:metric AT VALID 100 KNOWN HEAD WHERE {predicate} PROJECT observed_at"
         );
@@ -677,7 +677,7 @@ fn bounded_graph_traversal_is_deterministic_across_every_engine() {
             "a",
         ),
     ] {
-        let memory = MemoryEngine::new();
+        let memory = RrflowMxEngine::new();
         let fjall_root = tempfile::tempdir().unwrap();
         let fjall = Store::open(fjall_root.path()).unwrap();
         let native_root = tempfile::tempdir().unwrap();
@@ -699,7 +699,7 @@ fn bounded_graph_traversal_is_deterministic_across_every_engine() {
 
 #[test]
 fn all_source_families_execute_at_explicit_time() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     for (text, identity) in [
@@ -779,7 +779,7 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
         .unwrap()
     }
 
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -797,7 +797,7 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
 
 #[test]
 fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query =
@@ -820,7 +820,7 @@ fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
 #[test]
 fn cursor_lookup_uses_authenticated_logarithmic_validation() {
     const EVENTS: u64 = 4_096;
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let fixture_head = engine
         .commit_runtime(&fixture_commit())
         .unwrap()
@@ -886,7 +886,7 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
 
 #[test]
 fn text_and_typed_sdk_produce_the_same_plan() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let parsed = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
@@ -907,7 +907,7 @@ fn text_and_typed_sdk_produce_the_same_plan() {
 
 #[test]
 fn binding_and_budget_fail_closed() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let unknown = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT missing").unwrap();
@@ -959,7 +959,7 @@ fn binding_and_budget_fail_closed() {
 
 #[test]
 fn event_queries_honor_cursor_typed_retirement_at_valid_time() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let initial = engine.commit_runtime(&fixture_commit()).unwrap();
     engine
         .commit_runtime(&RuntimeCommit {

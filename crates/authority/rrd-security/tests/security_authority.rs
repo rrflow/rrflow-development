@@ -5,7 +5,7 @@ use rrd_security::{
     JwtIssueRequest, JwtIssuer, PolicyPredicate, Principal, PrincipalKind, ResourceGrant, Role,
     SecurityRepository, SecurityState, SECURITY_FORMAT,
 };
-use rrd_store::{ControlTransition, Engine, MemoryEngine, NativeEngine};
+use rrd_store::{ControlTransition, Engine, NativeEngine, RrflowMxEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -203,7 +203,7 @@ fn audit_is_redacted_idempotent_authenticated_and_replayable() {
 
 #[test]
 fn concurrent_audit_append_has_one_linear_chain_without_forks() {
-    let engine = Arc::new(MemoryEngine::new());
+    let engine = Arc::new(RrflowMxEngine::new());
     SecurityRepository::new(engine.as_ref(), CanonicalId::new("alpha").unwrap())
         .initialize(
             state(b"concurrent-secret"),
@@ -251,7 +251,7 @@ fn concurrent_audit_append_has_one_linear_chain_without_forks() {
 
 #[test]
 fn audit_read_rejects_a_substituted_durable_head() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let instance = CanonicalId::new("alpha").unwrap();
     SecurityRepository::new(&engine, instance.clone())
         .initialize(

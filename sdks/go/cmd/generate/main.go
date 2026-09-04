@@ -54,7 +54,9 @@ func repositoryRoot() (string, error) {
 		return "", err
 	}
 	for {
-		if _, statErr := os.Stat(filepath.Join(directory, "crates", "rrd-contract")); statErr == nil {
+		if _, statErr := os.Stat(
+			filepath.Join(directory, "crates", "transport", "rrd-contract"),
+		); statErr == nil {
 			return directory, nil
 		}
 		parent := filepath.Dir(directory)

@@ -82,13 +82,14 @@ impl RrdEngine {
         })
     }
 
-    /// Creates one process-local RRD authority with no persistent root. The
+    /// Creates one process-local RRD authority backed by volatile rrflowMX.
+    /// The
     /// full composition remains intact: sessions, transactions, policy,
     /// queries, audit, changefeeds, and subscriptions use the same engine
     /// methods as embedded and daemon profiles. Durability-only operations
-    /// fail explicitly because this mode has no storage path.
-    pub fn memory(instance: CanonicalId, token_key: [u8; 32]) -> Self {
-        Self::memory_with_vector_residency(
+    /// fail explicitly because rrflowMX has no storage path.
+    pub fn rrflow_mx(instance: CanonicalId, token_key: [u8; 32]) -> Self {
+        Self::rrflow_mx_with_vector_residency(
             instance,
             token_key,
             crate::VectorResidencyLimits::default(),
@@ -96,7 +97,7 @@ impl RrdEngine {
         .expect("default vector residency limits are valid")
     }
 
-    pub fn memory_with_vector_residency(
+    pub fn rrflow_mx_with_vector_residency(
         instance: CanonicalId,
         token_key: [u8; 32],
         limits: crate::VectorResidencyLimits,
@@ -104,7 +105,7 @@ impl RrdEngine {
         let vector_residency = crate::VectorResidencyManager::new(limits)
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
         Ok(Self {
-            storage: EngineBox::memory(),
+            storage: EngineBox::rrflow_mx(),
             objects: ObjectStoreBox::new(MemoryObjectStore::new()),
             storage_root: None,
             instance,
@@ -132,14 +133,14 @@ impl RrdEngine {
         if self.has_persistent_root() {
             DeploymentMode::Embedded
         } else {
-            DeploymentMode::Memory
+            DeploymentMode::RrflowMx
         }
     }
 
     pub(in crate::engine) fn require_persistent_root(&self, operation: &str) -> Result<&Path> {
         self.storage_root.as_deref().ok_or_else(|| {
             ServiceError::Backup(format!(
-                "{operation} requires a persistent RRD root; memory mode is non-durable"
+                "{operation} requires a persistent RRFlow database; rrflowMX is non-durable"
             ))
         })
     }

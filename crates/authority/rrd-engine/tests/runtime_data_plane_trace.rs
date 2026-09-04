@@ -10,7 +10,7 @@ use rrd_inference::{
     EmbeddingBackend, EmbeddingJob, EmbeddingSourceReader, EmbeddingSourceSnapshot,
     FeatureHashBackend, NetworkPolicy, EMBEDDING_CONTRACT_VERSION,
 };
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, MemoryEngine, NativeEngine, Store};
+use rrd_store::{DataRuntime, Engine, LocalObjectStore, NativeEngine, RrflowMxEngine, Store};
 use rrd_vector::{
     HnswConfig, HnswIndex, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
@@ -174,7 +174,7 @@ fn exercise<E: Engine>(store: &E) -> (rrd_engine::TracedVectorSearch, Vec<TraceV
 
 #[test]
 fn vector_search_is_causal_private_and_equal_across_all_engines() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -248,7 +248,7 @@ fn vector_search_is_causal_private_and_equal_across_all_engines() {
 
 #[test]
 fn projection_publication_and_approximate_selection_remain_fresh_across_trace_events() {
-    let store = MemoryEngine::new();
+    let store = RrflowMxEngine::new();
     let candidates = fixture(&store);
     let objects = tempfile::tempdir().unwrap();
     let data = DataRuntime::new(store, LocalObjectStore::open(objects.path()).unwrap());
@@ -306,7 +306,7 @@ fn projection_publication_and_approximate_selection_remain_fresh_across_trace_ev
 
 #[test]
 fn required_approximate_failure_closes_the_planning_tree_as_a_denial() {
-    let store = MemoryEngine::new();
+    let store = RrflowMxEngine::new();
     let candidates = fixture(&store);
     let runtime = VectorRuntime::new(candidates).unwrap();
     let error = execute_traced_vector_search(
@@ -425,7 +425,7 @@ fn exercise_embedding<E: Engine>(
 
 #[test]
 fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -509,7 +509,7 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
 
 #[test]
 fn embedding_source_change_after_inference_denies_without_a_vector_commit() {
-    let store = MemoryEngine::new();
+    let store = RrflowMxEngine::new();
     embedding_fixture(&store);
     let mut backend = FeatureHashBackend::new(16, 7).unwrap();
     let job = embedding_job(&store, &backend);
@@ -585,7 +585,7 @@ impl<E: Engine> EmbeddingSourceReader for MutatingReader<'_, E> {
 
 #[test]
 fn embedding_rebase_rejects_non_trace_mutations_even_when_source_bytes_match() {
-    let store = MemoryEngine::new();
+    let store = RrflowMxEngine::new();
     embedding_fixture(&store);
     let mut backend = FeatureHashBackend::new(16, 7).unwrap();
     let job = embedding_job(&store, &backend);

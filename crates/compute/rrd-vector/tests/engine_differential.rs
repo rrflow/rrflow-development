@@ -3,7 +3,7 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     RuntimeVector, ScopeId, VectorValue,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 use rrd_vector::{search_changes_exact, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
 use tempfile::tempdir;
 
@@ -87,7 +87,7 @@ fn search(engine: &dyn Engine) -> Vec<(String, f64)> {
 
 #[test]
 fn exact_search_is_identical_across_memory_fjall_and_native_logs() {
-    let memory = search(&MemoryEngine::new());
+    let memory = search(&RrflowMxEngine::new());
 
     let fjall_directory = tempdir().unwrap();
     let fjall = search(&Store::open(fjall_directory.path()).unwrap());

@@ -8,7 +8,7 @@ use rrd_core::{
     RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue,
     RuntimeValueType, RuntimeVector, ScopeId, SeriesValue, VectorValue,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 
 fn kind(value: &str) -> RuntimeType {
     RuntimeType::new(value).unwrap()
@@ -382,7 +382,7 @@ fn exercise(engine: &dyn Engine) -> (ScopeId, u64) {
 
 #[test]
 fn cross_model_catalogue_changes_are_atomic_and_equal_across_engines() {
-    exercise(&MemoryEngine::new());
+    exercise(&RrflowMxEngine::new());
 
     let compatibility = tempfile::tempdir().unwrap();
     exercise(&Store::open(compatibility.path()).unwrap());
@@ -637,7 +637,7 @@ fn exercise_crud(engine: &dyn Engine) -> (ScopeId, u64, rrd_core::RuntimeDataSna
 
 #[test]
 fn multi_model_create_update_retire_and_recreate_are_identical_across_engines() {
-    let (_, _, memory) = exercise_crud(&MemoryEngine::new());
+    let (_, _, memory) = exercise_crud(&RrflowMxEngine::new());
 
     let compatibility = tempfile::tempdir().unwrap();
     let (_, _, fjall) = exercise_crud(&Store::open(compatibility.path()).unwrap());
@@ -684,7 +684,7 @@ fn mixed_model_crud_snapshot_is_exact_after_fjall_and_native_reopen() {
 
 #[test]
 fn concurrent_updates_from_one_read_stamp_allow_exactly_one_writer() {
-    let engine = std::sync::Arc::new(MemoryEngine::new());
+    let engine = std::sync::Arc::new(RrflowMxEngine::new());
     let (scope, cursor) = exercise(engine.as_ref());
     let commits = ["writer-a", "writer-b"].map(|actor| RuntimeCommit {
         scope: scope.clone(),

@@ -1,4 +1,4 @@
-use rrd_store::{ControlTransition, Engine, Error, MemoryEngine, NativeEngine, Store};
+use rrd_store::{ControlTransition, Engine, Error, NativeEngine, RrflowMxEngine, Store};
 
 fn transition(expected: Option<&[u8]>, replacement: Option<&[u8]>, at: u64) -> ControlTransition {
     keyed_transition("server/state/session/session-1", expected, replacement, at)
@@ -98,7 +98,7 @@ fn assert_journal(engine: &dyn Engine) {
 
 #[test]
 fn every_engine_materializes_and_journals_the_same_cas_transitions() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     assert_journal(&memory);
     assert_atomic_batch(&memory);
     let native = tempfile::tempdir().unwrap();

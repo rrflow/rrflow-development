@@ -3,7 +3,7 @@ use rrd_core::{
     ScopeId, TraceDataClass, TraceDomain, TraceOutcome,
 };
 use rrd_engine::{install_runtime_trace_contract, record_runtime_trace, TraceIdentity};
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 use std::sync::{Arc, Barrier};
 
 fn scope() -> ScopeId {
@@ -112,7 +112,7 @@ fn exercise<E: Engine>(store: &E) -> Vec<Vec<u8>> {
 
 #[test]
 fn trace_schema_and_events_match_reference_compatibility_and_native_engines() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -124,7 +124,7 @@ fn trace_schema_and_events_match_reference_compatibility_and_native_engines() {
 
 #[test]
 fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
-    let store = MemoryEngine::new();
+    let store = RrflowMxEngine::new();
     let scope = scope();
     let mut wrong = RuntimeSchemaRegistry::empty(1, "deliberately incomplete trace schema");
     wrong.events.insert(
@@ -199,7 +199,7 @@ fn authoritative_start_survives_reopen_as_an_honest_incomplete_span() {
 
 #[test]
 fn concurrent_trace_writers_rebase_without_losing_events() {
-    let store = Arc::new(MemoryEngine::new());
+    let store = Arc::new(RrflowMxEngine::new());
     let barrier = Arc::new(Barrier::new(8));
     let mut threads = Vec::new();
     for index in 0..8_u64 {

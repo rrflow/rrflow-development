@@ -6,7 +6,7 @@ use rrd_estate::{
     ObservedPhase, PinRecoveryPoint, PrepareRecoveryPrune, ReceiptBoundary, ReceiptRequest,
     RecordRestoreEvidence, ReleaseRecoveryPin, ScheduleBackup, SetDesired, SetRecoveryPolicy,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
@@ -207,7 +207,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
 
 #[test]
 fn explicit_holds_drive_deterministic_prune_evidence() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     prepare_stopped_instance(&engine);
     set_policy(&engine, 75, "set-policy");
     let first = complete_backup(&engine, "backup-one", 80, '3');
@@ -292,7 +292,7 @@ fn explicit_holds_drive_deterministic_prune_evidence() {
 
 #[test]
 fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     prepare_stopped_instance(&engine);
     set_policy(&engine, 75, "set-policy");
     let backup_id = complete_backup(&engine, "backup-one", 80, '3');
@@ -333,7 +333,7 @@ fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
 
 #[test]
 fn legacy_backup_jobs_decode_without_recovery_policy_snapshots() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     prepare_stopped_instance(&engine);
     let scheduled = EstateRepository::new(&engine, id("estate-a"))
         .schedule_backup(&ScheduleBackup {

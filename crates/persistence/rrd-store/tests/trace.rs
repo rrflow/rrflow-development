@@ -3,7 +3,7 @@ use rrd_core::{
     RuntimeType, RuntimeValue, ScopeId, SpanId, TraceDataClass, TraceDomain, TraceId, TraceLink,
     TraceOutcome,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 
 fn trace_id() -> TraceId {
     TraceId::new("0123456789abcdef0123456789abcdef").unwrap()
@@ -94,7 +94,7 @@ fn exercise(engine: &dyn Engine) -> Vec<Vec<u8>> {
 
 #[test]
 fn persisted_trace_events_are_identical_across_reference_compatibility_and_native_engines() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();

@@ -9,7 +9,9 @@ This file is the authority for product identity, architecture, current status,
 and roadmap. Other documents are supporting contracts, design notes, evidence,
 or history. They do not define a second architecture.
 
-The current release-train version is `1.0.0`.
+The target release-train version is `1.0.0`. The current maturity is
+**pre-alpha**; the version identifies the contract line being built and is not
+a claim that the RRFlow 1.0 system is complete or release-ready.
 
 ## Canonical RRFlow 1.0 terminology
 
@@ -25,6 +27,7 @@ independent stores.
 | **RRFlow kernel** | The canonical temporal values, identities, read stamps, mutations, and invariants implemented in `rrd-core`. The kernel defines meaning but does not own transport or physical storage. |
 | **canonical runtime log** | The ordered source of truth for committed RRFlow changes. Temporal snapshots are resolved from this log. |
 | **rrflowKV** | RRFlow's native ordered MVCC/LSM physical layer, implemented by `rrd-lsm` and adapted through `rrd-store`. One semantic engine commit becomes one atomic rrflowKV write batch. rrflowKV is not a second engine or public data model. |
+| **rrflowMX** | RRFlow's process-local, non-durable implementation of the same semantic storage port. It supports volatile and conformance execution through `RrdEngine`; it is not a persistent RRFlow database, a cache, an Arrow working set, or another semantic authority. |
 | **RRFlow temporal graph** | Typed records and relations resolved at a runtime read stamp and valid-time coordinate from the same canonical log. It is not a separate graph database. |
 | **RRFlow memory** | Durable temporal knowledge—claims, records, relations, schemas, vectors, and evidence—owned by the same engine. It is not a separate memory store. |
 | **RRFlowQL** | RRFlow's query language. Use **RRFlowQL**, not the ambiguous shorthand “QL,” in product documentation. |
@@ -37,7 +40,7 @@ independent stores.
 | **LFG** | A replaceable local routing-model adapter. LFG may propose a recipe, branch, or bounded query intent; it never owns state, permissions, physical plans, or mutations. |
 | **Connectome** | RRFlow's separate client and operator workbench. It observes and invokes RRFlow through public RRD capabilities and never recreates engine logic. |
 
-For citations, use **RRFlow database**, **RRFlow kernel**, **rrflowKV**,
+For citations, use **RRFlow database**, **RRFlow kernel**, **rrflowKV**, **rrflowMX**,
 **RRFlow temporal graph**, **RRFlow memory**, **RRFlowQL**, **Arrow/DataFusion
 analytical path**, **LFG**, and **Connectome**. Do not describe RRD, rrflowKV,
 the graph, memory, indexes, LFG, or Connectome as additional engines or sources
@@ -52,7 +55,10 @@ valid-time history are not separate memory systems.
 
 RRFlow is one hybrid transactional/analytical system. Its fast and analytical
 paths share authentication, authorization, schema, read stamps, transaction
-coordination, rrflowKV, and the canonical runtime log:
+coordination, one selected storage profile, and the canonical runtime log. A
+persistent RRFlow database selects rrflowKV; a deliberately non-durable
+process-local composition selects rrflowMX. Both remain subordinate to the same
+`RrdEngine` authority:
 
 ```text
 HTTP / WebSocket / native SDK / embedded caller
@@ -76,13 +82,18 @@ HTTP / WebSocket / native SDK / embedded caller
         |                   KV scan   graph/BM25   HNSW candidates
  deterministic predicates     |           |           |
         |                     stamped Arrow RecordBatch stream
- rrflowKV point/range ops                  |
+ storage point/range ops                   |
         |                         DataFusion + native RRF
         +--------------------+------------+
                              |
                   one authorized transaction
                              |
-             rrflowKV WAL -> memtable -> segments
+                  +----------+----------+
+                  |                     |
+       rrflowMX volatile state    rrflowKV write batch
+                                        |
+                              WAL -> memtable -> segments
+                  +----------+----------+
                              |
                    changefeed / live deltas
 ```
@@ -246,7 +257,7 @@ authority:
 |---|---|
 | `rrd-core` | RRFlow kernel: temporal values, identities, canonical mutations, read stamps, and snapshot invariants |
 | `rrd-lsm` | rrflowKV WAL, MVCC memtable, immutable segments, cache, compaction, and physical snapshots |
-| `rrd-store` | semantic-to-rrflowKV mapping, canonical log/materialized-key maintenance, and storage conformance port |
+| `rrd-store` | semantic storage port, rrflowMX volatile implementation, semantic-to-rrflowKV mapping, canonical log/materialized-key maintenance, and cross-profile conformance |
 | `rrd-query` | RRFlowQL syntax, bound logical plans, physical planning, native query operators, and Arrow/DataFusion execution |
 | `rrd-vector` | exact vector truth, HNSW/quantized candidate indexes, reranking, and vector-index conformance |
 | `rrd-inference` | process-local, provider-neutral executable model adapters; embedding and routing are separate capabilities |
@@ -268,7 +279,7 @@ crates/
 │   └── rrd-core
 ├── persistence/
 │   ├── rrd-lsm                 # rrflowKV physical implementation
-│   └── rrd-store               # semantic/KV mapping and conformance port
+│   └── rrd-store               # rrflowMX plus semantic/rrflowKV mapping
 ├── compute/
 │   ├── rrd-query               # RRFlowQL, plans, Arrow/DataFusion, BM25
 │   ├── rrd-vector              # exact vector truth and ANN candidates
@@ -352,6 +363,10 @@ exist; client-side phase labels are not evidence of implementation.
 
 Implemented now:
 
+- explicit rrflowMX volatile and native rrflowKV persistent compositions using
+  the same `RrdEngine`, semantic storage contract, stamped RRFlowQL pipeline,
+  and DataFusion executor; the shared logical corpus also verifies rrflowKV
+  reopen, while rrflowMX explicitly rejects durability-only operations;
 - a versioned, provider-neutral reasoning-tree contract with typed nodes and
   edges, content-addressed recipes/evidence, read-stamped cursors, and
   fail-closed cursor-advance verification;
@@ -383,6 +398,10 @@ Implemented now:
 
 Not implemented or not yet production-grade:
 
+- RRFlowQL currently materializes authoritative source rows before constructing
+  stamped Arrow batches; DataFusion execution is real, but the bounded streaming
+  rrflowKV table provider, scan pushdown, and native mixed operators required by
+  Gate F are not implemented;
 - reasoning-tree persistence and execution, router-backend dispatch, and the
   LFG adapter are not yet implemented; A-02 and B-02 freeze their semantics
   but do not claim a running router;
@@ -443,7 +462,7 @@ claiming their later engine implementations.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [x] | A-01 | Define RRFlow, RRD, RRFlow kernel, rrflowKV, RRFlowQL, Arrow/DataFusion analytical path, LFG, and Connectome exactly once. | `README.md` | Terminology table, execution topology, and ownership table use one meaning for every term. |
+| [x] | A-01 | Define RRFlow, RRD, RRFlow kernel, rrflowKV, rrflowMX, RRFlowQL, Arrow/DataFusion analytical path, LFG, and Connectome exactly once. | `README.md` | Terminology table, execution topology, and ownership table use one meaning for every term. |
 | [x] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
 | [x] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
 | [x] | A-04 | Move crates into the canonical grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
@@ -581,7 +600,7 @@ golden vectors without importing Rust internals.
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
 | [ ] | C-01 | Freeze one ordered binary key codec for current records, temporal versions, outgoing/incoming edges, scalar values, term postings, vectors, projection deltas, catalogue state, and runtime commits. | `rrd-core`, `rrd-store` | Ordering/golden tests prove prefix boundaries, round trips, tenant separation, and malformed-key rejection. |
-| [ ] | C-02 | Expose the minimal snapshot transaction primitives required by the semantic store: point read, bounded range scan, put, delete, commit, rollback, and conflict. | `rrd-lsm`, `rrd-store` | Native and memory conformance suites agree on read-your-writes, repeatable reads, range ordering, and write conflicts. |
+| [ ] | C-02 | Expose the minimal snapshot transaction primitives required by the semantic store: point read, bounded range scan, put, delete, commit, rollback, and conflict. | `rrd-lsm`, `rrd-store` | rrflowKV and rrflowMX conformance suites agree on read-your-writes, repeatable reads, range ordering, and write conflicts. |
 | [ ] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, and durable projection deltas as one write batch. | `rrd-store`, `rrd-engine` | Failure injection at every WAL/batch boundary proves all-or-nothing behavior after reopen. |
 | [ ] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [ ] | C-05 | Remove Fjall selection, compatibility readers, migration-only runtime paths, legacy format branching, and associated dependencies from the 1.0 executable. | `rrd-store`, workspace | Fresh native database tests pass; repository search and dependency metadata contain no Fjall/compatibility execution path. |

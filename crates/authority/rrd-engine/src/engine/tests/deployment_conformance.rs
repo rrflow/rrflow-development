@@ -129,6 +129,16 @@ fn run_corpus(engine: &RrdEngine, suffix: &str) -> Vec<CanonicalId> {
         )
         .unwrap();
     assert!(result.plan.exact);
+    let analysis = result
+        .execution
+        .analysis
+        .as_ref()
+        .expect("the shared deployment corpus must execute through DataFusion");
+    assert_eq!(analysis.engine, "datafusion-55");
+    assert_eq!(analysis.provider_scans, 1);
+    assert!(analysis.input_rows > 0);
+    assert!(analysis.input_batches > 0);
+    assert!(analysis.physical_operators > 0);
     assert_eq!(
         result.rows[0].values["body"],
         QueryValue::String(corpus.documents[0].text.clone())
@@ -148,16 +158,19 @@ fn run_corpus(engine: &RrdEngine, suffix: &str) -> Vec<CanonicalId> {
 }
 
 #[test]
-fn memory_and_embedded_composition_roots_pass_one_logical_corpus() {
+fn rrflow_mx_and_rrflow_kv_composition_roots_pass_one_datafusion_corpus() {
     let corpus = corpus();
-    let memory = RrdEngine::memory(instance(), TOKEN_KEY);
-    assert!(!memory.has_persistent_root());
+    let rrflow_mx = RrdEngine::rrflow_mx(instance(), TOKEN_KEY);
+    assert!(!rrflow_mx.has_persistent_root());
     assert_eq!(
-        memory.deployment_mode(),
-        rrd_contract::DeploymentMode::Memory
+        rrflow_mx.deployment_mode(),
+        rrd_contract::DeploymentMode::RrflowMx
     );
-    assert_eq!(memory.readiness(1).unwrap().backend.as_str(), "memory");
-    assert_eq!(run_corpus(&memory, "memory"), corpus.expected_ids);
+    assert_eq!(
+        rrflow_mx.readiness(1).unwrap().backend.as_str(),
+        "rrflow_mx"
+    );
+    assert_eq!(run_corpus(&rrflow_mx, "rrflow-mx"), corpus.expected_ids);
 
     let root = tempfile::tempdir().unwrap();
     let embedded = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
@@ -176,29 +189,29 @@ fn memory_and_embedded_composition_roots_pass_one_logical_corpus() {
 }
 
 #[test]
-fn memory_mode_rejects_durability_only_operations_before_preparing_state() {
-    let engine = RrdEngine::memory(instance(), TOKEN_KEY);
+fn rrflow_mx_rejects_durability_only_operations_before_preparing_state() {
+    let engine = RrdEngine::rrflow_mx(instance(), TOKEN_KEY);
     let lease = engine
         .create_session(
             &session_request(5_000, 1),
-            &id("memory-backup-session"),
+            &id("rrflow-mx-backup-session"),
             1_000,
-            "request-memory-backup-session",
-            "operation-memory-backup-session",
+            "request-rrflow-mx-backup-session",
+            "operation-rrflow-mx-backup-session",
         )
         .unwrap();
     let before = engine.storage.control_sequence().unwrap();
     let result = engine.create_instance_backup(
         &lease.session_id,
         &lease.token,
-        &id("memory-backup-key"),
+        &id("rrflow-mx-backup-key"),
         &rrd_contract::CreateInstanceBackup {
-            label: "memory-backup".into(),
+            label: "rrflow-mx-backup".into(),
             created_at_unix_ms: 1_100,
         },
         1_100,
-        "request-memory-backup",
-        "operation-memory-backup",
+        "request-rrflow-mx-backup",
+        "operation-rrflow-mx-backup",
     );
     assert!(matches!(result, Err(ServiceError::Backup(_))));
     assert_eq!(engine.storage.control_sequence().unwrap(), before);

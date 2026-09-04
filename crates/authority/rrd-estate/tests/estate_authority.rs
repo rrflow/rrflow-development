@@ -3,7 +3,7 @@ use rrd_estate::{
     ActivityClass, ActivityEvidence, DesiredPhase, DesiredTarget, Error, EstateRepository,
     LeaseRequest, MutationContext, OperationState, ReceiptBoundary, ReceiptRequest, SetDesired,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
@@ -38,7 +38,7 @@ fn set_request(at: u64, key: &str, operation: &str) -> SetDesired {
 
 #[test]
 fn desired_state_is_journaled_and_idempotency_is_durable() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -74,7 +74,7 @@ fn desired_state_is_journaled_and_idempotency_is_durable() {
 
 #[test]
 fn expired_workers_are_fenced_and_recovery_uses_a_new_epoch() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -182,7 +182,7 @@ fn expired_workers_are_fenced_and_recovery_uses_a_new_epoch() {
 
 #[test]
 fn activity_classification_keeps_evidence_and_recomputes_over_time() {
-    let engine = MemoryEngine::new();
+    let engine = RrflowMxEngine::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))

@@ -4,7 +4,7 @@ use rrd_core::{
     RuntimeValueType, ScopeId,
 };
 use rrd_engine::{execute_traced_query, query_parameters_from_json, ExecutionBudget, Parameters};
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
@@ -139,7 +139,7 @@ fn exercise<E: Engine>(store: &E) -> (rrd_engine::TracedQueryExecution, Vec<Trac
 
 #[test]
 fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -241,7 +241,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
     );
     assert_eq!(
         memory_traces[7].attributes["backend"],
-        RuntimeValue::String("memory".into())
+        RuntimeValue::String("rrflow_mx".into())
     );
     assert_eq!(
         fjall_traces[7].attributes["backend"],
@@ -289,7 +289,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
 
 #[test]
 fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
-    let parse_store = MemoryEngine::new();
+    let parse_store = RrflowMxEngine::new();
     fixture(&parse_store);
     let error = execute_traced_query(
         &parse_store,
@@ -314,7 +314,7 @@ fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
         .iter()
         .all(|trace| !trace.encoded.contains("operator-secret")));
 
-    let budget_store = MemoryEngine::new();
+    let budget_store = RrflowMxEngine::new();
     fixture(&budget_store);
     let budget = ExecutionBudget {
         max_scanned_changes: 1,

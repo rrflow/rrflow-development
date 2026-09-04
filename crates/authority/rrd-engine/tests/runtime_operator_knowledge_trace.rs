@@ -10,7 +10,7 @@ use rrd_operator_knowledge::{
     OperatorSearchControls, OperatorSearchRequest, OperatorSourceRevision, OperatorSyncWork,
     ReferenceOperatorAdapter, ReferenceOperatorWriter, OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
-use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
 use rrd_vector::{
     EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
@@ -268,7 +268,7 @@ fn operator_search_is_project_bound_private_and_equal_across_engines() {
     let instance_root = tempfile::tempdir().unwrap();
     InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
     let instance = InstanceBinding::discover(instance_root.path()).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let fjall_root = tempfile::tempdir().unwrap();
     let fjall = Store::open(fjall_root.path()).unwrap();
     let native_root = tempfile::tempdir().unwrap();
@@ -336,7 +336,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
     InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
     let instance = InstanceBinding::discover(instance_root.path()).unwrap();
 
-    let stale_store = MemoryEngine::new();
+    let stale_store = RrflowMxEngine::new();
     let candidates = fixture(&stale_store);
     let stale_knowledge = knowledge(&instance);
     let stale_request = request(&stale_store, &stale_knowledge);
@@ -360,7 +360,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
         ["running", "running", "denied", "denied"]
     );
 
-    let projection_store = MemoryEngine::new();
+    let projection_store = RrflowMxEngine::new();
     let candidates = fixture(&projection_store);
     let mut projection_knowledge = knowledge(&instance);
     projection_knowledge.projection.source_cursor = 6;
@@ -386,7 +386,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
         ["running", "running", "denied", "denied"]
     );
 
-    let foreign_store = MemoryEngine::new();
+    let foreign_store = RrflowMxEngine::new();
     let candidates = fixture(&foreign_store);
     let mut foreign = knowledge(&instance);
     foreign.project_id = "another-project".into();
@@ -421,7 +421,7 @@ fn traced_outbox_retry_applies_external_payload_once() {
     let instance_root = tempfile::tempdir().unwrap();
     InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
     let instance = InstanceBinding::discover(instance_root.path()).unwrap();
-    let store = MemoryEngine::new();
+    let store = RrflowMxEngine::new();
     let candidates = fixture(&store);
     let knowledge = knowledge(&instance);
     let source = store

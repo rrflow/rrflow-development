@@ -1,7 +1,8 @@
 //! # rrd-store
 //!
-//! Storage port and transitional Fjall compatibility adapter. The port is the
-//! contract the Rrd-native substrate will implement and eventually replace.
+//! The semantic storage port shared by persistent rrflowKV and volatile
+//! rrflowMX, plus the transitional Fjall compatibility adapter scheduled for
+//! removal before RRFlow 1.0.
 //!
 //! ## Corrections applied
 //!
@@ -58,7 +59,7 @@ pub use backup::{
 };
 pub use control::{ControlJournalEntry, ControlTransition};
 pub use ds::{DataRuntime, DataRuntimeAccess, DataRuntimeRef, DataRuntimeStep};
-pub use engine::{Engine, EngineBox, MemoryEngine, PhysicalStoreEvidence};
+pub use engine::{Engine, EngineBox, PhysicalStoreEvidence, RrflowMxEngine};
 pub use error::{Error, Result};
 pub use footprint::{measure_storage_footprint, FootprintBytes, StorageFootprint};
 pub use gc::{PairStatus, RemovalReport, Verdict};

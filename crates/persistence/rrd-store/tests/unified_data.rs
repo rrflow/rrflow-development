@@ -8,7 +8,7 @@ use rrd_core::{
     ScopeId, SeriesValue, Subject, VectorNormalization, VectorValue,
 };
 use rrd_store::{
-    DataRuntime, DataRuntimeStep, Engine, Error, LocalObjectStore, MemoryEngine, NativeEngine,
+    DataRuntime, DataRuntimeStep, Engine, Error, LocalObjectStore, NativeEngine, RrflowMxEngine,
     Store,
 };
 use tempfile::tempdir;
@@ -213,7 +213,7 @@ fn exercise_unified_commit<E: Engine>(engine: E) {
 
 #[test]
 fn unified_transaction_and_evidence_match_across_all_engines() {
-    exercise_unified_commit(MemoryEngine::new());
+    exercise_unified_commit(RrflowMxEngine::new());
 
     let fjall_directory = tempdir().unwrap();
     exercise_unified_commit(Store::open(fjall_directory.path()).unwrap());

@@ -6,7 +6,7 @@
 //! golden key vectors in rrd-core) holds for it.
 
 use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
-use rrd_store::{Engine, GroundingReport, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, GroundingReport, NativeEngine, RrflowMxEngine, Store};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(
@@ -61,7 +61,7 @@ fn all_engines_are_indistinguishable_through_the_port() {
     let fjall = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
     let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
 
     for engine in [
         &fjall as &dyn AnyEngine,
@@ -159,7 +159,7 @@ fn a_rejected_batch_is_atomic_in_all_engines() {
     let fjall = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
     let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let valid = claim("wp3", "status", "valid", 100);
     let mut invalid = claim("wp4", "status", "invalid", 200);
     invalid.valid_to = Some(200);

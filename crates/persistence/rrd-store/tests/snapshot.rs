@@ -7,7 +7,7 @@ use rrd_core::{
     RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
     RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
-use rrd_store::{Engine, Error, MemoryEngine, NativeEngine, Store};
+use rrd_store::{Engine, Error, NativeEngine, RrflowMxEngine, Store};
 
 fn schema() -> RuntimeSchemaRegistry {
     let mut registry = RuntimeSchemaRegistry::empty(1, "snapshot test schema");
@@ -129,7 +129,7 @@ fn all_engines_enforce_identical_snapshot_semantics() {
     let fjall = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
     let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     assert_snapshot_contract(&fjall);
     assert_snapshot_contract(&native);
     assert_snapshot_contract(&memory);
@@ -171,7 +171,7 @@ fn retained_prefix_proofs_survive_later_commits_on_all_engines() {
     let fjall = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
     let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     assert_historical_authenticated_point_read(&fjall);
     assert_historical_authenticated_point_read(&native);
     assert_historical_authenticated_point_read(&memory);
@@ -330,7 +330,7 @@ fn data_transactions_bind_writes_to_their_read_state_on_all_engines() {
     assert_data_transaction_contract(
         &NativeEngine::open(&native_dir.path().join("native")).unwrap(),
     );
-    assert_data_transaction_contract(&MemoryEngine::new());
+    assert_data_transaction_contract(&RrflowMxEngine::new());
 }
 
 fn assert_concurrent_compare_and_swap<E>(engine: Arc<E>)
@@ -396,7 +396,7 @@ fn concurrent_transactions_never_lose_an_update() {
     assert_concurrent_compare_and_swap(Arc::new(
         NativeEngine::open(&native_dir.path().join("native")).unwrap(),
     ));
-    assert_concurrent_compare_and_swap(Arc::new(MemoryEngine::new()));
+    assert_concurrent_compare_and_swap(Arc::new(RrflowMxEngine::new()));
 }
 
 #[test]
@@ -405,7 +405,7 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
     let fjall = Store::open(dir.path()).unwrap();
     let native_dir = tempfile::tempdir().unwrap();
     let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = MemoryEngine::new();
+    let memory = RrflowMxEngine::new();
     let scopes = [
         ScopeId::new("instance:trace-a").unwrap(),
         ScopeId::new("instance:trace-b").unwrap(),

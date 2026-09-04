@@ -683,7 +683,7 @@ fn ensure_empty(reader: &mut dyn Read) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{export_logical_archive, LocalObjectStore, MemoryEngine};
+    use crate::{export_logical_archive, LocalObjectStore, RrflowMxEngine};
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Mutex;
     use tempfile::tempdir;
@@ -1018,7 +1018,7 @@ mod tests {
     fn logical_archive_uses_the_same_authenticated_resumable_object_path() {
         let temporary = tempdir().unwrap();
         let archive = temporary.path().join("empty.rrd-archive");
-        export_logical_archive(&MemoryEngine::new(), &archive).unwrap();
+        export_logical_archive(&RrflowMxEngine::new(), &archive).unwrap();
         let bytes = std::fs::read(&archive).unwrap();
         let sha256 = digest::sha256_hex(&bytes);
         let remote = S3CompatibleObjectStore::new(MemoryS3Client::default(), "s3:archive").unwrap();

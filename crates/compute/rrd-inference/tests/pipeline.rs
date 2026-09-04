@@ -9,7 +9,7 @@ use rrd_inference::{
     FeatureHashBackend, InferenceTrustBoundary, NetworkPolicy, NetworkRequirement,
     EMBEDDING_CONTRACT_VERSION,
 };
-use rrd_store::{Engine, MemoryEngine};
+use rrd_store::{Engine, RrflowMxEngine};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -313,7 +313,7 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
     let bytes = b"source at captured cursor";
     let mut backend = FeatureHashBackend::new(32, 17).unwrap();
     let mut job = job(bytes, &backend);
-    let engine = MemoryEngine::default();
+    let engine = RrflowMxEngine::default();
     let mut properties = RuntimeProperties::new();
     properties.insert(
         "content_digest".into(),
