@@ -3,7 +3,7 @@ use serde_json::Value;
 #[test]
 fn checked_in_m6_edge_evidence_is_complete_and_inside_local_budgets() {
     let value: Value = serde_json::from_str(include_str!(
-        "../../../docs/evidence/m6-edge-local-10000x128.json"
+        "../../../../docs/evidence/m6-edge-local-10000x128.json"
     ))
     .unwrap();
     assert_eq!(value["schema"], "rrflow-m6-edge-evidence-v1");

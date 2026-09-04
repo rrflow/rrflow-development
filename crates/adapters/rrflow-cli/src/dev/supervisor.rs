@@ -414,8 +414,10 @@ fn resolve_binaries(no_build: bool) -> Result<Binaries> {
     }
 
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
+        .ancestors()
+        .find(|candidate| {
+            candidate.join("crates").is_dir() && candidate.join("Cargo.toml").is_file()
+        })
         .ok_or("cannot resolve RRFlow source workspace")?;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let status = Command::new(&cargo)

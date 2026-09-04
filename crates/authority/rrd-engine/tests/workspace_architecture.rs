@@ -126,9 +126,9 @@ fn outward_product_sources_do_not_import_physical_components() {
     for relative in [
         "crates/transport/rrd-client/src",
         "crates/transport/rrd-server/src",
-        "crates/rrflow-cli/src",
-        "crates/rrflow-cli/examples",
-        "crates/rrflow-mcp/src",
+        "crates/adapters/rrflow-cli/src",
+        "crates/adapters/rrflow-cli/examples",
+        "crates/adapters/rrflow-mcp/src",
         "crates/connectome-ui/src",
     ] {
         let directory = metadata.root.join(relative);
@@ -270,7 +270,7 @@ fn outward_cli_owns_product_executables_while_physical_crates_own_none() {
 #[test]
 fn outward_surfaces_use_the_authoritative_context_operation() {
     let metadata = workspace_metadata();
-    let mcp = fs::read_to_string(metadata.root.join("crates/rrflow-mcp/src/main.rs"))
+    let mcp = fs::read_to_string(metadata.root.join("crates/adapters/rrflow-mcp/src/main.rs"))
         .expect("MCP source must be readable");
     assert!(
         mcp.contains("rrflow_context") && mcp.contains("authority.assemble_context"),
@@ -343,7 +343,7 @@ fn retired_fixed_reasoning_ledger_api_is_absent() {
     for relative in [
         "crates/kernel/rrd-core",
         "crates/authority/rrd-engine",
-        "crates/rrflow-cli",
+        "crates/adapters/rrflow-cli",
     ] {
         for retired in &retired_symbols {
             collect_rust_sources(&metadata.root.join(relative), &mut violations, retired);

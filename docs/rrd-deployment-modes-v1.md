@@ -60,5 +60,5 @@ durability equivalence that its offline face does not offer.
 - `crates/authority/rrd-engine/src/engine/tests/deployment_conformance.rs`
 - `crates/transport/rrd-server/tests/http_process.rs`
 - `crates/transport/rrd-client/tests/real_server.rs`
-- `crates/rrflow-edge/tests/offline.rs`
+- `crates/adapters/rrflow-edge/tests/offline.rs`
 - `crates/transport/rrd-contract/tests/public_contract.rs`

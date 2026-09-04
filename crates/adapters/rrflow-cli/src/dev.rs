@@ -144,10 +144,10 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         ),
     ];
 
-    let mcp_source_path = root.join("crates/rrflow-mcp/src/main.rs");
-    let mcp_config_path = root.join("crates/rrflow-mcp/src/config.rs");
-    let mcp_authority_path = root.join("crates/rrflow-mcp/src/authority.rs");
-    let mcp_daemon_test = root.join("crates/rrflow-mcp/tests/stdio_daemon.rs");
+    let mcp_source_path = root.join("crates/adapters/rrflow-mcp/src/main.rs");
+    let mcp_config_path = root.join("crates/adapters/rrflow-mcp/src/config.rs");
+    let mcp_authority_path = root.join("crates/adapters/rrflow-mcp/src/authority.rs");
+    let mcp_daemon_test = root.join("crates/adapters/rrflow-mcp/tests/stdio_daemon.rs");
     let mcp_source = std::fs::read_to_string(&mcp_source_path)?;
     let mcp_config = std::fs::read_to_string(&mcp_config_path).unwrap_or_default();
     let mcp_authority = std::fs::read_to_string(&mcp_authority_path).unwrap_or_default();
@@ -324,8 +324,9 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         false,
     ));
 
-    let command_source = std::fs::read_to_string(root.join("crates/rrflow-cli/src/command.rs"))?;
-    let supervisor_path = root.join("crates/rrflow-cli/src/dev/supervisor.rs");
+    let command_source =
+        std::fs::read_to_string(root.join("crates/adapters/rrflow-cli/src/command.rs"))?;
+    let supervisor_path = root.join("crates/adapters/rrflow-cli/src/dev/supervisor.rs");
     let supervisor_source = std::fs::read_to_string(&supervisor_path).unwrap_or_default();
     let has_supervisor = supervisor_path.is_file()
         && ["Up {", "Status {", "Logs {", "Stop {"]
@@ -564,7 +565,7 @@ mod tests {
 
     #[test]
     fn current_workspace_passes_every_foundation_invariant() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let report = doctor(&root).unwrap();
         assert!(report.ready);
         assert!(report.checks.iter().any(|check| {

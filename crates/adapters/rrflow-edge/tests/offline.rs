@@ -52,7 +52,7 @@ fn build_is_deterministic_and_empty_inputs_fail_closed() {
 #[test]
 fn offline_mmap_edge_passes_the_shared_deployment_corpus_without_network() {
     let corpus: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../fixtures/rrd-deployment-conformance-v1.json"
+        "../../../../fixtures/rrd-deployment-conformance-v1.json"
     ))
     .unwrap();
     assert_eq!(corpus["format_version"], 1);
