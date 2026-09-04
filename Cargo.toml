@@ -20,7 +20,7 @@ members = [
     "crates/persistence/rrd-lsm",
     "crates/adapters/rrflow-cli",
     "crates/adapters/rrflow-mcp",
-    "crates/rrflow-eval",
+    "crates/evaluation/rrflow-eval",
     "crates/connectome-ui",
 ]
 
