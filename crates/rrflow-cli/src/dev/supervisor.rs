@@ -737,13 +737,21 @@ fn signal_owned_process(service: &ServiceState, signal: Signal) -> Result<()> {
 
 fn wait_for_process_exit(service: &ServiceState, timeout: Duration) -> Result<bool> {
     let deadline = Instant::now() + timeout;
+    let mut consecutive_foreign_observations = 0u8;
     loop {
         match process_identity(service)? {
             ProcessIdentity::Exited => return Ok(true),
             ProcessIdentity::Foreign => {
-                return Err("managed PID identity changed while waiting for exit".into())
+                // Process status and `/proc/<pid>/exe` are sampled separately.
+                // A process can exit between those reads, yielding one mixed
+                // observation. Never signal from this loop; require a second
+                // foreign observation before treating it as PID reuse.
+                consecutive_foreign_observations += 1;
+                if consecutive_foreign_observations >= 2 {
+                    return Err("managed PID identity changed while waiting for exit".into());
+                }
             }
-            ProcessIdentity::Owned => {}
+            ProcessIdentity::Owned => consecutive_foreign_observations = 0,
         }
         if Instant::now() >= deadline {
             return Ok(false);
