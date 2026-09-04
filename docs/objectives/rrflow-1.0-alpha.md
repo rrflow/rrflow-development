@@ -6,7 +6,9 @@
 
 The RRFlow 1.0 version is frozen while this baseline is established. The
 repository root [README](../../README.md) owns product identity and current
-maturity. The [roadmap](../roadmap/rrflow-1.0.md) owns delivery order and the
+maturity. The [engine data-flow architecture](../architecture/engine-data-flow.md)
+owns the detailed transactional and analytical flow, the
+[roadmap](../roadmap/rrflow-1.0.md) owns delivery order, and the
 [POA&M](../poam/rrflow-1.0-alpha.md) owns observed deficiencies. This record
 owns only the measurable result.
 

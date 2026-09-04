@@ -6,9 +6,10 @@
 
 This record tracks gaps observed in the checkout. The
 [objective](../objectives/rrflow-1.0-alpha.md) defines the required result and
-the [roadmap](../roadmap/rrflow-1.0.md) owns execution order. A row closes only
-when the referenced gate records its acceptance evidence; editing this table
-cannot declare a capability complete.
+the [engine data-flow architecture](../architecture/engine-data-flow.md) defines
+the affected system flow. The [roadmap](../roadmap/rrflow-1.0.md) owns execution
+order. A row closes only when the referenced gate records its acceptance
+evidence; editing this table cannot declare a capability complete.
 
 ## Status vocabulary
 

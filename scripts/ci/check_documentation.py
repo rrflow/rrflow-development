@@ -15,6 +15,10 @@ ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
+ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
+HISTORICAL_QUERY_PLAN = (
+    ROOT / "docs" / "history" / "rrd-arrow-datafusion-bm25-plan.md"
+)
 STATUS = re.compile(r"(?im)^(?:\*\*)?Status(?:\*\*)?:\s*\S")
 LEGACY_MILESTONE = re.compile(r"\b(?:F\d|G\d{2}-W\d+|M\d|Q\d)\b")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
@@ -49,6 +53,7 @@ def main() -> int:
         failures.append("README.md does not contain the knowledge-ownership contract")
     required_warps = (
         "docs/README.md",
+        "docs/architecture/engine-data-flow.md",
         "docs/objectives/rrflow-1.0-alpha.md",
         "docs/roadmap/rrflow-1.0.md",
         "docs/poam/rrflow-1.0-alpha.md",
@@ -62,7 +67,14 @@ def main() -> int:
     docs_index = DOCS_INDEX.read_text(encoding="utf-8")
     if "## Documentation taxonomy" not in docs_index:
         failures.append("docs/README.md does not define the documentation taxonomy")
-    for directory in ("objectives/", "roadmap/", "poam/", "reference/"):
+    for directory in (
+        "architecture/",
+        "objectives/",
+        "roadmap/",
+        "poam/",
+        "reference/",
+        "history/",
+    ):
         if directory not in docs_index:
             failures.append(f"docs/README.md does not route {directory}")
 
@@ -89,6 +101,25 @@ def main() -> int:
         "# Google Gemini CLI\n\n@./AGENTS.md"
     ):
         failures.append("GEMINI.md must remain a forwarding-only AGENTS.md adapter")
+
+    engine_data_flow = ENGINE_DATA_FLOW.read_text(encoding="utf-8")
+    if "## Write and commit flow" not in engine_data_flow:
+        failures.append("the engine data-flow owner has no write path")
+    if "## Read and query flow" not in engine_data_flow:
+        failures.append("the engine data-flow owner has no read path")
+    if "## Conditional zero-copy" not in engine_data_flow:
+        failures.append("the engine data-flow owner has no physical copy boundary")
+    if "rrflow://rrflow-instance/data/architecture/engine-data-flow" not in (
+        engine_data_flow
+    ):
+        failures.append("the engine data-flow owner has no durable coordinate")
+    if (ROOT / "docs" / "rrd-arrow-datafusion-bm25-plan.md").exists():
+        failures.append("the superseded Q1-Q4 query plan remains active and flat")
+    historical_query_plan = HISTORICAL_QUERY_PLAN.read_text(encoding="utf-8")
+    if "historical" not in "\n".join(historical_query_plan.splitlines()[:12]).lower():
+        failures.append("the superseded Q1-Q4 query plan is not marked historical")
+    if "../architecture/engine-data-flow.md" not in historical_query_plan:
+        failures.append("the superseded Q1-Q4 query plan has no architecture successor")
 
     roadmap = ROADMAP.read_text(encoding="utf-8")
     if "## RRFlow 1.0 execution checklist" not in roadmap:

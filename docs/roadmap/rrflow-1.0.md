@@ -14,8 +14,10 @@ may inform this roadmap but cannot silently change its gates or completion.
 The [RRFlow 1.0 alpha objective](../objectives/rrflow-1.0-alpha.md) owns the
 measurable outcome and its current evidence classification. The
 [RRFlow 1.0 alpha POA&M](../poam/rrflow-1.0-alpha.md) owns verified deficiencies
-and maps each one back to the gates below. This roadmap owns only dependency
-order, checkboxes, and accepted completion evidence.
+and maps each one back to the gates below. The
+[engine data-flow record](../architecture/engine-data-flow.md) owns the detailed
+transactional, storage, Arrow, DataFusion, and context flow. This roadmap owns
+only dependency order, checkboxes, and accepted completion evidence.
 
 Roadmap completion currently stands at:
 

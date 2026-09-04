@@ -58,6 +58,7 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 
 | Subject | Owner |
 |---|---|
+| Detailed engine data flow | [`architecture/`](architecture/) |
 | RRFlow 1.0 alpha outcomes | [`objectives/`](objectives/) |
 | RRFlow 1.0 delivery | [`roadmap/`](roadmap/) |
 | RRFlow 1.0 alpha deficiencies and remediation | [`poam/`](poam/) |
@@ -65,6 +66,7 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 | Operations and CI | [`operations/`](operations/) |
 | Platform vocabulary research | [`platform/research/`](platform/research/) |
 | Machine evidence | [`evidence/`](evidence/) |
+| Superseded records | [`history/`](history/) |
 
 The remaining flat `docs/*.md` files are an acknowledged pre-release
 classification backlog. They must move in small, link-preserving batches only

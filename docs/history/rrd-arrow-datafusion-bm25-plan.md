@@ -1,10 +1,17 @@
 # RRD Arrow, DataFusion, and BM25 integration plan
 
-**Status:** supporting execution-plane implementation note; the streaming and
-retrieval gates live in [`roadmap/rrflow-1.0.md`](roadmap/rrflow-1.0.md)
+**Status:** historical Q1-Q4 execution note; superseded as active guidance
+**Coordinate:** `rrflow://rrflow-instance/data/history/rrd-arrow-datafusion-bm25-plan`
+**Superseded by:** [`../architecture/engine-data-flow.md`](../architecture/engine-data-flow.md)
+and [`../roadmap/rrflow-1.0.md`](../roadmap/rrflow-1.0.md)
 **Scope:** the shared query/retrieval center of the one RRFlow engine
 **Authority:** `RrdEngine`; no UI, adapter, SDK, or lower physical crate owns
 query or retrieval truth
+
+This file preserves the reasoning and implementation state associated with the
+retired Q1-Q4 sequence. It is not a current status, architecture, objective, or
+roadmap record. Current claims must come from the repository root README and
+the superseding records linked above.
 
 ## Current executable truth
 
