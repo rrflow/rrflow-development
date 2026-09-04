@@ -11,7 +11,7 @@ default = []
 fastembed-local = ["dep:fastembed"]
 
 [dependencies]
-rrd-core = { path = "../rrd-core" }
+rrd-core = { path = "../kernel/rrd-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 fastembed = { version = "5.17.4", default-features = false, features = ["ort-load-dynamic"], optional = true }

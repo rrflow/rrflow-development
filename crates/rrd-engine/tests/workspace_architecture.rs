@@ -340,7 +340,7 @@ fn retired_fixed_reasoning_ledger_api_is_absent() {
     ];
     let mut violations = Vec::new();
     for relative in [
-        "crates/rrd-core",
+        "crates/kernel/rrd-core",
         "crates/rrd-engine",
         "crates/rrflow-cli",
     ] {

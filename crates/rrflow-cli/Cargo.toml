@@ -22,7 +22,7 @@ tokio = { version = "1", features = ["rt", "time"] }
 
 [dev-dependencies]
 tempfile = "3"
-rrd-core = { path = "../rrd-core" }
+rrd-core = { path = "../kernel/rrd-core" }
 rrd-store = { path = "../rrd-store" }
 rrd-lsm = { path = "../rrd-lsm" }
 rrd-security = { path = "../rrd-security" }

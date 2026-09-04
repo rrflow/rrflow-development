@@ -12,7 +12,7 @@ struct GoldenReasoningContract {
 #[test]
 fn public_reasoning_schema_round_trips_the_kernel_golden() {
     let expected: serde_json::Value = serde_json::from_str(include_str!(
-        "../../rrd-core/tests/fixtures/reasoning-tree-v1.json"
+        "../../kernel/rrd-core/tests/fixtures/reasoning-tree-v1.json"
     ))
     .unwrap();
     let contract: GoldenReasoningContract = serde_json::from_value(expected.clone()).unwrap();
@@ -51,7 +51,7 @@ fn public_reasoning_schema_is_closed_and_versioned() {
     assert!(schema["properties"]["contract_version"].is_object());
 
     let mut expected: serde_json::Value = serde_json::from_str(include_str!(
-        "../../rrd-core/tests/fixtures/reasoning-tree-v1.json"
+        "../../kernel/rrd-core/tests/fixtures/reasoning-tree-v1.json"
     ))
     .unwrap();
     expected["tree"]["nodes"][0]["provider_hook"] = serde_json::json!("session-start");
@@ -61,7 +61,7 @@ fn public_reasoning_schema_is_closed_and_versioned() {
 #[test]
 fn public_validation_rejects_invalid_edges_and_unverifiable_advances() {
     let golden: serde_json::Value = serde_json::from_str(include_str!(
-        "../../rrd-core/tests/fixtures/reasoning-tree-v1.json"
+        "../../kernel/rrd-core/tests/fixtures/reasoning-tree-v1.json"
     ))
     .unwrap();
     let contract: GoldenReasoningContract = serde_json::from_value(golden.clone()).unwrap();

@@ -441,7 +441,7 @@ runtime or client surface may precede the canonical engine-owned gates.
 
 A-02 evidence (2026-09-04):
 
-- `crates/rrd-core/tests/fixtures/reasoning-tree-v1.json` is the shared frozen
+- `crates/kernel/rrd-core/tests/fixtures/reasoning-tree-v1.json` is the shared frozen
   wire vector used by the kernel and public contract.
 - The seven focused reasoning-tree tests reject unknown fields and versions,
   malformed edge topology, missing condition evidence, missing verification,

@@ -7,7 +7,7 @@ members = [
     "crates/rrd-security",
     "crates/rrd-engine",
     "crates/rrd-server",
-    "crates/rrd-core",
+    "crates/kernel/rrd-core",
     "crates/rrd-query",
     "crates/rrd-store",
     "crates/rrd-vector",

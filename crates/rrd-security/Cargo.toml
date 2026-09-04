@@ -8,7 +8,7 @@ description = "Persistent RRD principals, deny-by-default policy, and authentica
 
 [dependencies]
 rrd-contract = { path = "../rrd-contract" }
-rrd-core = { path = "../rrd-core" }
+rrd-core = { path = "../kernel/rrd-core" }
 rrd-store = { path = "../rrd-store" }
 serde = { workspace = true }
 serde_json = { workspace = true }

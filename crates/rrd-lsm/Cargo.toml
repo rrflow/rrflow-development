@@ -7,7 +7,7 @@ publish.workspace = true
 description = "Native Rrd storage engine: versioned WAL, MVCC, segments, and manifests."
 
 [dependencies]
-rrd-core = { path = "../rrd-core" }
+rrd-core = { path = "../kernel/rrd-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 lz4_flex = { version = "=0.14.0", default-features = false, features = ["std", "safe-encode", "safe-decode"] }

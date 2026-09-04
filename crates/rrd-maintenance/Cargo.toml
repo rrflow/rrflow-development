@@ -11,7 +11,7 @@ rrd-contract = { path = "../rrd-contract" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "2"
-rrd-core = { path = "../rrd-core" }
+rrd-core = { path = "../kernel/rrd-core" }
 rrd-store = { path = "../rrd-store" }
 
 [dev-dependencies]

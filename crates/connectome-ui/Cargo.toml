@@ -15,7 +15,7 @@ tiny_http = "0.12"
 tokio = { version = "1", features = ["net", "rt", "sync", "time"] }
 
 [dev-dependencies]
-rrd-core = { path = "../rrd-core" }
+rrd-core = { path = "../kernel/rrd-core" }
 rrd-engine = { path = "../rrd-engine" }
 rrd-security = { path = "../rrd-security" }
 rrd-server = { path = "../rrd-server" }
