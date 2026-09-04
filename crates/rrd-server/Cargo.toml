@@ -27,7 +27,7 @@ tracing-subscriber = { workspace = true }
 rrd-estate = { path = "../rrd-estate" }
 rrd-security = { path = "../rrd-security" }
 rrd-core = { path = "../kernel/rrd-core" }
-rrd-store = { path = "../rrd-store" }
+rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"
 sysinfo = "0.39.6"
 rcgen = "0.14"

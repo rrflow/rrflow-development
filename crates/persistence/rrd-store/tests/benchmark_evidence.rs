@@ -35,7 +35,7 @@ fn assert_legacy_evidence(
 
 #[test]
 fn legacy_native_matrix_remains_structurally_valid_but_is_not_current_promotion_evidence() {
-    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../eval/results/");
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../eval/results/");
     for (name, trials, operations, batch, reads, width) in [
         ("2026-08-19-rrd-lsm-baseline.json", 5, 2_048, 64, 512, 32),
         (
@@ -85,7 +85,7 @@ fn legacy_native_matrix_remains_structurally_valid_but_is_not_current_promotion_
 
 #[test]
 fn checked_in_ai_read_matrix_is_structurally_valid_and_green() {
-    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../eval/results/");
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../eval/results/");
     for (name, workload, payload, items_per_sample) in [
         (
             "2026-08-22-rrd-lsm-ai-current-hot-hit.json",
@@ -210,7 +210,7 @@ fn checked_in_ai_read_matrix_is_structurally_valid_and_green() {
 fn corrected_standard_evidence_records_a_bounded_strict_promotion() {
     let file = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../eval/results/2026-08-23-rrd-lsm-standard-streaming-scan-v4.json"
+        "/../../../eval/results/2026-08-23-rrd-lsm-standard-streaming-scan-v4.json"
     );
     let evidence: serde_json::Value =
         serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
@@ -263,7 +263,7 @@ fn corrected_standard_evidence_records_a_bounded_strict_promotion() {
 
 #[test]
 fn streaming_scan_scale_evidence_retains_the_one_extended_rss_failure() {
-    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../eval/results/");
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../eval/results/");
     for (name, operations, maximum_rss_ratio, should_pass) in [
         (
             "2026-08-23-rrd-lsm-read-heavy-streaming-scan-v4.json",
@@ -330,7 +330,7 @@ fn streaming_scan_scale_evidence_retains_the_one_extended_rss_failure() {
 
 #[test]
 fn compact_keyspace_format_closes_extended_rss_and_retains_read_heavy_tail_failure() {
-    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../eval/results/");
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../eval/results/");
     for (name, operations, should_pass) in [
         (
             "2026-08-23-rrd-lsm-standard-keyspace-tag-v2-v4.json",
@@ -418,7 +418,7 @@ fn compact_keyspace_format_closes_extended_rss_and_retains_read_heavy_tail_failu
 fn surrealdb_claim_diagnostic_records_bounded_wins_and_the_disk_loss() {
     let file = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../eval/results/2026-08-23-rrflow-surrealdb-3.0.5-claim-diagnostic-v1.json"
+        "/../../../eval/results/2026-08-23-rrflow-surrealdb-3.0.5-claim-diagnostic-v1.json"
     );
     let evidence: serde_json::Value =
         serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();

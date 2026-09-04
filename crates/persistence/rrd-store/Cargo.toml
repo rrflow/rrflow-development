@@ -7,7 +7,7 @@ publish.workspace = true
 description = "rrflow storage contract and transitional Fjall adapter: atomic runtime commits, durability, and replay."
 
 [dependencies]
-rrd-core = { path = "../kernel/rrd-core" }
+rrd-core = { path = "../../kernel/rrd-core" }
 rrd-lsm = { path = "../rrd-lsm" }
 fjall = "=3.1.8"
 serde = { workspace = true }

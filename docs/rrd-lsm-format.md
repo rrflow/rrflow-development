@@ -286,12 +286,12 @@ reachable through historical manifests/checkpoints until GC proves otherwise.
 
 ## Frozen vectors
 
-- [`wal-v1.hex`](../crates/rrd-lsm/fixtures/wal-v1.hex)
-- [`batch-v1.hex`](../crates/rrd-lsm/fixtures/batch-v1.hex)
-- [`batch-v2.hex`](../crates/rrd-lsm/fixtures/batch-v2.hex)
-- [`manifest-v1.json`](../crates/rrd-lsm/fixtures/manifest-v1.json)
-- [`manifest-v2.json`](../crates/rrd-lsm/fixtures/manifest-v2.json)
-- [`snapshot-bundle-v1.hex`](../crates/rrd-lsm/fixtures/snapshot-bundle-v1.hex)
+- [`wal-v1.hex`](../crates/persistence/rrd-lsm/fixtures/wal-v1.hex)
+- [`batch-v1.hex`](../crates/persistence/rrd-lsm/fixtures/batch-v1.hex)
+- [`batch-v2.hex`](../crates/persistence/rrd-lsm/fixtures/batch-v2.hex)
+- [`manifest-v1.json`](../crates/persistence/rrd-lsm/fixtures/manifest-v1.json)
+- [`manifest-v2.json`](../crates/persistence/rrd-lsm/fixtures/manifest-v2.json)
+- [`snapshot-bundle-v1.hex`](../crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex)
 
 CRC32C calculation uses the platform-dispatched implementation while retaining
 the exact v1 bytes and published `123456789` check value. The tests also cover

@@ -20,8 +20,8 @@ openraft-transport = [
 
 [dependencies]
 rrd-core = { path = "../kernel/rrd-core" }
-rrd-lsm = { path = "../rrd-lsm", optional = true }
-rrd-store = { path = "../rrd-store", optional = true }
+rrd-lsm = { path = "../persistence/rrd-lsm", optional = true }
+rrd-store = { path = "../persistence/rrd-store", optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 openraft = { version = "=0.9.25", optional = true, features = ["serde", "storage-v2"] }
@@ -32,7 +32,7 @@ x509-parser = { version = "0.18", optional = true }
 
 [dev-dependencies]
 rcgen = "0.14"
-rrd-store = { path = "../rrd-store" }
+rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"
 tokio = { version = "1", features = ["fs", "io-util", "rt-multi-thread", "sync", "time"] }
 

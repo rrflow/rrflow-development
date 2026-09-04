@@ -19,7 +19,7 @@ rrd-core = { path = "../kernel/rrd-core" }
 rrd-engine = { path = "../rrd-engine" }
 rrd-security = { path = "../rrd-security" }
 rrd-server = { path = "../rrd-server" }
-rrd-store = { path = "../rrd-store" }
+rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"
 
 [[bin]]

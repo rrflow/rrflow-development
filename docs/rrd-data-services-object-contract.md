@@ -66,7 +66,7 @@ outcome. Rejected transactions produce none of them.
 
 ## Executable acceptance
 
-`crates/rrd-store/tests/unified_data.rs` proves:
+`crates/persistence/rrd-store/tests/unified_data.rs` proves:
 
 - one mixed transaction across every canonical family on Memory, Fjall, and
   native engines;

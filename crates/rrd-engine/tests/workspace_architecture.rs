@@ -345,11 +345,7 @@ fn retired_fixed_reasoning_ledger_api_is_absent() {
         "crates/rrflow-cli",
     ] {
         for retired in &retired_symbols {
-            collect_rust_sources(
-                &metadata.root.join(relative),
-                &mut violations,
-                retired,
-            );
+            collect_rust_sources(&metadata.root.join(relative), &mut violations, retired);
         }
     }
     violations.sort();
@@ -648,20 +644,37 @@ fn collect_rust_sources(directory: &Path, violations: &mut Vec<PathBuf>, forbidd
 }
 
 fn collect_authority_opening_violations(crates: &Path, violations: &mut Vec<PathBuf>) {
-    let mut packages = fs::read_dir(crates)
-        .expect("workspace crates directory must be readable")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("workspace crate entries must be readable");
-    packages.sort_by_key(fs::DirEntry::path);
-    for package in packages {
-        let name = package.file_name();
+    collect_authority_package_tree(crates, crates, violations);
+}
+
+fn collect_authority_package_tree(crates: &Path, directory: &Path, violations: &mut Vec<PathBuf>) {
+    if directory.join("Cargo.toml").is_file() {
+        let name = directory
+            .file_name()
+            .expect("workspace package directory must have a name");
         if name == "rrd-engine" || name == "rrd-store" {
-            continue;
+            return;
         }
-        let source = package.path().join("src");
+        let source = directory.join("src");
         if source.is_dir() {
             collect_authority_source_tree(crates, &source, violations);
         }
+        return;
+    }
+
+    let mut packages = fs::read_dir(directory)
+        .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", directory.display()))
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|error| panic!("cannot enumerate {}: {error}", directory.display()));
+    packages.sort_by_key(fs::DirEntry::path);
+    for package in packages {
+        let file_type = package
+            .file_type()
+            .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", package.path().display()));
+        if file_type.is_symlink() || !file_type.is_dir() {
+            continue;
+        }
+        collect_authority_package_tree(crates, &package.path(), violations);
     }
 }
 

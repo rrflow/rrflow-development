@@ -43,7 +43,7 @@ one-byte native tag. Existing manifest-v1 native stores remain readable through
 the legacy `keyspace + NUL` codec; this migration never silently rewrites them.
 
 The empty archive is frozen by
-`crates/rrd-store/tests/fixtures/migration-v1-empty.hex`; an incompatible byte
+`crates/persistence/rrd-store/tests/fixtures/migration-v1-empty.hex`; an incompatible byte
 change requires a new format version and golden vector.
 
 ## Native TextV1 to TagV2 exact-successor migration

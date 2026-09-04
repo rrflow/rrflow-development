@@ -103,7 +103,7 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
     });
     eprintln!("{actual}");
     let checked: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/evidence/m4-storage-mixed-soak.json"
+        "../../../../docs/evidence/m4-storage-mixed-soak.json"
     ))
     .unwrap();
     for field in [

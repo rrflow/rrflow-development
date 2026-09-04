@@ -42,7 +42,7 @@ rrd-estate = { path = "../rrd-estate", optional = true }
 rrd-security = { path = "../rrd-security", optional = true }
 rrd-core = { path = "../kernel/rrd-core", optional = true }
 rrd-query = { path = "../rrd-query", optional = true }
-rrd-store = { path = "../rrd-store", optional = true }
+rrd-store = { path = "../persistence/rrd-store", optional = true }
 rrd-vector = { path = "../rrd-vector", optional = true }
 rrd-inference = { path = "../rrd-inference", optional = true }
 rrd-operator-knowledge = { path = "../rrd-operator-knowledge", optional = true }
