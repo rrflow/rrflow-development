@@ -1,6 +1,9 @@
 # RRD online filtered HNSW v2
 
-G04-W02 keeps HNSW inside the RRD engine rather than introducing a vector
+Status: supporting implemented projection contract. `README.md` remains the
+sole authority for current product capability and remaining release gates.
+
+The implemented projection keeps HNSW inside RRD rather than introducing a vector
 sidecar or a second write authority. Canonical point versions remain in the
 shared authenticated runtime log. The collection catalogue fixes the named
 dense vector's field, dimensions, metric, model binding, and payload indexes.

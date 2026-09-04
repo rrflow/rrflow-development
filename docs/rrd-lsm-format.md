@@ -1,6 +1,6 @@
 # RRD LSM native format contract
 
-Status: M3 persistence and semantic gates pass; the corrected nine-trial local
+Status: supporting native-format and benchmark evidence; the corrected nine-trial local
 general performance fixture now passes every strict cell. Remote reproduction
 and remote reproduction remain promotion gates. WAL, checkpoint/`CURRENT`, and
 physical snapshot-bundle formats are version 1. Manifests are version 2 with

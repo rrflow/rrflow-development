@@ -1,6 +1,6 @@
 # Canonical package workflow policy
 
-Status: local alpha contract, 2026-08-20.
+Status: supporting package workflow policy.
 
 Package script names are identities, not permissions. RRFlow only enforces a
 package command when the project owns a strict `.rrflow/workflows.toml` that

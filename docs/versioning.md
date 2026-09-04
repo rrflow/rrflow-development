@@ -1,5 +1,8 @@
 # RRFlow version policy
 
+Status: supporting release declaration policy. `README.md` remains the sole
+authority for product identity, current status, architecture, and roadmap.
+
 RRFlow's canonical current release-train version is `1.0.0`. The checked-in
 `VERSION` file is the human- and automation-readable source of truth.
 

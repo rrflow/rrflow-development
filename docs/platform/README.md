@@ -1,4 +1,4 @@
-# RRFlow platform canon
+# RRFlow platform vocabulary note
 
 **Status:** supporting machine terminology and hierarchy for RRFlow 1.0
 **Effective:** 2026-08-27

@@ -1,7 +1,10 @@
 # RRD public contract v1
 
-`rrd-contract` is the first F0 boundary. It is transport-neutral and does not
-depend on RRFlow storage, query, cluster, node, or Connectome crates.
+Status: supporting wire-contract record. `README.md` remains the sole product
+architecture, current-status, and roadmap authority.
+
+`rrd-contract` is the public transport-neutral boundary. It does not
+depend on RRFlow storage, query, cluster, node, or Connectome implementation.
 
 Version 1 freezes:
 

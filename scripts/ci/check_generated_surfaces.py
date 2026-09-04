@@ -78,22 +78,26 @@ def parse_typescript(source: str) -> dict[str, dict[str, object]]:
 def parse_python(source: str) -> dict[str, dict[str, object]]:
     tree = ast.parse(source)
     for node in tree.body:
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            if node.target.id == "ENDPOINTS" and node.value is not None:
-                value = ast.literal_eval(node.value)
-                assert isinstance(value, dict)
-                return value
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "ENDPOINTS"
+            and node.value is not None
+        ):
+            value = ast.literal_eval(node.value)
+            assert isinstance(value, dict)
+            return value
     raise AssertionError("generated Python endpoint map omitted ENDPOINTS")
 
 
 def parse_go(source: str) -> dict[str, dict[str, object]]:
     names = dict(
-        re.findall(r'^\s*(Operation\w+)\s+OperationID\s+=\s+"([^"]+)"$', source, re.M)
+        re.findall(r'^\s*(Operation\w+)\s+OperationID\s+=\s+"([^"]+)"$', source, re.MULTILINE)
     )
     pattern = re.compile(
         r'^\s*(Operation\w+):\s+\{Method: "([^"]+)", Path: "([^"]+)", '
         r'Authentication: "([^"]+)", Mutation: (true|false)\},$',
-        re.M,
+        re.MULTILINE,
     )
     return {
         names[symbol]: {
@@ -110,7 +114,7 @@ def parse_java(source: str) -> dict[str, dict[str, object]]:
     pattern = re.compile(
         r'^\s*[A-Z0-9_]+\("([^"]+)", "([^"]+)", "([^"]+)", '
         r'Authentication\.([A-Z_]+), (true|false)\)[,;]$',
-        re.M,
+        re.MULTILINE,
     )
     authentication_names = {
         "PUBLIC": "public",
@@ -132,7 +136,7 @@ def parse_dotnet(source: str) -> dict[str, dict[str, object]]:
     pattern = re.compile(
         r'^\s*OperationId\.\w+ => new\("([^"]+)", "([^"]+)", "([^"]+)", '
         r'Authentication\.(\w+), (true|false)\),$',
-        re.M,
+        re.MULTILINE,
     )
     authentication_names = {
         "Public": "public",

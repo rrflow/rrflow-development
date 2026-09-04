@@ -1,15 +1,16 @@
 # RRD estate control contract v1
 
-Status: F3 alpha contract. This document freezes the first persistent estate
+Status: supporting estate-control foundation. This document records the first persistent estate
 authority; it does not claim that deployment drivers or remote administration
 are complete.
 
 ## Ownership
 
 RRD persists authoritative estate state. `rrd-estate` owns the transport-free
-state machine and reconciliation vocabulary. RRO will schedule and compose
-reconciliation. Connectome consumes a read-only projection and must not invent
-or overwrite authoritative state.
+state machine and reconciliation vocabulary. `RrdEngine` authorizes and
+composes reconciliation requested by outward operational adapters. Connectome
+consumes a read-only projection and must not invent or overwrite authoritative
+state.
 
 An estate is stored as one bounded compare-and-swap document at
 `server/state/estate/{estate_id}/document`. Every accepted replacement and its

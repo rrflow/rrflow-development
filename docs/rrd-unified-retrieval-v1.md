@@ -1,6 +1,7 @@
 # RRD unified retrieval algebra V1
 
-Status: G04-W03 executable engine candidate, 2026-08-29.
+Status: supporting implemented retrieval-algebra contract; this is not a claim
+that the dynamic routing gates in `README.md` are complete.
 
 This contract makes multimodal retrieval one bounded RRD engine operation. It
 does not assemble independent vector, keyword, recommendation, and reranking

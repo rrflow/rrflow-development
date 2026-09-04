@@ -1,9 +1,9 @@
 # RRD logical archive v1
 
-Status: G02-W02 implementation candidate. The V1 behavior described here is
+Status: supporting implemented logical-archive contract. The V1 behavior described here is
 implemented and its focused persistence matrix passes locally; exact workspace,
-publication, and platform verification remain required before G02-W02 is
-crossed off.
+publication, and platform verification remain governed by the executable
+checklist in `README.md`.
 
 The RRD logical archive is a backend-independent replay of authoritative Engine
 operations. It is not a copy of RRD LSM files and it is not the Fjall migration

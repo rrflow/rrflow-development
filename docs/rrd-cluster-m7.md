@@ -1,4 +1,4 @@
-# RRFlow M7 cluster contract and deterministic simulation
+# RRD cluster contract and deterministic simulation
 
 Status: protocol/simulation, real-consensus adapter, authenticated transport,
 and one-host process-isolation gates implemented on 2026-08-19. This is not a

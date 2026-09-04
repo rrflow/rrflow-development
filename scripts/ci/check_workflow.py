@@ -6,9 +6,9 @@ from __future__ import annotations
 import re
 import shlex
 import sys
-import tomllib
 from pathlib import Path
 
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 CALLER = ROOT / ".github/workflows/ci.yml"
@@ -242,6 +242,10 @@ def main() -> None:
         "permissions:\n  contents: read" in caller
         and "permissions:\n  contents: read" in reusable,
         "caller and reusable workflow must default to read-only contents",
+    )
+    require(
+        reusable.count("python3 scripts/ci/check_documentation.py") == 1,
+        "documentation authority and local-link policy must run exactly once",
     )
 
     expected_jobs = {

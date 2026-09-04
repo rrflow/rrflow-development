@@ -1,5 +1,8 @@
 # RRD durable live subscriptions v1
 
+Status: supporting pre-H-03 implementation contract. It does not claim the
+commit-impact live-query gate is complete; current status lives in `README.md`.
+
 RRD exposes changefeeds and semantic RRFlowQL live queries through one durable
 subscription authority. `POST /v1/subscriptions/open` creates the immutable
 stream definition and its delivery policy. The supported Rust client upgrades

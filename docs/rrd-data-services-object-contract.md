@@ -1,6 +1,6 @@
 # RRD storage coordinator unified data and object contract
 
-Status: M4 executable contract, 2026-08-19.
+Status: supporting implemented unified-data and object contract.
 
 ## Canonical values
 

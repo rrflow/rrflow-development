@@ -1,6 +1,6 @@
 # RRD quantization artifact lifecycle v1
 
-Status: engine foundation implemented and locally qualified for G04-W04. Generated
+Status: supporting implemented quantization-lifecycle foundation. Generated
 HTTP, MCP, CLI, and SDK bindings remain G06 work. This is not a fixed-hardware
 production benchmark or a claim of Qdrant equivalence.
 

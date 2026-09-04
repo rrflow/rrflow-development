@@ -1,5 +1,9 @@
 # Prompt-flight experiment contract
 
+Status: historical provider-experiment contract from the retired
+in-repository workbench. It is not a current engine lifecycle or Connectome
+implementation claim; `README.md` owns current status and roadmap.
+
 Connectome prompt flights answer one narrow question: what observable effect
 does RRFlow context have on a frontier model for the same prompt and repository
 state?

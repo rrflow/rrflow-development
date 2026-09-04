@@ -1,13 +1,13 @@
 # Platform industry research index
 
-**Status:** inventory only
+**Status:** supporting research inventory only
 **Reviewed:** 2026-08-27
-**Canonical root:** `docs/platform/research/`
+**Scope:** `docs/platform/research/`
 
 This directory is the single entry point for industry research used to shape
 the RRFlow platform. This index lists source systems and repository research;
 it is not a second terminology list or an implementation plan. Canonical RRFlow
-terms are defined only in [`../README.md`](../README.md).
+terms are defined only in the repository [`README.md`](../../../README.md).
 
 ## File naming
 
@@ -21,7 +21,7 @@ Use lowercase kebab-case and one of these forms:
 - `rrd-<topic>-implementation-plan.md` only after the inventory and decision
   exist.
 
-`README.md` is the authoritative index. New platform-industry research must be
+This file is the supporting research index. New platform-industry research must be
 linked here. Existing flat documents remain at their current paths until a
 separate link-preserving migration is reviewed.
 
@@ -39,10 +39,10 @@ data-isolation term. Its documented logical hierarchy is namespace → database
 of `estate` therefore needs an RRD-owned definition rather than attribution to
 SurrealDB.
 
-## Canonical RRFlow vocabulary
+## RRFlow vocabulary reference
 
 The research above informed the one standardized list in
-[`docs/platform/README.md`](../README.md). Research notes may compare foreign
+the repository [`README.md`](../../../README.md). Research notes may compare foreign
 terms, but they must link to that list instead of restating or redefining RRD
 terminology.
 
@@ -54,11 +54,11 @@ The following documents currently participate in this naming discussion:
 - [`estate-control-v1.md`](../../estate-control-v1.md)
 - [`local-estate-authorization-v1.md`](../../local-estate-authorization-v1.md)
 - [`instance-topology.md`](../../instance-topology.md)
-- [`rrd-engine-foundation-cheat-sheet.md`](../../rrd-engine-foundation-cheat-sheet.md)
-- [`rrd-engine-capability-coverage.md`](../../rrd-engine-capability-coverage.md)
-- [`full-stack-gap-ledger.md`](../../full-stack-gap-ledger.md)
 
-## Remaining research and migration gaps
+## Historical research follow-ups
+
+These captured follow-ups are not the current roadmap; the executable gate
+order is defined only in the repository `README.md`.
 
 - Add a HelixDB capability inventory at
   `docs/platform/research/helixdb-capability-inventory.md`.

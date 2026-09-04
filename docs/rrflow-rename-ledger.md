@@ -152,5 +152,5 @@ must never be reported as Linux/macOS/Windows CI success.
   `38f1a19bcc9ad76389cceed7eb0988452e694235` passed push run
   `33075846902` and PR run `33075851923`. This documentary ledger change still
   requires clean publication and must not absorb concurrent G01-W02 files.
-- Remaining engine cohesion and capability gaps: governed by
-  [`full-stack-gap-ledger.md`](full-stack-gap-ledger.md), not concealed here.
+- Remaining engine cohesion and capability gaps are governed only by the
+  executable checklist in [`README.md`](../README.md#rrflow-10-execution-checklist).

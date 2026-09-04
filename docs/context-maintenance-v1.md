@@ -1,8 +1,8 @@
 # RRFlow context maintenance v1
 
-Status: contract freeze for an executable local Connectome alpha. This is not
-yet the remote RRD administration contract or a claim that a universal pruning
-ratio is safe.
+Status: supporting engine-maintenance contract. The Connectome section is a
+historical UI proposal, not current client behavior; `README.md` owns current
+status and the release roadmap.
 
 ## Purpose and authority
 
@@ -98,7 +98,7 @@ Structural checks can be produced locally. Task replay and regression evidence
 must come from completed same-cohort prompt flights or a later benchmark runner;
 the UI must show them as pending when that evidence does not exist.
 
-## Connectome interaction contract
+## Historical Connectome interaction proposal
 
 Connectome presents one run at a time as Inventory → Protect → Propose → Review
 → Validate → Apply → Observe. Every visual value links to the persisted run,

@@ -6,10 +6,10 @@ from __future__ import annotations
 import json
 import re
 import sys
-import tomllib
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()

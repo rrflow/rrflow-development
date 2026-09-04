@@ -1,5 +1,9 @@
 # RRD governed functions and triggers v1
 
+Status: supporting low-level function and transaction-trigger contract. This
+does not satisfy the engine-event trigger, routine, hook-adapter, or skill gates
+in `README.md`, which remains the sole current-status and roadmap authority.
+
 ## Authority and compatibility
 
 `rrd-engine` is the only function execution and trigger authority. Its

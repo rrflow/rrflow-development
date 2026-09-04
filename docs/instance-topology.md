@@ -1,8 +1,10 @@
 # Instance topology
 
-The canonical platform terms and hierarchy are defined only in
-[`platform/README.md`](platform/README.md). This document applies that
-terminology to deployment and does not define a second glossary.
+Status: supporting deployment note. `README.md` is the sole authority for
+canonical platform terms, current architecture, status, and roadmap.
+
+This document applies the root README terminology to deployment and does not
+define a second glossary.
 
 ## Locked deployment rule
 
@@ -85,5 +87,5 @@ Physical placement remains a separate chain:
 estate -> cluster -> node -> shard -> replica -> segment
 ```
 
-The complete query, transaction, vector, security, and implementation flow is
-owned by [`rrflow-rrd-architecture.md`](rrflow-rrd-architecture.md).
+The complete current execution flow and gate order are defined in
+[`README.md`](../README.md#non-negotiable-architecture).

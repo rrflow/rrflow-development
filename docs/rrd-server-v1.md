@@ -1,6 +1,6 @@
 # RRD server v1 implementation contract
 
-Status: F2 transaction and G05-W03 identity/authorization foundations
+Status: supporting implemented transaction, identity, and authorization foundations
 implemented. The async loopback HTTP boundary, authenticated TLS 1.3 mTLS
 remote boundary, persistent transaction coordinator, API-key/JWT session
 exchange, and constrained RRFlowQL policy path are shipped; broader

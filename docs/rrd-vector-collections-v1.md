@@ -1,5 +1,8 @@
 # RRD vector collection and point contract v1
 
+Status: supporting implementation contract. `README.md` remains the sole
+authority for current architecture, capability status, and roadmap.
+
 RRD's vector subsystem is one branch of the authoritative runtime, not a
 sidecar vector database. Collection administration lives in the revisioned
 per-scope vector catalogue. Point values, payloads, and retirements live in the

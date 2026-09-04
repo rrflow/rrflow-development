@@ -1,5 +1,8 @@
 # Anytype-inspired connectome workbench
 
+Status: historical interaction research and retired in-repository workbench
+snapshot. Current Connectome status and roadmap live only in `README.md`.
+
 Research date: 2026-08-18. This is an interaction study, not a proposal to
 copy Anytype's branding or source.
 
@@ -40,7 +43,7 @@ the existing typed lifecycle surfaces; a visual button must not become a path
 around policy. Later controls should call the same commands and expose their
 contract differential before execution.
 
-## Current information architecture
+## Historical information architecture
 
 ```text
 instance sidebar          active lens                         inspector
@@ -57,10 +60,11 @@ The top command field searches across all loaded objects and doubles as the
 route query in the Routes lens. Keyboard navigation is first-class: `/` focuses
 search; `t`, `g`, `r`, `c`, and `a` open the main lenses.
 
-## Implemented workbench
+## Retired workbench snapshot
 
-The `connectome` binary serves embedded HTML, CSS, and JavaScript from the same
-local Rust process as its instance-bound API. It currently provides:
+The removed in-repository `connectome` binary served embedded HTML, CSS, and
+JavaScript from the same local Rust process as its instance-bound API. That
+historical implementation provided:
 
 - typed estate, table-catalog, and scoped-model snapshot projections;
 - a local estate topology with explicit store/member binding and an unattached

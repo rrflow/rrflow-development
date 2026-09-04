@@ -1,5 +1,8 @@
 # SurrealDB capability inventory and RRFlow disposition
 
+Status: supporting point-in-time research inventory, not current RRFlow status
+or roadmap. `README.md` is authoritative when a disposition has changed.
+
 **Baseline:** SurrealDB `3.2.4`, the latest stable release on 2026-08-23.
 SurrealDB `3.3.0-beta.3` additions are isolated in the preview section and are
 not treated as stable. This is a product-capability inventory: individual

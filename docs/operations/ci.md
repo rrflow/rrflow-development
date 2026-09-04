@@ -1,5 +1,8 @@
 # CI execution contract
 
+Status: supporting implementation contract. `README.md` remains the sole
+authority for product architecture, current status, and roadmap.
+
 RRFlow has one candidate CI chain. The thin caller is
 `.github/workflows/ci.yml`; `.github/workflows/ci-reusable.yml` owns every
 check. A branch push does not start a second copy of the same work.
@@ -9,7 +12,7 @@ dispatches. Its concurrency key cancels stale executions for the same pull
 request or ref. The reusable workflow reduces every partition into one stable
 `ci-gate` check for branch protection:
 
-- supervised RRD and Connectome topology smoke on the standard Linux runner;
+- supervised RRD daemon smoke on the standard Linux runner;
 - repository policy, formatting, architecture, evaluation, dependency, and
   binary-budget gates on a heavy Linux runner;
 - five default-feature engine suites on isolated heavy Linux runners:
@@ -23,7 +26,7 @@ request or ref. The reusable workflow reduces every partition into one stable
 The five engine suites cover every workspace package exactly once, but package
 names do not define CI ownership. A failure is reported against the subsystem
 whose behavior is being qualified. This keeps the hosted fallback below its
-measured link/disk ceiling without turning all 22 implementation crates into
+measured link/disk ceiling without turning all 20 implementation crates into
 separate product checks. `scripts/ci/check_workflow.py` enforces complete suite
 and optional-feature coverage, immutable dependencies, bounded jobs, safe
 runner routing, and exact gate reduction.
@@ -94,7 +97,7 @@ Prove physical execution after installation:
 
 ```bash
 gh workflow run ci.yml --repo rrflow/rrflow \
-  --ref agent/connectome-temporal-runtime-visualizer
+  --ref <candidate-branch>
 gh run watch --repo rrflow/rrflow --exit-status
 ```
 

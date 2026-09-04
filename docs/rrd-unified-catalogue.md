@@ -1,5 +1,8 @@
 # RRD unified logical catalogue
 
+Status: supporting implementation contract. `README.md` remains the sole
+authority for current architecture, capability status, and roadmap.
+
 ## Authority
 
 `rrd_core::RuntimeSchemaRegistry` is the one logical catalogue installed for a

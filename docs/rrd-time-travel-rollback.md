@@ -1,6 +1,6 @@
 # RRD time travel and forward rollback
 
-Status: G02-W05 executable candidate. Record/relation rollback is implemented;
+Status: supporting implemented record/relation rollback contract;
 the wider multi-model rollback matrix remains explicit future work.
 
 ## Two independent timelines

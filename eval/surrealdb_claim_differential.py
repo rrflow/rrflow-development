@@ -17,7 +17,6 @@ import http.client
 import json
 import math
 import os
-from pathlib import Path
 import shutil
 import signal
 import socket
@@ -25,8 +24,8 @@ import statistics
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 from typing import Any
-
 
 FORMAT_VERSION = 1
 
@@ -174,7 +173,7 @@ class SurrealProcess:
             raise RuntimeError(f"SurrealDB HTTP {response.status}: {payload[:500]!r}")
         decoded = json.loads(payload)
         if not isinstance(decoded, list):
-            raise RuntimeError("SurrealDB response is not a statement array")
+            raise TypeError("SurrealDB response is not a statement array")
         errors = [item for item in decoded if item.get("status") != "OK"]
         if errors and not allow_errors:
             raise RuntimeError(f"SurrealDB statement failed: {errors[:2]!r}")
@@ -219,26 +218,22 @@ class SurrealProcess:
 
 def initialize_surreal(server: SurrealProcess) -> None:
     server.query(
-        " ".join(
-            [
-                "DEFINE TABLE claim SCHEMAFULL;",
-                "DEFINE FIELD ordinal ON claim TYPE int;",
-                "DEFINE FIELD subject ON claim TYPE string;",
-                "DEFINE FIELD predicate ON claim TYPE string;",
-                "DEFINE FIELD object ON claim TYPE string;",
-                "DEFINE FIELD valid_from ON claim TYPE int;",
-                "DEFINE FIELD tx_time ON claim TYPE int;",
-                "DEFINE FIELD actor ON claim TYPE string;",
-                "DEFINE FIELD session ON claim TYPE string;",
-                "DEFINE INDEX claim_ordinal ON claim FIELDS ordinal UNIQUE;",
-                "DEFINE TABLE sequence SCHEMAFULL;",
-                "DEFINE FIELD ordinal ON sequence TYPE int;",
-                "DEFINE FIELD claim_id ON sequence TYPE record<claim>;",
-                "DEFINE INDEX sequence_ordinal ON sequence FIELDS ordinal UNIQUE;",
-                "DEFINE TABLE meta SCHEMAFULL;",
-                "DEFINE FIELD value ON meta TYPE int;",
-            ]
-        )
+        "DEFINE TABLE claim SCHEMAFULL; "
+        "DEFINE FIELD ordinal ON claim TYPE int; "
+        "DEFINE FIELD subject ON claim TYPE string; "
+        "DEFINE FIELD predicate ON claim TYPE string; "
+        "DEFINE FIELD object ON claim TYPE string; "
+        "DEFINE FIELD valid_from ON claim TYPE int; "
+        "DEFINE FIELD tx_time ON claim TYPE int; "
+        "DEFINE FIELD actor ON claim TYPE string; "
+        "DEFINE FIELD session ON claim TYPE string; "
+        "DEFINE INDEX claim_ordinal ON claim FIELDS ordinal UNIQUE; "
+        "DEFINE TABLE sequence SCHEMAFULL; "
+        "DEFINE FIELD ordinal ON sequence TYPE int; "
+        "DEFINE FIELD claim_id ON sequence TYPE record<claim>; "
+        "DEFINE INDEX sequence_ordinal ON sequence FIELDS ordinal UNIQUE; "
+        "DEFINE TABLE meta SCHEMAFULL; "
+        "DEFINE FIELD value ON meta TYPE int;"
     )
 
 
@@ -300,7 +295,7 @@ def select_claims(server: SurrealProcess, after: int, through: int) -> list[dict
     )
     result = response[-1].get("result")
     if not isinstance(result, list):
-        raise RuntimeError("SurrealDB claim query did not return an array")
+        raise TypeError("SurrealDB claim query did not return an array")
     return result
 
 
@@ -348,7 +343,7 @@ def read_surreal(
         )
         result = response[-1].get("result")
         if not isinstance(result, list):
-            raise RuntimeError("SurrealDB bounded replay did not return an array")
+            raise TypeError("SurrealDB bounded replay did not return an array")
         rows = result
         if len(rows) != read_width:
             raise RuntimeError("SurrealDB bounded replay has the wrong cardinality")

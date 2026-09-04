@@ -1,7 +1,10 @@
 # RRFlowQL transactions and joins v1
 
-This document freezes the G03-W03 internal engine contract. It does not add a
-second transaction coordinator or claim the later G06 network and SDK surfaces.
+Status: supporting internal implementation contract. `README.md` remains the
+sole authority for current architecture, capability status, and roadmap.
+
+This document records the internal engine contract. It does not add a second
+transaction coordinator or claim network and SDK conformance is complete.
 
 ## Same-stamp equi-joins
 

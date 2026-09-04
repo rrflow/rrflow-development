@@ -1,7 +1,7 @@
 # RRFlow alpha → Clyffy kernel handoff
 
 Status: historical execution contract aligned to the RRFlow `0.1.0` alpha identity.
-Current product boundaries are authoritative in `rrflow-rrd-architecture.md`.
+Current product boundaries and gates are authoritative only in [`README.md`](../README.md).
 This document remains release-gated rather than calendar-gated.
 
 ## Product boundary

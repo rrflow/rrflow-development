@@ -1,9 +1,9 @@
 # RRD local estate authorization v1
 
-Status: F3 local-only alpha boundary. It authorizes explicit local estate
+Status: supporting implemented local-estate authorization boundary. It authorizes explicit local estate
 creation, desired-state mutation, quiesced backup scheduling, and local
 recovery policy/hold/prune/restore operations; it does not
-authorize a remote listener or replace F4 identity, RBAC/ABAC, credential
+authorize a remote listener or replace broader identity, RBAC/ABAC, credential
 rotation, or comprehensive audit.
 
 ## Policy and key boundary

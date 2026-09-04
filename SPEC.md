@@ -1,5 +1,8 @@
 # RRFlow kernel invariants
 
+Status: supporting semantic contract; `README.md` remains the sole authority
+for product architecture, current status, and roadmap.
+
 This is a supporting semantic contract. `README.md` is the sole authority for
 product identity, architecture, current status, and roadmap. If this document
 and the README disagree, the README wins.

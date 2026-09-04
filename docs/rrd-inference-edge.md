@@ -1,8 +1,8 @@
-# RRFlow embedding, compact artifact, accelerator, and edge contract (M6)
+# RRFlow embedding, compact artifact, accelerator, and edge contract
 
 Status: governed engine and local executable kernel gate, 2026-08-29.
 
-M6 closes the gap between canonical source bytes and a locally searchable,
+This contract closes the gap between canonical source bytes and a locally searchable,
 model-bound vector artifact. It does not make inference or an ANN index
 authoritative: source identity, model identity, transaction freshness, and the
 canonical runtime log remain the admission boundary.

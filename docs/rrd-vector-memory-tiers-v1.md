@@ -1,6 +1,6 @@
 # RRD vector memory tiers v1
 
-Status: engine foundation implemented and locally qualified for G04-W05.
+Status: supporting implemented vector-memory-tier foundation.
 Generated outward administration bindings, distributed placement, automatic
 warming, and production fixed-hardware sizing remain separate work.
 

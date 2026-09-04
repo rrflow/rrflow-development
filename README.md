@@ -427,10 +427,10 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **A-05**. The generic reasoning-tree semantics are
-frozen, the pre-release fixed-stage ledger has been removed, and every current
-workspace package is now in its canonical group; supporting documentation must
-be reconciled before public contracts expand.
+The next executable item is **B-01**. Gate A is complete: authority and names
+are frozen, the generic reasoning-tree contract is established, the obsolete
+fixed-stage lifecycle is absent, packages use the canonical grouped layout,
+and supporting documents are subordinate to this README.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -440,7 +440,7 @@ be reconciled before public contracts expand.
 | [x] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
 | [x] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
 | [x] | A-04 | Move crates into the canonical grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
-| [ ] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
+| [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 
 A-02 evidence (2026-09-04):
 
@@ -491,6 +491,22 @@ A-04 evidence (2026-09-04):
 - Version, recursive CI package/feature routing, and generated-surface policy
   checks passed with 20 default-feature packages, five optional-feature
   packages, and 33 contract-derived HTTP operations.
+
+A-05 evidence (2026-09-04):
+
+- All 59 supporting semantic, design, implementation, evidence, research, and
+  history documents declare status in their first 12 lines; the root README is
+  the only product-architecture, current-status, and roadmap authority.
+- Superseded runtime, in-repository Connectome, provider-flight, Clyffy alpha,
+  and architecture-triage documents are explicitly historical. Active status
+  lines cannot use the retired F/G/M/Q milestone scheme.
+- Stale alternate-authority claims, the removed UI/graph layout, obsolete CI
+  package counts/topology, a hard-coded branch, and five broken local document
+  links were corrected.
+- `scripts/ci/check_documentation.py` validates README authority, supporting
+  status, prohibited alternate authority/layout claims, and repository-local
+  links in CI. The documentation policy, CI policy, Ruff, `git diff --check`,
+  and all 16 workspace-architecture tests passed.
 
 Gate A exits only when the worktree contains one architecture, the generic tree
 contract is frozen, and the obsolete lifecycle implementation is either

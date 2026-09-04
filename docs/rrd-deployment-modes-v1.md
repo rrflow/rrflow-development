@@ -1,5 +1,8 @@
 # RRD deployment modes v1
 
+Status: supporting protocol-v1 implementation contract. `README.md` remains
+the sole product architecture, current-status, and roadmap authority.
+
 RRD is one logical engine with multiple composition and transport faces. A
 deployment mode may change ownership, durability, transport, and resource
 limits; it may not introduce a second transaction coordinator, query model,

@@ -1,6 +1,7 @@
 # RRD Arrow, DataFusion, and BM25 integration plan
 
-**Status:** Q1/Q2 execution plane implemented; retrieval breadth remains, 2026-08-29
+**Status:** supporting execution-plane implementation note; the streaming and
+retrieval gates remaining are defined only in `README.md`
 **Scope:** the shared query/retrieval center of the one RRFlow engine
 **Authority:** `RrdEngine`; no UI, adapter, SDK, or lower physical crate owns
 query or retrieval truth

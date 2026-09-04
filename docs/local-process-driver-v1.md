@@ -1,6 +1,6 @@
 # RRD local process driver
 
-Status: F3 alpha driver. The typed driver, bounded managed-child shutdown, real
+Status: supporting implemented local process driver. The typed driver, bounded managed-child shutdown, real
 controller crash matrix, and Linux/Windows/macOS qualification are implemented.
 Packaging, an operator mutation API, bounded diagnostic-log retention, and
 per-instance backup/restore remain open.

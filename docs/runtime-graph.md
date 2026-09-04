@@ -1,5 +1,8 @@
 # Temporal runtime graph
 
+Status: historical pre-1.0 architecture note. It does not describe the current
+RRFlow composition or roadmap; use `README.md` as the sole authority.
+
 ## Boundary
 
 The product architecture is:

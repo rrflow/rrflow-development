@@ -1,6 +1,6 @@
 # RRD security authority v1
 
-Status: G05-W03 identity/authorization and G05-W04 comprehensive structured
+Status: supporting implemented identity, authorization, and structured
 audit foundations implemented. The durable authority, inherited roles,
 API-key and short-lived JWT sessions, exact third-party identity bindings,
 tenant/row/field query policy, TLS 1.3 mTLS, rotation/revocation, independent
@@ -12,7 +12,8 @@ production hardening.
 
 `rrd-security` owns identity, deny-by-default action policy, and the durable
 audit vocabulary. It is deliberately separate from RRFlow physical storage,
-RRD query execution, RRO provisioning, and Connectome presentation.
+RRD query execution, outward estate provisioning adapters, and Connectome
+presentation.
 
 ## Persistent contract
 

@@ -1,8 +1,8 @@
 # Context path profiler concept
 
-Status: captured product boundary for a separate public repository after the
-native RRFlow baseline is reproduced remotely. It may ship as an RRFlow module
-and surface through Connectome, but it is not part of the RRFlow storage kernel.
+Status: historical product concept. It is not a current standalone-repository,
+engine-event, or Connectome implementation decision; `README.md` owns those
+boundaries and their release order.
 
 ## Product gap
 
@@ -29,7 +29,7 @@ It should expose repeated searches, missed canonical documents, conflicting
 instructions, stale routes, duplicate context, expensive hops, compaction loss,
 and successful paths that ought to become the single source of truth.
 
-## Canonical event contract
+## Historical proposed event contract
 
 Every adapter emits provider-neutral, append-only events with a run ID, span
 and parent IDs, monotonic ordinal, wall/monotonic time, actor, project identity,
@@ -91,7 +91,7 @@ Clyffy can later enforce this lifecycle, while LFG compiles the selected
 context into the just-in-time model input. RRFlow provides durable memory and
 time travel; neither component is allowed to silently rewrite operator truth.
 
-## Delivery gates
+## Historical proposed delivery gates
 
 1. Freeze the event schema and ingest one Claude/Codex-compatible trace.
 2. Prove deterministic replay and time travel over RRFlow.

@@ -1,5 +1,9 @@
 # Blueprint Triage — HTAP GraphRAG architecture document
 
+Status: historical design triage. Its architecture decisions are superseded;
+`README.md` is the sole current product, architecture, status, and roadmap
+authority.
+
 > **Superseded architecture decision (2026-08-18).** The measurements and
 > capability comparisons below remain historical evidence, but Fjall is no
 > longer the permanent substrate decision. RRFlow will replace it with a native
@@ -10,7 +14,7 @@
 |-------|-------|
 | Source | Operator-supplied research blueprint, received 2026-08-10 |
 | Status | Triaged. Items below are adopted, deferred with a trigger, or rejected with evidence. |
-| Authority | `SPEC.md` remains authoritative. Nothing here amends it except through its own revision process. |
+| Authority | Historical evidence only; `README.md` supersedes this document and `SPEC.md` for current architecture and roadmap. |
 
 ## 1 · Framing correction — the "built-from-scratch" substrate already exists
 

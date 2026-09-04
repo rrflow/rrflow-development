@@ -1,6 +1,7 @@
 # RRD vector/search, online HNSW, and unified retrieval contract
 
-Status: G04-W03 executable engine candidate, 2026-08-29.
+Status: supporting implemented vector-search contract; remaining index and
+routing gates are defined only in `README.md`.
 
 `rrd-vector` is the rebuildable search layer over canonical `RuntimeVector`
 versions. The data-runtime commit log remains truth. An index may accelerate a
@@ -187,7 +188,7 @@ deletes with deterministic byte reopen and catalogue replacement.
 
 M6 adds a compact exact dense format with mmap reads, scalar/AVX2 differential,
 model-bound requests/projections, and strict accelerator-build admission. See
-[`rrd-inferenceding-edge.md`](rrd-inferenceding-edge.md). The JSON segment remains
+[`rrd-inference-edge.md`](rrd-inference-edge.md). The JSON segment remains
 the portable M5 semantic fixture, while the compact format is the production
 dense payload direction.
 

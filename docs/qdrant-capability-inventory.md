@@ -1,5 +1,8 @@
 # Qdrant capability inventory and RRFlow disposition
 
+Status: supporting point-in-time research inventory, not current RRFlow status
+or roadmap. `README.md` is authoritative when a disposition has changed.
+
 **Baseline:** Qdrant `1.19.x`, the current documentation/API line on
 2026-08-23. This inventory follows the SurrealDB inventory intentionally:
 first the general database/runtime stack, then the specialist vector stack.

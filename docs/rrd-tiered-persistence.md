@@ -1,6 +1,8 @@
 # RRD tiered persistence
 
-Status: G02-W06 executable candidate, 2026-08-29.
+Status: supporting tiered-persistence implementation and evidence note; this
+does not claim completion of the DevForge placement and hibernation gates in
+`README.md`.
 
 RRD has one canonical transaction and storage authority. Tiering changes how
 immutable bytes are accessed; it does not create another logical database,
