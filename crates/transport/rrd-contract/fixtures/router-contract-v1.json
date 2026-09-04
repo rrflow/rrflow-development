@@ -1,0 +1,168 @@
+{
+  "backend": {
+    "contract_version": 1,
+    "decisions": [
+      "select_recipe",
+      "advance_branch",
+      "request_context"
+    ],
+    "descriptor_sha256": "1358355051e5420700c198a0ede14d7c380295b536d68582d1382060d197c19e",
+    "id": "reference-router",
+    "limits": {
+      "maximum_branch_candidates": 16,
+      "maximum_context_seeds": 16,
+      "maximum_execution_ms": 5000,
+      "maximum_intent_bytes": 4096,
+      "maximum_parameters": 16,
+      "maximum_recipe_candidates": 16,
+      "maximum_request_bytes": 65536,
+      "maximum_response_bytes": 32768,
+      "maximum_signals": 16
+    },
+    "revision": 1
+  },
+  "decisions": [
+    {
+      "contract_version": 1,
+      "decided_at_unix_ms": 1800000100001,
+      "decision": "select_recipe",
+      "decision_sha256": "880822573d64d2c3a01f35ed07b2012c40b0b995e2b637c26ebc0ba0d99d844a",
+      "parameters": {
+        "query-intent": {
+          "type": "string",
+          "value": "find relevant workspace context"
+        }
+      },
+      "recipe_id": "workspace-retrieval",
+      "recipe_revision": 3,
+      "request_id": "route-01",
+      "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85"
+    },
+    {
+      "contract_version": 1,
+      "decided_at_unix_ms": 1800000100002,
+      "decision": "advance_branch",
+      "decision_sha256": "7cf27c237fbaa4bf2db26313f6925c779a57f83b6ddbd55ab2585193248cb18a",
+      "edge_id": "retrieval-satisfied",
+      "request_id": "route-01",
+      "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85"
+    },
+    {
+      "budget": {
+        "max_graph_depth": 2,
+        "max_items": 32,
+        "max_output_bytes": 65536,
+        "max_scanned_changes": 50000
+      },
+      "contract_version": 1,
+      "decided_at_unix_ms": 1800000100003,
+      "decision": "request_context",
+      "decision_sha256": "6b00e39e7e43c03fd7dbd2fc01cc95b4b02bd3293b3e534b18673e50333ed40f",
+      "query": "find exported authentication utilities matching the active interface",
+      "request_id": "route-01",
+      "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85",
+      "seeds": [
+        {
+          "id": "src-lib-rs",
+          "kind": "source-file"
+        }
+      ]
+    }
+  ],
+  "request": {
+    "allowed_decisions": [
+      "select_recipe",
+      "advance_branch",
+      "request_context"
+    ],
+    "backend_descriptor_sha256": "1358355051e5420700c198a0ede14d7c380295b536d68582d1382060d197c19e",
+    "backend_id": "reference-router",
+    "backend_revision": 1,
+    "branch_candidates": [
+      {
+        "conditions": [
+          {
+            "id": "relevant-context-found",
+            "predicate": {
+              "evaluator": "rrflowql",
+              "expression_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+              "predicate": "snapshot"
+            }
+          }
+        ],
+        "from": "route-context",
+        "id": "retrieval-satisfied",
+        "kind": "branch",
+        "to": "context-ready"
+      }
+    ],
+    "context": {
+      "budget": {
+        "max_graph_depth": 4,
+        "max_items": 64,
+        "max_output_bytes": 131072,
+        "max_scanned_changes": 100000
+      },
+      "eligible_seeds": [
+        {
+          "id": "src-lib-rs",
+          "kind": "source-file"
+        }
+      ],
+      "maximum_query_bytes": 4096,
+      "scope": "instance:golden",
+      "valid_at": 1300
+    },
+    "contract_version": 1,
+    "cursor": {
+      "contract_version": 1,
+      "id": "cursor-01",
+      "node_id": "route-context",
+      "read": {
+        "catalog_revision": 2,
+        "commit_cursor": 7,
+        "contract_version": 1,
+        "head_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "manifest_id": "ac559e3a071339b02aabcd86d3f5725696c1d2efaf8ebc9054f21eef195f6731",
+        "schema_revision": 3,
+        "scope": "instance:golden"
+      },
+      "step": 0,
+      "tree_id": "workspace-context",
+      "tree_revision": 1
+    },
+    "deadline_unix_ms": 1800000105000,
+    "id": "route-01",
+    "intent": "select the next bounded workspace-context action",
+    "recipe_candidates": [
+      {
+        "id": "workspace-retrieval",
+        "instruction_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "kind": "context-retrieval",
+        "output_schema_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+        "parameter_schema_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "revision": 3
+      }
+    ],
+    "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85",
+    "requested_at_unix_ms": 1800000100000,
+    "signals": [
+      {
+        "evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+        "id": "context-required",
+        "value": {
+          "type": "bool",
+          "value": true
+        }
+      },
+      {
+        "evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+        "id": "unresolved-diagnostics",
+        "value": {
+          "type": "unsigned",
+          "value": 2
+        }
+      }
+    ]
+  }
+}

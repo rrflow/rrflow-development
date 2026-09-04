@@ -14,6 +14,7 @@ mod memory_context;
 mod memory_estate;
 mod platform;
 mod reasoning_tree;
+mod router;
 mod sdk_conformance;
 
 pub use attunement::{
@@ -83,6 +84,15 @@ pub use reasoning_tree::{
     MAX_REASONING_EVIDENCE_SOURCE_BYTES, MAX_REASONING_EVIDENCE_SUMMARY_BYTES,
     MAX_REASONING_TREE_EDGES, MAX_REASONING_TREE_NODES, MAX_REASONING_TREE_RECIPES,
     REASONING_TREE_CONTRACT_VERSION,
+};
+pub use router::{
+    route_step_decision_sha256, route_step_request_sha256, router_backend_descriptor_sha256,
+    RouteContextAllowance, RouteContextBudget, RouteDecisionKind, RouteParameterValue, RouteSignal,
+    RouteSignalValue, RouteStepDecision, RouteStepRequest, RouterBackendDescriptor,
+    RouterBackendLimits, MAX_ROUTE_BRANCH_CANDIDATES, MAX_ROUTE_EXECUTION_MS,
+    MAX_ROUTE_INTENT_BYTES, MAX_ROUTE_PARAMETERS, MAX_ROUTE_PARAMETER_DEPTH,
+    MAX_ROUTE_PARAMETER_ITEMS, MAX_ROUTE_RECIPE_CANDIDATES, MAX_ROUTE_REQUEST_BYTES,
+    MAX_ROUTE_RESPONSE_BYTES, MAX_ROUTE_SIGNALS, MAX_ROUTE_SIGNAL_BYTES, ROUTER_CONTRACT_VERSION,
 };
 pub use sdk_conformance::{
     SdkConformanceBackup, SdkConformanceChangefeed, SdkConformanceCorpus, SdkConformanceExpected,

@@ -359,6 +359,9 @@ Implemented now:
   deterministic plans, ordered digest-chained phase checkpoints, explicit job
   states and leases, revision-bound resume/cancel requests, and verification
   evidence;
+- a versioned router contract that binds one stamped reasoning cursor to
+  bounded signals and eligible recipe, branch, or context decisions without
+  exposing provider, model, storage, index, authorization, or mutation state;
 - native durable runtime changes with exact read stamps and valid-time reads;
 - active claims and typed records resolved into the same context snapshot;
 - dynamic lexical retrieval over discoverable textual properties;
@@ -380,9 +383,9 @@ Implemented now:
 
 Not implemented or not yet production-grade:
 
-- reasoning-tree persistence and execution through `RrdEngine` are not yet
-  implemented; A-02 freezes their semantics but does not claim a running
-  router;
+- reasoning-tree persistence and execution, router-backend dispatch, and the
+  LFG adapter are not yet implemented; A-02 and B-02 freeze their semantics
+  but do not claim a running router;
 - lexical indexing is rebuilt from the bounded snapshot per request; it is not
   yet an incrementally maintained persistent index;
 - context reads with row- or field-restricted data policies currently fail
@@ -432,9 +435,9 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **B-02**. Gate A is complete, and B-01 freezes the
-installation and attunement wire vocabulary without claiming its later engine
-implementation.
+The next executable item is **B-03**. Gate A is complete; B-01 and B-02 freeze
+installation, attunement, and model-neutral routing vocabulary without
+claiming their later engine implementations.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -521,7 +524,7 @@ removed with passing evidence or explicitly retained by the canonical contract.
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
 | [x] | B-01 | Define install plan, installation result, attunement plan, job, phase checkpoint, status, resume, cancel, and verification envelopes. | `rrd-contract` | Golden JSON and generated schema tests cover every state transition and reject skipped phases or mismatched digests. |
-| [ ] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
+| [x] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
 | [ ] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
 | [ ] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
 | [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and RRFlowQL produce the same authorized logical request without a second executor. |
@@ -545,6 +548,30 @@ B-01 evidence (2026-09-04):
   architecture test, and `cargo check --workspace --all-targets --locked`
   passed. No engine, persistence, endpoint, SDK, CLI, or Connectome behavior
   changed in B-01.
+
+B-02 evidence (2026-09-04):
+
+- `RouterBackendDescriptor` declares only a canonical identity, revision,
+  supported decision kinds, hard dispatch limits, and a content digest. Model,
+  tokenizer, runtime, and quantization bindings remain owned by B-03.
+- `RouteStepRequest` reuses the A-02 reasoning cursor, recipe, edge, and
+  condition types. It supplies bounded scalar signals, candidate-closed
+  decisions, an exact deadline, and an optional context allowance whose scope
+  must equal the cursor read scope.
+- `select_recipe` can return bounded typed parameters only for an offered
+  recipe revision; `advance_branch` can select only an offered outbound edge
+  and cannot claim condition evaluation; `request_context` can only narrow
+  offered seeds and resource budgets and cannot select a storage key, field,
+  index, vector backend, authorization, physical plan, or mutation.
+- `router-contract-v1.json` freezes the descriptor, stamped request, all three
+  decisions, and their SHA-256 bindings. Six focused tests cover closed
+  generated schemas, unknown-field rejection, provider/model neutrality,
+  encoded-byte and nesting bounds, candidate/budget containment, request
+  binding, and deadlines.
+- All 51 `rrd-contract` tests, strict package Clippy, the implementation-free
+  architecture test, and `cargo check --workspace --all-targets --locked`
+  passed. No inference runtime, engine, endpoint, SDK, CLI, or Connectome
+  behavior changed in B-02.
 
 Gate B exits only when other languages and LFG can implement the contracts from
 golden vectors without importing Rust internals.
