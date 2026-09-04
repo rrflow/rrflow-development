@@ -123,10 +123,11 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        self.authorize(
+        let (_, _, authorization) = self.authorize_resource_without_data_policy(
             session_id,
             token,
             SecurityAction::MemoryContextRead,
+            &self.instance_resource(),
             now,
             request_id,
             operation_id,
@@ -137,16 +138,19 @@ impl RrdEngine {
         if warp.instance != self.instance {
             return Err(ServiceError::WrongScope);
         }
-        let context = self.assemble_context_at(&AssembleContext {
-            scope: request.scope.clone(),
-            query: request.query.clone(),
-            valid_at: request.valid_at,
-            seeds: vec![warp.target.clone()],
-            max_graph_depth: request.max_graph_depth,
-            max_items: request.max_items,
-            max_output_bytes: request.max_output_bytes,
-            max_scanned_changes: request.max_scanned_changes,
-        })?;
+        let context = self.assemble_context_at(
+            &AssembleContext {
+                scope: request.scope.clone(),
+                query: request.query.clone(),
+                valid_at: request.valid_at,
+                seeds: vec![warp.target.clone()],
+                max_graph_depth: request.max_graph_depth,
+                max_items: request.max_items,
+                max_output_bytes: request.max_output_bytes,
+                max_scanned_changes: request.max_scanned_changes,
+            },
+            authorization.as_ref(),
+        )?;
         let expected = format!("record:{}:{}", warp.target.kind, warp.target.id);
         if !context.items.iter().any(|item| item.identity == expected) {
             return Err(ServiceError::MemoryTargetNotFound);

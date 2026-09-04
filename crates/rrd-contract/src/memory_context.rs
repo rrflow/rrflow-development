@@ -253,6 +253,12 @@ pub struct ContextPlanSnapshot {
     /// Digest of the complete request, including query, anchors, and all
     /// resource budgets.
     pub request_sha256: String,
+    /// Revision of the security authority compiled before context planning.
+    /// Zero denotes an explicitly unsecured loopback development engine.
+    pub security_policy_revision: u64,
+    /// Digest of the exact principal, action, resource, credential revision,
+    /// and optional data policy compiled for this context read.
+    pub authorization_sha256: String,
     pub read: ContextReadStamp,
     pub stages: Vec<ContextPlanStage>,
     pub plan_sha256: String,
@@ -261,6 +267,7 @@ pub struct ContextPlanSnapshot {
 impl ContextPlanSnapshot {
     pub fn validate(&self) -> Result<()> {
         validate_sha256(&self.request_sha256, "request_sha256")?;
+        validate_sha256(&self.authorization_sha256, "authorization_sha256")?;
         self.read.validate()?;
         validate_sha256(&self.plan_sha256, "plan_sha256")?;
         if self.stages.len() != 5 {
@@ -393,7 +400,13 @@ pub fn context_plan_stage_sha256(stage: &ContextPlanStage) -> Result<String> {
 }
 
 pub fn context_plan_sha256(plan: &ContextPlanSnapshot) -> Result<String> {
-    let bytes = serde_json::to_vec(&(&plan.request_sha256, &plan.read, &plan.stages))
-        .map_err(|error| crate::ContractError(error.to_string()))?;
+    let bytes = serde_json::to_vec(&(
+        &plan.request_sha256,
+        plan.security_policy_revision,
+        &plan.authorization_sha256,
+        &plan.read,
+        &plan.stages,
+    ))
+    .map_err(|error| crate::ContractError(error.to_string()))?;
     Ok(crate::sha256_bytes(&bytes))
 }

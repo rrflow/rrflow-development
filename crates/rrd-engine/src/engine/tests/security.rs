@@ -1,7 +1,7 @@
 use super::*;
 use rrd_contract::{
-    DataPropertySchema, DataRecordSchema, DataReference, DataSchemaRegistry, DataValueType,
-    ExecuteQuery, QueryBudget, QueryValue,
+    AssembleContext, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaRegistry,
+    DataValueType, ExecuteQuery, QueryBudget, QueryValue,
 };
 use rrd_core::RuntimeValue;
 use rrd_security::{
@@ -813,4 +813,226 @@ fn compiled_role_policy_injects_tenant_rows_and_fields_before_query_planning() {
         "operation-secret-query",
     );
     assert!(matches!(denied, Err(ServiceError::PermissionDenied)));
+}
+
+#[test]
+fn context_records_authorization_and_denies_unenforced_data_policy_before_snapshot_read() {
+    let (_root, engine) = isolated_engine();
+    let bootstrap = engine
+        .create_session(
+            &session_request(5_000, 2),
+            &id("context-policy-bootstrap-session"),
+            10,
+            "request-context-policy-bootstrap-session",
+            "operation-context-policy-bootstrap-session",
+        )
+        .unwrap();
+    let transaction = engine
+        .begin_transaction(
+            &bootstrap.session_id,
+            &bootstrap.token,
+            &BeginTransaction {
+                scope: CanonicalId::new("data").unwrap(),
+                timeout_ms: 1_000,
+            },
+            &mutation_context(
+                &id("context-policy-bootstrap-begin"),
+                "request-context-policy-bootstrap-begin",
+                "operation-context-policy-bootstrap-begin",
+            ),
+            20,
+        )
+        .unwrap();
+    let mutations = vec![
+        TransactionMutation::PutSchema {
+            registry: DataSchemaRegistry {
+                revision: 1,
+                migration: "install context authorization fixture".into(),
+                catalogue: DataCatalogueIdentity::default(),
+                tables: BTreeMap::new(),
+                records: BTreeMap::from([(
+                    CanonicalId::new("document").unwrap(),
+                    DataRecordSchema {
+                        properties: BTreeMap::from([(
+                            "body".into(),
+                            DataPropertySchema {
+                                value_type: DataValueType::String,
+                                required: true,
+                            },
+                        )]),
+                        ..DataRecordSchema::default()
+                    },
+                )]),
+                relations: BTreeMap::new(),
+                events: BTreeMap::new(),
+            },
+        },
+        TransactionMutation::PutRecord {
+            reference: DataReference {
+                kind: CanonicalId::new("document").unwrap(),
+                id: CanonicalId::new("private-context").unwrap(),
+            },
+            valid_from: 20,
+            valid_to: None,
+            properties: BTreeMap::from([(
+                "body".into(),
+                QueryValue::String("authorization protected memory".into()),
+            )]),
+        },
+    ];
+    engine
+        .commit_transaction(
+            &bootstrap.session_id,
+            &bootstrap.token,
+            &transaction.transaction_id,
+            &id("context-policy-bootstrap-commit"),
+            &CommitTransaction {
+                operation_sha256: rrd_contract::transaction_operation_sha256(&mutations),
+                mutations,
+            },
+            20,
+            "request-context-policy-bootstrap-commit",
+            "operation-context-policy-bootstrap-commit",
+        )
+        .unwrap();
+
+    let resource = ResourcePath {
+        segments: vec![ResourceId::new(ResourceKind::Instance, instance().as_str()).unwrap()],
+    };
+    let unrestricted_id = CanonicalId::new("context-unrestricted-reader").unwrap();
+    let restricted_id = CanonicalId::new("context-restricted-reader").unwrap();
+    let principal = |principal_id: CanonicalId, credential: &[u8], data_policy| Principal {
+        id: principal_id,
+        kind: PrincipalKind::User,
+        credential_sha256: digest::sha256_hex(credential),
+        credential_revision: 1,
+        not_before_unix_ms: 1,
+        expires_at_unix_ms: u64::MAX,
+        disabled: false,
+        role_ids: BTreeSet::new(),
+        grants: vec![
+            ResourceGrant {
+                action: SecurityAction::SessionCreate,
+                resource_prefix: resource.clone(),
+                data_policy: None,
+            },
+            ResourceGrant {
+                action: SecurityAction::MemoryContextRead,
+                resource_prefix: resource.clone(),
+                data_policy,
+            },
+        ],
+    };
+    let unrestricted = principal(unrestricted_id.clone(), b"context-unrestricted-key", None);
+    let restricted = principal(
+        restricted_id.clone(),
+        b"context-restricted-key",
+        Some(DataPolicy {
+            tenant: None,
+            rows: Vec::new(),
+            allowed_fields: Some(BTreeSet::from(["body".into()])),
+        }),
+    );
+    let repository = SecurityRepository::new(&engine.storage, instance());
+    repository
+        .initialize(
+            SecurityState {
+                format_version: rrd_security::SECURITY_FORMAT,
+                revision: 1,
+                principals: BTreeMap::from([
+                    (unrestricted_id.clone(), unrestricted),
+                    (restricted_id.clone(), restricted),
+                ]),
+                roles: BTreeMap::new(),
+                identity_bindings: BTreeMap::new(),
+                jwt_issuers: BTreeMap::new(),
+            },
+            30,
+            "security-test",
+            "request-context-policy-security",
+            "operation-context-policy-security",
+        )
+        .unwrap();
+    let unrestricted_lease = engine
+        .create_authenticated_session(
+            &unrestricted_id,
+            b"context-unrestricted-key",
+            &session_request(5_000, 2),
+            &id("context-unrestricted-session"),
+            40,
+            "request-context-unrestricted-session",
+            "operation-context-unrestricted-session",
+        )
+        .unwrap();
+    let restricted_lease = engine
+        .create_authenticated_session(
+            &restricted_id,
+            b"context-restricted-key",
+            &session_request(5_000, 2),
+            &id("context-restricted-session"),
+            40,
+            "request-context-restricted-session",
+            "operation-context-restricted-session",
+        )
+        .unwrap();
+    let request = AssembleContext {
+        scope: format!("instance:{}", instance()),
+        query: "authorization memory".into(),
+        valid_at: 40,
+        seeds: Vec::new(),
+        max_graph_depth: 1,
+        max_items: 8,
+        max_output_bytes: 64 * 1024,
+        max_scanned_changes: 16,
+    };
+    let packet = engine
+        .assemble_context(
+            &unrestricted_lease.session_id,
+            &unrestricted_lease.token,
+            &request,
+            50,
+            "request-context-unrestricted",
+            "operation-context-unrestricted",
+        )
+        .unwrap();
+    let expected = repository
+        .authorize_principal(
+            &unrestricted_id,
+            SecurityAction::MemoryContextRead,
+            &resource,
+            50,
+        )
+        .unwrap();
+    assert_eq!(packet.plan.security_policy_revision, 1);
+    assert_eq!(
+        packet.plan.authorization_sha256,
+        expected.authorization_sha256
+    );
+    assert!(packet
+        .items
+        .iter()
+        .any(|item| item.identity == "record:document:private-context"));
+
+    let mut denied_request = request;
+    denied_request.max_scanned_changes = 1;
+    let denied = engine.assemble_context(
+        &restricted_lease.session_id,
+        &restricted_lease.token,
+        &denied_request,
+        51,
+        "request-context-restricted",
+        "operation-context-restricted",
+    );
+    assert!(matches!(denied, Err(ServiceError::PermissionDenied)));
+    let denied_audit = repository
+        .audit_since(0, 128)
+        .unwrap()
+        .records
+        .into_iter()
+        .map(|(_, record)| record)
+        .find(|record| record.request_id == "request-context-restricted")
+        .expect("the unenforceable context data policy denial is audited");
+    assert_eq!(denied_audit.action, SecurityAction::MemoryContextRead);
+    assert_eq!(denied_audit.phase, AuditPhase::Completed);
+    assert_eq!(denied_audit.decision, AuditDecision::Denied);
 }

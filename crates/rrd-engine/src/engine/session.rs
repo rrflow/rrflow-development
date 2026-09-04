@@ -397,7 +397,7 @@ impl RrdEngine {
         request_id: &str,
         operation_id: &str,
     ) -> Result<(Vec<u8>, SessionState)> {
-        let (bytes, state, _) = self.authorize_resource(
+        let (bytes, state, _) = self.authorize_resource_without_data_policy(
             session_id,
             token,
             action,
@@ -420,6 +420,56 @@ impl RrdEngine {
         request_id: &str,
         operation_id: &str,
     ) -> Result<(Vec<u8>, SessionState, Option<rrd_security::Authorization>)> {
+        self.authorize_resource_with_policy_support(
+            session_id,
+            token,
+            action,
+            resource,
+            now,
+            request_id,
+            operation_id,
+            true,
+        )
+    }
+
+    /// Authorizes an operation that cannot enforce row or field restrictions.
+    /// The policy check remains inside the audited authorization result so an
+    /// embedded denial cannot be recorded as an allowed authorization.
+    #[allow(clippy::too_many_arguments)]
+    pub(in crate::engine) fn authorize_resource_without_data_policy(
+        &self,
+        session_id: &CorrelationId,
+        token: &CorrelationId,
+        action: SecurityAction,
+        resource: &ResourcePath,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<(Vec<u8>, SessionState, Option<rrd_security::Authorization>)> {
+        self.authorize_resource_with_policy_support(
+            session_id,
+            token,
+            action,
+            resource,
+            now,
+            request_id,
+            operation_id,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn authorize_resource_with_policy_support(
+        &self,
+        session_id: &CorrelationId,
+        token: &CorrelationId,
+        action: SecurityAction,
+        resource: &ResourcePath,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+        supports_data_policy: bool,
+    ) -> Result<(Vec<u8>, SessionState, Option<rrd_security::Authorization>)> {
         let mut principal_id = None;
         let result = (|| {
             let (bytes, mut state) = self.load_authenticated(session_id, token)?;
@@ -434,6 +484,13 @@ impl RrdEngine {
             )?;
             let authorization =
                 self.compile_session_authorization(&state, action, resource, now)?;
+            if !supports_data_policy
+                && authorization
+                    .as_ref()
+                    .is_some_and(|authorization| authorization.data_policy.is_some())
+            {
+                return Err(ServiceError::PermissionDenied);
+            }
             Ok((bytes, state, authorization))
         })();
         self.record_direct_authorization(

@@ -74,9 +74,11 @@ runtime cursor, schema revision, catalogue revision, query digest, encoded byte
 count, truncation state, and content digest. It also carries one canonical plan
 snapshot that records whether seed, lexical, semantic, graph, and fusion stages
 were selected or skipped, the physical path each selected stage used, and the
-reason for every decision. The plan and packet share the same read stamp. A
-packet therefore identifies what was read, which avenues were considered, and
-why each avenue was or was not selected; it is not an ungrounded text blob.
+reason for every decision. The plan also carries the compiled security-policy
+revision and authorization digest. The plan and packet share the same read
+stamp. A packet therefore identifies what was authorized, what was read, which
+avenues were considered, and why each avenue was or was not selected; it is not
+an ungrounded text blob.
 
 The caller supplies only:
 
@@ -109,6 +111,13 @@ The provider-neutral operation is `context-assemble` at
 `rrd-contract`; its implementation lives in `rrd-engine`. The Rust client,
 daemon handler, CLI, MCP server, and Connectome use that operation or call the
 same engine method in embedded mode.
+
+Claude, OpenAI, local-model, and future host integrations are plug-in adapters
+at the edge, not engine variants. Each adapter translates the lifecycle or
+request boundary exposed by its host into this same operation. Provider URLs,
+credentials, payload dialects, and interception mechanics remain inside the
+replaceable adapter; adding a provider does not add an RRFlow context endpoint,
+provider registry, memory path, or lifecycle authority.
 
 Current hard request ceilings are:
 
@@ -253,7 +262,8 @@ Implemented now:
 - deterministic multi-source fusion, deduplication, evidence, digests, and
   resource enforcement;
 - a read-stamped context plan exposing every selected or skipped retrieval
-  stage, its current physical access path, and its decision reason;
+  stage, its current physical access path, its decision reason, and the exact
+  compiled authorization boundary;
 - durable provider-neutral seat identity, provider representation edges, and
   stable `rrflow://` record warp resolution through the context planner;
 - authenticated server/client, embedded/daemon MCP, CLI, and the in-workspace
@@ -264,6 +274,8 @@ Not implemented or not yet production-grade:
 
 - lexical indexing is rebuilt from the bounded snapshot per request; it is not
   yet an incrementally maintained persistent index;
+- context reads with row- or field-restricted data policies currently fail
+  closed; heterogeneous context-policy enforcement is not yet implemented;
 - context vector retrieval currently performs exact scoring over matching
   snapshot vectors; the context planner does not yet select ANN candidates and
   exact-rerank them;

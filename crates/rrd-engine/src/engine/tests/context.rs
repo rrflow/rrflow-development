@@ -156,6 +156,14 @@ fn context_flows_through_one_engine_stamp_and_survives_reopen() {
         )
         .unwrap();
     packet.validate().unwrap();
+    assert_eq!(packet.plan.security_policy_revision, 0);
+    assert_eq!(
+        packet.plan.authorization_sha256,
+        digest::sha256_hex(b"rrd-security-disabled-loopback-development")
+    );
+    let mut tampered_plan = packet.plan.clone();
+    tampered_plan.authorization_sha256 = "0".repeat(64);
+    assert!(tampered_plan.validate().is_err());
     let stage = |kind| {
         packet
             .plan

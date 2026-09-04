@@ -53,24 +53,43 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        self.authorize(
+        let (_, _, authorization) = self.authorize_resource_without_data_policy(
             session_id,
             token,
             SecurityAction::MemoryContextRead,
+            &self.instance_resource(),
             now,
             request_id,
             operation_id,
         )?;
-        self.assemble_context_at(request)
+        self.assemble_context_at(request, authorization.as_ref())
     }
 
     pub(in crate::engine) fn assemble_context_at(
         &self,
         request: &AssembleContext,
+        authorization: Option<&rrd_security::Authorization>,
     ) -> Result<ContextPacket> {
         request
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let (security_policy_revision, authorization_sha256) = authorization.map_or_else(
+            || {
+                Ok((
+                    0,
+                    digest::sha256_hex(b"rrd-security-disabled-loopback-development"),
+                ))
+            },
+            |authorization| {
+                if authorization.data_policy.is_some() {
+                    return Err(ServiceError::PermissionDenied);
+                }
+                Ok((
+                    authorization.policy_revision,
+                    authorization.authorization_sha256.clone(),
+                ))
+            },
+        )?;
         let scope = self.query_scope(&request.scope)?;
         let replay_limit = usize::try_from(request.max_scanned_changes)
             .map_err(|_| ServiceError::Query("context scan budget exceeds usize".into()))?;
@@ -394,6 +413,8 @@ impl RrdEngine {
         let mut plan = ContextPlanSnapshot {
             request_sha256: context_request_sha256(request)
                 .map_err(|error| ServiceError::Contract(error.to_string()))?,
+            security_policy_revision,
+            authorization_sha256,
             read: context_read.clone(),
             stages,
             plan_sha256: String::new(),

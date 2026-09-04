@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 489a2ccdd8db451b765a603a31f66fee739c1353b74123a9717351ce941bd7fb
+// OpenAPI SHA-256: 3cefe7116b2ed1415f1d06a5fe6a877bd94794d0086b64f9265574ff08ba39ea
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -7149,6 +7149,11 @@ export interface operations {
                                 packet_sha256: string;
                                 /** @description The complete, deterministic context execution plan at one read stamp. */
                                 plan: {
+                                    /**
+                                     * @description Digest of the exact principal, action, resource, credential revision,
+                                     *     and optional data policy compiled for this context read.
+                                     */
+                                    authorization_sha256: string;
                                     plan_sha256: string;
                                     read: {
                                         /** Format: uint64 */
@@ -7164,6 +7169,12 @@ export interface operations {
                                      *     resource budgets.
                                      */
                                     request_sha256: string;
+                                    /**
+                                     * Format: uint64
+                                     * @description Revision of the security authority compiled before context planning.
+                                     *     Zero denotes an explicitly unsecured loopback development engine.
+                                     */
+                                    security_policy_revision: number;
                                     stages: {
                                         /**
                                          * @description The physical access path actually selected for a context stage.
@@ -7298,6 +7309,11 @@ export interface operations {
                                 packet_sha256: string;
                                 /** @description The complete, deterministic context execution plan at one read stamp. */
                                 plan: {
+                                    /**
+                                     * @description Digest of the exact principal, action, resource, credential revision,
+                                     *     and optional data policy compiled for this context read.
+                                     */
+                                    authorization_sha256: string;
                                     plan_sha256: string;
                                     read: {
                                         /** Format: uint64 */
@@ -7313,6 +7329,12 @@ export interface operations {
                                      *     resource budgets.
                                      */
                                     request_sha256: string;
+                                    /**
+                                     * Format: uint64
+                                     * @description Revision of the security authority compiled before context planning.
+                                     *     Zero denotes an explicitly unsecured loopback development engine.
+                                     */
+                                    security_policy_revision: number;
                                     stages: {
                                         /**
                                          * @description The physical access path actually selected for a context stage.
