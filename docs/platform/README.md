@@ -170,7 +170,7 @@ gap, while G01 must first preserve one security authority.
   truth but still uses per-principal direct grants and the warm-path behavior
   described above.
 - [`rrd-estate`](../../crates/authority/rrd-estate/src/lib.rs) and
-  [`rrd-cluster`](../../crates/rrd-cluster/src/contract.rs) already model the
+  [`rrd-cluster`](../../crates/operations/rrd-cluster/src/contract.rs) already model the
   distinct control-plane and physical-topology concepts; they must remain
   distinct while routing through `rrd-engine`.
 - Logical `namespace` and `database` kinds now exist in the RRD public

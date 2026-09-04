@@ -24,7 +24,7 @@ fn generated_crd_is_namespaced_structural_and_status_enabled() {
 
 #[test]
 fn checked_deployment_artifacts_match_the_generated_contract_and_least_privilege_scope() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let checked: serde_json::Value = serde_json::from_slice(
         &std::fs::read(root.join("deploy/kubernetes/rrdinstances.rrflow.io-crd.json")).unwrap(),
     )
