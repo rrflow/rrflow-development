@@ -38,7 +38,18 @@ def main() -> int:
     if workspace_version != VERSION:
         fail(f"Cargo workspace version is {workspace_version!r}, expected {VERSION!r}", failures)
 
-    manifests = sorted((ROOT / "crates").glob("*/Cargo.toml"))
+    manifests = sorted((ROOT / "crates").rglob("Cargo.toml"))
+    declared_manifests = sorted(
+        ROOT / member / "Cargo.toml"
+        for member in workspace["workspace"]["members"]  # type: ignore[index]
+    )
+    if manifests != declared_manifests:
+        fail(
+            "Cargo package manifests and workspace membership differ: "
+            f"discovered={[str(path.relative_to(ROOT)) for path in manifests]} "
+            f"declared={[str(path.relative_to(ROOT)) for path in declared_manifests]}",
+            failures,
+        )
     workspace_package_names: set[str] = set()
     for manifest in manifests:
         package = load_toml(manifest)["package"]  # type: ignore[index]
