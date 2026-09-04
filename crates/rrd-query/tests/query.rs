@@ -8,6 +8,7 @@ use rrd_core::{
 };
 use rrd_query::{
     bind, execute, plan, Catalog, Error, ExecutionBudget, Parameters, PhysicalOperator,
+    StampedQueryPipeline,
 };
 use rrd_query::{
     parse, ComparisonOperator, CursorExpr, Projection, Query, Source, TemporalSelector, TimeExpr,
@@ -326,6 +327,85 @@ fn memory_fjall_and_native_return_identical_exact_rows() {
         query_ids, direct_ids,
         "query must match the direct graph API"
     );
+}
+
+#[test]
+fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
+    let engine = MemoryEngine::new();
+    engine.commit_runtime(&fixture_commit()).unwrap();
+    let scope = ScopeId::new("instance:test").unwrap();
+    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let query = parse(
+        "FROM record:document AT VALID 100 KNOWN HEAD WHERE status = \"open\" PROJECT id, title EXPLAIN CONTRACT",
+    )
+    .unwrap();
+    let parameters = Parameters::new();
+    let budget = ExecutionBudget::default();
+
+    let catalog = Catalog::capture_at(&engine, read.clone()).unwrap();
+    let manual_bound = bind(&query, &parameters, &catalog).unwrap();
+    let manual_plan = plan(&manual_bound).unwrap();
+    let manual_execution = execute(&engine, &manual_plan, &budget).unwrap();
+
+    let pipeline = StampedQueryPipeline::new(&engine, read.clone()).unwrap();
+    let stamped = pipeline.run(&query, &parameters, &budget).unwrap();
+    assert_eq!(pipeline.read(), &read);
+    assert_eq!(stamped.bound, manual_bound);
+    assert_eq!(stamped.plan, manual_plan);
+    assert_eq!(stamped.execution, manual_execution);
+    assert_eq!(stamped.bound.read, read);
+    assert_eq!(stamped.plan.logical.read, read);
+    assert_eq!(stamped.execution.read_manifest, read.manifest_id);
+    assert!(matches!(
+        stamped.plan.operators.as_slice(),
+        [
+            PhysicalOperator::AuthoritativeLogScan { .. },
+            PhysicalOperator::DataFusionEvaluate
+        ]
+    ));
+
+    engine
+        .commit_runtime(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 101,
+            actor: "agent:correction".into(),
+            expected_cursor: read.commit_cursor,
+            mutations: vec![RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference: RuntimeRef::new("document", "a").unwrap(),
+                    valid_from: 10,
+                    valid_to: None,
+                    properties: properties(&[("status", "open"), ("title", "Alpha corrected")]),
+                },
+            }],
+        })
+        .unwrap();
+
+    let replay = pipeline.run(&query, &parameters, &budget).unwrap();
+    assert_eq!(replay.bound, stamped.bound);
+    assert_eq!(replay.plan, stamped.plan);
+    assert_eq!(replay.execution.plan_digest, stamped.execution.plan_digest);
+    assert_eq!(
+        replay.execution.read_manifest,
+        stamped.execution.read_manifest
+    );
+    assert_eq!(replay.execution.valid_at, stamped.execution.valid_at);
+    assert_eq!(
+        replay.execution.known_at_cursor,
+        stamped.execution.known_at_cursor
+    );
+    assert_eq!(replay.execution.batches, stamped.execution.batches);
+    assert_eq!(
+        replay.execution.stamp_validation, "full_hash_chain_replay",
+        "validation evidence must truthfully reflect replay after the live head advances"
+    );
+
+    let current_catalog = Catalog::capture(&engine, &scope).unwrap();
+    let current_bound = bind(&query, &parameters, &current_catalog).unwrap();
+    assert!(matches!(
+        pipeline.plan(&current_bound),
+        Err(Error::Integrity(reason)) if reason.contains("pipeline read stamp")
+    ));
 }
 
 #[test]

@@ -78,15 +78,19 @@ impl RrdEngine {
             .iter()
             .map(|(name, value)| Ok((name.clone(), runtime_value(value)?)))
             .collect::<Result<rrd_query::Parameters>>()?;
-        let catalog = rrd_query::Catalog::capture(&self.storage, &scope)
-            .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let bound = rrd_query::bind(&query, &parameters, &catalog)
-            .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let plan =
-            rrd_query::plan(&bound).map_err(|error| ServiceError::Query(error.to_string()))?;
         let budget = query_execution_budget(&request.budget)?;
-        let execution = rrd_query::execute(&self.storage, &plan, &budget)
+        let read = self
+            .storage
+            .runtime_read_stamp(&scope)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let pipeline = rrd_query::StampedQueryPipeline::new(&self.storage, read)
+            .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let stamped = pipeline
+            .run(&query, &parameters, &budget)
+            .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let bound = stamped.bound;
+        let plan = stamped.plan;
+        let execution = stamped.execution;
         let rows = execution
             .batches
             .iter()

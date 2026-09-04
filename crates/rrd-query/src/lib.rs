@@ -13,6 +13,7 @@ mod execute;
 mod fusion;
 mod index;
 mod live;
+mod pipeline;
 mod plan;
 mod syntax;
 
@@ -35,6 +36,7 @@ pub use index::{
     IndexOperationReceipt, INDEX_ARTIFACT_CONTRACT_VERSION, INDEX_CATALOGUE_CONTRACT_VERSION,
 };
 pub use live::{poll_live_query, LiveQueryBudget, LiveQueryDelta, LiveRowChange};
+pub use pipeline::{StampedQueryExecution, StampedQueryPipeline};
 pub use plan::{
     bind, plan, BoundFilter, BoundIndexCandidate, BoundQuery, CandidatePath, ExecutionContract,
     LogicalOperator, LogicalPlan, Parameters, PhysicalOperator, PhysicalPlan, PlanExplanation,

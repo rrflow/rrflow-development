@@ -10,7 +10,7 @@ use rrd_core::{
     digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceDataClass, TraceDomain,
     TraceLink, TraceOutcome,
 };
-use rrd_query::{BoundQuery, Catalog, PhysicalPlan, QueryExecution};
+use rrd_query::{BoundQuery, PhysicalPlan, QueryExecution, StampedQueryPipeline};
 pub use rrd_query::{ExecutionBudget, Parameters};
 use rrd_query::{Query, Source, QUERY_CONTRACT_VERSION};
 use rrd_store::{Engine, PhysicalStoreEvidence};
@@ -77,6 +77,7 @@ pub fn execute_traced_query<E: Engine>(
     at: Millis,
 ) -> Result<TracedQueryExecution, Box<dyn std::error::Error>> {
     let read = store.runtime_read_stamp(&scope)?;
+    let pipeline = StampedQueryPipeline::new(store, read.clone())?;
     let query_digest = digest::sha256_hex(source.as_bytes());
     let parameter_bytes = serde_json::to_vec(parameters)?;
     let parameter_digest = digest::sha256_hex(&parameter_bytes);
@@ -207,21 +208,7 @@ pub fn execute_traced_query<E: Engine>(
             )
         }
     };
-    let catalog = match Catalog::capture_at(store, read.clone()) {
-        Ok(catalog) => catalog,
-        Err(error) => {
-            return fail_query(
-                store,
-                Some(prepare),
-                root,
-                "parse_bind",
-                mx_error_class(&error),
-                TraceOutcome::Error,
-                error.into(),
-            )
-        }
-    };
-    let bound = match rrd_query::bind(&query, parameters, &catalog) {
+    let bound = match pipeline.bind(&query, parameters) {
         Ok(bound) => bound,
         Err(error) => {
             return fail_query(
@@ -295,7 +282,7 @@ pub fn execute_traced_query<E: Engine>(
             )
         }
     };
-    let plan = match rrd_query::plan(&bound) {
+    let plan = match pipeline.plan(&bound) {
         Ok(plan) => plan,
         Err(error) => {
             return fail_query(
@@ -420,7 +407,7 @@ pub fn execute_traced_query<E: Engine>(
         }
     };
     let physical_before = store.physical_store_evidence();
-    let execution_result = rrd_query::execute(store, &plan, budget);
+    let execution_result = pipeline.execute(&plan, budget);
     let physical_after = store.physical_store_evidence();
     let execution = match execution_result {
         Ok(execution) => execution,
