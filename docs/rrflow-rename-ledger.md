@@ -60,7 +60,7 @@ is the recovery boundary. Runtime compatibility code is not.
 | User CLI | `rrflow-cli`; binary `rrflow` |
 | MCP adapter | `rrflow-mcp`; tools prefixed `rrflow_` |
 | Evaluation | `rrflow-eval` |
-| Operator/developer client | `connectome-ui`; binary `connectome` |
+| Operator/developer client | separate Connectome repository; no engine-workspace package |
 | Project state | `.rrflow/` |
 | Environment prefix | `RRFLOW_` |
 

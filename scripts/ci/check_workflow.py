@@ -46,7 +46,7 @@ def workspace_packages() -> set[str]:
 
 def optional_feature_packages() -> set[str]:
     packages = set()
-    for manifest in (ROOT / "crates").glob("*/Cargo.toml"):
+    for manifest in (ROOT / "crates").rglob("Cargo.toml"):
         with manifest.open("rb") as source:
             document = tomllib.load(source)
         features = set(document.get("features", {})) - {"default"}

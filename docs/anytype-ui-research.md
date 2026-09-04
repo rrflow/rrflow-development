@@ -113,9 +113,9 @@ an explicit warning-bearing override for remote binding.
 5. Add estate-level multi-instance navigation only after every query and
    visualization carries exact project, environment, and instance scope.
 
-Browser acceptance is reproducible against a running workbench:
+Current browser acceptance belongs to the standalone Connectome repository:
 
 ```bash
-CONNECTOME_URL=http://127.0.0.1:4387 \
-  bunx playwright test crates/connectome-ui/tests/workbench.spec.js --workers=1
+cd ../connectome
+pnpm run test:smoke
 ```

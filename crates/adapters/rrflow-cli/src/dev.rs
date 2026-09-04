@@ -2,7 +2,7 @@
 //!
 //! This module does not start partial services. It proves the dependency and
 //! repository invariants required before `rrflow dev up` can safely supervise
-//! one RRD authority and its client surfaces.
+//! one RRD authority for independent public clients.
 
 pub mod supervisor;
 
@@ -12,8 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const REPORT_VERSION: u16 = 4;
-const CANONICAL_WORKSPACE_PACKAGES: [&str; 21] = [
-    "connectome-ui",
+const CANONICAL_WORKSPACE_PACKAGES: [&str; 20] = [
     "rrd-client",
     "rrd-cluster",
     "rrd-contract",
@@ -113,13 +112,6 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
             "workspace packages use RRFlow/RRD identities",
             package_names.into_iter().collect::<Vec<_>>().join(", "),
             "make workspace package membership match the canonical RRFlow/RRD rename ledger",
-        ),
-        surface_boundary(
-            &packages,
-            "connectome-ui",
-            &["rrd-client", "rrd-contract"],
-            "surface.connectome-client-only",
-            "Connectome must consume RRD protocol/client contracts and must not open physical engine crates",
         ),
         surface_boundary(
             &packages,
@@ -334,7 +326,6 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
             .all(|variant| command_source.contains(variant))
         && supervisor_source.contains("rrd-security-bootstrap")
         && supervisor_source.contains("spawn_rrd")
-        && supervisor_source.contains("spawn_connectome")
         && supervisor_source.contains("wait_for_service")
         && supervisor_source.contains("shutdown_complete_file");
     checks.push(check(
@@ -342,27 +333,27 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         has_supervisor,
         "one command owns build, start, readiness, status, logs, and graceful stop",
         if has_supervisor {
-            "typed commands, security bootstrap, ordered child startup, readiness probes, and paired shutdown completion markers"
+            "typed commands, security bootstrap, authenticated process identity, readiness probes, and shutdown completion markers"
         } else {
             "the supervisor command or one of its required controls is absent"
         },
         "implement rrflow dev up|status|logs|stop after every surface crosses the RRD boundary",
     ));
 
-    let has_topology_smoke = ci_source.contains("rrflow dev up")
+    let has_daemon_smoke = ci_source.contains("rrflow dev up")
         && ci_source.contains("/v1/health/ready")
-        && ci_source.contains("/api/snapshot")
+        && ci_source.contains("/v1/capabilities")
         && ci_source.contains("rrflow_path\" dev stop");
     checks.push(check(
-        "ci.full-topology-smoke",
-        has_topology_smoke,
-        "CI boots and probes the same RRD/Connectome topology used by developers",
-        if has_topology_smoke {
-            "CI starts the supervisor, probes RRD readiness and authenticated Connectome snapshot, then requests graceful stop"
+        "ci.daemon-smoke",
+        has_daemon_smoke,
+        "CI boots and probes the same RRD daemon used by public clients",
+        if has_daemon_smoke {
+            "CI starts the supervisor, probes RRD readiness and capabilities, then requests graceful stop"
         } else {
-            "no complete full-topology smoke job detected"
+            "no complete RRD daemon smoke job detected"
         },
-        "add a black-box smoke job after the supervisor and client boundaries are complete",
+        "add a black-box RRD daemon smoke job through the public capability boundary",
     ));
 
     let blocked = checks
@@ -570,9 +561,6 @@ mod tests {
         assert!(report.ready);
         assert!(report.checks.iter().any(|check| {
             check.id == "workspace.identity" && check.status == CheckStatus::Passed
-        }));
-        assert!(report.checks.iter().any(|check| {
-            check.id == "surface.connectome-client-only" && check.status == CheckStatus::Passed
         }));
         assert!(report.checks.iter().any(|check| {
             check.id == "surface.cli-engine-boundary" && check.status == CheckStatus::Passed

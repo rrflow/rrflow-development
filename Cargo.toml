@@ -21,7 +21,6 @@ members = [
     "crates/adapters/rrflow-cli",
     "crates/adapters/rrflow-mcp",
     "crates/evaluation/rrflow-eval",
-    "crates/connectome-ui",
 ]
 
 # Remaining future member. Current dependency arrows point inward:

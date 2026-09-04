@@ -368,8 +368,10 @@ Implemented now:
   compiled authorization boundary;
 - durable provider-neutral seat identity, provider representation edges, and
   stable `rrflow://` record warp resolution through the context planner;
-- authenticated server/client, embedded/daemon MCP, CLI, and the in-workspace
-  client boundary test converging on the same context operation;
+- authenticated server/client, embedded/daemon MCP, and CLI converging on the
+  same context operation;
+- a separate Connectome repository with native RRD capability negotiation,
+  session establishment, bounded diagnostic/context calls, renewal, and close;
 - persistence/reopen and real transport behavior tests.
 
 Not implemented or not yet production-grade:
@@ -425,9 +427,10 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **A-04**. The generic reasoning-tree semantics are
-frozen and the pre-release fixed-stage ledger has been removed; no replacement
-runtime or client surface may precede the canonical engine-owned gates.
+The next executable item is **A-05**. The generic reasoning-tree semantics are
+frozen, the pre-release fixed-stage ledger has been removed, and every current
+workspace package is now in its canonical group; supporting documentation must
+be reconciled before public contracts expand.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -436,7 +439,7 @@ runtime or client surface may precede the canonical engine-owned gates.
 | [x] | A-01 | Define RRFlow, RRD, RRFlow kernel, rrflowKV, RRFlowQL, Arrow/DataFusion analytical path, LFG, and Connectome exactly once. | `README.md` | Terminology table, execution topology, and ownership table use one meaning for every term. |
 | [x] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
 | [x] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
-| [ ] | A-04 | Move crates into the canonical grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
+| [x] | A-04 | Move crates into the canonical grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [ ] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 
 A-02 evidence (2026-09-04):
@@ -466,6 +469,28 @@ A-03 evidence (2026-09-04):
 - `cargo test -p rrd-core -p rrd-engine -p rrflow-cli` passed all 200 tests, and
   `cargo clippy -p rrd-core -p rrd-engine -p rrflow-cli --all-targets -- -D
   warnings` passed.
+
+A-04 evidence (2026-09-04):
+
+- The 20 current packages live only under `kernel`, `persistence`, `compute`,
+  `authority`, `transport`, `adapters`, `operations`, and `evaluation`;
+  `workspace_packages_use_the_canonical_grouped_layout` compares every package
+  to its exact manifest path and rejects any additional top-level crate group.
+- The empty graph boundary and the in-repository Connectome package are absent.
+  The separate Connectome repository commit `38f68ce7` supplies its native RRD
+  capability handshake, authenticated session, bounded diagnostic/context
+  calls, renewal, and close; its Rust tests, strict Clippy, TypeScript check,
+  Biome check, and aggregate `pnpm check` passed.
+- `rrflow dev` now supervises only RRD and reports a client endpoint, principal,
+  and private credential path. A real-process smoke started the daemon, probed
+  readiness and capabilities, observed ready status, and stopped cleanly.
+- `cargo metadata --locked`, all 16 workspace-architecture tests, `cargo check
+  --workspace --all-targets --locked`, `cargo test --workspace --all-targets
+  --locked`, and `cargo clippy --workspace --all-targets --locked -- -D
+  warnings` passed.
+- Version, recursive CI package/feature routing, and generated-surface policy
+  checks passed with 20 default-feature packages, five optional-feature
+  packages, and 33 contract-derived HTTP operations.
 
 Gate A exits only when the worktree contains one architecture, the generic tree
 contract is frozen, and the obsolete lifecycle implementation is either

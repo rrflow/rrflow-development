@@ -1,8 +1,8 @@
-//! Recoverable local supervisor for the canonical RRD + Connectome topology.
+//! Recoverable local supervisor for one canonical RRD daemon.
 //!
 //! The state file contains process identities, endpoints, logs, and shutdown
-//! markers but never credentials. RRD is started and proven ready before the
-//! authenticated Connectome client is allowed to start.
+//! markers but never credential contents. Connectome and other clients remain
+//! independent processes and connect through the reported public RRD endpoint.
 
 use rrd_engine::{load_or_create_api_key, InstanceBinding, InstanceManifest};
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ use sysinfo::{
     Pid, ProcessRefreshKind, ProcessStatus, ProcessesToUpdate, Signal, System, UpdateKind,
 };
 
-const STATE_FORMAT: u16 = 1;
+const STATE_FORMAT: u16 = 2;
 const STATE_FILE: &str = "supervisor.json";
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 const PROCESS_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(3);
@@ -28,7 +28,7 @@ const HTTP_TIMEOUT: Duration = Duration::from_millis(500);
 const MAX_PROBE_BYTES: u64 = 64 * 1024;
 const MAX_STATE_BYTES: u64 = 1024 * 1024;
 const MAX_LOG_BYTES: u64 = 8 * 1024 * 1024;
-const DEV_PRINCIPAL: &str = "rrflow-dev-connectome";
+const DEV_PRINCIPAL: &str = "rrflow-dev-client";
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -37,7 +37,6 @@ pub struct UpOptions {
     pub root: PathBuf,
     pub instance: Option<String>,
     pub rrd_bind: SocketAddr,
-    pub connectome_bind: SocketAddr,
     pub no_build: bool,
 }
 
@@ -46,27 +45,25 @@ pub struct SupervisorReport {
     pub status: String,
     pub project_root: PathBuf,
     pub instance: String,
+    pub principal: String,
+    pub credential_file: PathBuf,
     pub rrd_pid: Option<u32>,
-    pub connectome_pid: Option<u32>,
     pub rrd_ready: bool,
-    pub connectome_ready: bool,
     pub rrd_url: String,
-    pub connectome_url: String,
     pub state_file: PathBuf,
 }
 
 impl SupervisorReport {
     pub fn render(&self) -> String {
         format!(
-            "RRFlow development topology: {}\ninstance: {}\nRRD: {} (pid {}, ready={})\nConnectome: {} (pid {}, ready={})\nstate: {}",
+            "RRFlow development daemon: {}\ninstance: {}\nRRD: {} (pid {}, ready={})\nclient principal: {}\ncredential file: {}\nstate: {}",
             self.status,
             self.instance,
             self.rrd_url,
             display_pid(self.rrd_pid),
             self.rrd_ready,
-            self.connectome_url,
-            display_pid(self.connectome_pid),
-            self.connectome_ready,
+            self.principal,
+            self.credential_file.display(),
             self.state_file.display(),
         )
     }
@@ -84,7 +81,6 @@ struct SupervisorState {
     credential_file: PathBuf,
     started_at_unix_ms: u64,
     rrd: ServiceState,
-    connectome: ServiceState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,12 +123,11 @@ struct ServiceState {
 
 struct Binaries {
     rrd: PathBuf,
-    connectome: PathBuf,
     security_bootstrap: PathBuf,
 }
 
 pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
-    validate_addresses(options.rrd_bind, options.connectome_bind)?;
+    validate_address(options.rrd_bind)?;
     let root = canonical_directory(&options.root)?;
     let state_dir = state_directory(&root);
     std::fs::create_dir_all(&state_dir)?;
@@ -141,12 +136,12 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
     let prior = read_state_optional(&state_path)?;
     if let Some(prior) = &prior {
         let report = report(prior, &state_path);
-        if report.rrd_ready && report.connectome_ready {
+        if report.rrd_ready {
             return Ok(report);
         }
-        if report.rrd_ready || report.connectome_ready {
+        if !matches!(process_identity(&prior.rrd)?, ProcessIdentity::Exited) {
             return Err(format!(
-                "development topology is partially alive; inspect `{}` and run `rrflow dev stop --root {}` before restarting",
+                "RRD supervisor state is not ready but still owns or conflicts with a process; inspect `{}` and run `rrflow dev stop --root {}` before restarting",
                 state_path.display(),
                 root.display()
             )
@@ -162,7 +157,7 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
     let binding = InstanceBinding::discover(&root)?;
     binding.require_runtime_ready()?;
     let database = binding.verify_store_path(&binding.expected_store())?;
-    let credential_file = state_dir.join("connectome.api-key");
+    let credential_file = state_dir.join("client.api-key");
     let _credential = load_or_create_api_key(&credential_file)?;
     let bootstrap_manifest = state_dir.join("security-bootstrap.json");
     write_bootstrap_manifest(
@@ -191,17 +186,7 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
         "/v1/capabilities",
         format!("\"id\":\"{}\"", manifest.id),
     );
-    let connectome = service_state(
-        &state_dir,
-        "connectome",
-        binaries.connectome,
-        options.connectome_bind,
-        "/api/snapshot",
-        "/api/snapshot",
-        format!("\"scope\":\"instance:{}\"", manifest.id),
-    );
     clear_shutdown_files(&rrd)?;
-    clear_shutdown_files(&connectome)?;
     let mut state = SupervisorState {
         format: STATE_FORMAT,
         generation,
@@ -212,7 +197,6 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
         credential_file,
         started_at_unix_ms: now,
         rrd,
-        connectome,
     };
     write_state(&state_path, &state)?;
 
@@ -231,39 +215,6 @@ pub fn up(options: UpOptions, now: u64) -> Result<SupervisorReport> {
         return Err(with_log_hint(error, &state.rrd.log_file));
     }
 
-    let mut connectome_child = match spawn_connectome(&state) {
-        Ok(child) => child,
-        Err(error) => {
-            state.status = SupervisorStatus::Failed;
-            write_state(&state_path, &state)?;
-            request_shutdown(&state.rrd.shutdown_request_file)?;
-            terminate_child(&mut rrd_child);
-            return Err(with_log_hint(error, &state.connectome.log_file));
-        }
-    };
-    state.connectome.pid = Some(connectome_child.id());
-    state.connectome.process_start_time_unix_s =
-        match capture_child_identity(&mut connectome_child, &state.connectome.executable) {
-            Ok(started_at) => Some(started_at),
-            Err(error) => {
-                state.status = SupervisorStatus::Failed;
-                write_state(&state_path, &state)?;
-                request_shutdown(&state.rrd.shutdown_request_file)?;
-                terminate_child(&mut rrd_child);
-                return Err(with_log_hint(error, &state.connectome.log_file));
-            }
-        };
-    write_state(&state_path, &state)?;
-    if let Err(error) = wait_for_service(&mut connectome_child, &state.connectome) {
-        state.status = SupervisorStatus::Failed;
-        write_state(&state_path, &state)?;
-        request_shutdown(&state.connectome.shutdown_request_file)?;
-        request_shutdown(&state.rrd.shutdown_request_file)?;
-        terminate_child(&mut connectome_child);
-        terminate_child(&mut rrd_child);
-        return Err(with_log_hint(error, &state.connectome.log_file));
-    }
-
     state.status = SupervisorStatus::Running;
     write_state(&state_path, &state)?;
     Ok(report(&state, &state_path))
@@ -280,36 +231,20 @@ pub fn stop(root: &Path, timeout: Duration) -> Result<SupervisorReport> {
     let root = canonical_directory(root)?;
     let state_path = state_directory(&root).join(STATE_FILE);
     let mut state = read_state(&state_path)?;
-    authenticate_legacy_service(&mut state.connectome)?;
-    authenticate_legacy_service(&mut state.rrd)?;
     let initial = report(&state, &state_path);
-    if !initial.rrd_ready
-        && !initial.connectome_ready
-        && matches!(process_identity(&state.rrd)?, ProcessIdentity::Exited)
-        && matches!(
-            process_identity(&state.connectome)?,
-            ProcessIdentity::Exited
-        )
-    {
+    if !initial.rrd_ready && matches!(process_identity(&state.rrd)?, ProcessIdentity::Exited) {
         state.status = SupervisorStatus::Stopped;
         write_state(&state_path, &state)?;
         return Ok(report(&state, &state_path));
     }
     state.status = SupervisorStatus::Stopping;
     write_state(&state_path, &state)?;
-    request_shutdown(&state.connectome.shutdown_request_file)?;
     request_shutdown(&state.rrd.shutdown_request_file)?;
 
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
-        if state.connectome.shutdown_complete_file.is_file()
-            && state.rrd.shutdown_complete_file.is_file()
-            && !probe(state.connectome.bind, &state.connectome.probe_path)
+        if state.rrd.shutdown_complete_file.is_file()
             && !probe(state.rrd.bind, &state.rrd.probe_path)
-            && matches!(
-                process_identity(&state.connectome)?,
-                ProcessIdentity::Exited
-            )
             && matches!(process_identity(&state.rrd)?, ProcessIdentity::Exited)
         {
             state.status = SupervisorStatus::Stopped;
@@ -318,38 +253,25 @@ pub fn stop(root: &Path, timeout: Duration) -> Result<SupervisorReport> {
         }
         std::thread::sleep(Duration::from_millis(50));
     }
-    terminate_owned_process(&state.connectome)?;
     terminate_owned_process(&state.rrd)?;
     state.status = SupervisorStatus::Stopped;
     write_state(&state_path, &state)?;
     Ok(report(&state, &state_path))
 }
 
-pub fn logs(root: &Path, service: &str, lines: usize) -> Result<String> {
+pub fn logs(root: &Path, lines: usize) -> Result<String> {
     if lines == 0 || lines > 10_000 {
         return Err("--lines must be in 1..=10000".into());
     }
     let root = canonical_directory(root)?;
     let state_path = state_directory(&root).join(STATE_FILE);
     let state = read_state(&state_path)?;
-    match service {
-        "rrd" => tail_log("rrd", &state.rrd.log_file, lines),
-        "connectome" => tail_log("connectome", &state.connectome.log_file, lines),
-        "all" => Ok(format!(
-            "{}\n{}",
-            tail_log("rrd", &state.rrd.log_file, lines)?,
-            tail_log("connectome", &state.connectome.log_file, lines)?
-        )),
-        _ => Err("--service must be one of: all, rrd, connectome".into()),
-    }
+    tail_log("rrd", &state.rrd.log_file, lines)
 }
 
-fn validate_addresses(rrd: SocketAddr, connectome: SocketAddr) -> Result<()> {
-    if !rrd.ip().is_loopback() || !connectome.ip().is_loopback() {
-        return Err("development services must bind to loopback addresses".into());
-    }
-    if rrd.port() == 0 || connectome.port() == 0 || rrd == connectome {
-        return Err("development services require distinct non-zero ports".into());
+fn validate_address(rrd: SocketAddr) -> Result<()> {
+    if !rrd.ip().is_loopback() || rrd.port() == 0 {
+        return Err("the development RRD daemon requires a non-zero loopback address".into());
     }
     Ok(())
 }
@@ -428,8 +350,6 @@ fn resolve_binaries(no_build: bool) -> Result<Binaries> {
             "-p",
             "rrd-server",
             "-p",
-            "connectome-ui",
-            "-p",
             "rrd-security",
         ])
         .status()?;
@@ -457,7 +377,6 @@ fn resolve_binaries(no_build: bool) -> Result<Binaries> {
 fn verify_binaries(directory: &Path, suffix: &str) -> Result<Binaries> {
     let requested = [
         directory.join(format!("rrd-server{suffix}")),
-        directory.join(format!("connectome{suffix}")),
         directory.join(format!("rrd-security-bootstrap{suffix}")),
     ];
     for path in &requested {
@@ -469,8 +388,7 @@ fn verify_binaries(directory: &Path, suffix: &str) -> Result<Binaries> {
     }
     Ok(Binaries {
         rrd: std::fs::canonicalize(&requested[0])?,
-        connectome: std::fs::canonicalize(&requested[1])?,
-        security_bootstrap: std::fs::canonicalize(&requested[2])?,
+        security_bootstrap: std::fs::canonicalize(&requested[1])?,
     })
 }
 
@@ -555,28 +473,6 @@ fn spawn_rrd(state: &SupervisorState) -> Result<Child> {
         .spawn()?)
 }
 
-fn spawn_connectome(state: &SupervisorState) -> Result<Child> {
-    let (stdout, stderr) = log_streams(&state.connectome.log_file)?;
-    Ok(Command::new(&state.connectome.executable)
-        .current_dir(&state.project_root)
-        .args(["--instance", &state.instance])
-        .args(["--principal", &state.principal])
-        .args(["--api-key-file", path_arg(&state.credential_file)?])
-        .args(["--rrd-address", &state.rrd.bind.to_string()])
-        .args(["--scope", &format!("instance:{}", state.instance)])
-        .args(["--bind", &state.connectome.bind.to_string()])
-        .args([
-            "--shutdown-request-file",
-            path_arg(&state.connectome.shutdown_request_file)?,
-            "--shutdown-complete-file",
-            path_arg(&state.connectome.shutdown_complete_file)?,
-        ])
-        .stdin(Stdio::null())
-        .stdout(stdout)
-        .stderr(stderr)
-        .spawn()?)
-}
-
 fn log_streams(path: &Path) -> Result<(Stdio, Stdio)> {
     let mut options = OpenOptions::new();
     options.create(true).append(true);
@@ -639,29 +535,6 @@ fn capture_child_identity(child: &mut Child, expected_executable: &Path) -> Resu
         }
         thread::sleep(Duration::from_millis(10));
     }
-}
-
-fn authenticate_legacy_service(service: &mut ServiceState) -> Result<()> {
-    if service.pid.is_none() || service.process_start_time_unix_s.is_some() {
-        return Ok(());
-    }
-    let pid = service.pid.expect("checked above");
-    let system = system_for(pid);
-    let Some(process) = system.process(Pid::from_u32(pid)) else {
-        service.pid = None;
-        return Ok(());
-    };
-    let executable = process
-        .exe()
-        .and_then(|path| std::fs::canonicalize(path).ok());
-    if executable.as_deref() != Some(service.executable.as_path()) || !service_ready(service) {
-        return Err(format!(
-            "refusing to adopt unauthenticated legacy process identity for pid {pid}"
-        )
-        .into());
-    }
-    service.process_start_time_unix_s = Some(process.start_time());
-    Ok(())
 }
 
 fn process_identity(service: &ServiceState) -> Result<ProcessIdentity> {
@@ -824,8 +697,7 @@ fn service_ready(service: &ServiceState) -> bool {
 
 fn report(state: &SupervisorState, state_path: &Path) -> SupervisorReport {
     let rrd_ready = service_ready(&state.rrd);
-    let connectome_ready = service_ready(&state.connectome);
-    let status = if state.status == SupervisorStatus::Running && (!rrd_ready || !connectome_ready) {
+    let status = if state.status == SupervisorStatus::Running && !rrd_ready {
         "degraded"
     } else {
         state.status.as_str()
@@ -834,15 +706,11 @@ fn report(state: &SupervisorState, state_path: &Path) -> SupervisorReport {
         status: status.into(),
         project_root: state.project_root.clone(),
         instance: state.instance.clone(),
+        principal: state.principal.clone(),
+        credential_file: state.credential_file.clone(),
         rrd_pid: state.rrd.pid,
-        connectome_pid: state.connectome.pid,
         rrd_ready,
-        connectome_ready,
-        rrd_url: format!("http://{}{}", state.rrd.bind, state.rrd.probe_path),
-        connectome_url: format!(
-            "http://{}{}",
-            state.connectome.bind, state.connectome.probe_path
-        ),
+        rrd_url: format!("http://{}", state.rrd.bind),
         state_file: state_path.to_path_buf(),
     }
 }
@@ -975,22 +843,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn addresses_are_loopback_distinct_and_stable() {
-        assert!(validate_addresses(
-            "127.0.0.1:9477".parse().unwrap(),
-            "127.0.0.1:4387".parse().unwrap()
-        )
-        .is_ok());
-        assert!(validate_addresses(
-            "0.0.0.0:9477".parse().unwrap(),
-            "127.0.0.1:4387".parse().unwrap()
-        )
-        .is_err());
-        assert!(validate_addresses(
-            "127.0.0.1:9477".parse().unwrap(),
-            "127.0.0.1:9477".parse().unwrap()
-        )
-        .is_err());
+    fn daemon_address_is_loopback_nonzero_and_stable() {
+        assert!(validate_address("127.0.0.1:9477".parse().unwrap()).is_ok());
+        assert!(validate_address("0.0.0.0:9477".parse().unwrap()).is_err());
+        assert!(validate_address("127.0.0.1:0".parse().unwrap()).is_err());
     }
 
     #[test]

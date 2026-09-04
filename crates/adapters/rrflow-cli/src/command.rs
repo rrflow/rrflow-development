@@ -226,8 +226,8 @@ pub enum DevAction {
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
     },
-    /// Build and start one RRD authority followed by its authenticated
-    /// Connectome client, then wait for both readiness probes.
+    /// Build and start one RRD authority, then report its client connection
+    /// endpoint and development credential location.
     Up {
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
@@ -235,27 +235,23 @@ pub enum DevAction {
         instance: Option<String>,
         #[arg(long, default_value = "127.0.0.1:9477")]
         rrd_bind: std::net::SocketAddr,
-        #[arg(long, default_value = "127.0.0.1:4387")]
-        connectome_bind: std::net::SocketAddr,
         /// Reuse companion binaries beside rrflow (or in RRFLOW_DEV_BIN_DIR).
         #[arg(long)]
         no_build: bool,
     },
-    /// Probe the services recorded by the recoverable supervisor manifest.
+    /// Probe the RRD daemon recorded by the recoverable supervisor manifest.
     Status {
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
     },
-    /// Read a bounded tail of the retained service logs.
+    /// Read a bounded tail of the retained RRD daemon log.
     Logs {
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
-        #[arg(long, default_value = "all")]
-        service: String,
         #[arg(long, default_value_t = 100)]
         lines: usize,
     },
-    /// Request graceful shutdown from both services and wait for completion.
+    /// Request graceful RRD shutdown and wait for completion.
     Stop {
         #[arg(long, default_value = ".")]
         root: std::path::PathBuf,
@@ -563,14 +559,12 @@ impl Command {
                         root,
                         instance,
                         rrd_bind,
-                        connectome_bind,
                         no_build,
                     },
             } => {
                 let mut arguments = vec![
                     format!("root={}", root.display()),
                     format!("rrd_bind={rrd_bind}"),
-                    format!("connectome_bind={connectome_bind}"),
                     format!("no_build={no_build}"),
                 ];
                 if let Some(instance) = instance {
@@ -582,17 +576,8 @@ impl Command {
                 action: DevAction::Status { root },
             } => vec![format!("root={}", root.display())],
             Command::Dev {
-                action:
-                    DevAction::Logs {
-                        root,
-                        service,
-                        lines,
-                    },
-            } => vec![
-                format!("root={}", root.display()),
-                format!("service={service}"),
-                format!("lines={lines}"),
-            ],
+                action: DevAction::Logs { root, lines },
+            } => vec![format!("root={}", root.display()), format!("lines={lines}")],
             Command::Dev {
                 action: DevAction::Stop { root, timeout_ms },
             } => vec![
@@ -635,7 +620,6 @@ pub fn execute_offline(
                 root,
                 instance,
                 rrd_bind,
-                connectome_bind,
                 no_build,
             } => {
                 let report = crate::dev::supervisor::up(
@@ -643,7 +627,6 @@ pub fn execute_offline(
                         root: root.clone(),
                         instance: instance.clone(),
                         rrd_bind: *rrd_bind,
-                        connectome_bind: *connectome_bind,
                         no_build: *no_build,
                     },
                     now,
@@ -657,7 +640,7 @@ pub fn execute_offline(
             }
             DevAction::Status { root } => {
                 let report = crate::dev::supervisor::status(root)?;
-                let success = report.rrd_ready && report.connectome_ready;
+                let success = report.rrd_ready;
                 let text = if json {
                     serde_json::to_string_pretty(&report)?
                 } else {
@@ -669,11 +652,9 @@ pub fn execute_offline(
                     success,
                 })
             }
-            DevAction::Logs {
-                root,
-                service,
-                lines,
-            } => Ok(crate::dev::supervisor::logs(root, service, *lines)?.into()),
+            DevAction::Logs { root, lines } => {
+                Ok(crate::dev::supervisor::logs(root, *lines)?.into())
+            }
             DevAction::Stop { root, timeout_ms } => {
                 let report = crate::dev::supervisor::stop(
                     root,

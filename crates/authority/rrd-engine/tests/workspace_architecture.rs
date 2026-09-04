@@ -12,9 +12,83 @@ struct WorkspaceMetadata {
 }
 
 struct PackageDependencies {
+    manifest: PathBuf,
     workspace: BTreeSet<String>,
     all: BTreeSet<String>,
     targets: BTreeSet<String>,
+}
+
+#[test]
+fn workspace_packages_use_the_canonical_grouped_layout() {
+    let metadata = workspace_metadata();
+    let expected = [
+        ("rrd-core", "crates/kernel/rrd-core/Cargo.toml"),
+        ("rrd-lsm", "crates/persistence/rrd-lsm/Cargo.toml"),
+        ("rrd-store", "crates/persistence/rrd-store/Cargo.toml"),
+        ("rrd-query", "crates/compute/rrd-query/Cargo.toml"),
+        ("rrd-vector", "crates/compute/rrd-vector/Cargo.toml"),
+        ("rrd-inference", "crates/compute/rrd-inference/Cargo.toml"),
+        ("rrd-security", "crates/authority/rrd-security/Cargo.toml"),
+        ("rrd-estate", "crates/authority/rrd-estate/Cargo.toml"),
+        ("rrd-engine", "crates/authority/rrd-engine/Cargo.toml"),
+        ("rrd-contract", "crates/transport/rrd-contract/Cargo.toml"),
+        ("rrd-client", "crates/transport/rrd-client/Cargo.toml"),
+        ("rrd-server", "crates/transport/rrd-server/Cargo.toml"),
+        ("rrflow-cli", "crates/adapters/rrflow-cli/Cargo.toml"),
+        ("rrflow-mcp", "crates/adapters/rrflow-mcp/Cargo.toml"),
+        ("rrflow-edge", "crates/adapters/rrflow-edge/Cargo.toml"),
+        ("rrd-cluster", "crates/operations/rrd-cluster/Cargo.toml"),
+        (
+            "rrd-kubernetes",
+            "crates/operations/rrd-kubernetes/Cargo.toml",
+        ),
+        (
+            "rrd-maintenance",
+            "crates/operations/rrd-maintenance/Cargo.toml",
+        ),
+        (
+            "rrd-operator-knowledge",
+            "crates/operations/rrd-operator-knowledge/Cargo.toml",
+        ),
+        ("rrflow-eval", "crates/evaluation/rrflow-eval/Cargo.toml"),
+    ]
+    .into_iter()
+    .map(|(name, path)| (name.to_owned(), PathBuf::from(path)))
+    .collect::<BTreeMap<_, _>>();
+    let actual = metadata
+        .packages
+        .iter()
+        .map(|(name, package)| (name.clone(), package.manifest.clone()))
+        .collect::<BTreeMap<_, _>>();
+    assert_eq!(actual, expected, "workspace package paths changed");
+
+    let groups = fs::read_dir(metadata.root.join("crates"))
+        .expect("crates directory must be readable")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("crates entries must be readable")
+        .into_iter()
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .map(|entry| {
+            entry
+                .file_name()
+                .into_string()
+                .expect("crate group names must be UTF-8")
+        })
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        groups,
+        names(&[
+            "adapters",
+            "authority",
+            "compute",
+            "evaluation",
+            "kernel",
+            "operations",
+            "persistence",
+            "transport",
+        ]),
+        "crates must contain only the canonical source groups"
+    );
 }
 
 #[test]
@@ -90,11 +164,6 @@ fn outward_consumers_cannot_bypass_the_engine_boundary() {
     ]);
 
     assert_exact(
-        &forbidden_edges(&metadata, "connectome-ui", &internal_components),
-        BTreeSet::new(),
-        "Connectome must use only rrd-client and rrd-contract",
-    );
-    assert_exact(
         &forbidden_edges(&metadata, "rrflow-cli", &internal_components),
         BTreeSet::new(),
         "CLI must use only the public embedded engine or daemon client boundary",
@@ -129,7 +198,6 @@ fn outward_product_sources_do_not_import_physical_components() {
         "crates/adapters/rrflow-cli/src",
         "crates/adapters/rrflow-cli/examples",
         "crates/adapters/rrflow-mcp/src",
-        "crates/connectome-ui/src",
     ] {
         let directory = metadata.root.join(relative);
         if directory.is_dir() {
@@ -268,20 +336,13 @@ fn outward_cli_owns_product_executables_while_physical_crates_own_none() {
 }
 
 #[test]
-fn outward_surfaces_use_the_authoritative_context_operation() {
+fn mcp_uses_the_authoritative_context_operation() {
     let metadata = workspace_metadata();
     let mcp = fs::read_to_string(metadata.root.join("crates/adapters/rrflow-mcp/src/main.rs"))
         .expect("MCP source must be readable");
     assert!(
         mcp.contains("rrflow_context") && mcp.contains("authority.assemble_context"),
         "MCP must expose only the engine context assembly boundary"
-    );
-
-    let connectome = fs::read_to_string(metadata.root.join("crates/connectome-ui/src/lib.rs"))
-        .expect("Connectome source must be readable");
-    assert!(
-        connectome.contains("client.assemble_context") && connectome.contains("/api/context"),
-        "Connectome must use the authenticated engine context assembly operation"
     );
 }
 
@@ -487,6 +548,16 @@ fn workspace_metadata() -> WorkspaceMetadata {
                 .as_str()
                 .expect("package manifest paths must be strings"),
         );
+        let manifest = manifest_path
+            .strip_prefix(&root)
+            .unwrap_or_else(|_| {
+                panic!(
+                    "workspace package manifest {} must be under {}",
+                    manifest_path.display(),
+                    root.display()
+                )
+            })
+            .to_path_buf();
         let package_directory_name = manifest_path
             .parent()
             .and_then(Path::file_name)
@@ -556,6 +627,7 @@ fn workspace_metadata() -> WorkspaceMetadata {
                 .insert(
                     name.to_owned(),
                     PackageDependencies {
+                        manifest,
                         workspace,
                         all,
                         targets,
