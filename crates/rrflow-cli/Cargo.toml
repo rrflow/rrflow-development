@@ -8,8 +8,8 @@ description = "rrflow operator surface: explicit, recorded invocation of every t
 
 [dependencies]
 rrd-engine = { path = "../authority/rrd-engine" }
-rrd-contract = { path = "../rrd-contract" }
-rrd-client = { path = "../rrd-client" }
+rrd-contract = { path = "../transport/rrd-contract" }
+rrd-client = { path = "../transport/rrd-client" }
 clap = { version = "4", features = ["derive", "env"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -27,7 +27,7 @@ rrd-store = { path = "../persistence/rrd-store" }
 rrd-lsm = { path = "../persistence/rrd-lsm" }
 rrd-security = { path = "../authority/rrd-security" }
 rrd-estate = { path = "../authority/rrd-estate" }
-rrd-server = { path = "../rrd-server" }
+rrd-server = { path = "../transport/rrd-server" }
 
 [[bin]]
 name = "rrflow"

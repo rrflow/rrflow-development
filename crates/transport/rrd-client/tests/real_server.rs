@@ -113,7 +113,7 @@ fn seed(engine: &PersistentEngine, scope: &str) {
 
 fn deployment_corpus() -> DeploymentConformanceCorpus {
     let corpus = serde_json::from_str(include_str!(
-        "../../../fixtures/rrd-deployment-conformance-v1.json"
+        "../../../../fixtures/rrd-deployment-conformance-v1.json"
     ))
     .unwrap();
     DeploymentConformanceCorpus::validate(&corpus).unwrap();

@@ -182,7 +182,7 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         "implement mutually exclusive embedded and daemon MCP modes; daemon mode must use authenticated rrd-client context assembly and must never open the database",
     ));
 
-    let router = root.join("crates/rrd-server/src/http/router.rs");
+    let router = root.join("crates/transport/rrd-server/src/http/router.rs");
     let router_source = std::fs::read_to_string(&router)?;
     let endpoint_catalogue = rrd_contract::endpoint_catalogue();
     let required_daemon_operations = ["health-live", "health-ready", "capabilities-read"];

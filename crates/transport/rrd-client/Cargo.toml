@@ -21,12 +21,12 @@ tokio = { version = "1", features = ["net", "rt", "sync", "time"] }
 tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 
 [dev-dependencies]
-rrd-engine = { path = "../authority/rrd-engine" }
-rrd-estate = { path = "../authority/rrd-estate" }
-rrd-security = { path = "../authority/rrd-security" }
+rrd-engine = { path = "../../authority/rrd-engine" }
+rrd-estate = { path = "../../authority/rrd-estate" }
+rrd-security = { path = "../../authority/rrd-security" }
 rrd-server = { path = "../rrd-server" }
-rrd-core = { path = "../kernel/rrd-core" }
-rrd-store = { path = "../persistence/rrd-store" }
+rrd-core = { path = "../../kernel/rrd-core" }
+rrd-store = { path = "../../persistence/rrd-store" }
 tempfile = "3"
 rcgen = "0.14"
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }

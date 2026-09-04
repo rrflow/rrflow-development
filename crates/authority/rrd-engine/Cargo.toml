@@ -37,7 +37,7 @@ full = [
 ]
 
 [dependencies]
-rrd-contract = { path = "../../rrd-contract", optional = true }
+rrd-contract = { path = "../../transport/rrd-contract", optional = true }
 rrd-estate = { path = "../rrd-estate", optional = true }
 rrd-security = { path = "../rrd-security", optional = true }
 rrd-core = { path = "../../kernel/rrd-core", optional = true }

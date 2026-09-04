@@ -111,7 +111,7 @@ def main() -> int:
         fail(f".NET SDK version is {dotnet_version!r}, expected {VERSION!r}", failures)
 
     contract = json.loads(
-        (ROOT / "crates/rrd-contract/fixtures/public-contract-v1.json").read_text(
+        (ROOT / "crates/transport/rrd-contract/fixtures/public-contract-v1.json").read_text(
             encoding="utf-8"
         )
     )

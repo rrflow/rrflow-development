@@ -125,7 +125,7 @@ other definitions are inlined, so references resolve under ordinary OpenAPI
 generators rather than relying on schema-local `$defs` resolution.
 
 The frozen JSON fixture is
-[`public-contract-v1.json`](../crates/rrd-contract/fixtures/public-contract-v1.json).
+[`public-contract-v1.json`](../crates/transport/rrd-contract/fixtures/public-contract-v1.json).
 Malformed identifiers, duplicate/unsorted capabilities, unsupported protocol
 versions, unknown fields, repeated resource kinds, and mutations without an
 idempotency key fail closed in tests.

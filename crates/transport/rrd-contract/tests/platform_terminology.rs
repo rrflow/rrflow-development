@@ -101,7 +101,7 @@ fn public_resource_vocabulary_contains_every_canonical_resource() {
 #[test]
 fn normative_markdown_contains_the_exact_machine_term_order() {
     let path =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/platform/README.md");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/platform/README.md");
     let markdown = std::fs::read_to_string(path).unwrap();
     let documented = markdown
         .lines()

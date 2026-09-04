@@ -124,8 +124,8 @@ fn outward_product_sources_do_not_import_physical_components() {
     ];
     let mut violations = Vec::new();
     for relative in [
-        "crates/rrd-client/src",
-        "crates/rrd-server/src",
+        "crates/transport/rrd-client/src",
+        "crates/transport/rrd-server/src",
         "crates/rrflow-cli/src",
         "crates/rrflow-cli/examples",
         "crates/rrflow-mcp/src",
@@ -317,7 +317,7 @@ fn legacy_service_name_is_absent() {
     let forbidden = ["Rrd", "Service"].concat();
     let mut violations = Vec::new();
 
-    for relative in ["crates/authority/rrd-engine", "crates/rrd-server"] {
+    for relative in ["crates/authority/rrd-engine", "crates/transport/rrd-server"] {
         collect_rust_sources(&metadata.root.join(relative), &mut violations, &forbidden);
     }
 

@@ -259,7 +259,7 @@ fn public_contract_matches_frozen_golden_json() {
 #[test]
 fn deployment_modes_and_shared_conformance_corpus_are_versioned_and_strict() {
     let corpus: rrd_contract::DeploymentConformanceCorpus = serde_json::from_str(include_str!(
-        "../../../fixtures/rrd-deployment-conformance-v1.json"
+        "../../../../fixtures/rrd-deployment-conformance-v1.json"
     ))
     .unwrap();
     corpus.validate().unwrap();
@@ -292,7 +292,7 @@ fn deployment_modes_and_shared_conformance_corpus_are_versioned_and_strict() {
 #[test]
 fn supported_sdks_share_one_strict_semantic_corpus() {
     let corpus: rrd_contract::SdkConformanceCorpus = serde_json::from_str(include_str!(
-        "../../../fixtures/rrd-sdk-conformance-v1.json"
+        "../../../../fixtures/rrd-sdk-conformance-v1.json"
     ))
     .unwrap();
     corpus.validate().unwrap();

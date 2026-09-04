@@ -11,7 +11,7 @@ name = "rrd-deployment-catalog"
 path = "src/commands/rrd-deployment-catalog.rs"
 
 [dependencies]
-rrd-contract = { path = "../../rrd-contract" }
+rrd-contract = { path = "../../transport/rrd-contract" }
 rrd-core = { path = "../../kernel/rrd-core" }
 rrd-store = { path = "../../persistence/rrd-store" }
 serde = { workspace = true }

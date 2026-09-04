@@ -373,7 +373,7 @@ fn seed_query_fixture(root: &Path) {
 
 fn deployment_corpus() -> DeploymentConformanceCorpus {
     let corpus = serde_json::from_str(include_str!(
-        "../../../fixtures/rrd-deployment-conformance-v1.json"
+        "../../../../fixtures/rrd-deployment-conformance-v1.json"
     ))
     .unwrap();
     DeploymentConformanceCorpus::validate(&corpus).unwrap();
@@ -2413,6 +2413,7 @@ fn token_key_is_stable_exact_and_private() {
 #[test]
 fn real_socket_exercises_lifecycle_commit_and_restart_replay() {
     let (_temporary, root, server) = start_root();
+    let expected_catalogue = rrd_contract::endpoint_catalogue();
     let (status, live) = http(server.address, "GET", "/v1/health/live", &[], &[]);
     assert_eq!(status, 200);
     assert_eq!(live["outcome"]["status"], "ok");
@@ -2431,20 +2432,26 @@ fn real_socket_exercises_lifecycle_commit_and_restart_replay() {
     assert_eq!(payload(&catalogue)["protocol_version"], 1);
     assert_eq!(
         payload(&catalogue)["endpoints"].as_array().unwrap().len(),
-        34
+        expected_catalogue.endpoints.len()
     );
     assert_eq!(
         payload(&catalogue)["websocket_endpoints"]
             .as_array()
             .unwrap()
             .len(),
-        1
+        expected_catalogue.websocket_endpoints.len()
     );
     let (status, openapi) = http(server.address, "GET", "/v1/schema/openapi", &[], &[]);
     assert_eq!(status, 200, "{openapi}");
     assert_eq!(payload(&openapi)["openapi"], "3.1.0");
-    assert_eq!(payload(&openapi)["x-rrd-endpoint-count"], 34);
-    assert_eq!(payload(&openapi)["x-rrd-websocket-endpoint-count"], 1);
+    assert_eq!(
+        payload(&openapi)["x-rrd-endpoint-count"],
+        expected_catalogue.endpoints.len()
+    );
+    assert_eq!(
+        payload(&openapi)["x-rrd-websocket-endpoint-count"],
+        expected_catalogue.websocket_endpoints.len()
+    );
     assert!(
         payload(&openapi)["paths"]["/v1/query"]["post"]["requestBody"]["content"]
             ["application/json"]["schema"]

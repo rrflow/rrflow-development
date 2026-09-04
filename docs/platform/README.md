@@ -153,9 +153,9 @@ gap, while G01 must first preserve one security authority.
 
 ## Code-backed migration facts
 
-- [`PLATFORM_TERMS`](../../crates/rrd-contract/src/platform.rs) is the
+- [`PLATFORM_TERMS`](../../crates/transport/rrd-contract/src/platform.rs) is the
   machine-readable mirror of this exact table and maps every public resource
-  term to [`ResourceKind`](../../crates/rrd-contract/src/lib.rs). Contract tests
+  term to [`ResourceKind`](../../crates/transport/rrd-contract/src/lib.rs). Contract tests
   fail on term/order drift and rejected public resource synonyms. Resource-path
   validation still checks uniqueness rather than enforcing every hierarchy
   shown above.

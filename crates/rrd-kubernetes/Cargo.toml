@@ -10,7 +10,7 @@ description = "Kubernetes CRD and reconciliation controller for secured RRD inst
 futures = "0.3"
 k8s-openapi = { version = "0.28", features = ["latest", "schemars"] }
 kube = { version = "4.2", features = ["runtime", "derive"] }
-rrd-contract = { path = "../rrd-contract" }
+rrd-contract = { path = "../transport/rrd-contract" }
 schemars = "1"
 serde = { workspace = true }
 serde_json = { workspace = true }

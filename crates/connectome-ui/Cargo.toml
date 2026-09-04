@@ -7,8 +7,8 @@ publish.workspace = true
 description = "Client-only developer workbench and visualizer for RRD instances"
 
 [dependencies]
-rrd-contract = { path = "../rrd-contract" }
-rrd-client = { path = "../rrd-client" }
+rrd-contract = { path = "../transport/rrd-contract" }
+rrd-client = { path = "../transport/rrd-client" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tiny_http = "0.12"
@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["net", "rt", "sync", "time"] }
 rrd-core = { path = "../kernel/rrd-core" }
 rrd-engine = { path = "../authority/rrd-engine" }
 rrd-security = { path = "../authority/rrd-security" }
-rrd-server = { path = "../rrd-server" }
+rrd-server = { path = "../transport/rrd-server" }
 rrd-store = { path = "../persistence/rrd-store" }
 tempfile = "3"
 
