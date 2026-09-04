@@ -33,6 +33,8 @@ struct GraphEdge {
     neighbor: RuntimeRef,
 }
 
+type VectorContextOutcome = (Vec<(RuntimeRef, u64)>, bool, usize);
+
 impl RrdEngine {
     /// Resolves a bounded context packet from the canonical runtime log.
     ///
@@ -447,7 +449,7 @@ impl RrdEngine {
         snapshot: &RuntimeDataSnapshot,
         records: &BTreeMap<RuntimeRef, RuntimeRecord>,
         candidates: &mut BTreeMap<String, ContextCandidate>,
-    ) -> Result<(Vec<(RuntimeRef, u64)>, bool, usize)> {
+    ) -> Result<VectorContextOutcome> {
         let mut eligible = self
             .embedding_backends
             .lock()
