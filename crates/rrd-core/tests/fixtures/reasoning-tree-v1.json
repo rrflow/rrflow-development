@@ -1,0 +1,145 @@
+{
+  "tree": {
+    "contract_version": 1,
+    "id": "workspace-context",
+    "revision": 1,
+    "root": "route-context",
+    "recipes": [
+      {
+        "id": "workspace-retrieval",
+        "revision": 3,
+        "kind": "context-retrieval",
+        "instruction_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "parameter_schema_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "output_schema_sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "route-context",
+        "kind": "recipe-router",
+        "recipe_id": "workspace-retrieval",
+        "terminal": false
+      },
+      {
+        "id": "context-ready",
+        "kind": "context-result",
+        "terminal": true,
+        "verification_requirement": "context-verified"
+      }
+    ],
+    "edges": [
+      {
+        "id": "retrieval-satisfied",
+        "kind": "branch",
+        "from": "route-context",
+        "to": "context-ready",
+        "conditions": [
+          {
+            "id": "relevant-context-found",
+            "predicate": {
+              "predicate": "snapshot",
+              "evaluator": "rrflowql",
+              "expression_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "advance": {
+    "contract_version": 1,
+    "before": {
+      "contract_version": 1,
+      "id": "cursor-01",
+      "tree_id": "workspace-context",
+      "tree_revision": 1,
+      "node_id": "route-context",
+      "step": 0,
+      "read": {
+        "contract_version": 1,
+        "scope": "instance:golden",
+        "schema_revision": 3,
+        "catalog_revision": 2,
+        "commit_cursor": 7,
+        "head_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "manifest_id": "ac559e3a071339b02aabcd86d3f5725696c1d2efaf8ebc9054f21eef195f6731"
+      }
+    },
+    "edge_id": "retrieval-satisfied",
+    "decision": {
+      "id": "decision-01",
+      "actor_kind": "local-model",
+      "actor_id": "lfg-router",
+      "cursor_id": "cursor-01",
+      "cursor_step": 0,
+      "read_manifest_sha256": "ac559e3a071339b02aabcd86d3f5725696c1d2efaf8ebc9054f21eef195f6731",
+      "selected_edge": "retrieval-satisfied",
+      "recipe": {
+        "recipe_id": "workspace-retrieval",
+        "recipe_revision": 3,
+        "parameters_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      "input_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "decided_at": 1301,
+      "condition_evaluations": [
+        {
+          "condition_id": "relevant-context-found",
+          "satisfied": true,
+          "evidence": [
+            {
+              "kind": "query-result",
+              "source": "rrflow://golden/query/result-7",
+              "content_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+              "observed_at": 1300,
+              "summary": "the observed artifact satisfied its declared check"
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "query-result",
+          "source": "rrflow://golden/query/result-7",
+          "content_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+          "observed_at": 1300,
+          "summary": "the observed artifact satisfied its declared check"
+        }
+      ]
+    },
+    "verifications": [
+      {
+        "id": "verification-01",
+        "requirement": "context-verified",
+        "status": "passed",
+        "checked_at": 1302,
+        "evidence": [
+          {
+            "kind": "test-result",
+            "source": "cargo test -p rrd-core",
+            "content_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+            "observed_at": 1302,
+            "summary": "the observed artifact satisfied its declared check"
+          }
+        ]
+      }
+    ],
+    "after": {
+      "contract_version": 1,
+      "id": "cursor-01",
+      "tree_id": "workspace-context",
+      "tree_revision": 1,
+      "node_id": "context-ready",
+      "step": 1,
+      "read": {
+        "contract_version": 1,
+        "scope": "instance:golden",
+        "schema_revision": 3,
+        "catalog_revision": 2,
+        "commit_cursor": 7,
+        "head_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "manifest_id": "ac559e3a071339b02aabcd86d3f5725696c1d2efaf8ebc9054f21eef195f6731"
+      }
+    }
+  }
+}

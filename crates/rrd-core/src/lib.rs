@@ -38,6 +38,7 @@ pub mod error;
 pub mod ident;
 pub mod key;
 pub mod reasoning;
+pub mod reasoning_tree;
 pub mod reference;
 pub mod runtime;
 pub mod schema;
@@ -59,6 +60,15 @@ pub use ident::{Predicate, Reader, Subject};
 pub use reasoning::{
     Check, CheckStatus, DecisionKind, Evidence, ReasoningEvent, ReasoningPayload, ReasoningRun,
     ReasoningState, RunOutcome,
+};
+pub use reasoning_tree::{
+    ReasoningActiveCursor, ReasoningCondition, ReasoningConditionEvaluation,
+    ReasoningConditionPredicate, ReasoningCursorAdvance, ReasoningDecisionEvidence, ReasoningEdge,
+    ReasoningEvidence, ReasoningNode, ReasoningRecipe, ReasoningRecipeSelection, ReasoningTree,
+    ReasoningVerificationResult, ReasoningVerificationStatus, MAX_REASONING_EDGE_CONDITIONS,
+    MAX_REASONING_EVIDENCE_ITEMS, MAX_REASONING_EVIDENCE_SOURCE_BYTES,
+    MAX_REASONING_EVIDENCE_SUMMARY_BYTES, MAX_REASONING_TREE_EDGES, MAX_REASONING_TREE_NODES,
+    MAX_REASONING_TREE_RECIPES, REASONING_TREE_CONTRACT_VERSION,
 };
 pub use runtime::{
     projection_family, AuditDecision, AuditEnvelope, DataTransaction, DataTransactionView,

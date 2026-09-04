@@ -352,6 +352,9 @@ exist; client-side phase labels are not evidence of implementation.
 
 Implemented now:
 
+- a versioned, provider-neutral reasoning-tree contract with typed nodes and
+  edges, content-addressed recipes/evidence, read-stamped cursors, and
+  fail-closed cursor-advance verification;
 - native durable runtime changes with exact read stamps and valid-time reads;
 - active claims and typed records resolved into the same context snapshot;
 - dynamic lexical retrieval over discoverable textual properties;
@@ -371,6 +374,9 @@ Implemented now:
 
 Not implemented or not yet production-grade:
 
+- reasoning-tree persistence and execution through `RrdEngine` are not yet
+  implemented; A-02 freezes their semantics but does not claim a running
+  router;
 - lexical indexing is rebuilt from the bounded snapshot per request; it is not
   yet an incrementally maintained persistent index;
 - context reads with row- or field-restricted data policies currently fail
@@ -419,20 +425,30 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **A-02**. The current uncommitted reasoning-ledger
-deletion does not satisfy A-03: it remains a proposed removal until A-02 proves
-where reusable tree, recipe, decision, and verification semantics belong and
-the A-03 behavioral tests pass.
+The next executable item is **A-03**. The current uncommitted reasoning-ledger
+deletion remains a proposed removal until its reusable evidence semantics are
+mapped to A-02 and the A-03 golden/API and focused behavioral tests pass.
 
 ### Gate A — freeze authority, names, and boundaries
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
 | [x] | A-01 | Define RRFlow, RRD, RRFlow kernel, rrflowKV, RRFlowQL, Arrow/DataFusion analytical path, LFG, and Connectome exactly once. | `README.md` | Terminology table, execution topology, and ownership table use one meaning for every term. |
-| [ ] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
+| [x] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
 | [ ] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
 | [ ] | A-04 | Move crates into the canonical grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [ ] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
+
+A-02 evidence (2026-09-04):
+
+- `crates/rrd-core/tests/fixtures/reasoning-tree-v1.json` is the shared frozen
+  wire vector used by the kernel and public contract.
+- The seven focused reasoning-tree tests reject unknown fields and versions,
+  malformed edge topology, missing condition evidence, missing verification,
+  mismatched edge selection, and changed read stamps.
+- `cargo test -p rrd-core -p rrd-contract` passed all 105 tests in the isolated
+  A-02 candidate tree, and `cargo clippy -p rrd-core -p rrd-contract
+  --all-targets -- -D warnings` passed.
 
 Gate A exits only when the worktree contains one architecture, the generic tree
 contract is frozen, and the obsolete lifecycle implementation is either

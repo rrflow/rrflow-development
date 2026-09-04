@@ -405,6 +405,7 @@ pub struct RuntimeCommitOutcome {
 /// manifest identity is stable across backends and becomes the parent identity
 /// of a native `RRD LSM` physical manifest later.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ReadStamp {
     pub contract_version: u16,
     pub scope: ScopeId,

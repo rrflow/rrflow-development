@@ -12,6 +12,7 @@ mod inference;
 mod memory_context;
 mod memory_estate;
 mod platform;
+mod reasoning_tree;
 mod sdk_conformance;
 
 pub use capability_surface::{
@@ -59,6 +60,16 @@ pub use memory_estate::{
     MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
 };
 pub use platform::{PlatformTermDefinition, PlatformTermRole, PLATFORM_TERMS};
+pub use reasoning_tree::{
+    ReasoningActiveCursor, ReasoningCondition, ReasoningConditionEvaluation,
+    ReasoningConditionPredicate, ReasoningCursorAdvance, ReasoningDecisionEvidence, ReasoningEdge,
+    ReasoningEvidence, ReasoningNode, ReasoningReadStamp, ReasoningRecipe,
+    ReasoningRecipeSelection, ReasoningTree, ReasoningVerificationResult,
+    ReasoningVerificationStatus, MAX_REASONING_EDGE_CONDITIONS, MAX_REASONING_EVIDENCE_ITEMS,
+    MAX_REASONING_EVIDENCE_SOURCE_BYTES, MAX_REASONING_EVIDENCE_SUMMARY_BYTES,
+    MAX_REASONING_TREE_EDGES, MAX_REASONING_TREE_NODES, MAX_REASONING_TREE_RECIPES,
+    REASONING_TREE_CONTRACT_VERSION,
+};
 pub use sdk_conformance::{
     SdkConformanceBackup, SdkConformanceChangefeed, SdkConformanceCorpus, SdkConformanceExpected,
     SdkConformanceIdentity, SdkConformanceSession, SdkConformanceTransaction, SdkConformanceVector,
