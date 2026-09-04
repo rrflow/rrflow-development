@@ -58,27 +58,30 @@ impl RrdEngine {
             "hybrid_text".into(),
             RuntimeValue::String(request.text_query.clone()),
         )]);
-        let query_catalogue = rrd_query::Catalog::capture_at(&self.storage, read.clone())
+        let pipeline = rrd_query::StampedQueryPipeline::new(&self.storage, read.clone())
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let bound = rrd_query::bind(&query, &parameters, &query_catalogue)
+        let bound = pipeline
+            .bind(&query, &parameters)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let text_plan =
-            rrd_query::plan(&bound).map_err(|error| ServiceError::Query(error.to_string()))?;
+        let text_plan = pipeline
+            .plan(&bound)
+            .map_err(|error| ServiceError::Query(error.to_string()))?;
         let candidate_limit = usize::try_from(request.candidate_k)
             .map_err(|_| ServiceError::Query("hybrid candidate_k exceeds usize".into()))?;
-        let text_execution = rrd_query::execute(
-            &self.storage,
-            &text_plan,
-            &rrd_query::ExecutionBudget {
-                max_scanned_changes: usize::try_from(request.max_scanned_changes)
-                    .map_err(|_| ServiceError::Query("hybrid scan budget exceeds usize".into()))?,
-                max_rows: candidate_limit,
-                max_output_bytes: 8 * 1024 * 1024,
-                max_batch_rows: candidate_limit.clamp(1, 1_024),
-                ..rrd_query::ExecutionBudget::default()
-            },
-        )
-        .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let text_execution = pipeline
+            .execute(
+                &text_plan,
+                &rrd_query::ExecutionBudget {
+                    max_scanned_changes: usize::try_from(request.max_scanned_changes).map_err(
+                        |_| ServiceError::Query("hybrid scan budget exceeds usize".into()),
+                    )?,
+                    max_rows: candidate_limit,
+                    max_output_bytes: 8 * 1024 * 1024,
+                    max_batch_rows: candidate_limit.clamp(1, 1_024),
+                    ..rrd_query::ExecutionBudget::default()
+                },
+            )
+            .map_err(|error| ServiceError::Query(error.to_string()))?;
         if text_execution.truncated {
             return Err(ServiceError::Query(
                 "hybrid BM25 candidates were truncated by the execution budget".into(),

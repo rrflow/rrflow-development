@@ -252,28 +252,32 @@ impl RetrievalExecutionContext<'_> {
             "retrieval_text".into(),
             RuntimeValue::String(text.to_owned()),
         )]);
-        let catalogue = rrd_query::Catalog::capture_at(&self.engine.storage, self.read.clone())
+        let pipeline =
+            rrd_query::StampedQueryPipeline::new(&self.engine.storage, self.read.clone())
+                .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let bound = pipeline
+            .bind(&query, &parameters)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let bound = rrd_query::bind(&query, &parameters, &catalogue)
+        let plan = pipeline
+            .plan(&bound)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let plan =
-            rrd_query::plan(&bound).map_err(|error| ServiceError::Query(error.to_string()))?;
         let limit = usize::try_from(limit)
             .map_err(|_| ServiceError::Query("retrieval keyword limit exceeds usize".into()))?;
-        let execution = rrd_query::execute(
-            &self.engine.storage,
-            &plan,
-            &rrd_query::ExecutionBudget {
-                max_scanned_changes: usize::try_from(self.request.max_scanned_changes).map_err(
-                    |_| ServiceError::Query("retrieval keyword budget exceeds usize".into()),
-                )?,
-                max_rows: limit,
-                max_output_bytes: 8 * 1024 * 1024,
-                max_batch_rows: limit.clamp(1, 1_024),
-                ..rrd_query::ExecutionBudget::default()
-            },
-        )
-        .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let execution = pipeline
+            .execute(
+                &plan,
+                &rrd_query::ExecutionBudget {
+                    max_scanned_changes: usize::try_from(self.request.max_scanned_changes)
+                        .map_err(|_| {
+                            ServiceError::Query("retrieval keyword budget exceeds usize".into())
+                        })?,
+                    max_rows: limit,
+                    max_output_bytes: 8 * 1024 * 1024,
+                    max_batch_rows: limit.clamp(1, 1_024),
+                    ..rrd_query::ExecutionBudget::default()
+                },
+            )
+            .map_err(|error| ServiceError::Query(error.to_string()))?;
         if execution.truncated
             || execution.read_manifest != self.read.manifest_id
             || execution.known_at_cursor != self.read.commit_cursor
