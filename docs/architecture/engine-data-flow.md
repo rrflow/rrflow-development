@@ -109,6 +109,12 @@ for high-frequency writes, current state, CAS, and bounded range reads. A
 stamped analytical scan merges the visible memtable delta with immutable
 segment pages before returning a batch.
 
+The checkout has not reached that layout. Its
+[current physical-format reference](../reference/storage/rrflowkv-current-format.md)
+records the implemented v3 LZ4 row-block segments, frozen bytes, recovery
+rules, and removable legacy readers without promoting them into target
+architecture.
+
 ## Conditional zero-copy
 
 Memory mapping alone is not a universal zero-copy guarantee. A segment page

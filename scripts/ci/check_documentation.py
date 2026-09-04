@@ -16,6 +16,9 @@ OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
 ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
+RRFLOWKV_CURRENT_FORMAT = (
+    ROOT / "docs" / "reference" / "storage" / "rrflowkv-current-format.md"
+)
 HISTORICAL_QUERY_PLAN = (
     ROOT / "docs" / "history" / "rrd-arrow-datafusion-bm25-plan.md"
 )
@@ -24,6 +27,57 @@ LEGACY_MILESTONE = re.compile(r"\b(?:F\d|G\d{2}-W\d+|M\d|Q\d)\b")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
 REFERENCE_LINK = re.compile(r"(?m)^\[[^\]\n]+\]:\s*(\S+)")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
+RRFLOW_COORDINATE = re.compile(
+    r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$"
+)
+CANONICAL_DIRECTORIES = (
+    "architecture",
+    "objectives",
+    "roadmap",
+    "poam",
+    "reference",
+    "history",
+)
+
+
+def header_field(source: str, name: str) -> str | None:
+    """Read one Markdown metadata field without coupling policy to bold style."""
+    for line in source.splitlines()[:12]:
+        normalized = line.replace("**", "").strip()
+        prefix = f"{name}:"
+        if normalized.casefold().startswith(prefix.casefold()):
+            value = normalized[len(prefix) :].strip()
+            return value or None
+    return None
+
+
+def canonical_records() -> list[Path]:
+    records: list[Path] = []
+    for directory in CANONICAL_DIRECTORIES:
+        records.extend(sorted((ROOT / "docs" / directory).rglob("*.md")))
+    return records
+
+
+def index_links_record(record: Path) -> bool:
+    if record.name == "README.md":
+        if record.parent == ROOT / "docs":
+            return True
+        parent_index = record.parent.parent / "README.md"
+        accepted_targets = {record.resolve(), record.parent.resolve()}
+    else:
+        parent_index = record.parent / "README.md"
+        accepted_targets = {record.resolve()}
+    if not parent_index.is_file():
+        return False
+    source = parent_index.read_text(encoding="utf-8")
+    links = [*INLINE_LINK.findall(source), *REFERENCE_LINK.findall(source)]
+    for raw in links:
+        target = local_target(raw)
+        if target is None:
+            continue
+        if (parent_index.parent / target).resolve() in accepted_targets:
+            return True
+    return False
 
 
 def supporting_documents() -> list[Path]:
@@ -54,6 +108,7 @@ def main() -> int:
     required_warps = (
         "docs/README.md",
         "docs/architecture/engine-data-flow.md",
+        "docs/reference/storage/rrflowkv-current-format.md",
         "docs/objectives/rrflow-1.0-alpha.md",
         "docs/roadmap/rrflow-1.0.md",
         "docs/poam/rrflow-1.0-alpha.md",
@@ -67,6 +122,8 @@ def main() -> int:
     docs_index = DOCS_INDEX.read_text(encoding="utf-8")
     if "## Documentation taxonomy" not in docs_index:
         failures.append("docs/README.md does not define the documentation taxonomy")
+    if "## Record header and indexing pattern" not in docs_index:
+        failures.append("docs/README.md does not define the record/index pattern")
     for directory in (
         "architecture/",
         "objectives/",
@@ -115,6 +172,8 @@ def main() -> int:
         failures.append("the engine data-flow owner has no durable coordinate")
     if (ROOT / "docs" / "rrd-arrow-datafusion-bm25-plan.md").exists():
         failures.append("the superseded Q1-Q4 query plan remains active and flat")
+    if (ROOT / "docs" / "rrd-lsm-format.md").exists():
+        failures.append("the rrflowKV physical-format reference remains active and flat")
     historical_query_plan = HISTORICAL_QUERY_PLAN.read_text(encoding="utf-8")
     if "historical" not in "\n".join(historical_query_plan.splitlines()[:12]).lower():
         failures.append("the superseded Q1-Q4 query plan is not marked historical")
@@ -128,6 +187,50 @@ def main() -> int:
         failures.append("the owning RRFlow 1.0 roadmap has no durable coordinate")
     if "## Required outcomes" in roadmap or "## Open deficiencies" in roadmap:
         failures.append("the roadmap duplicates objective or POA&M ownership")
+
+    current_format = RRFLOWKV_CURRENT_FORMAT.read_text(encoding="utf-8")
+    for required_section in (
+        "## Current and target boundary",
+        "## Concrete fixture and failure examples",
+        "## Executable proof",
+    ):
+        if required_section not in current_format:
+            failures.append(
+                f"the rrflowKV current-format reference lacks {required_section}"
+            )
+    if "not the accepted RRFlow 1.0 target" not in current_format:
+        failures.append("the current row format is not separated from the 1.0 target")
+
+    coordinates: dict[str, Path] = {}
+    for record in canonical_records():
+        source = record.read_text(encoding="utf-8")
+        relative = record.relative_to(ROOT)
+        status_value = header_field(source, "Status")
+        coordinate = header_field(source, "Coordinate")
+        owner = header_field(source, "Owner")
+        active = status_value is not None and status_value.casefold().startswith(
+            "active"
+        )
+        if active and coordinate is None:
+            failures.append(f"{relative}: active record has no stable Coordinate")
+        if active and owner is None:
+            failures.append(f"{relative}: active record has no Owner")
+        if active and not index_links_record(record):
+            failures.append(f"{relative}: active record is absent from its parent index")
+        if coordinate is not None:
+            normalized_coordinate = coordinate.strip("`")
+            if RRFLOW_COORDINATE.fullmatch(normalized_coordinate) is None:
+                failures.append(
+                    f"{relative}: Coordinate is not a canonical path-safe rrflow URI"
+                )
+            prior = coordinates.get(normalized_coordinate)
+            if prior is not None:
+                failures.append(
+                    f"{relative}: duplicate Coordinate also owned by "
+                    f"{prior.relative_to(ROOT)}"
+                )
+            else:
+                coordinates[normalized_coordinate] = record
 
     documents = supporting_documents()
     for document in documents:
@@ -182,7 +285,8 @@ def main() -> int:
         return 1
     print(
         "documentation-policy: OK: "
-        f"knowledge ownership, {len(documents)} document statuses, and local links"
+        f"knowledge ownership, {len(documents)} document statuses, "
+        f"{len(coordinates)} classified coordinates, parent indexes, and local links"
     )
     return 0
 

@@ -20,6 +20,32 @@ Every active knowledge record must have:
 - explicit supersession links when replaced, rather than compatibility copies;
 - machine-checkable identifiers that survive Markdown-to-rrflowKV ingestion.
 
+## Record header and indexing pattern
+
+An active record starts with this machine-readable shape:
+
+```markdown
+# Human-readable subject
+
+**Status:** active <honest maturity or qualification>
+**Coordinate:** `rrflow://rrflow-instance/data/<record-kind>/<stable-id>`
+**Owner:** <the one subject this record is allowed to define>
+```
+
+The coordinate is an identifier, not a checkout path. It must be unique across
+the classified memory tree. The record's nearest parent `README.md` must list
+both that coordinate and its relative checkout fallback. Nested index records
+follow the same rule and are linked from their parent index. This gives both a
+future rrflowKV lookup and a working repository lookup without duplicating the
+record body.
+
+For a concrete current example, the [reference index](reference/) routes to
+the [storage index](reference/storage/), which routes to the
+[rrflowKV current-format record](reference/storage/rrflowkv-current-format.md).
+The last record owns implemented bytes and tests only; it links back to the
+architecture, roadmap, and POA&M instead of restating their decisions or
+status.
+
 A directory exists only when it owns at least one real record. Empty taxonomy
 scaffolding is not added merely to make the tree look complete.
 
