@@ -26,6 +26,22 @@ fn public_reasoning_schema_round_trips_the_kernel_golden() {
         serde_json::to_value(&contract.tree).unwrap(),
         serde_json::to_value(kernel).unwrap()
     );
+    assert_eq!(
+        rrd_contract::REASONING_TREE_CONTRACT_VERSION,
+        rrd_core::REASONING_TREE_CONTRACT_VERSION
+    );
+    assert_eq!(
+        rrd_contract::MAX_REASONING_TREE_NODES,
+        rrd_core::MAX_REASONING_TREE_NODES
+    );
+    assert_eq!(
+        rrd_contract::MAX_REASONING_TREE_EDGES,
+        rrd_core::MAX_REASONING_TREE_EDGES
+    );
+    assert_eq!(
+        rrd_contract::MAX_REASONING_TREE_RECIPES,
+        rrd_core::MAX_REASONING_TREE_RECIPES
+    );
 }
 
 #[test]
@@ -44,17 +60,29 @@ fn public_reasoning_schema_is_closed_and_versioned() {
 
 #[test]
 fn public_validation_rejects_invalid_edges_and_unverifiable_advances() {
-    let expected: serde_json::Value = serde_json::from_str(include_str!(
+    let golden: serde_json::Value = serde_json::from_str(include_str!(
         "../../rrd-core/tests/fixtures/reasoning-tree-v1.json"
     ))
     .unwrap();
-    let contract: GoldenReasoningContract = serde_json::from_value(expected).unwrap();
+    let contract: GoldenReasoningContract = serde_json::from_value(golden.clone()).unwrap();
 
-    let mut invalid_tree = contract.tree.clone();
-    invalid_tree.edges[0].to = rrd_contract::CanonicalId::new("missing-node").unwrap();
-    assert!(invalid_tree.validate().is_err());
+    let mut invalid_tree_json = golden["tree"].clone();
+    invalid_tree_json["edges"][0]["to"] = serde_json::json!("missing-node");
+    let invalid_public_tree: ReasoningTree =
+        serde_json::from_value(invalid_tree_json.clone()).unwrap();
+    let invalid_kernel_tree: rrd_core::ReasoningTree =
+        serde_json::from_value(invalid_tree_json).unwrap();
+    assert!(invalid_public_tree.validate().is_err());
+    assert!(invalid_kernel_tree.validate().is_err());
 
-    let mut invalid_advance = contract.advance;
-    invalid_advance.decision.condition_evaluations.clear();
-    assert!(invalid_advance.validate(&contract.tree).is_err());
+    let mut invalid_advance_json = golden["advance"].clone();
+    invalid_advance_json["decision"]["condition_evaluations"] = serde_json::json!([]);
+    let invalid_public_advance: ReasoningCursorAdvance =
+        serde_json::from_value(invalid_advance_json.clone()).unwrap();
+    let invalid_kernel_advance: rrd_core::ReasoningCursorAdvance =
+        serde_json::from_value(invalid_advance_json).unwrap();
+    let kernel_tree: rrd_core::ReasoningTree =
+        serde_json::from_value(golden["tree"].clone()).unwrap();
+    assert!(invalid_public_advance.validate(&contract.tree).is_err());
+    assert!(invalid_kernel_advance.validate(&kernel_tree).is_err());
 }

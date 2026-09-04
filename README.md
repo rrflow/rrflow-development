@@ -449,6 +449,9 @@ A-02 evidence (2026-09-04):
 - `cargo test -p rrd-core -p rrd-contract` passed all 105 tests in the isolated
   A-02 candidate tree, and `cargo clippy -p rrd-core -p rrd-contract
   --all-targets -- -D warnings` passed.
+- `public_contract_and_client_stay_implementation_free` proves `rrd-contract`
+  retains zero production workspace dependencies; `rrd-core` is used only by
+  the cross-boundary conformance test.
 
 Gate A exits only when the worktree contains one architecture, the generic tree
 contract is frozen, and the obsolete lifecycle implementation is either
