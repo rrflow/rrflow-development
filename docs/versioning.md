@@ -6,6 +6,14 @@ authority for product identity, current status, architecture, and roadmap.
 RRFlow's canonical current release-train version is `1.0.0`. The checked-in
 `VERSION` file is the human- and automation-readable source of truth.
 
+The version is intentionally frozen while RRFlow converges on its first alpha
+baseline. Pre-alpha, alpha, optimized, stable, and releasable are evidence
+states recorded by the objective and roadmap; they are not inferred from the
+numeric version. Do not increment or decrement `VERSION` to advertise partial
+progress. The repository owner must explicitly authorize any later version
+change after the alpha objective, optimization evidence, and release decision
+are complete.
+
 All Rust workspace crates inherit the same value from `[workspace.package]`.
 The supported TypeScript, Python, Java, and .NET client packages use the exact
 same release version.

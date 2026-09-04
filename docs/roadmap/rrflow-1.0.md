@@ -1,6 +1,6 @@
 # RRFlow 1.0 release roadmap
 
-**Status:** active canonical release plan for the RRFlow 1.0 pre-alpha
+**Status:** active canonical release plan; 1.0.0 is frozen and the alpha baseline is not established
 **Coordinate:** `rrflow://rrflow-instance/data/roadmap/rrflow-1.0`
 **Owner:** release planning; linked from the repository root `README.md`
 
@@ -9,41 +9,13 @@ This is the single detailed RRFlow 1.0 execution record. The repository root
 identity and current status. Supporting design, research, and evidence records
 may inform this roadmap but cannot silently change its gates or completion.
 
-## First usable alpha
+## Current alpha objective and remediation
 
-The first usable alpha is one per-project AI estate that helps drive the
-project's development, maintenance, processes, governance, reasoning, and
-recall. It does not replace the project's SQL, PostgreSQL, Turso, object, or
-operator databases; those remain governed external sources. The RRFlow estate
-owns only its canonical AI knowledge, temporal graph, reasoning state, indexes,
-evidence, automation state, and derived analytical working sets.
-
-The intended synthesis is explicit:
-
-- SurrealDB-like multi-model records, temporal relations, transactions, live
-  deltas, and schema-aware query ingress, without importing another database
-  as a hidden authority;
-- Qdrant-like named vector collections, payload filters, HNSW candidates, exact
-  reranking, and measurable recall, implemented as RRFlow index projections;
-- Arrow/DataFusion columnar execution for broad analytical work over stamped,
-  streamed access paths rather than an eager copy of the whole estate;
-- rrflowMX for the non-durable process-local profile and rrflowKV for the
-  persistent WAL/MVCC/LSM profile, both below the same `RrdEngine` semantics;
-- engine-owned reasoning trees, context routing, attunement, triggers,
-  routines, and skills, all explicit, authorized, resumable, and observable.
-
-None of the following alpha outcomes is complete merely because constituent
-types or partial implementations exist:
-
-| Done | Alpha outcome | Required gates | End-to-end proof |
-|---|---|---|---|
-| [ ] | Per-project bootstrap | B, C, D | A versioned generic template installs a new or existing project, creates one estate, authenticates, attunes, closes, and reopens without manual repair. |
-| [ ] | Volatile-to-persistent semantics | C | The same transaction and read corpus passes on rrflowMX and rrflowKV; rrflowKV alone survives crash/reopen and contains no compatibility backend. |
-| [ ] | Native multi-model access | C, E | Records, temporal graph edges, scalar/unique keys, BM25, vectors, and projection deltas commit atomically and execute through bounded native access paths. |
-| [ ] | Real analytical path | F | RRFlowQL streams stamped rrflowKV batches into Arrow/DataFusion with pushdown, spill, memory, time, scan, and output enforcement. |
-| [ ] | Dynamic reasoning and recall | G, H | One authorized request selects fast or analytical work, routes graph/BM25/vector/RRF context, advances a persisted tree, and returns evidence from one read stamp. |
-| [ ] | Adaptive project operation | D, I | Committed project changes schedule only required attunement phases and activate eligible capabilities, routines, and skills under explicit estate policy. |
-| [ ] | Usable external system | H, J | HTTP, WebSocket, SDKs, CLI/MCP, LFG, and Connectome observe the same operations in a real installed project with correlated traces and restart evidence. |
+The [RRFlow 1.0 alpha objective](../objectives/rrflow-1.0-alpha.md) owns the
+measurable outcome and its current evidence classification. The
+[RRFlow 1.0 alpha POA&M](../poam/rrflow-1.0-alpha.md) owns verified deficiencies
+and maps each one back to the gates below. This roadmap owns only dependency
+order, checkboxes, and accepted completion evidence.
 
 Roadmap completion currently stands at:
 
@@ -51,7 +23,7 @@ Roadmap completion currently stands at:
 |---|---|---:|
 | A | authority, naming, documentation memory, and source boundaries | 5 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 2 / 5 |
-| C | sole persistent rrflowKV substrate | 0 / 6 |
+| C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
 | F | streamed Arrow/DataFusion analytical execution | 0 / 5 |
@@ -239,7 +211,8 @@ golden vectors without importing Rust internals.
 | [ ] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, and durable projection deltas as one write batch. | `rrd-store`, `rrd-engine` | Failure injection at every WAL/batch boundary proves all-or-nothing behavior after reopen. |
 | [ ] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [ ] | C-05 | Remove Fjall selection, compatibility readers, migration-only runtime paths, legacy format branching, and associated dependencies from the 1.0 executable. | `rrd-store`, workspace | Fresh native database tests pass; repository search and dependency metadata contain no Fjall/compatibility execution path. |
-| [ ] | C-06 | Prove WAL recovery, manifest recovery, pinned-snapshot compaction, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix and reopen suite pass repeatedly with no lost acknowledged write or exposed partial batch. |
+| [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property tests, exact differential reads, selective-scan counters, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all decoded, copied, and allocated bytes are reported. |
+| [ ] | C-07 | Prove WAL recovery, manifest recovery, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, and reopen suite pass repeatedly with no lost acknowledged write, dangling mapped buffer, or exposed partial batch. |
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.
@@ -248,7 +221,7 @@ its correctness is demonstrated below the semantic engine.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | D-01 | Implement `rrflow install` by resolving a versioned generic project-bootstrap template and attunement profile, with explicit new/existing-project modes, preview/apply behavior, and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. | `rrflow-cli`, `rrd-engine` | Template golden tests are provider-neutral; fresh and existing project tests initialize, authenticate, close, and reopen the same instance; preview performs no writes. |
+| [ ] | D-01 | Implement `rrflow install` by resolving a versioned generic project-bootstrap template, provider-neutral specialization manifest, and attunement profile, with explicit new/existing-project modes, preview/apply behavior, and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. | `rrflow-cli`, `rrd-engine` | Template golden tests prove `AGENTS.md` is the single instruction body and any supported provider files are forwarding stubs; fresh and existing project tests preserve user content, initialize, authenticate, close, and reopen the same instance; preview performs no writes. |
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
 | [ ] | D-03 | Implement only the inventory phase first: ignore rules, secret/generated/cache exclusions, content digests, source classification, and bounded work estimates. | `rrd-attunement` through `rrd-engine` | This repository inventories without `target`, `node_modules`, `.git`, RRFlow database files, or secret payloads; unchanged rerun performs no content work. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing with parser/language revision and source-digest provenance. | `rrd-attunement` through `rrd-engine` | Edit-one-file test reparses the changed source, preserves unaffected identities, and resumes after process restart. |
@@ -280,8 +253,8 @@ bounded storage access paths with exact fallbacks.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | F-01 | Replace pre-materialized `Vec<QueryRow>` snapshots with a stamped `RrflowKvTableProvider` streaming bounded Arrow `RecordBatch` values from rrflowKV snapshots. | `rrd-query` | Provider tests prove batch streaming and fixed memory bounds on a data set larger than the allowed query memory. |
-| [ ] | F-02 | Push supported projection, predicate, limit, and ordering requirements into rrflowKV scans; report unsupported predicates honestly. | `rrd-query`, `rrd-store` | Explain/physical-counter tests show fewer decoded values and bytes for selective queries while results equal the unoptimized oracle. |
+| [ ] | F-01 | Replace pre-materialized `Vec<QueryRow>` snapshots with a stamped `RrflowKvTableProvider` streaming bounded Arrow `RecordBatch` values from rrflowKV memtables and immutable segment pages. DataFusion receives borrowed buffers only when the physical encoding is eligible and receives pool-owned decoded buffers otherwise. | `rrd-query`, `rrd-store` | Provider tests prove batch streaming, buffer lifetime safety, fixed memory bounds on data larger than query memory, and exact results across borrowed and decoded paths. |
+| [ ] | F-02 | Push supported projection, predicate, limit, and ordering requirements into rrflowKV key/page scans; report unsupported predicates honestly and account for physical I/O, decoded, copied, and allocated bytes. | `rrd-query`, `rrd-store` | Explain and physical-counter tests show less I/O and decoding for selective queries while results equal the unoptimized oracle; no test equates memory mapping with universal zero-copy. |
 | [ ] | F-03 | Implement graph expansion, BM25 candidate generation, HNSW candidate generation, and `math::rrf()` as native physical operators that exchange stamped Arrow batches with DataFusion. | `rrd-query`, `rrd-vector` | Mixed query tests prove one stamp, deterministic ordering, exact reranking, and no external database round trip. |
 | [ ] | F-04 | Enforce query memory, spill, elapsed-time, scanned-key, graph-step, candidate, and result-byte budgets across native and DataFusion operators. | `rrd-query`, `rrd-engine` | Each limit has a deterministic truncation or denial fixture with measured resource evidence. |
 | [ ] | F-05 | Add read-stamp/query/projection caches with byte accounting and cursor/schema invalidation. | `rrd-engine`, `rrd-query` | Repeated-query benchmark shows bounded reuse; mutation and schema tests prove stale batches are never returned. |

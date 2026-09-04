@@ -29,7 +29,9 @@ scaffolding is not added merely to make the tree look complete.
 |---|---|---|
 | `architecture/` | system context, boundaries, dependency direction, and end-to-end data flows | delivery order or test results |
 | `decisions/` | accepted or superseded architecture decision records and rationale | speculative research |
+| `objectives/` | measurable release outcomes and their acceptance conditions | delivery order or remediation tracking |
 | `roadmap/` | versioned outcomes, ordered gates, acceptance criteria, and completion ledger | architecture definitions duplicated from their owner |
+| `poam/` | observed deficiencies, risk, gate mapping, and closure evidence | aspirational features or a second delivery sequence |
 | `reference/` | protocols, schemas, configuration, commands, and stable terminology detail | tutorials or planning |
 | `guides/` | task-oriented installation, development, attunement, and troubleshooting procedures | normative architecture |
 | `operations/` | deployment, observability, backup, recovery, and incident runbooks | product semantics |
@@ -56,7 +58,10 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 
 | Subject | Owner |
 |---|---|
+| RRFlow 1.0 alpha outcomes | [`objectives/`](objectives/) |
 | RRFlow 1.0 delivery | [`roadmap/`](roadmap/) |
+| RRFlow 1.0 alpha deficiencies and remediation | [`poam/`](poam/) |
+| Stable provider-neutral contracts | [`reference/`](reference/) |
 | Operations and CI | [`operations/`](operations/) |
 | Platform vocabulary research | [`platform/research/`](platform/research/) |
 | Machine evidence | [`evidence/`](evidence/) |

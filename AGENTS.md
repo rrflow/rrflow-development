@@ -6,6 +6,23 @@ record for each detailed subject. The RRFlow 1.0 release checklist is owned by
 `docs/roadmap/rrflow-1.0.md`. Other Markdown files are supporting design notes,
 contracts, evidence, or history and cannot override either owning record.
 
+`AGENTS.md` is the provider-neutral instruction entry point for repository
+work. Provider-specific instruction files may import or point to this file, but
+must not copy its rules or create another product, planning, recall, or
+lifecycle authority. The planning chain is:
+
+1. `README.md` owns identity, invariants, current maturity, and warp points.
+2. `docs/objectives/rrflow-1.0-alpha.md` owns the measurable alpha outcomes.
+3. `docs/roadmap/rrflow-1.0.md` owns dependency order and completion evidence.
+4. `docs/poam/rrflow-1.0-alpha.md` owns the open-gap and remediation ledger.
+5. Supporting records explain or prove one of those owners and cannot change
+   their status independently.
+
+The product version is frozen at `1.0.0` during pre-release convergence. Do
+not use version changes as progress markers. A later version change requires
+the repository owner's explicit instruction after the alpha objective, release
+gates, optimization evidence, and release decision are complete.
+
 For project work:
 
 1. Read `README.md` and follow its relevant owner warp point, then inspect the
@@ -16,6 +33,9 @@ For project work:
    contracts; do not add provider-specific state or a parallel source of truth.
 4. Verify with the smallest relevant test first, then the owning package suite.
 5. Report what actually passed, what failed, and what was not run.
+6. Treat existing types, files, compilation, and mocks as implementation
+   inventory, not proof. Update objective, roadmap, or POA&M status only with
+   the acceptance evidence named by the owning record.
 
 RRFlow has no editor- or provider-owned automatic hooks. Recall, reasoning
 lifecycle, and mutation authorization are explicit capabilities composed

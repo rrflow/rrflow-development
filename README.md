@@ -13,9 +13,11 @@ RRFlow 1.0 release checklist is owned by
 may supply design, research, contracts, or evidence, but cannot silently
 override an owning record.
 
-The target release-train version is `1.0.0`. The current maturity is
-**pre-alpha**; the version identifies the contract line being built and is not
-a claim that the RRFlow 1.0 system is complete or release-ready.
+The target release-train version is `1.0.0`. It is frozen while the first alpha
+baseline is established. The current maturity is **pre-alpha**; the
+version identifies the contract line being built and is not a claim that the
+RRFlow 1.0 system is complete, optimized, stable, or release-ready. Progress is
+recorded as objective and gate evidence rather than version increments.
 
 ## Canonical RRFlow 1.0 terminology
 
@@ -30,12 +32,12 @@ independent stores.
 | **`RrdEngine`** | The sole in-process composition root and semantic authority for database, graph, memory, query, and context operations. |
 | **RRFlow kernel** | The canonical temporal values, identities, read stamps, mutations, and invariants implemented in `rrd-core`. The kernel defines meaning but does not own transport or physical storage. |
 | **canonical runtime log** | The ordered source of truth for committed RRFlow changes. Temporal snapshots are resolved from this log. |
-| **rrflowKV** | RRFlow's native ordered MVCC/LSM physical layer, implemented by `rrd-lsm` and adapted through `rrd-store`. One semantic engine commit becomes one atomic rrflowKV write batch. rrflowKV is not a second engine or public data model. |
+| **rrflowKV** | RRFlow's native hybrid MVCC/LSM physical layer, implemented by `rrd-lsm` and adapted through `rrd-store`. Its target layout combines a WAL and mutable MVCC memtable with immutable segments containing an ordered key/version spine and Arrow-compatible column pages. One semantic engine commit becomes one atomic rrflowKV write batch. rrflowKV is not a second engine or public data model. |
 | **rrflowMX** | RRFlow's process-local, non-durable implementation of the same semantic storage port. It supports volatile and conformance execution through `RrdEngine`; it is not a persistent RRFlow database, a cache, an Arrow working set, or another semantic authority. |
 | **RRFlow temporal graph** | Typed records and relations resolved at a runtime read stamp and valid-time coordinate from the same canonical log. It is not a separate graph database. |
 | **RRFlow memory** | Durable temporal knowledge—claims, records, relations, schemas, vectors, and evidence—owned by the same engine. It is not a separate memory store. |
 | **RRFlowQL** | RRFlow's query language. Use **RRFlowQL**, not the ambiguous shorthand “QL,” in product documentation. |
-| **Arrow working set** | Typed, immutable, rebuildable columnar batches bound to an RRFlow read stamp. Arrow is the hot analytical representation, not the mutable LSM or source of truth. |
+| **Arrow substrate** | The shared columnar buffer model for eligible immutable rrflowKV segment columns and stamped in-memory `RecordBatch` streams. Published canonical segment values may be authoritative; caches and index projections remain rebuildable. Arrow buffers do not own transactions, mutable state, or authorization. |
 | **DataFusion execution** | Vectorized physical evaluation over stamped Arrow batches after RRFlow selects authoritative KV, graph, lexical, or vector access paths. DataFusion is not the database authority. |
 | **fast path** | Low-latency state, pointer, and bounded graph navigation performed by `RrdEngine` directly against rrflowKV without invoking DataFusion. |
 | **analytical path** | RRFlowQL planning plus native graph, lexical, vector, and RRF operators composed with Arrow/DataFusion for broad retrieval, ingestion, joins, and analytics. |
@@ -96,7 +98,10 @@ HTTP / WebSocket / native SDK / embedded caller
                   |                     |
        rrflowMX volatile state    rrflowKV write batch
                                         |
-                              WAL -> memtable -> segments
+                              WAL -> MVCC memtable
+                                   -> immutable segments
+                                      key/version spine
+                                      + Arrow-compatible pages
                   +----------+----------+
                              |
                    changefeed / live deltas
@@ -402,10 +407,14 @@ Implemented now:
 
 Not implemented or not yet production-grade:
 
+- rrflowKV immutable segment v3 is currently a compressed row-record block
+  format. It does not yet contain the target key/version spine plus
+  Arrow-compatible column pages, expose borrowed Arrow buffers, or report
+  copied, decoded, and allocated bytes per read;
 - RRFlowQL currently materializes authoritative source rows before constructing
-  stamped Arrow batches; DataFusion execution is real, but the bounded streaming
-  rrflowKV table provider, scan pushdown, and native mixed operators required by
-  Gate F are not implemented;
+  newly allocated stamped Arrow batches; DataFusion execution is real, but the
+  bounded streaming rrflowKV table provider, conditional zero-copy path, scan
+  pushdown, and native mixed operators required by Gate F are not implemented;
 - reasoning-tree persistence and execution, router-backend dispatch, and the
   LFG adapter are not yet implemented; A-02 and B-02 freeze their semantics
   but do not claim a running router;
@@ -443,10 +452,15 @@ one owning document, one stable `rrflow://` coordinate, and one local fallback:
 | Memory | Durable warp | Checkout fallback |
 |---|---|---|
 | Knowledge structure and ownership | [`rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map`](rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map) | [`docs/README.md`](docs/README.md) |
+| RRFlow 1.0 alpha objectives | [`rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha) | [`docs/objectives/rrflow-1.0-alpha.md`](docs/objectives/rrflow-1.0-alpha.md) |
 | RRFlow 1.0 release roadmap | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`docs/roadmap/rrflow-1.0.md`](docs/roadmap/rrflow-1.0.md) |
+| RRFlow 1.0 alpha POA&M | [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha) | [`docs/poam/rrflow-1.0-alpha.md`](docs/poam/rrflow-1.0-alpha.md) |
+| Provider-neutral agent bootstrap | [`rrflow://rrflow-instance/data/reference/agent-bootstrap`](rrflow://rrflow-instance/data/reference/agent-bootstrap) | [`docs/reference/agent-bootstrap.md`](docs/reference/agent-bootstrap.md) |
 
-The detailed release gates, completion ledger, and acceptance evidence live
-only in the linked roadmap record. The next executable item is
+The objective defines the result, the roadmap orders delivery, and the POA&M
+tracks observed deficiencies and their closure evidence. The records link by
+stable identifiers and do not repeat each other's authority. The next
+executable item is
 [A-06](docs/roadmap/rrflow-1.0.md#gate-a--freeze-authority-names-and-boundaries);
 B-03 is paused until documentation ownership and source-boundary terminology
 are aligned.
