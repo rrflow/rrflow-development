@@ -429,6 +429,57 @@ Not implemented or not yet production-grade:
 These are material gaps. A successful compile is not evidence that context
 flows correctly, and none of the gaps above is represented as complete.
 
+## First usable alpha
+
+The first usable alpha is one per-project AI estate that helps drive the
+project's development, maintenance, processes, governance, reasoning, and
+recall. It does not replace the project's SQL, PostgreSQL, Turso, object, or
+operator databases; those remain governed external sources. The RRFlow estate
+owns only its canonical AI knowledge, temporal graph, reasoning state, indexes,
+evidence, automation state, and derived analytical working sets.
+
+The intended synthesis is explicit:
+
+- SurrealDB-like multi-model records, temporal relations, transactions, live
+  deltas, and schema-aware query ingress, without importing another database
+  as a hidden authority;
+- Qdrant-like named vector collections, payload filters, HNSW candidates, exact
+  reranking, and measurable recall, implemented as RRFlow index projections;
+- Arrow/DataFusion columnar execution for broad analytical work over stamped,
+  streamed access paths rather than an eager copy of the whole estate;
+- rrflowMX for the non-durable process-local profile and rrflowKV for the
+  persistent WAL/MVCC/LSM profile, both below the same `RrdEngine` semantics;
+- engine-owned reasoning trees, context routing, attunement, triggers,
+  routines, and skills, all explicit, authorized, resumable, and observable.
+
+None of the following alpha outcomes is complete merely because constituent
+types or partial implementations exist:
+
+| Done | Alpha outcome | Required gates | End-to-end proof |
+|---|---|---|---|
+| [ ] | Per-project bootstrap | B, C, D | A versioned generic template installs a new or existing project, creates one estate, authenticates, attunes, closes, and reopens without manual repair. |
+| [ ] | Volatile-to-persistent semantics | C | The same transaction and read corpus passes on rrflowMX and rrflowKV; rrflowKV alone survives crash/reopen and contains no compatibility backend. |
+| [ ] | Native multi-model access | C, E | Records, temporal graph edges, scalar/unique keys, BM25, vectors, and projection deltas commit atomically and execute through bounded native access paths. |
+| [ ] | Real analytical path | F | RRFlowQL streams stamped rrflowKV batches into Arrow/DataFusion with pushdown, spill, memory, time, scan, and output enforcement. |
+| [ ] | Dynamic reasoning and recall | G, H | One authorized request selects fast or analytical work, routes graph/BM25/vector/RRF context, advances a persisted tree, and returns evidence from one read stamp. |
+| [ ] | Adaptive project operation | D, I | Committed project changes schedule only required attunement phases and activate eligible capabilities, routines, and skills under explicit estate policy. |
+| [ ] | Usable external system | H, J | HTTP, WebSocket, SDKs, CLI/MCP, LFG, and Connectome observe the same operations in a real installed project with correlated traces and restart evidence. |
+
+Roadmap completion currently stands at:
+
+| Gate | Purpose | Complete |
+|---|---|---:|
+| A | authority, naming, and physical source boundaries | 5 / 5 |
+| B | public, install, routing, model, WebSocket, and GraphQL contracts | 2 / 5 |
+| C | sole persistent rrflowKV substrate | 0 / 6 |
+| D | per-project install, configuration, and attunement | 0 / 10 |
+| E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
+| F | streamed Arrow/DataFusion analytical execution | 0 / 5 |
+| G | LFG routing through the engine | 0 / 6 |
+| H | dynamic context, feedback, delivery, tracing, and Connectome | 0 / 7 |
+| I | explicit triggers, routines, hook adapters, and skills | 0 / 7 |
+| J | clean release and real deployment proof | 0 / 5 |
+
 ## RRFlow 1.0 execution checklist
 
 This checklist is the release order, not an inventory of aspirations. Work may
@@ -613,7 +664,7 @@ its correctness is demonstrated below the semantic engine.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | D-01 | Implement `rrflow install` with preview/apply behavior and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. | `rrflow-cli`, `rrd-engine` | Fresh-project test initializes, authenticates, closes, and reopens the same instance; preview performs no writes. |
+| [ ] | D-01 | Implement `rrflow install` by resolving a versioned generic project-bootstrap template and attunement profile, with explicit new/existing-project modes, preview/apply behavior, and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. | `rrflow-cli`, `rrd-engine` | Template golden tests are provider-neutral; fresh and existing project tests initialize, authenticate, close, and reopen the same instance; preview performs no writes. |
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
 | [ ] | D-03 | Implement only the inventory phase first: ignore rules, secret/generated/cache exclusions, content digests, source classification, and bounded work estimates. | `rrd-attunement` through `rrd-engine` | This repository inventories without `target`, `node_modules`, `.git`, RRFlow database files, or secret payloads; unchanged rerun performs no content work. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing with parser/language revision and source-digest provenance. | `rrd-attunement` through `rrd-engine` | Edit-one-file test reparses the changed source, preserves unaffected identities, and resumes after process restart. |
@@ -694,6 +745,7 @@ and Connectome using correlated evidence from one engine.
 | [ ] | I-04 | Implement hook adapters as stateless host translators that submit typed events only when explicitly installed and configured; ship no editor/provider-owned automatic hook. | outward adapters | Claude/OpenAI/reference adapter conformance produces the same envelope; uninstall removes the adapter cleanly and leaves canonical state readable. |
 | [ ] | I-05 | Implement skills as versioned instruction/resource packages referenced by identity and digest, resolved through governed context rather than executed as storage or lifecycle code. | `rrd-contract`, `rrd-engine` | Install/resolve/update/retire tests prove provenance, authorization, version pinning, prompt-budget enforcement, and no implicit mutation. |
 | [ ] | I-06 | Add previewable install/configure/uninstall scaffolding for triggers, routines, hook adapters, and skills after their individual contracts pass. | `rrflow-cli`, adapters | Fresh/existing project tests show exact planned files/records, explicit consent, idempotent apply, clean uninstall, and no session-start loop. |
+| [ ] | I-07 | React to committed inventory, schema, dependency, workload, and failure signals by scheduling only the required incremental attunement phases and evaluating eligible capability, routine, and skill activation under the estate's explicit policy. | `rrd-engine`, `rrd-attunement` | Adding one language, framework, data source, or recurring failure triggers the minimal bounded work, survives restart, records its decision evidence, and never performs a blanket reinstall or unauthorized activation. |
 
 Gate I exits only when automation is explicit, bounded, replayable, removable,
 and subordinate to `RrdEngine`; installation alone is never evidence that a
