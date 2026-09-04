@@ -1,6 +1,6 @@
 //! Durable execution boundary for project-scoped external operator knowledge.
 
-use super::{active_reasoning_run, DurableTraceSpan, InstanceBinding, TraceIdentity};
+use super::{DurableTraceSpan, InstanceBinding, TraceIdentity};
 use rrd_core::{
     digest, Millis, RuntimeProperties, RuntimeValue, TraceDataClass, TraceDomain, TraceLink,
     TraceOutcome,
@@ -233,7 +233,7 @@ where
     ])?;
     let root_identity = identity.clone();
     let implementation_digest = adapter.descriptor().implementation_digest.clone();
-    let mut links = vec![
+    let links = vec![
         TraceLink::Read {
             stamp: request.search.read.clone(),
         },
@@ -241,11 +241,6 @@ where
             stamp: knowledge.projection.clone(),
         },
     ];
-    if let Ok(Some(run)) = active_reasoning_run(store) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
     let root = DurableTraceSpan::start(
         store,
         request.search.scope.clone(),

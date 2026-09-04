@@ -5,7 +5,7 @@
 //! of truth, committed together through `RRD storage coordinator` and surrounded by a durable
 //! control-plane trace.
 
-use super::{active_reasoning_run, DurableTraceSpan, TraceIdentity};
+use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
     DataTransaction, Millis, ObjectReference, ProjectionId, ReadStamp, RuntimeChange,
     RuntimeCommit, RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
@@ -179,12 +179,7 @@ where
         &revision_bytes,
     ])?;
     let read = data.engine().runtime_read_stamp(&scope)?;
-    let mut links = vec![TraceLink::Read { stamp: read }];
-    if let Ok(Some(run)) = active_reasoning_run(data.engine()) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
+    let links = vec![TraceLink::Read { stamp: read }];
     let span = DurableTraceSpan::start(
         data.engine(),
         scope.clone(),
@@ -414,12 +409,7 @@ where
         b"build",
     ])?;
     let trace_read = data.engine().runtime_read_stamp(&scope)?;
-    let mut links = vec![TraceLink::Read { stamp: trace_read }];
-    if let Ok(Some(run)) = active_reasoning_run(data.engine()) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
+    let links = vec![TraceLink::Read { stamp: trace_read }];
     let span = DurableTraceSpan::start(
         data.engine(),
         scope.clone(),
@@ -528,12 +518,7 @@ where
         action_name.as_bytes(),
     ])?;
     let trace_read = data.engine().runtime_read_stamp(scope)?;
-    let mut links = vec![TraceLink::Read { stamp: trace_read }];
-    if let Ok(Some(run)) = active_reasoning_run(data.engine()) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
+    let links = vec![TraceLink::Read { stamp: trace_read }];
     let span = DurableTraceSpan::start(
         data.engine(),
         scope.clone(),

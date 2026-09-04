@@ -6,8 +6,8 @@
 //! tests and replays remain deterministic.
 
 use crate::{
-    Error, Millis, ProjectionStamp, ReadStamp, Result, RuntimeCommit, RuntimeEvent,
-    RuntimeEventSchema, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    Error, Millis, ProjectionStamp, ReadStamp, ReasoningActiveCursor, Result, RuntimeCommit,
+    RuntimeEvent, RuntimeEventSchema, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, SnapshotId,
 };
 use serde::{Deserialize, Serialize};
@@ -125,8 +125,10 @@ pub enum TraceDomain {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TraceLink {
-    ReasoningRun {
-        run_id: String,
+    /// Correlates work with the exact generic reasoning cursor that selected
+    /// it. The cursor owns no implicit lifecycle; its tree declares the route.
+    ReasoningCursor {
+        cursor: ReasoningActiveCursor,
     },
     RuntimeCursor {
         cursor: u64,
@@ -535,9 +537,7 @@ fn validate_hex_identity(kind: &'static str, value: &str, width: usize) -> Resul
 
 fn validate_link(link: &TraceLink) -> Result<()> {
     match link {
-        TraceLink::ReasoningRun { run_id } => {
-            validate_bounded_text("trace reasoning run", run_id, MAX_TRACE_NAME_BYTES)
-        }
+        TraceLink::ReasoningCursor { cursor } => cursor.validate(),
         TraceLink::RuntimeCursor { .. } => Ok(()),
         TraceLink::Read { stamp } => stamp.validate(),
         TraceLink::Snapshot { snapshot_id, .. } => validate_bounded_text(
@@ -622,9 +622,32 @@ fn validate_value(value: &RuntimeValue, depth: usize, nodes: &mut usize) -> Resu
 fn link_value(link: &TraceLink) -> RuntimeValue {
     let mut value = BTreeMap::new();
     match link {
-        TraceLink::ReasoningRun { run_id } => {
-            value.insert("kind".into(), RuntimeValue::String("reasoning_run".into()));
-            value.insert("run_id".into(), RuntimeValue::String(run_id.clone()));
+        TraceLink::ReasoningCursor { cursor } => {
+            value.insert(
+                "kind".into(),
+                RuntimeValue::String("reasoning_cursor".into()),
+            );
+            value.insert(
+                "cursor_id".into(),
+                RuntimeValue::String(cursor.id.to_string()),
+            );
+            value.insert(
+                "tree_id".into(),
+                RuntimeValue::String(cursor.tree_id.to_string()),
+            );
+            value.insert(
+                "tree_revision".into(),
+                RuntimeValue::Unsigned(cursor.tree_revision),
+            );
+            value.insert(
+                "node_id".into(),
+                RuntimeValue::String(cursor.node_id.to_string()),
+            );
+            value.insert("step".into(), RuntimeValue::Unsigned(cursor.step));
+            value.insert(
+                "read_manifest_sha256".into(),
+                RuntimeValue::Digest(cursor.read.manifest_id.clone()),
+            );
         }
         TraceLink::RuntimeCursor { cursor } => {
             value.insert("kind".into(), RuntimeValue::String("runtime_cursor".into()));

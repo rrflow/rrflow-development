@@ -37,7 +37,6 @@ pub mod digest;
 pub mod error;
 pub mod ident;
 pub mod key;
-pub mod reasoning;
 pub mod reasoning_tree;
 pub mod reference;
 pub mod runtime;
@@ -57,10 +56,6 @@ pub use data::{
 };
 pub use error::{Error, Result};
 pub use ident::{Predicate, Reader, Subject};
-pub use reasoning::{
-    Check, CheckStatus, DecisionKind, Evidence, ReasoningEvent, ReasoningPayload, ReasoningRun,
-    ReasoningState, RunOutcome,
-};
 pub use reasoning_tree::{
     ReasoningActiveCursor, ReasoningCondition, ReasoningConditionEvaluation,
     ReasoningConditionPredicate, ReasoningCursorAdvance, ReasoningDecisionEvidence, ReasoningEdge,

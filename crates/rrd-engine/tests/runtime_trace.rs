@@ -2,14 +2,12 @@ use rrd_core::{
     RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry, RuntimeTraceEvent, RuntimeType,
     ScopeId, TraceDataClass, TraceDomain, TraceOutcome,
 };
-use rrd_engine::{
-    install_runtime_trace_contract, record_runtime_trace, TraceIdentity, REASONING_SCOPE,
-};
+use rrd_engine::{install_runtime_trace_contract, record_runtime_trace, TraceIdentity};
 use rrd_store::{Engine, MemoryEngine, NativeEngine, Store};
 use std::sync::{Arc, Barrier};
 
 fn scope() -> ScopeId {
-    ScopeId::new(REASONING_SCOPE).unwrap()
+    ScopeId::new("instance:runtime-trace-test").unwrap()
 }
 
 fn identity(seed: &str) -> TraceIdentity {

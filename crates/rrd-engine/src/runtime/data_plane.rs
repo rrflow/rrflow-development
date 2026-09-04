@@ -4,7 +4,7 @@
 //! operation. Raw vectors, embedding inputs, and filter values never enter the
 //! trace contract; their caller-owned requests are represented by digests.
 
-use super::{active_reasoning_run, DurableTraceSpan, TraceIdentity};
+use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
     digest, DataTransaction, Millis, ProjectionFamily, ReadStamp, RuntimeCommit,
     RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
@@ -68,14 +68,9 @@ where
     let root_identity = identity.clone();
     let infer_identity = root_identity.child(&[b"embedding.infer"])?;
     let commit_identity = root_identity.child(&[b"embedding.commit"])?;
-    let mut links = vec![TraceLink::Read {
+    let links = vec![TraceLink::Read {
         stamp: job.read.clone(),
     }];
-    if let Ok(Some(run)) = active_reasoning_run(store) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
     let root = DurableTraceSpan::start(
         store,
         job.scope.clone(),
@@ -382,14 +377,9 @@ pub fn execute_traced_vector_search<E: Engine>(
         &at_bytes,
     ])?;
     let root_identity = identity.clone();
-    let mut links = vec![TraceLink::Read {
+    let links = vec![TraceLink::Read {
         stamp: request.read.clone(),
     }];
-    if let Ok(Some(run)) = active_reasoning_run(store) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
     let root = DurableTraceSpan::start(
         store,
         request.scope.clone(),

@@ -5,7 +5,7 @@
 //! The read stamp is captured before the first trace write, preventing
 //! observability from changing the meaning of `KNOWN HEAD`.
 
-use super::{active_reasoning_run, DurableTraceSpan, TraceIdentity};
+use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
     digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceDataClass, TraceDomain,
     TraceLink, TraceOutcome,
@@ -90,14 +90,9 @@ pub fn execute_traced_query<E: Engine>(
         &at_bytes,
         &cursor_bytes,
     ])?;
-    let mut links = vec![TraceLink::Read {
+    let links = vec![TraceLink::Read {
         stamp: read.clone(),
     }];
-    if let Ok(Some(run)) = active_reasoning_run(store) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
     let root_attributes = RuntimeProperties::from([
         ("query_digest".into(), RuntimeValue::Digest(query_digest)),
         (

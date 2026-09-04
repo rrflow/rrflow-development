@@ -158,7 +158,7 @@ fn reasoning_tree_and_advance_match_the_v1_golden_contract() {
 fn reasoning_tree_wire_objects_reject_unknown_fields_and_versions() {
     let actual = fixture();
     let mut encoded = serde_json::to_value(&actual).unwrap();
-    encoded["tree"]["nodes"][0]["implicit_lifecycle"] = serde_json::json!("goal-plan-attempt");
+    encoded["tree"]["nodes"][0]["implicit_lifecycle"] = serde_json::json!("fixed-stage-chain");
     assert!(serde_json::from_value::<GoldenReasoningContract>(encoded).is_err());
 
     let mut nested = serde_json::to_value(&actual).unwrap();

@@ -12,8 +12,8 @@ use rrd_contract::{
     SessionLimits, MEMORY_SEAT_KIND,
 };
 use rrd_engine::{
-    digest, Claim, Millis, Outcome, Predicate, Producer, Reader, ReasoningPayload, RrdEngine,
-    ScopeId, Subject, Trigger,
+    digest, Claim, Millis, Outcome, Predicate, Producer, Reader, RrdEngine, ScopeId, Subject,
+    Trigger,
 };
 
 /// What a command produced for the operator and invocation audit.
@@ -169,11 +169,6 @@ pub enum Command {
         #[command(subcommand)]
         action: IdentityAction,
     },
-    /// Record or inspect the typed operational reasoning contract.
-    Reasoning {
-        #[command(subcommand)]
-        action: ReasoningAction,
-    },
     /// Offline storage migration and recovery operations.
     Storage {
         #[command(subcommand)]
@@ -270,25 +265,6 @@ pub enum DevAction {
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum ReasoningAction {
-    /// Append one typed transition. `payload` is a tagged ReasoningPayload JSON
-    /// object, for example `{"kind":"goal",...}`.
-    Record {
-        #[arg(long)]
-        run: String,
-        #[arg(long, default_value = "operator:cli")]
-        actor: String,
-        #[arg(long)]
-        payload: String,
-    },
-    /// Show one run, or the active run when `--run` is omitted.
-    Show {
-        #[arg(long)]
-        run: Option<String>,
-    },
-}
-
-#[derive(Subcommand, Debug, Clone)]
 pub enum StorageAction {
     /// Start or resume the explicit Fjall-to-RRD LSM migration.
     Migrate,
@@ -371,12 +347,6 @@ impl Command {
             Command::Identity {
                 action: IdentityAction::Resolve { .. },
             } => "identity-resolve",
-            Command::Reasoning {
-                action: ReasoningAction::Record { .. },
-            } => "reasoning-record",
-            Command::Reasoning {
-                action: ReasoningAction::Show { .. },
-            } => "reasoning-show",
             Command::Storage {
                 action: StorageAction::Migrate,
             } => "storage-migrate",
@@ -554,23 +524,6 @@ impl Command {
                 format!("valid_at={}", valid_at.unwrap_or(0)),
                 format!("max_scanned_changes={max_scanned_changes}"),
             ],
-            Command::Reasoning {
-                action:
-                    ReasoningAction::Record {
-                        run,
-                        actor,
-                        payload,
-                    },
-            } => {
-                vec![
-                    format!("run={run}"),
-                    format!("actor={actor}"),
-                    format!("payload={payload}"),
-                ]
-            }
-            Command::Reasoning {
-                action: ReasoningAction::Show { run },
-            } => run.iter().map(|run| format!("run={run}")).collect(),
             Command::Storage {
                 action:
                     StorageAction::ArchiveExport { archive }
@@ -1282,66 +1235,6 @@ pub fn execute(
             | Command::Dev { .. }
             | Command::Storage { .. } => {
                 unreachable!("handled above with an early return")
-            }
-
-            Command::Reasoning {
-                action:
-                    ReasoningAction::Record {
-                        run,
-                        actor,
-                        payload,
-                    },
-            } => {
-                let payload: ReasoningPayload = serde_json::from_str(payload)?;
-                let event = store.record_reasoning_event(run, now, actor, payload)?;
-                Ok(if json {
-                    serde_json::to_string_pretty(&event)?
-                } else {
-                    format!(
-                        "reasoning run {}: recorded {} #{} [{}]",
-                        event.run_id,
-                        event.payload.name(),
-                        event.ordinal,
-                        event.digest
-                    )
-                })
-            }
-
-            Command::Reasoning {
-                action: ReasoningAction::Show { run },
-            } => {
-                let run = match run {
-                    Some(id) => store.reasoning_run_by_id(id)?,
-                    None => store.active_reasoning()?,
-                };
-                let Some(run) = run else {
-                    return Ok("no matching reasoning run".into());
-                };
-                Ok(if json {
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "run_id": run.id(),
-                        "state": run.state(),
-                        "events": run.events(),
-                    }))?
-                } else {
-                    let mut lines = vec![format!(
-                        "reasoning run {}: {:?}; {} event(s)",
-                        run.id(),
-                        run.state(),
-                        run.events().len()
-                    )];
-                    lines.extend(run.events().iter().map(|event| {
-                        format!(
-                            "  #{:<3} {:<12} at={} by={} {}",
-                            event.ordinal,
-                            event.payload.name(),
-                            event.at,
-                            event.actor,
-                            event.digest
-                        )
-                    }));
-                    lines.join("\n")
-                })
             }
 
             Command::Assert {

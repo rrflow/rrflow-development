@@ -9,7 +9,6 @@ pub mod data_plane;
 pub mod instance;
 pub mod operator_knowledge;
 pub mod query;
-pub mod reasoning;
 pub mod trace;
 pub mod vector_catalog;
 pub mod vector_residency;
@@ -32,9 +31,6 @@ pub use operator_knowledge::{
 pub use query::{
     execute_traced_query, query_parameters_from_json, ExecutionBudget, Parameters,
     TracedQueryExecution,
-};
-pub use reasoning::{
-    active_reasoning_run, reasoning_run, reasoning_runs, record_reasoning, REASONING_SCOPE,
 };
 pub use trace::{
     install_runtime_trace_contract, record_runtime_trace, DurableTraceSpan, TraceIdentity,

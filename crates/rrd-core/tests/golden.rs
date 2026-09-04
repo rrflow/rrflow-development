@@ -4,7 +4,7 @@
 //! side first — is byte-compatible with rrflow exactly when it reproduces
 //! these vectors: key encodings (including the inverted-timestamp ordering
 //! that makes newest-first a forward scan), prefixes and their exclusive
-//! ends, plus stamped runtime and reasoning envelopes. The fixture is checked in; this
+//! ends, plus stamped runtime envelopes. The fixture is checked in; this
 //! test regenerates every vector from the kernel and fails on any drift,
 //! so an encoding change cannot land silently and orphan a parity
 //! implementation.
@@ -14,9 +14,8 @@
 //! format break that every engine must follow.
 
 use rrd_core::{
-    key, AuditDecision, AuditEnvelope, Check, CheckStatus, Claim, DataTransaction, DecisionKind,
-    Evidence, Predicate, Producer, ProjectionId, ProjectionStamp, ProjectionState, ReadStamp,
-    Reader, ReasoningPayload, ReasoningRun, RetentionPin, RunOutcome, RuntimeCommit, RuntimeEvent,
+    key, AuditDecision, AuditEnvelope, Claim, DataTransaction, Predicate, Producer, ProjectionId,
+    ProjectionStamp, ProjectionState, ReadStamp, Reader, RetentionPin, RuntimeCommit, RuntimeEvent,
     RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeType, ScopeId, SnapshotHandle,
     Subject, DATA_RUNTIME_CONTRACT_VERSION,
 };
@@ -133,86 +132,6 @@ fn vectors() -> serde_json::Value {
     .seal()
     .unwrap();
     audit.validate().unwrap();
-    let proof = Evidence {
-        source: "cargo test --workspace".into(),
-        digest: "55".repeat(32),
-        summary: "workspace passed".into(),
-    };
-    let mut reasoning = ReasoningRun::empty("run:golden").unwrap();
-    reasoning
-        .append(
-            1_300,
-            "agent:golden",
-            ReasoningPayload::Goal {
-                statement: "freeze the portable runtime contract".into(),
-                acceptance: vec!["golden vectors round-trip".into()],
-            },
-        )
-        .unwrap();
-    reasoning
-        .append(
-            1_301,
-            "agent:golden",
-            ReasoningPayload::Plan {
-                hypothesis: "canonical event bytes prevent adapter drift".into(),
-                steps: vec!["generate".into(), "compare".into()],
-            },
-        )
-        .unwrap();
-    reasoning
-        .append(
-            1_302,
-            "agent:golden",
-            ReasoningPayload::Attempt {
-                summary: "generated the vectors".into(),
-                actions: vec!["cargo test -p rrd-core --test golden".into()],
-            },
-        )
-        .unwrap();
-    reasoning
-        .append(
-            1_303,
-            "tool:test",
-            ReasoningPayload::Observation {
-                summary: "the fixture matched".into(),
-                evidence: vec![proof.clone()],
-            },
-        )
-        .unwrap();
-    reasoning
-        .append(
-            1_304,
-            "agent:golden",
-            ReasoningPayload::Decision {
-                decision: DecisionKind::Verify,
-                rationale: "the candidate is ready for the contract gate".into(),
-            },
-        )
-        .unwrap();
-    reasoning
-        .append(
-            1_305,
-            "tool:test",
-            ReasoningPayload::Verification {
-                checks: vec![Check {
-                    name: "golden round-trip".into(),
-                    status: CheckStatus::Passed,
-                    evidence: vec![proof],
-                }],
-            },
-        )
-        .unwrap();
-    reasoning
-        .append(
-            1_306,
-            "agent:golden",
-            ReasoningPayload::Outcome {
-                outcome: RunOutcome::Succeeded,
-                summary: "the portable contract is frozen".into(),
-            },
-        )
-        .unwrap();
-
     serde_json::json!({
         "comment": "regenerate with GOLDEN_WRITE=1; a diff here is a wire-format break",
         "claim_key": {
@@ -249,10 +168,6 @@ fn vectors() -> serde_json::Value {
             },
             "projection_stamp": projection,
             "audit_envelope": audit,
-        },
-        "reasoning_run_v1": {
-            "state": reasoning.state(),
-            "events": reasoning.events(),
         },
     })
 }

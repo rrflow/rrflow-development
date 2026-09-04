@@ -31,7 +31,7 @@ pub use operator::{
     digest, BackupCatalogue, BackupEntry, Claim, ClaimReader, FormatMigrationEdge,
     FormatMigrationLedger, LogicalArchiveInventory, LogicalRestoreReport, MigrationReport, Millis,
     NativeApplicationFormat, OperatorInvocation, OperatorInvocationInput, OperatorResult, Outcome,
-    Predicate, Producer, Reader, ReasoningPayload, RemovalReport, ScopeId, Subject, Trigger,
+    Predicate, Producer, Reader, RemovalReport, ScopeId, Subject, Trigger,
 };
 #[cfg(feature = "full")]
 pub use runtime::*;

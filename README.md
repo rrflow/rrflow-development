@@ -425,9 +425,9 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **A-03**. The current uncommitted reasoning-ledger
-deletion remains a proposed removal until its reusable evidence semantics are
-mapped to A-02 and the A-03 golden/API and focused behavioral tests pass.
+The next executable item is **A-04**. The generic reasoning-tree semantics are
+frozen and the pre-release fixed-stage ledger has been removed; no replacement
+runtime or client surface may precede the canonical engine-owned gates.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -435,7 +435,7 @@ mapped to A-02 and the A-03 golden/API and focused behavioral tests pass.
 |---|---|---|---|---|
 | [x] | A-01 | Define RRFlow, RRD, RRFlow kernel, rrflowKV, RRFlowQL, Arrow/DataFusion analytical path, LFG, and Connectome exactly once. | `README.md` | Terminology table, execution topology, and ownership table use one meaning for every term. |
 | [x] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
-| [ ] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
+| [x] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
 | [ ] | A-04 | Move crates into the canonical grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [ ] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 
@@ -452,6 +452,20 @@ A-02 evidence (2026-09-04):
 - `public_contract_and_client_stay_implementation_free` proves `rrd-contract`
   retains zero production workspace dependencies; `rrd-core` is used only by
   the cross-boundary conformance test.
+
+A-03 evidence (2026-09-04):
+
+- The fixed-stage ledger module, engine projection/API, automatic global trace
+  lookup, and CLI record/show surface are absent; the legacy golden entry was
+  removed rather than treated as a supported wire format.
+- Reusable source/digest/summary evidence and verification status now live in
+  the A-02 generic types, while `TraceLink::ReasoningCursor` preserves exact
+  tree, revision, node, step, and read-manifest correlation.
+- `retired_fixed_reasoning_ledger_api_is_absent` and the compiled CLI rejection
+  test prevent the removed symbols and commands from returning.
+- `cargo test -p rrd-core -p rrd-engine -p rrflow-cli` passed all 200 tests, and
+  `cargo clippy -p rrd-core -p rrd-engine -p rrflow-cli --all-targets -- -D
+  warnings` passed.
 
 Gate A exits only when the worktree contains one architecture, the generic tree
 contract is frozen, and the obsolete lifecycle implementation is either

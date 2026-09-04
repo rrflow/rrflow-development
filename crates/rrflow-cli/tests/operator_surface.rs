@@ -682,27 +682,9 @@ fn identity_bind_resolve_and_readme_warp_share_the_persistent_engine() {
 }
 
 #[test]
-fn reasoning_contract_rejects_skips_and_is_queryable_as_typed_json() {
-    let db = scratch("reasoning-contract");
-    let goal = r#"{"kind":"goal","statement":"ship it","acceptance":["tests pass"]}"#;
-    let (ok, out, err) = rrflow(
-        &db,
-        &["reasoning", "record", "--run", "r1", "--payload", goal],
-    );
-    assert!(ok, "goal failed: {err}");
-    assert!(out.contains("recorded goal #1"));
-
-    let skipped = r#"{"kind":"attempt","summary":"guess","actions":[]}"#;
-    let (ok, _, err) = rrflow(
-        &db,
-        &["reasoning", "record", "--run", "r1", "--payload", skipped],
-    );
-    assert!(!ok, "an attempt cannot skip the plan stage");
-    assert!(err.contains("invalid while reasoning run is NeedsPlan"));
-
-    let (_, out, _) = rrflow(&db, &["reasoning", "show", "--run", "r1", "--json"]);
-    let value: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert_eq!(value["state"], "needs_plan");
-    assert_eq!(value["events"][0]["payload"]["kind"], "goal");
-    assert_eq!(value["events"][0]["digest"].as_str().unwrap().len(), 64);
+fn retired_reasoning_ledger_commands_are_not_an_operator_surface() {
+    let db = scratch("retired-reasoning-ledger");
+    let (ok, _, error) = rrflow(&db, &["reasoning", "show"]);
+    assert!(!ok, "the retired router command must not parse");
+    assert!(error.contains("unrecognized subcommand 'reasoning'"));
 }

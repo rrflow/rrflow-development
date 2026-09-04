@@ -328,6 +328,39 @@ fn legacy_service_name_is_absent() {
 }
 
 #[test]
+fn retired_fixed_reasoning_ledger_api_is_absent() {
+    let metadata = workspace_metadata();
+    let retired_symbols = [
+        ["Reasoning", "Run"].concat(),
+        ["Reasoning", "Payload"].concat(),
+        ["Reasoning", "State"].concat(),
+        ["Decision", "Kind"].concat(),
+        ["reasoning_", "run_v1"].concat(),
+        ["reasoning ", "ledger"].concat(),
+    ];
+    let mut violations = Vec::new();
+    for relative in [
+        "crates/rrd-core",
+        "crates/rrd-engine",
+        "crates/rrflow-cli",
+    ] {
+        for retired in &retired_symbols {
+            collect_rust_sources(
+                &metadata.root.join(relative),
+                &mut violations,
+                retired,
+            );
+        }
+    }
+    violations.sort();
+    violations.dedup();
+    assert!(
+        violations.is_empty(),
+        "the retired fixed-stage router API remains in: {violations:#?}"
+    );
+}
+
+#[test]
 fn retired_pre_release_identity_is_absent_from_the_active_repository() {
     let metadata = workspace_metadata();
     let retired_brand = ["vy", "rm"].concat();

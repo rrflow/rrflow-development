@@ -12,8 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use rrd_core::{
-    digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ReasoningPayload, ScopeId,
-    Subject,
+    digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ScopeId, Subject,
 };
 pub use rrd_store::{
     BackupCatalogue, BackupEntry, FormatMigrationEdge, FormatMigrationLedger,
@@ -264,24 +263,6 @@ impl RrdEngine {
         at: Millis,
     ) -> OperatorResult<crate::TracedQueryExecution> {
         crate::execute_traced_query(&self.storage, scope, source, parameters, budget, actor, at)
-    }
-
-    pub fn record_reasoning_event(
-        &self,
-        run: &str,
-        now: Millis,
-        actor: &str,
-        payload: ReasoningPayload,
-    ) -> OperatorResult<rrd_core::ReasoningEvent> {
-        crate::record_reasoning(&self.storage, run, now, actor, payload)
-    }
-
-    pub fn reasoning_run_by_id(&self, run: &str) -> OperatorResult<Option<rrd_core::ReasoningRun>> {
-        crate::reasoning_run(&self.storage, run)
-    }
-
-    pub fn active_reasoning(&self) -> OperatorResult<Option<rrd_core::ReasoningRun>> {
-        crate::active_reasoning_run(&self.storage)
     }
 
     pub fn migrate_storage(db: &Path, now: Millis) -> OperatorResult<MigrationReport> {

@@ -1,6 +1,6 @@
 //! Durable causal wrapper for cross-node immutable artifact hydration.
 
-use super::{active_reasoning_run, DurableTraceSpan, TraceIdentity};
+use super::{DurableTraceSpan, TraceIdentity};
 use rrd_cluster::{
     artifact_transfer_trace_event, transfer_artifacts, ArtifactTransferManifest,
     ArtifactTransferObservation, ArtifactTransferObserver, ArtifactTransferReceipt, ClusterError,
@@ -93,14 +93,9 @@ where
         manifest.plan.target.as_str().as_bytes(),
     ])?;
     let storage_identity = identity.child(&[b"object.replicate"])?;
-    let mut links = vec![TraceLink::Read {
+    let links = vec![TraceLink::Read {
         stamp: manifest.read.clone(),
     }];
-    if let Ok(Some(run)) = active_reasoning_run(store) {
-        links.push(TraceLink::ReasoningRun {
-            run_id: run.id().to_owned(),
-        });
-    }
     let root = DurableTraceSpan::start(
         store,
         manifest.scope.clone(),

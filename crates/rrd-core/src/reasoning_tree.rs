@@ -1,9 +1,9 @@
 //! Generic, provider-neutral reasoning-tree semantics.
 //!
-//! This module deliberately models no universal Goal -> Plan -> Attempt
-//! lifecycle. A tree declares its own typed nodes, typed edges, recipes, and
-//! verification requirements. Cursor movement is accepted only with a proof
-//! bound to the exact runtime read stamp from which the decision was made.
+//! This module deliberately models no universal fixed-stage lifecycle. A tree
+//! declares its own typed nodes, typed edges, recipes, and verification
+//! requirements. Cursor movement is accepted only with a proof bound to the
+//! exact runtime read stamp from which the decision was made.
 
 use crate::{Error, Millis, ReadStamp, Result, RuntimeId, RuntimeType};
 use serde::{Deserialize, Serialize};
@@ -411,9 +411,19 @@ pub struct ReasoningActiveCursor {
 }
 
 impl ReasoningActiveCursor {
-    pub fn validate_for(&self, tree: &ReasoningTree) -> Result<()> {
+    /// Validate the self-contained cursor and its authenticated read stamp.
+    /// Tree membership is checked separately by [`Self::validate_for`].
+    pub fn validate(&self) -> Result<()> {
         validate_version(self.contract_version)?;
         self.read.validate()?;
+        if self.tree_revision == 0 {
+            return invalid("reasoning cursor tree revision must be greater than zero");
+        }
+        Ok(())
+    }
+
+    pub fn validate_for(&self, tree: &ReasoningTree) -> Result<()> {
+        self.validate()?;
         if self.tree_id != tree.id || self.tree_revision != tree.revision {
             return invalid("reasoning cursor does not match the tree identity and revision");
         }
