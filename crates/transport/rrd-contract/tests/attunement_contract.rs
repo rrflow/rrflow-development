@@ -1,0 +1,634 @@
+use rrd_contract::{
+    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
+    installation_plan_sha256, installation_result_sha256, AttunementFailure, AttunementJob,
+    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
+    AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
+    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
+    CancelAttunement, CanonicalId, InstallationActionDisposition, InstallationActionKind,
+    InstallationActionResult, InstallationPlan, InstallationPlanAction, InstallationResult,
+    InstallationTargetKind, ResourceId, ResourceKind, ResourcePath, ResumeAttunement,
+    ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+};
+use schemars::{schema_for, JsonSchema};
+use serde::{Deserialize, Serialize};
+
+const CREATED_AT: u64 = 1_800_000_000_000;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct TransitionVector {
+    from: AttunementJobState,
+    to: AttunementJobState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct GoldenJobStateSnapshot {
+    state: AttunementJobState,
+    current_phase: Option<AttunementPhase>,
+    checkpoint_count: usize,
+    leased: bool,
+    retryable_failure: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct GoldenAttunementContract {
+    attunement_plan: AttunementPlan,
+    installation_plan: InstallationPlan,
+    installation_result: InstallationResult,
+    status: AttunementStatus,
+    state_snapshots: Vec<GoldenJobStateSnapshot>,
+    resume: ResumeAttunement,
+    cancel: CancelAttunement,
+    verification: AttunementVerification,
+    allowed_transitions: Vec<TransitionVector>,
+}
+
+fn canonical_id(value: &str) -> CanonicalId {
+    CanonicalId::new(value).unwrap()
+}
+
+fn digest(value: u64) -> String {
+    format!("{value:064x}")
+}
+
+fn target() -> ResourcePath {
+    ResourcePath {
+        segments: vec![
+            ResourceId::new(ResourceKind::Organization, "local").unwrap(),
+            ResourceId::new(ResourceKind::Estate, "developer-estate").unwrap(),
+            ResourceId::new(ResourceKind::Project, "rrflow").unwrap(),
+            ResourceId::new(ResourceKind::Instance, "rrflow-dev").unwrap(),
+        ],
+    }
+}
+
+fn attunement_plan() -> AttunementPlan {
+    let mut plan = AttunementPlan {
+        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        id: canonical_id("attune-01"),
+        target: target(),
+        source_sha256: digest(1),
+        phases: ATTUNEMENT_PHASES
+            .iter()
+            .copied()
+            .map(|phase| AttunementPhasePlan {
+                phase,
+                sequence: phase.sequence(),
+                configuration_sha256: digest(100 + u64::from(phase.sequence())),
+                estimated_items: u64::from(phase.sequence()) * 10,
+                estimated_input_bytes: u64::from(phase.sequence()) * 1_024,
+            })
+            .collect(),
+        estimated_min_duration_ms: 1_800_000,
+        estimated_max_duration_ms: 2_700_000,
+        planned_at_unix_ms: CREATED_AT,
+        plan_sha256: digest(0),
+    };
+    plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
+    plan
+}
+
+fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
+    let mut plan = InstallationPlan {
+        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        id: canonical_id("install-01"),
+        target: target(),
+        target_kind: InstallationTargetKind::ExistingProject,
+        configuration_sha256: digest(2),
+        attunement_plan_id: attunement.id.clone(),
+        attunement_plan_sha256: attunement.plan_sha256.clone(),
+        actions: vec![
+            InstallationPlanAction {
+                kind: InstallationActionKind::InitializeInstance,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(3),
+                estimated_write_bytes: 4_096,
+            },
+            InstallationPlanAction {
+                kind: InstallationActionKind::ConfigureProjectLocator,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(4),
+                estimated_write_bytes: 256,
+            },
+            InstallationPlanAction {
+                kind: InstallationActionKind::CreateAttunementJob,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(5),
+                estimated_write_bytes: 1_024,
+            },
+        ],
+        planned_at_unix_ms: CREATED_AT + 1,
+        plan_sha256: digest(0),
+    };
+    plan.plan_sha256 = installation_plan_sha256(&plan).unwrap();
+    plan
+}
+
+fn installation_result(plan: &InstallationPlan) -> InstallationResult {
+    let mut result = InstallationResult {
+        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        plan_id: plan.id.clone(),
+        plan_sha256: plan.plan_sha256.clone(),
+        attunement_job_id: canonical_id("job-01"),
+        action_results: plan
+            .actions
+            .iter()
+            .enumerate()
+            .map(|(index, action)| InstallationActionResult {
+                kind: action.kind,
+                output_sha256: digest(20 + index as u64),
+            })
+            .collect(),
+        runtime_manifest_sha256: digest(30),
+        runtime_cursor: 1,
+        applied_at_unix_ms: CREATED_AT + 10,
+        idempotent_replay: false,
+        result_sha256: digest(0),
+    };
+    result.result_sha256 = installation_result_sha256(&result).unwrap();
+    result
+}
+
+fn checkpoints(plan: &AttunementPlan, count: usize) -> Vec<AttunementPhaseCheckpoint> {
+    let mut output = Vec::new();
+    let mut input_sha256 = plan.source_sha256.clone();
+    for phase in ATTUNEMENT_PHASES.iter().copied().take(count) {
+        let phase_output = digest(200 + u64::from(phase.sequence()));
+        let mut checkpoint = AttunementPhaseCheckpoint {
+            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            job_id: canonical_id("job-01"),
+            plan_sha256: plan.plan_sha256.clone(),
+            phase,
+            sequence: phase.sequence(),
+            configuration_sha256: plan.phases[usize::from(phase.sequence() - 1)]
+                .configuration_sha256
+                .clone(),
+            input_sha256,
+            output_sha256: phase_output.clone(),
+            coordinates: AttunementRuntimeCoordinates {
+                runtime_manifest_sha256: digest(300 + u64::from(phase.sequence())),
+                runtime_cursor: u64::from(phase.sequence()),
+                schema_revision: Some(1),
+                catalogue_revision: u64::from(phase.sequence()),
+            },
+            committed_at_unix_ms: CREATED_AT + 100 + u64::from(phase.sequence()),
+            checkpoint_sha256: digest(0),
+        };
+        checkpoint.checkpoint_sha256 = attunement_checkpoint_sha256(&checkpoint).unwrap();
+        output.push(checkpoint);
+        input_sha256 = phase_output;
+    }
+    output
+}
+
+fn job(
+    plan: &AttunementPlan,
+    state: AttunementJobState,
+    checkpoint_count: usize,
+    revision: u64,
+    updated_at_unix_ms: u64,
+) -> AttunementJob {
+    let phase = ATTUNEMENT_PHASES.get(checkpoint_count).copied();
+    let current_phase = match state {
+        AttunementJobState::Pending
+        | AttunementJobState::Cancelled
+        | AttunementJobState::Succeeded => None,
+        _ => phase,
+    };
+    let lease = (state == AttunementJobState::Running).then(|| AttunementLease {
+        id: canonical_id("lease-01"),
+        holder: canonical_id("rrd-engine-worker"),
+        generation: revision,
+        acquired_at_unix_ms: updated_at_unix_ms - 10,
+        expires_at_unix_ms: updated_at_unix_ms + 30_000,
+    });
+    let failure = (state == AttunementJobState::Failed).then(|| AttunementFailure {
+        phase: phase.unwrap(),
+        code: canonical_id("phase-execution-failed"),
+        message: "phase execution failed before commit".into(),
+        retryable: true,
+        evidence_sha256: digest(400 + u64::from(phase.unwrap().sequence())),
+        observed_at_unix_ms: updated_at_unix_ms,
+    });
+    AttunementJob {
+        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        id: canonical_id("job-01"),
+        plan_id: plan.id.clone(),
+        plan_sha256: plan.plan_sha256.clone(),
+        revision,
+        state,
+        current_phase,
+        checkpoints: checkpoints(plan, checkpoint_count),
+        lease,
+        failure,
+        created_at_unix_ms: CREATED_AT + 10,
+        updated_at_unix_ms,
+    }
+}
+
+fn command_checkpoint(job: &AttunementJob) -> Option<String> {
+    job.checkpoints
+        .last()
+        .map(|checkpoint| checkpoint.checkpoint_sha256.clone())
+}
+
+fn verification(
+    job: &AttunementJob,
+    status: AttunementVerificationStatus,
+) -> AttunementVerification {
+    let last = job.checkpoints.last().unwrap();
+    let mut verification = AttunementVerification {
+        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: job.id.clone(),
+        plan_sha256: job.plan_sha256.clone(),
+        job_revision: job.revision,
+        last_checkpoint_sha256: last.checkpoint_sha256.clone(),
+        runtime_manifest_sha256: last.coordinates.runtime_manifest_sha256.clone(),
+        status,
+        checks: vec![AttunementVerificationCheck {
+            id: canonical_id("runtime-reopen"),
+            passed: status == AttunementVerificationStatus::Passed,
+            evidence_sha256: digest(500),
+        }],
+        verified_at_unix_ms: job.updated_at_unix_ms + 1,
+        verification_sha256: digest(0),
+    };
+    verification.verification_sha256 = attunement_verification_sha256(&verification).unwrap();
+    verification
+}
+
+fn all_states() -> [AttunementJobState; 7] {
+    [
+        AttunementJobState::Pending,
+        AttunementJobState::Running,
+        AttunementJobState::Paused,
+        AttunementJobState::CancelRequested,
+        AttunementJobState::Cancelled,
+        AttunementJobState::Failed,
+        AttunementJobState::Succeeded,
+    ]
+}
+
+fn allowed_transitions() -> Vec<TransitionVector> {
+    all_states()
+        .into_iter()
+        .flat_map(|from| {
+            all_states()
+                .into_iter()
+                .filter(move |to| from.permits(*to))
+                .map(move |to| TransitionVector { from, to })
+        })
+        .collect()
+}
+
+fn golden_contract() -> GoldenAttunementContract {
+    let attunement_plan = attunement_plan();
+    let installation_plan = installation_plan(&attunement_plan);
+    let installation_result = installation_result(&installation_plan);
+    let running = job(
+        &attunement_plan,
+        AttunementJobState::Running,
+        1,
+        2,
+        CREATED_AT + 2_000,
+    );
+    let paused = job(
+        &attunement_plan,
+        AttunementJobState::Paused,
+        1,
+        3,
+        CREATED_AT + 3_000,
+    );
+    let succeeded = job(
+        &attunement_plan,
+        AttunementJobState::Succeeded,
+        ATTUNEMENT_PHASES.len(),
+        20,
+        CREATED_AT + 20_000,
+    );
+    let state_snapshots = all_states()
+        .into_iter()
+        .map(|state| {
+            let checkpoint_count =
+                usize::from(state == AttunementJobState::Succeeded) * ATTUNEMENT_PHASES.len();
+            let revision = if state == AttunementJobState::Pending {
+                1
+            } else {
+                30
+            };
+            let snapshot = job(
+                &attunement_plan,
+                state,
+                checkpoint_count,
+                revision,
+                CREATED_AT + 30_000,
+            );
+            snapshot.validate(&attunement_plan).unwrap();
+            GoldenJobStateSnapshot {
+                state,
+                current_phase: snapshot.current_phase,
+                checkpoint_count: snapshot.checkpoints.len(),
+                leased: snapshot.lease.is_some(),
+                retryable_failure: snapshot
+                    .failure
+                    .as_ref()
+                    .is_some_and(|failure| failure.retryable),
+            }
+        })
+        .collect();
+    GoldenAttunementContract {
+        attunement_plan,
+        installation_plan,
+        installation_result,
+        status: AttunementStatus {
+            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            observed_at_unix_ms: running.updated_at_unix_ms + 1,
+            job: running,
+        },
+        state_snapshots,
+        resume: ResumeAttunement {
+            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            job_id: paused.id.clone(),
+            plan_sha256: paused.plan_sha256.clone(),
+            expected_job_revision: paused.revision,
+            last_checkpoint_sha256: command_checkpoint(&paused),
+            resume_from_phase: paused.next_phase().unwrap(),
+            requested_at_unix_ms: paused.updated_at_unix_ms + 1,
+        },
+        cancel: CancelAttunement {
+            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            job_id: paused.id.clone(),
+            plan_sha256: paused.plan_sha256.clone(),
+            expected_job_revision: paused.revision,
+            last_checkpoint_sha256: command_checkpoint(&paused),
+            reason: "operator requested cancellation".into(),
+            requested_at_unix_ms: paused.updated_at_unix_ms + 1,
+        },
+        verification: verification(&succeeded, AttunementVerificationStatus::Passed),
+        allowed_transitions: allowed_transitions(),
+    }
+}
+
+#[test]
+fn install_and_attunement_contract_matches_golden_json() {
+    let fixture = golden_contract();
+    fixture.attunement_plan.validate().unwrap();
+    fixture
+        .installation_plan
+        .validate_attunement_plan(&fixture.attunement_plan)
+        .unwrap();
+    fixture
+        .installation_result
+        .validate_for(&fixture.installation_plan)
+        .unwrap();
+    fixture.status.validate(&fixture.attunement_plan).unwrap();
+    let paused = job(
+        &fixture.attunement_plan,
+        AttunementJobState::Paused,
+        1,
+        3,
+        CREATED_AT + 3_000,
+    );
+    let succeeded = job(
+        &fixture.attunement_plan,
+        AttunementJobState::Succeeded,
+        ATTUNEMENT_PHASES.len(),
+        20,
+        CREATED_AT + 20_000,
+    );
+    fixture
+        .resume
+        .validate_for(&paused, &fixture.attunement_plan)
+        .unwrap();
+    fixture
+        .cancel
+        .validate_for(&paused, &fixture.attunement_plan)
+        .unwrap();
+    fixture
+        .verification
+        .validate_for(&succeeded, &fixture.attunement_plan)
+        .unwrap();
+
+    let expected: serde_json::Value =
+        serde_json::from_str(include_str!("../fixtures/install-attunement-v1.json")).unwrap();
+    let actual = serde_json::to_value(&fixture).unwrap();
+    assert_eq!(
+        actual,
+        expected,
+        "{}",
+        serde_json::to_string_pretty(&actual).unwrap()
+    );
+    let reopened: GoldenAttunementContract = serde_json::from_value(expected).unwrap();
+    assert_eq!(reopened, fixture);
+}
+
+#[test]
+fn generated_schema_is_closed_and_contains_every_envelope() {
+    let schema = serde_json::to_value(schema_for!(GoldenAttunementContract)).unwrap();
+    assert_eq!(schema["additionalProperties"], serde_json::json!(false));
+    let definitions = schema["$defs"].as_object().unwrap();
+    for name in [
+        "AttunementJob",
+        "AttunementPhaseCheckpoint",
+        "AttunementPlan",
+        "AttunementStatus",
+        "AttunementVerification",
+        "CancelAttunement",
+        "InstallationPlan",
+        "InstallationResult",
+        "ResumeAttunement",
+    ] {
+        assert!(
+            definitions.contains_key(name),
+            "missing generated schema {name}"
+        );
+        assert_eq!(
+            definitions[name]["additionalProperties"],
+            serde_json::json!(false),
+            "schema {name} must reject unknown fields"
+        );
+    }
+
+    let mut unknown = serde_json::to_value(attunement_plan()).unwrap();
+    unknown["provider"] = serde_json::json!("claude");
+    assert!(serde_json::from_value::<AttunementPlan>(unknown).is_err());
+}
+
+#[test]
+fn state_machine_accepts_every_declared_transition_and_rejects_every_other_pair() {
+    let plan = attunement_plan();
+    let timestamp = CREATED_AT + 10_000;
+    let cases = [
+        (
+            job(&plan, AttunementJobState::Pending, 0, 1, timestamp),
+            job(&plan, AttunementJobState::Running, 0, 2, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Pending, 0, 1, timestamp),
+            job(
+                &plan,
+                AttunementJobState::CancelRequested,
+                0,
+                2,
+                timestamp + 1,
+            ),
+        ),
+        (
+            job(&plan, AttunementJobState::Running, 0, 2, timestamp),
+            job(&plan, AttunementJobState::Running, 1, 3, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Running, 0, 2, timestamp),
+            job(&plan, AttunementJobState::Paused, 0, 3, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Running, 0, 2, timestamp),
+            job(
+                &plan,
+                AttunementJobState::CancelRequested,
+                0,
+                3,
+                timestamp + 1,
+            ),
+        ),
+        (
+            job(&plan, AttunementJobState::Running, 0, 2, timestamp),
+            job(&plan, AttunementJobState::Failed, 0, 3, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Running, 10, 20, timestamp),
+            job(&plan, AttunementJobState::Succeeded, 11, 21, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Paused, 0, 3, timestamp),
+            job(&plan, AttunementJobState::Running, 0, 4, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Paused, 0, 3, timestamp),
+            job(
+                &plan,
+                AttunementJobState::CancelRequested,
+                0,
+                4,
+                timestamp + 1,
+            ),
+        ),
+        (
+            job(&plan, AttunementJobState::Failed, 0, 3, timestamp),
+            job(&plan, AttunementJobState::Running, 0, 4, timestamp + 1),
+        ),
+        (
+            job(&plan, AttunementJobState::Failed, 0, 3, timestamp),
+            job(
+                &plan,
+                AttunementJobState::CancelRequested,
+                0,
+                4,
+                timestamp + 1,
+            ),
+        ),
+        (
+            job(&plan, AttunementJobState::CancelRequested, 0, 4, timestamp),
+            job(&plan, AttunementJobState::Cancelled, 0, 5, timestamp + 1),
+        ),
+    ];
+    assert_eq!(cases.len(), allowed_transitions().len());
+    for (before, after) in cases {
+        assert!(before.state.permits(after.state));
+        before.validate_transition(&after, &plan).unwrap();
+    }
+
+    for from in all_states() {
+        for to in all_states() {
+            if from.permits(to) {
+                continue;
+            }
+            let before_count =
+                usize::from(from == AttunementJobState::Succeeded) * ATTUNEMENT_PHASES.len();
+            let after_count =
+                usize::from(to == AttunementJobState::Succeeded) * ATTUNEMENT_PHASES.len();
+            let before = job(&plan, from, before_count, 30, timestamp);
+            let after = job(&plan, to, after_count, 31, timestamp + 1);
+            assert!(before.validate_transition(&after, &plan).is_err());
+        }
+    }
+}
+
+#[test]
+fn validation_rejects_skipped_phases_and_mismatched_digests() {
+    let plan = attunement_plan();
+
+    let mut tampered_plan = plan.clone();
+    tampered_plan.source_sha256 = digest(997);
+    assert!(tampered_plan.validate().is_err());
+
+    let mut skipped_plan = plan.clone();
+    skipped_plan.phases.swap(2, 3);
+    skipped_plan.plan_sha256 = attunement_plan_sha256(&skipped_plan).unwrap();
+    assert!(skipped_plan.validate().is_err());
+
+    let mut broken_chain = job(&plan, AttunementJobState::Running, 2, 3, CREATED_AT + 3_000);
+    broken_chain.checkpoints[1].input_sha256 = digest(999);
+    broken_chain.checkpoints[1].checkpoint_sha256 =
+        attunement_checkpoint_sha256(&broken_chain.checkpoints[1]).unwrap();
+    assert!(broken_chain.validate(&plan).is_err());
+
+    let mut mismatched_configuration =
+        job(&plan, AttunementJobState::Running, 1, 3, CREATED_AT + 3_000);
+    mismatched_configuration.checkpoints[0].configuration_sha256 = digest(996);
+    mismatched_configuration.checkpoints[0].checkpoint_sha256 =
+        attunement_checkpoint_sha256(&mismatched_configuration.checkpoints[0]).unwrap();
+    assert!(mismatched_configuration.validate(&plan).is_err());
+
+    let paused = job(&plan, AttunementJobState::Paused, 1, 3, CREATED_AT + 3_000);
+    let mut stale_resume = ResumeAttunement {
+        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: paused.id.clone(),
+        plan_sha256: paused.plan_sha256.clone(),
+        expected_job_revision: paused.revision,
+        last_checkpoint_sha256: command_checkpoint(&paused),
+        resume_from_phase: paused.next_phase().unwrap(),
+        requested_at_unix_ms: paused.updated_at_unix_ms + 1,
+    };
+    stale_resume.expected_job_revision -= 1;
+    assert!(stale_resume.validate_for(&paused, &plan).is_err());
+
+    let succeeded = job(
+        &plan,
+        AttunementJobState::Succeeded,
+        ATTUNEMENT_PHASES.len(),
+        20,
+        CREATED_AT + 20_000,
+    );
+    let mut mismatched_verification =
+        verification(&succeeded, AttunementVerificationStatus::Passed);
+    mismatched_verification.last_checkpoint_sha256 = digest(998);
+    mismatched_verification.verification_sha256 =
+        attunement_verification_sha256(&mismatched_verification).unwrap();
+    assert!(mismatched_verification
+        .validate_for(&succeeded, &plan)
+        .is_err());
+
+    let mut non_retryable = job(&plan, AttunementJobState::Failed, 0, 3, CREATED_AT + 3_000);
+    non_retryable.failure.as_mut().unwrap().retryable = false;
+    let resumed = job(&plan, AttunementJobState::Running, 0, 4, CREATED_AT + 4_000);
+    assert!(non_retryable.validate_transition(&resumed, &plan).is_err());
+}
+
+#[test]
+fn failed_verification_binds_the_verify_phase_without_committing_it() {
+    let plan = attunement_plan();
+    let failed = job(
+        &plan,
+        AttunementJobState::Failed,
+        ATTUNEMENT_PHASES.len() - 1,
+        20,
+        CREATED_AT + 20_000,
+    );
+    assert_eq!(failed.current_phase, Some(AttunementPhase::Verify));
+    verification(&failed, AttunementVerificationStatus::Failed)
+        .validate_for(&failed, &plan)
+        .unwrap();
+}

@@ -355,6 +355,10 @@ Implemented now:
 - a versioned, provider-neutral reasoning-tree contract with typed nodes and
   edges, content-addressed recipes/evidence, read-stamped cursors, and
   fail-closed cursor-advance verification;
+- a versioned, provider-neutral installation and attunement contract with
+  deterministic plans, ordered digest-chained phase checkpoints, explicit job
+  states and leases, revision-bound resume/cancel requests, and verification
+  evidence;
 - native durable runtime changes with exact read stamps and valid-time reads;
 - active claims and typed records resolved into the same context snapshot;
 - dynamic lexical retrieval over discoverable textual properties;
@@ -393,8 +397,9 @@ Not implemented or not yet production-grade:
 - fusion weights are static and there is no feedback learner, query planner
   cost model, or quality regression corpus tied to release gates;
 - automatic turn-boundary invocation still requires a supported host adapter.
-- mesh endpoint discovery, the canonical attunement job, and engine-owned
-  trigger/routine/hook-adapter/skill operations are not yet implemented.
+- mesh endpoint discovery, engine persistence and execution of the canonical
+  attunement job, and engine-owned trigger/routine/hook-adapter/skill
+  operations are not yet implemented.
 - standalone Connectome is not yet RRFlow 1.0-conformant: its inherited UI and
   runtime paths have not been consolidated onto the public RRD client, so it
   must not claim the 1.0 release version yet.
@@ -427,10 +432,9 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **B-01**. Gate A is complete: authority and names
-are frozen, the generic reasoning-tree contract is established, the obsolete
-fixed-stage lifecycle is absent, packages use the canonical grouped layout,
-and supporting documents are subordinate to this README.
+The next executable item is **B-02**. Gate A is complete, and B-01 freezes the
+installation and attunement wire vocabulary without claiming its later engine
+implementation.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -516,11 +520,31 @@ removed with passing evidence or explicitly retained by the canonical contract.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | B-01 | Define install plan, installation result, attunement plan, job, phase checkpoint, status, resume, cancel, and verification envelopes. | `rrd-contract` | Golden JSON and generated schema tests cover every state transition and reject skipped phases or mismatched digests. |
+| [x] | B-01 | Define install plan, installation result, attunement plan, job, phase checkpoint, status, resume, cancel, and verification envelopes. | `rrd-contract` | Golden JSON and generated schema tests cover every state transition and reject skipped phases or mismatched digests. |
 | [ ] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
 | [ ] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
 | [ ] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
 | [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and RRFlowQL produce the same authorized logical request without a second executor. |
+
+B-01 evidence (2026-09-04):
+
+- `rrd-contract` defines strict provider-neutral installation plans/results and
+  attunement plans, jobs, leases, phase checkpoints, status, resume, cancel,
+  and verification payloads. They contain no provider hook, secret, local
+  path, or client-owned lifecycle state.
+- The canonical phase order is connect, inventory, parse, normalize,
+  entity-link, lexical-index, embed, vector-index, graph, ground, and verify.
+  Checkpoints must be an exact prefix, bind the plan configuration and runtime
+  coordinates, and chain each input digest to the preceding output digest.
+- `install-attunement-v1.json` freezes every payload shape, all seven job
+  states, and all 12 permitted transitions. The transition matrix test accepts
+  valid snapshots for those 12 transitions and rejects every other one of the
+  49 possible state pairs; rejection tests cover phase skips, content,
+  configuration, chain, revision, retry, and verification digest drift.
+- All 45 `rrd-contract` tests, strict package Clippy, the implementation-free
+  architecture test, and `cargo check --workspace --all-targets --locked`
+  passed. No engine, persistence, endpoint, SDK, CLI, or Connectome behavior
+  changed in B-01.
 
 Gate B exits only when other languages and LFG can implement the contracts from
 golden vectors without importing Rust internals.

@@ -1,0 +1,304 @@
+{
+  "allowed_transitions": [
+    { "from": "pending", "to": "running" },
+    { "from": "pending", "to": "cancel_requested" },
+    { "from": "running", "to": "running" },
+    { "from": "running", "to": "paused" },
+    { "from": "running", "to": "cancel_requested" },
+    { "from": "running", "to": "failed" },
+    { "from": "running", "to": "succeeded" },
+    { "from": "paused", "to": "running" },
+    { "from": "paused", "to": "cancel_requested" },
+    { "from": "cancel_requested", "to": "cancelled" },
+    { "from": "failed", "to": "running" },
+    { "from": "failed", "to": "cancel_requested" }
+  ],
+  "attunement_plan": {
+    "contract_version": 1,
+    "estimated_max_duration_ms": 2700000,
+    "estimated_min_duration_ms": 1800000,
+    "id": "attune-01",
+    "phases": [
+      {
+        "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000065",
+        "estimated_input_bytes": 1024,
+        "estimated_items": 10,
+        "phase": "connect",
+        "sequence": 1
+      },
+      {
+        "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000066",
+        "estimated_input_bytes": 2048,
+        "estimated_items": 20,
+        "phase": "inventory",
+        "sequence": 2
+      },
+      {
+        "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000067",
+        "estimated_input_bytes": 3072,
+        "estimated_items": 30,
+        "phase": "parse",
+        "sequence": 3
+      },
+      {
+        "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000068",
+        "estimated_input_bytes": 4096,
+        "estimated_items": 40,
+        "phase": "normalize",
+        "sequence": 4
+      },
+      {
+        "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000069",
+        "estimated_input_bytes": 5120,
+        "estimated_items": 50,
+        "phase": "entity_link",
+        "sequence": 5
+      },
+      {
+        "configuration_sha256": "000000000000000000000000000000000000000000000000000000000000006a",
+        "estimated_input_bytes": 6144,
+        "estimated_items": 60,
+        "phase": "lexical_index",
+        "sequence": 6
+      },
+      {
+        "configuration_sha256": "000000000000000000000000000000000000000000000000000000000000006b",
+        "estimated_input_bytes": 7168,
+        "estimated_items": 70,
+        "phase": "embed",
+        "sequence": 7
+      },
+      {
+        "configuration_sha256": "000000000000000000000000000000000000000000000000000000000000006c",
+        "estimated_input_bytes": 8192,
+        "estimated_items": 80,
+        "phase": "vector_index",
+        "sequence": 8
+      },
+      {
+        "configuration_sha256": "000000000000000000000000000000000000000000000000000000000000006d",
+        "estimated_input_bytes": 9216,
+        "estimated_items": 90,
+        "phase": "graph",
+        "sequence": 9
+      },
+      {
+        "configuration_sha256": "000000000000000000000000000000000000000000000000000000000000006e",
+        "estimated_input_bytes": 10240,
+        "estimated_items": 100,
+        "phase": "ground",
+        "sequence": 10
+      },
+      {
+        "configuration_sha256": "000000000000000000000000000000000000000000000000000000000000006f",
+        "estimated_input_bytes": 11264,
+        "estimated_items": 110,
+        "phase": "verify",
+        "sequence": 11
+      }
+    ],
+    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "planned_at_unix_ms": 1800000000000,
+    "source_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+    "target": {
+      "segments": [
+        { "id": "local", "kind": "organization" },
+        { "id": "developer-estate", "kind": "estate" },
+        { "id": "rrflow", "kind": "project" },
+        { "id": "rrflow-dev", "kind": "instance" }
+      ]
+    }
+  },
+  "cancel": {
+    "contract_version": 1,
+    "expected_job_revision": 3,
+    "job_id": "job-01",
+    "last_checkpoint_sha256": "c02eb3101383693f926964c3ef2cf41619aa60d70fe50a4c4b64fd6f93627363",
+    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "reason": "operator requested cancellation",
+    "requested_at_unix_ms": 1800000003001
+  },
+  "installation_plan": {
+    "actions": [
+      {
+        "disposition": "create",
+        "estimated_write_bytes": 4096,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+        "kind": "initialize_instance"
+      },
+      {
+        "disposition": "create",
+        "estimated_write_bytes": 256,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+        "kind": "configure_project_locator"
+      },
+      {
+        "disposition": "create",
+        "estimated_write_bytes": 1024,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+        "kind": "create_attunement_job"
+      }
+    ],
+    "attunement_plan_id": "attune-01",
+    "attunement_plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+    "contract_version": 1,
+    "id": "install-01",
+    "plan_sha256": "b480bc28fbd9db7f5303b2f1f3f1da0d8f06b53a9b956bfeb881b23579938e8b",
+    "planned_at_unix_ms": 1800000000001,
+    "target": {
+      "segments": [
+        { "id": "local", "kind": "organization" },
+        { "id": "developer-estate", "kind": "estate" },
+        { "id": "rrflow", "kind": "project" },
+        { "id": "rrflow-dev", "kind": "instance" }
+      ]
+    },
+    "target_kind": "existing_project"
+  },
+  "installation_result": {
+    "action_results": [
+      {
+        "kind": "initialize_instance",
+        "output_sha256": "0000000000000000000000000000000000000000000000000000000000000014"
+      },
+      {
+        "kind": "configure_project_locator",
+        "output_sha256": "0000000000000000000000000000000000000000000000000000000000000015"
+      },
+      {
+        "kind": "create_attunement_job",
+        "output_sha256": "0000000000000000000000000000000000000000000000000000000000000016"
+      }
+    ],
+    "applied_at_unix_ms": 1800000000010,
+    "attunement_job_id": "job-01",
+    "contract_version": 1,
+    "idempotent_replay": false,
+    "plan_id": "install-01",
+    "plan_sha256": "b480bc28fbd9db7f5303b2f1f3f1da0d8f06b53a9b956bfeb881b23579938e8b",
+    "result_sha256": "69ac03c862b46a0fcaef34d05ab595b4dcd8b35e818ca596f3eda4bb66c818ff",
+    "runtime_cursor": 1,
+    "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000001e"
+  },
+  "resume": {
+    "contract_version": 1,
+    "expected_job_revision": 3,
+    "job_id": "job-01",
+    "last_checkpoint_sha256": "c02eb3101383693f926964c3ef2cf41619aa60d70fe50a4c4b64fd6f93627363",
+    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "requested_at_unix_ms": 1800000003001,
+    "resume_from_phase": "inventory"
+  },
+  "state_snapshots": [
+    {
+      "checkpoint_count": 0,
+      "current_phase": null,
+      "leased": false,
+      "retryable_failure": false,
+      "state": "pending"
+    },
+    {
+      "checkpoint_count": 0,
+      "current_phase": "connect",
+      "leased": true,
+      "retryable_failure": false,
+      "state": "running"
+    },
+    {
+      "checkpoint_count": 0,
+      "current_phase": "connect",
+      "leased": false,
+      "retryable_failure": false,
+      "state": "paused"
+    },
+    {
+      "checkpoint_count": 0,
+      "current_phase": "connect",
+      "leased": false,
+      "retryable_failure": false,
+      "state": "cancel_requested"
+    },
+    {
+      "checkpoint_count": 0,
+      "current_phase": null,
+      "leased": false,
+      "retryable_failure": false,
+      "state": "cancelled"
+    },
+    {
+      "checkpoint_count": 0,
+      "current_phase": "connect",
+      "leased": false,
+      "retryable_failure": true,
+      "state": "failed"
+    },
+    {
+      "checkpoint_count": 11,
+      "current_phase": null,
+      "leased": false,
+      "retryable_failure": false,
+      "state": "succeeded"
+    }
+  ],
+  "status": {
+    "contract_version": 1,
+    "job": {
+      "checkpoints": [
+        {
+          "checkpoint_sha256": "c02eb3101383693f926964c3ef2cf41619aa60d70fe50a4c4b64fd6f93627363",
+          "committed_at_unix_ms": 1800000000101,
+          "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000065",
+          "contract_version": 1,
+          "coordinates": {
+            "catalogue_revision": 1,
+            "runtime_cursor": 1,
+            "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000012d",
+            "schema_revision": 1
+          },
+          "input_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
+          "job_id": "job-01",
+          "output_sha256": "00000000000000000000000000000000000000000000000000000000000000c9",
+          "phase": "connect",
+          "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+          "sequence": 1
+        }
+      ],
+      "contract_version": 1,
+      "created_at_unix_ms": 1800000000010,
+      "current_phase": "inventory",
+      "id": "job-01",
+      "lease": {
+        "acquired_at_unix_ms": 1800000001990,
+        "expires_at_unix_ms": 1800000032000,
+        "generation": 2,
+        "holder": "rrd-engine-worker",
+        "id": "lease-01"
+      },
+      "plan_id": "attune-01",
+      "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+      "revision": 2,
+      "state": "running",
+      "updated_at_unix_ms": 1800000002000
+    },
+    "observed_at_unix_ms": 1800000002001
+  },
+  "verification": {
+    "checks": [
+      {
+        "evidence_sha256": "00000000000000000000000000000000000000000000000000000000000001f4",
+        "id": "runtime-reopen",
+        "passed": true
+      }
+    ],
+    "contract_version": 1,
+    "job_id": "job-01",
+    "job_revision": 20,
+    "last_checkpoint_sha256": "aa31c4658406143726d167ce3e1130047ef85cebc22ded8ce044905276f567e8",
+    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "runtime_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000137",
+    "status": "passed",
+    "verification_sha256": "0c28d55e756e8c6bb424efaa1d0e6b7c526f1b966eca07396c880c52b02291e6",
+    "verified_at_unix_ms": 1800000020001
+  }
+}

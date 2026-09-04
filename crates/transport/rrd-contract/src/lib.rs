@@ -5,6 +5,7 @@
 //! same serialized vocabulary. Version 1 intentionally freezes only the
 //! coordinates needed before those outward surfaces are implemented.
 
+mod attunement;
 mod capability_surface;
 mod diagnostic;
 mod function;
@@ -15,6 +16,19 @@ mod platform;
 mod reasoning_tree;
 mod sdk_conformance;
 
+pub use attunement::{
+    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
+    installation_plan_sha256, installation_result_sha256, AttunementFailure, AttunementJob,
+    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
+    AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
+    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
+    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
+    InstallationActionResult, InstallationPlan, InstallationPlanAction, InstallationResult,
+    InstallationTargetKind, ResumeAttunement, ATTUNEMENT_PHASES,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
+    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
+    MAX_INSTALLATION_ACTIONS,
+};
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
     SurfaceDisposition,
