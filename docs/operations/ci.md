@@ -23,6 +23,12 @@ request or ref. The reusable workflow reduces every partition into one stable
 - daemon portability on GitHub-hosted Windows and macOS runners; and
 - one always-evaluated gate which fails unless every partition succeeded.
 
+The repository-policy partition also verifies the generated
+`docs/roadmap/rrflow-1.0-file-plan.jsonl`. That inventory must match every
+tracked or non-ignored path and every gated future path before code execution
+begins; regenerate it with `python3 scripts/ci/build_execution_inventory.py`
+after an accepted path or content change.
+
 The five engine suites cover every workspace package exactly once, but package
 names do not define CI ownership. A failure is reported against the subsystem
 whose behavior is being qualified. This keeps the hosted fallback below its

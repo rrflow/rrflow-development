@@ -12,12 +12,17 @@ ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "README.md"
 DOCS_INDEX = ROOT / "docs" / "README.md"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
+EXECUTION_MAP = ROOT / "docs" / "roadmap" / "rrflow-1.0-execution-map.md"
+EXECUTION_FILE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
 SYSTEM_OVERVIEW = ROOT / "docs" / "architecture" / "system-overview.md"
 ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
 SINGLE_ENGINE_DECISION = ROOT / "docs" / "decisions" / "0001-single-engine-authority.md"
+SYSTEM_CONVERGENCE_RESEARCH = (
+    ROOT / "docs" / "research" / "rrflow-system-convergence-architecture-research.md"
+)
 RRFLOWKV_CURRENT_FORMAT = (
     ROOT / "docs" / "reference" / "storage" / "rrflowkv-current-format.md"
 )
@@ -259,6 +264,39 @@ def main() -> int:
         failures.append("the roadmap duplicates objective or POA&M ownership")
     if "#### A-06 knowledge-bootstrap sequence" not in roadmap:
         failures.append("the roadmap has no incremental knowledge-bootstrap sequence")
+    if "rrflow-1.0-execution-map.md" not in roadmap:
+        failures.append("the roadmap does not link its supporting code execution map")
+
+    execution_map = EXECUTION_MAP.read_text(encoding="utf-8")
+    for required_section in (
+        "## How to execute this map",
+        "## Product terms versus implementation packages",
+        "## Frozen target source tree",
+        "## Target runtime flows",
+        "## Current implementation inventory and exact disposition",
+        "## Repository-wide run checklist",
+        "## Global stop conditions",
+    ):
+        if required_section not in execution_map:
+            failures.append(f"the execution map lacks {required_section}")
+    if "cannot mark a release gate complete" not in execution_map:
+        failures.append("the execution map does not disclaim roadmap authority")
+    if "rrflow-1.0-file-plan.jsonl" not in execution_map:
+        failures.append("the execution map does not link its exhaustive file plan")
+    if not EXECUTION_FILE_PLAN.is_file():
+        failures.append("the exhaustive RRFlow 1.0 file plan is absent")
+
+    convergence_research = SYSTEM_CONVERGENCE_RESEARCH.read_text(encoding="utf-8")
+    for required_section in (
+        "## Direct answer",
+        "## Evidence reconciliation",
+        "## Current-code gap matrix",
+        "## Decisions and exclusions",
+        "## Claim-to-source ledger",
+        "## Research limitations and stop condition",
+    ):
+        if required_section not in convergence_research:
+            failures.append(f"the system-convergence research lacks {required_section}")
 
     terminology_owners = {
         README: readme,

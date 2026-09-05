@@ -11,6 +11,15 @@ The current [alpha objective](../objectives/rrflow-1.0-alpha.md) defines the
 result. The current [POA&M](../poam/rrflow-1.0-alpha.md) tracks verified gaps
 against the roadmap gates.
 
+The canonical roadmap is accompanied by a subordinate
+[code execution map](rrflow-1.0-execution-map.md) and its generated
+[whole-repository file plan](rrflow-1.0-file-plan.jsonl). These records map
+files, symbols, tests, and stop conditions; they cannot change checklist status.
+
 | Release | Durable warp | Checkout record | State |
 |---|---|---|---|
 | RRFlow 1.0 | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`rrflow-1.0.md`](rrflow-1.0.md) | pre-alpha; Gate A alignment 5/7, B-01 and B-02 complete |
+
+| Supporting record | Durable warp | Checkout record | Authority |
+|---|---|---|---|
+| RRFlow 1.0 code execution map | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | file/symbol work packages only; roadmap checkboxes remain canonical |

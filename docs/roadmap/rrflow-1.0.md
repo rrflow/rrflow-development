@@ -21,6 +21,12 @@ component and security-boundary map, and the
 transactional, storage, Arrow, DataFusion, and context flow. This roadmap owns
 only dependency order, checkboxes, and accepted completion evidence.
 
+The supporting [RRFlow 1.0 code execution map](rrflow-1.0-execution-map.md)
+binds the unchecked gates to current files, symbols, planned paths, commands,
+and stop conditions. Its generated
+[file plan](rrflow-1.0-file-plan.jsonl) covers the complete repository
+baseline. Neither supporting record may change the completion ledger here.
+
 Roadmap completion currently stands at:
 
 | Gate | Purpose | Complete |

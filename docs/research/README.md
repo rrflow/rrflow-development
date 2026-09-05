@@ -54,6 +54,8 @@ terminology.
 The following reviewed history and unclassified flat records participate in
 this research trail; listing them here does not make them current authority:
 
+- [`rrflow-system-convergence-architecture-research.md`](rrflow-system-convergence-architecture-research.md)
+  (active primary-source basis for the 1.0 execution map)
 - [`rrd-data-services-architecture-research.md`](../history/rrd-data-services-architecture-research.md) (historical)
 - [`estate-control-v1.md`](../estate-control-v1.md) (unclassified)
 - [`local-estate-authorization-v1.md`](../local-estate-authorization-v1.md) (unclassified)
@@ -70,5 +72,6 @@ order lives in [`docs/roadmap/rrflow-1.0.md`](../roadmap/rrflow-1.0.md).
   engine, storage, services, SDKs, tests, and documentation.
 - Classify and migrate each conflicting use without retaining aliases or a
   second glossary.
-- Author the full researched implementation plan only after the terminology
-  and migration gaps have been incorporated into the enforced RRFlow board.
+- Recheck time-sensitive implementation guidance when its owning execution
+  gate begins; the current researched implementation map is linked from the
+  [RRFlow 1.0 roadmap](../roadmap/rrflow-1.0.md).

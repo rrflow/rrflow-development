@@ -247,6 +247,10 @@ def main() -> None:
         reusable.count("python3 scripts/ci/check_documentation.py") == 1,
         "documentation authority and local-link policy must run exactly once",
     )
+    require(
+        reusable.count("python3 scripts/ci/build_execution_inventory.py --check") == 1,
+        "the exhaustive execution inventory must be checked exactly once",
+    )
 
     expected_jobs = {
         "topology-smoke",

@@ -1,0 +1,681 @@
+#!/usr/bin/env python3
+"""Build or verify the exhaustive RRFlow 1.0 file execution inventory."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+OUTPUT = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
+ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
+
+PACKAGE_GATES: dict[str, tuple[str, ...]] = {
+    "rrd-core": ("A-07", "C-01", "I-01"),
+    "rrd-lsm": ("A-07", "C-02", "C-06", "C-07", "D-09", "J-02", "J-04"),
+    "rrd-store": (
+        "A-07",
+        "C-01",
+        "C-02",
+        "C-03",
+        "C-04",
+        "C-05",
+        "E-01",
+        "E-02",
+        "E-03",
+        "E-04",
+        "F-01",
+        "F-02",
+    ),
+    "rrd-query": (
+        "A-07",
+        "B-05",
+        "E-01",
+        "E-02",
+        "E-03",
+        "E-05",
+        "F-01",
+        "F-02",
+        "F-03",
+        "F-04",
+        "F-05",
+        "H-02",
+        "H-03",
+    ),
+    "rrd-vector": ("A-07", "E-04", "E-05", "F-03", "J-02", "J-04"),
+    "rrd-inference": ("A-07", "B-03", "G-01", "G-03", "G-06"),
+    "rrd-security": ("A-07", "D-01", "H-04", "H-05", "J-02"),
+    "rrd-estate": ("A-07", "D-01", "D-02", "D-10", "H-05", "J-03"),
+    "rrd-engine": (
+        "A-07",
+        "C-03",
+        "D-01",
+        "D-02",
+        "D-05",
+        "E-04",
+        "F-04",
+        "F-05",
+        "G-01",
+        "G-02",
+        "G-04",
+        "G-05",
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-05",
+        "I-02",
+        "I-03",
+        "I-05",
+        "I-07",
+    ),
+    "rrd-contract": (
+        "A-07",
+        "B-03",
+        "B-04",
+        "B-05",
+        "D-01",
+        "D-02",
+        "G-01",
+        "H-04",
+        "I-01",
+        "I-05",
+    ),
+    "rrd-client": ("A-07", "B-04", "H-04", "H-07", "J-03"),
+    "rrd-server": ("A-07", "B-04", "B-05", "H-03", "H-04", "H-05", "J-03"),
+    "rrflow-cli": ("A-07", "C-05", "D-01", "I-06", "J-01", "J-03"),
+    "rrflow-mcp": ("A-07", "H-04", "H-05", "I-04", "J-03"),
+    "rrflow-edge": ("A-07", "D-07", "H-04", "H-07", "J-03"),
+    "rrd-cluster": ("A-07", "D-10", "H-05", "J-02", "J-04"),
+    "rrd-kubernetes": ("A-07", "D-01", "D-07", "J-03", "J-05"),
+    "rrd-maintenance": ("A-07", "D-02", "D-10", "I-07", "J-02"),
+    "rrd-operator-knowledge": ("A-07", "D-06", "H-01", "J-02"),
+    "rrflow-eval": ("A-07", "G-06", "J-02", "J-04"),
+}
+
+FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
+    "crates/persistence/rrd-lsm/src/database.rs": ("C-02", "C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/manifest.rs": ("C-05", "C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/memtable.rs": ("C-02", "C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/segment.rs": ("C-05", "C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07"),
+    "crates/persistence/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
+    "crates/persistence/rrd-store/src/keyspaces.rs": ("C-01", "C-05"),
+    "crates/persistence/rrd-store/src/native.rs": ("C-01", "C-03", "C-04", "C-05"),
+    "crates/persistence/rrd-store/src/persistent.rs": ("C-05",),
+    "crates/persistence/rrd-store/src/migration.rs": ("C-05", "J-01"),
+    "crates/persistence/rrd-store/src/upgrade.rs": ("C-05", "J-01"),
+    "crates/persistence/rrd-store/tests/migration.rs": ("C-05", "J-01"),
+    "crates/persistence/rrd-store/tests/native_format_upgrade.rs": ("C-05", "J-01"),
+    "crates/compute/rrd-query/src/arrow.rs": ("F-01", "F-02"),
+    "crates/compute/rrd-query/src/execute.rs": (
+        "E-01",
+        "E-03",
+        "F-01",
+        "F-02",
+        "F-03",
+        "F-04",
+    ),
+    "crates/compute/rrd-query/src/live.rs": ("H-03",),
+    "crates/compute/rrd-query/src/pipeline.rs": ("B-05", "F-01", "F-04"),
+    "crates/compute/rrd-query/src/plan.rs": ("B-05", "E-05", "F-02", "F-03"),
+    "crates/compute/rrd-query/src/bm25.rs": ("E-03", "F-03", "H-01"),
+    "crates/compute/rrd-query/src/index.rs": ("E-02", "E-03", "E-05"),
+    "crates/compute/rrd-query/src/syntax.rs": ("B-05", "F-03"),
+    "crates/compute/rrd-vector/src/exact.rs": ("E-04", "J-04"),
+    "crates/compute/rrd-vector/src/hnsw.rs": ("E-04", "E-05", "J-04"),
+    "crates/compute/rrd-vector/src/plan.rs": ("E-04", "E-05"),
+    "crates/compute/rrd-vector/src/runtime.rs": ("E-04", "E-05", "F-03"),
+    "crates/compute/rrd-vector/src/turboquant.rs": ("E-04", "J-01", "J-04"),
+    "crates/compute/rrd-vector/src/turbo_segment.rs": ("E-04", "J-01", "J-04"),
+    "crates/authority/rrd-engine/src/engine/automation.rs": (
+        "I-01",
+        "I-02",
+        "I-03",
+        "I-07",
+    ),
+    "crates/authority/rrd-engine/src/engine/context.rs": (
+        "G-02",
+        "G-05",
+        "H-01",
+        "H-02",
+    ),
+    "crates/authority/rrd-engine/src/engine/retrieval.rs": ("F-03", "H-01", "H-02"),
+    "crates/authority/rrd-engine/src/engine/retrieval_query.rs": (
+        "E-05",
+        "F-03",
+        "H-01",
+        "H-02",
+    ),
+    "crates/authority/rrd-engine/src/engine/query.rs": ("B-05", "F-04", "H-04"),
+    "crates/authority/rrd-engine/src/engine/query_transaction.rs": (
+        "C-02",
+        "C-03",
+        "G-04",
+    ),
+    "crates/authority/rrd-engine/src/engine/subscription.rs": ("B-04", "H-03", "H-04"),
+    "crates/transport/rrd-server/src/http/websocket.rs": ("B-04", "H-03", "H-04"),
+    "crates/transport/rrd-contract/src/attunement.rs": ("D-01", "D-02", "D-05"),
+    "crates/transport/rrd-contract/src/router.rs": ("B-03", "G-01", "G-02", "G-03"),
+}
+
+REMOVE_OR_REWRITE = {
+    "crates/persistence/rrd-store/src/migration.rs": "remove after native-only reopen evidence; do not retain a runtime migration API",
+    "crates/persistence/rrd-store/src/upgrade.rs": "remove after the final 1.0 format is frozen; pre-release data is regenerated, not upgraded",
+    "crates/persistence/rrd-store/tests/migration.rs": "remove with the retired Fjall runtime migration surface",
+    "crates/persistence/rrd-store/tests/native_format_upgrade.rs": "replace with rejection tests for non-1.0 formats, then rename to the final format test",
+    "crates/persistence/rrd-store/src/persistent.rs": "rewrite as the single rrflowKV persistent opener with no backend selector",
+    "crates/persistence/rrd-lsm/src/segment.rs": "split into the planned segment modules while replacing row-only and legacy decoding paths",
+    "crates/persistence/rrd-store/src/keyspaces.rs": "replace TextV1/TagV2 branching with the frozen ordered binary tuple codec",
+    "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
+    "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
+    "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
+    "crates/authority/rrd-engine/src/engine/automation.rs": "decompose reusable governed-function code from new persisted event, trigger, and routine authorities",
+}
+
+PLANNED_PATHS: dict[str, tuple[str, ...]] = {
+    "crates/transport/rrd-contract/fixtures/knowledge-package-v1.json": ("KB-02",),
+    "crates/transport/rrd-contract/fixtures/model-manifest-v1.json": ("B-03",),
+    "crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json": ("B-04",),
+    "crates/transport/rrd-contract/tests/knowledge_contract.rs": ("KB-02",),
+    "crates/transport/rrd-contract/tests/model_manifest_contract.rs": ("B-03",),
+    "crates/transport/rrd-contract/tests/websocket_contract.rs": ("B-04",),
+    "crates/compute/rrd-attunement/Cargo.toml": ("A-07", "D-03"),
+    "crates/compute/rrd-attunement/src/lib.rs": ("A-07", "D-03"),
+    "crates/compute/rrd-attunement/src/inventory.rs": ("D-03",),
+    "crates/compute/rrd-attunement/src/parse.rs": ("D-04",),
+    "crates/compute/rrd-attunement/src/normalize.rs": ("D-05",),
+    "crates/compute/rrd-attunement/src/entity_link.rs": ("D-05",),
+    "crates/compute/rrd-attunement/src/ground.rs": ("D-05",),
+    "crates/compute/rrd-attunement/src/verify.rs": ("D-05",),
+    "crates/compute/rrd-attunement/tests/inventory.rs": ("D-03",),
+    "crates/compute/rrd-attunement/tests/incremental_parse.rs": ("D-04",),
+    "crates/compute/rrd-attunement/tests/phases.rs": ("D-05",),
+    "crates/persistence/rrd-lsm/src/transaction.rs": ("C-02",),
+    "crates/persistence/rrd-lsm/tests/transaction_conformance.rs": ("C-02",),
+    "crates/persistence/rrd-lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
+    "crates/persistence/rrd-lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
+    "crates/persistence/rrd-lsm/src/segment/mod.rs": ("C-06",),
+    "crates/persistence/rrd-lsm/src/segment/format.rs": ("C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/segment/spine.rs": ("C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/segment/column.rs": ("C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/segment/reader.rs": ("C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/segment/writer.rs": ("C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/segment/cache.rs": ("C-06", "C-07", "F-05"),
+    "crates/persistence/rrd-store/src/key_codec.rs": ("C-01",),
+    "crates/persistence/rrd-store/src/transaction.rs": ("C-02", "C-03"),
+    "crates/persistence/rrd-store/tests/key_codec.rs": ("C-01",),
+    "crates/persistence/rrd-store/tests/storage_profile_conformance.rs": ("C-02",),
+    "crates/persistence/rrd-store/tests/semantic_commit_atomicity.rs": ("C-03",),
+    "crates/persistence/rrd-store/tests/direct_read_paths.rs": ("C-04",),
+    "crates/persistence/rrd-store/src/access/mod.rs": ("C-04",),
+    "crates/persistence/rrd-store/src/access/record.rs": ("C-04",),
+    "crates/persistence/rrd-store/src/access/relation.rs": ("C-03", "C-04", "E-01"),
+    "crates/persistence/rrd-store/src/access/index.rs": ("C-03", "E-02", "E-03"),
+    "crates/persistence/rrd-store/src/access/vector.rs": ("C-03", "E-04"),
+    "crates/persistence/rrd-store/src/access/runtime.rs": ("C-03", "C-04"),
+    "crates/transport/rrd-contract/fixtures/graphql-equivalence-v1.json": ("B-05",),
+    "crates/compute/rrd-query/src/graphql.rs": ("B-05",),
+    "crates/compute/rrd-query/tests/graphql_equivalence.rs": ("B-05",),
+    "crates/compute/rrd-query/tests/provider_streaming.rs": ("F-01", "F-02"),
+    "crates/compute/rrd-query/tests/native_operators.rs": ("F-03",),
+    "crates/compute/rrd-query/tests/resource_budgets.rs": ("F-04",),
+    "crates/compute/rrd-query/src/budget.rs": ("F-04",),
+    "crates/compute/rrd-query/src/provider/mod.rs": ("F-01",),
+    "crates/compute/rrd-query/src/provider/scan.rs": ("F-01", "F-02"),
+    "crates/compute/rrd-query/src/provider/stream.rs": ("F-01", "F-04"),
+    "crates/compute/rrd-query/src/provider/metrics.rs": ("F-02", "F-04"),
+    "crates/compute/rrd-query/src/physical/mod.rs": ("F-03",),
+    "crates/compute/rrd-query/src/physical/graph.rs": ("E-01", "F-03"),
+    "crates/compute/rrd-query/src/physical/bm25.rs": ("E-03", "F-03"),
+    "crates/compute/rrd-query/src/physical/vector.rs": ("E-04", "F-03"),
+    "crates/compute/rrd-query/src/physical/rrf.rs": ("F-03", "H-02"),
+    "crates/compute/rrd-inference/src/router.rs": ("G-01",),
+    "crates/transport/rrd-contract/src/knowledge.rs": ("KB-02",),
+    "crates/transport/rrd-contract/src/model_manifest.rs": ("B-03",),
+    "crates/transport/rrd-contract/src/websocket.rs": ("B-04",),
+    "crates/transport/rrd-contract/src/engine_event.rs": ("I-01",),
+    "crates/transport/rrd-contract/src/skill.rs": ("I-05",),
+    "crates/authority/rrd-engine/src/engine/attunement.rs": (
+        "D-02",
+        "D-05",
+        "KB-06",
+    ),
+    "crates/authority/rrd-engine/src/engine/install.rs": ("D-01",),
+    "crates/authority/rrd-engine/src/engine/routing.rs": ("G-02", "G-04", "G-05"),
+    "crates/authority/rrd-engine/src/engine/events.rs": ("I-01", "I-02"),
+    "crates/authority/rrd-engine/src/engine/routines.rs": ("I-03", "I-07"),
+    "crates/authority/rrd-engine/src/engine/skills.rs": ("I-05", "I-07"),
+    "crates/authority/rrd-engine/tests/attunement_resume.rs": (
+        "D-02",
+        "D-05",
+        "KB-06",
+        "KB-07",
+    ),
+    "crates/authority/rrd-engine/tests/routing_conformance.rs": (
+        "G-02",
+        "G-04",
+        "G-05",
+    ),
+    "crates/authority/rrd-engine/tests/context_flow.rs": ("H-01", "H-02"),
+    "crates/authority/rrd-engine/tests/commit_impact_live.rs": ("H-03",),
+    "crates/authority/rrd-engine/tests/automation_conformance.rs": (
+        "I-01",
+        "I-02",
+        "I-03",
+        "I-05",
+        "I-07",
+    ),
+    "crates/adapters/rrflow-lfg/Cargo.toml": ("A-07", "G-01", "G-03"),
+    "crates/adapters/rrflow-lfg/src/lib.rs": ("G-01", "G-03"),
+    "crates/adapters/rrflow-lfg/tests/router_conformance.rs": (
+        "G-01",
+        "G-03",
+        "G-06",
+    ),
+    "crates/adapters/rrflow-host-events/Cargo.toml": ("A-07", "I-04"),
+    "crates/adapters/rrflow-host-events/src/lib.rs": ("I-04",),
+    "crates/adapters/rrflow-host-events/src/reference.rs": ("I-04",),
+    "crates/adapters/rrflow-host-events/src/claude.rs": ("I-04",),
+    "crates/adapters/rrflow-host-events/src/codex.rs": ("I-04",),
+    "crates/adapters/rrflow-host-events/src/gemini.rs": ("I-04",),
+    "crates/adapters/rrflow-host-events/fixtures/host-event-v1.json": ("I-04",),
+    "crates/adapters/rrflow-host-events/tests/conformance.rs": ("I-04",),
+    "crates/adapters/rrflow-mesh/Cargo.toml": ("A-07", "H-07"),
+    "crates/adapters/rrflow-mesh/src/lib.rs": ("H-07",),
+    "crates/adapters/rrflow-mesh/src/resolver.rs": ("H-07",),
+    "crates/adapters/rrflow-mesh/tests/resolver_conformance.rs": ("H-07",),
+    "crates/adapters/rrflow-devforge/Cargo.toml": ("A-07", "D-07", "D-08", "D-10"),
+    "crates/adapters/rrflow-devforge/src/lib.rs": ("D-07", "D-08", "D-10"),
+    "crates/adapters/rrflow-devforge/src/placement.rs": ("D-07",),
+    "crates/adapters/rrflow-devforge/src/mounts.rs": ("D-08",),
+    "crates/adapters/rrflow-devforge/src/accounting.rs": ("D-09",),
+    "crates/adapters/rrflow-devforge/src/hibernation.rs": ("D-10",),
+    "crates/adapters/rrflow-devforge/tests/placement.rs": ("D-07",),
+    "crates/adapters/rrflow-devforge/tests/mounts.rs": ("D-08",),
+    "crates/adapters/rrflow-devforge/tests/accounting.rs": ("D-09",),
+    "crates/adapters/rrflow-devforge/tests/hibernation.rs": ("D-10",),
+    "crates/adapters/rrflow-cli/src/install.rs": ("D-01",),
+    "crates/adapters/rrflow-cli/src/automation_install.rs": ("I-06",),
+    "crates/adapters/rrflow-cli/tests/install_conformance.rs": ("D-01",),
+    "crates/adapters/rrflow-cli/tests/automation_install_conformance.rs": ("I-06",),
+    "crates/adapters/rrflow-cli/templates/project-v1/template.toml": ("D-01",),
+    "crates/adapters/rrflow-cli/templates/project-v1/AGENTS.md": ("D-01",),
+    "crates/adapters/rrflow-cli/templates/project-v1/CLAUDE.md": ("D-01",),
+    "crates/adapters/rrflow-cli/templates/project-v1/GEMINI.md": ("D-01",),
+    "crates/adapters/rrflow-cli/templates/project-v1/.rrflow/config.toml": ("D-01",),
+    "crates/adapters/rrflow-cli/tests/fixtures/install-empty/.keep": ("D-01",),
+    "crates/adapters/rrflow-cli/tests/fixtures/install-existing/README.md": ("D-01",),
+    "crates/adapters/rrflow-cli/tests/fixtures/install-existing/AGENTS.md": ("D-01",),
+    "crates/compute/rrd-attunement/src/source.rs": ("D-06",),
+    "crates/compute/rrd-attunement/tests/source_discovery.rs": ("D-06",),
+    "crates/compute/rrd-attunement/tests/fixtures/external-sources.toml": ("D-06",),
+    "crates/operations/rrd-operator-knowledge/src/source.rs": ("D-06",),
+    "crates/transport/rrd-server/src/http/handlers/graphql.rs": ("H-04",),
+    "crates/transport/rrd-server/tests/cross_surface_conformance.rs": ("H-04",),
+    "crates/evaluation/rrflow-eval/src/bin/release-evidence.rs": ("J-02", "J-04"),
+    "docs/evidence/integration/connectome-conformance.json": ("H-06", "J-03"),
+    "eval/connectome_conformance.py": ("H-06", "J-03"),
+    "scripts/knowledge/export.py": ("KB-03",),
+    "scripts/knowledge/test_export.py": ("KB-03", "KB-04"),
+    "scripts/release/qualify.py": ("J-02", "J-03"),
+    "scripts/release/assemble.py": ("J-05",),
+    "scripts/release/verify.py": ("J-05",),
+    "docs/architecture/instance-topology.md": ("KB-05",),
+    "docs/evidence/README.md": ("KB-05", "KB-08"),
+    "docs/evidence/comparisons/README.md": ("KB-05", "KB-08"),
+    "docs/evidence/comparisons/rrflow-surrealdb-claim-differential.md": ("KB-05",),
+    "docs/evidence/test-plans/README.md": ("KB-05", "KB-08"),
+    "docs/evidence/test-plans/persistence-scenario-matrix.md": ("KB-05",),
+    "docs/guides/README.md": ("KB-05", "KB-08"),
+    "docs/guides/installation/README.md": ("KB-05", "KB-08"),
+    "docs/guides/installation/security-bootstrap.md": ("KB-05",),
+    "docs/history/anytype-ui-research.md": ("KB-05",),
+    "docs/history/blueprint-triage.md": ("KB-05",),
+    "docs/history/clyffy-kernel-alpha.md": ("KB-05",),
+    "docs/history/context-path-profiler.md": ("KB-05",),
+    "docs/history/prompt-flight-experiments.md": ("KB-05",),
+    "docs/history/rrd-lsm-fjall-ai-audit.md": ("KB-05",),
+    "docs/history/rrflow-rename-ledger.md": ("A-07", "KB-05"),
+    "docs/history/runtime-graph.md": ("KB-05",),
+    "docs/operations/README.md": ("KB-05", "KB-08"),
+    "docs/reference/automation/README.md": ("KB-05", "KB-08"),
+    "docs/reference/automation/functions.md": ("KB-05",),
+    "docs/reference/automation/package-workflows.md": ("KB-05",),
+    "docs/reference/context/README.md": ("KB-05", "KB-08"),
+    "docs/reference/context/context-maintenance.md": ("KB-05",),
+    "docs/reference/context/retrieval.md": ("KB-05",),
+    "docs/reference/data/README.md": ("KB-05", "KB-08"),
+    "docs/reference/data/multi-model-object-contract.md": ("KB-05",),
+    "docs/reference/data/schema-catalogue.md": ("KB-05",),
+    "docs/reference/data/time-travel-and-rollback.md": ("KB-05",),
+    "docs/reference/deployment/README.md": ("KB-05", "KB-08"),
+    "docs/reference/deployment/edge.md": ("KB-05",),
+    "docs/reference/deployment/kubernetes-operator.md": ("KB-05",),
+    "docs/reference/deployment/local-process-driver.md": ("KB-05",),
+    "docs/reference/deployment/modes.md": ("KB-05",),
+    "docs/reference/distributed/README.md": ("KB-05", "KB-08"),
+    "docs/reference/distributed/cluster-contract.md": ("KB-05",),
+    "docs/reference/inference/README.md": ("KB-05", "KB-08"),
+    "docs/reference/inference/embedding-and-model-bound-search.md": ("KB-05",),
+    "docs/reference/operations/README.md": ("KB-05", "KB-08"),
+    "docs/reference/operations/estate-control.md": ("KB-05",),
+    "docs/reference/protocol/README.md": ("KB-05", "KB-08"),
+    "docs/reference/protocol/public-contract.md": ("KB-05",),
+    "docs/reference/protocol/server.md": ("KB-05",),
+    "docs/reference/protocol/subscriptions.md": ("KB-05",),
+    "docs/reference/query/README.md": ("KB-05", "KB-08"),
+    "docs/reference/query/index-catalogue.md": ("KB-05",),
+    "docs/reference/query/live-query.md": ("KB-05",),
+    "docs/reference/query/multi-model.md": ("KB-05",),
+    "docs/reference/query/transactions-and-joins.md": ("KB-05",),
+    "docs/reference/release/README.md": ("KB-05", "KB-08"),
+    "docs/reference/release/version-policy.md": ("KB-05",),
+    "docs/reference/sdk/README.md": ("KB-05", "KB-08"),
+    "docs/reference/sdk/dotnet.md": ("KB-05",),
+    "docs/reference/sdk/go.md": ("KB-05",),
+    "docs/reference/sdk/java.md": ("KB-05",),
+    "docs/reference/sdk/python.md": ("KB-05",),
+    "docs/reference/sdk/rust.md": ("KB-05",),
+    "docs/reference/sdk/typescript.md": ("KB-05",),
+    "docs/reference/security/README.md": ("KB-05", "KB-08"),
+    "docs/reference/security/authority.md": ("KB-05",),
+    "docs/reference/security/local-estate-authorization.md": ("KB-05",),
+    "docs/reference/storage/logical-archive.md": ("KB-05",),
+    "docs/reference/storage/tiered-persistence.md": ("KB-05",),
+    "docs/reference/vector/README.md": ("KB-05", "KB-08"),
+    "docs/reference/vector/collections.md": ("KB-05",),
+    "docs/reference/vector/compact-dense-artifact.md": ("KB-05",),
+    "docs/reference/vector/hnsw-projection.md": ("KB-05",),
+    "docs/reference/vector/memory-tiers.md": ("KB-05",),
+    "docs/reference/vector/quantization-lifecycle.md": ("KB-05",),
+    "docs/reference/vector/search.md": ("KB-05",),
+    "docs/research/qdrant-capability-inventory.md": ("KB-05",),
+    "docs/research/surrealdb-capability-inventory.md": ("KB-05",),
+}
+
+
+def git_files() -> list[str]:
+    result = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    paths = [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
+    output_relative = OUTPUT.relative_to(ROOT).as_posix()
+    if output_relative not in paths:
+        paths.append(output_relative)
+    return sorted(paths)
+
+
+def file_kind(path: str) -> str:
+    suffix = Path(path).suffix.lower()
+    if path.endswith("Cargo.toml") or path == "Cargo.toml":
+        return "cargo-manifest"
+    if path == "Cargo.lock":
+        return "dependency-lock"
+    if suffix == ".rs":
+        if "/tests/" in path or path.endswith("/tests.rs"):
+            return "rust-test"
+        if "/examples/" in path:
+            return "rust-example"
+        if "/benches/" in path:
+            return "rust-benchmark"
+        return "rust-source"
+    if suffix == ".md":
+        return "documentation"
+    if suffix in {".json", ".hex", ".xml"}:
+        return "fixture-or-generated-contract"
+    if suffix in {".py", ".sh", ".ts", ".go", ".java", ".cs"}:
+        return "tool-sdk-or-test-source"
+    if suffix in {".toml", ".yaml", ".yml"}:
+        return "configuration-or-deployment"
+    return "repository-asset"
+
+
+def package_name(path: str) -> str | None:
+    parts = Path(path).parts
+    return parts[2] if len(parts) > 2 and parts[0] == "crates" else None
+
+
+def planned_gates(path: str) -> tuple[str, ...]:
+    if path in FILE_OVERRIDES:
+        return ("A-07", *FILE_OVERRIDES[path])
+    if path in PLANNED_PATHS:
+        return PLANNED_PATHS[path]
+    package = package_name(path)
+    if package is not None:
+        return PACKAGE_GATES.get(package, ("A-07", "J-01"))
+    if path in {"README.md", "docs/README.md"} or (
+        path.startswith("docs/") and path.endswith("/README.md")
+    ):
+        return ("A-06", "KB-08", "J-01")
+    if path.startswith("docs/") and len(Path(path).parts) == 2:
+        return ("KB-05", "J-01")
+    if path.startswith("docs/") or path in {
+        "AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+        "SPEC.md",
+    }:
+        return ("A-06", "J-01")
+    if path.startswith("sdks/"):
+        return ("H-04", "J-02", "J-05")
+    if path.startswith("eval/"):
+        return ("G-06", "J-02", "J-04")
+    if path.startswith("deploy/"):
+        return ("D-07", "D-10", "J-03", "J-05")
+    if path.startswith("fixtures/"):
+        return ("B-04", "H-04", "J-02")
+    if path == "scripts/ci/check_documentation.py" or path == (
+        ".github/workflows/ci-reusable.yml"
+    ):
+        return ("KB-04", "A-07", "J-01", "J-02", "J-05")
+    if path.startswith(("scripts/", ".github/")):
+        return ("A-06", "A-07", "J-01", "J-02", "J-05")
+    return ("A-07", "J-01", "J-05")
+
+
+def action(path: str) -> str:
+    if path in REMOVE_OR_REWRITE:
+        return REMOVE_OR_REWRITE[path]
+    if path in {"CLAUDE.md", "GEMINI.md"}:
+        return "retain as a forwarding-only host instruction adapter; never add lifecycle state or copied rules"
+    if path == "AGENTS.md":
+        return "retain as the only provider-neutral repository instruction body"
+    if path == "README.md":
+        return "retain as the product portal; link owners and never absorb detailed roadmap or architecture bodies"
+    if path == "Cargo.lock":
+        return "regenerate only after an accepted manifest change; never hand-edit"
+    if path.startswith("docs/") and len(Path(path).parts) == 2:
+        return "review the complete record in KB-05, then retain, move, supersede, merge, or remove with an explicit owner and successor"
+    if path.startswith("docs/history/"):
+        return "retain as non-authoritative provenance unless KB-05 proves it redundant and safe to remove"
+    if path.startswith("docs/"):
+        return "retain under its declared documentation owner; update only when the owning gate supplies evidence"
+    if "/tests/" in path or path.endswith("/tests.rs") or path.startswith("eval/"):
+        return "retain as inventory; rewrite or extend only to supply the acceptance evidence assigned to this file"
+    if path.startswith("sdks/"):
+        return "retain as an outward projection; regenerate and test only after the shared contract changes"
+    return "review the complete file at its first assigned gate; retain unchanged unless the execution-map work package names a required modification"
+
+
+def line_count(data: bytes) -> int | None:
+    if b"\0" in data:
+        return None
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if not data:
+        return 0
+    return data.count(b"\n") + (0 if data.endswith(b"\n") else 1)
+
+
+def current_record(path: str) -> dict[str, object]:
+    relative_output = OUTPUT.relative_to(ROOT).as_posix()
+    if path == relative_output:
+        return {
+            "path": path,
+            "state": "generated",
+            "kind": "execution-inventory",
+            "coverage": "self-record; content digest and line count intentionally omitted",
+            "planned_gates": ["A-06"],
+            "action": "regenerate deterministically after repository path or content changes",
+        }
+    data = (ROOT / path).read_bytes()
+    lines = line_count(data)
+    return {
+        "path": path,
+        "state": "current",
+        "kind": file_kind(path),
+        "bytes": len(data),
+        "lines": lines,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "coverage": f"lines 1-{lines}" if lines is not None else f"bytes 0-{len(data)}",
+        "planned_gates": list(dict.fromkeys(planned_gates(path))),
+        "action": action(path),
+    }
+
+
+def records() -> list[dict[str, object]]:
+    current_paths = git_files()
+    result = [current_record(path) for path in current_paths]
+    current_set = set(current_paths)
+    for path, gates in PLANNED_PATHS.items():
+        if path in current_set:
+            continue
+        result.append(
+            {
+                "path": path,
+                "state": "planned",
+                "kind": file_kind(path),
+                "coverage": "file does not exist; creation is gated",
+                "planned_gates": list(gates),
+                "action": "create only in the first assigned gate and only after its prerequisites pass",
+            }
+        )
+    return sorted(
+        result, key=lambda record: (str(record["path"]), str(record["state"]))
+    )
+
+
+def validate(records_to_check: list[dict[str, object]]) -> None:
+    roadmap = ROADMAP.read_text(encoding="utf-8")
+    roadmap_ids = set(
+        re.findall(r"(?m)^\| \[[ x]\] \| ((?:[A-J]-\d{2})|(?:KB-\d{2})) \|", roadmap)
+    )
+    incomplete_ids = set(
+        re.findall(r"(?m)^\| \[ \] \| ((?:[A-J]-\d{2})|(?:KB-\d{2})) \|", roadmap)
+    )
+    paths = [str(record["path"]) for record in records_to_check]
+    if len(paths) != len(set(paths)):
+        duplicates = sorted({path for path in paths if paths.count(path) > 1})
+        raise ValueError(f"duplicate execution-plan paths: {duplicates}")
+
+    output_relative = OUTPUT.relative_to(ROOT).as_posix()
+    expected_current = set(git_files())
+    actual_current = {
+        str(record["path"])
+        for record in records_to_check
+        if record["state"] in {"current", "generated"}
+    }
+    if actual_current != expected_current:
+        raise ValueError(
+            "current file coverage differs from git/non-ignored inventory: "
+            f"missing={sorted(expected_current - actual_current)} "
+            f"unexpected={sorted(actual_current - expected_current)}"
+        )
+
+    assigned_ids = {
+        gate
+        for record in records_to_check
+        for gate in record.get("planned_gates", [])
+        if isinstance(gate, str)
+    }
+    uncovered = sorted(incomplete_ids - assigned_ids)
+    if uncovered:
+        raise ValueError(f"unchecked roadmap gates lack a file assignment: {uncovered}")
+
+    for record in records_to_check:
+        path = str(record["path"])
+        normalized = Path(path).as_posix()
+        if (
+            normalized != path
+            or path.startswith("/")
+            or ".." in Path(path).parts
+            or path in {"", "."}
+        ):
+            raise ValueError(f"execution-plan path is not normalized: {path!r}")
+        gates = record.get("planned_gates")
+        if not isinstance(gates, list) or not gates:
+            raise ValueError(f"execution-plan path has no assigned gate: {path}")
+        unknown = sorted(set(gates) - roadmap_ids)
+        if unknown:
+            raise ValueError(f"execution-plan path {path} has unknown gates: {unknown}")
+        state = record["state"]
+        if state == "current":
+            if not {"bytes", "sha256", "coverage"}.issubset(record):
+                raise ValueError(
+                    f"current path lacks complete baseline evidence: {path}"
+                )
+        elif state == "planned":
+            if (ROOT / path).exists():
+                raise ValueError(
+                    f"planned path already exists and must be reclassified: {path}"
+                )
+        elif state == "generated":
+            if path != output_relative:
+                raise ValueError(f"only the file plan may use generated state: {path}")
+        else:
+            raise ValueError(f"execution-plan path has invalid state {state!r}: {path}")
+
+
+def render() -> bytes:
+    planned_records = records()
+    validate(planned_records)
+    return b"".join(
+        json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        + b"\n"
+        for record in planned_records
+    )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    expected = render()
+    if args.check:
+        observed = OUTPUT.read_bytes() if OUTPUT.is_file() else b""
+        if observed != expected:
+            print(
+                "execution-inventory: drift; run scripts/ci/build_execution_inventory.py",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            f"execution-inventory: OK: {len(expected.splitlines())} current, generated, and planned path records"
+        )
+        return 0
+    OUTPUT.write_bytes(expected)
+    print(
+        f"execution-inventory: wrote {len(expected.splitlines())} current, generated, and planned path records"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
