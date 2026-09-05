@@ -19,8 +19,17 @@ ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
 RRFLOWKV_CURRENT_FORMAT = (
     ROOT / "docs" / "reference" / "storage" / "rrflowkv-current-format.md"
 )
+RRFLOWKV_BENCHMARK_HARNESS = (
+    ROOT / "docs" / "reference" / "storage" / "rrflowkv-benchmark-harness.md"
+)
 HISTORICAL_QUERY_PLAN = (
     ROOT / "docs" / "history" / "rrd-arrow-datafusion-bm25-plan.md"
+)
+HISTORICAL_LSM_BENCHMARK = (
+    ROOT / "docs" / "history" / "rrd-lsm-promotion-benchmark.md"
+)
+HISTORICAL_DATA_SERVICES_RESEARCH = (
+    ROOT / "docs" / "history" / "rrd-data-services-architecture-research.md"
 )
 STATUS = re.compile(r"(?im)^(?:\*\*)?Status(?:\*\*)?:\s*\S")
 LEGACY_MILESTONE = re.compile(r"\b(?:F\d|G\d{2}-W\d+|M\d|Q\d)\b")
@@ -36,6 +45,7 @@ CANONICAL_DIRECTORIES = (
     "roadmap",
     "poam",
     "reference",
+    "research",
     "history",
 )
 
@@ -130,6 +140,7 @@ def main() -> int:
         "roadmap/",
         "poam/",
         "reference/",
+        "research/",
         "history/",
     ):
         if directory not in docs_index:
@@ -174,6 +185,12 @@ def main() -> int:
         failures.append("the superseded Q1-Q4 query plan remains active and flat")
     if (ROOT / "docs" / "rrd-lsm-format.md").exists():
         failures.append("the rrflowKV physical-format reference remains active and flat")
+    if (ROOT / "docs" / "rrd-lsm-benchmark.md").exists():
+        failures.append("the mixed-purpose rrflowKV benchmark note remains active and flat")
+    if (ROOT / "docs" / "rrd-data-services-architecture-research.md").exists():
+        failures.append("the superseded M0-M8 architecture chronology remains active and flat")
+    if (ROOT / "docs" / "platform").exists():
+        failures.append("the obsolete platform documentation wrapper still exists")
     historical_query_plan = HISTORICAL_QUERY_PLAN.read_text(encoding="utf-8")
     if "historical" not in "\n".join(historical_query_plan.splitlines()[:12]).lower():
         failures.append("the superseded Q1-Q4 query plan is not marked historical")
@@ -201,6 +218,35 @@ def main() -> int:
     if "not the accepted RRFlow 1.0 target" not in current_format:
         failures.append("the current row format is not separated from the 1.0 target")
 
+    benchmark_harness = RRFLOWKV_BENCHMARK_HARNESS.read_text(encoding="utf-8")
+    for required_section in (
+        "## General comparison protocol",
+        "## Output schema and provenance gap",
+        "## Evidence required for release use",
+    ):
+        if required_section not in benchmark_harness:
+            failures.append(f"the benchmark-harness reference lacks {required_section}")
+    if "not RRFlow 1.0 release evidence" not in benchmark_harness:
+        failures.append("the local comparator is not separated from release evidence")
+
+    historical_lsm_benchmark = HISTORICAL_LSM_BENCHMARK.read_text(encoding="utf-8")
+    historical_lsm_header = "\n".join(historical_lsm_benchmark.splitlines()[:12])
+    if "historical" not in historical_lsm_header.casefold():
+        failures.append("the August LSM comparison note is not marked historical")
+    if "../reference/storage/rrflowkv-benchmark-harness.md" not in (
+        historical_lsm_header
+    ):
+        failures.append("the August LSM comparison note has no current successor")
+
+    historical_research = HISTORICAL_DATA_SERVICES_RESEARCH.read_text(
+        encoding="utf-8"
+    )
+    historical_research_header = "\n".join(historical_research.splitlines()[:12])
+    if "historical" not in historical_research_header.casefold():
+        failures.append("the M0-M8 data-services chronology is not marked historical")
+    if "../architecture/engine-data-flow.md" not in historical_research_header:
+        failures.append("the M0-M8 data-services chronology has no architecture successor")
+
     coordinates: dict[str, Path] = {}
     for record in canonical_records():
         source = record.read_text(encoding="utf-8")
@@ -208,15 +254,21 @@ def main() -> int:
         status_value = header_field(source, "Status")
         coordinate = header_field(source, "Coordinate")
         owner = header_field(source, "Owner")
+        superseded_by = header_field(source, "Superseded by")
         active = status_value is not None and status_value.casefold().startswith(
             "active"
         )
-        if active and coordinate is None:
-            failures.append(f"{relative}: active record has no stable Coordinate")
+        historical = status_value is not None and status_value.casefold().startswith(
+            "historical"
+        )
+        if (active or historical) and coordinate is None:
+            failures.append(f"{relative}: classified record has no stable Coordinate")
         if active and owner is None:
             failures.append(f"{relative}: active record has no Owner")
-        if active and not index_links_record(record):
-            failures.append(f"{relative}: active record is absent from its parent index")
+        if historical and superseded_by is None:
+            failures.append(f"{relative}: historical record has no Superseded by link")
+        if (active or historical) and not index_links_record(record):
+            failures.append(f"{relative}: classified record is absent from its parent index")
         if coordinate is not None:
             normalized_coordinate = coordinate.strip("`")
             if RRFLOW_COORDINATE.fullmatch(normalized_coordinate) is None:

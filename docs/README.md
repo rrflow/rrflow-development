@@ -90,7 +90,7 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 | RRFlow 1.0 alpha deficiencies and remediation | [`poam/`](poam/) |
 | Stable provider-neutral contracts | [`reference/`](reference/) |
 | Operations and CI | [`operations/`](operations/) |
-| Platform vocabulary research | [`platform/research/`](platform/research/) |
+| Platform industry research | [`research/`](research/) |
 | Machine evidence | [`evidence/`](evidence/) |
 | Superseded records | [`history/`](history/) |
 

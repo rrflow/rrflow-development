@@ -1,9 +1,19 @@
-# RRD LSM promotion benchmark
+# RRD LSM promotion benchmark (historical)
 
-Status: the physical mixed-mutation soak, migration rehearsal, corrected local
-general promotion, and dedicated AI-read matrix pass their bounded gates. The
-former extended RSS miss is closed by manifest-authenticated compact keyspace
-tags; a fresh read-heavy tail-latency diagnostic is red pending reproduction.
+**Status:** historical local comparison note; not current RRFlow 1.0 promotion or release evidence
+**Coordinate:** `rrflow://rrflow-instance/data/history/rrd-lsm-promotion-benchmark`
+**Superseded by:** [`../reference/storage/rrflowkv-benchmark-harness.md`](../reference/storage/rrflowkv-benchmark-harness.md)
+and [`../roadmap/rrflow-1.0.md`](../roadmap/rrflow-1.0.md)
+**Reason:** this note mixed methodology, dated results, invalidated runs, and
+release language; its JSON artifacts omit the exact execution revision and
+adequate host/toolchain provenance required by the current roadmap
+
+This record preserves the August 2026 local results and the limitations known
+at that time. Its internal word `promotion` refers only to the old harness's
+Fjall comparison verdict. It cannot close C-05, C-06, J-02, J-03, J-04, or
+J-05 and must not be cited as current performance evidence. Present-tense
+statements below describe the checkout and conclusions at the time of those
+runs, not the current architecture or release state.
 
 The benchmark runs Fjall and native `RRD LSM` in separate fresh child processes.
 Both receive the same valid claim corpus, authoritative batch boundaries, and
@@ -17,7 +27,7 @@ reports apparent and allocated bytes plus file-class attribution instead of
 mistaking sparse logical length for physical allocation. The parent alternates
 backend order, reports medians, and retains every raw trial.
 
-Run the checked-in workload:
+Historical command recorded with the checked-in workload:
 
 ```console
 cargo run --release --locked -p rrd-store --example engine_benchmark -- \
@@ -62,13 +72,13 @@ verification consequently retains only one bounded page while still checking
 the entire corpus and reports process `VmHWM` across recovery, verification,
 and measured reads.
 
-Fjall remains a compatibility and performance oracle. The scheduled and
+At the time of this record, Fjall remained a compatibility and performance oracle. The scheduled and
 manually dispatchable workflow runs with `--require-promotion`; remote and
 extended-RSS reproduction remain retirement gates. The repository may claim only
 the bounded results recorded here; it may not infer general superiority over
 Fjall, SurrealDB, Qdrant, or other databases.
 
-Evidence: [`2026-08-23-rrd-lsm-standard-streaming-scan-v4.json`](../eval/results/2026-08-23-rrd-lsm-standard-streaming-scan-v4.json).
+Evidence: [`2026-08-23-rrd-lsm-standard-streaming-scan-v4.json`](../../eval/results/2026-08-23-rrd-lsm-standard-streaming-scan-v4.json).
 
 ## Scale qualification remains open
 
@@ -110,10 +120,10 @@ green. A same-machine read-heavy rerun records bimodal fsync-sensitive native
 write p95 and fails that one cell despite favorable throughput, read, recovery,
 RSS, and allocation results. It remains red until repeated remote evidence can
 separate host storage variance from a reproducible regression. Evidence:
-[`read-heavy streaming-scan v4`](../eval/results/2026-08-23-rrd-lsm-read-heavy-streaming-scan-v4.json),
-[`sustained streaming-scan v4`](../eval/results/2026-08-23-rrd-lsm-sustained-streaming-scan-v4.json),
-[`extended compact-tag v4`](../eval/results/2026-08-23-rrd-lsm-extended-keyspace-tag-v2-v4.json),
-and [`read-heavy red diagnostic`](../eval/results/2026-08-23-rrd-lsm-read-heavy-direct-tag-v2-v4.json).
+[`read-heavy streaming-scan v4`](../../eval/results/2026-08-23-rrd-lsm-read-heavy-streaming-scan-v4.json),
+[`sustained streaming-scan v4`](../../eval/results/2026-08-23-rrd-lsm-sustained-streaming-scan-v4.json),
+[`extended compact-tag v4`](../../eval/results/2026-08-23-rrd-lsm-extended-keyspace-tag-v2-v4.json),
+and [`read-heavy red diagnostic`](../../eval/results/2026-08-23-rrd-lsm-read-heavy-direct-tag-v2-v4.json).
 Fjall compatibility retirement still requires the repeated remote matrix; the
 repository does not average the read-heavy tail miss away.
 
@@ -130,7 +140,7 @@ A same-tree three-trial diagnostic failed once because native write p95 was
 only 96 total write-latency samples for this profile, so that diagnostic is
 recorded as undersampling rather than presented as promotion evidence. The
 nine-trial result below is retained as historical diagnostic evidence only:
-[`2026-08-21-rrd-lsm-m35-standard.json`](../eval/results/2026-08-21-rrd-lsm-m35-standard.json).
+[`2026-08-21-rrd-lsm-m35-standard.json`](../../eval/results/2026-08-21-rrd-lsm-m35-standard.json).
 
 Those runs applied compaction/GC to native before its read and footprint probe
 without an equivalent Fjall maintenance phase. They also summed apparent file
@@ -163,11 +173,11 @@ benchmark threshold was relaxed in that legacy harness.
 
 Raw evidence:
 
-- [`small-batch`](../eval/results/2026-08-19-rrd-lsm-small-batch.json)
-- [`standard`](../eval/results/2026-08-19-rrd-lsm-standard.json)
-- [`read-heavy`](../eval/results/2026-08-19-rrd-lsm-read-heavy.json)
-- [`sustained`](../eval/results/2026-08-19-rrd-lsm-sustained.json)
-- [`extended`](../eval/results/2026-08-20-rrd-lsm-extended.json)
+- [`small-batch`](../../eval/results/2026-08-19-rrd-lsm-small-batch.json)
+- [`standard`](../../eval/results/2026-08-19-rrd-lsm-standard.json)
+- [`read-heavy`](../../eval/results/2026-08-19-rrd-lsm-read-heavy.json)
+- [`sustained`](../../eval/results/2026-08-19-rrd-lsm-sustained.json)
+- [`extended`](../../eval/results/2026-08-20-rrd-lsm-extended.json)
 
 The three-trial extended cell raises the corpus to 70,000 operations while
 retaining the sustained batch/read shape. Native recorded 47,729,952 encoded
@@ -193,7 +203,7 @@ The checked-in `mixed_storage_soak` applies 20,000 deterministic operations
 independent `BTreeMap` after every fifth batch. All three finish with 1,669
 visible keys and SHA-256
 `66f466b2d88a0c82bd9a2d929f8fd69312a26f28df102fb89e6e97273cb53f40`.
-Evidence: [`m4-storage-mixed-soak.json`](evidence/m4-storage-mixed-soak.json).
+Evidence: [`m4-storage-mixed-soak.json`](../evidence/m4-storage-mixed-soak.json).
 
 The migration matrix exports one synced cross-keyspace Fjall snapshot into the
 authenticated `RRFLOWIG01` stream, imports bounded native batches into an absent
@@ -201,7 +211,7 @@ staging sibling, verifies exact bytes and semantic reopen, and then cuts over
 with two parent-synced renames. Tests interrupt and resume after export, import,
 verification, both source/cutover rename gaps, source move, and cutover. They
 also deny unknown keyspaces, corrupt/truncated archives, and rollback after
-post-cutover native writes. See [`rrd-lsm-migration.md`](rrd-lsm-migration.md).
+post-cutover native writes. See [`rrd-lsm-migration.md`](../rrd-lsm-migration.md).
 
 This is a physical ordered-key/value deletion result. It does not claim a typed
 runtime entity-deletion contract, which must define relation and projection
@@ -218,6 +228,6 @@ deterministic-entropy, and embedding-like payloads as applicable. All eight
 local five-trial cells pass exact correctness, native-throughput, native-p95,
 and clean-reopen allocated-footprint gates. The design audit, commands, bounded
 claims, and versioned raw results are in
-[`rrd-lsm-fjall-ai-audit.md`](rrd-lsm-fjall-ai-audit.md). The scheduled/manual
+[`rrd-lsm-fjall-ai-audit.md`](../rrd-lsm-fjall-ai-audit.md). The scheduled/manual
 workflow reruns each mode and retains its raw artifact separately from the
 general promotion matrix.

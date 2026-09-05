@@ -7,6 +7,8 @@
 This record describes the bytes the current checkout can create or read. It is
 not the [accepted rrflowKV architecture](../../architecture/engine-data-flow.md),
 does not own release status, and makes no performance or competitive claim.
+Current comparison mechanics and evidence limitations are owned by the
+[benchmark-harness reference](rrflowkv-benchmark-harness.md).
 The [roadmap](../../roadmap/rrflow-1.0.md) owns the replacement and removal
 work; [POAM-002 and POAM-003](../../poam/rrflow-1.0-alpha.md) keep the physical
 layout and legacy-path deficiencies open.

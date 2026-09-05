@@ -1,13 +1,18 @@
-# RRFlow platform vocabulary note
+# RRFlow platform vocabulary note (historical)
 
-**Status:** supporting machine terminology and hierarchy for RRFlow 1.0
-**Effective:** 2026-08-27
-**Authority:** the root `README.md` owns product identity and architecture invariants
+**Status:** historical duplicated terminology and hierarchy note; not current RRFlow vocabulary
+**Coordinate:** `rrflow://rrflow-instance/data/history/platform-vocabulary-note`
+**Superseded by:** [`../../README.md`](../../README.md)
+**Effective at time of record:** 2026-08-27
+**Reason:** this record mirrored and expanded product terminology outside the
+root identity owner and retained obsolete topology and milestone language
 
 RRFlow is the product and complete reasoning-data engine. RRD (Reason Ready
 Daemon) is its daemon and embedded runtime boundary. `RrdEngine` is the sole
 in-process composition root. This document mirrors the public platform
 resource terms in code and cannot define another engine, authority, or roadmap.
+It is preserved only as migration history; current terminology must be read
+from the root README.
 
 ## Two deployment profiles, one product
 

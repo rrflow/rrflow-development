@@ -1,15 +1,23 @@
-# RRFlow data-runtime architecture research
+# RRFlow data-runtime architecture research (historical)
 
-Research baseline: 2026-08-19.
+**Status:** historical architecture research and M0-M8 implementation chronology; not current guidance
+**Coordinate:** `rrflow://rrflow-instance/data/history/rrd-data-services-architecture-research`
+**Superseded by:** [`../architecture/engine-data-flow.md`](../architecture/engine-data-flow.md)
+and [`../roadmap/rrflow-1.0.md`](../roadmap/rrflow-1.0.md)
+**Research baseline:** 2026-08-19
+**Reason:** the source study remains useful, but its old component boundaries,
+M0-M8 sequence, current-state snapshots, and DataFusion decision conflict with
+the accepted RRFlow 1.0 architecture and A-J release plan
 
-Status: design input, not an implementation claim. No upstream source was
-copied into RRFlow during this pass. The pinned sources below make every adopted
-idea reproducible and keep later code imports distinguishable from original
-RRFlow work. The Qdrant, SurrealDB, and HelixDB waiver status supplied by the
-project owner is recorded as project context; it does not change the technical
-acceptance gates.
+No upstream source was copied into RRFlow during this research pass. The
+pinned sources below preserve what was examined and keep later code imports
+distinguishable from original RRFlow work. The Qdrant, SurrealDB, and HelixDB
+waiver status supplied by the project owner is recorded as project context; it
+does not change technical acceptance gates. Present-tense statements and
+completion labels below describe the August 2026 checkout only and cannot
+change current objective, roadmap, or POA&M status.
 
-## Decision
+## Historical decision proposal
 
 RRFlow should become a multi-model data runtime without turning every data model
 into a separate database. One canonical transaction log remains truth. Typed
@@ -361,7 +369,7 @@ audit lane; compliance mode fails closed if that lane cannot durably accept the
 event. Archival may use immutable object storage with signed manifests and
 retention locks.
 
-## Implementation sequence and acceptance gates
+## Historical implementation sequence and acceptance gates
 
 ### M0 — freeze contracts and evidence
 
@@ -575,7 +583,7 @@ freshness, retry, and reconnect. Typed payload filters, certificate-backed TLS
 endpoint proof, process restart, concurrency/failure injection, and retained
 performance evidence remain open.
 
-## Immediate next implementation slice
+## Historical immediate next implementation slice
 
 M2 is closed and the first M3 storage lifecycle is implemented beside—not
 underneath—the compatibility adapter. WAL, atomic mutation, immutable segment,
@@ -584,8 +592,12 @@ checkpoints, manifest CAS, segment flush, WAL rotation, and reopen at the
 manifest replay boundary are covered. The native `Engine` adapter and
 Memory/Fjall/native semantic/query differential are green. Snapshot-aware
 compaction/GC, physical lease pins, and crash/storage-full recovery matrices are
-also green. The corrected comparative harness and deny-by-default policy are
-frozen in `docs/rrd-lsm-benchmark.md`. It records active, clean-reopen, and
+also green. The corrected comparative harness and deny-by-default policy were
+recorded in the
+[historical local comparison note](rrd-lsm-promotion-benchmark.md). Current
+mechanics and evidence limitations are defined by the
+[benchmark-harness reference](../reference/storage/rrflowkv-benchmark-harness.md).
+The old harness recorded active, clean-reopen, and
 maintained states for both engines plus physical allocated bytes. The former
 green M3 result used asymmetric maintenance and sparse apparent length; it is
 legacy evidence. Corrected semantics pass. An ordered bounded memtable walk
