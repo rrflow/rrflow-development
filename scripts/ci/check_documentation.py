@@ -22,23 +22,18 @@ RRFLOWKV_CURRENT_FORMAT = (
 RRFLOWKV_BENCHMARK_HARNESS = (
     ROOT / "docs" / "reference" / "storage" / "rrflowkv-benchmark-harness.md"
 )
-HISTORICAL_QUERY_PLAN = (
-    ROOT / "docs" / "history" / "rrd-arrow-datafusion-bm25-plan.md"
-)
-HISTORICAL_LSM_BENCHMARK = (
-    ROOT / "docs" / "history" / "rrd-lsm-promotion-benchmark.md"
-)
+HISTORICAL_QUERY_PLAN = ROOT / "docs" / "history" / "rrd-arrow-datafusion-bm25-plan.md"
+HISTORICAL_LSM_BENCHMARK = ROOT / "docs" / "history" / "rrd-lsm-promotion-benchmark.md"
 HISTORICAL_DATA_SERVICES_RESEARCH = (
     ROOT / "docs" / "history" / "rrd-data-services-architecture-research.md"
 )
+HISTORICAL_LSM_MIGRATION = ROOT / "docs" / "history" / "rrd-lsm-migration.md"
 STATUS = re.compile(r"(?im)^(?:\*\*)?Status(?:\*\*)?:\s*\S")
 LEGACY_MILESTONE = re.compile(r"\b(?:F\d|G\d{2}-W\d+|M\d|Q\d)\b")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
 REFERENCE_LINK = re.compile(r"(?m)^\[[^\]\n]+\]:\s*(\S+)")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
-RRFLOW_COORDINATE = re.compile(
-    r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$"
-)
+RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
 CANONICAL_DIRECTORIES = (
     "architecture",
     "objectives",
@@ -184,11 +179,19 @@ def main() -> int:
     if (ROOT / "docs" / "rrd-arrow-datafusion-bm25-plan.md").exists():
         failures.append("the superseded Q1-Q4 query plan remains active and flat")
     if (ROOT / "docs" / "rrd-lsm-format.md").exists():
-        failures.append("the rrflowKV physical-format reference remains active and flat")
+        failures.append(
+            "the rrflowKV physical-format reference remains active and flat"
+        )
     if (ROOT / "docs" / "rrd-lsm-benchmark.md").exists():
-        failures.append("the mixed-purpose rrflowKV benchmark note remains active and flat")
+        failures.append(
+            "the mixed-purpose rrflowKV benchmark note remains active and flat"
+        )
     if (ROOT / "docs" / "rrd-data-services-architecture-research.md").exists():
-        failures.append("the superseded M0-M8 architecture chronology remains active and flat")
+        failures.append(
+            "the superseded M0-M8 architecture chronology remains active and flat"
+        )
+    if (ROOT / "docs" / "rrd-lsm-migration.md").exists():
+        failures.append("the compatibility migration contract remains active and flat")
     if (ROOT / "docs" / "platform").exists():
         failures.append("the obsolete platform documentation wrapper still exists")
     historical_query_plan = HISTORICAL_QUERY_PLAN.read_text(encoding="utf-8")
@@ -238,14 +241,27 @@ def main() -> int:
     ):
         failures.append("the August LSM comparison note has no current successor")
 
-    historical_research = HISTORICAL_DATA_SERVICES_RESEARCH.read_text(
-        encoding="utf-8"
-    )
+    historical_research = HISTORICAL_DATA_SERVICES_RESEARCH.read_text(encoding="utf-8")
     historical_research_header = "\n".join(historical_research.splitlines()[:12])
     if "historical" not in historical_research_header.casefold():
         failures.append("the M0-M8 data-services chronology is not marked historical")
     if "../architecture/engine-data-flow.md" not in historical_research_header:
-        failures.append("the M0-M8 data-services chronology has no architecture successor")
+        failures.append(
+            "the M0-M8 data-services chronology has no architecture successor"
+        )
+
+    historical_migration = HISTORICAL_LSM_MIGRATION.read_text(encoding="utf-8")
+    historical_migration_header = "\n".join(historical_migration.splitlines()[:12])
+    if "historical" not in historical_migration_header.casefold():
+        failures.append("the compatibility migration contract is not marked historical")
+    if "../reference/storage/rrflowkv-current-format.md" not in (
+        historical_migration_header
+    ):
+        failures.append(
+            "the compatibility migration contract has no current-format successor"
+        )
+    if "`RRDMIG01`" not in historical_migration or "RRFLOWIG01" in historical_migration:
+        failures.append("the historical migration archive identity is inaccurate")
 
     coordinates: dict[str, Path] = {}
     for record in canonical_records():
@@ -268,7 +284,9 @@ def main() -> int:
         if historical and superseded_by is None:
             failures.append(f"{relative}: historical record has no Superseded by link")
         if (active or historical) and not index_links_record(record):
-            failures.append(f"{relative}: classified record is absent from its parent index")
+            failures.append(
+                f"{relative}: classified record is absent from its parent index"
+            )
         if coordinate is not None:
             normalized_coordinate = coordinate.strip("`")
             if RRFLOW_COORDINATE.fullmatch(normalized_coordinate) is None:

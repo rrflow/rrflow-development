@@ -206,12 +206,12 @@ visible keys and SHA-256
 Evidence: [`m4-storage-mixed-soak.json`](../evidence/m4-storage-mixed-soak.json).
 
 The migration matrix exports one synced cross-keyspace Fjall snapshot into the
-authenticated `RRFLOWIG01` stream, imports bounded native batches into an absent
+authenticated `RRDMIG01` stream, imports bounded native batches into an absent
 staging sibling, verifies exact bytes and semantic reopen, and then cuts over
 with two parent-synced renames. Tests interrupt and resume after export, import,
 verification, both source/cutover rename gaps, source move, and cutover. They
 also deny unknown keyspaces, corrupt/truncated archives, and rollback after
-post-cutover native writes. See [`rrd-lsm-migration.md`](../rrd-lsm-migration.md).
+post-cutover native writes. See [`rrd-lsm-migration.md`](rrd-lsm-migration.md).
 
 This is a physical ordered-key/value deletion result. It does not claim a typed
 runtime entity-deletion contract, which must define relation and projection

@@ -611,7 +611,7 @@ with 10 reopens and 8 compactions against Fjall and an independent model. The
 existing-store rehearsal copies all 18 canonical keyspaces through an
 authenticated streaming archive, verifies invisible native staging, resumes at
 seven durable/rename boundaries, retains Fjall, and denies rollback after
-native divergence. See `docs/rrd-lsm-migration.md` and
+native divergence. See [`rrd-lsm-migration.md`](rrd-lsm-migration.md) and
 `docs/evidence/m4-storage-mixed-soak.json`.
 The runtime default decision is implemented through `PersistentEngine`: missing
 paths become native, native `CURRENT` paths reopen native, and existing

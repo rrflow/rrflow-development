@@ -1,21 +1,41 @@
-# Fjall to RRD LSM migration contract
+# Fjall and native-format storage migrations (historical)
 
-Status: implementation gate for removing the Fjall compatibility backend.
+**Status:** historical compatibility migration contract; scheduled for code
+removal before the RRFlow 1.0 alpha
+**Coordinate:** `rrflow://rrflow-instance/data/history/rrd-lsm-migration`
+**Superseded by:** [`../reference/storage/rrflowkv-current-format.md`](../reference/storage/rrflowkv-current-format.md)
+and [`../roadmap/rrflow-1.0.md`](../roadmap/rrflow-1.0.md)
+**Reason:** C-05 and J-01 require the 1.0 executable to remove Fjall selection,
+legacy readers, migration-only runtime paths, compatibility commands, and their
+dependencies rather than normalize them as a supported product surface
+
+This record preserves the design and executable inventory of two compatibility
+systems present during pre-release convergence. It does not define supported
+RRFlow 1.0 storage behavior and cannot close roadmap or POA&M status:
+
+| Historical path | Implementation at classification | Operator commands | Executable proof | 1.0 disposition |
+|---|---|---|---|---|
+| Fjall to native RRD LSM | `rrd-store/src/migration.rs`, `persistent.rs` | `storage migrate`, `storage status`, `storage rollback` | `rrd-store/tests/migration.rs`, `persistent.rs`, CLI operator tests | Remove under C-05/J-01 |
+| Native TextV1 to TagV2 | `rrd-store/src/upgrade.rs`, legacy codecs in `keyspaces.rs` | `storage format-upgrade`, `storage format-status`, `storage format-rollback` | `rrd-store/tests/native_format_upgrade.rs`, CLI operator tests | Remove under C-05/J-01 |
+
+Backend-independent logical archives, backups, and new-root restore are separate
+recovery capabilities. Their presence beside these commands in the CLI does not
+make them part of the compatibility paths classified by this record.
 
 ## Promise
 
-Migration is an explicit, offline state transition. It copies the byte-exact
-contents of all canonical Engine keyspaces from one cross-keyspace Fjall read
-snapshot into an absent sibling RRD LSM directory. The staged store is not made
-visible until its archive digest, per-keyspace counts, total byte count, and
-semantic reopen checks all pass.
+The historical Fjall migration is an explicit, offline state transition. It
+copies the byte-exact contents of all canonical Engine keyspaces from one
+cross-keyspace Fjall read snapshot into an absent sibling RRD LSM directory.
+The staged store is not made visible until its archive digest, per-keyspace
+counts, total byte count, and semantic reopen checks all pass.
 
 The original Fjall directory is retained after cutover. Initial migration does
 not delete source data or its authenticated export. Rollback is allowed only
 while the native store still has the exact manifest identity and sequence that
 were recorded at cutover; otherwise it refuses to discard divergent writes.
 
-## Canonical inventory
+## Frozen historical inventory
 
 The migration format owns the ordered keyspace list in
 `rrd_store::keyspaces::ALL`. A source containing any other keyspace is denied.
@@ -23,7 +43,7 @@ An empty canonical keyspace remains part of the inventory. This converts a new
 keyspace from an easy-to-miss loop edit into an explicit migration-format
 change.
 
-## Archive (`RRFLOWIG01`, version 1)
+## Archive (`RRDMIG01`, version 1)
 
 The archive is streaming and bounded by the storage substrate's key/value
 limits. It contains:
@@ -43,17 +63,17 @@ one-byte native tag. Existing manifest-v1 native stores remain readable through
 the legacy `keyspace + NUL` codec; this migration never silently rewrites them.
 
 The empty archive is frozen by
-`crates/persistence/rrd-store/tests/fixtures/migration-v1-empty.hex`; an incompatible byte
-change requires a new format version and golden vector.
+`../../crates/persistence/rrd-store/tests/fixtures/migration-v1-empty.hex`; an
+incompatible byte change requires a new format version and golden vector.
 
 ## Native TextV1 to TagV2 exact-successor migration
 
-`rrflow storage format-upgrade` is the explicit offline migration from the
-legacy native textual-keyspace application format to manifest-authenticated
-`RRDSK002` one-byte tags. No other source/target pair is accepted. It reuses the
-same authenticated 18-keyspace logical archive, so projections, invocation
-evidence, audit/outbox state, snapshots, and every other allocated keyspace are
-preserved—not only claims and runtime state.
+At the time of this contract, `rrflow storage format-upgrade` was the explicit
+offline migration from the legacy native textual-keyspace application format
+to manifest-authenticated `RRDSK002` one-byte tags. No other source/target pair
+is accepted. It reuses the same authenticated 18-keyspace logical archive, so
+projections, invocation evidence, audit/outbox state, snapshots, and every
+other allocated keyspace are preserved—not only claims and runtime state.
 
 The authenticated sibling ledger advances through `exported`, `imported`,
 `verified`, `source_moved`, `cutover`, and `complete`. Import is invisible in a
@@ -92,22 +112,29 @@ state denies rollback.
 
 ## Durable phases
 
-Each phase is recorded through a synced temporary JSON marker, rename, and
-parent-directory sync:
+Both implementations publish phase changes through a synced temporary JSON
+file, rename, and parent-directory sync. The Fjall path stores a plain
+`MigrationReport`; its marker is not self-authenticated, although the archive,
+source inventory, and native state identity are verified. The native-format
+path wraps its `FormatMigrationLedger` with a SHA-256 digest and rejects a
+ledger whose digest or version differs.
 
-1. `exported` — Fjall was synced and one cross-keyspace snapshot was archived.
+Their shared forward phases are:
+
+1. `exported` — the source was synced and one consistent snapshot was archived.
 2. `imported` — the absent native staging directory contains every archive row.
 3. `verified` — its visible inventory and digest match the archive and it
    reopens as a native Engine.
-4. `source_moved` — Fjall was renamed to the retained backup sibling.
+4. `source_moved` — the source was renamed to the retained backup sibling.
 5. `cutover` — staging was renamed to the requested database path and its
    native state token was recorded.
 6. `complete` — a final native reopen and semantic status read succeeded.
 
-Rollback adds two authenticated states: `rollback_target_moved` after the
-unchanged TagV2 root is durably retained, and `rolled_back` after the TextV1
-predecessor is durably republished and both roots reopen with their expected
-formats and inventory.
+The rollback intermediate differs by implementation. Fjall rollback records
+`rollback_native_moved`; native-format rollback records
+`rollback_target_moved`. Both finish at `rolled_back`. The native-format ledger
+authenticates these states. The Fjall report does not, so it instead revalidates
+the retained roots, archive inventory, and recorded native state token.
 
 Filesystem state is authoritative when a crash lands between a rename and its
 marker update. Resume recognizes those states and advances rather than
@@ -130,15 +157,22 @@ during the cutover window.
 - After rollback, forward migration does not silently reuse the old ledger.
   The retained three-part evidence set remains authoritative for diagnosis.
 
-## Evidence gate
+## Historical evidence inventory and removal disposition
 
-The compatibility backend is removable only after tests prove complete
+The executable tests attached to this historical design cover complete
 multi-keyspace migration, corrupt/truncated archive refusal, unknown-keyspace
 refusal, restart at every phase boundary, idempotent resume, rollback before
 native divergence, rollback refusal after divergence, reverse-rename recovery,
-every admitted source row reopening on TagV2, and stable backend selection. A
-separate deterministic put/update/delete/reopen/compaction soak
-must compare RRD LSM and Fjall against an independent ordered-map model.
+every admitted source row reopening on TagV2, and stable backend selection. The
+old acceptance proposal also required a deterministic
+put/update/delete/reopen/compaction soak comparing RRD LSM and Fjall against an
+independent ordered-map model.
+
+That evidence explains what the compatibility paths did; it is not evidence
+that they should survive. Current acceptance is the inverse: C-05 requires
+repository and dependency proof that these selectors, readers, migrations, and
+commands are absent, while J-01 prohibits legacy or compatibility execution
+paths in the release.
 
 This design follows the operational invariants—not code—of RocksDB checkpoints
 ([one consistent database view and an absent target](https://github.com/facebook/rocksdb/wiki/Checkpoints)),
