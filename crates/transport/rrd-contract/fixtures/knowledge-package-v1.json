@@ -1,0 +1,99 @@
+{
+  "package": {
+    "contract_version": 1,
+    "exclusions": [
+      {
+        "reason": "The source has no accepted owner or stable coordinate.",
+        "reason_code": "unclassified-record",
+        "source_path": "docs/unclassified-draft.md",
+        "source_sha256": "c47fffce7ab6215da4633829b59605e9bdf14fb3d49b6ac0fe8105e639b9c4f9"
+      }
+    ],
+    "id": "rrflow-bootstrap-knowledge",
+    "manifest": [
+      {
+        "disposition": {
+          "classification": "architecture",
+          "coordinate": "rrflow://rrflow-instance/data/architecture/engine-data-flow",
+          "disposition": "included",
+          "record_sha256": "fda9d6d99398d1febde08bfee745357b7b0c9d613af74679c0215929237c3e0b"
+        },
+        "source_path": "docs/architecture/engine-data-flow.md",
+        "source_sha256": "b3e6329dd476901ff0d5305312b8eac34b4f43f3da1cdf201927d75ae0d1083d"
+      },
+      {
+        "disposition": {
+          "classification": "roadmap",
+          "coordinate": "rrflow://rrflow-instance/data/roadmap/rrflow-1.0",
+          "disposition": "included",
+          "record_sha256": "b793b22f3a5011104f7f0aa4262397eea3843bbfc9090f791ae93c443f98ac98"
+        },
+        "source_path": "docs/roadmap/rrflow-1.0.md",
+        "source_sha256": "918c9a8de91148b71df8bb8348c9df1074f2534fe14b1e31993be7f711fc50af"
+      },
+      {
+        "disposition": {
+          "disposition": "excluded",
+          "reason_code": "unclassified-record"
+        },
+        "source_path": "docs/unclassified-draft.md",
+        "source_sha256": "c47fffce7ab6215da4633829b59605e9bdf14fb3d49b6ac0fe8105e639b9c4f9"
+      }
+    ],
+    "package_sha256": "7245131d3f463ecb8127bc97c39b639d0d4f75cfe2fb9a3128225a95413af379",
+    "provenance": {
+      "exporter": "rrflow-knowledge-exporter",
+      "exporter_version": 1,
+      "repository": "rrflow",
+      "revision": "70c528ef22670c528ef22670c528ef22670c528e"
+    },
+    "records": [
+      {
+        "body": "# Engine data flow\n\nAuthoritative stamped flow.\n",
+        "body_sha256": "b3e6329dd476901ff0d5305312b8eac34b4f43f3da1cdf201927d75ae0d1083d",
+        "classification": "architecture",
+        "contract_version": 1,
+        "coordinate": "rrflow://rrflow-instance/data/architecture/engine-data-flow",
+        "owner_coordinate": "rrflow://rrflow-instance/data/architecture-index/rrflow-architecture",
+        "provenance": {
+          "exporter": "rrflow-knowledge-exporter",
+          "exporter_version": 1,
+          "repository": "rrflow",
+          "revision": "70c528ef22670c528ef22670c528ef22670c528e"
+        },
+        "record_sha256": "fda9d6d99398d1febde08bfee745357b7b0c9d613af74679c0215929237c3e0b",
+        "source_path": "docs/architecture/engine-data-flow.md"
+      },
+      {
+        "body": "# RRFlow 1.0 roadmap\n\nOrdered evidence gates.\n",
+        "body_sha256": "918c9a8de91148b71df8bb8348c9df1074f2534fe14b1e31993be7f711fc50af",
+        "classification": "roadmap",
+        "contract_version": 1,
+        "coordinate": "rrflow://rrflow-instance/data/roadmap/rrflow-1.0",
+        "owner_coordinate": "rrflow://rrflow-instance/data/roadmap-index/rrflow-roadmaps",
+        "provenance": {
+          "exporter": "rrflow-knowledge-exporter",
+          "exporter_version": 1,
+          "repository": "rrflow",
+          "revision": "70c528ef22670c528ef22670c528ef22670c528e"
+        },
+        "record_sha256": "b793b22f3a5011104f7f0aa4262397eea3843bbfc9090f791ae93c443f98ac98",
+        "source_path": "docs/roadmap/rrflow-1.0.md"
+      }
+    ]
+  },
+  "source_inventory": [
+    {
+      "source_path": "docs/architecture/engine-data-flow.md",
+      "source_sha256": "b3e6329dd476901ff0d5305312b8eac34b4f43f3da1cdf201927d75ae0d1083d"
+    },
+    {
+      "source_path": "docs/roadmap/rrflow-1.0.md",
+      "source_sha256": "918c9a8de91148b71df8bb8348c9df1074f2534fe14b1e31993be7f711fc50af"
+    },
+    {
+      "source_path": "docs/unclassified-draft.md",
+      "source_sha256": "c47fffce7ab6215da4633829b59605e9bdf14fb3d49b6ac0fe8105e639b9c4f9"
+    }
+  ]
+}

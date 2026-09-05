@@ -1,7 +1,8 @@
 //! Canonical RRFlow platform terminology.
 //!
-//! This is the machine-readable counterpart to `docs/platform/README.md`.
-//! Public surfaces may project it, but may not maintain another term list.
+//! The root `README.md` owns current product meaning. This machine-readable
+//! inventory and its historical source table remain subject to A-07's direct
+//! vocabulary audit; public surfaces may not maintain another term list.
 
 use crate::ResourceKind;
 

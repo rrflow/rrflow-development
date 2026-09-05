@@ -254,14 +254,18 @@ Precondition: this execution map and research record are reviewed.
 
 Files:
 
+- repair the pre-existing `platform_terminology.rs` reference to the retained
+  historical vocabulary source table without promoting that table back to
+  current authority; A-07 still owns the vocabulary audit;
 - modify `crates/transport/rrd-contract/src/lib.rs` only to export the new
   module;
 - create `crates/transport/rrd-contract/src/knowledge.rs`;
 - create `crates/transport/rrd-contract/tests/knowledge_contract.rs`;
 - create `crates/transport/rrd-contract/fixtures/knowledge-package-v1.json`;
-- extend `crates/transport/rrd-contract/src/bin/rrd-contract-export.rs` only
-  after the golden contract passes; and
-- update the public-contract fixture/schema only through its generator.
+- do not modify `crates/transport/rrd-contract/src/bin/rrd-contract-export.rs`
+  or the OpenAPI fixture in KB-02: the knowledge package is not yet an HTTP
+  operation, and a later ingress gate must add any public operation and schema
+  through the existing generator.
 
 Required types: `KnowledgeRecordV1`, `KnowledgeClassification`,
 `KnowledgeProvenance`, `KnowledgeManifestEntryV1`, `KnowledgeExclusionV1`, and

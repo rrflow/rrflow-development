@@ -10,6 +10,7 @@ mod capability_surface;
 mod diagnostic;
 mod function;
 mod inference;
+mod knowledge;
 mod memory_context;
 mod memory_estate;
 mod platform;
@@ -59,6 +60,15 @@ pub use inference::{
     EmbeddingNetworkPolicy, EmbeddingResourceLimits, EmbeddingTrustBoundary, GenerateEmbeddings,
     GenerateEmbeddingsResult, GeneratedEmbedding, ListEmbeddingModels, MAX_EMBEDDING_BATCH_BYTES,
     MAX_EMBEDDING_BATCH_INPUTS, MAX_EMBEDDING_INPUT_BYTES,
+};
+pub use knowledge::{
+    knowledge_package_sha256, knowledge_record_sha256, KnowledgeClassification,
+    KnowledgeExclusionV1, KnowledgeManifestDispositionV1, KnowledgeManifestEntryV1,
+    KnowledgePackageV1, KnowledgeProvenance, KnowledgeRecordV1, KnowledgeSourceInventoryEntryV1,
+    KNOWLEDGE_PACKAGE_CONTRACT_VERSION, MAX_KNOWLEDGE_BODY_BYTES, MAX_KNOWLEDGE_COORDINATE_BYTES,
+    MAX_KNOWLEDGE_EXCLUSIONS, MAX_KNOWLEDGE_EXCLUSION_REASON_BYTES,
+    MAX_KNOWLEDGE_PACKAGE_BODY_BYTES, MAX_KNOWLEDGE_RECORDS, MAX_KNOWLEDGE_REVISION_BYTES,
+    MAX_KNOWLEDGE_SOURCE_PATH_BYTES,
 };
 pub use memory_context::{
     context_packet_sha256, context_plan_sha256, context_plan_stage_sha256, context_request_sha256,

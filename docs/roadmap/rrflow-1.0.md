@@ -67,9 +67,10 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item is **A-06**. B-01 and B-02 remain completed contract
-work, but no further Gate B work proceeds until A-06 and A-07 correct the
-pre-release documentation and source-boundary assumptions.
+The next executable item remains **A-06**, specifically **KB-03**. B-01 and
+B-02 remain completed contract work, but no further Gate B work proceeds until
+A-06 and A-07 correct the pre-release documentation and source-boundary
+assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -92,13 +93,33 @@ gate by itself.
 | Done | ID | Bounded change | Acceptance evidence |
 |---|---|---|---|
 | [x] | KB-01 | Establish the master system overview, accepted single-engine ADR, canonical component terminology, and indexed warp points. | Root and boundary portals link the owners; documentation policy checks their coordinates, required sections, terminology, indexes, and local links. |
-| [ ] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
+| [x] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
 | [ ] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
 | [ ] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
 | [ ] | KB-05 | Classify remaining flat supporting documents one complete file at a time as active, historical, merged, or removed. | Each reviewed file has one owner or successor, one coordinate when retained, one index entry, no copied authority body, and passing link/terminology checks. |
 | [ ] | KB-06 | Import a verified KB-03 package through persisted attunement checkpoints and authorized `RrdEngine` mutations. | D-02 and D-05 evidence proves digest-bound resume, idempotency, authorization, atomic mutation, and rejection of package or configuration drift. |
 | [ ] | KB-07 | Prove close/reopen, readback, warp resolution, incremental update, rollback, and recovery against rrflowDB. | Durable tests reproduce every imported record and relationship at its committed read stamp after restart and failure injection. |
 | [ ] | KB-08 | Reduce bootstrap READMEs to portals only after rrflowDB becomes the proven detail authority. | H and J evidence shows clients resolve the same authorized records through public operations; local fallbacks remain sufficient for recovery without duplicating mutable state. |
+
+KB-02 evidence (2026-09-05):
+
+- `rrd-contract` now owns a closed, provider-neutral version-one knowledge
+  record, provenance, manifest disposition, exclusion ledger, independent
+  source inventory, and deterministic package contract. It performs no
+  Markdown discovery, import, engine mutation, persistence, or HTTP work.
+- Record and package SHA-256 inputs use versioned domain separators and
+  explicit unsigned 64-bit length frames. Validation binds normalized relative
+  paths, canonical RRFlow coordinates, UTF-8/LF bodies, classification, owner,
+  provenance, stable ordering, unique membership, exclusions, and complete
+  independently discovered source inventory.
+- `knowledge-package-v1.json` freezes the encoded contract. Seven focused
+  tests cover golden reopen, closed generated schemas, unsafe coordinates and
+  paths, line-ending and body drift, ordering and duplicate rejection,
+  independently detectable omission, exclusion binding, provenance changes,
+  and record/package digest substitution.
+- All 58 `rrd-contract` tests, strict package Clippy, and the
+  implementation-free contract architecture test passed. The OpenAPI exporter
+  and fixture remain unchanged because KB-02 adds no public operation.
 
 A-02 evidence (2026-09-04):
 
