@@ -84,7 +84,8 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 
 | Subject | Owner |
 |---|---|
-| Detailed engine data flow | [`architecture/`](architecture/) |
+| System architecture and detailed engine data flow | [`architecture/`](architecture/) |
+| Accepted architecture decisions | [`decisions/`](decisions/) |
 | RRFlow 1.0 alpha outcomes | [`objectives/`](objectives/) |
 | RRFlow 1.0 delivery | [`roadmap/`](roadmap/) |
 | RRFlow 1.0 alpha deficiencies and remediation | [`poam/`](poam/) |

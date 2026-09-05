@@ -13,6 +13,11 @@ RRFlow 1.0 release checklist is owned by
 may supply design, research, contracts, or evidence, but cannot silently
 override an owning record.
 
+The [master system overview](docs/architecture/system-overview.md) defines the
+canonical component map and security boundaries. The accepted
+[single-engine authority decision](docs/decisions/0001-single-engine-authority.md)
+records why those named components remain parts of one engine.
+
 The target release-train version is `1.0.0`. It is frozen while the first alpha
 baseline is established. The current maturity is **pre-alpha**; the
 version identifies the contract line being built and is not a claim that the
@@ -27,27 +32,27 @@ independent stores.
 | Term | Canonical meaning |
 |---|---|
 | **RRFlow** | The product and the complete reasoning-data engine. Cite the current release as **RRFlow 1.0**. |
-| **RRFlow database** | One persistent RRFlow data estate governed by the engine. It contains temporal knowledge and derived acceleration state; it is not an application database replacement. |
+| **rrflowDB** | One persistent per-project RRFlow AI estate governed by the engine. It contains temporal knowledge and derived acceleration state; it is not an application database replacement. |
 | **RRD** | The daemon and embedded runtime boundary for RRFlow. RRD is not a second product or engine. |
 | **`RrdEngine`** | The sole in-process composition root and semantic authority for database, graph, memory, query, and context operations. |
 | **RRFlow kernel** | The canonical temporal values, identities, read stamps, mutations, and invariants implemented in `rrd-core`. The kernel defines meaning but does not own transport or physical storage. |
 | **canonical runtime log** | The ordered source of truth for committed RRFlow changes. Temporal snapshots are resolved from this log. |
 | **rrflowKV** | RRFlow's native hybrid MVCC/LSM physical layer, implemented by `rrd-lsm` and adapted through `rrd-store`. Its target layout combines a WAL and mutable MVCC memtable with immutable segments containing an ordered key/version spine and Arrow-compatible column pages. One semantic engine commit becomes one atomic rrflowKV write batch. rrflowKV is not a second engine or public data model. |
-| **rrflowMX** | RRFlow's process-local, non-durable implementation of the same semantic storage port. It supports volatile and conformance execution through `RrdEngine`; it is not a persistent RRFlow database, a cache, an Arrow working set, or another semantic authority. |
+| **rrflowMX** | RRFlow Memory Execution: the process-local, non-durable implementation of the same semantic storage port. It supports volatile and conformance execution through `RrdEngine`; it is not rrflowDB, a cache, an Arrow working set, or another semantic authority. |
 | **RRFlow temporal graph** | Typed records and relations resolved at a runtime read stamp and valid-time coordinate from the same canonical log. It is not a separate graph database. |
 | **RRFlow memory** | Durable temporal knowledge—claims, records, relations, schemas, vectors, and evidence—owned by the same engine. It is not a separate memory store. |
-| **RRFlowQL** | RRFlow's query language. Use **RRFlowQL**, not the ambiguous shorthand “QL,” in product documentation. |
+| **rrflowQL** | RRFlow's query language, binding, planning, and execution boundary. Use **rrflowQL**, not the ambiguous shorthand “QL,” in product documentation. |
 | **Arrow substrate** | The shared columnar buffer model for eligible immutable rrflowKV segment columns and stamped in-memory `RecordBatch` streams. Published canonical segment values may be authoritative; caches and index projections remain rebuildable. Arrow buffers do not own transactions, mutable state, or authorization. |
 | **DataFusion execution** | Vectorized physical evaluation over stamped Arrow batches after RRFlow selects authoritative KV, graph, lexical, or vector access paths. DataFusion is not the database authority. |
 | **fast path** | Low-latency state, pointer, and bounded graph navigation performed by `RrdEngine` directly against rrflowKV without invoking DataFusion. |
-| **analytical path** | RRFlowQL planning plus native graph, lexical, vector, and RRF operators composed with Arrow/DataFusion for broad retrieval, ingestion, joins, and analytics. |
+| **analytical path** | rrflowQL planning plus native graph, lexical, vector, and RRF operators composed with Arrow/DataFusion for broad retrieval, ingestion, joins, and analytics. |
 | **index projection** | Derived acceleration state bound to its source cursor and relevant schema or catalogue revision. An index can be rebuilt and cannot outrank the canonical log. |
 | **context assembly** | Bounded retrieval and deterministic fusion performed by `RrdEngine::assemble_context`; the result is a `ContextPacket` with evidence and its read stamp. |
 | **LFG** | A replaceable local routing-model adapter. LFG may propose a recipe, branch, or bounded query intent; it never owns state, permissions, physical plans, or mutations. |
 | **Connectome** | RRFlow's separate client and operator workbench. It observes and invokes RRFlow through public RRD capabilities and never recreates engine logic. |
 
-For citations, use **RRFlow database**, **RRFlow kernel**, **rrflowKV**, **rrflowMX**,
-**RRFlow temporal graph**, **RRFlow memory**, **RRFlowQL**, **Arrow/DataFusion
+For citations, use **rrflowDB**, **RRFlow kernel**, **rrflowKV**, **rrflowMX**,
+**RRFlow temporal graph**, **RRFlow memory**, **rrflowQL**, **Arrow/DataFusion
 analytical path**, **LFG**, and **Connectome**. Do not describe RRD, rrflowKV,
 the graph, memory, indexes, LFG, or Connectome as additional engines or sources
 of truth.
@@ -62,7 +67,7 @@ valid-time history are not separate memory systems.
 RRFlow is one hybrid transactional/analytical system. Its fast and analytical
 paths share authentication, authorization, schema, read stamps, transaction
 coordination, one selected storage profile, and the canonical runtime log. A
-persistent RRFlow database selects rrflowKV; a deliberately non-durable
+persistent rrflowDB estate selects rrflowKV; a deliberately non-durable
 process-local composition selects rrflowMX. Both remain subordinate to the same
 `RrdEngine` authority:
 
@@ -79,7 +84,7 @@ HTTP / WebSocket / native SDK / embedded caller
         |                                 |
         v                                 v
  fast path                          analytical path
- route/tree state                   RRFlowQL or GraphQL adapter
+ route/tree state                   rrflowQL or GraphQL adapter
         |                                 |
  optional RouterBackend                   AST -> bind -> authorize -> plan
  (LFG adapter)                            |
@@ -227,7 +232,7 @@ rrflow://<instance>/data/<record-kind>/<record-id>
 
 For this project, the primary identity coordinate is the
 [Clyffy seat](rrflow://rrflow-instance/data/rrflow-seat/clyffy). README links
-using this scheme are warp points into the RRFlow database, not copies of
+using this scheme are warp points into rrflowDB, not copies of
 database state.
 The CLI resolves a warp by converting it to a record anchor and invoking the
 same `RrdEngine::assemble_context` planner and temporal snapshot used by normal
@@ -267,7 +272,7 @@ authority:
 | `rrd-core` | RRFlow kernel: temporal values, identities, canonical mutations, read stamps, and snapshot invariants |
 | `rrd-lsm` | rrflowKV WAL, MVCC memtable, immutable segments, cache, compaction, and physical snapshots |
 | `rrd-store` | semantic storage port, rrflowMX volatile implementation, semantic-to-rrflowKV mapping, canonical log/materialized-key maintenance, and cross-profile conformance |
-| `rrd-query` | RRFlowQL syntax, bound logical plans, physical planning, native query operators, and Arrow/DataFusion execution |
+| `rrd-query` | rrflowQL syntax, bound logical plans, physical planning, native query operators, and Arrow/DataFusion execution |
 | `rrd-vector` | exact vector truth, HNSW/quantized candidate indexes, reranking, and vector-index conformance |
 | `rrd-inference` | process-local, provider-neutral executable model adapters; embedding and routing are separate capabilities |
 | `rrd-security` | identities, policy, authorization, and audit evidence |
@@ -290,7 +295,7 @@ crates/
 │   ├── rrd-lsm                 # rrflowKV physical implementation
 │   └── rrd-store               # rrflowMX plus semantic/rrflowKV mapping
 ├── compute/
-│   ├── rrd-query               # RRFlowQL, plans, Arrow/DataFusion, BM25
+│   ├── rrd-query               # rrflowQL, plans, Arrow/DataFusion, BM25
 │   ├── rrd-vector              # exact vector truth and ANN candidates
 │   ├── rrd-inference           # embedding and routing backend capabilities
 │   └── rrd-attunement          # pure inventory/parse/normalization work
@@ -373,7 +378,7 @@ exist; client-side phase labels are not evidence of implementation.
 Implemented now:
 
 - explicit rrflowMX volatile and native rrflowKV persistent compositions using
-  the same `RrdEngine`, semantic storage contract, stamped RRFlowQL pipeline,
+  the same `RrdEngine`, semantic storage contract, stamped rrflowQL pipeline,
   and DataFusion executor; the shared logical corpus also verifies rrflowKV
   reopen, while rrflowMX explicitly rejects durability-only operations;
 - a versioned, provider-neutral reasoning-tree contract with typed nodes and
@@ -411,7 +416,7 @@ Not implemented or not yet production-grade:
   format. It does not yet contain the target key/version spine plus
   Arrow-compatible column pages, expose borrowed Arrow buffers, or report
   copied, decoded, and allocated bytes per read;
-- RRFlowQL currently materializes authoritative source rows before constructing
+- rrflowQL currently materializes authoritative source rows before constructing
   newly allocated stamped Arrow batches; DataFusion execution is real, but the
   bounded streaming rrflowKV table provider, conditional zero-copy path, scan
   pushdown, and native mixed operators required by Gate F are not implemented;
@@ -452,6 +457,8 @@ one owning document, one stable `rrflow://` coordinate, and one local fallback:
 | Memory | Durable warp | Checkout fallback |
 |---|---|---|
 | Knowledge structure and ownership | [`rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map`](rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map) | [`docs/README.md`](docs/README.md) |
+| RRFlow master system overview | [`rrflow://rrflow-instance/data/architecture/system-overview`](rrflow://rrflow-instance/data/architecture/system-overview) | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) |
+| Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |
 | RRFlow engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`docs/architecture/engine-data-flow.md`](docs/architecture/engine-data-flow.md) |
 | rrflowKV current physical format | [`rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`](rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format) | [`docs/reference/storage/rrflowkv-current-format.md`](docs/reference/storage/rrflowkv-current-format.md) |
 | RRFlow 1.0 alpha objectives | [`rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha) | [`docs/objectives/rrflow-1.0-alpha.md`](docs/objectives/rrflow-1.0-alpha.md) |

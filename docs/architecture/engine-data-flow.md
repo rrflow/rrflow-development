@@ -5,10 +5,12 @@
 **Owner:** detailed transactional, storage, query, and context flow
 
 The repository root [README](../../README.md) owns RRFlow's identity and
-non-negotiable invariants. The [alpha objective](../objectives/rrflow-1.0-alpha.md)
-defines the result, the [roadmap](../roadmap/rrflow-1.0.md) orders delivery, and
-the [POA&M](../poam/rrflow-1.0-alpha.md) tracks observed gaps. This record owns
-the detailed end-to-end flow only.
+non-negotiable invariants. The [system overview](system-overview.md) owns the
+master component and security-boundary map, the
+[alpha objective](../objectives/rrflow-1.0-alpha.md) defines the result, the
+[roadmap](../roadmap/rrflow-1.0.md) orders delivery, and the
+[POA&M](../poam/rrflow-1.0-alpha.md) tracks observed gaps. This record owns the
+detailed end-to-end flow only.
 
 ## System boundary
 
@@ -17,11 +19,11 @@ names describe cooperating layers, not independent products or stores:
 
 | Layer | Responsibility |
 |---|---|
-| RRFlow database | One persistent AI estate containing governed knowledge, temporal graph state, reasoning state, evidence, and indexes. |
+| rrflowDB | One persistent AI estate containing governed knowledge, temporal graph state, reasoning state, evidence, and indexes. |
 | `RrdEngine` | Sole semantic transaction coordinator: authenticates, authorizes, binds read stamps, validates mutations and model proposals, and invokes the selected storage profile. |
 | rrflowKV | Durable physical profile: WAL, sequence allocation, MVCC snapshots, mutable memtable, immutable segments, manifests, flush, compaction, and recovery. |
 | rrflowMX | Non-durable physical profile implementing the same semantic storage port for volatile and conformance execution. |
-| RRFlowQL | Query language and planning boundary selecting native fast operators or the analytical path. |
+| rrflowQL | Query language and planning boundary selecting native fast operators or the analytical path. |
 | Arrow substrate | Shared columnar buffer model used by eligible immutable segment pages and streamed analytical batches. |
 | DataFusion | Bounded vectorized execution over stamped Arrow batches; it does not authorize or commit RRFlow state. |
 | Native indexes | Scalar/unique, graph adjacency, BM25, exact-vector, HNSW, and related access paths bound to canonical source coordinates. |
@@ -41,7 +43,7 @@ HTTP / WebSocket / SDK / MCP / embedded caller
                          |
               optional analytical transform
                          |
-            RRFlowQL/DataFusion returns batches
+            rrflowQL/DataFusion returns batches
               or model returns a proposal
                          |
                          v
@@ -66,7 +68,7 @@ owns WAL concurrency, sequence allocation, physical snapshot isolation, flush,
 compaction, and durable publication. `RrdEngine` must not hold a global WAL
 lock or expose physical keys to callers.
 
-RRFlowQL parses and binds expressions. DataFusion may scan, filter, join,
+rrflowQL parses and binds expressions. DataFusion may scan, filter, join,
 aggregate, rank, or produce transformed Arrow batches. A DataFusion `DataSink`
 or another compute adapter returns a proposed result to `RrdEngine`; it does
 not write rrflowKV files, publish manifests, or bypass semantic validation.
@@ -146,7 +148,7 @@ authorized intent + anchors + explicit budgets
                   capture one ReadStamp
  runtime cursor + manifest + valid time + schema/catalogue/policy
                          |
-                    RRFlowQL planner
+                    rrflowQL planner
               +----------+-----------+
               |                      |
               v                      v

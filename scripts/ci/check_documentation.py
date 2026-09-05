@@ -15,7 +15,9 @@ ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
+SYSTEM_OVERVIEW = ROOT / "docs" / "architecture" / "system-overview.md"
 ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
+SINGLE_ENGINE_DECISION = ROOT / "docs" / "decisions" / "0001-single-engine-authority.md"
 RRFLOWKV_CURRENT_FORMAT = (
     ROOT / "docs" / "reference" / "storage" / "rrflowkv-current-format.md"
 )
@@ -36,6 +38,7 @@ URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
 CANONICAL_DIRECTORIES = (
     "architecture",
+    "decisions",
     "objectives",
     "roadmap",
     "poam",
@@ -112,7 +115,9 @@ def main() -> int:
         failures.append("README.md does not contain the knowledge-ownership contract")
     required_warps = (
         "docs/README.md",
+        "docs/architecture/system-overview.md",
         "docs/architecture/engine-data-flow.md",
+        "docs/decisions/0001-single-engine-authority.md",
         "docs/reference/storage/rrflowkv-current-format.md",
         "docs/objectives/rrflow-1.0-alpha.md",
         "docs/roadmap/rrflow-1.0.md",
@@ -131,6 +136,7 @@ def main() -> int:
         failures.append("docs/README.md does not define the record/index pattern")
     for directory in (
         "architecture/",
+        "decisions/",
         "objectives/",
         "roadmap/",
         "poam/",
@@ -164,6 +170,50 @@ def main() -> int:
         "# Google Gemini CLI\n\n@./AGENTS.md"
     ):
         failures.append("GEMINI.md must remain a forwarding-only AGENTS.md adapter")
+
+    system_overview = SYSTEM_OVERVIEW.read_text(encoding="utf-8")
+    for required_section in (
+        "## Platform map",
+        "## Canonical component terminology",
+        "## Security boundary",
+        "## Documentation and future memory",
+    ):
+        if required_section not in system_overview:
+            failures.append(f"the system-overview owner lacks {required_section}")
+    for required_term in (
+        "**RRFlow**",
+        "**RRD**",
+        "**`RrdEngine`**",
+        "**rrflowDB**",
+        "**rrflowKV**",
+        "**rrflowMX**",
+        "**rrflowQL**",
+        "**Arrow substrate**",
+        "**DataFusion execution**",
+        "**RRFlow vector subsystem**",
+        "**RRFlow inference**",
+        "**Connectome**",
+    ):
+        if required_term not in system_overview:
+            failures.append(
+                f"the system-overview owner lacks canonical term {required_term}"
+            )
+    if "rrflow://rrflow-instance/data/architecture/system-overview" not in (
+        system_overview
+    ):
+        failures.append("the system-overview owner has no durable coordinate")
+
+    single_engine_decision = SINGLE_ENGINE_DECISION.read_text(encoding="utf-8")
+    for required_section in (
+        "## Context",
+        "## Decision",
+        "## Consequences",
+        "## Rejected alternatives",
+    ):
+        if required_section not in single_engine_decision:
+            failures.append(f"the single-engine ADR lacks {required_section}")
+    if "../architecture/system-overview.md" not in single_engine_decision:
+        failures.append("the single-engine ADR has no system-overview link")
 
     engine_data_flow = ENGINE_DATA_FLOW.read_text(encoding="utf-8")
     if "## Write and commit flow" not in engine_data_flow:
@@ -207,6 +257,24 @@ def main() -> int:
         failures.append("the owning RRFlow 1.0 roadmap has no durable coordinate")
     if "## Required outcomes" in roadmap or "## Open deficiencies" in roadmap:
         failures.append("the roadmap duplicates objective or POA&M ownership")
+    if "#### A-06 knowledge-bootstrap sequence" not in roadmap:
+        failures.append("the roadmap has no incremental knowledge-bootstrap sequence")
+
+    terminology_owners = {
+        README: readme,
+        SYSTEM_OVERVIEW: system_overview,
+        ENGINE_DATA_FLOW: engine_data_flow,
+        OBJECTIVE: objective,
+        ROADMAP: roadmap,
+        POAM: poam,
+    }
+    for owner_path, source in terminology_owners.items():
+        for retired_term in ("RRFlow database", "RRFlowQL"):
+            if retired_term in source:
+                failures.append(
+                    f"{owner_path.relative_to(ROOT)} uses retired product term "
+                    f"{retired_term!r}"
+                )
 
     current_format = RRFLOWKV_CURRENT_FORMAT.read_text(encoding="utf-8")
     for required_section in (

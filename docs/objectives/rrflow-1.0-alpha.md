@@ -20,7 +20,7 @@ The estate must remain provider-neutral: Codex, Claude, Gemini, Grok, LFG, and
 future callers consume the same public operations, authorization, read stamps,
 context evidence, routines, and skills.
 
-The RRFlow database owns AI knowledge, temporal graph state, reasoning state,
+rrflowDB owns AI knowledge, temporal graph state, reasoning state,
 indexes, evidence, automation state, and analytical storage. Application and
 operator databases such as PostgreSQL, Turso, SQLite, Dragonfly, and hosted
 services remain governed external sources unless an operator explicitly adds

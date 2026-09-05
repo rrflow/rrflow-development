@@ -5,9 +5,11 @@
 **Owner:** detailed architecture discovery; linked from `docs/README.md`
 
 The repository root [README](../../README.md) owns product identity and
-non-negotiable invariants. Records here explain one bounded architecture
-subject without owning delivery order, implementation status, or evidence.
+non-negotiable invariants. The system overview is the master component and
+boundary map; other records explain one bounded architecture subject without
+owning delivery order, implementation status, or evidence.
 
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
+| Master system overview | [`rrflow://rrflow-instance/data/architecture/system-overview`](rrflow://rrflow-instance/data/architecture/system-overview) | [`system-overview.md`](system-overview.md) | accepted terminology and boundaries; implementation incomplete |
 | Engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`engine-data-flow.md`](engine-data-flow.md) | accepted target; implementation incomplete |

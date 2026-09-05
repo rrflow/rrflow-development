@@ -15,6 +15,8 @@ The [RRFlow 1.0 alpha objective](../objectives/rrflow-1.0-alpha.md) owns the
 measurable outcome and its current evidence classification. The
 [RRFlow 1.0 alpha POA&M](../poam/rrflow-1.0-alpha.md) owns verified deficiencies
 and maps each one back to the gates below. The
+[system overview](../architecture/system-overview.md) owns the canonical
+component and security-boundary map, and the
 [engine data-flow record](../architecture/engine-data-flow.md) owns the detailed
 transactional, storage, Arrow, DataFusion, and context flow. This roadmap owns
 only dependency order, checkboxes, and accepted completion evidence.
@@ -67,13 +69,30 @@ pre-release documentation and source-boundary assumptions.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [x] | A-01 | Define RRFlow, RRD, RRFlow kernel, rrflowKV, rrflowMX, RRFlowQL, Arrow/DataFusion analytical path, LFG, and Connectome exactly once. | `README.md` | Terminology table, execution topology, and ownership table use one meaning for every term. |
+| [x] | A-01 | Define RRFlow, RRD, `RrdEngine`, rrflowDB, rrflowKV, rrflowMX, rrflowQL, Arrow substrate, DataFusion execution, RRFlow vector and inference subsystems, LFG, and Connectome exactly once. | `README.md`, system overview, ADR-0001 | Terminology, execution topology, and authority boundaries use one meaning for every term and prohibit parallel database, model, client, or compute authority. |
 | [x] | A-02 | Define generic `reasoning_tree`, `reasoning_node`, typed `reasoning_edge`, recipe, active cursor, decision evidence, and verification-result semantics. | `rrd-contract`, `rrd-core` | Versioned schema and golden round trips reject unknown fields, invalid edges, and unverifiable cursor advances. |
 | [x] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
 | [x] | A-04 | Move all existing crates into one non-duplicated grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
-| [ ] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content and preserve stable coordinates for later rrflowKV ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body. |
+| [ ] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
 | [ ] | A-07 | Audit the actual dependency graph and public vocabulary, then freeze industry-aligned directory, crate, module, test, fixture, and binary names; rename or remove overlapping pre-release boundaries directly with no aliases or compatibility shims. | workspace | Reviewed boundary map plus `cargo metadata`, dependency-direction tests, repository terminology search, and owning suites prove every package has one responsibility and every dependency points inward. |
+
+#### A-06 knowledge-bootstrap sequence
+
+These are incremental work packages inside A-06 and its later persistence
+proof. Completing a package does not complete A-06 or any referenced runtime
+gate by itself.
+
+| Done | ID | Bounded change | Acceptance evidence |
+|---|---|---|---|
+| [x] | KB-01 | Establish the master system overview, accepted single-engine ADR, canonical component terminology, and indexed warp points. | Root and boundary portals link the owners; documentation policy checks their coordinates, required sections, terminology, indexes, and local links. |
+| [ ] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
+| [ ] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
+| [ ] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
+| [ ] | KB-05 | Classify remaining flat supporting documents one complete file at a time as active, historical, merged, or removed. | Each reviewed file has one owner or successor, one coordinate when retained, one index entry, no copied authority body, and passing link/terminology checks. |
+| [ ] | KB-06 | Import a verified KB-03 package through persisted attunement checkpoints and authorized `RrdEngine` mutations. | D-02 and D-05 evidence proves digest-bound resume, idempotency, authorization, atomic mutation, and rejection of package or configuration drift. |
+| [ ] | KB-07 | Prove close/reopen, readback, warp resolution, incremental update, rollback, and recovery against rrflowDB. | Durable tests reproduce every imported record and relationship at its committed read stamp after restart and failure injection. |
+| [ ] | KB-08 | Reduce bootstrap READMEs to portals only after rrflowDB becomes the proven detail authority. | H and J evidence shows clients resolve the same authorized records through public operations; local fallbacks remain sufficient for recovery without duplicating mutable state. |
 
 A-02 evidence (2026-09-04):
 
@@ -155,7 +174,7 @@ the generic tree contract, and no obsolete lifecycle implementation.
 | [x] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
 | [ ] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
 | [ ] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
-| [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and RRFlowQL produce the same authorized logical request without a second executor. |
+| [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and rrflowQL produce the same authorized logical request without a second executor. |
 
 B-01 evidence (2026-09-04):
 
@@ -225,7 +244,7 @@ its correctness is demonstrated below the semantic engine.
 |---|---|---|---|---|
 | [ ] | D-01 | Implement `rrflow install` by resolving a versioned generic project-bootstrap template, provider-neutral specialization manifest, and attunement profile, with explicit new/existing-project modes, preview/apply behavior, and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. | `rrflow-cli`, `rrd-engine` | Template golden tests prove `AGENTS.md` is the single instruction body and any supported provider files are forwarding stubs; fresh and existing project tests preserve user content, initialize, authenticate, close, and reopen the same instance; preview performs no writes. |
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
-| [ ] | D-03 | Implement only the inventory phase first: ignore rules, secret/generated/cache exclusions, content digests, source classification, and bounded work estimates. | `rrd-attunement` through `rrd-engine` | This repository inventories without `target`, `node_modules`, `.git`, RRFlow database files, or secret payloads; unchanged rerun performs no content work. |
+| [ ] | D-03 | Implement only the inventory phase first: ignore rules, secret/generated/cache exclusions, content digests, source classification, and bounded work estimates. | `rrd-attunement` through `rrd-engine` | This repository inventories without `target`, `node_modules`, `.git`, rrflowDB files, or secret payloads; unchanged rerun performs no content work. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing with parser/language revision and source-digest provenance. | `rrd-attunement` through `rrd-engine` | Edit-one-file test reparses the changed source, preserves unaffected identities, and resumes after process restart. |
 | [ ] | D-05 | Implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, and independent acceptance test before the next phase begins. |
 | [ ] | D-06 | Classify SQL, PostgreSQL, Turso, and other application/operator databases as external sources; never select them as RRFlow persistence implicitly. | `rrd-attunement`, operator adapters | Fixture project proves discovery creates governed source metadata without copying credentials, changing the application database, or creating another RRFlow authority. |
@@ -271,8 +290,8 @@ instead of hiding an eager whole-estate materialization.
 | [ ] | G-01 | Add a provider-neutral `RouterBackend` capability separate from `EmbeddingBackend`; implement LFG as one adapter. | `rrd-inference`, `rrd-engine` | Fake/reference adapter and LFG adapter pass the same descriptor, bounds, timeout, invalid-output, and digest checks. |
 | [ ] | G-02 | Build a bounded route packet from one stamped tree, eligible recipes, verified observations, and allowed query fields. | `rrd-engine` | Golden packet excludes raw KV keys, secrets, hidden reasoning, unauthorized fields, and unbounded workspace content. |
 | [ ] | G-03 | Grammar-constrain LFG to the three routing decisions and validate again after decoding. | LFG adapter | Corpus includes valid, malformed, unknown-recipe, unauthorized-query, stale-cursor, and prompt-injection cases; invalid decisions produce no mutation. |
-| [ ] | G-04 | Execute recipe selection and branch navigation on the fast path without RRFlowQL/DataFusion; keep deterministic predicates and CAS mutation in `RrdEngine`. | `rrd-engine`, `rrd-store` | Trace and physical-plan evidence show bounded rrflowKV operations, no DataFusion plan, conflict denial, and correct reopen state. |
-| [ ] | G-05 | Lower `request_context` into semantic RRFlowQL/context intent while leaving physical access selection to the engine. | `rrd-engine`, `rrd-query` | LFG cannot select an index/backend; resulting plan is authorized, stamped, budgeted, and equivalent to a typed SDK request. |
+| [ ] | G-04 | Execute recipe selection and branch navigation on the fast path without rrflowQL/DataFusion; keep deterministic predicates and CAS mutation in `RrdEngine`. | `rrd-engine`, `rrd-store` | Trace and physical-plan evidence show bounded rrflowKV operations, no DataFusion plan, conflict denial, and correct reopen state. |
+| [ ] | G-05 | Lower `request_context` into semantic rrflowQL/context intent while leaving physical access selection to the engine. | `rrd-engine`, `rrd-query` | LFG cannot select an index/backend; resulting plan is authorized, stamped, budgeted, and equivalent to a typed SDK request. |
 | [ ] | G-06 | Publish model and storage latency separately with task-success, routing-accuracy, invalid-decision, and escalation metrics. | evaluation harness | Reproducible hardware/model manifest and raw samples support every reported latency or quality claim. |
 
 Gate G exits only when the trained LFG artifact passes the conformance corpus

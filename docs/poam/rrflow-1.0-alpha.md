@@ -6,8 +6,10 @@
 
 This record tracks gaps observed in the checkout. The
 [objective](../objectives/rrflow-1.0-alpha.md) defines the required result and
-the [engine data-flow architecture](../architecture/engine-data-flow.md) defines
-the affected system flow. The [roadmap](../roadmap/rrflow-1.0.md) owns execution
+the [system overview](../architecture/system-overview.md) defines the component
+and security boundaries. The
+[engine data-flow architecture](../architecture/engine-data-flow.md) defines the
+affected system flow. The [roadmap](../roadmap/rrflow-1.0.md) owns execution
 order. A row closes only when the referenced gate records its acceptance
 evidence; editing this table cannot declare a capability complete.
 
@@ -25,7 +27,7 @@ evidence; editing this table cannot declare a capability complete.
 
 | ID | Priority | Observed deficiency | Impact | Owning gates | Closure evidence | Status |
 |---|---|---|---|---|---|---|
-| POAM-001 | Critical | Flat supporting documents are not fully classified and source boundaries have not completed the final naming/dependency audit. | Agents can follow stale or overlapping context and extend the wrong boundary. | A-06, A-07 | Documentation topology and dependency/vocabulary checks pass with one owner and no duplicate active body. | Open |
+| POAM-001 | Critical | Flat supporting documents are not fully classified, no deterministic machine-readable bootstrap knowledge package exists, and source boundaries have not completed the final naming/dependency audit. | Agents must infer context from the checkout, can follow stale or overlapping records, and cannot yet import or prove the same knowledge through rrflowDB. | A-06, A-07, D-02, D-05, H-01, J-03 | Documentation topology and dependency/vocabulary checks pass with one owner and no duplicate active body; a reproducible manifest/JSONL package covers every eligible record or explicit exclusion; authorized import, reopen, readback, and warp resolution pass. | Open |
 | POAM-002 | Critical | Native rrflowKV segment v3 stores compressed row records. It does not implement the target ordered key/version spine plus Arrow-compatible column pages. | Point/state workloads and analytical scans cannot yet share the intended durable physical substrate. | C-06 | Format vectors, property tests, crash tests, and comparative benchmarks prove the hybrid segment layout and exact reads. | Sequenced |
 | POAM-003 | Critical | Fjall selection, format-v1/v2 readers, migration runtime code, and compatibility query tests remain executable. | More than one persistent path can survive into the alpha and force continued dual reasoning. | C-05, J-01 | Dependency and repository searches plus fresh native reopen tests prove the paths and dependencies are absent. | Sequenced |
 | POAM-004 | Critical | Normal query execution can reconstruct or materialize authoritative rows and then allocate new Arrow arrays before DataFusion. | Scan cost, memory, and latency scale with materialized input rather than selected columns and rows. | C-04, F-01, F-02 | Physical counters prove bounded key/page reads, streaming batches, projection/filter pushdown, and measured copy/decode/allocation behavior. | Sequenced |
