@@ -231,12 +231,16 @@ acquire signed default bundle -> verify complete manifest -> deny network
        -> preview install -> resolve bundle-resident template/profile/stubs
        -> explicit apply -> create locator/identity/estate through RrdEngine
        -> persist attunement job
-       -> inventory -> parse -> normalize -> entity-link -> lexical-index
+       -> authorize bounded metadata/content enumeration
+       -> pure deterministic inventory proposal
+       -> atomically commit tree snapshot/change set/checkpoint/runtime-log/audit
+       -> parse committed snapshot -> normalize -> entity-link -> lexical-index
        -> embed -> vector-index -> graph -> ground -> verify
        -> commit each digest-bound checkpoint through RrdEngine
        -> close/reopen/readback
 
-committed project signal -> determine affected phases only
+authenticated filesystem hint -> committed EngineEvent -> inventory diff
+committed project change set -> determine affected phases only
        -> policy eligibility -> explicit capability/routine/skill decision
        -> bounded resumable phase work (never a blanket reinstall loop)
 ```
@@ -274,6 +278,7 @@ complete.
 | Arrow/DataFusion analytical execution | `rrd-query/src/{arrow,fusion,execute,pipeline,plan}.rs` | `rrd-query/tests/{golden,query,index_catalogue}.rs` and the DataFusion-focused unit tests inside the listed source modules | Replace complete `Vec<QueryRow>` materialization with a pinned stamped provider; push supported work into rrflowKV, compose native operators, enforce one resource budget, and report every read/decode/copy/allocation. | F-01 through F-05 |
 | Generic reasoning trees, routing, and governed mutation | `rrd-core/src/reasoning_tree.rs`; `rrd-contract/src/{reasoning_tree,router}.rs`; `rrd-engine/src/engine/{context,transaction}.rs` | `rrd-core/tests/{reasoning_tree_contract,reasoning_trace_link}.rs`; `rrd-contract/tests/{reasoning_tree_contract,router_contract}.rs`; `rrd-engine/src/engine/tests/{context,transaction_stamp}.rs` | Preserve the accepted generic tree and three bounded routing decisions; add persisted CAS execution, the model-manifest handshake, constrained LFG dispatch, and engine-selected physical work without a fixed lifecycle. | B-03, G-01 through G-05, H-01, H-05 |
 | Installation, attunement, and explicit automation | `rrd-contract/src/attunement.rs`; `rrd-engine/src/engine/automation.rs`; `rrd-estate/src/{authority,reconcile,local_authorization,local_process,recovery}.rs`; `rrflow-cli/src/{command,dev}.rs` | `rrd-contract/tests/attunement_contract.rs`; `rrd-engine/src/engine/tests/{automation,deployment_conformance,lifecycle,recovery}.rs`; `rrd-estate/tests/{estate_authority,reconciler_recovery,local_authorization,recovery}.rs`; `rrflow-cli/tests/operator_surface.rs` | Build bundle-resident preview/apply, persisted phase jobs, incremental project specialization, canonical events, resumable routines, digest-bound skills, and optional host translators under `RrdEngine`. | D, I, J-03, J-05 |
+| Durable trace and lifecycle-named residue | `rrd-core/src/trace.rs`; `rrd-engine/src/runtime/{mod,trace}.rs`; `rrd-engine/tests/runtime_trace.rs`; `docs/package-workflows.md` | trace schema/golden tests; concurrent writer and native-reopen tests in `runtime_trace.rs`; corrected exact-argv/freshness/verification/redaction target policy in the package-workflow note | Preserve correlated start/finish/annotation evidence, incomplete-span visibility, deterministic identities, redaction, exact argv policy, freshness, and observable verification. Route durable emission through authorized engine operations, reserve traces for evidence, converge any lifecycle-named code directly, and move the corrected supporting policy to its KB-05 canonical path without restoring hooks or inventing evidence. | A-07, H-05, I, J-01 |
 
 The `<package>/...` shorthand resolves through the frozen target source tree;
 for example, `rrd-lsm/src/wal.rs` means
@@ -300,6 +305,10 @@ the cross-file behavior that a mechanical inventory cannot infer.
 | `rrd-query/src/execute.rs::execute` eager loading | split into native access and streaming execution | F-01..F-04 |
 | `rrd-query/src/live.rs::poll_live_query` two-snapshot diff | replace with commit-impact evaluation | H-03 |
 | alternate TurboQuant catalogue/ensure surfaces | remove; keep a codec only if exact differential and benchmark gates justify it | E-04, J-01 |
+| `rrd-contract::AutomationCatalogue` | directly rename/narrow to the function catalogue after full contract/surface inventory; it cannot imply ownership of routines, skills, or event triggers | A-07, I-03 |
+| `rrd-contract::FunctionTrigger*` | directly rename as proposed-transaction function binding types; reserve `Trigger` for post-commit canonical engine-event predicates | A-07, I-01, I-02 |
+| `rrd_core::RuntimeEvent` plus planned public `EngineEvent` | converge into one semantic engine-event vocabulary and one lowering path; no forwarding type or parallel event log | I-01, J-01 |
+| direct-store durable trace helpers under `rrd-engine/src/runtime/trace.rs` | preserve trace evidence behavior behind authorized `RrdEngine` operations; traces never advance jobs or routine state | H-05, I-03, J-01 |
 | provider/session-start hooks anywhere | remain absent; optional host translators submit explicit typed events only | I-04, J-01 |
 
 ## Gate A work packages
@@ -657,14 +666,37 @@ dependency. Implement one phase per commit in the canonical order. Each phase
 accepts bounded inputs plus digest/revision metadata and returns a deterministic
 proposal. `RrdEngine` commits the proposal and checkpoint.
 
-- inventory: ignore/secret/generated/cache rules, classifications, content
-  digests, bounded estimate;
-- parse: Tree-sitter grammar digest/revision, incremental edit, `ERROR` and
-  `MISSING` evidence retained;
+- inventory: `crates/compute/rrd-attunement/src/inventory.rs` owns the pure
+  `SourceTreeSnapshot`, `SourceTreeEntry`, `SourceTreeChangeSet`,
+  `InventoryPolicy`, `InventoryError`, normalization, ordered Merkle digest,
+  classification, and previous-snapshot diff logic. It receives enumerated
+  metadata/content chunks; it never opens a path. The existing planned
+  `crates/authority/rrd-engine/src/engine/attunement.rs` owns the authorized
+  two-pass filesystem read, lease/cancellation/resource enforcement, proposal
+  validation, and atomic snapshot/containment/change-set/checkpoint/runtime-log/audit
+  commit. `crates/compute/rrd-attunement/tests/inventory.rs` owns deterministic
+  fixtures for Git precedence, tracked ignored files, non-Git roots, hidden
+  source, secret/generated/vendor/cache exclusion, symlink/mount escape,
+  unreadable/vanished/racing files, add/edit/remove/rename, traversal order,
+  resource bounds, cancellation, reopen, and zero-content-read no-work runs;
+- parse: `crates/compute/rrd-attunement/src/parse.rs` consumes an exact
+  committed snapshot/change-set digest and owns Tree-sitter grammar
+  digest/revision, incremental edit, and retained `ERROR`/`MISSING` evidence.
+  `crates/compute/rrd-attunement/tests/incremental_parse.rs` proves parsing
+  cannot begin before the inventory commit receipt and preserves unaffected
+  identities across edit and restart;
 - normalize/entity-link: stable identities and provenance;
 - lexical/embed/vector/graph: canonical facts plus derived-index proposals;
 - ground/verify: cited source links, inconsistency/unresolved-error records,
   package and project digests.
+
+Do not split inventory into competing walkers or language-specific discovery
+paths. Start with that one module and one fixture corpus; split internal modules
+inside `rrd-attunement` only when file size or test seams justify it, while
+retaining one `inventory` API and deleting the superseded path in the same
+pre-release change. Filesystem watchers are out of D-03: Gate I may add a
+removable host-event adapter, but notifications remain hints that schedule the
+same authoritative inventory operation.
 
 ### D-06 — external source descriptors
 
@@ -811,28 +843,47 @@ whether it is adopted or rejected.
 
 ### Gate I — explicit automation
 
-- I-01: freeze `EngineEvent` in `rrd-contract/src/engine_event.rs`.
+- I-01: freeze the one semantic `EngineEvent` contract and directly converge
+  the existing kernel `RuntimeEvent` representation into it. Public submission
+  lowers to `RuntimeMutation::Event`; a committed event consumed by triggers is
+  that same object plus its commit receipt, never a second event database.
 - I-02: persisted triggers match committed events and may request only an
-  authorized engine operation.
+  authorized engine operation. Rename the existing synchronous proposed-
+  transaction function bindings so `Trigger` has no second meaning.
 - I-03: routines are versioned resumable operation graphs with checkpoint,
-  budget, cancel, compensation, verification, and terminal state.
+  budget, lease, idempotency, cancel, compensation, verification, and terminal
+  state. Model, process, network, and external MCP calls are recorded
+  activities; replay never repeats their effect merely to reconstruct state.
 - I-04: optional `rrflow-host-events` translators for Claude, Codex, Gemini,
   and a reference host emit the same typed event only after previewed explicit
   installation. One shared conformance fixture and test compare their emitted
   envelopes. No session-start hook ships by default.
 - I-05: skills are immutable identity/digest instruction-resource packages;
-  resolving them is context retrieval, not executing storage/lifecycle code.
+  resolving them at a read stamp is context retrieval, not executing
+  storage/lifecycle code or granting the requested capabilities.
 - I-06: `rrflow-cli/src/automation_install.rs` and its conformance test own
   preview/apply/uninstall for optional trigger, routine, host-adapter, and
   skill scaffolding; they report exact files and records and leave canonical
   state readable.
-- I-07: committed inventory/schema/dependency/workload/failure changes schedule
-  only the affected attunement phases and eligible automation under policy.
+- I-07: every project-development run first binds the latest complete
+  authorized project-tree snapshot; missing/stale inventory returns
+  `inventory-required`, changed-since-plan entries and paths outside the root
+  are denied, and committed inventory/schema/dependency/workload/failure
+  changes schedule only the affected attunement phases and eligible automation
+  under policy.
 
 The existing `engine/automation.rs` function sandbox is reusable inventory.
 First extract function execution unchanged; then implement events, triggers,
 and routines in separate modules. Do not rename the current synchronous
 function trigger and pretend Gate I is complete.
+
+The first proof is the `error-resolution` vertical slice in the engine-flow
+owner. Its routine uses semantic operation/capability references only. The
+context planner—not the routine, skill, model, host, or MCP adapter—selects
+graph, BM25, exact/HNSW/TurboQuant, or DataFusion work and records every
+selected or skipped reason. Kill/restart at every persisted transition and
+after every external activity; compare run identity, effects, stamps, digests,
+and evidence across embedded, HTTP, WebSocket, SDK, MCP, and Connectome reads.
 
 ### Gate J — release proof
 

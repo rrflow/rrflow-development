@@ -36,6 +36,8 @@ RRFlow — AI governance, reasoning, recall, and context platform
 │       → exact reranking
 │
 ├── RRFlow inference — replaceable embedding and LFG adapters
+├── RRFlow attunement — committed project tree → derived project knowledge
+├── RRFlow automation — committed events, triggers, routines, and skills
 ├── RRFlow Security — identity, sessions, policy, authorization, and audit
 └── HTTP / WebSocket / SDK / MCP / CLI / Connectome — outward clients
 ```
@@ -64,14 +66,25 @@ authoritative databases or engines.
 | **analytical path** | Broad retrieval, ingest transformation, joins, and analytics planned by rrflowQL over native access paths and stamped Arrow batches. | `rrd-query`, `rrd-vector`, `rrd-store`, and bounded DataFusion execution. |
 | **index projection** | Derived acceleration state bound to its source cursor and relevant schema or catalogue revision; it is rebuildable and cannot outrank canonical data. | Scalar, graph, lexical, and approximate-vector structures in persistence and compute boundaries. |
 | **context assembly** | Bounded discovery and deterministic fusion owned by `RrdEngine`, returning a read-stamped `ContextPacket` with evidence. | `rrd-contract` operation and `rrd-engine` implementation. |
+| **project-tree snapshot** | One deterministic, bounded, committed inventory of observed root-relative project entries, errors, containment, policy, and change evidence; it is the required input to parsing and later attunement phases. | Pure proposal construction in planned `rrd-attunement`; authorized reads and commit coordination in `RrdEngine`. |
 | **RRFlow vector subsystem** | Native vector-database capability inside rrflowDB: exact values, payload filters, candidate indexes, and exact reranking. | `rrd-vector`, `rrd-query`, and `RrdEngine` |
 | **RRFlow inference** | Provider-neutral execution of embedding and routing models. | `rrd-inference`; LFG is a constrained routing adapter. |
+| **engine event** | One immutable, identity- and provenance-bound occurrence committed through `RrdEngine`; it is data, not a callback or lifecycle owner. | Canonical event value in the RRFlow kernel, public submission envelope in `rrd-contract`, and semantic persistence through `rrd-store`. |
+| **trigger** | A persisted deterministic condition over committed engine events that may propose an authorized operation or routine start but cannot mutate independently. | `RrdEngine` evaluation over rrflowDB state. |
+| **routine** | A versioned, durable graph of public `RrdEngine` operations with explicit state, budgets, leases, checkpoints, cancellation, compensation, verification, and terminal outcome. | Definition and run state in rrflowDB; orchestration in `RrdEngine`. |
+| **skill** | An immutable, digest-addressed instruction and resource package resolved as governed context; it grants no capability and executes no lifecycle code. | Contract and manifest in `rrd-contract`; content and bindings in rrflowDB; resolution in `RrdEngine`. |
+| **host-event adapter** | An optional, explicitly installed stateless translator from a host callback or external signal into the canonical engine-event submission operation. | Outward `rrflow-*` adapter; never an automatic hook or scheduler. |
 | **Connectome** | Separate operator and developer workbench using public RRD capabilities. | Separate repository; no embedded engine authority. |
 
 Product documentation uses the exact spellings **RRFlow**, **RRD**,
 **`RrdEngine`**, **rrflowDB**, **rrflowKV**, **rrflowMX**, and **rrflowQL**.
 Rust package names remain `rrd-*` for internal daemon/runtime boundaries and
 `rrflow-*` for outward product adapters.
+
+"Trigger" is reserved for the post-commit engine-event condition above.
+Synchronous functions bound to a proposed transaction are transaction function
+bindings, not routines or event triggers. "Runtime event" must not survive as
+a second event vocabulary when I-01 freezes the canonical engine event.
 
 ## Pre-release convergence boundary
 
@@ -103,10 +116,10 @@ schema, policy, audit, and durability rules.
 
 ## Native multi-model boundary
 
-Temporal records, claims, relations, reasoning trees, graph adjacency,
-lexical postings, vectors, and evidence are rrflowDB data families. They share
-one transaction coordinator, read-stamp model, canonical runtime log, and
-persistence authority.
+Temporal records, claims, relations, reasoning trees, project-tree snapshots,
+graph adjacency, lexical postings, vectors, engine events, routine state, skill
+bindings, and evidence are rrflowDB data families. They share one transaction
+coordinator, read-stamp model, canonical runtime log, and persistence authority.
 
 The temporal graph is not another graph database. RRFlow vector search is not
 a separately authoritative vector database. BM25 is not another text store.

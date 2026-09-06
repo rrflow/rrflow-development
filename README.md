@@ -48,6 +48,7 @@ definition; this portal does not reproduce those bodies.
 | Exact semantic write and durable rrflowKV commit sequence | [Write and commit flow](docs/architecture/engine-data-flow.md#write-and-commit-flow) |
 | Hybrid immutable storage and measured conditional zero-copy | [rrflowKV physical target](docs/architecture/engine-data-flow.md#rrflowkv-physical-target) and [conditional zero-copy](docs/architecture/engine-data-flow.md#conditional-zero-copy) |
 | One bounded, deterministic, provider-neutral context operation | [Context assembly contract](docs/architecture/engine-data-flow.md#context-assembly-contract) |
+| Project discovery begins with one deterministic committed tree snapshot | [Project-tree inventory and incremental attunement](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) |
 | External databases, meshes, providers, and clients remain explicit adapters | [External integrations](docs/architecture/system-overview.md#external-integrations) |
 
 ## Product operation map
@@ -55,9 +56,10 @@ definition; this portal does not reproduce those bodies.
 | Operation or surface | Owning record or gate |
 |---|---|
 | New/existing-project installation, specialization, and attunement | [Provider-neutral agent bootstrap](docs/reference/agent-bootstrap.md#installation-and-attunement) and [roadmap Gate D](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
+| Deterministic project-tree snapshot and incremental refresh | [Project-tree inventory flow](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) and [roadmap D-03/D-04](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
 | Durable provider-neutral self and `rrflow://` record resolution | [Seat identity and memory warps](docs/reference/seat-identity.md) |
 | Connectome HTTP bootstrap and mesh boundary | [Client bootstrap boundary](docs/architecture/system-overview.md#client-bootstrap-boundary) and [roadmap H-06/H-07](docs/roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome) |
-| Generic triggers, routines, hook adapters, and skills | [Generic routine package](docs/reference/agent-bootstrap.md#generic-routine-package) and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
+| Engine events, triggers, routines, skills, and host-event adapters | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
 | Current rrflowKV bytes and removable format readers | [rrflowKV current physical format](docs/reference/storage/rrflowkv-current-format.md) |
 | Canonical target source tree and dependency direction | [Frozen target source tree](docs/roadmap/rrflow-1.0-execution-map.md#frozen-target-source-tree) |
 | Repository verification sequence | [Repository-wide run checklist](docs/roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist) and [CI execution contract](docs/operations/ci.md) |

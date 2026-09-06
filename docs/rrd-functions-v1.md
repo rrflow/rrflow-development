@@ -1,17 +1,23 @@
-# RRD governed functions and triggers v1
+# RRD governed functions and transaction bindings v1
 
-Status: supporting low-level function and transaction-trigger contract. This
-does not satisfy the engine-event trigger, routine, hook-adapter, or skill gates
-in the RRFlow 1.0 roadmap. The root `README.md` remains the product and
-current-status owner.
+Status: supporting low-level function and transaction-binding contract. This
+does not satisfy the engine-event trigger, routine, host-event-adapter, or
+skill gates in the RRFlow 1.0 roadmap. The root `README.md` remains the product
+and current-status owner.
 
 ## Authority and compatibility
 
-`rrd-engine` is the only function execution and trigger authority. Its
-automation catalogue is a revisioned engine-owned subcatalogue of the one
+`rrd-engine` is the only function execution and proposed-transaction binding
+authority. Its current `AutomationCatalogue` is a revisioned engine-owned
+subcatalogue of the one
 instance/database authority, not a separately composable database. Function
 definitions do not open storage, publish their own commit cursors, or bypass
 the engine's session, policy, transaction, and audit paths.
+
+The current code names these bindings `FunctionTrigger`. That name is
+pre-release implementation inventory, not the canonical post-commit trigger
+term. A-07/I-01 directly rename the binding and narrow `AutomationCatalogue`
+to the function catalogue without a compatibility alias.
 
 The wire-independent contract is `FUNCTION_CONTRACT_VERSION = 1`. Every
 catalogue carries that version, a monotonic revision, digested function
@@ -21,7 +27,7 @@ its compare-and-swap head in one control batch. Restart resolves the head and
 validates the stored revision and catalogue SHA-256 before any execution.
 
 Changing source bytes, decoded WebAssembly bytes, an identifier, limit,
-capability, trigger, effect, or retry field changes the catalogue digest. A
+capability, binding, effect, or retry field changes the catalogue digest. A
 transaction commit intent pins the exact catalogue revision and derived runtime
 commit digest. Recovery reloads that immutable revision; it never substitutes
 the current head.
@@ -67,12 +73,13 @@ call stacks derived from `stack_bytes`, no reusable stack cache, and store
 limits for memory and instance count. Imports are rejected, so v1 has no WASI,
 clock, randomness, filesystem, network, or other host capability.
 
-## Trigger and transaction semantics
+## Transaction binding semantics
 
-A trigger selects one of the ten public typed transaction mutations and may
-optionally narrow record-like mutations by kind. Trigger order is canonical:
-original mutation order followed by trigger identity order. Generated effects
-are not re-matched, which prevents recursive trigger chains.
+A transaction function binding selects one of the ten public typed transaction
+mutations and may optionally narrow record-like mutations by kind. Binding
+order is canonical: original mutation order followed by binding identity
+order. Generated effects are not re-matched, which prevents recursive binding
+chains.
 
 Two effects exist:
 
@@ -91,8 +98,8 @@ publishes under one cursor, or no data mutation publishes.
 
 Catalogue reads, catalogue replacement, and execution map to distinct
 deny-by-default `SecurityAction` values. A secured transaction additionally
-requires `function_execute` when its pinned catalogue contains triggers.
-Trigger execution records authorized and terminal allowed/failed audit
+requires `function_execute` when its pinned catalogue contains bindings.
+Binding execution records authorized and terminal allowed/failed audit
 evidence with request, operation, principal, source input, and output/error
 digests; function bodies, credentials, and raw transport data are not audit
 payloads.
@@ -118,6 +125,7 @@ user function.
 
 ## Surface boundary
 
-The native engine entry points are available in v1. G06 owns generated HTTP,
-MCP, CLI, SDK, and Connectome projection from this contract. No adapter may
-embed a second runtime or maintain a competing function catalogue.
+The native engine entry points are available in v1. H-04 owns cross-surface
+HTTP, MCP, CLI, SDK, and Connectome conformance; I owns the distinct canonical
+event-trigger/routine/skill system. No adapter may embed a second runtime or
+maintain a competing function catalogue.

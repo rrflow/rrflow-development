@@ -58,6 +58,17 @@ connect -> inventory -> parse -> normalize -> entity-link
         -> graph -> ground -> verify
 ```
 
+Inventory is a committed data boundary, not an informal directory listing.
+The exact record contract, Git/non-Git ignore behavior, symlink and secret
+safety, deterministic tree digest, incremental change set, and acceptance
+corpus are owned by
+[Project-tree inventory and incremental attunement](../architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement).
+No parser, indexer, model, routine, skill, watcher, or provider adapter may run
+ahead of that committed snapshot. Filesystem notifications can request another
+bounded inventory pass only after Gate I exists and they enter as authenticated
+engine events; they never mutate project knowledge directly. Before then,
+installation and explicit refresh invoke the same inventory operation directly.
+
 For a substantial existing project, 30–45 minutes is an installation-planning
 estimate, not a completion guarantee. Preview must derive its estimate from
 the discovered source count, bytes, parser work, model/index work, configured
@@ -81,6 +92,22 @@ The engine implementation must preserve these rules:
 6. Verify compares persisted records, indexes, graph state, specialization,
    public operations, and restart behavior against the plan.
 
+## Project-operation preflight
+
+The first engine step for development or maintenance work is not a model
+prompt and not a host shell walk. The caller submits intent; `RrdEngine`
+resolves the latest complete authorized project-tree snapshot, binds its digest
+to the operation `ReadStamp`, and retrieves only the relevant tree, ownership,
+symbol, dependency, policy, and evidence neighborhoods. If no current complete
+snapshot exists, the operation returns `inventory-required` and may propose the
+same bounded inventory capability used during installation.
+
+Every proposed source change retains the input snapshot and affected entry
+digests. After an authorized file activity applies the previewed change, RRFlow
+re-inventories and commits the resulting change set before later reasoning or
+index work proceeds. A provider's open-file list, editor callback, cached tree,
+or model recollection cannot satisfy this precondition.
+
 ## Generic routine package
 
 A routine is a versioned, resumable graph of authorized engine operations. A
@@ -98,15 +125,23 @@ proves its inputs and policy allows activation. Each package declares:
   and retirement rules; and
 - secret references and outbound-network permissions without secret values.
 
+The canonical event-to-context-to-commit sequence and the distinction between
+events, triggers, routines, skills, functions, MCP, and physical access paths
+are owned by the
+[automation, routine, and skill flow](../architecture/engine-data-flow.md#automation-routine-and-skill-flow).
+A routine step names a public semantic operation or required capability. It
+never names a Rust function, executable path, MCP server, storage key, graph
+edge prefix, index implementation, DataFusion node, or model provider.
+
 The first generic routine set is deliberately small:
 
 | Routine | Purpose | Activation evidence |
 |---|---|---|
-| `project-inventory` | Refresh bounded source/dependency/tooling inventory. | A committed source or dependency digest changed. |
+| `project-inventory` | Produce or refresh the bounded authoritative project-tree snapshot. | Explicit install/refresh intent, or an authenticated filesystem hint accepted under estate policy. |
 | `change-impact` | Resolve affected symbols, graph neighbors, tests, policies, and documentation. | A committed change set and required graph/index capabilities exist. |
 | `error-resolution` | Correlate diagnostics with code, ownership, prior evidence, and verification commands. | A typed diagnostic event and a supported build/test boundary exist. |
 | `verification` | Run the smallest owning checks, then broaden according to risk and changed boundaries. | A proposed mutation or completed routine requires proof. |
-| `knowledge-maintenance` | Re-attune only stale records and projections, preserving unaffected identities. | Source, parser, schema, embedding, or catalogue revision drift is proven. |
+| `knowledge-maintenance` | Re-attune only stale records and projections, preserving unaffected identities. | A committed project-tree change set or parser, schema, embedding, or catalogue revision drift is proven. |
 
 These names describe target packages, not current implementation. They become
 real only after the routine contracts, persistence, authorization, restart,

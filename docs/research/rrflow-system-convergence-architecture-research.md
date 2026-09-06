@@ -4,9 +4,9 @@
 **Coordinate:** `rrflow://rrflow-instance/data/research/rrflow-system-convergence`
 **Owner:** primary-source evidence for the RRFlow 1.0 execution map
 **Audience:** RRFlow owner and engineers executing the 1.0 pre-release gates
-**Date:** 2026-09-05
-**Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, installation/attunement, provider-neutral agent context, and external project data adapters
-**Assumptions:** one RRFlow instance per project/environment; `RrdEngine` is the sole semantic, authorization, and mutation authority; version remains `1.0.0`; current code is inventory until the roadmap's behavioral evidence passes
+**Date:** 2026-09-06
+**Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, deterministic project-tree inventory, installation/attunement, provider-neutral agent context, explicit automation, and external project data adapters
+**Assumptions:** one RRFlow instance per project/environment; `RrdEngine` is the sole semantic, authorization, and mutation authority; version remains `1.0.0`; current code is inventory until the roadmap's behavioral evidence passes; the repository owner reports separate source-use rights for SurrealDB and Qdrant, whose legal scope is not adjudicated by this technical record
 
 ## Direct answer
 
@@ -50,6 +50,11 @@ row-only LSM and not “Arrow everywhere”:
    discovered as governed external sources/adapters. They are never selected
    implicitly as rrflowDB persistence and never become a parallel RRFlow
    authority.
+8. Project attunement starts by committing one deterministic, bounded tree
+   snapshot. Filesystem metadata and eligible content enter through an
+   engine-authorized read plan; pure attunement code proposes normalized
+   records; only `RrdEngine` commits them. Parsing, graph/index construction,
+   skills, routines, and model context consume that exact snapshot digest.
 
 ## Evidence reconciliation
 
@@ -68,6 +73,128 @@ and optimistic commit behavior explicit. RRFlow should borrow those contract
 properties, not claim FoundationDB's strict serializability. The 1.0 target
 remains the declared snapshot isolation plus write-conflict behavior until a
 stronger contract is separately accepted and proven. [FoundationDB developer guide](https://apple.github.io/foundationdb/developer-guide.html)
+
+### Source-level organization and integration lessons
+
+SurrealDB's core is not one giant implementation file and it is not a set of
+independent databases. Its current source tree separates database execution,
+document mutation, physical execution, indexes, typed keys, and transactional
+KV behavior into `dbs`, `doc`, `exec`, `idx`, `key`, and `kvs` modules under
+one core. That supports RRFlow's grouped kernel/persistence/compute/authority
+tree: modular source boundaries are healthy when one transaction coordinator
+connects them. The present RRFlow problem is missing end-to-end semantics and
+duplicate compatibility paths, not the mere existence of crates.
+[SurrealDB core source](https://github.com/surrealdb/surrealdb/tree/main/surrealdb/core/src)
+
+SurrealDB's current graph-key module documents four adjacency keys for one
+relation. The vertex-side pointer keys embed the opposite endpoint so a
+directional range scan can resolve it without fetching the edge record, while
+edge-side keys preserve endpoint adjacency. The useful lesson is typed,
+ordered, direction-specific key families and atomic maintenance—not its exact
+wire bytes or its legacy-compatible decoder. RRFlow is pre-release and must
+freeze its own key codec, write the required directional entries in the same
+semantic transaction, and retain no legacy format branch.
+[SurrealDB graph-key source](https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs)
+
+The SurrealDB transaction source keeps transaction-local caches, changefeed
+and live-event buffers, and pending index-build state around the underlying
+transactor. This demonstrates an important boundary: derived work and
+notifications are coordinated with transaction outcome, rather than being
+declared successful by an external hook. RRFlow's corresponding state belongs
+behind `RrdEngine` and the rrflowKV commit receipt.
+[SurrealDB transaction source](https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/kvs/tx.rs)
+
+SurrealDB's MCP implementation is described as a thin adapter over its
+datastore, using the same authentication and query limits. That is directly
+applicable: RRFlow MCP exposes or invokes bounded public capabilities, but
+cannot become a context, routine, or persistence authority.
+[SurrealDB MCP source](https://github.com/surrealdb/surrealdb/tree/main/surrealdb/mcp)
+
+Qdrant's source separates segment-local ID tracking, payload storage and
+indexes, vector storage, vector indexes, quantization, and segment construction
+inside its `segment` library, with collection/storage/WAL concerns above it.
+Its appendable-versus-immutable segment operations and immutable index-build
+tests are valuable implementation references for RRFlow's exact-vector source
+plus replaceable HNSW/TurboQuant generations. They do not justify a second
+Qdrant process, a second catalogue, or copying Qdrant compatibility paths into
+RRFlow.
+[Qdrant libraries](https://github.com/qdrant/qdrant/tree/master/lib),
+[Qdrant segment source](https://github.com/qdrant/qdrant/tree/master/lib/segment/src)
+
+### Deterministic project discovery before parsing
+
+Git's ignore specification is precise: ignore patterns target intentionally
+untracked files, tracked files are unaffected, nested rules have defined
+precedence, and later matching rules at the same level win. A generic walker
+that merely reads `.gitignore` can therefore omit tracked files incorrectly.
+RRFlow must merge the tracked set with Git-correct untracked eligibility when
+Git is present, while retaining a complete non-Git path.
+[Git ignore specification](https://git-scm.com/docs/gitignore)
+
+Git's blob/tree object model is also a useful precedent for deterministic
+project identity: content objects are addressed by digest and tree objects
+bind names, modes, and child identities. RRFlow should use its own versioned
+digest envelope and canonical path encoding, but the same Merkle property lets
+an unchanged subtree retain identity and bounds incremental work.
+[Git object model](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects.html)
+
+Rust's `ignore::WalkBuilder` provides Git-style ignore support, deterministic
+sorting, depth and file-size controls, parallel walking, and disabled symlink
+following by default. It is a candidate enumeration primitive, not the
+semantic contract: RRFlow still needs tracked-file reconciliation, mount/root
+safety, race detection, secret-before-open policy, resource accounting, and a
+deterministic proposal independent of walker scheduling.
+[`ignore::WalkBuilder`](https://docs.rs/ignore/latest/ignore/struct.WalkBuilder.html)
+
+Tree-sitter documents incremental reparsing by editing the prior tree and
+passing it with the new source, allowing unchanged structure to be reused. That
+supports a parse phase driven by a committed source change set; it does not
+replace inventory and cannot decide whether filesystem bytes are authoritative.
+[Tree-sitter advanced parsing](https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html)
+
+Filesystem notification libraries explicitly expose rescan-required events
+because watches can lose fidelity. Notifications must therefore be scheduling
+hints: explicit refresh remains sufficient in Gate D, and after Gate I they may
+submit an engine event requesting another authoritative inventory diff. They
+cannot directly patch the graph, syntax tree, or indexes.
+[`notify` rescan flag](https://docs.rs/notify/latest/notify/event/enum.Flag.html)
+
+SCIP offers a language-neutral schema for symbols, occurrences, definitions,
+references, and documentation. It is useful interoperability evidence for the
+later normalize/entity-link design, but RRFlow must not require a SCIP indexer
+for the first inventory phase or let language tooling become canonical project
+state.
+[SCIP specification](https://github.com/scip-code/scip/blob/main/scip.proto)
+
+The reviewed SurrealDB agent guidance now provides install instructions for
+provider-specific skills and MCP, plus a coding-agent memory example that can
+recursively ingest a documentation directory and recall/remember/reflect at a
+repository scope. Those are useful deployment and user-flow references. They
+do not specify a deterministic whole-project tree snapshot, Git tracked-file
+reconciliation, filesystem error/race semantics, resource-bounded incremental
+change set, or a transaction that gates parsing and index construction. RRFlow
+must own that missing attunement boundary instead of mistaking MCP setup or
+folder upload for project understanding.
+[SurrealDB agent setup](https://surrealdb.com/docs/agents),
+[SurrealDB coding-agent memory](https://surrealdb.com/docs/agent-memory/cookbooks/build/coding-agent-with-project-memory)
+
+Qdrant's data-management guidance begins with caller-supplied points, vectors,
+payloads, collections, and index configuration. Its LlamaIndex integration
+explicitly delegates ingestion to another framework. This is strong evidence
+for segment-local vector/index mechanics, but not a project discovery or
+attunement contract. RRFlow uses those search mechanics inside its one engine
+only after source inventory, parsing, grounding, and canonical vector commits.
+[Qdrant data management](https://qdrant.tech/documentation/manage-data/),
+[Qdrant LlamaIndex integration](https://qdrant.tech/documentation/frameworks/llama-index/)
+
+Sourcegraph's auto-indexing is a useful operational comparison: it selects a
+commit, runs language indexers in an executor sandbox, records job activity,
+and publishes a code-graph index. RRFlow should borrow explicit job policy,
+sandboxing, and observable failure, while replacing clone/upload authority with
+the locally committed project-tree snapshot and phase checkpoints. An
+optional SCIP-producing analyzer is a later attuned activity, never the first
+inventory step.
+[Sourcegraph auto-indexing](https://sourcegraph.com/docs/code-navigation/auto-indexing)
 
 ### Hybrid LSM and Arrow pages
 
@@ -181,9 +308,9 @@ machine verification rather than a bare successful local build.
 | native graph/BM25/vector are real | graph traversal, BM25 code, exact vector oracle, HNSW, catalogues, and planner exist | persistent incremental access paths and same-stamp native physical operators | E-01..E-05, F-03 |
 | dynamic context works | engine context/retrieval functions and RRF helpers exist | planner-selected eligible avenues with selected/skipped evidence, pure RRF, versioned feedback | H-01, H-02 |
 | live delivery works | durable subscriptions and WebSocket delivery exist | commit-impact predicate deltas; current semantic live query reruns two snapshots | H-03 |
-| install/attunement works | strict B-01 plan/job/checkpoint contracts exist | installer, pure attunement compute crate, persisted engine executor, phase-by-phase real fixtures | D-01..D-10 |
+| install/attunement works | strict B-01 plan/job/checkpoint contracts and the canonical eleven phases exist | installer, persisted engine executor, deterministic project-tree snapshot/change-set, pure attunement compute crate, and phase-by-phase real fixtures | D-01..D-10 |
 | LFG is pluggable | embedding inference exists and B-02 router wire contract is frozen | manifest handshake, `RouterBackend`, LFG adapter, constrained decode, route execution | B-03, G-01..G-06 |
-| automation is governed | synchronous function/trigger foundation exists | canonical event envelope, persisted trigger conditions, resumable routine graphs, skill packages, explicit removable host adapters | I-01..I-07 |
+| automation is governed | bounded synchronous functions and proposed-transaction bindings exist | direct vocabulary convergence, canonical event envelope, persisted post-commit trigger conditions, resumable routine graphs, skill packages, explicit removable host-event adapters, and replacement of the false package-hook lifecycle | A-07, I-01..I-07 |
 
 ## Decisions and exclusions
 
@@ -191,6 +318,11 @@ machine verification rather than a bare successful local build.
   superseded fragment and do not start a parallel engine.
 - Do not import SurrealDB, Qdrant, Lance, Turso, Dragonfly, or DataFusion as a
   second source of truth. Use documented properties as acceptance references.
+- Where repository-owner authorization permits source adaptation, map the
+  exact upstream behavior and provenance into one canonical RRFlow boundary,
+  replace its naming and authority assumptions, and require RRFlow-owned
+  contract/differential/failure evidence before deleting the prior path. Do
+  not vendor an upstream engine as a hidden second runtime.
 - Do not claim universal zero-copy, sub-millisecond latency, superior
   performance, production readiness, or complete context flow before the named
   tests and fixed-hardware evidence exist.
@@ -210,12 +342,28 @@ machine verification rather than a bare successful local build.
 | Streaming provider and pushdown | Custom Table Provider | Apache DataFusion | accessed 2026-09-05 | https://datafusion.apache.org/library-user-guide/custom-table-providers.html | Official documentation |
 | Memory-pool and spill semantics | `MemoryPool` | Apache DataFusion docs.rs build | 55.0.0, accessed 2026-09-05 | https://docs.rs/datafusion/latest/datafusion/execution/memory_pool/trait.MemoryPool.html | Official crate API documentation; matches the pinned workspace release |
 | Unified transactional data models | Architecture | SurrealDB | accessed 2026-09-05 | https://surrealdb.com/docs/learn/data-models/architecture | Official documentation |
+| One modular database core | Core source tree | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/core/src | Primary source |
+| Directional graph adjacency keys | Graph-key module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs | Primary source; RRFlow does not adopt legacy decoding |
+| Transaction-local cache/event/index coordination | Transaction module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/kvs/tx.rs | Primary source |
+| MCP as a thin engine adapter | MCP crate | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/mcp | Primary source |
 | Ordered tuples and conflict ranges | Developer Guide | FoundationDB | 7.4.7, accessed 2026-09-05 | https://apple.github.io/foundationdb/developer-guide.html | Official documentation |
 | HNSW design | Efficient and robust approximate nearest neighbor search using HNSW graphs | Malkov and Yashunin | 2016/2018 | https://arxiv.org/abs/1603.09320 | Original paper |
 | Filtered vector planning | Indexing | Qdrant | accessed 2026-09-05 | https://qdrant.tech/documentation/manage-data/indexing/ | Official documentation |
+| Vector segment source boundaries | Libraries and segment source | Qdrant | master, accessed 2026-09-06 | https://github.com/qdrant/qdrant/tree/master/lib/segment/src | Primary source |
 | BM25 semantics | The Probabilistic Relevance Framework: BM25 and Beyond | Robertson and Zaragoza | 2009 | https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf | Primary technical review |
 | RRF semantics | Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods | Cormack, Clarke, Buettcher | 2009 | https://research.google/pubs/reciprocal-rank-fusion-outperforms-condorcet-and-individual-rank-learning-methods/ | Publisher record for original paper |
 | Incremental resilient parsing | Tree-sitter Introduction | Tree-sitter project | accessed 2026-09-05 | https://tree-sitter.github.io/ | Official documentation |
+| Git ignore precedence and tracked-file behavior | `gitignore` documentation | Git project | 2.51.0, accessed 2026-09-06 | https://git-scm.com/docs/gitignore | Official documentation |
+| Content-addressed project trees | Git Internals: Git Objects | Git project | 2nd edition, accessed 2026-09-06 | https://git-scm.com/book/en/v2/Git-Internals-Git-Objects.html | Official project book |
+| Bounded Git-aware Rust walking | `ignore::WalkBuilder` | BurntSushi / docs.rs | 0.4.24, accessed 2026-09-06 | https://docs.rs/ignore/latest/ignore/struct.WalkBuilder.html | Official crate API documentation |
+| Incremental parser-tree reuse | Advanced Parsing | Tree-sitter project | accessed 2026-09-06 | https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html | Official documentation |
+| Filesystem notification rescan | `notify::event::Flag` | notify-rs / docs.rs | 8.2.0, accessed 2026-09-06 | https://docs.rs/notify/latest/notify/event/enum.Flag.html | Official crate API documentation |
+| Language-neutral code-index interchange | SCIP specification | Sourcegraph | main, accessed 2026-09-06 | https://github.com/scip-code/scip/blob/main/scip.proto | Primary schema; later-phase reference only |
+| Provider skill and MCP installation | Agent setup | SurrealDB | accessed 2026-09-06 | https://surrealdb.com/docs/agents | Official product guidance; not a project inventory contract |
+| Repository-scoped agent memory and folder ingest | Coding agent with project memory | SurrealDB | accessed 2026-09-06 | https://surrealdb.com/docs/agent-memory/cookbooks/build/coding-agent-with-project-memory | Official cookbook; reviewed boundary is documentation ingest and memory workflow |
+| Vector/payload ingestion ownership | Manage Data | Qdrant | accessed 2026-09-06 | https://qdrant.tech/documentation/manage-data/ | Official documentation; begins at caller-supplied points |
+| External ingestion integration | LlamaIndex | Qdrant | accessed 2026-09-06 | https://qdrant.tech/documentation/frameworks/llama-index/ | Official integration documentation |
+| Sandboxed policy-driven code indexing | Auto-indexing | Sourcegraph | accessed 2026-09-06 | https://sourcegraph.com/docs/code-navigation/auto-indexing | Official documentation; operational comparison only |
 | Codex instruction discovery | Unrolling the Codex agent loop | OpenAI | 2026, accessed 2026-09-05 | https://openai.com/index/unrolling-the-codex-agent-loop/ | First-party engineering article |
 | Claude instruction import | How Claude remembers your project | Anthropic | accessed 2026-09-05 | https://code.claude.com/docs/en/memory | Official documentation |
 | Gemini instruction hierarchy/import | Provide context with GEMINI.md files | Google | updated 2026-06-18 | https://geminicli.com/docs/cli/gemini-md/ | Official documentation |
@@ -229,9 +377,10 @@ machine verification rather than a bare successful local build.
 
 The research determines architecture and testable boundaries; it does not
 benchmark RRFlow, prove the present code, decide distributed consensus, or
-authorize reuse of third-party source. Zuul Zero/shippin.ai protocol details
-were not publicly verifiable in this pass, so Gate H-07 must treat the mesh as
-an adapter contract supplied by its operator, not invent protocol behavior.
+adjudicate the scope of private source-use agreements. Zuul Zero/shippin.ai
+protocol details were not publicly verifiable in this pass, so Gate H-07 must
+treat the mesh as an adapter contract supplied by its operator, not invent
+protocol behavior.
 
 Discovery stopped after every consequential design slot had a primary or
 first-party source, current code had been reconciled against each slot, and
