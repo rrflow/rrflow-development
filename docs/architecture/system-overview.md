@@ -47,15 +47,23 @@ authoritative databases or engines.
 
 | Term | Canonical meaning | Implementation boundary |
 |---|---|---|
-| **RRFlow** | Reason Ready Flow, the complete product and platform. | Complete workspace and separate Connectome client. |
+| **RRFlow** | Reason Ready Flow, the complete product and platform. | This repository supplies the engine and bundled adapters; Connectome is a separate public client. |
 | **RRD** | Reason Ready Daemon, the embedded/server runtime hosting RRFlow. | `rrd-server` plus embedded `RrdEngine` composition. |
 | **`RrdEngine`** | The only semantic coordinator and mutation authority. | `crates/authority/rrd-engine` |
+| **RRFlow kernel** | Canonical temporal values, identities, read stamps, mutations, and invariants; it defines meaning without owning transport or physical storage. | `rrd-core` |
+| **canonical runtime log** | The ordered source of truth for committed RRFlow changes from which temporal snapshots are resolved. | Semantic types in `rrd-core`, persistence mapping in `rrd-store`, and durable bytes in rrflowKV. |
 | **rrflowDB** | One persistent project AI estate containing governed temporal knowledge, reasoning state, evidence, and index definitions. | Semantic state composed by `RrdEngine`; physical durability supplied by rrflowKV. |
 | **rrflowKV** | The durable physical engine beneath rrflowDB: WAL, MVCC, LSM, manifests, snapshots, compaction, and recovery. | `rrd-lsm` through `rrd-store` |
-| **rrflowMX** | RRFlow Memory Execution, the non-durable process-local implementation of the same semantic storage port. | `RrflowMxEngine` through `rrd-store` |
+| **rrflowMX** | RRFlow Memory Execution, the non-durable process-local implementation of the same semantic storage port. | Volatile implementation in `rrd-store`, behind the semantic storage port. |
+| **RRFlow temporal graph** | Typed records and relations resolved from the canonical log at one runtime read stamp and valid-time coordinate; never a separate graph database. | Kernel graph values, persistence adjacency, native query operators, and `RrdEngine` authorization. |
+| **RRFlow memory** | Durable temporal claims, records, relations, schemas, vectors, and evidence owned by the same engine; never a separate memory store. | rrflowDB semantic data composed through `RrdEngine`. |
 | **rrflowQL** | RRFlow Query Language: syntax, AST, binding, logical and physical planning, and execution. | `rrd-query` |
 | **Arrow substrate** | The columnar buffer model for eligible immutable rrflowKV pages and stamped analytical batches. | Apache Arrow types composed by storage and query boundaries. |
 | **DataFusion execution** | Bounded vectorized computation over stamped Arrow batches. It cannot authorize or commit state. | DataFusion integration inside `rrd-query` |
+| **fast path** | Low-latency point, state, pointer, and bounded graph work that does not invoke DataFusion. | `RrdEngine` over the selected semantic storage profile and native operators. |
+| **analytical path** | Broad retrieval, ingest transformation, joins, and analytics planned by rrflowQL over native access paths and stamped Arrow batches. | `rrd-query`, `rrd-vector`, `rrd-store`, and bounded DataFusion execution. |
+| **index projection** | Derived acceleration state bound to its source cursor and relevant schema or catalogue revision; it is rebuildable and cannot outrank canonical data. | Scalar, graph, lexical, and approximate-vector structures in persistence and compute boundaries. |
+| **context assembly** | Bounded discovery and deterministic fusion owned by `RrdEngine`, returning a read-stamped `ContextPacket` with evidence. | `rrd-contract` operation and `rrd-engine` implementation. |
 | **RRFlow vector subsystem** | Native vector-database capability inside rrflowDB: exact values, payload filters, candidate indexes, and exact reranking. | `rrd-vector`, `rrd-query`, and `RrdEngine` |
 | **RRFlow inference** | Provider-neutral execution of embedding and routing models. | `rrd-inference`; LFG is a constrained routing adapter. |
 | **Connectome** | Separate operator and developer workbench using public RRD capabilities. | Separate repository; no embedded engine authority. |
@@ -143,6 +151,33 @@ Dragonfly, object stores, Zuul Zero/shippin.ai meshes, and model providers
 remain optional integrations. None is needed to make a local rrflowKV estate
 ready, commit data, close, reopen, recover, or verify itself.
 
+## Client bootstrap boundary
+
+Connectome is an optional operator and developer workbench, not part of the
+engine source or default readiness authority. Its first connection to an RRD
+instance uses the public HTTP operations in this order:
+
+```text
+GET /v1/health/live
+GET /v1/health/ready
+GET /v1/capabilities
+```
+
+The client accepts the runtime only after validating the RRD protocol version
+and returned instance resource. Plain HTTP is restricted to loopback;
+off-device or mesh-resolved endpoints require HTTPS. A Zuul Zero or
+shippin.ai adapter may resolve a devspace endpoint and carry opaque transport
+attestation, but reachability does not authenticate the RRD instance and the
+mesh never owns database state.
+
+Connectome invokes installation, attunement, context, query, trace, and live
+delivery through public RRD capabilities. It does not reproduce phase state,
+retrieval, authorization, or persistence in the client. The
+[agent-bootstrap reference](../reference/agent-bootstrap.md#installation-and-attunement)
+owns the project-installation and attunement contract; roadmap
+[H-06](../roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome)
+owns the real-client acceptance evidence.
+
 ## External integrations
 
 PostgreSQL, Turso, SQLite, Dragonfly, application databases, object stores,
@@ -154,12 +189,13 @@ context authority.
 ## Documentation and future memory
 
 During bootstrap, Markdown records remain the reviewed authoring authority.
-The planned deterministic JSON/JSONL knowledge package will be a generated,
-content-addressed import artifact rather than a second editable truth. Detailed
-records move behind rrflowDB warp points only after authorized import,
-readback, restart, idempotency, drift-denial, and recovery evidence passes.
+The root and boundary READMEs are portals now, and each warp retains one local
+checkout fallback. The deterministic JSON/JSONL knowledge package is a
+generated, content-addressed import artifact rather than a second editable
+truth.
 
-The root and boundary READMEs then remain portals. Architecture explanations
-live here, decisions live under `docs/decisions/`, exact contracts live under
-`docs/reference/`, delivery order lives in the roadmap, and observed gaps live
-in the POA&M.
+rrflowDB becomes the normal durable warp-resolution path only after authorized
+import, readback, restart, idempotency, drift-denial, and recovery evidence
+passes. Architecture explanations live here, decisions live under
+`docs/decisions/`, exact contracts live under `docs/reference/`, delivery order
+lives in the roadmap, and observed gaps live in the POA&M.

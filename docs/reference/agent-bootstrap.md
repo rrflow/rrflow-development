@@ -58,6 +58,14 @@ connect -> inventory -> parse -> normalize -> entity-link
         -> graph -> ground -> verify
 ```
 
+For a substantial existing project, 30–45 minutes is an installation-planning
+estimate, not a completion guarantee. Preview must derive its estimate from
+the discovered source count, bytes, parser work, model/index work, configured
+resources, and reusable checkpoints. A new or unchanged estate may require
+less work; a larger or resource-constrained estate may require more. Apply
+reports phase progress and remains safely resumable rather than racing a fixed
+wall-clock target.
+
 The engine implementation must preserve these rules:
 
 1. Preview resolves exact actions, inputs, estimates, configuration digest,

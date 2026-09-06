@@ -17,6 +17,7 @@ EXECUTION_FILE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
+SEAT_IDENTITY_REFERENCE = ROOT / "docs" / "reference" / "seat-identity.md"
 SYSTEM_OVERVIEW = ROOT / "docs" / "architecture" / "system-overview.md"
 ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
 SINGLE_ENGINE_DECISION = ROOT / "docs" / "decisions" / "0001-single-engine-authority.md"
@@ -39,6 +40,7 @@ STATUS = re.compile(r"(?im)^(?:\*\*)?Status(?:\*\*)?:\s*\S")
 LEGACY_MILESTONE = re.compile(r"\b(?:F\d|G\d{2}-W\d+|M\d|Q\d)\b")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
 REFERENCE_LINK = re.compile(r"(?m)^\[[^\]\n]+\]:\s*(\S+)")
+MARKDOWN_HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
 CANONICAL_DIRECTORIES = (
@@ -109,6 +111,37 @@ def local_target(raw: str) -> str | None:
     return target
 
 
+def local_fragment(raw: str) -> str | None:
+    """Return a local Markdown fragment without treating rrflow URIs as files."""
+    target = raw.strip()
+    if target.startswith("<") and ">" in target:
+        target = target[1 : target.index(">")]
+    else:
+        target = target.split(maxsplit=1)[0]
+    if URI_SCHEME.match(target) or "#" not in target:
+        return None
+    fragment = unquote(target.split("#", 1)[1].split("?", 1)[0])
+    return fragment or None
+
+
+def markdown_anchors(source: str) -> set[str]:
+    """Build the GitHub-style heading anchors used by the root portal."""
+    anchors: set[str] = set()
+    counts: dict[str, int] = {}
+    for heading in MARKDOWN_HEADING.findall(source):
+        label = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", heading)
+        label = label.replace("`", "").replace("*", "").replace("~", "")
+        base = "".join(
+            character
+            for character in label.casefold()
+            if character.isalnum() or character in {" ", "-", "_"}
+        ).replace(" ", "-")
+        ordinal = counts.get(base, 0)
+        counts[base] = ordinal + 1
+        anchors.add(base if ordinal == 0 else f"{base}-{ordinal}")
+    return anchors
+
+
 def main() -> int:
     failures: list[str] = []
     readme = README.read_text(encoding="utf-8")
@@ -128,6 +161,7 @@ def main() -> int:
         "docs/roadmap/rrflow-1.0.md",
         "docs/poam/rrflow-1.0-alpha.md",
         "docs/reference/agent-bootstrap.md",
+        "docs/reference/seat-identity.md",
     )
     if any(warp not in readme for warp in required_warps):
         failures.append("README.md is missing a required knowledge warp point")
@@ -181,6 +215,7 @@ def main() -> int:
         "## Platform map",
         "## Canonical component terminology",
         "## Security boundary",
+        "## Client bootstrap boundary",
         "## Documentation and future memory",
     ):
         if required_section not in system_overview:
@@ -208,6 +243,20 @@ def main() -> int:
     ):
         failures.append("the system-overview owner has no durable coordinate")
 
+    seat_identity_reference = SEAT_IDENTITY_REFERENCE.read_text(encoding="utf-8")
+    for required_section in (
+        "## Canonical records and relations",
+        "## Stable record warps",
+        "## CLI operations",
+        "## Executable proof and remaining boundary",
+    ):
+        if required_section not in seat_identity_reference:
+            failures.append(f"the seat-identity reference lacks {required_section}")
+    if "rrflow://rrflow-instance/data/reference/seat-identity" not in (
+        seat_identity_reference
+    ):
+        failures.append("the seat-identity reference has no durable coordinate")
+
     single_engine_decision = SINGLE_ENGINE_DECISION.read_text(encoding="utf-8")
     for required_section in (
         "## Context",
@@ -225,6 +274,8 @@ def main() -> int:
         failures.append("the engine data-flow owner has no write path")
     if "## Read and query flow" not in engine_data_flow:
         failures.append("the engine data-flow owner has no read path")
+    if "## Context assembly contract" not in engine_data_flow:
+        failures.append("the engine data-flow owner has no context contract")
     if "## Conditional zero-copy" not in engine_data_flow:
         failures.append("the engine data-flow owner has no physical copy boundary")
     if "rrflow://rrflow-instance/data/architecture/engine-data-flow" not in (
@@ -454,6 +505,16 @@ def main() -> int:
                 failures.append(f"{relative}: local link escapes the repository: {raw}")
             elif not resolved.exists():
                 failures.append(f"{relative}: broken local link: {raw}")
+            elif (
+                document == README
+                and (fragment := local_fragment(raw)) is not None
+                and (
+                    not resolved.is_file()
+                    or fragment
+                    not in markdown_anchors(resolved.read_text(encoding="utf-8"))
+                )
+            ):
+                failures.append(f"{relative}: broken owner-section fragment: {raw}")
 
     if failures:
         for failure in failures:

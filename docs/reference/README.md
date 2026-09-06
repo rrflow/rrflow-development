@@ -10,4 +10,5 @@ must consume. They do not own delivery status or replace executable contracts.
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
 | Provider-neutral agent bootstrap | [`rrflow://rrflow-instance/data/reference/agent-bootstrap`](rrflow://rrflow-instance/data/reference/agent-bootstrap) | [`agent-bootstrap.md`](agent-bootstrap.md) | target contract; partial checkout forwarding |
+| Seat identity and memory warps | [`rrflow://rrflow-instance/data/reference/seat-identity`](rrflow://rrflow-instance/data/reference/seat-identity) | [`seat-identity.md`](seat-identity.md) | implemented contract and CLI boundary |
 | Storage formats | [`rrflow://rrflow-instance/data/reference-index/storage`](rrflow://rrflow-instance/data/reference-index/storage) | [`storage/`](storage/) | current implementation contracts; target owned by architecture |

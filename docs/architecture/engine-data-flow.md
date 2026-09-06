@@ -187,6 +187,71 @@ Arrow-to-tensor feature bridge. The model returns a grammar-constrained
 proposal; deterministic predicates, authorization, CAS, and persistence remain
 engine operations.
 
+## Context assembly contract
+
+The provider-neutral operation is `context-assemble`, served at
+`POST /v1/context/assemble`. `rrd-contract` owns `AssembleContext`, the plan
+and evidence types, and `ContextPacket`; `RrdEngine::assemble_context` owns the
+implementation. The Rust client, RRD HTTP handler, CLI, MCP adapter, and any
+embedded caller must invoke that operation or the same engine method. A host
+adapter may translate its provider's request lifecycle at the edge, but it
+cannot add a provider-specific context endpoint, retrieval pipeline, state
+store, or lifecycle authority.
+
+For one request, `RrdEngine` authenticates and authorizes the operation and
+captures one runtime manifest, commit cursor, optional schema revision,
+catalogue revision, and valid-time coordinate. The caller supplies intent, not
+physical topology:
+
+- one scope and query;
+- one explicit nonzero valid-time coordinate;
+- optional canonical record anchors; and
+- explicit graph-depth, returned-item, output-byte, and scanned-change
+  budgets.
+
+The caller cannot select record fields, collection IDs, vector names,
+embedding providers, indexes, or graph relations. The engine discovers visible
+text, claims, compatible vector sources, and graph roots from the captured
+snapshot and catalogue. Automatic semantic retrieval is eligible only for an
+installed deterministic local text-embedding backend whose execution denies
+network access.
+
+The closed request contract enforces these hard ceilings:
+
+| Resource | Maximum |
+|---|---:|
+| Query bytes | 64 KiB |
+| Seed records | 256 |
+| Returned items | 512 |
+| Encoded item bytes | 768 KiB |
+| Scanned runtime changes | 1,000,000 |
+| Graph depth | 32 |
+
+Within those ceilings, lexical hits are capped to `max_items`; compatible
+vector sources and the exact-scored hits from each source are each capped to
+`max_items`; graph traversal is capped to `max_items * 16` edge steps; and the
+final fused result is capped by both `max_items` and `max_output_bytes`. Any
+retrieval or output cap that hides remaining work sets `truncated=true`; a
+truncated packet is never represented as complete.
+
+Every returned item carries one or more evidence entries with the source kind,
+source identifier, rank, source score, reciprocal-rank contribution, physical
+plan digest, and evidence digest. The packet carries the read stamp, query
+digest, exact encoded-item byte count, truncation state, and packet digest. Its
+plan records all five canonical stages—seed, lexical, semantic, graph, and
+fusion—in order, including whether each was selected or skipped, the selected
+access path, exactness, reason, decision digest, compiled security-policy
+revision, and authorization digest. The plan and packet must validate against
+the same read stamp.
+
+With the same validated request, authorization state, persisted read
+coordinate, catalogue, and installed deterministic model set, assembly order,
+fusion, evidence, and packet content are deterministic. Current physical paths
+are snapshot BM25, exact snapshot-vector scoring, bidirectional snapshot graph
+BFS, and reciprocal-rank fusion. Roadmap Gates E, F, and H replace their
+whole-snapshot costs with native incremental access paths without changing the
+public operation or its single-stamp semantics.
+
 ## Current implementation boundary
 
 | Concern | Present checkout | Required target |

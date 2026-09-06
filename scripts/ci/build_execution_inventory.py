@@ -324,7 +324,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "scripts/knowledge/test_export.py": ("KB-03", "KB-04"),
     "scripts/release/qualify.py": ("J-02", "J-03"),
     "scripts/release/compare_deployment.py": ("J-04", "J-05"),
-    "scripts/release/assemble.py": ("J-05",),
+    "scripts/release/assemble.py": ("J-03", "J-05"),
     "scripts/release/verify.py": ("J-05",),
     "scripts/release/test_distribution.py": ("J-03", "J-05"),
     "fixtures/release/deployment-baselines-v1.toml": ("J-04",),

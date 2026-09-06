@@ -72,10 +72,9 @@ These mappings eliminate the present naming ambiguity:
 The internal trait currently named `rrd_store::Engine` overlaps mentally with
 `RrdEngine`. A-07 renames it directly to `StorageEngine`; C-02 then narrows
 that same port to transactional point/range primitives plus semantic
-repositories. The final code
-must not retain `Engine`, `NativeEngine`, `PersistentEngine`, or `EngineBox` as
-aliases. The intended concrete names are `RrflowKvStore`, `RrflowMxStore`, and
-`StorageProfile`.
+repositories. The final code must not retain `Engine`, `NativeEngine`,
+`PersistentEngine`, or `EngineBox` as aliases. The intended concrete names are
+`RrflowKvStore`, `RrflowMxStore`, and `StorageProfile`.
 
 ## Frozen target source tree
 
@@ -154,7 +153,7 @@ Forbidden directions:
 - transports, SDKs, Connectome, models, functions, triggers, routines, skills,
   or mesh adapters opening storage;
 - DataFusion or an inference adapter committing directly;
-- rrflowKV depending on DataFusion to serve point/range/CAS operations; and
+- rrflowKV depending on DataFusion to serve point/range/CAS operations;
 - an external project database becoming the RRFlow transaction authority;
 - first-party build, install, runtime, verification, or recovery code resolving
   from a sibling checkout, submodule, escaping path, undeclared generator, or
@@ -560,8 +559,10 @@ CLI install conformance test before adding the `install` dispatch to
 `rrflow-cli/src/command.rs`. The versioned template manifest and files under
 `rrflow-cli/templates/project-v1/` own minimal `.rrflow/config.toml`, estate
 identity, native rrflowKV placement, attunement profile, `AGENTS.md`, and
-supported forwarding-only provider files. All inputs are embedded in or
-resolved relative to the verified release bundle; apply has no download or
+supported forwarding-only provider files. During development, inputs are
+embedded in the CLI or resolved relative to an explicitly supplied, locally
+verified candidate-bundle root; J-03 assembles the complete release candidate
+and J-05 signs the reproducible distribution. Apply has no download or
 sibling-discovery branch. `AGENTS.md` is the one instruction body. Existing
 user files are never overwritten without an exact previewed action and
 explicit apply. Secrets are references, not values. Empty-project and
@@ -766,10 +767,13 @@ function trigger and pretend Gate I is complete.
   stale generated outputs; run strict repository searches.
 - J-02: run unit, property, fuzz corpus, differential, crash/reopen, ENOSPC,
   security, budget, adapter, SDK, and real-process tests; retain failures.
-- J-03: use `scripts/release/qualify.py` to install the verified default bundle
-  into an empty fixture and this repository with outbound network denied,
-  sibling repositories hidden, and no external database service; attune, query
-  fast/heavy paths, close/reopen, and rerun incrementally.
+- J-03: use `scripts/release/assemble.py` to build a complete manifest-verified
+  release-candidate bundle from tracked inputs, then use
+  `scripts/release/qualify.py` to install it into an empty fixture and this
+  repository with outbound network denied, sibling repositories hidden, and no
+  external database service; attune, query fast/heavy paths, close/reopen, and
+  rerun incrementally. This gate qualifies candidate contents and behavior;
+  J-05 owns reproducibility, signing, and final clean-machine verification.
 - J-04: publish fixed-hardware raw results for storage, graph, BM25,
   exact/HNSW, DataFusion, context, LFG, memory, and disk. Use
   `scripts/release/compare_deployment.py` for a pinned official
@@ -794,6 +798,19 @@ function trigger and pretend Gate I is complete.
 ## Repository-wide run checklist
 
 Run the narrow command named by the package first. The widening sequence is:
+
+```text
+cargo test -p rrd-engine --lib engine::tests::context --locked
+cargo test -p rrflow-cli --test operator_surface \
+  identity_bind_resolve_and_readme_warp_share_the_persistent_engine --locked
+cargo test -p rrflow-mcp --test stdio --test stdio_daemon --locked
+cargo test -p rrd-client --test real_server \
+  rust_client_negotiates_authenticates_queries_and_reads_audit --locked
+```
+
+Those are the current narrow context, warp, MCP, and client checks. The
+separate Connectome repository owns `pnpm run check` and `pnpm run test:smoke`.
+After the affected narrow suite passes, widen in this order:
 
 ```text
 python3 scripts/ci/build_execution_inventory.py --check
