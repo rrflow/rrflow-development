@@ -3,8 +3,8 @@
 **Status:** active supporting execution map; it cannot mark a release gate complete
 **Coordinate:** `rrflow://rrflow-instance/data/execution-map/rrflow-1.0`
 **Owner:** file, symbol, dependency, test, and stop-condition mapping for the canonical RRFlow 1.0 roadmap
-**Baseline revision:** `32aac72`
-**Researched:** 2026-09-05
+**Source baseline revision:** `79d81b0`
+**Reviewed:** 2026-09-06
 
 The canonical [RRFlow 1.0 roadmap](rrflow-1.0.md) owns dependency order,
 checkboxes, and accepted completion evidence. This record turns each unchecked
@@ -49,6 +49,30 @@ become false after the first edit. The JSONL freezes the complete baseline line
 span and digest; this map names semantic symbols, modules, and intended target
 paths. Together they cover every line without pretending a stale line number
 is an architectural contract.
+
+### Pre-release consolidation protocol
+
+This map describes one current RRFlow 1.0 system, not a support matrix for
+earlier implementations. A current implementation may be retained, rewritten
+in its canonical boundary, or removed after its useful behavior is accounted
+for. It may not be parked in a parallel runtime, forwarding API, migration
+executor, or unresolved documentation archive.
+
+Before changing a capability family, the implementing package must:
+
+1. read every current source, test, fixture, example, and benchmark assigned to
+   the gate;
+2. run the smallest available characterization corpus and record any existing
+   failure without broad repair;
+3. map each useful behavior and invariant to one canonical destination and one
+   acceptance test in the traceability matrix below;
+4. perform the direct convergence inside the listed files, allowing compiler
+   errors to surface during the edit but not using compilation as proof; and
+5. remove the conflicting path only after the mapped equal-or-stronger evidence
+   passes.
+
+Git ancestry, branch or merge status, a rename, a deletion, a generated file,
+and a successful compile are inventory facts only. None proves consolidation.
 
 ## Product terms versus implementation packages
 
@@ -222,16 +246,42 @@ committed project signal -> determine affected phases only
 | Boundary | Current code that is real | Required convergence |
 |---|---|---|
 | `rrd-core` | canonical IDs, scopes, runtime values/mutations, read stamps, bitemporal values, reasoning-tree contract, trace links | keep semantic types; move physical key encoding out of `key.rs` during A-07/C-01; add only event primitives proven generic |
-| `rrd-lsm` | WAL, version chains, snapshots, manifest/CURRENT, immutable row-block segments, cache, compaction, snapshot bundles, I/O tiers, failure injection | add transaction conflicts; replace current segment format with key spine + column pages; delete legacy readers; prove crash/lifetime safety |
+| `rrd-lsm` | WAL, version chains, snapshots, manifest/CURRENT, immutable row-block segments, cache, compaction, snapshot bundles, I/O tiers, failure injection | add transaction conflicts; replace current segment format with key spine + column pages; delete every pre-1.0 reader; prove crash/lifetime safety |
 | `rrd-store` | Fjall `Store`, native store, rrflowMX, common semantic trait, runtime commits, current projections, archives/backups/object tiers | remove Fjall and backend selectors; split the giant trait; freeze binary keys; make semantic batch/index maintenance atomic; direct stamped reads |
 | `rrd-query` | parser, binder, plan, index catalogue, BM25 implementation, DataFusion execution, spill pool, live polling | replace eager `Vec<QueryRow>` and `MemorySource`; add streaming provider/pushdown/native operators; replace two-snapshot live diff |
-| `rrd-vector` | exact oracle, immutable segments, HNSW, filtered planning, catalogues, quantization and accelerator code | bind all artifacts to canonical source cursors; persist atomic deltas; exact-rerank; remove compatibility-only TurboQuant catalogue paths; benchmark codecs before retaining them |
+| `rrd-vector` | exact oracle, immutable segments, HNSW, filtered planning, catalogues, compact dense artifacts, quantization, and accelerator code | bind all artifacts to canonical source cursors; persist atomic deltas; exact-rerank; remove alternate TurboQuant catalogue paths; benchmark codecs before retaining them |
 | `rrd-inference` | provider-neutral embedding jobs/backend and local FastEmbed adapter | add manifest handshake and separate `RouterBackend`; LFG remains an outward adapter |
 | `RrdEngine` | one opening/composition authority, security/session/query/data/vector/context/retrieval/subscription/function operations | add persisted attunement/routing/events/routines/skills; make all paths use the final transaction/index/provider contracts; do not add transport imports |
 | transport/adapters/SDKs | HTTP, subscriptions, public client, MCP, CLI, five generated SDK surfaces | freeze multiplex WS and GraphQL lowering; prove cross-surface conformance only after storage/query semantics |
 | estate/cluster/operations | substantial local process, backup, recovery, cluster, Kubernetes, maintenance, and operator-source foundations | retain as later-gate inventory; prevent these packages from creating semantic or storage authority |
 
-### Mandatory direct removals or rewrites
+## Implementation-requirements traceability
+
+This is the initial current-tree accounting required by A-07 and POAM-014. It
+is updated in a documentation-only change before a listed implementation file
+moves or a newly discovered behavior expands a gate. A row identifies work
+that must be carried into the one target system; it does not mark that work
+complete.
+
+| Capability family | Current implementation that must be read in full | Characterization inventory that must be preserved or strengthened | Canonical convergence | Gates |
+|---|---|---|---|---|
+| rrflowKV WAL, MVCC, manifests, recovery, compaction, hot reads, block filtering, and decoded-block caching | `rrd-lsm/src/{wal,memtable,database,manifest,segment}.rs`; `rrd-store/examples/ai_hotset_benchmark.rs` | `rrd-lsm/tests/{wal,mvcc,manifest,failure_matrix,compaction,segment,snapshot_memory}.rs`; `rrd-store/tests/{durability,snapshot,benchmark_evidence}.rs` | Keep the useful durability, snapshot, bounded-cache, filter, and physical-counter behavior while replacing the port and row-only segment format; prove the final key spine, Arrow pages, buffer lifetime, and measured cache decision. | C-02, C-04, C-06, C-07, F-05, J-04 |
+| rrflowMX/rrflowKV semantic equivalence | `rrd-store/src/{engine,native,persistent,ds}.rs` | `rrd-store/tests/{engine,persistent,snapshot,runtime,unified_data,native_operator}.rs`; vector engine differential tests | Rename and narrow one `StorageEngine` port, then run the same transaction, point/range, snapshot, graph, index, and query corpus against `RrflowMxStore` and `RrflowKvStore`; durability assertions apply only to rrflowKV. | A-07, C-02, C-03, C-04 |
+| Stamped transactions, identity, authorization, and audit | `rrd-core/src/runtime.rs`; `rrd-store/src/{engine,native,store,control}.rs`; `rrd-engine/src/engine/{transaction,query_transaction,session,security,invocation,control}.rs`; `rrd-security/src/lib.rs` | `rrd-store/tests/{control_journal,durability,snapshot}.rs`; `rrd-engine/src/engine/tests/{query_transaction,security,transaction_stamp,recovery}.rs`; `rrd-security/tests/security_authority.rs`; `rrd-server/tests/http_process.rs` | Preserve authenticated `ReadStamp`, `DataTransaction`, conflict, idempotency, audit-chain, and policy semantics while making one transaction port and one cross-surface authorization path. | C-02, C-03, H-04, H-05, J-02 |
+| Deterministic embedding, vector search, compact artifacts, HNSW, quantization, and accelerator admission | `rrd-inference/src/{lib,fastembed_local}.rs`; `rrd-vector/src/{contract,catalog,exact,filter,plan,segment,compact,hnsw,quantization,accelerator,runtime}.rs`; `rrd-engine/src/engine/{inference,vector}.rs` | `rrd-inference/tests/pipeline.rs`; `rrd-vector/tests/{golden,exact_model,engine_differential,model_binding,compact_dense,online_hnsw,quantization_matrix,accelerator,recall_gate}.rs`; `rrd-engine/src/engine/tests/{vector_index,native_inference}.rs` | Keep deterministic model/provenance binding and exact oracles; commit canonical vectors and index deltas atomically, bind projections to one source cursor, filter candidates, and exact-rerank before results become authoritative. | D-05, E-04, E-05, F-03, H-01, J-04 |
+| Edge packaging and public delivery | `rrd-engine/src/edge.rs`; `rrflow-edge/src/main.rs` | `rrflow-edge/tests/{offline,evidence}.rs`; `rrd-client/tests/real_server.rs`; `rrd-server/tests/http_process.rs`; `rrflow-mcp/tests/{stdio,stdio_daemon}.rs` | Retain deterministic offline artifact and provenance checks as outward packaging evidence; all reads and mutations continue through public RRD capabilities with no edge-owned engine state. | H-04, H-07, J-03, J-05 |
+| Temporal graph, BM25, hybrid retrieval, and context evidence | `rrd-query/src/{bm25,index,execute,plan}.rs`; `rrd-engine/src/engine/{context,retrieval,retrieval_query}.rs` | `rrd-query/tests/{query,index_catalogue,golden}.rs`; `rrd-engine/src/engine/tests/{context,index_foundation}.rs`; `rrd-engine/tests/{runtime_query_trace,runtime_data_plane_trace}.rs` | Replace broad snapshot reconstruction with transactional adjacency/BM25/vector access paths, cost-selected at one stamp and fused with bounded deterministic evidence. | E-01, E-02, E-03, E-05, F-03, H-01, H-02, H-05 |
+| Arrow/DataFusion analytical execution | `rrd-query/src/{arrow,fusion,execute,pipeline,plan}.rs` | `rrd-query/tests/{golden,query,index_catalogue}.rs` and the DataFusion-focused unit tests inside the listed source modules | Replace complete `Vec<QueryRow>` materialization with a pinned stamped provider; push supported work into rrflowKV, compose native operators, enforce one resource budget, and report every read/decode/copy/allocation. | F-01 through F-05 |
+| Generic reasoning trees, routing, and governed mutation | `rrd-core/src/reasoning_tree.rs`; `rrd-contract/src/{reasoning_tree,router}.rs`; `rrd-engine/src/engine/{context,transaction}.rs` | `rrd-core/tests/{reasoning_tree_contract,reasoning_trace_link}.rs`; `rrd-contract/tests/{reasoning_tree_contract,router_contract}.rs`; `rrd-engine/src/engine/tests/{context,transaction_stamp}.rs` | Preserve the accepted generic tree and three bounded routing decisions; add persisted CAS execution, the model-manifest handshake, constrained LFG dispatch, and engine-selected physical work without a fixed lifecycle. | B-03, G-01 through G-05, H-01, H-05 |
+| Installation, attunement, and explicit automation | `rrd-contract/src/attunement.rs`; `rrd-engine/src/engine/automation.rs`; `rrd-estate/src/{authority,reconcile,local_authorization,local_process,recovery}.rs`; `rrflow-cli/src/{command,dev}.rs` | `rrd-contract/tests/attunement_contract.rs`; `rrd-engine/src/engine/tests/{automation,deployment_conformance,lifecycle,recovery}.rs`; `rrd-estate/tests/{estate_authority,reconciler_recovery,local_authorization,recovery}.rs`; `rrflow-cli/tests/operator_surface.rs` | Build bundle-resident preview/apply, persisted phase jobs, incremental project specialization, canonical events, resumable routines, digest-bound skills, and optional host translators under `RrdEngine`. | D, I, J-03, J-05 |
+
+The `<package>/...` shorthand resolves through the frozen target source tree;
+for example, `rrd-lsm/src/wal.rs` means
+`crates/persistence/rrd-lsm/src/wal.rs`. The generated JSONL contains the exact
+repository path and complete byte/line span for every file. This matrix binds
+the cross-file behavior that a mechanical inventory cannot infer.
+
+### Mandatory direct convergence
 
 | Current path/symbol | Final disposition | Gate |
 |---|---|---|
@@ -241,15 +291,15 @@ committed project signal -> determine affected phases only
 | `rrd-store/src/migration.rs` and `tests/migration.rs` | delete runtime migration surface and test | C-05 |
 | `rrd-store/src/upgrade.rs` | delete the pre-release format upgrade executor; 1.0 tests create the accepted format directly | C-05 |
 | `rrd-store/src/keyspaces.rs::NativeKeyCodec::{TextV1,TagV2}` | replace with one ordered typed tuple codec | C-01, C-05 |
-| `rrd-store/src/native.rs::legacy_storage_key` and codec transcoding | delete | C-05 |
-| `rrd-lsm/src/segment.rs::decode_legacy` | delete when hybrid segment format lands | C-05, C-06 |
-| legacy version branching in `rrd-lsm/src/{batch,manifest,segment}.rs` | retain only the final 1.0 version; corrupt/unknown versions fail | C-05, C-07 |
+| `rrd-store/src/native.rs::legacy_storage_key` and codec transcoding | delete; this is an existing symbol name, not a supported surface | C-05 |
+| `rrd-lsm/src/segment.rs::decode_legacy` | delete when hybrid segment format lands; this is an existing symbol name, not a supported reader | C-05, C-06 |
+| pre-1.0 version branching in `rrd-lsm/src/{batch,manifest,segment}.rs` | retain only the final 1.0 version; corrupt/unknown versions fail | C-05, C-07 |
 | `rrd-store/src/engine.rs::Engine` | rename directly to `StorageEngine`, then narrow it in C-02; no alias | A-07, C-02 |
 | `NativeEngine`, `RrflowMxEngine`, `EngineBox` | direct rename to `RrflowKvStore`, `RrflowMxStore`, `StorageProfile` | A-07 |
 | `rrd-query/src/arrow.rs::ArrowSnapshot` | replace with stamped batch/page adapters | F-01 |
 | `rrd-query/src/execute.rs::execute` eager loading | split into native access and streaming execution | F-01..F-04 |
 | `rrd-query/src/live.rs::poll_live_query` two-snapshot diff | replace with commit-impact evaluation | H-03 |
-| compatibility-only TurboQuant catalogue/ensure surfaces | remove; keep a codec only if exact differential and benchmark gates justify it | E-04, J-01 |
+| alternate TurboQuant catalogue/ensure surfaces | remove; keep a codec only if exact differential and benchmark gates justify it | E-04, J-01 |
 | provider/session-start hooks anywhere | remain absent; optional host translators submit explicit typed events only | I-04, J-01 |
 
 ## Gate A work packages
@@ -329,12 +379,12 @@ and their `README.md` indexes are created only with their first real record.
 
 | Current record | Planned destination/classification |
 |---|---|
-| `docs/anytype-ui-research.md` | `docs/history/anytype-ui-research.md`; historical interaction research |
-| `docs/blueprint-triage.md` | `docs/history/blueprint-triage.md`; historical triage |
-| `docs/clyffy-kernel-alpha.md` | `docs/history/clyffy-kernel-alpha.md`; historical handoff |
-| `docs/context-path-profiler.md` | `docs/history/context-path-profiler.md`; historical concept |
-| `docs/prompt-flight-experiments.md` | `docs/history/prompt-flight-experiments.md`; historical provider experiment |
-| `docs/runtime-graph.md` | `docs/history/runtime-graph.md`; historical architecture |
+| `docs/anytype-ui-research.md` | merge any still-valid interaction requirements into the current Connectome/public-client owner, then remove |
+| `docs/blueprint-triage.md` | merge every still-open verified deficiency into the POA&M, then remove |
+| `docs/clyffy-kernel-alpha.md` | merge accepted provider-neutral orchestration requirements into the system overview or agent-bootstrap owner, then remove |
+| `docs/context-path-profiler.md` | merge accepted context measurement requirements into the engine-flow owner and H/J gates, then remove |
+| `docs/prompt-flight-experiments.md` | merge provider-neutral adapter requirements and reproducible evidence into their current owner, then remove |
+| `docs/runtime-graph.md` | merge accepted temporal-graph semantics into the system and engine-flow owners, then remove |
 | `docs/context-maintenance-v1.md` | `docs/reference/context/context-maintenance.md`; active maintenance contract after line-by-line authority audit |
 | `docs/estate-control-v1.md` | `docs/reference/operations/estate-control.md` |
 | `docs/instance-topology.md` | `docs/architecture/instance-topology.md`; it defines accepted logical and physical deployment topology |
@@ -344,7 +394,7 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/qdrant-capability-inventory.md` | `docs/research/qdrant-capability-inventory.md` |
 | `docs/surrealdb-capability-inventory.md` | `docs/research/surrealdb-capability-inventory.md` |
 | `docs/rrflow-surrealdb-differential.md` | `docs/evidence/comparisons/rrflow-surrealdb-claim-differential.md`; preserve exact revision/harness metadata |
-| `docs/rrflow-rename-ledger.md` | `docs/history/rrflow-rename-ledger.md` after A-07 search proves the cutover complete |
+| `docs/rrflow-rename-ledger.md` | remove after A-07 integrates any still-open naming requirement and the final vocabulary search passes |
 | `docs/versioning.md` | `docs/reference/release/version-policy.md` |
 | `docs/rrd-public-contract.md` | `docs/reference/protocol/public-contract.md` |
 | `docs/rrd-server-v1.md` | `docs/reference/protocol/server.md` |
@@ -366,7 +416,7 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/rrd-deployment-modes-v1.md` | `docs/reference/deployment/modes.md` |
 | `docs/rrd-tiered-persistence.md` | `docs/reference/storage/tiered-persistence.md` |
 | `docs/rrd-logical-archive.md` | `docs/reference/storage/logical-archive.md` |
-| `docs/rrd-lsm-fjall-ai-audit.md` | `docs/history/rrd-lsm-fjall-ai-audit.md`; its already-linked raw `eval/results` remain evidence, while the narrative becomes historical when C-05 removes Fjall |
+| `docs/rrd-lsm-fjall-ai-audit.md` | merge accepted benchmark requirements into C/J and retain its already-linked raw results as evidence, then remove the duplicate narrative when C-05 removes Fjall |
 | `docs/rrd-persistent-scenario-matrix.md` | `docs/evidence/test-plans/persistence-scenario-matrix.md`; do not label unexecuted cells as evidence |
 | `docs/rrd-security-v1.md` | `docs/reference/security/authority.md` |
 | `docs/rrd-security-bootstrap-v1.md` | `docs/guides/installation/security-bootstrap.md` after D-01 aligns installation |
@@ -382,8 +432,30 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/operations/ci.md` | retain at `docs/operations/ci.md`; create the operations index in the same commit |
 
 No row authorizes a blind move. The file must first be read in full, compared
-to current code and its target owner, and either corrected, marked historical,
-split without duplicated text, or removed.
+to current code and its target owner, and then retained as the owner, merged
+without duplicated text into that owner, or removed.
+
+No new history destination is created by this sequence. Accepted current
+knowledge moves into its one owner; unresolved work becomes a POA&M row; raw
+reproducible results remain evidence; redundant narrative is removed.
+
+### A-07.0 — implementation traceability before structural edits
+
+Precondition: A-06 is complete. Re-run the generated file inventory, read every
+current package manifest and module root, and refresh the
+[implementation-requirements traceability](#implementation-requirements-traceability)
+against the exact starting revision. For each capability family, record:
+
+- current source modules and public symbols;
+- characterization tests, fixtures, examples, and benchmarks;
+- behavior and invariants that the accepted architecture requires;
+- one canonical destination and owning roadmap gate;
+- the equal-or-stronger replacement evidence; and
+- every conflicting file or symbol removed after that evidence passes.
+
+This is a documentation-only work package. It changes no runtime behavior and
+does not mark A-07 complete. A-07.1 cannot begin with an unaccounted source,
+test, fixture, or behavior.
 
 ### A-07.1 — freeze package and type vocabulary
 
@@ -394,12 +466,12 @@ dependency table in the A-07 commit before any physical move.
 Direct renames, with compiler errors allowed between edits but not at the
 package commit:
 
-- `rrd_store::Engine` -> `StorageEngine` without a compatibility re-export;
+- `rrd_store::Engine` -> `StorageEngine` without a forwarding re-export;
 - `NativeEngine` -> `RrflowKvStore`;
 - `RrflowMxEngine` -> `RrflowMxStore`;
 - `EngineBox` -> `StorageProfile`; and
 - any module/file name claiming an authority it does not own is moved directly,
-  with no re-export or deprecated alias.
+  with no re-export or transitional alias.
 
 `rrd-contract/src/lib.rs` (currently 6,333 lines), `rrd-core/src/runtime.rs`,
 `rrd-store/src/native.rs`, and other monoliths are split only along already
@@ -474,8 +546,8 @@ values. Conceptual `*`, `~`, and `+` family notation is documentation only,
 never a raw delimiter contract.
 
 C-01 freezes the codec and switches fresh native writes/reads to it in one
-reviewed batch. Existing compatibility readers may remain until C-05, but
-there is no dual write and no new data is emitted in an old codec.
+reviewed batch. Existing pre-1.0 readers are removed in C-05; there is no dual
+write and no new data is emitted in an earlier codec.
 
 ### C-02 — transaction port and MX/KV conformance
 
@@ -512,14 +584,15 @@ direct point/prefix/version reads. Retain log scans only for explicit replay,
 changefeed, archive, recovery verification, and bounded diagnostic operations.
 Add physical counters proving the selected key ranges and decoded values.
 
-### C-05 — remove compatibility execution
+### C-05 — remove alternate pre-release execution
 
 Delete Fjall dependency, `Store`, backend selection, migration command/API,
-legacy storage key codec, upgrade executor, and legacy batch/segment/manifest
-read branches. Reclassify old migration documents/tests as history or remove
-them. Unknown or pre-1.0 physical bytes fail with one explicit unsupported-
-format error. Fresh-database, corrupt-format, and native close/reopen tests
-replace compatibility success tests.
+pre-1.0 storage key codec, upgrade executor, and all earlier
+batch/segment/manifest read branches. Merge any valid requirement from the
+migration documents into the current owner, then remove the duplicate
+documents and success tests. Unknown or pre-1.0 physical bytes fail with one
+explicit unsupported-format error. Fresh-database, corrupt-format, and native
+close/reopen tests replace alternate-path success tests.
 
 ### C-06 — hybrid immutable segment format
 
@@ -763,8 +836,9 @@ function trigger and pretend Gate I is complete.
 
 ### Gate J — release proof
 
-- J-01: remove all compatibility/legacy/deprecated/provider-hook paths and
-  stale generated outputs; run strict repository searches.
+- J-01: remove all alternate pre-release entrypoints, readers, backend
+  selectors, migration executors, transitional aliases, provider-hook paths,
+  and stale generated outputs; run strict repository searches.
 - J-02: run unit, property, fuzz corpus, differential, crash/reopen, ENOSPC,
   security, budget, adapter, SDK, and real-process tests; retain failures.
 - J-03: use `scripts/release/assemble.py` to build a complete manifest-verified
@@ -858,7 +932,7 @@ occurs:
   protocol is missing from the plan;
 - a change would add a second transaction, storage, graph, vector, query,
   context, lifecycle, or instruction authority;
-- a compatibility alias/shim appears necessary;
+- an alias or shim appears necessary to keep an earlier pre-release surface;
 - the only proof is compilation, a mock, a generated file, or an emitted event;
 - an approximate result lacks an exact comparison or declared fallback;
 - a persistent claim lacks close/reopen and failure-boundary evidence;

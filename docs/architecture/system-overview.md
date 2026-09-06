@@ -73,6 +73,22 @@ Product documentation uses the exact spellings **RRFlow**, **RRD**,
 Rust package names remain `rrd-*` for internal daemon/runtime boundaries and
 `rrflow-*` for outward product adapters.
 
+## Pre-release convergence boundary
+
+RRFlow 1.0 has one current target implementation. Pre-release formats,
+backends, names, and APIs are implementation inputs to converge, not supported
+product generations. The accepted result contains no alternate database,
+query, graph, vector, security, context, or lifecycle path and no forwarding
+alias that keeps an earlier shape executable.
+
+Before an existing implementation is replaced or removed, its useful
+semantics, invariants, tests, fixtures, and measured behavior must be mapped to
+the canonical boundary and owning roadmap gate. The
+[implementation-requirements traceability matrix](../roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability)
+is the execution control for that accounting. A branch relationship, merge,
+rename, compilation result, or file deletion does not prove that behavior was
+integrated.
+
 ## Persistence and memory boundary
 
 rrflowDB is the persistent logical estate. rrflowKV is its physical storage

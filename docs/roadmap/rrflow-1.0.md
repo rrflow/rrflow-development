@@ -56,8 +56,12 @@ Checklist rules:
 - keep one checklist item per coherent commit unless two items cannot be tested
   independently;
 - update **Current status** when an item changes observable product behavior;
-- do not retain compatibility adapters, aliases, deprecated entrypoints, or
-  dual-write paths in the RRFlow 1.0 result;
+- ship one accepted RRFlow 1.0 path for each operation and physical format; do
+  not retain alternate pre-release entrypoints, forwarding aliases, backend
+  selectors, migration executors, or dual writes;
+- trace every affected current behavior, module, test, and fixture into its
+  canonical boundary before a deletion, move, merge, or rewrite; Git ancestry,
+  merge status, and compilation are not consolidation evidence;
 - do not count compilation, mocked UI state, generated schemas, or an artifact
   file existing as behavioral proof;
 - require exact/reference comparison before enabling an approximate index;
@@ -82,7 +86,7 @@ assumptions.
 | [x] | A-04 | Move all existing crates into one non-duplicated grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 | [ ] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
-| [ ] | A-07 | Audit the actual dependency graph and public vocabulary, then freeze industry-aligned directory, crate, module, test, fixture, and binary names; keep every first-party build/install/runtime input inside this repository and rename or remove overlapping pre-release boundaries directly with no aliases or compatibility shims. | workspace | Reviewed boundary map plus `cargo metadata`, dependency-direction tests, tracked-path inspection, repository terminology search, and owning suites prove every package has one responsibility, every dependency points inward, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
+| [ ] | A-07 | Audit the actual dependency graph, public vocabulary, and implementation-requirements traceability; then freeze industry-aligned directory, crate, module, test, fixture, and binary names. Keep every first-party build/install/runtime input inside this repository and converge overlapping pre-release boundaries directly with no forwarding aliases or parallel execution paths. | workspace | The reviewed traceability matrix accounts for every affected current behavior, source module, test, fixture, and planned destination; `cargo metadata`, dependency-direction tests, tracked-path inspection, repository terminology search, and owning suites prove every package has one responsibility, every dependency points inward, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
 
 #### A-06 knowledge-bootstrap sequence
 
@@ -96,7 +100,7 @@ gate by itself.
 | [x] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
 | [x] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
 | [ ] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
-| [ ] | KB-05 | Classify remaining flat supporting documents one complete file at a time as active, historical, merged, or removed. | Each reviewed file has one owner or successor, one coordinate when retained, one index entry, no copied authority body, and passing link/terminology checks. |
+| [ ] | KB-05 | Resolve remaining flat supporting documents one complete file at a time: retain a record only when it owns current knowledge, merge accepted material into its existing owner, and remove the redundant source. Do not create another archive for unresolved or duplicate pre-release material. | Each reviewed file has one current owner or is removed after accepted content is integrated; retained records have one coordinate and index entry, with no copied authority body and passing link/terminology checks. |
 | [ ] | KB-06 | Import a verified KB-03 package through persisted attunement checkpoints and authorized `RrdEngine` mutations. | D-02 and D-05 evidence proves digest-bound resume, idempotency, authorization, atomic mutation, and rejection of package or configuration drift. |
 | [ ] | KB-07 | Prove close/reopen, readback, warp resolution, incremental update, rollback, and recovery against rrflowDB. | Durable tests reproduce every imported record and relationship at its committed read stamp after restart and failure injection. |
 | [ ] | KB-08 | Make authorized rrflowDB warp resolution the normal client path after import while retaining the already-thin bootstrap READMEs as recovery maps. | H and J evidence shows clients resolve the same authorized records through public operations; local fallbacks remain sufficient for recovery without duplicating mutable state. |
@@ -133,10 +137,12 @@ KB-03 evidence (2026-09-06):
   UTF-8, unsafe paths, duplicate coordinates, missing index links, invalid
   metadata, source changes during export, and unignored in-repository output
   fail closed.
-- Python digest calculations match the Rust KB-02 golden vectors exactly. The
-  actual repository exported twice to independent temporary paths with
-  byte-identical output: 79 manifested sources, 26 included records, 53
-  explicit exclusions, and one package digest.
+- Python digest calculations match the Rust KB-02 golden vectors exactly. At
+  the KB-03 acceptance revision, the repository exported twice to independent
+  temporary paths with byte-identical output: 79 manifested sources, 26
+  included records, 53 explicit exclusions, and one package digest. Later
+  records must pass the same reproducibility check instead of rewriting this
+  accepted count.
 - The real export exposed and repaired a KB-02 validation error: canonical
   nested coordinates such as `/data/reference/storage/<record-id>` are now
   accepted, while missing, empty, non-canonical, query, and fragment segments
@@ -162,7 +168,7 @@ A-02 evidence (2026-09-04):
 A-03 evidence (2026-09-04):
 
 - The fixed-stage ledger module, engine projection/API, automatic global trace
-  lookup, and CLI record/show surface are absent; the legacy golden entry was
+  lookup, and CLI record/show surface are absent; the pre-A-02 golden entry was
   removed rather than treated as a supported wire format.
 - Reusable source/digest/summary evidence and verification status now live in
   the A-02 generic types, while `TraceLink::ReasoningCursor` preserves exact
@@ -282,7 +288,7 @@ golden vectors without importing Rust internals.
 | [ ] | C-02 | Expose the minimal snapshot transaction primitives required by the semantic store: point read, bounded range scan, put, delete, commit, rollback, and conflict. | `rrd-lsm`, `rrd-store` | rrflowKV and rrflowMX conformance suites agree on read-your-writes, repeatable reads, range ordering, and write conflicts. |
 | [ ] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, and durable projection deltas as one write batch. | `rrd-store`, `rrd-engine` | Failure injection at every WAL/batch boundary proves all-or-nothing behavior after reopen. |
 | [ ] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
-| [ ] | C-05 | Remove Fjall selection, compatibility readers, migration-only runtime paths, legacy format branching, and associated dependencies from the 1.0 executable. | `rrd-store`, workspace | Fresh native database tests pass; repository search and dependency metadata contain no Fjall/compatibility execution path. |
+| [ ] | C-05 | Remove Fjall selection, every pre-1.0 reader, migration-only runtime path, alternate format branch, and associated dependency from the 1.0 executable. | `rrd-store`, workspace | Fresh native database tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
 | [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property tests, exact differential reads, selective-scan counters, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all decoded, copied, and allocated bytes are reported. |
 | [ ] | C-07 | Prove WAL recovery, manifest recovery, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, and reopen suite pass repeatedly with no lost acknowledged write, dangling mapped buffer, or exposed partial batch. |
 
@@ -385,7 +391,7 @@ trigger, routine, adapter, or skill worked.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | J-01 | Remove every deprecated item, legacy/compatibility path, editor/provider-owned automatic hook, duplicate source of truth, and stale generated artifact. | workspace | Strict warning/dependency/search gates and all-target builds are clean. |
+| [ ] | J-01 | Remove every alternate pre-release entrypoint, format reader, backend selector, migration executor, editor/provider-owned automatic hook, duplicate source of truth, transitional alias, and stale generated artifact. | workspace | Strict warning/dependency/search gates and all-target builds prove only the accepted RRFlow 1.0 surfaces remain. |
 | [ ] | J-02 | Run unit, property, fuzz corpus, differential, crash/reopen, storage-full, security denial, resource-budget, adapter, and real-process suites. | workspace | Release evidence records commands, versions, passed/failed counts, and retained failure artifacts. |
 | [ ] | J-03 | Assemble a complete manifest-verified release-candidate bundle from tracked inputs; install and attune both an empty fixture and this existing repository from that candidate; then restart and repeat representative fast/heavy queries. | release harness | With outbound network denied, sibling repositories absent, and no external database/query/vector service, both estates verify with stable digests; unchanged rerun is incremental and no manual database repair is needed. This qualifies contents and behavior before J-05 signs the reproducible default distribution. |
 | [ ] | J-04 | Publish fixed-hardware rrflowKV, graph, BM25, exact/HNSW, DataFusion, context, LFG, end-to-end, and clean-rollout benchmarks against pinned declared baselines. | evaluation harness | Raw data, configuration, warmup, concurrency, percentiles, recall/quality metrics, failed runs, and a SurrealDB/Qdrant deployment matrix report artifact bytes, installed bytes, required commands, elapsed time, services, ports, configuration, secrets, readiness, and persistent readback. No ease or superiority claim is allowed until like-for-like evidence passes. |

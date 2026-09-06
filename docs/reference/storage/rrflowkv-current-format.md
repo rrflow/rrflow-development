@@ -2,7 +2,7 @@
 
 **Status:** active implementation reference for the pre-alpha row-segment format; not the accepted RRFlow 1.0 target
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`
-**Owner:** physical bytes, limits, recovery rules, and compatibility debt implemented by `rrd-lsm`
+**Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-lsm`
 
 This record describes the bytes the current checkout can create or read. It is
 not the [accepted rrflowKV architecture](../../architecture/engine-data-flow.md),
@@ -11,7 +11,7 @@ Current comparison mechanics and evidence limitations are owned by the
 [benchmark-harness reference](rrflowkv-benchmark-harness.md).
 The [roadmap](../../roadmap/rrflow-1.0.md) owns the replacement and removal
 work; [POAM-002 and POAM-003](../../poam/rrflow-1.0-alpha.md) keep the physical
-layout and legacy-path deficiencies open.
+layout and alternate-reader deficiencies open.
 
 ## Current and target boundary
 
@@ -24,14 +24,14 @@ The accepted target is one hybrid rrflowKV persistence authority with a
 write-optimized WAL and MVCC memtable plus immutable ordered key/version state
 and Arrow-compatible column pages pinned by the same manifest. That target is
 specified only by the engine data-flow record and is delivered by roadmap
-Gate C-06. This reference must be replaced or moved to history when C-06
-changes the physical format.
+Gate C-06. When C-06 changes the physical format, its accepted format material
+replaces this body in place and the pre-alpha format detail is removed.
 
 The checkout also contains executable readers for manifest v1, mutation batch
-v1, segment v1/v2, and an existing-directory Fjall compatibility path. Those
-are observed migration debt, not supported alpha architecture. Gate C-05 must
+v1, segment v1/v2, and an existing-directory Fjall backend path. Those are
+observed pre-release removal debt, not supported alpha architecture. Gate C-05 must
 remove them directly before the alpha baseline; this document does not
-normalize them as permanent compatibility requirements.
+normalize them as product requirements.
 
 ## Implemented object set
 
@@ -116,9 +116,9 @@ delete-with-length, trailing bytes, and out-of-contract lengths fail closed.
 One MVCC sequence is allocated per operation while the complete payload stays
 inside one atomic WAL frame.
 
-The v1 reader is isolated legacy debt. It recognizes `RRDBAT01`, a one-byte
-operation kind, three zero operation-flag bytes, and separate `u32` key/value
-lengths. Writers emit only v2.
+The v1 reader is a pre-1.0 branch scheduled for direct removal. It recognizes
+`RRDBAT01`, a one-byte operation kind, three zero operation-flag bytes, and
+separate `u32` key/value lengths. Writers emit only v2.
 
 ## Manifest, publication, and checkpoints
 
@@ -133,7 +133,8 @@ Manifest v2 may carry one non-zero opaque `application_format`. `rrd-store`
 currently binds `RRDSK002` and uses one stable non-zero tag for each logical
 keyspace. Unknown application identities fail closed, and physical snapshot
 installation requires an identical source and target identity. Cross-format
-movement must be an explicit logical migration.
+movement is not an alpha requirement; the final 1.0 tests create the accepted
+format directly.
 
 Publication holds the operating-system writer lock, validates the expected
 `CURRENT`, generation, and parent, writes and synchronizes immutable manifest
@@ -166,9 +167,9 @@ while a positive still executes exact MVCC comparison. All segments in one
 database share a bounded decoded-block LRU. Blocks larger than its configured
 capacity may be decoded for a caller but are not retained.
 
-The v1 uncompressed and v2 single-compressed-block readers are explicit legacy
-branches scheduled for removal by C-05. They are not a reason to preserve row
-segments in the C-06 target.
+The v1 uncompressed and v2 single-compressed-block readers are explicit
+pre-1.0 branches scheduled for removal by C-05. They are not a reason to
+preserve row segments in the C-06 target.
 
 ## Flush, compaction, snapshots, and garbage collection
 
@@ -245,7 +246,8 @@ cargo test -p rrd-lsm
 ```
 
 Those tests prove the present physical contract only. C-05 requires removal
-evidence for legacy paths. C-06 requires new vectors, property and crash tests,
-and fixed-hardware comparison for the hybrid Arrow-compatible target. Gate F
-requires streamed projection/predicate/budget counters through DataFusion.
-Passing this suite cannot close any of those gates by itself.
+evidence for every pre-1.0 reader and alternate backend. C-06 requires new
+vectors, property and crash tests, and fixed-hardware comparison for the hybrid
+Arrow-compatible target. Gate F requires streamed
+projection/predicate/budget counters through DataFusion. Passing this suite
+cannot close any of those gates by itself.

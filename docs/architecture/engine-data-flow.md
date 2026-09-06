@@ -114,7 +114,7 @@ segment pages before returning a batch.
 The checkout has not reached that layout. Its
 [current physical-format reference](../reference/storage/rrflowkv-current-format.md)
 records the implemented v3 LZ4 row-block segments, frozen bytes, recovery
-rules, and removable legacy readers without promoting them into target
+rules, and removable pre-1.0 readers without promoting them into target
 architecture.
 
 ## Conditional zero-copy
@@ -256,15 +256,20 @@ public operation or its single-stamp semantics.
 
 | Concern | Present checkout | Required target |
 |---|---|---|
-| rrflowKV writes | Checksummed WAL frames and a mutable MVCC memtable. | Retain and prove under the final hybrid format. |
-| rrflowKV immutable storage | LZ4-compressed row-record blocks with block indexes, manifests, compaction, recovery, and legacy readers. | Ordered key/version spine plus Arrow-compatible column pages; remove compatibility readers before alpha exit. |
+| rrflowKV writes and hot reads | Checksummed WAL frames, mutable MVCC version chains, snapshots, authenticated block filters, a byte-bounded decoded-block cache, physical counters, and an AI-hotset benchmark. | Preserve the useful WAL, snapshot, filter, cache, and measurement behavior while C-02/C-04/C-06/C-07 replace the storage contract and immutable format; F-05 decides the final cache from measurements. |
+| rrflowKV immutable storage | LZ4-compressed row-record blocks with block indexes, manifests, compaction, recovery, and pre-1.0 readers. | Ordered key/version spine plus Arrow-compatible column pages; remove every earlier-format reader before alpha exit. |
+| Transactions, identity, and audit | Authenticated `ReadStamp`, `DataTransaction`, session/policy checks, commit receipts, audit envelopes, and native/volatile implementations exist at different levels of integration. | C-02/C-03 and H-04/H-05 must prove one snapshot/conflict/authorization/audit contract across rrflowMX, rrflowKV, embedded, and transport paths. |
 | Arrow conversion | Materialized `QueryRow` values are converted into newly allocated typed Arrow arrays. | Stream eligible segment buffers and bounded decoded/memtable overlays through a stamped provider. |
 | DataFusion | Real bounded execution over the materialized Arrow snapshot. | Push projection/predicate/limit into rrflowKV and compose native graph/BM25/vector operators at one stamp. |
-| Graph/BM25/vector | Useful semantic and projection foundations exist at different completion levels. | Transactionally maintained native access paths with exact fallback, reopen, corruption, and quality proof. |
-| Models | Reasoning-tree and provider-neutral router contracts exist. | Persisted tree execution, model-manifest handshake, constrained adapter dispatch, and conformance. |
+| Embedding and vectors | Deterministic local embedding, model/provenance binding, exact search, filtered planning, compact dense artifacts, HNSW, quantization, and accelerator differential checks exist. | D-05/E-04/E-05/F-03 must bind canonical vectors and every derived artifact to one committed source cursor, maintain atomic deltas, and preserve exact fallback/reranking. |
+| Graph and BM25 | Semantic graph and lexical foundations exist, but current context execution still reconstructs broad snapshots. | Transactionally maintained adjacency and BM25 access paths with exact fallback, reopen, corruption, and bounded-work proof. |
+| Reasoning and context | Generic reasoning-tree, router, context-plan, evidence, and bounded context contracts exist; current assembly uses snapshot BM25, exact vectors, graph BFS, and RRF. | G/H must persist CAS tree execution and dynamically select native or analytical paths without adding another model, planner, or context authority. |
+| Edge and outward delivery | The separate `rrflow-edge` adapter has deterministic offline/provenance evidence; HTTP, SDK, MCP, CLI, and subscriptions have partial real-process coverage. | H/J must route every surface through the same public operations and prove correlated identity, authorization, stamp, result, restart, and distribution behavior. |
 
 These differences are tracked by POAM-002 through POAM-005 and roadmap Gates
-C, E, and F. No present type, file format, or passing compile closes them.
+C, E, and F. POAM-014 tracks implementation traceability across those and the
+security, inference, reasoning, and outward boundaries. No present type, file
+format, merge relationship, or passing compile closes them.
 
 ## External systems
 

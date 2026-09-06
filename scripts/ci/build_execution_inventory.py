@@ -16,7 +16,7 @@ OUTPUT = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 
 PACKAGE_GATES: dict[str, tuple[str, ...]] = {
-    "rrd-core": ("A-07", "C-01", "I-01"),
+    "rrd-core": ("A-07", "C-01", "C-02", "C-03", "H-05", "I-01"),
     "rrd-lsm": ("A-07", "C-02", "C-06", "C-07", "D-09", "J-02", "J-04"),
     "rrd-store": (
         "A-07",
@@ -47,8 +47,27 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
         "H-02",
         "H-03",
     ),
-    "rrd-vector": ("A-07", "E-04", "E-05", "F-03", "J-02", "J-04"),
-    "rrd-inference": ("A-07", "B-03", "G-01", "G-03", "G-06"),
+    "rrd-vector": (
+        "A-07",
+        "D-05",
+        "E-04",
+        "E-05",
+        "F-03",
+        "H-01",
+        "J-02",
+        "J-04",
+    ),
+    "rrd-inference": (
+        "A-07",
+        "B-03",
+        "D-05",
+        "E-04",
+        "G-01",
+        "G-03",
+        "G-06",
+        "H-01",
+        "J-04",
+    ),
     "rrd-security": ("A-07", "D-01", "H-04", "H-05", "J-02"),
     "rrd-estate": ("A-07", "D-01", "D-02", "D-10", "H-05", "J-03"),
     "rrd-engine": (
@@ -89,7 +108,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
     "rrd-server": ("A-07", "B-04", "B-05", "H-03", "H-04", "H-05", "J-03"),
     "rrflow-cli": ("A-07", "C-05", "D-01", "I-06", "J-01", "J-03"),
     "rrflow-mcp": ("A-07", "H-04", "H-05", "I-04", "J-03"),
-    "rrflow-edge": ("A-07", "D-07", "H-04", "H-07", "J-03"),
+    "rrflow-edge": ("A-07", "D-07", "H-04", "H-07", "J-03", "J-05"),
     "rrd-cluster": ("A-07", "D-10", "H-05", "J-02", "J-04"),
     "rrd-kubernetes": ("A-07", "D-01", "D-07", "J-03", "J-05"),
     "rrd-maintenance": ("A-07", "D-02", "D-10", "I-07", "J-02"),
@@ -98,15 +117,59 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
 }
 
 FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
-    "crates/persistence/rrd-lsm/src/database.rs": ("C-02", "C-06", "C-07"),
+    "crates/kernel/rrd-core/src/runtime.rs": ("C-02", "C-03", "H-05"),
+    "crates/kernel/rrd-core/src/reasoning_tree.rs": (
+        "B-03",
+        "G-01",
+        "G-02",
+        "G-04",
+        "H-01",
+        "H-05",
+    ),
+    "crates/persistence/rrd-lsm/src/database.rs": (
+        "C-02",
+        "C-04",
+        "C-06",
+        "C-07",
+        "F-05",
+        "J-04",
+    ),
     "crates/persistence/rrd-lsm/src/manifest.rs": ("C-05", "C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/memtable.rs": ("C-02", "C-06", "C-07"),
-    "crates/persistence/rrd-lsm/src/segment.rs": ("C-05", "C-06", "C-07"),
+    "crates/persistence/rrd-lsm/src/memtable.rs": (
+        "C-02",
+        "C-04",
+        "C-06",
+        "C-07",
+        "F-01",
+    ),
+    "crates/persistence/rrd-lsm/src/segment.rs": (
+        "C-04",
+        "C-05",
+        "C-06",
+        "C-07",
+        "F-01",
+        "F-02",
+        "F-05",
+        "J-04",
+    ),
     "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07"),
     "crates/persistence/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
     "crates/persistence/rrd-store/src/keyspaces.rs": ("C-01", "C-05"),
-    "crates/persistence/rrd-store/src/native.rs": ("C-01", "C-03", "C-04", "C-05"),
-    "crates/persistence/rrd-store/src/persistent.rs": ("C-05",),
+    "crates/persistence/rrd-store/src/native.rs": (
+        "C-01",
+        "C-02",
+        "C-03",
+        "C-04",
+        "C-05",
+    ),
+    "crates/persistence/rrd-store/src/persistent.rs": ("C-02", "C-05"),
+    "crates/persistence/rrd-store/src/control.rs": ("C-03", "H-05"),
+    "crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs": (
+        "C-04",
+        "C-06",
+        "F-05",
+        "J-04",
+    ),
     "crates/persistence/rrd-store/src/migration.rs": ("C-05", "J-01"),
     "crates/persistence/rrd-store/src/upgrade.rs": ("C-05", "J-01"),
     "crates/persistence/rrd-store/tests/migration.rs": ("C-05", "J-01"),
@@ -130,6 +193,23 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "crates/compute/rrd-vector/src/hnsw.rs": ("E-04", "E-05", "J-04"),
     "crates/compute/rrd-vector/src/plan.rs": ("E-04", "E-05"),
     "crates/compute/rrd-vector/src/runtime.rs": ("E-04", "E-05", "F-03"),
+    "crates/compute/rrd-inference/src/lib.rs": (
+        "B-03",
+        "D-05",
+        "E-04",
+        "G-01",
+        "H-01",
+    ),
+    "crates/compute/rrd-inference/src/fastembed_local.rs": (
+        "D-05",
+        "E-04",
+        "H-01",
+        "J-04",
+    ),
+    "crates/compute/rrd-vector/src/contract.rs": ("D-05", "E-04", "J-04"),
+    "crates/compute/rrd-vector/src/catalog.rs": ("E-04", "E-05", "H-01"),
+    "crates/compute/rrd-vector/src/compact.rs": ("E-04", "F-03", "J-04"),
+    "crates/compute/rrd-vector/src/accelerator.rs": ("E-04", "J-04"),
     "crates/compute/rrd-vector/src/turboquant.rs": ("E-04", "J-01", "J-04"),
     "crates/compute/rrd-vector/src/turbo_segment.rs": ("E-04", "J-01", "J-04"),
     "crates/authority/rrd-engine/src/engine/automation.rs": (
@@ -157,10 +237,43 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "C-03",
         "G-04",
     ),
+    "crates/authority/rrd-engine/src/engine/transaction.rs": (
+        "C-02",
+        "C-03",
+        "G-04",
+        "H-05",
+        "J-02",
+    ),
+    "crates/authority/rrd-engine/src/engine/session.rs": ("H-04", "H-05", "J-02"),
+    "crates/authority/rrd-engine/src/engine/security.rs": ("H-04", "H-05", "J-02"),
+    "crates/authority/rrd-engine/src/engine/invocation.rs": (
+        "H-04",
+        "H-05",
+        "J-02",
+    ),
+    "crates/authority/rrd-engine/src/engine/inference.rs": (
+        "D-05",
+        "E-04",
+        "H-01",
+    ),
+    "crates/authority/rrd-engine/src/engine/vector.rs": (
+        "D-05",
+        "E-04",
+        "H-01",
+    ),
+    "crates/authority/rrd-engine/src/edge.rs": ("H-04", "H-07", "J-03", "J-05"),
     "crates/authority/rrd-engine/src/engine/subscription.rs": ("B-04", "H-03", "H-04"),
     "crates/transport/rrd-server/src/http/websocket.rs": ("B-04", "H-03", "H-04"),
     "crates/transport/rrd-contract/src/attunement.rs": ("D-01", "D-02", "D-05"),
     "crates/transport/rrd-contract/src/router.rs": ("B-03", "G-01", "G-02", "G-03"),
+    "crates/transport/rrd-contract/src/reasoning_tree.rs": (
+        "B-03",
+        "G-01",
+        "G-02",
+        "G-04",
+        "H-01",
+        "H-05",
+    ),
 }
 
 REMOVE_OR_REWRITE = {
@@ -169,7 +282,7 @@ REMOVE_OR_REWRITE = {
     "crates/persistence/rrd-store/tests/migration.rs": "remove with the retired Fjall runtime migration surface",
     "crates/persistence/rrd-store/tests/native_format_upgrade.rs": "replace with rejection tests for non-1.0 formats, then rename to the final format test",
     "crates/persistence/rrd-store/src/persistent.rs": "rewrite as the single rrflowKV persistent opener with no backend selector",
-    "crates/persistence/rrd-lsm/src/segment.rs": "split into the planned segment modules while replacing row-only and legacy decoding paths",
+    "crates/persistence/rrd-lsm/src/segment.rs": "split into the planned segment modules while replacing row-only and pre-1.0 decoding paths",
     "crates/persistence/rrd-store/src/keyspaces.rs": "replace TextV1/TagV2 branching with the frozen ordered binary tuple codec",
     "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
     "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
@@ -338,14 +451,6 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "docs/guides/README.md": ("KB-05", "KB-08"),
     "docs/guides/installation/README.md": ("KB-05", "KB-08"),
     "docs/guides/installation/security-bootstrap.md": ("KB-05",),
-    "docs/history/anytype-ui-research.md": ("KB-05",),
-    "docs/history/blueprint-triage.md": ("KB-05",),
-    "docs/history/clyffy-kernel-alpha.md": ("KB-05",),
-    "docs/history/context-path-profiler.md": ("KB-05",),
-    "docs/history/prompt-flight-experiments.md": ("KB-05",),
-    "docs/history/rrd-lsm-fjall-ai-audit.md": ("KB-05",),
-    "docs/history/rrflow-rename-ledger.md": ("A-07", "KB-05"),
-    "docs/history/runtime-graph.md": ("KB-05",),
     "docs/operations/README.md": ("KB-05", "KB-08"),
     "docs/reference/automation/README.md": ("KB-05", "KB-08"),
     "docs/reference/automation/functions.md": ("KB-05",),
@@ -504,9 +609,9 @@ def action(path: str) -> str:
     if path == "Cargo.lock":
         return "regenerate only after an accepted manifest change; never hand-edit"
     if path.startswith("docs/") and len(Path(path).parts) == 2:
-        return "review the complete record in KB-05, then retain, move, supersede, merge, or remove with an explicit owner and successor"
+        return "review the complete record in KB-05, merge accepted current material into its one owner, then retain that owner or remove the redundant source"
     if path.startswith("docs/history/"):
-        return "retain as non-authoritative provenance unless KB-05 proves it redundant and safe to remove"
+        return "merge any current requirement into its active owner; retain only evidence-required provenance and remove redundant narrative"
     if path.startswith("docs/"):
         return "retain under its declared documentation owner; update only when the owning gate supplies evidence"
     if "/tests/" in path or path.endswith("/tests.rs") or path.startswith("eval/"):

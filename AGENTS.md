@@ -52,6 +52,16 @@ For project work:
 7. Treat existing types, files, compilation, and mocks as implementation
    inventory, not proof. Update objective, roadmap, or POA&M status only with
    the acceptance evidence named by the owning record.
+8. Before deleting, moving, merging, or rewriting implementation, update the
+   implementation-requirements traceability in
+   `docs/roadmap/rrflow-1.0-execution-map.md`. Map the current behavior, source
+   modules, characterization tests, canonical destination, owning gate, and
+   replacement evidence. Git ancestry, merge status, a path rename, and a
+   successful compile are not consolidation proof.
+9. RRFlow 1.0 has one current pre-release implementation. Carry reusable
+   behavior and tests into their canonical boundary, then remove conflicting
+   paths directly. Do not create a parallel fallback, migration, or
+   historical-code lane to avoid completing that convergence.
 
 RRFlow has no editor- or provider-owned automatic hooks. Recall, reasoning
 lifecycle, and mutation authorization are explicit capabilities composed
