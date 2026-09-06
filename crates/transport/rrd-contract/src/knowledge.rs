@@ -515,12 +515,12 @@ fn validate_coordinate(value: &str, field: &str) -> Result<()> {
         return invalid(format!("{field} must use the rrflow URI scheme"));
     };
     let segments = path.split('/').collect::<Vec<_>>();
-    if segments.len() != 4 || segments[1] != "data" {
+    if segments.len() < 4 || segments[1] != "data" {
         return invalid(format!(
-            "{field} must be rrflow://<instance>/data/<record-kind>/<record-id>"
+            "{field} must be rrflow://<instance>/data/<canonical-path>/<record-id>"
         ));
     }
-    for segment in [segments[0], segments[2], segments[3]] {
+    for segment in std::iter::once(segments[0]).chain(segments[2..].iter().copied()) {
         CanonicalId::new(segment).map_err(|_| {
             crate::ContractError(format!("{field} contains a non-canonical path segment"))
         })?;

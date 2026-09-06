@@ -182,10 +182,22 @@ fn generated_schema_is_closed_for_every_object_and_disposition() {
 fn records_reject_unsafe_coordinates_paths_and_non_normalized_content() {
     let original = golden_contract().package.records[0].clone();
 
+    let mut nested_coordinate = original.clone();
+    nested_coordinate.coordinate =
+        "rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format".into();
+    reseal_record(&mut nested_coordinate);
+    nested_coordinate.validate().unwrap();
+
     let mut unsafe_coordinate = original.clone();
     unsafe_coordinate.coordinate = "file:///tmp/knowledge.md".into();
     reseal_record(&mut unsafe_coordinate);
     assert!(unsafe_coordinate.validate().is_err());
+
+    let mut empty_coordinate_segment = original.clone();
+    empty_coordinate_segment.coordinate =
+        "rrflow://rrflow-instance/data/reference//rrflowkv-current-format".into();
+    reseal_record(&mut empty_coordinate_segment);
+    assert!(empty_coordinate_segment.validate().is_err());
 
     let mut unsafe_path = original.clone();
     unsafe_path.source_path = "../outside.md".into();

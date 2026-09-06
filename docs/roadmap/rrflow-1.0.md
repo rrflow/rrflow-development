@@ -67,7 +67,7 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item remains **A-06**, specifically **KB-03**. B-01 and
+The next executable item remains **A-06**, specifically **KB-04**. B-01 and
 B-02 remain completed contract work, but no further Gate B work proceeds until
 A-06 and A-07 correct the pre-release documentation and source-boundary
 assumptions.
@@ -94,7 +94,7 @@ gate by itself.
 |---|---|---|---|
 | [x] | KB-01 | Establish the master system overview, accepted single-engine ADR, canonical component terminology, and indexed warp points. | Root and boundary portals link the owners; documentation policy checks their coordinates, required sections, terminology, indexes, and local links. |
 | [x] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
-| [ ] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
+| [x] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
 | [ ] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
 | [ ] | KB-05 | Classify remaining flat supporting documents one complete file at a time as active, historical, merged, or removed. | Each reviewed file has one owner or successor, one coordinate when retained, one index entry, no copied authority body, and passing link/terminology checks. |
 | [ ] | KB-06 | Import a verified KB-03 package through persisted attunement checkpoints and authorized `RrdEngine` mutations. | D-02 and D-05 evidence proves digest-bound resume, idempotency, authorization, atomic mutation, and rejection of package or configuration drift. |
@@ -120,6 +120,30 @@ KB-02 evidence (2026-09-05):
 - All 58 `rrd-contract` tests, strict package Clippy, and the
   implementation-free contract architecture test passed. The OpenAPI exporter
   and fixture remain unchanged because KB-02 adds no public operation.
+
+KB-03 evidence (2026-09-06):
+
+- `scripts/knowledge/export.py` discovers the bootstrap product `README.md`,
+  optional `SPEC.md`, and every `docs/**/*.md` source before classification.
+  It includes coordinated active/historical records and emits an explicit
+  reason-bound exclusion for every other discovered source; no input can
+  disappear from both the manifest and exclusion ledger.
+- Included records derive their classification from the documentation
+  taxonomy and their owner coordinate from the nearest linked index. Missing
+  UTF-8, unsafe paths, duplicate coordinates, missing index links, invalid
+  metadata, source changes during export, and unignored in-repository output
+  fail closed.
+- Python digest calculations match the Rust KB-02 golden vectors exactly. The
+  actual repository exported twice to independent temporary paths with
+  byte-identical output: 79 manifested sources, 26 included records, 53
+  explicit exclusions, and one package digest.
+- The real export exposed and repaired a KB-02 validation error: canonical
+  nested coordinates such as `/data/reference/storage/<record-id>` are now
+  accepted, while missing, empty, non-canonical, query, and fragment segments
+  remain rejected.
+- Seven focused exporter tests and all seven Rust knowledge-contract tests
+  passed. Generated packages remain temporary/ignored artifacts and are not
+  checked in as editable documentation authority.
 
 A-02 evidence (2026-09-04):
 

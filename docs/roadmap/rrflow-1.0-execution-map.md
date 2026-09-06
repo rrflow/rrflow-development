@@ -292,15 +292,20 @@ provider path, secret, runtime storage key, or Markdown parser behavior.
 
 ### A-06.2 — deterministic exporter and CI (KB-03, then KB-04)
 
-Files:
+KB-03 files:
 
 - create `scripts/knowledge/export.py` as the single bootstrap exporter;
-- create `scripts/knowledge/test_export.py`;
+- create `scripts/knowledge/test_export.py`; and
+- produce only ignored/test-temporary packages; never check a generated
+  package in as editable authority.
+
+KB-04 files, which must not change during KB-03:
+
 - modify `scripts/ci/check_documentation.py` to use the frozen eligibility and
   ownership rules;
 - modify `.github/workflows/ci-reusable.yml` to run exporter reproducibility;
-- produce only ignored/test-temporary packages during CI; and
-- never check a generated package in as editable authority.
+- extend `scripts/knowledge/test_export.py` only with the CI drift cases owned
+  by KB-04.
 
 Execution order: parse headers and links; classify eligible records and
 explicit exclusions; normalize UTF-8/LF; order by coordinate then source path;
