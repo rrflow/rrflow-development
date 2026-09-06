@@ -14,11 +14,15 @@ owns only the measurable result.
 
 ## Objective
 
-Deliver one installable per-project RRFlow estate that can drive development,
-maintenance, governance, reasoning, and recall through one persistent engine.
-The estate must remain provider-neutral: Codex, Claude, Gemini, Grok, LFG, and
-future callers consume the same public operations, authorization, read stamps,
-context evidence, routines, and skills.
+Deliver one self-contained, installable per-project RRFlow estate that can
+drive development, maintenance, governance, reasoning, and recall through one
+persistent engine. After its signed release bundle is acquired, the default
+estate installs, starts, persists, recovers, and verifies without a source
+checkout, sibling repository, package registry, external database/query/vector
+service, or outbound network access. The estate must remain provider-neutral:
+Codex, Claude, Gemini, Grok, LFG, and future callers consume the same public
+operations, authorization, read stamps, context evidence, routines, and
+skills.
 
 rrflowDB owns AI knowledge, temporal graph state, reasoning state,
 indexes, evidence, automation state, and analytical storage. Application and
@@ -40,10 +44,10 @@ not passed. A type, fixture, mock, compile, or document alone is not proof.
 | OBJ-04 | Atomic multi-model records, graph, and indexes | Partial: canonical mutations and several index foundations exist; graph, scalar, BM25, and vector paths are not one proven incremental commit/read system. | One transaction atomically changes records, both graph directions, scalar/unique state, BM25 postings, vectors, index deltas, and the runtime log; exact oracles remain equal after reopen. | C, E |
 | OBJ-05 | Real Arrow/DataFusion analytical execution | Partial: DataFusion executes stamped Arrow batches allocated from materialized `QueryRow` values. rrflowKV does not yet stream eligible segment buffers. | A stamped provider streams bounded batches from rrflowKV, pushes eligible work down, proves conditional zero-copy with copy/decode/allocation counters, and enforces memory, spill, scan, time, candidate, and output limits. | F |
 | OBJ-06 | Dynamic governed reasoning and recall | Partial: bounded lexical, exact-vector, graph, fusion, context evidence, reasoning-tree, and router contracts exist; native indexes, persisted tree execution, adaptive routing, and LFG dispatch do not. | One authorized request chooses fast or analytical work, retrieves through eligible graph/BM25/vector paths, fuses deterministically, advances a persisted tree through CAS, and reproduces its evidence at the same stamp after reopen. | E, G, H |
-| OBJ-07 | Install and attune a new or existing project | Contract only: the provider-neutral install/attunement envelopes and phase state machine exist; the CLI, engine job persistence, phase executors, and templates do not. | Preview, apply, interrupt, resume, verify, close, and reopen pass for empty and existing projects without credentials, caches, generated output, application databases, or provider lifecycle files becoming engine state. | B, D |
+| OBJ-07 | Install and attune a new or existing project | Contract only: the provider-neutral install/attunement envelopes and phase state machine exist; the CLI, engine job persistence, phase executors, bundle-resident templates, and offline installer do not. | From one verified release bundle, preview, apply, interrupt, resume, verify, close, and reopen pass with outbound network denied and sibling repositories absent for empty and existing projects; no credentials, caches, generated output, application databases, or provider lifecycle files become engine state. | B, D, J |
 | OBJ-08 | Adaptive routines, triggers, skills, and adapters | Partial foundation: synchronous governed functions/triggers exist. Canonical engine events, resumable routines, skill packages, explicit hook adapters, and capability activation do not. | Generic packages are versioned, digest-bound, authorized, budgeted, observable, restartable, removable, and activated only from verified estate signals and policy. | I |
 | OBJ-09 | Provider-neutral client operation | Partial: HTTP, current WebSocket behavior, SDKs, CLI/MCP, and a separate Connectome bootstrap exist at different levels of conformance. | Every supported client and model adapter produces equivalent operation, authorization, stamp, digest, denial, trace, and restart results without embedding engine logic. | B, H |
-| OBJ-10 | Reproducible competitive evidence | Not established: local component evidence exists, but no complete fixed-hardware engine corpus proves the alpha. | Published raw results cover correctness, p50/p95/p99 latency, throughput, memory, copied/decoded/allocated bytes, disk/WAL/compaction, recall@k, filtered quality, restart, and failure behavior against declared baselines. | J |
+| OBJ-10 | Reproducible competitive evidence | Not established: local component evidence exists, but no complete fixed-hardware engine or clean-rollout corpus proves the alpha. | Published raw results cover correctness, p50/p95/p99 latency, throughput, memory, copied/decoded/allocated bytes, disk/WAL/compaction, recall@k, filtered quality, restart, failure behavior, and clean-machine deployment steps/time/bytes/services against pinned declared baselines, including SurrealDB and Qdrant where the compared capability exists. | J |
 
 ## Alpha exit
 

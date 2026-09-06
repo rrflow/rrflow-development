@@ -56,7 +56,7 @@ These mappings eliminate the present naming ambiguity:
 
 | Product term | Exact meaning | Implementation boundary |
 |---|---|---|
-| RRFlow | the complete AI governance, reasoning, recall, and project-operation product | the whole repository and released artifacts |
+| RRFlow | the complete AI governance, reasoning, recall, and project-operation product | this repository and its self-contained signed default distribution |
 | RRD | the one Reason Ready Daemon/runtime for a project instance | `rrd-server` process over one `RrdEngine`; embedded callers still use `RrdEngine` |
 | `RrdEngine` | sole authentication, authorization, semantic transaction, mutation, and orchestration authority | `crates/authority/rrd-engine` |
 | rrflowDB | the durable, per-project AI estate as observed through `RrdEngine` | composition of core types, store repositories, rrflowKV, native indexes, and query execution; never a parallel crate or backend |
@@ -155,7 +155,13 @@ Forbidden directions:
   or mesh adapters opening storage;
 - DataFusion or an inference adapter committing directly;
 - rrflowKV depending on DataFusion to serve point/range/CAS operations; and
-- an external project database becoming the RRFlow transaction authority.
+- an external project database becoming the RRFlow transaction authority;
+- first-party build, install, runtime, verification, or recovery code resolving
+  from a sibling checkout, submodule, escaping path, undeclared generator, or
+  host-specific absolute location; and
+- default installation or runtime fetching a required artifact or depending on
+  an external database, query engine, vector service, mesh, client, or model
+  provider to become ready.
 
 ## Target runtime flows
 
@@ -198,7 +204,8 @@ bytes.
 ### Installation and incremental attunement
 
 ```text
-preview install -> resolve template/profile/provider forwarding stubs
+acquire signed default bundle -> verify complete manifest -> deny network
+       -> preview install -> resolve bundle-resident template/profile/stubs
        -> explicit apply -> create locator/identity/estate through RrdEngine
        -> persist attunement job
        -> inventory -> parse -> normalize -> entity-link -> lexical-index
@@ -409,8 +416,14 @@ cargo check --workspace --all-targets --locked
 rg -n 'NativeEngine|RrflowMxEngine|EngineBox|rrd_store::Engine' crates
 ```
 
-The final search must be empty. A-07 stops if any outward adapter imports a
-physical crate or if the mechanical split silently changes public schema.
+Extend `workspace_architecture.rs` in this same package to inspect Cargo
+metadata plus tracked paths. It rejects a local dependency or target outside
+the workspace root, a tracked escaping symlink, a submodule, a Git dependency
+used as first-party implementation, and host-specific absolute build/install
+inputs. Registry dependencies remain permitted only when locked. The final
+symbol search must be empty. A-07 stops if any outward adapter imports a
+physical crate, any RRFlow code is supplied by another checkout, or the
+mechanical split silently changes public schema.
 
 ## Gate B work packages
 
@@ -546,11 +559,14 @@ Create `rrd-engine/src/engine/install.rs`, `rrflow-cli/src/install.rs`, and the
 CLI install conformance test before adding the `install` dispatch to
 `rrflow-cli/src/command.rs`. The versioned template manifest and files under
 `rrflow-cli/templates/project-v1/` own minimal `.rrflow/config.toml`, estate
-identity, placement, attunement profile, `AGENTS.md`, and supported
-forwarding-only provider files. `AGENTS.md` is the one instruction body.
-Existing user files are never overwritten without an exact previewed action
-and explicit apply. Secrets are references, not values. Empty-project and
-existing-project golden fixtures prove preview, apply, preservation, and
+identity, native rrflowKV placement, attunement profile, `AGENTS.md`, and
+supported forwarding-only provider files. All inputs are embedded in or
+resolved relative to the verified release bundle; apply has no download or
+sibling-discovery branch. `AGENTS.md` is the one instruction body. Existing
+user files are never overwritten without an exact previewed action and
+explicit apply. Secrets are references, not values. Empty-project and
+existing-project golden fixtures run with network denied and sibling paths
+absent and prove preview, apply, preservation, authentication, and
 close/reopen behavior.
 
 ### D-02 — persisted job executor
@@ -582,8 +598,10 @@ Create `rrd-attunement/src/source.rs`, its fixture-driven source-discovery
 test, and `rrd-operator-knowledge/src/source.rs`; then extend the inventory
 phase. PostgreSQL, Turso/libSQL, Dragonfly/Redis, SQL configuration, object
 stores, and other databases produce type/version/endpoint-reference/schema-
-capability descriptors only. Credentials are redacted. Adding an adapter is an
-explicit operator decision and cannot change RRFlow persistence.
+capability descriptors only. Credentials are redacted. Discovery never
+installs, starts, or contacts a source. Adding an adapter and allowing contact
+are explicit operator decisions and cannot change RRFlow persistence or
+default readiness.
 
 ### D-07 through D-10 — placement, shared inputs, accounting, hibernation
 
@@ -748,16 +766,30 @@ function trigger and pretend Gate I is complete.
   stale generated outputs; run strict repository searches.
 - J-02: run unit, property, fuzz corpus, differential, crash/reopen, ENOSPC,
   security, budget, adapter, SDK, and real-process tests; retain failures.
-- J-03: use `scripts/release/qualify.py` to install released artifacts into an
-  empty fixture and this repository;
-  attune, query fast/heavy paths, close/reopen, and rerun incrementally.
+- J-03: use `scripts/release/qualify.py` to install the verified default bundle
+  into an empty fixture and this repository with outbound network denied,
+  sibling repositories hidden, and no external database service; attune, query
+  fast/heavy paths, close/reopen, and rerun incrementally.
 - J-04: publish fixed-hardware raw results for storage, graph, BM25,
-  exact/HNSW, DataFusion, context, LFG, memory, and disk. “Smoke Lance” or any
+  exact/HNSW, DataFusion, context, LFG, memory, and disk. Use
+  `scripts/release/compare_deployment.py` for a pinned official
+  SurrealDB/Qdrant rollout matrix driven by
+  `fixtures/release/deployment-baselines-v1.toml`; record artifact and installed
+  bytes, commands, elapsed time, services, ports, configuration, secrets,
+  readiness, and persistent readback. “Smoke Lance,” “easier to deploy,” or any
   other comparative claim is forbidden until like-for-like data exists.
 - J-05: use `scripts/release/assemble.py` and `scripts/release/verify.py` to
-  produce and verify signed reproducible artifacts, schemas/goldens, SDKs, LFG
-  manifest, SBOM, configuration, backup/restore evidence, provenance, and
-  operator runbook; verify on a clean machine without local caches.
+  produce and verify one signed reproducible default distribution containing
+  all default-distribution first-party executables and linked engine
+  capabilities, schemas/goldens, SDKs, project/attunement templates, default
+  configuration/profile, required local model/runtime artifacts, SBOM/licenses,
+  backup/restore evidence, provenance, and operator runbook. Freeze the
+  manifest shape in `fixtures/release/distribution-manifest-v1.json` and test
+  assembly, tamper rejection, completeness, and offline qualification in
+  `scripts/release/test_distribution.py`. Verify every installed byte and run
+  the complete install/readiness/commit/reopen check on a clean machine without
+  a compiler, source checkout, sibling repository, local cache, package
+  registry, external database/query/vector service, or outbound network.
 
 ## Repository-wide run checklist
 
@@ -815,6 +847,8 @@ occurs:
 - a persistent claim lacks close/reopen and failure-boundary evidence;
 - an external source requires copying credentials or taking application DB
   ownership;
+- a first-party capability, release input, or default-runtime dependency lives
+  outside this repository or must be fetched during install/runtime;
 - “zero-copy,” latency, scale, or superiority would be claimed without measured
   physical evidence; or
 - the worktree contains unexplained overlapping changes.

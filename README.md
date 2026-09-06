@@ -178,6 +178,21 @@ versioned instruction/resource reference resolved into governed context.
 Storage/index maintenance state remains an internal physical concern and is
 not a second source of truth.
 
+RRFlow also has one repository-contained engine source and distribution
+boundary. Every RRFlow engine capability, bundled adapter, schema, bootstrap
+template, default configuration, installer, verifier, and recovery tool lives
+in this repository; no build or release may depend on a sibling checkout,
+escaping path, submodule, or undeclared generated input. Locked third-party
+libraries remain ordinary build inputs, but after a signed RRFlow bundle is
+acquired, default
+installation, startup, persistence, close/reopen, recovery, and verification
+must work with outbound network access disabled and without SurrealDB, Qdrant,
+PostgreSQL, Turso, Dragonfly, Connectome, a mesh, or a model provider. Optional
+systems attach only through explicit public-contract adapters. The detailed
+boundary and release contents are owned by the
+[system overview](docs/architecture/system-overview.md); Gates A, D, and J own
+the source audit, offline installation, and clean-machine proof.
+
 ## Canonical context contract
 
 The provider-neutral operation is `context-assemble` at
@@ -440,6 +455,9 @@ Not implemented or not yet production-grade:
 - mesh endpoint discovery, engine persistence and execution of the canonical
   attunement job, and engine-owned trigger/routine/hook-adapter/skill
   operations are not yet implemented.
+- a self-contained signed distribution and offline clean-machine installation
+  proof do not exist; current workspace locality is not release evidence, and
+  one comparison harness still contains a host-specific build-output default.
 - standalone Connectome is not yet RRFlow 1.0-conformant: its inherited UI and
   runtime paths have not been consolidated onto the public RRD client, so it
   must not claim the 1.0 release version yet.

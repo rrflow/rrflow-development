@@ -31,7 +31,7 @@ Roadmap completion currently stands at:
 
 | Gate | Purpose | Complete |
 |---|---|---:|
-| A | authority, naming, documentation memory, and source boundaries | 5 / 7 |
+| A | authority, naming, documentation memory, and repository-contained source boundaries | 5 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 2 / 5 |
 | C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
@@ -40,7 +40,7 @@ Roadmap completion currently stands at:
 | G | LFG routing through the engine | 0 / 6 |
 | H | dynamic context, feedback, delivery, tracing, and Connectome | 0 / 7 |
 | I | explicit triggers, routines, hook adapters, and skills | 0 / 7 |
-| J | clean release and real deployment proof | 0 / 5 |
+| J | self-contained release and real deployment proof | 0 / 5 |
 
 ## RRFlow 1.0 execution checklist
 
@@ -82,7 +82,7 @@ assumptions.
 | [x] | A-04 | Move all existing crates into one non-duplicated grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 | [ ] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
-| [ ] | A-07 | Audit the actual dependency graph and public vocabulary, then freeze industry-aligned directory, crate, module, test, fixture, and binary names; rename or remove overlapping pre-release boundaries directly with no aliases or compatibility shims. | workspace | Reviewed boundary map plus `cargo metadata`, dependency-direction tests, repository terminology search, and owning suites prove every package has one responsibility and every dependency points inward. |
+| [ ] | A-07 | Audit the actual dependency graph and public vocabulary, then freeze industry-aligned directory, crate, module, test, fixture, and binary names; keep every first-party build/install/runtime input inside this repository and rename or remove overlapping pre-release boundaries directly with no aliases or compatibility shims. | workspace | Reviewed boundary map plus `cargo metadata`, dependency-direction tests, tracked-path inspection, repository terminology search, and owning suites prove every package has one responsibility, every dependency points inward, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
 
 #### A-06 knowledge-bootstrap sequence
 
@@ -293,20 +293,21 @@ its correctness is demonstrated below the semantic engine.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | D-01 | Implement `rrflow install` by resolving a versioned generic project-bootstrap template, provider-neutral specialization manifest, and attunement profile, with explicit new/existing-project modes, preview/apply behavior, and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. | `rrflow-cli`, `rrd-engine` | Template golden tests prove `AGENTS.md` is the single instruction body and any supported provider files are forwarding stubs; fresh and existing project tests preserve user content, initialize, authenticate, close, and reopen the same instance; preview performs no writes. |
+| [ ] | D-01 | Implement `rrflow install` by resolving only bundle-resident, versioned project-bootstrap templates, provider-neutral specialization manifests, and attunement profiles, with explicit new/existing-project modes, preview/apply behavior, and a minimal `.rrflow/config.toml` locator containing no canonical mutable state or plaintext secret. The apply path performs no download or sibling-repository discovery. | `rrflow-cli`, `rrd-engine` | Template golden tests prove `AGENTS.md` is the single instruction body and any supported provider files are forwarding stubs; with outbound network denied and sibling directories absent, fresh and existing project tests preserve user content, initialize the native rrflowKV profile, authenticate, close, and reopen the same instance; preview performs no writes or fetches. |
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
 | [ ] | D-03 | Implement only the inventory phase first: ignore rules, secret/generated/cache exclusions, content digests, source classification, and bounded work estimates. | `rrd-attunement` through `rrd-engine` | This repository inventories without `target`, `node_modules`, `.git`, rrflowDB files, or secret payloads; unchanged rerun performs no content work. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing with parser/language revision and source-digest provenance. | `rrd-attunement` through `rrd-engine` | Edit-one-file test reparses the changed source, preserves unaffected identities, and resumes after process restart. |
 | [ ] | D-05 | Implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, and independent acceptance test before the next phase begins. |
-| [ ] | D-06 | Classify SQL, PostgreSQL, Turso, and other application/operator databases as external sources; never select them as RRFlow persistence implicitly. | `rrd-attunement`, operator adapters | Fixture project proves discovery creates governed source metadata without copying credentials, changing the application database, or creating another RRFlow authority. |
+| [ ] | D-06 | Classify SQL, PostgreSQL, Turso, Dragonfly, object stores, and other application/operator systems as optional external sources; never install, start, or select them as RRFlow persistence implicitly. | `rrd-attunement`, operator adapters | Fixture project proves discovery creates governed source metadata without copying credentials, changing the external system, affecting default RRFlow readiness, or creating another RRFlow authority. |
 | [ ] | D-07 | Bind installation to the DevForge CoW placement contract: immutable tools/models may live in the shared lower layer; workspace changes and all rrflowKV WAL, manifest, segment, catalogue, and graph state live in the writable upper layer. | `rrflow-cli`, DevForge adapter | Two clones share the same lower digest while independent writes, crash recovery, and deletion in one upper layer cannot affect the other. |
 | [ ] | D-08 | Recognize content-addressed dependency mounts as shared immutable inputs rather than copying or attuning dependency caches into each estate. | `rrd-attunement`, DevForge adapter | Rust, Go, Node, and model-cache fixture proves stable mount digests, zero duplicate ingestion, and correct invalidation when a mounted digest changes. |
 | [ ] | D-09 | Measure logical size, allocated blocks, compression, WAL growth, and snapshot size separately; never infer zero-byte or sparse-allocation savings from logical file size. | `rrd-lsm`, release harness | Fresh clone and sustained-write reports account for lower, upper, cache, WAL, segment, and snapshot bytes with reproducible filesystem commands. |
 | [ ] | D-10 | Add a hibernation preparation/restore contract that quiesces writes, captures a verified rrflowKV snapshot boundary, exports to the configured cold tier, and resumes without changing estate identity. | `rrd-engine`, DevForge adapter | Interrupted export, corrupt object, restore, rollback, and hot-to-cold-to-hot tests prove no acknowledged-write loss and no split authority. |
 
-Gate D exits only when a fresh and an existing project can be installed,
-attuned, interrupted, resumed, verified, and reopened through public engine
-operations.
+Gate D exits only when a fresh and an existing project can be installed from
+bundle-resident inputs, attuned, interrupted, resumed, verified, and reopened
+through public engine operations with the network denied and no external
+database service.
 
 ### Gate E — make graph and indexes native incremental access paths
 
@@ -386,9 +387,9 @@ trigger, routine, adapter, or skill worked.
 |---|---|---|---|---|
 | [ ] | J-01 | Remove every deprecated item, legacy/compatibility path, editor/provider-owned automatic hook, duplicate source of truth, and stale generated artifact. | workspace | Strict warning/dependency/search gates and all-target builds are clean. |
 | [ ] | J-02 | Run unit, property, fuzz corpus, differential, crash/reopen, storage-full, security denial, resource-budget, adapter, and real-process suites. | workspace | Release evidence records commands, versions, passed/failed counts, and retained failure artifacts. |
-| [ ] | J-03 | Install and attune both an empty fixture and this existing repository from released artifacts, then restart and repeat representative fast/heavy queries. | release harness | Both estates verify with stable digests; unchanged rerun is incremental and no manual database repair is needed. |
-| [ ] | J-04 | Publish fixed-hardware rrflowKV, graph, BM25, exact/HNSW, DataFusion, context, LFG, and end-to-end latency/memory/disk benchmarks. | evaluation harness | Raw data, configuration, warmup, concurrency, percentiles, recall/quality metrics, and failed runs accompany every claim. |
-| [ ] | J-05 | Produce reproducible signed binaries, SDKs, schema/golden bundle, LFG conformance manifest, SBOM, default configuration, backup/restore rehearsal, and operator runbook. | release tooling | Clean-machine installation and artifact verification pass without repository-local caches or undeclared files. |
+| [ ] | J-03 | Install and attune both an empty fixture and this existing repository from the verified default distribution, then restart and repeat representative fast/heavy queries. | release harness | With outbound network denied, sibling repositories absent, and no external database/query/vector service, both estates verify with stable digests; unchanged rerun is incremental and no manual database repair is needed. |
+| [ ] | J-04 | Publish fixed-hardware rrflowKV, graph, BM25, exact/HNSW, DataFusion, context, LFG, end-to-end, and clean-rollout benchmarks against pinned declared baselines. | evaluation harness | Raw data, configuration, warmup, concurrency, percentiles, recall/quality metrics, failed runs, and a SurrealDB/Qdrant deployment matrix report artifact bytes, installed bytes, required commands, elapsed time, services, ports, configuration, secrets, readiness, and persistent readback. No ease or superiority claim is allowed until like-for-like evidence passes. |
+| [ ] | J-05 | Produce one reproducible signed default distribution containing all default-distribution first-party executables and linked engine capabilities, SDKs, schemas/goldens, project and attunement templates, default configuration/profile, required local inference assets, SBOM/licenses, artifact verifier, backup/restore rehearsal, and operator runbook. | release tooling | After artifact acquisition, a clean supported machine with no compiler, source checkout, sibling repository, repository-local cache, package registry, external database/query/vector service, or outbound network runs preview and one explicit apply operation, reaches authenticated readiness, commits data, closes, reopens, verifies persistence, and identifies every installed byte from the signed manifest. |
 
 RRFlow 1.0 is releasable only when every Gate J item and every prerequisite is
 checked. Until then the repository may describe implemented and measured

@@ -23,6 +23,19 @@ not use version changes as progress markers. A later version change requires
 the repository owner's explicit instruction after the alpha objective, release
 gates, optimization evidence, and release decision are complete.
 
+All first-party code that implements the RRFlow engine or a bundled RRFlow
+adapter, plus its schemas, bootstrap templates, default configuration,
+installation logic, release assembly, verification, and recovery tooling, must
+live in this repository.
+Do not add a sibling-checkout dependency, escaping local path, Git submodule,
+undeclared generator, or install-time/runtime fetch. Locked third-party source
+dependencies are permitted build inputs, but the signed default distribution
+must contain every linked binary and runtime asset needed to install, start,
+persist, recover, and verify RRFlow after the bundle has been acquired.
+Connectome, project databases, mesh services, providers, and other external
+systems remain optional public-contract integrations and cannot be required
+for default RRFlow readiness.
+
 For project work:
 
 1. Read `README.md` and follow its relevant owner warp point, then inspect the
@@ -31,9 +44,12 @@ For project work:
 2. Preserve unrelated user changes. Keep each change coherent and reviewable.
 3. Use the existing `rrd-engine` composition boundary and provider-neutral
    contracts; do not add provider-specific state or a parallel source of truth.
-4. Verify with the smallest relevant test first, then the owning package suite.
-5. Report what actually passed, what failed, and what was not run.
-6. Treat existing types, files, compilation, and mocks as implementation
+4. Keep every first-party build, install, and runtime dependency within the
+   repository and make optional external integration explicit at the contract
+   edge.
+5. Verify with the smallest relevant test first, then the owning package suite.
+6. Report what actually passed, what failed, and what was not run.
+7. Treat existing types, files, compilation, and mocks as implementation
    inventory, not proof. Update objective, roadmap, or POA&M status only with
    the acceptance evidence named by the owning record.
 

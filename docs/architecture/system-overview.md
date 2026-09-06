@@ -120,6 +120,29 @@ RRFlow Security is cross-cutting and enforced by `RrdEngine`:
 | Mutation | Schema validation, effect authorization, and transaction coordination | Direct model, adapter, hook, or DataFusion storage writes |
 | Evidence | Correlated audit, plan, source, and commit coordinates | Trace events substituting for canonical state |
 
+## Source and distribution boundary
+
+RRFlow is self-contained at two different boundaries that must not be
+conflated:
+
+| Boundary | Must contain | Must not require |
+|---|---|---|
+| First-party source | Every RRFlow engine, persistence, query, vector, inference-adapter, transport, install, attunement, release, verification, backup, and recovery implementation; all schemas, templates, fixtures, and generated-source inputs | A sibling checkout, local path outside the repository, Git submodule, untracked generator, or host-specific absolute path |
+| Signed default distribution | RRD and operator executables; linked rrflowKV, rrflowQL, Arrow/DataFusion, graph, BM25, vector, security, and engine code; public schemas/goldens; bootstrap and attunement templates; default configuration; runtime/model assets required by the declared default profile; verifier; licenses/SBOM; recovery material and runbook | A compiler, Cargo/npm cache, package registry, source checkout, external database/query/vector service, Connectome, mesh, or provider connection |
+
+The source build may resolve content-locked third-party packages through the
+normal toolchain. That does not authorize a deployed RRFlow instance to fetch
+code or required runtime assets. Release assembly records dependency digests
+and licenses, and installation must work with outbound network access denied
+after the signed bundle is acquired. An optional model or adapter bundle may be
+side-loaded only when the operator selects it explicitly; anything required by
+the default profile belongs in the default distribution.
+
+Connectome remains a separate client release. PostgreSQL, Turso, SQLite,
+Dragonfly, object stores, Zuul Zero/shippin.ai meshes, and model providers
+remain optional integrations. None is needed to make a local rrflowKV estate
+ready, commit data, close, reopen, recover, or verify itself.
+
 ## External integrations
 
 PostgreSQL, Turso, SQLite, Dragonfly, application databases, object stores,
