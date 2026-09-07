@@ -15,3 +15,4 @@ the target fast and analytical paths, the
 |---|---|---|---|
 | Multi-model reads | [`rrflow://rrflow-instance/data/reference/query/multi-model`](rrflow://rrflow-instance/data/reference/query/multi-model) | [`multi-model.md`](multi-model.md) | implemented breadth over materialized snapshots; native access paths remain open |
 | Query index catalogue | [`rrflow://rrflow-instance/data/reference/query/index-catalogue`](rrflow://rrflow-instance/data/reference/query/index-catalogue) | [`index-catalogue.md`](index-catalogue.md) | persistent catalogue and snapshot artifacts; native incremental index storage remains open |
+| Transactions and joins | [`rrflow://rrflow-instance/data/reference/query/transactions-and-joins`](rrflow://rrflow-instance/data/reference/query/transactions-and-joins) | [`transactions-and-joins.md`](transactions-and-joins.md) | same-stamp equi-join and engine-owned bounded mutation-program behavior |

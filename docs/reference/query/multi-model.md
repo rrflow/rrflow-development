@@ -69,7 +69,9 @@ paths before Gate F replaces eager snapshots with stamped streams from the
 hybrid rrflowKV segment layout.
 
 The current index-catalogue behavior is described by the
-[query index catalogue](index-catalogue.md). Live-query semantics remain at
+[query index catalogue](index-catalogue.md), and the current join and bounded
+mutation-program behavior is described by
+[transactions and joins](transactions-and-joins.md). Live-query semantics remain at
 [`docs/rrflowql-live-query-v1.md`](../../rrflowql-live-query-v1.md), and public
 subscription delivery remains at
 [`docs/rrd-live-subscriptions-v1.md`](../../rrd-live-subscriptions-v1.md),

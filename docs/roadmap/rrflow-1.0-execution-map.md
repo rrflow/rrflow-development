@@ -442,6 +442,7 @@ Resolved full-file reviews:
 |---|---|---|
 | `docs/rrflowql-multimodel-v1.md` | `docs/reference/query/multi-model.md` | Preserved the tested source-family, temporal, traversal, and typed-predicate semantics; replaced the removed Fjall claim with rrflowMX/rrflowKV evidence; and made the eager `QueryRow`/Arrow allocation plus native-access-path gaps explicit. |
 | `docs/rrflowql-index-catalogue-v1.md` | `docs/reference/query/index-catalogue.md` | Preserved the tested persistent catalogue, snapshot artifacts, lifecycle, exact selection, uniqueness, and corruption behavior; removed stale Fjall and incomplete-index claims; and distinguished reconciliation evidence from native incremental maintenance. |
+| `docs/rrflowql-transactions-and-joins-v1.md` | `docs/reference/query/transactions-and-joins.md` | Preserved the tested same-stamp join and engine-owned mutation-program behavior; removed the retired milestone and Fjall claims; and separated existing eager execution from the C/F transaction and streaming targets. |
 
 No row authorizes a blind move. The file must first be read in full, compared
 to current code and its target owner, and then retained as the owner, merged
