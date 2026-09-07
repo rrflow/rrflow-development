@@ -73,18 +73,25 @@ For project work:
    rules in
    `docs/reference/agent-bootstrap.md#independent-engine-and-project-integration`
    before changing installation, attunement, scaffolding, or an adapter.
-6. Verify with the smallest relevant test first, then the owning package suite.
-7. Report what actually passed, what failed, and what was not run.
-8. Treat existing types, files, compilation, and mocks as implementation
+6. Journal every bounded package in
+   `docs/roadmap/rrflow-1.0-execution-map.md` using its evidence-record
+   template before commit. Record the starting revision, complete files read,
+   changed paths and behavior, exact commands and results, surfaced failures,
+   checks not run, remaining errors, and any roadmap-status change. Add a
+   verified new deficiency to the POA&M; do not use chat or a Git commit alone
+   as the work record.
+7. Verify with the smallest relevant test first, then the owning package suite.
+8. Report what actually passed, what failed, and what was not run.
+9. Treat existing types, files, compilation, and mocks as implementation
    inventory, not proof. Update objective, roadmap, or POA&M status only with
    the acceptance evidence named by the owning record.
-9. Before deleting, moving, merging, or rewriting implementation, update the
+10. Before deleting, moving, merging, or rewriting implementation, update the
    implementation-requirements traceability in
    `docs/roadmap/rrflow-1.0-execution-map.md`. Map the current behavior, source
    modules, characterization tests, canonical destination, owning gate, and
    replacement evidence. Git ancestry, merge status, a path rename, and a
    successful compile are not consolidation proof.
-10. RRFlow 1.0 has one current pre-release implementation. Carry reusable
+11. RRFlow 1.0 has one current pre-release implementation. Carry reusable
    behavior and tests into their canonical boundary, then remove conflicting
    paths directly. Do not create a parallel fallback, migration, or
    historical-code lane to avoid completing that convergence.

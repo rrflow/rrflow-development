@@ -438,7 +438,7 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/rrd-lsm-fjall-ai-audit.md` | merge accepted benchmark requirements into C/J and retain its already-linked raw results as evidence, then remove the duplicate narrative when C-05 removes Fjall |
 | `docs/rrd-persistent-scenario-matrix.md` | `docs/evidence/test-plans/persistence-scenario-matrix.md`; do not label unexecuted cells as evidence |
 | `docs/rrd-security-v1.md` | `docs/reference/security/authority.md` |
-| `docs/rrd-security-bootstrap-v1.md` | `docs/guides/installation/security-bootstrap.md` after D-01 aligns installation |
+| `docs/rrd-security-bootstrap-v1.md` | merge stable security-bootstrap requirements into the agent-bootstrap and security owners, then remove; D-01 creates an executable installation guide only after behavior exists |
 | `docs/rrd-cluster-m7.md` | `docs/reference/distributed/cluster-contract.md`; remove retired milestone from active status/title |
 | `docs/rrd-kubernetes-v1alpha1.md` | `docs/reference/deployment/kubernetes-operator.md`; Kubernetes API version may remain where technically real |
 | `docs/rrd-rust-client-v1.md` | `docs/reference/sdk/rust.md` |
@@ -449,6 +449,48 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/rrd-dotnet-client-v1.md` | `docs/reference/sdk/dotnet.md` |
 | `docs/rrd-unified-retrieval-v1.md` | `docs/reference/context/retrieval.md` |
 | `docs/operations/ci.md` | retain at `docs/operations/ci.md`; create the operations index in the same commit |
+
+#### Remaining KB-05 execution queue
+
+This is the bounded work order inside KB-05; it is not a second release plan
+or completion ledger. Exactly one row is reviewed and committed at a time. A
+row leaves this queue only when the same commit adds its resolved-review row,
+structured package journal, canonical owner/index changes, generated inventory,
+and required verification. A newly discovered dependency or conflicting
+authority stops the row and updates this map before work continues.
+
+| Order | Record | Review boundary |
+|---:|---|---|
+| 1 | `docs/rrd-public-contract.md` | Finish the shared protocol contract while the catalogue, server, subscription, and client surfaces are current in review context. |
+| 2 | `docs/rrd-security-v1.md` | Establish the canonical security reference before reviewing local authorization or bootstrap behavior. |
+| 3 | `docs/local-estate-authorization-v1.md` | Reconcile local identity and authorization against the security owner and `RrdEngine`. |
+| 4 | `docs/estate-control-v1.md` | Separate desired/observed estate control from engine lifecycle and persistence authority. |
+| 5 | `docs/instance-topology.md` | Freeze logical and physical instance topology after estate authority is clear. |
+| 6 | `docs/local-process-driver-v1.md` | Reconcile the process adapter against the accepted security, estate, and topology boundaries. |
+| 7 | `docs/rrd-deployment-modes-v1.md` | Author deployment profiles without creating alternate engines or persistence authorities. |
+| 8 | `docs/rrd-cluster-m7.md` | Preserve useful distributed contracts, remove milestone authority, and expose unimplemented cluster behavior. |
+| 9 | `docs/rrd-kubernetes-v1alpha1.md` | Keep only real Kubernetes API semantics and subordinate reconciliation to the engine contract. |
+| 10 | `docs/rrd-security-bootstrap-v1.md` | Merge stable requirements into current security/install owners and remove the flat source; do not publish a task guide for unimplemented D-01 behavior. |
+| 11 | `docs/clyffy-kernel-alpha.md` | Preserve only provider-neutral routing/orchestration requirements under RRFlow and remove the parallel-product framing. |
+| 12 | `docs/package-workflows.md` | Reconcile package workflow semantics with the canonical event, trigger, routine, skill, and adapter boundaries. |
+| 13 | `docs/rrd-functions-v1.md` | Preserve bounded function semantics while preventing a function runtime from becoming lifecycle authority. |
+| 14 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
+| 15 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
+| 16 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
+| 17 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
+| 18 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
+| 19 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
+| 20 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
+| 21 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
+| 22 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
+| 23 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
+| 24 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
+
+After row 24, run the complete KB-05/A-06 acceptance corpus and change the
+canonical roadmap checkbox only if it passes. Then execute A-07.0 traceability,
+A-07.1 package/type vocabulary, and A-07.2 causal evidence vocabulary as
+separate journaled packages. B-03 is the next implementation package only
+after A-06 and A-07 are complete.
 
 Resolved full-file reviews:
 
@@ -507,6 +549,24 @@ cross-boundary command and result: cargo test -p rrd-client --test real_server -
 failure/crash/differential evidence: existing engine corpus passed durable close/reopen and replay; existing query corpus passed rrflowMX/rrflowKV semantic-delta comparison; the first inventory regeneration failed because its tracked-path input reads the Git index and the intended deletion was not staged, so only this package was staged before a clean rerun; no new runtime evidence created
 not run and reason: full workspace tests, SDK conformance, crash matrix, and release qualification are not substitutes for a documentation-only KB-05 classification
 remaining known errors: dedicated heartbeat-polled subscription socket is not B-04 multiplexing; live query still materializes two snapshots instead of H-03 commit-impact evaluation; complete trace and generated-SDK qualification remain open
+roadmap checkbox changed: no
+```
+
+##### `kb-05-execution-queue`
+
+```text
+gate/package: A-06 / KB-05 / execution-queue
+revision: parent 4bc9dec; result is the commit containing this entry
+baseline files/digests: generated inventory reported 756 current, generated, and planned paths; 24 unresolved KB-05 records were derived by comparing the planned and resolved-review tables against the tracked worktree
+files read in full: README.md; AGENTS.md; scripts/ci/build_execution_inventory.py; relevant canonical roadmap, KB-05 execution-map, resolved-review, journal-template, and actual flat-path inventory sections
+files changed/created/deleted/moved: update AGENTS.md, this execution map, scripts/ci/build_execution_inventory.py, and the generated file inventory; no product record or runtime source moved
+contract or behavior changed: none; the supporting map now has one finite per-record order and repository instructions require a structured journal for every bounded package
+smallest test command and result: python3 scripts/ci/build_execution_inventory.py --check — 756 records, passed
+owning package command and result: ruff check scripts/ci/build_execution_inventory.py — passed
+cross-boundary command and result: documentation policy, generated-surface parity, CI workflow policy, version policy, Cargo formatting, and diff checks passed
+failure/crash/differential evidence: review found a dependency cycle that deferred the security-bootstrap KB-05 record until D-01 even though D-01 depends on A-06; the flat record will now merge stable requirements during KB-05 while creation of an executable guide is assigned to D-01
+not run and reason: Rust package/workspace tests, SDK conformance, crash matrices, and release qualification were not run because no Rust, wire contract, runtime behavior, SDK, or release artifact changed
+remaining known errors: 24 KB-05 records remain; A-06 and A-07 are incomplete; B-03 and all later implementation work remain gated
 roadmap checkbox changed: no
 ```
 
