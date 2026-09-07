@@ -46,6 +46,65 @@ Providers receive a bounded projection of this manifest through public RRFlow
 operations. They never receive raw KV keys, plaintext credentials, unrestricted
 workspace content, or authority to mutate the manifest directly.
 
+## Independent engine and project integration
+
+RRFlow is the product being installed, not glue that becomes usable only when
+an application supplies a database, generator, harness, provider, mesh, or
+second reasoning runtime. After the signed bundle has been acquired, the
+default installation must contain everything required to preview, install,
+start, authenticate, persist, close, reopen, recover, and verify the baseline
+RRFlow engine with outbound network access denied. Optional integrations can
+extend what RRFlow knows or can invoke; they cannot supply rrflowDB's canonical
+state, transaction authority, query authority, reasoning lifecycle, or
+readiness.
+
+Installation has two explicit modes under one provider-neutral contract:
+
+| Mode | Required scaffolding behavior | Forbidden shortcut |
+|---|---|---|
+| Fresh project | Resolve a minimal, versioned, bundle-resident project template and specialization profile; preview every RRFlow-owned file and record before apply. | Assuming a language, framework, provider, external database, or generator is present. |
+| Existing project | Preserve project-owned content, commit a deterministic inventory first, and derive inactive integration candidates from evidence in that snapshot. | Executing a detected command, importing credentials, crawling sibling repositories, or treating detection as consent. |
+
+An operator may configure a project-owned or externally supplied code/schema
+generator, build system, test or evaluation harness, CI/deployment system,
+database, model, mesh, or developer tool. Each integration is a versioned
+adapter binding that declares at least:
+
+- capability identity, kind, adapter revision, source evidence, and content or
+  executable digest;
+- command or endpoint schema, bounded working-directory policy, allowed input
+  and output schemas, and environment-variable names without secret values;
+- referenced credentials, network and filesystem permissions, resource and
+  time budgets, cancellation behavior, and authorization scope;
+- health and verification operations, activation status, and the exact
+  RRFlow-owned files and records that uninstall may remove; and
+- the project snapshot, configuration digest, and plan digest against which
+  the binding was previewed and approved.
+
+Discovery creates only an integration candidate. Preview is non-mutating and
+must show every planned file, record, adapter binding, and external invocation.
+Apply accepts the exact plan digest and requires explicit operator policy and
+authorization before invoking an external capability. A generator produces a
+proposed project change: its output must be contained, re-inventoried, and pass
+the normal authorized mutation and verification flow before later attunement
+uses it. A harness returns observations and evidence; it cannot mark an engine
+job complete or commit canonical state. Uninstall removes only the binding and
+RRFlow-owned scaffolding named by the accepted plan and leaves project-owned
+artifacts and rrflowDB state intact unless a separate destructive operation is
+explicitly authorized.
+
+SurrealDB, Qdrant, Lance, Fjall, and other Rust codebases are engineering
+references, not RRFlow module templates. Authorized source adaptation starts
+by recording the exact useful behavior, algorithm, failure semantics, and
+provenance in the execution map. The implementation is then authored at the
+one owning RRFlow boundary using RRFlow identities, semantic contracts,
+`RrdEngine` authorization and commit rules, physical formats, resource
+budgets, and acceptance tests. A copied crate topology, renamed upstream data
+model, compatibility API, or embedded second engine does not satisfy a gate.
+Characterization, differential, failure-injection, and restart evidence must
+show that the adapted behavior belongs to the cohesive RRFlow engine before a
+prior implementation is removed.
+
 ## Installation and attunement
 
 The frozen contract already defines fresh/existing project targets; the ordered

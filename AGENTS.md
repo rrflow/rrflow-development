@@ -36,6 +36,28 @@ Connectome, project databases, mesh services, providers, and other external
 systems remain optional public-contract integrations and cannot be required
 for default RRFlow readiness.
 
+RRFlow is an independently installable and operable reasoning and recall
+engine. A project's code or schema generator, build/test/evaluation harness,
+CI system, database, mesh, model provider, or development tool may be
+discovered during attunement and integrated through a typed, configurable
+adapter, but it is never an undeclared prerequisite or a second RRFlow
+authority. Discovery does not authorize activation. Installation must expose
+fresh-project and existing-project modes; preview the exact versioned
+scaffolding, records, adapter bindings, commands, permissions, budgets, and
+digests; require explicit configuration and authorization before invoking an
+external capability; and make RRFlow-owned integration removable without
+damaging project-owned state. Generator output must re-enter the authorized
+project-inventory and mutation flow, and harness results are evidence rather
+than lifecycle state.
+
+Upstream and experimental Rust implementations are reference inputs, not
+architecture. Before adapting code from SurrealDB, Qdrant, Lance, Fjall, or
+another implementation, map the useful behavior, algorithm, failure
+semantics, and provenance to one canonical RRFlow boundary and its owning
+roadmap gate. Adapt it to RRFlow naming, types, transaction authority,
+physical model, budgets, and tests. Do not copy an upstream crate tree,
+public model, compatibility surface, or hidden runtime and rename it RRFlow.
+
 For project work:
 
 1. Read `README.md` and follow its relevant owner warp point, then inspect the
@@ -47,18 +69,22 @@ For project work:
 4. Keep every first-party build, install, and runtime dependency within the
    repository and make optional external integration explicit at the contract
    edge.
-5. Verify with the smallest relevant test first, then the owning package suite.
-6. Report what actually passed, what failed, and what was not run.
-7. Treat existing types, files, compilation, and mocks as implementation
+5. Apply the independent-engine, project-integration, and source-adaptation
+   rules in
+   `docs/reference/agent-bootstrap.md#independent-engine-and-project-integration`
+   before changing installation, attunement, scaffolding, or an adapter.
+6. Verify with the smallest relevant test first, then the owning package suite.
+7. Report what actually passed, what failed, and what was not run.
+8. Treat existing types, files, compilation, and mocks as implementation
    inventory, not proof. Update objective, roadmap, or POA&M status only with
    the acceptance evidence named by the owning record.
-8. Before deleting, moving, merging, or rewriting implementation, update the
+9. Before deleting, moving, merging, or rewriting implementation, update the
    implementation-requirements traceability in
    `docs/roadmap/rrflow-1.0-execution-map.md`. Map the current behavior, source
    modules, characterization tests, canonical destination, owning gate, and
    replacement evidence. Git ancestry, merge status, a path rename, and a
    successful compile are not consolidation proof.
-9. RRFlow 1.0 has one current pre-release implementation. Carry reusable
+10. RRFlow 1.0 has one current pre-release implementation. Carry reusable
    behavior and tests into their canonical boundary, then remove conflicting
    paths directly. Do not create a parallel fallback, migration, or
    historical-code lane to avoid completing that convergence.
