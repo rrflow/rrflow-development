@@ -461,32 +461,31 @@ authority stops the row and updates this map before work continues.
 
 | Order | Record | Review boundary |
 |---:|---|---|
-| 1 | `docs/rrd-public-contract.md` | Finish the shared protocol contract while the catalogue, server, subscription, and client surfaces are current in review context. |
-| 2 | `docs/rrd-security-v1.md` | Establish the canonical security reference before reviewing local authorization or bootstrap behavior. |
-| 3 | `docs/local-estate-authorization-v1.md` | Reconcile local identity and authorization against the security owner and `RrdEngine`. |
-| 4 | `docs/estate-control-v1.md` | Separate desired/observed estate control from engine lifecycle and persistence authority. |
-| 5 | `docs/instance-topology.md` | Freeze logical and physical instance topology after estate authority is clear. |
-| 6 | `docs/local-process-driver-v1.md` | Reconcile the process adapter against the accepted security, estate, and topology boundaries. |
-| 7 | `docs/rrd-deployment-modes-v1.md` | Author deployment profiles without creating alternate engines or persistence authorities. |
-| 8 | `docs/rrd-cluster-m7.md` | Preserve useful distributed contracts, remove milestone authority, and expose unimplemented cluster behavior. |
-| 9 | `docs/rrd-kubernetes-v1alpha1.md` | Keep only real Kubernetes API semantics and subordinate reconciliation to the engine contract. |
-| 10 | `docs/rrd-security-bootstrap-v1.md` | Merge stable requirements into current security/install owners and remove the flat source; do not publish a task guide for unimplemented D-01 behavior. |
-| 11 | `docs/clyffy-kernel-alpha.md` | Preserve only provider-neutral routing/orchestration requirements under RRFlow and remove the parallel-product framing. |
-| 12 | `docs/package-workflows.md` | Reconcile package workflow semantics with the canonical event, trigger, routine, skill, and adapter boundaries. |
-| 13 | `docs/rrd-functions-v1.md` | Preserve bounded function semantics while preventing a function runtime from becoming lifecycle authority. |
-| 14 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
-| 15 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
-| 16 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
-| 17 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
-| 18 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
-| 19 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
-| 20 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
-| 21 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
-| 22 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
-| 23 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
-| 24 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
+| 1 | `docs/rrd-security-v1.md` | Establish the canonical security reference before reviewing local authorization or bootstrap behavior. |
+| 2 | `docs/local-estate-authorization-v1.md` | Reconcile local identity and authorization against the security owner and `RrdEngine`. |
+| 3 | `docs/estate-control-v1.md` | Separate desired/observed estate control from engine lifecycle and persistence authority. |
+| 4 | `docs/instance-topology.md` | Freeze logical and physical instance topology after estate authority is clear. |
+| 5 | `docs/local-process-driver-v1.md` | Reconcile the process adapter against the accepted security, estate, and topology boundaries. |
+| 6 | `docs/rrd-deployment-modes-v1.md` | Author deployment profiles without creating alternate engines or persistence authorities. |
+| 7 | `docs/rrd-cluster-m7.md` | Preserve useful distributed contracts, remove milestone authority, and expose unimplemented cluster behavior. |
+| 8 | `docs/rrd-kubernetes-v1alpha1.md` | Keep only real Kubernetes API semantics and subordinate reconciliation to the engine contract. |
+| 9 | `docs/rrd-security-bootstrap-v1.md` | Merge stable requirements into current security/install owners and remove the flat source; do not publish a task guide for unimplemented D-01 behavior. |
+| 10 | `docs/clyffy-kernel-alpha.md` | Preserve only provider-neutral routing/orchestration requirements under RRFlow and remove the parallel-product framing. |
+| 11 | `docs/package-workflows.md` | Reconcile package workflow semantics with the canonical event, trigger, routine, skill, and adapter boundaries. |
+| 12 | `docs/rrd-functions-v1.md` | Preserve bounded function semantics while preventing a function runtime from becoming lifecycle authority. |
+| 13 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
+| 14 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
+| 15 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
+| 16 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
+| 17 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
+| 18 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
+| 19 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
+| 20 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
+| 21 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
+| 22 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
+| 23 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
 
-After row 24, run the complete KB-05/A-06 acceptance corpus and change the
+After row 23, run the complete KB-05/A-06 acceptance corpus and change the
 canonical roadmap checkbox only if it passes. Then execute A-07.0 traceability,
 A-07.1 package/type vocabulary, and A-07.2 causal evidence vocabulary as
 separate journaled packages. B-03 is the next implementation package only
@@ -521,6 +520,7 @@ Resolved full-file reviews:
 | `docs/runtime-graph.md` | Accepted current semantics merged into `docs/architecture/engine-data-flow.md`; overlapping boundaries remain in `docs/architecture/system-overview.md` and canonical query/data references | Preserved the tested bounded global-cursor paging, reopen/hash-chain, valid/known-time snapshot, and directed-traversal behavior plus the implemented cursor-addressed event nodes, deterministic `emitted` edges, and structural differential that E-01 must cover against an exact oracle. Removed obsolete RRO composition, compatibility/Fjall authority, migration promises, duplicated catalogue/query material, stale endpoints, and a milestone-style next-work list; made whole-log graph reconstruction an explicit C-03/C-04/E-01 gap. |
 | `docs/context-path-profiler.md` | Accepted engine evidence and optimization requirements merged into `docs/architecture/engine-data-flow.md`, H-05, and implementation traceability | Rejected a standalone profiler, provider lifecycle, hardcoded review cadence, deletion quota, hidden chain-of-thought view, and obsolete Clyffy/Automaton sequencing. Preserved fixed-rubric context-path comparison, selected/skipped route and resource attribution, repeated/missed/stale/duplicate/conflicting/compaction-loss diagnostics, immutable evidence drill-down, and reversible evidence-gated consolidation under `RrdEngine`; distinguished the tested durable trace foundation from unimplemented end-to-end instrumentation. |
 | `docs/context-maintenance-v1.md` | `docs/reference/context/context-maintenance.md` | Preserved immutable canonical history, source-stamped derived projections, protection, deterministic proposal, explicit review, evidence-gated activation, observation, and compensating rollback. Replaced hot/warm/cold storage ambiguity with delivery behavior, removed hardcoded classes and reduction percentages, made the seven safety steps a generic routine template rather than a new lifecycle, exposed every current `rrd-maintenance` authority violation and absence of tests/callers, and assigned direct convergence with no wrapper. |
+| `docs/rrd-public-contract.md` | `docs/reference/protocol/public-contract.md` | Preserved the strict `rrd` protocol identity/version, explicit resource and correlation coordinates, request/response/error envelopes, mutation idempotency requirement, typed multi-model/query/vector/delivery vocabulary, deployment and capability discovery, generated endpoint/OpenAPI authority, golden samples, and shared conformance inputs. Corrected the stale 34-operation claim to the executable 33-operation catalogue and `memory` to the actual `rrflow_mx` wire value; separated exported Rust types, catalogued operations, runtime capability discovery, and behavioral proof; and mapped every contract family to the required rrflowMX/rrflowKV, native graph/BM25/vector, rrflowQL/Arrow/DataFusion, reasoning, attunement, and cross-surface gates. Full review exposed a nonexistent backup route in the frozen sample, retired gate labels in runtime capability text, and successful alternate transaction/vector branches; POAM-015 now owns their direct convergence rather than this documentation move silently changing behavior. |
 | `docs/rrd-server-v1.md` | `docs/reference/protocol/server.md` | Preserved the generated catalogue/router authority, loopback and mutual-TLS boundaries, typed envelopes, exact authorization, durable idempotency and lifecycle state, restart reconciliation, WebSocket subscription semantics, and real-process evidence. Removed the copied endpoint inventory, retired milestone/status claims, stale deployment link, and any implication that callable routes prove target storage or recall behavior. The later subscription review corrected this reference to recognize the existing real-process missing-client-certificate, wrong-server-name, HTTPS, and WSS coverage while leaving untrusted-client-chain, rotation, revocation, external identity, and deployment qualification open. Exposed claim-only transactions, the non-atomic three-transition commit, one-request TLS connections, bounded follow/two-snapshot polling, incomplete trace propagation, and absent multiplexed WebSocket/GraphQL/SDK qualification as direct B/C/H/J convergence work. |
 | `docs/rrd-live-subscriptions-v1.md` | `docs/reference/protocol/subscriptions.md` | Preserved the implemented immutable stream definition, one runtime-cursor order, durable ACK and outstanding-delivery state, cumulative ACK, generation fencing, reconnect/restart replay, retention floor, lease renewal, bounded backpressure, dual authorization, changefeed/live-query frames, Rust client, and WSS behavior. Removed the milestone title, compatibility language, and implication that durable transport completes live-query execution. Documented the current JSON control record, heartbeat-driven single-subscription socket, session-bound ownership, logical rather than physical retention floor, and two-snapshot live-query cost as B-04/H-03/J work; corrected the adjacent server reference against its existing mutual-TLS real-process test. |
 
@@ -533,6 +533,24 @@ knowledge moves into its one owner; unresolved work becomes a POA&M row; raw
 reproducible results remain evidence; redundant narrative is removed.
 
 #### KB-05 package journal
+
+##### `rrd-public-contract`
+
+```text
+gate/package: A-06 / KB-05 / rrd-public-contract
+revision: parent 9c3d50b; result is the commit containing this entry
+baseline files/digests: docs/rrd-public-contract.md=9b344bb4926c608fb21f60b6e65fa1f34f0a2b8a7ccbc78654c9d20d6373a1d0; rrd-contract/src/lib.rs=2a9b9c23126bcc7793057d64c2b7fad8937473b2376aeb72d1394c3f22812a19; public_contract.rs=606a771a31deffc083dd37fe693fbaf8139819fdc35cd47d6d92b2a00a274e08; public-contract-v1.json=08095dcd45f54845c3043e3797c60e1d88c7efcaf1fce70575554f3400eccbfa
+files read in full: root README; flat public-contract record; knowledge/reference/protocol indexes; protocol server and subscription owners; objective, POA&M, canonical roadmap, and execution map; rrd-contract manifest, lib.rs, capability-surface and SDK-conformance modules, public golden, deployment/SDK corpora, and public-contract tests; engine and server capability builders; Rust client manifest, implementation, and SDK-conformance test
+files changed/created/deleted/moved: create docs/reference/protocol/public-contract.md; update protocol index, POA&M, this resolved-review/queue/journal, and generated file inventory; delete docs/rrd-public-contract.md; no Rust, wire fixture, generated SDK, server, client, engine, or runtime file changed
+contract or behavior changed: none; the canonical reference now distinguishes exported representation, catalogued exposure, runtime discovery, and actual single-engine acceptance, and maps each contract family to its required rrflowMX/rrflowKV/native-index/rrflowQL/Arrow/DataFusion/reasoning proof
+smallest test command and result: cargo test -p rrd-contract --test public_contract --locked — 31 passed before editing and 31 passed after editing
+owning package command and result: cargo test -p rrd-contract --all-targets --locked — 58 passed; cargo clippy -p rrd-contract --all-targets --locked -- -D warnings — passed
+cross-boundary command and result: cargo test -p rrd-engine --test workspace_architecture public_contract_and_client_stay_implementation_free --locked — 1 passed; deterministic inventory check reported 755 records; documentation policy, generated-surface parity at 33 HTTP operations/OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715, workflow policy, frozen 1.0.0 version policy, Cargo formatting, and diff checks passed
+failure/crash/differential evidence: the passing baseline did not reject the frozen sample's nonexistent POST /v1/backups/create binding; POAM-015 records that defect plus retired runtime capability labels and alternate successful pre-release branches; no new crash, reopen, engine differential, or resource evidence was created
+not run and reason: engine/server/client real-process suites, external SDK conformance, full workspace tests, crash matrices, DataFusion streaming, native-index, reasoning, and deployment qualification do not prove a documentation-only KB-05 classification and remain owned by their named gates
+remaining known errors: 23 KB-05 records remain; A-06/A-07 are incomplete; public capability drift in POAM-015 remains; the contract types do not establish persistent rrflowKV, equivalent rrflowMX semantics, streamed Arrow/DataFusion, native graph/BM25/vector execution, persisted reasoning, installation, or cross-surface qualification
+roadmap checkbox changed: no
+```
 
 ##### `rrd-live-subscriptions-v1`
 
