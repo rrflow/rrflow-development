@@ -281,6 +281,47 @@ BFS, and reciprocal-rank fusion. Roadmap Gates E, F, and H replace their
 whole-snapshot costs with native incremental access paths without changing the
 public operation or its single-stamp semantics.
 
+### Context-path evidence and optimization
+
+Context-path observability is part of the engine evidence model, not a
+standalone profiler, provider lifecycle, or Connectome state machine. One
+request must correlate its ingress and parent request, actor and scope,
+`ReadStamp`, reasoning cursor, plan and projection digests, selected and
+skipped context avenues, source identities, ranks and fusion contributions,
+cache decisions, model-context compaction, truncation, model/tool attempts,
+verification, feedback, and final outcome. Each physical stage reports its
+bounded work: keys, pages, rows, graph steps, candidates,
+mapped/read/decoded/copied/allocated bytes,
+context bytes or tokens when known, latency, spill, and output.
+
+The current durable trace contract already supplies bounded W3C-width
+trace/span identities, parentage, start/annotation/finish phases, data classes,
+typed causal links, and structured attributes. Its focused corpus proves equal
+rrflowMX/rrflowKV encoding, atomic schema repair plus event commit, incomplete
+start visibility after rrflowKV reopen, and conflict-safe concurrent writes.
+It does not yet instrument the complete context path, authorize every durable
+trace through `RrdEngine`, or prove H-05. The current lifecycle/workflow-named
+trace residue is direct-convergence inventory for A-07 and Gate I, not a
+second orchestration contract.
+
+Accepted diagnostics must derive from observable events and persisted engine
+coordinates. They identify repeated scans or searches, missed canonical
+records, conflicting or duplicate inputs, stale routes and projections,
+expensive hops, cache misses/evictions, context lost to model-context
+compaction, unused contributions, and outcome regressions. A weak/strong or
+before/after comparison uses the same project snapshot, request class,
+resource budget, verification rubric, and retained raw evidence. Any inference
+is labeled; no view claims access to hidden model chain-of-thought.
+
+Connectome may render the resulting immutable evidence as a timeline, path
+graph, resource meter, comparison, or drill-down, but it cannot create missing
+events or decide engine state. A future context consolidation or pruning
+operation is an explicit, reversible `RrdEngine` proposal against versioned
+state. Representative replay must deny the proposal on quality, correctness,
+latency, resource, security, legal-retention, or policy regression; configured
+operator approval and rollback evidence remain required. A review cadence or
+reduction percentage is policy input, never a hardcoded deletion target.
+
 ## Project-tree inventory and incremental attunement
 
 Attunement begins with a deterministic project-tree snapshot. Parsing,
