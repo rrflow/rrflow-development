@@ -11,8 +11,10 @@ collection policy, loads eligible artifacts, and returns plan and resource
 evidence.
 
 The [collection record](collections.md) owns named-vector and point
-administration. Recursive multimodal retrieval, HNSW physical projection, and
-quantization have separate KB-05 records and are not redefined here.
+administration. The [HNSW projection](hnsw-projection.md) and
+[quantization lifecycle](quantization-lifecycle.md) own their physical artifact
+semantics. Recursive multimodal retrieval has a separate KB-05 record and is
+not redefined here.
 
 ## Exact semantic oracle
 

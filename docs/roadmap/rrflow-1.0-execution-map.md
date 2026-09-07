@@ -448,6 +448,7 @@ Resolved full-file reviews:
 | `docs/rrd-vector-collections-v1.md` | `docs/reference/vector/collections.md` | Preserved the tested collection, named-vector, point, payload-definition, deletion, and reopen behavior; identified the control-record catalogue and whole-log reads; and withheld native index and recall claims until C/E/F evidence exists. |
 | `docs/rrd-vector-search.md` | `docs/reference/vector/search.md` | Preserved the tested exact oracle, planner, HNSW, overlay, rerank, reopen, and bounded recall evidence; removed duplicated collection/retrieval/quantization narrative; and exposed whole-log reconstruction plus the older catalogue reader as C-04/C-05 work. |
 | `docs/rrd-hnsw-online-v2.md` | `docs/reference/vector/hnsw-projection.md` | Preserved format-v2 identity, deterministic traversal, immutable generation, exact-overlay, filtering, and recall semantics; clarified that incremental advance clones the active graph; and exposed JSON graph storage plus whole-log candidate discovery as E-04/C-04 work. |
+| `docs/rrd-quantization-lifecycle-v1.md` | `docs/reference/vector/quantization-lifecycle.md` | Preserved the tested canonical lifecycle, binary mmap codecs, exact rerank, recovery, byte, bias, and recall evidence; exposed whole-log full rebuild input; and marked the TurboQuant ensure adapter for C-05/J-01 removal. |
 
 No row authorizes a blind move. The file must first be read in full, compared
 to current code and its target owner, and then retained as the owner, merged
