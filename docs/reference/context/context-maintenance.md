@@ -75,8 +75,10 @@ steps through the generic routine graph:
    exact included, recall-eligible, retained, and excluded identities.
 4. **Review** — persist configured operator or policy decisions; an override
    records its actor, reason, and affected identities.
-5. **Validate** — execute the declared fixed-corpus replay and safety gates.
-   Pending or failed evidence keeps activation closed.
+5. **Validate** — execute the declared fixed-corpus replay and safety gates,
+   using the [model-context effect plan](../../evidence/test-plans/model-context-effect.md)
+   when a model-assisted outcome is part of the claim. Pending or failed
+   evidence keeps activation closed.
 6. **Activate** — compare-and-swap one new projection generation through
    `RrdEngine`; source, projection, activation, outbox, and audit coordinates
    commit atomically.

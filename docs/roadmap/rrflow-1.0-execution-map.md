@@ -390,7 +390,7 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/blueprint-triage.md` | merge every still-open verified deficiency into the POA&M, then remove |
 | `docs/clyffy-kernel-alpha.md` | merge accepted provider-neutral orchestration requirements into the system overview or agent-bootstrap owner, then remove |
 | `docs/context-path-profiler.md` | merge accepted context measurement requirements into the engine-flow owner and H/J gates, then remove |
-| `docs/prompt-flight-experiments.md` | merge provider-neutral adapter requirements and reproducible evidence into their current owner, then remove |
+| `docs/prompt-flight-experiments.md` | `docs/evidence/test-plans/model-context-effect.md`; preserve only provider-neutral controlled-comparison requirements and claim no execution evidence |
 | `docs/runtime-graph.md` | merge accepted temporal-graph semantics into the system and engine-flow owners, then remove |
 | `docs/context-maintenance-v1.md` | `docs/reference/context/context-maintenance.md`; rewrite as the target context-projection contract and record the standalone `rrd-maintenance` crate for direct convergence into generic routines |
 | `docs/estate-control-v1.md` | `docs/reference/operations/estate-control.md` |
@@ -442,6 +442,7 @@ Resolved full-file reviews:
 
 | Baseline record | Canonical record | Review result |
 |---|---|---|
+| `docs/prompt-flight-experiments.md` | `docs/evidence/test-plans/model-context-effect.md` | Replaced the retired workbench/provider lifecycle with a content-addressed, provider-neutral experiment contract. Preserved fixed task/project/context comparisons, observable event and token/resource accounting, repeated-trial discipline, retained failures, and no hidden chain-of-thought; removed Codex/Claude command flags, hardcoded effort profiles and arms as runtime authority, lexical acceptance, unproved fresh-session claims, prompts in process arguments, and loopback UI behavior. The new record explicitly claims no harness or evidence. |
 | `docs/blueprint-triage.md` | Current deficiencies merged into `docs/poam/rrflow-1.0-alpha.md`; implementation requirements were already owned by C-01, C-06, C-07, F-01, F-04, and F-05 | Removed the superseded Fjall/Vortex/Clyffy architecture, stale ports and task claims, fixed retrieval thresholds, and non-authoritative upstream comparisons. Preserved the valid distinction between mapping bytes and borrowing eligible Arrow buffers, plus bounded stream/backpressure, snapshot-retention, block-pinning, cancellation, compaction, and cache-accounting requirements; no implementation-specific async bridge was mandated before the stamped provider is designed. |
 | `docs/rrflowql-multimodel-v1.md` | `docs/reference/query/multi-model.md` | Preserved the tested source-family, temporal, traversal, and typed-predicate semantics; replaced the removed Fjall claim with rrflowMX/rrflowKV evidence; and made the eager `QueryRow`/Arrow allocation plus native-access-path gaps explicit. |
 | `docs/rrflowql-index-catalogue-v1.md` | `docs/reference/query/index-catalogue.md` | Preserved the tested persistent catalogue, snapshot artifacts, lifecycle, exact selection, uniqueness, and corruption behavior; removed stale Fjall and incomplete-index claims; and distinguished reconciliation evidence from native incremental maintenance. |
