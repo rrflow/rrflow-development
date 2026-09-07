@@ -80,7 +80,7 @@ bi-temporal claim contract rather than duplicating that contract in this
 registry.
 
 The exact contract and migration boundary are in
-[`rrd-unified-catalogue.md`](rrd-unified-catalogue.md).
+[`reference/data/schema-catalogue.md`](reference/data/schema-catalogue.md).
 
 ## Unified CRUD, retirement, and read stamp
 
