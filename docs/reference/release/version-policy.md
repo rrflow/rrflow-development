@@ -30,9 +30,10 @@ manifests locally. RRFlow does not inspect a sibling checkout or support a
 second, mounted `apps/connectome` layout.
 
 The product release version is independent of internal protocol, contract,
-fixture, persisted-format, and schema identifiers such as `v1`. Those
-identifiers describe compatibility domains; they do not announce a new RRFlow
-or Connectome product release.
+fixture, persisted-format, and schema identifiers such as `v1`. Those are
+independently versioned technical identities; they do not announce a new
+RRFlow or Connectome product release and, during pre-release convergence, do
+not authorize a reader, alias, or migration path for superseded RRFlow state.
 
 ## Change control
 

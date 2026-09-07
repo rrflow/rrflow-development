@@ -40,7 +40,7 @@ definition; this portal does not reproduce those bodies.
 |---|---|
 | Canonical names for RRFlow, RRD, `RrdEngine`, rrflowDB, rrflowKV, rrflowMX, rrflowQL, Arrow/DataFusion, vectors, inference, LFG, and Connectome | [Canonical component terminology](docs/architecture/system-overview.md#canonical-component-terminology) |
 | One semantic, security, transaction, mutation, and context authority | [ADR-0001 decision](docs/decisions/0001-single-engine-authority.md#decision) |
-| One current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
+| No legacy product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
 | Persistent rrflowDB versus volatile rrflowMX | [Persistence and memory boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary) |
 | Temporal graph, scalar, BM25, and vector data under one transaction model | [Native multi-model boundary](docs/architecture/system-overview.md#native-multi-model-boundary) |
 | rrflowQL fast and analytical paths over stamped Arrow/DataFusion work | [Query and analytical boundary](docs/architecture/system-overview.md#query-and-analytical-boundary) |

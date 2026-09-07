@@ -51,14 +51,18 @@ behavioral evidence.
 
 Checklist rules:
 
-- execute gates in dependency order
-  `A -> B -> C -> D -> E -> F -> G -> H -> I -> J`;
+- execute the dependency spine below; gate letters classify release outcomes
+  and are not a false total order;
 - keep one checklist item per coherent commit unless two items cannot be tested
   independently;
 - update **Current status** when an item changes observable product behavior;
 - ship one accepted RRFlow 1.0 path for each operation and physical format; do
   not retain alternate pre-release entrypoints, forwarding aliases, backend
   selectors, migration executors, or dual writes;
+- recognize no legacy/deprecation class during pre-release convergence:
+  classify inventory as accepted target behavior or superseded residue,
+  absorb every required behavior into its canonical owner, and remove the
+  competing path plus its successful old-shape fixtures in the owning gate;
 - trace every affected current behavior, module, test, and fixture into its
   canonical boundary before a deletion, move, merge, or rewrite; Git ancestry,
   merge status, and compilation are not consolidation evidence;
@@ -70,6 +74,34 @@ Checklist rules:
 - require every public surface to reach the same `RrdEngine` operation; and
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
+
+### Executable dependency spine
+
+This is the one implementation order. It removes two circular or temporary
+paths from the earlier alphabetical sequence: knowledge import cannot block
+the storage and attunement code it requires, and D-05 cannot build temporary
+lexical/vector/graph paths before Gates E and F establish their canonical
+access and analytical boundaries.
+
+| Wave | Work | Required exit before continuing |
+|---:|---|---|
+| 0 | Finish A-06 through KB-05, then execute A-07 | One deterministic checkout knowledge package; every current behavior/file/test/fixture mapped; source, package, public, and trace vocabulary frozen. |
+| 1 | B-03 through B-05 | Model handshake, multiplexed WebSocket, and GraphQL lowering are provider-neutral contracts with golden equivalence. |
+| 2 | C-01 through C-07 | One rrflowMX/rrflowKV transaction contract, one accepted physical reader, atomic multi-model batch, direct stamped reads, hybrid segments, and crash/lifetime proof. |
+| 3 | D-01 through D-04 | Offline preview/apply, persisted jobs, deterministic committed project tree, and incremental parse evidence exist. |
+| 4 | E-01 through E-05 | Graph, scalar/unique, BM25, exact vector, HNSW/quantized candidate, and planner paths are persistent, incremental, stamped, and exact-oracle checked. |
+| 5 | F-01 through F-05 | rrflowKV streams bounded Arrow batches into native/DataFusion operators with honest pushdown, one resource budget, and a measured cache decision. |
+| 6 | D-05 through D-10, then KB-06 and KB-07 | Every attunement phase uses the accepted C/E/F paths; external sources remain adapters; placement/accounting/hibernation pass; the checkout knowledge package imports and survives readback/recovery. |
+| 7 | G-01 through G-06 | LFG can propose bounded routing decisions while `RrdEngine` retains predicates, physical planning, authorization, CAS, and persistence. |
+| 8 | H-01 through H-07 | Dynamic context, pure RRF feedback, live deltas, all public surfaces, complete traces, Connectome, and mesh resolution observe one engine. |
+| 9 | I-01 through I-07 | Canonical events, triggers, routines, skills, and optional host adapters are explicit persisted capabilities, not hooks or a parallel runtime. |
+| 10 | J-01 through J-03, then KB-08, then J-04 and J-05 | Alternate paths are absent; failure and clean-install qualification pass; rrflowDB becomes the normal warp path; comparative evidence and the signed distribution close release. |
+
+A-07 freezes the operation-name, causal-link, attribute, and propagation
+vocabulary. Each later work package adds the trace and physical counters for
+its behavior in the same change. H-05 proves complete cross-surface
+correlation, export, and redaction; it does not postpone instrumentation until
+Wave 8.
 
 The next executable item remains **A-06**, specifically **KB-05**. B-01 and
 B-02 remain completed contract work, but no further Gate B work proceeds until
@@ -86,13 +118,15 @@ assumptions.
 | [x] | A-04 | Move all existing crates into one non-duplicated grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 | [ ] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
-| [ ] | A-07 | Audit the actual dependency graph, public vocabulary, and implementation-requirements traceability; then freeze industry-aligned directory, crate, module, test, fixture, and binary names. Keep every first-party build/install/runtime input inside this repository and converge overlapping pre-release boundaries directly with no forwarding aliases or parallel execution paths. | workspace | The reviewed traceability matrix accounts for every affected current behavior, source module, test, fixture, and planned destination; `cargo metadata`, dependency-direction tests, tracked-path inspection, repository terminology search, and owning suites prove every package has one responsibility, every dependency points inward, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
+| [ ] | A-07 | Audit the actual dependency graph, public vocabulary, implementation-requirements traceability, and causal evidence vocabulary; then freeze industry-aligned directory, crate, module, test, fixture, binary, command, configuration, environment, wire, persisted marker, digest/media domain, low-cardinality operation, typed-link, and trace-attribute names. Keep every first-party build/install/runtime input inside this repository and converge overlapping pre-release boundaries directly with no forwarding aliases or parallel execution paths. | workspace | The reviewed traceability matrix accounts for every affected current behavior, source module, test, fixture, and planned destination; a frozen trace map assigns ingress, engine, KV, QL, graph, lexical, vector, DataFusion, inference, attunement, routine, adapter, and delivery work to one naming/coordinate scheme; case-insensitive terminology, `cargo metadata`, dependency-direction, tracked-path, and owning-suite checks prove every package has one responsibility, every dependency points inward, no successful old-shape reader/default/alias remains, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
 
 #### A-06 knowledge-bootstrap sequence
 
-These are incremental work packages inside A-06 and its later persistence
-proof. Completing a package does not complete A-06 or any referenced runtime
-gate by itself.
+KB-01 through KB-05 are the incremental work packages inside A-06. A-06 is
+complete only when KB-05 passes and the accepted checkout knowledge remains a
+deterministic, content-addressed package. Importing that package cannot be an
+A-gate prerequisite because it requires later persistence, attunement, and
+client behavior.
 
 | Done | ID | Bounded change | Acceptance evidence |
 |---|---|---|---|
@@ -101,6 +135,14 @@ gate by itself.
 | [x] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
 | [x] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
 | [ ] | KB-05 | Resolve remaining flat supporting documents one complete file at a time: retain a record only when it owns current knowledge, merge accepted material into its existing owner, and remove the redundant source. Do not create another archive for unresolved or duplicate pre-release material. | Each reviewed file has one current owner or is removed after accepted content is integrated; retained records have one coordinate and index entry, with no copied authority body and passing link/terminology checks. |
+
+#### Later knowledge-persistence sequence
+
+These milestones preserve the original knowledge-package identifiers but are
+owned by the later runtime waves. They do not block A-07, Gate B, or Gate C.
+
+| Done | ID | Bounded change | Acceptance evidence |
+|---|---|---|---|
 | [ ] | KB-06 | Import a verified KB-03 package through persisted attunement checkpoints and authorized `RrdEngine` mutations. | D-02 and D-05 evidence proves digest-bound resume, idempotency, authorization, atomic mutation, and rejection of package or configuration drift. |
 | [ ] | KB-07 | Prove close/reopen, readback, warp resolution, incremental update, rollback, and recovery against rrflowDB. | Durable tests reproduce every imported record and relationship at its committed read stamp after restart and failure injection. |
 | [ ] | KB-08 | Make authorized rrflowDB warp resolution the normal client path after import while retaining the already-thin bootstrap READMEs as recovery maps. | H and J evidence shows clients resolve the same authorized records through public operations; local fallbacks remain sufficient for recovery without duplicating mutable state. |
@@ -328,7 +370,7 @@ its correctness is demonstrated below the semantic engine.
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
 | [ ] | D-03 | Implement only deterministic project-tree inventory: engine-authorized metadata/content reads, pure proposal building, Git-correct ignore rules, secret/generated/vendor/cache exclusions, stable root-relative identities, Merkle tree digest, containment edges, incremental change set, explicit errors, and bounded work accounting. | `rrd-attunement` through `rrd-engine` | This repository produces the same committed `SourceTreeSnapshot` digest under different traversal schedules; excludes `.git`, `target`, `node_modules`, rrflowDB files, generated bulk data, and secret payloads; handles tracked ignored files, non-Git roots, hidden source, symlink/mount escape, file races, cancellation/restart, and close/reopen; an unchanged rerun reads zero content bytes and commits a no-work checkpoint. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing pinned to one committed source-tree snapshot/change-set digest and parser/language revisions; preserve incomplete syntax and errors as evidence. | `rrd-attunement` through `rrd-engine` | Parse is denied before the D-03 snapshot/checkpoint commit; edit-one-file reparses only the changed source, preserves unaffected identities, records `ERROR`/`MISSING` nodes, and resumes after process restart. |
-| [ ] | D-05 | Implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, and independent acceptance test before the next phase begins. |
+| [ ] | D-05 | After Gates E and F pass, implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time against the accepted persistent/index/Arrow paths; add no temporary snapshot index or parallel attunement store. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, physical-plan/trace evidence, and independent acceptance test before the next phase begins; lexical/vector/graph output is readable through the same native and analytical paths used outside attunement. |
 | [ ] | D-06 | Classify SQL, PostgreSQL, Turso, Dragonfly, object stores, and other application/operator systems as optional external sources; never install, start, or select them as RRFlow persistence implicitly. | `rrd-attunement`, operator adapters | Fixture project proves discovery creates governed source metadata without copying credentials, changing the external system, affecting default RRFlow readiness, or creating another RRFlow authority. |
 | [ ] | D-07 | Bind installation to the DevForge CoW placement contract: immutable tools/models may live in the shared lower layer; workspace changes and all rrflowKV WAL, manifest, segment, catalogue, and graph state live in the writable upper layer. | `rrflow-cli`, DevForge adapter | Two clones share the same lower digest while independent writes, crash recovery, and deletion in one upper layer cannot affect the other. |
 | [ ] | D-08 | Recognize content-addressed dependency mounts as shared immutable inputs rather than copying or attuning dependency caches into each estate. | `rrd-attunement`, DevForge adapter | Rust, Go, Node, and model-cache fixture proves stable mount digests, zero duplicate ingestion, and correct invalidation when a mounted digest changes. |
@@ -388,7 +430,7 @@ and can steer a persisted tree without direct storage or planner authority.
 | [ ] | H-02 | Keep query-time RRF pure; persist explicit verified outcomes and learn versioned weight policies only for later read stamps. | `rrd-engine`, `rrd-query` | Replay at an old stamp is unchanged; feedback update, rollback, cold-start, and quality-regression tests pass. |
 | [ ] | H-03 | Replace two-snapshot live-query diffing with commit-impact evaluation and predicate-specific deltas. | `rrd-query`, `rrd-engine` | Ordered update/delete/reconnect/backpressure tests emit each matching committed delta once without full-query rescans. |
 | [ ] | H-04 | Serve HTTP, multiplexed WebSocket, Rust SDK, generated SDKs, CLI, MCP, and GraphQL adapter through the same operations and authorization semantics. | transport/adapters | Cross-surface conformance sends the same request and compares status, stamp, digest, denial, and result. |
-| [ ] | H-05 | Emit bounded correlated evidence for ingress, authorization, planning, selected/skipped context avenues, KV/page scans, graph, BM25, HNSW, DataFusion, LFG, cache and model-context compaction effects, model/tool attempts, verification, commit, attunement, and delivery. | `rrd-engine`, adapters | Completeness/crash/export/redaction and fixed-rubric before/after tests retain stamps, plan/projection/source identities, work/byte/token/latency accounting, contributions, and outcomes; repeated work, stale/duplicate/conflicting context, route misses, and model-context compaction loss are detectable; traces observe authoritative job/state records rather than becoming lifecycle state or hidden chain-of-thought. |
+| [ ] | H-05 | Complete the per-gate trace work as one bounded causal chain across ingress, authorization, planning, selected/skipped context avenues, KV/page scans, graph, BM25, HNSW, DataFusion, LFG, cache and model-context compaction effects, model/tool attempts, verification, commit, attunement, and delivery; add W3C propagation plus redacted diagnostic export without creating another authority. | `rrd-engine`, adapters | Canonical-name, propagation, completeness, crash, export, redaction, and fixed-rubric before/after tests retain stamps, plan/projection/source identities, work/byte/token/latency accounting, contributions, and outcomes; repeated work, stale/duplicate/conflicting context, route misses, and model-context compaction loss are detectable; traces observe authoritative job/state records rather than becoming lifecycle state or hidden chain-of-thought. |
 | [ ] | H-06 | Implement Connectome completely on public RRD capabilities and render only persisted status, plans, traces, trees, and deltas. | separate Connectome repository | Real-process browser test starts from health/ready/capabilities, observes attunement and routing, and contains no duplicate retrieval or lifecycle implementation. |
 | [ ] | H-07 | Resolve loopback or Zuul Zero/shippin.ai mesh endpoints through a transport adapter, then establish authenticated RRD identity independently of network reachability. | `rrd-client`, mesh adapter | Laptop/phone/devspace fixture proves TLS identity, capability negotiation, endpoint rotation, offline denial, and no mesh-owned database state. |
 
@@ -425,7 +467,7 @@ surfaces.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | J-01 | Remove every alternate pre-release entrypoint, format reader, backend selector, migration executor, editor/provider-owned automatic hook, duplicate source of truth, transitional alias, and stale generated artifact. | workspace | Strict warning/dependency/search gates and all-target builds prove only the accepted RRFlow 1.0 surfaces remain. |
+| [ ] | J-01 | Remove every superseded pre-release entrypoint, format/catalogue reader, missing-field fallback, backend selector, migration executor, editor/provider-owned automatic hook, duplicate source of truth, transitional alias, and stale generated artifact. | workspace | Strict warning/dependency/terminology searches, negative format fixtures, and all-target builds prove only the accepted RRFlow 1.0 surfaces remain and superseded RRFlow state fails closed. |
 | [ ] | J-02 | Run unit, property, fuzz corpus, differential, crash/reopen, storage-full, security denial, resource-budget, adapter, and real-process suites. | workspace | Release evidence records commands, versions, passed/failed counts, and retained failure artifacts. |
 | [ ] | J-03 | Assemble a complete manifest-verified release-candidate bundle from tracked inputs; install and attune both an empty fixture and this existing repository from that candidate; then restart and repeat representative fast/heavy queries. | release harness | With outbound network denied, sibling repositories absent, and no external database/query/vector service, both estates verify with stable digests; unchanged rerun is incremental and no manual database repair is needed. This qualifies contents and behavior before J-05 signs the reproducible default distribution. |
 | [ ] | J-04 | Publish fixed-hardware rrflowKV, graph, BM25, exact/HNSW, DataFusion, context, LFG, end-to-end, and clean-rollout benchmarks against pinned declared baselines. | evaluation harness | Revision-bound raw data, hardware/toolchain/filesystem provenance, configuration, warmup, concurrency, percentiles, failures, long-duration RSS, logical/apparent/allocated bytes, mixed-family interference, recall/quality metrics, and a SurrealDB/Qdrant deployment matrix report artifact and installed bytes, required commands, elapsed time, services, ports, configuration, secrets, readiness, and persistent readback. No ease or superiority claim is allowed until like-for-like evidence passes. |

@@ -4,7 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/research/rrflow-system-convergence`
 **Owner:** primary-source evidence for the RRFlow 1.0 execution map
 **Audience:** RRFlow owner and engineers executing the 1.0 pre-release gates
-**Date:** 2026-09-06
+**Date:** 2026-09-07
 **Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, deterministic project-tree inventory, installation/attunement, provider-neutral agent context, explicit automation, and external project data adapters
 **Assumptions:** one RRFlow instance per project/environment; `RrdEngine` is the sole semantic, authorization, and mutation authority; version remains `1.0.0`; current code is inventory until the roadmap's behavioral evidence passes; the repository owner reports separate source-use rights for SurrealDB and Qdrant, whose legal scope is not adjudicated by this technical record
 
@@ -13,14 +13,16 @@
 The repository is not a start-over. It contains substantial WAL, MVCC,
 manifest, snapshot, query, DataFusion, BM25, HNSW, quantization, transport,
 security, and runtime code. It is also not a true alpha yet. The central gaps
-are integration and physical semantics: the native store still contains Fjall
-compatibility and legacy readers; semantic transactions do not yet update
-both graph directions and every synchronous index family atomically; normal
-reads reconstruct some state from the runtime log; query execution eagerly
-materializes `Vec<QueryRow>` before Arrow; DataFusion's provider wraps that
-materialization instead of streaming rrflowKV pages; live query evaluation
-reruns two snapshots; and installation/attunement has contracts but no
-persisted executor.
+are integration and physical semantics: the Fjall selector and runtime are
+already absent, although retained historical evidence still names its original
+comparison profiles; pre-1.0 batch, manifest, segment, and catalogue readers
+remain; semantic transactions do not yet update both graph directions and
+every synchronous index family atomically; normal reads reconstruct some state
+from the runtime log; query execution eagerly materializes `Vec<QueryRow>`
+before Arrow; DataFusion's provider wraps that materialization
+instead of streaming rrflowKV pages; live query evaluation reruns two
+snapshots; and installation/attunement has contracts but no persisted
+executor.
 
 The correct convergence target is a hybrid storage engine, not a generic
 row-only LSM and not “Arrow everywhere”:
@@ -55,8 +57,50 @@ row-only LSM and not “Arrow everywhere”:
    engine-authorized read plan; pure attunement code proposes normalized
    records; only `RrdEngine` commits them. Parsing, graph/index construction,
    skills, routines, and model context consume that exact snapshot digest.
+9. One causal operation graph follows work across ingress, authorization,
+   storage, native indexes, Arrow/DataFusion, inference, attunement, routines,
+   and delivery. Durable RRFlow evidence and process-local/exported telemetry
+   describe that same work; neither becomes job, routine, or mutation state.
 
 ## Evidence reconciliation
+
+### One executable dependency spine
+
+The reviewed alphabetical `A -> B -> C -> D -> E -> F` ordering was not a
+valid implementation dependency graph. A-06 listed database import
+and client warp milestones that require later D/H/J behavior, while blocking B
+until A-06 completes. D-05 also names lexical, vector, and graph attunement
+phases before E/F supply their accepted persistent access paths. Executing that
+order would either deadlock the roadmap or build temporary parallel paths.
+
+The researched dependency spine is:
+
+1. finish the checkout knowledge topology through KB-05, then freeze source,
+   package, public, and trace vocabulary in A-07;
+2. finish the provider-neutral contracts in B;
+3. establish the one transactional rrflowKV/rrflowMX substrate in C;
+4. implement install, durable jobs, deterministic inventory, and incremental
+   parsing in D-01 through D-04;
+5. implement native graph, scalar, BM25, exact-vector, HNSW, and planner access
+   paths in E;
+6. stream stamped rrflowKV batches into native Arrow operators and DataFusion
+   with honest pushdown and one resource budget in F;
+7. run D-05's normalize-through-verify attunement phases against those accepted
+   C/E/F paths, then close the remaining deployment portions of D;
+8. import and read back the deterministic knowledge package through those
+   persisted attunement paths;
+9. connect LFG, dynamic context, feedback, public delivery, and Connectome in
+   G/H; then build explicit events, triggers, routines, skills, and host
+   adapters in I; and
+10. qualify the self-contained candidate through J-03, make rrflowDB the normal
+    client warp-resolution path in KB-08, then complete comparative evidence
+    and the signed distribution in J-04/J-05.
+
+Trace vocabulary is frozen during A-07, but tracing is not postponed until H.
+Each C-through-I work package must add the bounded spans, causal coordinates,
+physical counters, denial/error outcome, and failure-path evidence for the
+behavior it introduces. H-05 closes cross-surface completeness, propagation,
+export, and redaction.
 
 ### Transaction and storage boundary
 
@@ -91,9 +135,9 @@ relation. The vertex-side pointer keys embed the opposite endpoint so a
 directional range scan can resolve it without fetching the edge record, while
 edge-side keys preserve endpoint adjacency. The useful lesson is typed,
 ordered, direction-specific key families and atomic maintenance—not its exact
-wire bytes or its legacy-compatible decoder. RRFlow is pre-release and must
+wire bytes or its superseded pre-release decoder. RRFlow is pre-release and must
 freeze its own key codec, write the required directional entries in the same
-semantic transaction, and retain no legacy format branch.
+semantic transaction, and retain no earlier-format branch.
 [SurrealDB graph-key source](https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs)
 
 The SurrealDB transaction source keeps transaction-local caches, changefeed
@@ -227,9 +271,12 @@ borrowed bytes.
 
 DataFusion's custom-provider guidance states that data must be fetched during
 physical execution, not planning, or optimizer pushdown and resource controls
-cannot reduce work. `TableProvider::scan` must stream execution partitions and
-declare each filter as exact, inexact, or unsupported. That directly rejects
-the current eager `Vec<QueryRow>` snapshot as the 1.0 endpoint. [DataFusion custom table providers](https://datafusion.apache.org/library-user-guide/custom-table-providers.html)
+cannot reduce work. `TableProvider::scan` builds a lightweight
+`ExecutionPlan`; `ExecutionPlan::execute` constructs each partition stream;
+the polled `RecordBatchStream` performs storage I/O and produces batches. The
+provider also declares each filter as exact, inexact, or unsupported. That
+directly rejects the current eager `Vec<QueryRow>` snapshot as the 1.0
+endpoint. [DataFusion custom table providers](https://datafusion.apache.org/library-user-guide/custom-table-providers.html)
 
 DataFusion exposes bounded memory pools and spill behavior, but those controls
 cover DataFusion reservations, not every native graph/vector/storage allocation.
@@ -242,6 +289,52 @@ candidate only for Gate F-05 after measurement. The decision criterion is a
 byte-bounded hit-rate/latency benchmark plus exact `ReadStamp`, schema, and
 catalogue invalidation. A cache must never hold canonical state or conceal
 stale results. [Moka crate documentation](https://docs.rs/moka/latest/moka/)
+
+### Trace and diagnostic boundary
+
+OpenTelemetry models a trace as low-cardinality named spans with parentage,
+attributes, timestamped events, links, and status. W3C Trace Context defines
+the interoperable `traceparent` and optional `tracestate` propagation fields.
+Those are the correct outward diagnostic conventions; they do not define
+RRFlow's durable state machine. [OpenTelemetry tracing API](https://opentelemetry.io/docs/specs/otel/trace/api/),
+[W3C Trace Context](https://www.w3.org/TR/trace-context/)
+
+RRFlow therefore needs two coordinated representations, not two authorities:
+
+- the durable `RuntimeTraceEvent` record is bounded causal evidence linked to
+  exact read, plan, projection, reasoning, source, and commit coordinates; it
+  survives restart and may honestly retain an unmatched start after a crash;
+- Rust `tracing` spans and an optional OpenTelemetry exporter are diagnostic
+  projections of the same operation. They may be sampled or unavailable and
+  can never establish that a mutation, attunement phase, or routine completed.
+
+At ingress, RRD validates and continues an incoming W3C context or creates a
+new one. `RrdEngine` binds that context to the authenticated request
+correlation, actor, estate/scope, authorization decision, and `ReadStamp`.
+Child work keeps the trace identity. Asynchronous work caused by a committed
+event, projection delta, retry, or routine activity records a causal link
+rather than inventing false synchronous parentage.
+
+Durable operation names use one bounded, low-cardinality machine vocabulary:
+`rrflow.<boundary>.<operation>`. Boundaries are `ingress`, `engine`, `kv`,
+`ql`, `graph`, `lexical`, `vector`, `datafusion`, `inference`, `attunement`,
+`routine`, `adapter`, and `delivery`. Dynamic scope, record, query, provider,
+model, path, and error values never enter the operation name; they are typed
+links, bounded attributes, or digests. Outward HTTP and database-client spans
+also retain the applicable OpenTelemetry semantic attributes. OpenTelemetry's
+database convention likewise requires low-cardinality operation names and
+warns that query text can be high-cardinality and sensitive.
+[OpenTelemetry database span conventions](https://opentelemetry.io/docs/specs/semconv/db/database-spans/)
+
+The current trace foundation is useful but incomplete. It already has W3C-
+width identifiers, parent IDs, bounded attributes, typed causal links,
+start/annotation/finish phases, rrflowMX/rrflowKV equivalence, conflict retry,
+and crash-visible incomplete starts. It does not parse or propagate
+`traceparent`/`tracestate`, has no OpenTelemetry bridge, uses mixed unprefixed
+operation names, exposes direct-store persistence helpers, and does not cover
+the complete graph/BM25/vector/Arrow/DataFusion/context path. A-07 freezes the
+mapping; each owning gate converges its names and instrumentation; H-05 proves
+the final causal chain and redaction.
 
 ### Vector, filtering, and fusion
 
@@ -299,13 +392,14 @@ machine verification rather than a bare successful local build.
 
 | Claim | Current evidence | Missing proof | Roadmap owner |
 |---|---|---|---|
-| rrflowKV is persistent | `rrd-lsm` has WAL, MVCC versions, manifest/CURRENT, immutable segments, recovery, snapshots, compaction, and failure injection | one final format, no legacy readers, transaction conflicts, hybrid column pages, crash matrix | C-01..C-07 |
-| rrflowMX and rrflowKV share semantics | `RrflowMxEngine`, native engine, and common `Engine` trait exist | minimal transaction port and identical conformance corpus including conflict/rollback | C-02 |
-| semantic writes are atomic | `NativeRuntimeCommitPlan` batches runtime data, log, outbox, cursor, audit, and outcome | both adjacency directions plus scalar/unique/BM25/vector index deltas in that same batch | C-03 |
+| rrflowKV is persistent | `rrd-lsm` has WAL, MVCC versions, manifest/CURRENT, immutable segments, recovery, snapshots, compaction, and failure injection | one final format, no earlier-format readers, transaction conflicts, hybrid column pages, crash matrix | C-01..C-07 |
+| rrflowMX and rrflowKV share semantics | `RrflowMxStore`, `RrflowKvStore`, and the common `StorageEngine` trait exist | minimal transaction port and identical conformance corpus including conflict/rollback | C-02 |
+| semantic writes are atomic | `RrflowKvCommitPlan` batches runtime data, log, outbox, cursor, audit, and outcome | both adjacency directions plus scalar/unique/BM25/vector index deltas in that same batch | C-03 |
 | reads are direct and stamped | `ReadStamp`, direct materialized keyspaces, and validation exist | remove normal-path whole-log reconstruction and prove bounded point/range work | C-04 |
-| no compatibility backend | native format is default | Fjall selection/dependency, TextV1, batch/segment/manifest/catalog compatibility branches and migration runtime remain | C-05, J-01 |
+| no compatibility backend | Fjall selection/dependency and the migration runtime are absent; retained Fjall names describe historical evidence only; native format is default | remove every executable pre-1.0 batch/segment/manifest/catalogue reader or format branch while retaining explicit evidence provenance | C-05, J-01 |
 | DataFusion is integrated | query execution uses DataFusion, `MemorySource`, spill pool, timeout, and output limits | real rrflowKV streaming provider, pushdown, cross-operator resource accounting | F-01, F-02, F-04 |
 | native graph/BM25/vector are real | graph traversal, BM25 code, exact vector oracle, HNSW, catalogues, and planner exist | persistent incremental access paths and same-stamp native physical operators | E-01..E-05, F-03 |
+| causal traces are durable | bounded trace contract, typed links, atomic runtime-log persistence, MX/KV equivalence, conflict retry, and crash-visible incomplete spans exist | one authorized engine emission path, W3C ingress/egress propagation, canonical low-cardinality names, per-gate physical evidence, export/redaction, and complete context-flow correlation | A-07, C..I, H-05, J-02 |
 | dynamic context works | engine context/retrieval functions and RRF helpers exist | planner-selected eligible avenues with selected/skipped evidence, pure RRF, versioned feedback | H-01, H-02 |
 | live delivery works | durable subscriptions and WebSocket delivery exist | commit-impact predicate deltas; current semantic live query reruns two snapshots | H-03 |
 | install/attunement works | strict B-01 plan/job/checkpoint contracts and the canonical eleven phases exist | installer, persisted engine executor, deterministic project-tree snapshot/change-set, pure attunement compute crate, and phase-by-phase real fixtures | D-01..D-10 |
@@ -341,9 +435,12 @@ machine verification rather than a bare successful local build.
 | Columnar transformation at LSM events | Columnar Formats for Schemaless LSM-based Document Stores | Alkowaileet et al., PVLDB | 2022 | https://www.vldb.org/pvldb/vol15/p2085-alkowaileet.pdf | Peer-reviewed paper |
 | Streaming provider and pushdown | Custom Table Provider | Apache DataFusion | accessed 2026-09-05 | https://datafusion.apache.org/library-user-guide/custom-table-providers.html | Official documentation |
 | Memory-pool and spill semantics | `MemoryPool` | Apache DataFusion docs.rs build | 55.0.0, accessed 2026-09-05 | https://docs.rs/datafusion/latest/datafusion/execution/memory_pool/trait.MemoryPool.html | Official crate API documentation; matches the pinned workspace release |
+| Trace spans, parentage, events, links, attributes, and status | Tracing API | OpenTelemetry | stable API, accessed 2026-09-07 | https://opentelemetry.io/docs/specs/otel/trace/api/ | Official specification |
+| Low-cardinality database operation names and bounded query evidence | Semantic conventions for database client spans | OpenTelemetry | stable unless noted, accessed 2026-09-07 | https://opentelemetry.io/docs/specs/semconv/db/database-spans/ | Official specification |
+| Cross-process trace propagation | Trace Context | W3C | Recommendation, accessed 2026-09-07 | https://www.w3.org/TR/trace-context/ | Web standard |
 | Unified transactional data models | Architecture | SurrealDB | accessed 2026-09-05 | https://surrealdb.com/docs/learn/data-models/architecture | Official documentation |
 | One modular database core | Core source tree | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/core/src | Primary source |
-| Directional graph adjacency keys | Graph-key module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs | Primary source; RRFlow does not adopt legacy decoding |
+| Directional graph adjacency keys | Graph-key module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs | Primary source; RRFlow does not adopt upstream historical decoding |
 | Transaction-local cache/event/index coordination | Transaction module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/kvs/tx.rs | Primary source |
 | MCP as a thin engine adapter | MCP crate | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/mcp | Primary source |
 | Ordered tuples and conflict ranges | Developer Guide | FoundationDB | 7.4.7, accessed 2026-09-05 | https://apple.github.io/foundationdb/developer-guide.html | Official documentation |
@@ -369,7 +466,7 @@ machine verification rather than a bare successful local build.
 | Gemini instruction hierarchy/import | Provide context with GEMINI.md files | Google | updated 2026-06-18 | https://geminicli.com/docs/cli/gemini-md/ | Official documentation |
 | Optional weighted cache | Moka crate | Moka project | 0.12.16, accessed 2026-09-05 | https://docs.rs/moka/latest/moka/ | Official crate API documentation |
 | External cache classification | Dragonfly Docs | Dragonfly | updated 2026-08-04 | https://www.dragonflydb.io/docs | Official documentation |
-| External application DB classification | Embedded Replicas | Turso | accessed 2026-09-05 | https://docs.turso.tech/features/embedded-replicas/introduction | Official documentation; page marks this feature legacy |
+| External application DB classification | Embedded Replicas | Turso | accessed 2026-09-05 | https://docs.turso.tech/features/embedded-replicas/introduction | Official documentation; publisher marks this feature unsuitable for new designs |
 | CoW upper/lower behavior | Overlay Filesystem | Linux kernel | accessed 2026-09-05 | https://docs.kernel.org/filesystems/overlayfs.html | Official kernel documentation |
 | Release provenance | SLSA Provenance | Linux Foundation / SLSA | v1.2, accessed 2026-09-05 | https://slsa.dev/spec/v1.2/provenance | Approved specification |
 

@@ -88,11 +88,14 @@ a second event vocabulary when I-01 freezes the canonical engine event.
 
 ## Pre-release convergence boundary
 
-RRFlow 1.0 has one current target implementation. Pre-release formats,
-backends, names, and APIs are implementation inputs to converge, not supported
-product generations. The accepted result contains no alternate database,
-query, graph, vector, security, context, or lifecycle path and no forwarding
-alias that keeps an earlier shape executable.
+RRFlow 1.0 has one current target implementation and no legacy product,
+compatibility, migration, or deprecation line. Existing pre-release formats,
+backends, names, APIs, missing-field defaults, and alternate success paths are
+either part of the accepted target or superseded implementation residue. The
+accepted result contains no alternate database, query, graph, vector,
+security, context, or lifecycle path and no forwarding alias, old-shape
+decoder, read-old/write-new branch, or migration executor that keeps
+superseded RRFlow state executable.
 
 Before an existing implementation is replaced or removed, its useful
 semantics, invariants, tests, fixtures, and measured behavior must be mapped to
@@ -101,6 +104,25 @@ the canonical boundary and owning roadmap gate. The
 is the execution control for that accounting. A branch relationship, merge,
 rename, compilation result, or file deletion does not prove that behavior was
 integrated.
+
+Direct convergence follows one absorption rule:
+
+1. Read the complete affected source, test, fixture, and owning record.
+2. Classify each behavior as required canonical semantics, a useful invariant
+   to generalize, or superseded residue to remove.
+3. Bind every retained requirement to one canonical module, operation, data
+   family, and acceptance test under `RrdEngine`.
+4. Implement and prove the equal-or-stronger canonical behavior.
+5. Remove the competing reader, default, alias, format, path, success fixture,
+   and terminology in the same owning gate. Retain earlier bytes only as a
+   negative rejection fixture when they materially prove fail-closed behavior.
+
+Interoperability terms such as type-compatible Arrow buffers, compatible
+embedding spaces, S3-compatible APIs, and negotiated public protocol versions
+describe current technical contracts; they do not authorize an older RRFlow
+execution path. An upstream dependency namespace that happens to contain the
+word `legacy` is likewise not an RRFlow surface, but it must remain isolated
+behind its owning adapter.
 
 ## Persistence and memory boundary
 

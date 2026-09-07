@@ -281,6 +281,59 @@ BFS, and reciprocal-rank fusion. Roadmap Gates E, F, and H replace their
 whole-snapshot costs with native incremental access paths without changing the
 public operation or its single-stamp semantics.
 
+## Trace and observability flow
+
+RRFlow has one causal operation graph with two representations. Durable trace
+events are immutable governed evidence in rrflowDB. Process-local Rust
+`tracing` spans and optional OpenTelemetry export are diagnostic projections
+of that same operation. A sampled, dropped, or unavailable diagnostic span
+cannot establish that a transaction, attunement phase, projection, trigger, or
+routine completed; only its authoritative state and commit receipt can.
+
+| Signal | Canonical use | Cannot establish |
+|---|---|---|
+| Engine event | Immutable committed occurrence eligible for trigger evaluation. | Completion before its enclosing commit receipt exists. |
+| Durable trace event | Replayable causal evidence for a bounded operation or stage. | Job/routine state or permission to mutate. |
+| Audit record | Authenticated authorization, denial, and mutation accountability. | Query performance or workflow progress by itself. |
+| Physical counter/metric | Numeric work, resource, latency, quality, and failure measurement derived from named operations. | Canonical record/index contents or a completed effect. |
+| Diagnostic span/log | Process-local or exported troubleshooting view correlated to durable coordinates. | Any durable truth when sampled, dropped, or unavailable. |
+
+At HTTP, WebSocket, SDK, MCP, CLI, embedded, and adapter ingress, RRD validates
+and continues W3C `traceparent`/`tracestate` context or creates a new trace.
+`RrdEngine` binds it to the request correlation and idempotency coordinates,
+authenticated actor, estate/scope, authorization decision, `ReadStamp`, plan,
+projection, reasoning cursor, source evidence, and any resulting commit.
+Synchronous child work retains parentage. Work caused later by a committed
+event, projection delta, retry, or routine activity uses a typed causal link
+rather than false synchronous parentage.
+
+Machine operation names use the bounded low-cardinality form
+`rrflow.<boundary>.<operation>`. The boundary is one of `ingress`, `engine`,
+`kv`, `ql`, `graph`, `lexical`, `vector`, `datafusion`, `inference`,
+`attunement`, `routine`, `adapter`, or `delivery`. Dynamic record, scope,
+query, provider, model, path, and error values never enter the operation name;
+they remain bounded attributes, typed links, or digests. Transport diagnostics
+also retain the applicable OpenTelemetry HTTP or database semantic attributes.
+
+Every implementation gate adds the evidence for the physical behavior it
+introduces. Storage reports point/range/WAL/commit/flush/compaction work; graph,
+BM25, exact/HNSW/TurboQuant, Arrow providers, DataFusion operators, inference,
+attunement, routines, and delivery report their bounded inputs, outputs,
+resources, decisions, and error/denial outcomes. H-05 is the completeness,
+propagation, redaction, and export gate; it is not the first instrumentation
+gate.
+
+The current durable trace contract already supplies bounded W3C-width
+trace/span identities, parentage, start/annotation/finish phases, data classes,
+typed causal links, and structured attributes. Its focused corpus proves equal
+rrflowMX/rrflowKV encoding, atomic schema repair plus event commit, incomplete
+start visibility after rrflowKV reopen, and conflict-safe concurrent writes.
+It does not yet propagate W3C context, instrument the complete engine path,
+authorize every durable trace through `RrdEngine`, use the canonical operation
+names, or prove H-05. The current lifecycle/workflow-named trace residue is
+direct-convergence inventory for A-07 and Gate I, not a second orchestration
+contract.
+
 ### Context-path evidence and optimization
 
 Context-path observability is part of the engine evidence model, not a
@@ -293,16 +346,6 @@ verification, feedback, and final outcome. Each physical stage reports its
 bounded work: keys, pages, rows, graph steps, candidates,
 mapped/read/decoded/copied/allocated bytes,
 context bytes or tokens when known, latency, spill, and output.
-
-The current durable trace contract already supplies bounded W3C-width
-trace/span identities, parentage, start/annotation/finish phases, data classes,
-typed causal links, and structured attributes. Its focused corpus proves equal
-rrflowMX/rrflowKV encoding, atomic schema repair plus event commit, incomplete
-start visibility after rrflowKV reopen, and conflict-safe concurrent writes.
-It does not yet instrument the complete context path, authorize every durable
-trace through `RrdEngine`, or prove H-05. The current lifecycle/workflow-named
-trace residue is direct-convergence inventory for A-07 and Gate I, not a
-second orchestration contract.
 
 Accepted diagnostics must derive from observable events and persisted engine
 coordinates. They identify repeated scans or searches, missed canonical
@@ -733,6 +776,11 @@ system's authority:
   both zero-copy-capable reads and cases requiring allocation.
 - [DataFusion custom providers](https://datafusion.apache.org/library-user-guide/custom-table-providers.html)
   separate planning-time pushdown declarations from execution-time streams.
+- [OpenTelemetry tracing](https://opentelemetry.io/docs/specs/otel/trace/api/)
+  and [database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/database-spans/)
+  inform low-cardinality spans, attributes, events, links, and status;
+  [W3C Trace Context](https://www.w3.org/TR/trace-context/) informs transport
+  propagation. RRFlow durable trace evidence remains governed engine data.
 - [Git ignore semantics](https://git-scm.com/docs/gitignore) and
   [Git's content-addressed object model](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects.html)
   inform tracked-file reconciliation, deterministic path precedence, and the

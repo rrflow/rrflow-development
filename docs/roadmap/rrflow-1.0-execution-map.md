@@ -29,8 +29,8 @@ sequence remains in the
 
 For every work package:
 
-1. Verify the preceding roadmap item is complete and the worktree contains no
-   unexplained changes.
+1. Verify every prerequisite in the roadmap's executable dependency spine is
+   complete and the worktree contains no unexplained changes.
 2. Read every listed file in full. Resolve every listed symbol against the
    current revision. If a symbol moved, update this map in a documentation-only
    commit before changing behavior.
@@ -288,12 +288,21 @@ the cross-file behavior that a mechanical inventory cannot infer.
 
 ### Mandatory direct convergence
 
+RRFlow has no legacy implementation class. A current symbol or test containing
+`legacy` identifies superseded pre-release residue to account for and remove,
+not a supported generation to rename or preserve. The table below retains the
+exact current symbol spellings only so deletion can be proved. Useful behavior
+must first gain equal-or-stronger evidence at its canonical destination; no
+successful old-shape fixture, decoder, default, alias, or migration path
+survives the owning gate.
+
 | Requirement | Current state and remaining disposition | Gate |
 |---|---|---|
 | Fjall, `Store`, `PersistentBackend`, `PersistentEngine`, migration, and upgrade runtime surfaces | absent; keep absent and enforce with dependency metadata and symbol searches | A-07, C-05 |
 | `rrd-store/src/keyspaces.rs` current RRDSK002 codec | replace with one frozen ordered typed tuple codec and one rejection path for every other storage format | C-01, C-05 |
-| `rrd-lsm/src/segment.rs::decode_legacy` | delete when hybrid segment format lands; this is an existing symbol name, not a supported reader | C-05, C-06 |
+| `rrd-lsm/src/segment.rs::decode_legacy`, `SegmentStorage::Legacy`, and their seek/validation branches | delete when the hybrid segment format lands; retain exact/read/filter/lifetime behavior through the canonical segment corpus and keep earlier bytes only as fail-closed rejection inputs | C-05, C-06, C-07 |
 | pre-1.0 version branching in `rrd-lsm/src/{batch,manifest,segment}.rs` | retain only the final 1.0 version; corrupt/unknown versions fail | C-05, C-07 |
+| missing-field and derived-old-shape paths in `rrd-core::{data,runtime,schema,temporal}` and `rrd-contract` | during the full A-07/C-03 contract review, distinguish intentional current optional semantics from defaults that exist only to accept superseded state; make retained optionality explicit in the one schema and remove every old-shape success test/decoder | A-07, B-03, C-03, E-04, J-01 |
 | `StorageEngine` | current canonical storage port; narrow it in C-02 without reintroducing aliases | A-07, C-02 |
 | `RrflowKvStore`, `RrflowMxStore`, `StorageProfile` | current concrete names; preserve direct naming and verify every caller uses them | A-07 |
 | rrflowKV semantic and AI-access benchmarks | current absolute rrflowKV diagnostics; add immutable source/environment provenance and fixed-hardware thresholds before release use | C-06, F-05, J-04 |
@@ -302,7 +311,10 @@ the cross-file behavior that a mechanical inventory cannot infer.
 | `rrd-query/src/live.rs::poll_live_query` two-snapshot diff | replace with commit-impact evaluation | H-03 |
 | `rrd-core/tests/golden.rs` Go/bbolt/LFG parity-engine narrative | remove the provider-specific alternate-engine claim while retaining only the characterized Rust contract vectors needed until C-01 freezes the final codec; Go remains eligible only as an outward capability adapter, never an RRFlow storage or routing authority | A-07, C-01, J-01 |
 | `rrd-maintenance::MaintenanceRepository` and its fixed maintenance state/event vocabulary | satisfy every preserve/generalize row in the canonical context-maintenance disposition matrix through focused generic-routine tests, then remove the crate, direct store dependency, private scope, cursor-zero replay, JSON-wrapper records, hardcoded taxonomy/reduction/token policy, and package-local API with no alias or compatibility reader | A-07, C-03, C-04, H-02, H-05, I-01, I-03, J-01 |
-| alternate TurboQuant catalogue/ensure surfaces | remove; keep a codec only if exact differential and benchmark gates justify it | E-04, J-01 |
+| `LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION`, its alternate encoder/decoder, `VectorRuntime::suppress_legacy_turboquant`, and the `ensure_vector_index` compatibility adapter | preserve projection provenance, lifecycle restoration, exact oracle/rerank, mmap, bounded-memory, and recall evidence in one source-stamped vector catalogue and planner; then delete the older catalogue/version/suppression/ensure path and its successful fixtures | E-04, E-05, H-01, J-01 |
+| optional recovery-policy decoding in `rrd-estate::{backup_job,recovery}` and its successful missing-policy fixtures | preserve fail-closed recovery policy binding, receipts, leases, and recovery-point evidence; require the canonical policy snapshot in newly accepted state and remove decoding behavior that exists only for pre-release jobs | D-02, D-10, J-01 |
+| `claim-transactions` and other public transport paths described as compatibility/fallback surfaces | preserve any distinct bounded operation semantics only through the canonical multi-model transaction, subscription, and WebSocket contracts; delete duplicate capability/handler/client success paths after cross-surface conformance passes | B-04, H-03, H-04, J-01 |
+| earlier cluster adapter domains | retain only explicit fail-closed format rejection evidence; no opener or migration path may accept the superseded domain | C-05, J-01 |
 | `rrd-contract::AutomationCatalogue` | directly rename/narrow to the function catalogue after full contract/surface inventory; it cannot imply ownership of routines, skills, or event triggers | A-07, I-03 |
 | `rrd-contract::FunctionTrigger*` | directly rename as proposed-transaction function binding types; reserve `Trigger` for post-commit canonical engine-event predicates | A-07, I-01, I-02 |
 | `rrd_core::RuntimeEvent` plus planned public `EngineEvent` | converge into one semantic engine-event vocabulary and one lowering path; no forwarding type or parallel event log | I-01, J-01 |
@@ -401,7 +413,7 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/qdrant-capability-inventory.md` | `docs/research/qdrant-capability-inventory.md` |
 | `docs/surrealdb-capability-inventory.md` | `docs/research/surrealdb-capability-inventory.md` |
 | `docs/rrflow-surrealdb-differential.md` | `docs/evidence/comparisons/rrflow-surrealdb-claim-differential.md`; preserve exact revision/harness metadata |
-| `docs/rrflow-rename-ledger.md` | remove after A-07 integrates any still-open naming requirement and the final vocabulary search passes |
+| `docs/rrflow-rename-ledger.md` | merge its still-valid identity/cutover rules into the system overview, version policy, roadmap, and A-07 execution requirements, then remove; its V1 compatibility narrative and denial of canonical rrflowMX/rrflowKV names are rejected |
 | `docs/versioning.md` | `docs/reference/release/version-policy.md` |
 | `docs/rrd-public-contract.md` | `docs/reference/protocol/public-contract.md` |
 | `docs/rrd-server-v1.md` | `docs/reference/protocol/server.md` |
@@ -442,7 +454,8 @@ Resolved full-file reviews:
 
 | Baseline record | Canonical record | Review result |
 |---|---|---|
-| `docs/versioning.md` | `docs/reference/release/version-policy.md` | Preserved the frozen `1.0.0` product-version source, mirrored-package guard, explicit-owner change control, independent compatibility-domain identifiers, and separate Connectome repository boundary. Added the release reference index and updated the executable version guard, CODEOWNERS, and root warp map atomically so no old-path check or duplicate policy remains. |
+| `docs/rrflow-rename-ledger.md` | `docs/architecture/system-overview.md`; `docs/reference/release/version-policy.md`; this roadmap/execution map | Preserved the single in-place pre-release identity, exhaustive naming-surface audit, repository-contained source, no-alias/direct-cutover rule, fixture verification, and separation of naming from capability evidence. Rejected its V1 compatibility-domain framing, stale statement that rrflowMX/rrflowKV cannot be canonical names, stale milestone/status authority, and successful earlier-format read requirement. RRFlow now explicitly has no legacy/deprecation line: required semantics are absorbed into one owner before superseded paths and success fixtures are removed. |
+| `docs/versioning.md` | `docs/reference/release/version-policy.md` | Preserved the frozen `1.0.0` product-version source, mirrored-package guard, explicit-owner change control, independently versioned technical identities, and separate Connectome repository boundary. Added the release reference index and updated the executable version guard, CODEOWNERS, and root warp map atomically so no old-path check or duplicate policy remains. |
 | `docs/prompt-flight-experiments.md` | `docs/evidence/test-plans/model-context-effect.md` | Replaced the retired workbench/provider lifecycle with a content-addressed, provider-neutral experiment contract. Preserved fixed task/project/context comparisons, observable event and token/resource accounting, repeated-trial discipline, retained failures, and no hidden chain-of-thought; removed Codex/Claude command flags, hardcoded effort profiles and arms as runtime authority, lexical acceptance, unproved fresh-session claims, prompts in process arguments, and loopback UI behavior. The new record explicitly claims no harness or evidence. |
 | `docs/blueprint-triage.md` | Current deficiencies merged into `docs/poam/rrflow-1.0-alpha.md`; implementation requirements were already owned by C-01, C-06, C-07, F-01, F-04, and F-05 | Removed the superseded Fjall/Vortex/Clyffy architecture, stale ports and task claims, fixed retrieval thresholds, and non-authoritative upstream comparisons. Preserved the valid distinction between mapping bytes and borrowing eligible Arrow buffers, plus bounded stream/backpressure, snapshot-retention, block-pinning, cancellation, compaction, and cache-accounting requirements; no implementation-specific async bridge was mandated before the stamped provider is designed. |
 | `docs/rrflowql-multimodel-v1.md` | `docs/reference/query/multi-model.md` | Preserved the tested source-family, temporal, traversal, and typed-predicate semantics; replaced the removed Fjall claim with rrflowMX/rrflowKV evidence; and made the eager `QueryRow`/Arrow allocation plus native-access-path gaps explicit. |
@@ -477,8 +490,10 @@ reproducible results remain evidence; redundant narrative is removed.
 
 ### A-07.0 — implementation traceability before structural edits
 
-Precondition: A-06 is complete. Re-run the generated file inventory, read every
-current package manifest and module root, and refresh the
+Precondition: KB-05 is complete, which closes the checkout-authoring portion
+of A-06. The later KB-06 through KB-08 persistence milestones are deliberately
+not prerequisites for source convergence. Re-run the generated file inventory,
+read every current package manifest and module root, and refresh the
 [implementation-requirements traceability](#implementation-requirements-traceability)
 against the exact starting revision. For each capability family, record:
 
@@ -498,6 +513,15 @@ test, fixture, or behavior.
 Read all 20 `Cargo.toml` files, root `Cargo.toml`, `Cargo.lock`, every crate
 `lib.rs`/`main.rs`, and `workspace_architecture.rs`. Produce the reviewed
 dependency table in the A-07 commit before any physical move.
+
+Inventory names case-insensitively across packages and crate namespaces,
+binaries, modules, public types, CLI commands, protocol and MCP operations,
+SDKs, configuration paths, environment variables, persisted markers, fixture
+identities, digest/media domains, benchmarks, and documentation coordinates.
+Classify every hit as the accepted direct name, a third-party interoperability
+term, or superseded RRFlow residue with an owning deletion gate. No allowlist
+may hide first-party residue; upstream dependency identifiers are recorded at
+their adapter boundary rather than copied into RRFlow vocabulary.
 
 Verify these direct names, with compiler errors allowed between edits but not
 at the package commit:
@@ -531,6 +555,31 @@ inputs. Registry dependencies remain permitted only when locked. The final
 symbol search must be empty. A-07 stops if any outward adapter imports a
 physical crate, any RRFlow code is supplied by another checkout, or the
 mechanical split silently changes public schema.
+
+### A-07.2 — freeze causal evidence vocabulary
+
+Read `rrd-core/src/trace.rs`, `rrd-engine/src/runtime/trace.rs`, every current
+trace caller/test named in the traceability matrix, and the HTTP/WebSocket
+ingress before changing trace behavior. Record one reviewed map containing:
+
+- low-cardinality `rrflow.<boundary>.<operation>` names for `ingress`,
+  `engine`, `kv`, `ql`, `graph`, `lexical`, `vector`, `datafusion`,
+  `inference`, `attunement`, `routine`, `adapter`, and `delivery`;
+- the canonical typed links and bounded attributes for request correlation,
+  actor/scope, authorization, `ReadStamp`, plan, projection, reasoning cursor,
+  source, commit, resource, error/denial, and output evidence;
+- W3C `traceparent`/`tracestate` extraction, validation, child propagation,
+  asynchronous causal-link, and invalid-context behavior; and
+- the exact mapping from durable `RuntimeTraceEvent` evidence to Rust
+  `tracing` and optional OpenTelemetry export, including redaction and sampling
+  rules that can never advance authoritative state.
+
+This package freezes vocabulary and assigns instrumentation to its owning
+C-through-I work package; it does not add a second trace store or claim H-05.
+Mixed current names such as `vector.search`, `embedding.run`,
+`cluster.artifact_transfer`, and `rrflow_kv.concurrent-observation` remain
+direct-convergence inventory until their owning behavior changes. H-05 later
+proves the complete cross-surface chain.
 
 ## Gate B work packages
 
@@ -698,12 +747,13 @@ checkpoints through ordinary authorized commits. Events/traces observe that
 state; they never infer it. Kill the process at each state transition and
 prove idempotent resume/cancel/stale-lease handling.
 
-### D-03 through D-05 — pure attunement phases
+### D-03 and D-04 — pure inventory and parsing
 
 Create `rrd-attunement` with no store, engine, transport, provider, or secret
-dependency. Implement one phase per commit in the canonical order. Each phase
-accepts bounded inputs plus digest/revision metadata and returns a deterministic
-proposal. `RrdEngine` commits the proposal and checkpoint.
+dependency. Implement inventory and parse as separate commits in the canonical
+order. Each phase accepts bounded inputs plus digest/revision metadata and
+returns a deterministic proposal. `RrdEngine` commits the proposal and
+checkpoint.
 
 - inventory: `crates/compute/rrd-attunement/src/inventory.rs` owns the pure
   `SourceTreeSnapshot`, `SourceTreeEntry`, `SourceTreeChangeSet`,
@@ -723,11 +773,11 @@ proposal. `RrdEngine` commits the proposal and checkpoint.
   digest/revision, incremental edit, and retained `ERROR`/`MISSING` evidence.
   `crates/compute/rrd-attunement/tests/incremental_parse.rs` proves parsing
   cannot begin before the inventory commit receipt and preserves unaffected
-  identities across edit and restart;
-- normalize/entity-link: stable identities and provenance;
-- lexical/embed/vector/graph: canonical facts plus derived-index proposals;
-- ground/verify: cited source links, inconsistency/unresolved-error records,
-  package and project digests.
+  identities across edit and restart.
+
+D-05 is intentionally deferred until Gates E and F pass. Inventory and parsing
+produce canonical source inputs; they must not manufacture temporary lexical,
+vector, graph, or analytical implementations just to complete an earlier gate.
 
 Do not split inventory into competing walkers or language-specific discovery
 paths. Start with that one module and one fixture corpus; split internal modules
@@ -840,6 +890,34 @@ catalogue, authorization projection, logical/physical plan digest, and output
 shape. Mutation/schema/catalogue changes must invalidate by key/version, not a
 best-effort callback. Moka is one candidate, not a requirement; record an ADR
 whether it is adopted or rejected.
+
+## Deferred D-05 work package after Gates E and F
+
+Resume the B-01 phase order only after the native E access paths and streamed F
+analytical boundary pass. Implement one phase per commit:
+
+1. normalize produces stable typed facts with source identities and
+   provenance;
+2. entity-link proposes deterministic symbol/entity relationships;
+3. lexical-index commits BM25 deltas through the E-03 path;
+4. embed invokes a digest-bound inference backend and commits canonical exact
+   vectors through `RrdEngine`;
+5. vector-index consumes committed deltas and proposes an E-04 projection
+   generation;
+6. graph commits both E-01 adjacency directions with the canonical relations;
+7. ground binds every derived fact to source, parser, model, schema, and read
+   coordinates; and
+8. verify queries the ordinary native and DataFusion paths and records exact
+   results, unresolved errors, budgets, and output digests.
+
+Each phase consumes the preceding committed checkpoint, returns a pure bounded
+proposal from `rrd-attunement`, and is atomically committed with its checkpoint,
+runtime-log entry, audit, and index/projection delta by `RrdEngine`. Kill/retry,
+stale-input, digest-drift, close/reopen, exact-oracle, physical-plan, and trace
+tests pass before the next phase begins. KB-06 then imports the deterministic
+documentation package through this same pipeline; KB-07 proves durable
+readback and recovery. No attunement-only index, graph, Arrow snapshot, or
+storage path is allowed.
 
 ## Gates G through J work packages
 
