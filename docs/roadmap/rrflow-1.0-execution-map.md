@@ -445,6 +445,7 @@ Resolved full-file reviews:
 | `docs/rrflowql-transactions-and-joins-v1.md` | `docs/reference/query/transactions-and-joins.md` | Preserved the tested same-stamp join and engine-owned mutation-program behavior; removed the retired milestone and Fjall claims; and separated existing eager execution from the C/F transaction and streaming targets. |
 | `docs/rrflowql-live-query-v1.md` | `docs/reference/query/live-query.md` | Preserved the tested resumable semantic-delta contract; removed stale three-engine and milestone-style claims; and made the current two-snapshot materialization distinct from H-03 commit-impact evaluation. |
 | `docs/rrd-unified-catalogue.md` | `docs/reference/data/schema-catalogue.md` | Preserved the tested logical model, validation, atomic schema/data, and reopen semantics; identified empty-table derivation as C-05 removal inventory; and separated the coherent replay oracle from C-04 native reads. |
+| `docs/rrd-vector-collections-v1.md` | `docs/reference/vector/collections.md` | Preserved the tested collection, named-vector, point, payload-definition, deletion, and reopen behavior; identified the control-record catalogue and whole-log reads; and withheld native index and recall claims until C/E/F evidence exists. |
 
 No row authorizes a blind move. The file must first be read in full, compared
 to current code and its target owner, and then retained as the owner, merged
