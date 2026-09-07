@@ -71,8 +71,8 @@ hybrid rrflowKV segment layout.
 The current index-catalogue behavior is described by the
 [query index catalogue](index-catalogue.md), and the current join and bounded
 mutation-program behavior is described by
-[transactions and joins](transactions-and-joins.md). Live-query semantics remain at
-[`docs/rrflowql-live-query-v1.md`](../../rrflowql-live-query-v1.md), and public
+[transactions and joins](transactions-and-joins.md). Current snapshot-diff
+semantics are described by [live queries](live-query.md), and public
 subscription delivery remains at
 [`docs/rrd-live-subscriptions-v1.md`](../../rrd-live-subscriptions-v1.md),
 pending their separate full-file reviews.
