@@ -13,3 +13,4 @@ the target substrate, and roadmap Gates C and E own its delivery evidence.
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
 | Logical schema catalogue | [`rrflow://rrflow-instance/data/reference/data/schema-catalogue`](rrflow://rrflow-instance/data/reference/data/schema-catalogue) | [`schema-catalogue.md`](schema-catalogue.md) | implemented logical validation and persistence; pre-1.0 derivation and replay paths remain to be removed |
+| Multi-model commits and immutable objects | [`rrflow://rrflow-instance/data/reference/data/multi-model-object-contract`](rrflow://rrflow-instance/data/reference/data/multi-model-object-contract) | [`multi-model-object-contract.md`](multi-model-object-contract.md) | implemented semantic transaction and object-reference visibility; native Arrow-compatible storage and indexes remain open |
