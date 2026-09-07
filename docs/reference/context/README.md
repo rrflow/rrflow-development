@@ -11,3 +11,4 @@ planning, model, reasoning-tree, or persistence authority.
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
 | Recursive retrieval algebra | [`rrflow://rrflow-instance/data/reference/context/retrieval`](rrflow://rrflow-instance/data/reference/context/retrieval) | [`retrieval.md`](retrieval.md) | bounded keyword/vector/RRF/rerank behavior exists; native graph/index/DataFusion convergence and reasoning-tree integration remain open |
+| Context projection maintenance | [`rrflow://rrflow-instance/data/reference/context/context-maintenance`](rrflow://rrflow-instance/data/reference/context/context-maintenance) | [`context-maintenance.md`](context-maintenance.md) | accepted target contract; current standalone maintenance repository requires direct convergence into generic routines |
