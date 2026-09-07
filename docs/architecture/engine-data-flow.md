@@ -79,6 +79,35 @@ runtime-log entry, and durable asynchronous index deltas as one rrflowKV write
 batch. Index builders may run later, but their source cursor and freshness
 state are part of the committed transaction.
 
+### Current runtime-log and graph oracle
+
+The current semantic storage port exposes a bounded, authenticated runtime-log
+page containing `requested_after`, `through_cursor`, `head_cursor`, validation
+evidence, and matching changes. A consumer always resumes at
+`through_cursor`, even when its scope filter matched no changes, because the
+cursor records the examined global prefix rather than the number of returned
+rows. This behavior is tested on rrflowMX and rrflowKV, including rrflowKV
+flush, close, reopen, and continued hash chaining.
+
+`RuntimeGraphSnapshot::from_changes` is the current temporal graph oracle. It
+folds transaction-visible record, relation, event, and retirement mutations at
+one scope, valid-time instant, and known cursor. Each event has a stable
+cursor-derived node identity; a subject-bearing event also produces a
+deterministic `emitted` relation from its subject to that event. The snapshot
+supports outgoing and incoming relation views, bounded relation-filtered
+breadth-first traversal, and an exact structural differential between two
+known cursors. rrflowQL additionally exposes deterministic directed traversal
+with cycle suppression and the first shortest path to each reached node.
+
+These are semantic reference results, not the target physical graph engine.
+The current implementations can reconstruct a snapshot from retained runtime
+changes and traverse materialized vectors. Gates C-03 and C-04 must replace
+normal whole-log reconstruction with atomically maintained version and
+adjacency keys; Gate E-01 must prove bounded native traversal against this
+oracle. A structural differential is neither a committed mutation nor a live
+query result until its owning `RrdEngine` operation validates and commits the
+corresponding proposal.
+
 ## rrflowKV physical target
 
 rrflowKV combines write-optimized state with scan-optimized immutable storage
