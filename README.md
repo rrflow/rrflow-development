@@ -28,6 +28,7 @@ release-ready.
 | Execute work in dependency order and inspect accepted evidence | [RRFlow 1.0 release roadmap](docs/roadmap/rrflow-1.0.md) |
 | Inspect verified gaps and remediation ownership | [RRFlow 1.0 alpha POA&M](docs/poam/rrflow-1.0-alpha.md) |
 | Map a gate to exact files, symbols, tests, and stop conditions | [RRFlow 1.0 code execution map](docs/roadmap/rrflow-1.0-execution-map.md) |
+| Inspect frozen product-version and change-control rules | [RRFlow version policy](docs/reference/release/version-policy.md) |
 | Understand documentation ownership and future rrflowDB migration | [RRFlow knowledge map](docs/README.md) |
 
 ## Non-negotiable architecture
@@ -98,6 +99,7 @@ one repository fallback; the linked record owns the content.
 | rrflowKV current physical format | [`rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`](rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format) | [`docs/reference/storage/rrflowkv-current-format.md`](docs/reference/storage/rrflowkv-current-format.md) |
 | Seat identity and memory warps | [`rrflow://rrflow-instance/data/reference/seat-identity`](rrflow://rrflow-instance/data/reference/seat-identity) | [`docs/reference/seat-identity.md`](docs/reference/seat-identity.md) |
 | Provider-neutral agent bootstrap | [`rrflow://rrflow-instance/data/reference/agent-bootstrap`](rrflow://rrflow-instance/data/reference/agent-bootstrap) | [`docs/reference/agent-bootstrap.md`](docs/reference/agent-bootstrap.md) |
+| Product version policy | [`rrflow://rrflow-instance/data/reference/release/version-policy`](rrflow://rrflow-instance/data/reference/release/version-policy) | [`docs/reference/release/version-policy.md`](docs/reference/release/version-policy.md) |
 | Alpha objectives | [`rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha) | [`docs/objectives/rrflow-1.0-alpha.md`](docs/objectives/rrflow-1.0-alpha.md) |
 | Release roadmap | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`docs/roadmap/rrflow-1.0.md`](docs/roadmap/rrflow-1.0.md) |
 | Alpha POA&M | [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha) | [`docs/poam/rrflow-1.0-alpha.md`](docs/poam/rrflow-1.0-alpha.md) |

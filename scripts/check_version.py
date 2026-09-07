@@ -86,9 +86,13 @@ def main() -> int:
     version_policy_line = (
         f"RRFlow's canonical current release-train version is `{VERSION}`."
     )
-    version_policy = (ROOT / "docs/versioning.md").read_text(encoding="utf-8")
+    version_policy_path = ROOT / "docs/reference/release/version-policy.md"
+    version_policy = version_policy_path.read_text(encoding="utf-8")
     if version_policy_line not in version_policy:
-        fail("docs/versioning.md does not declare the canonical VERSION", failures)
+        fail(
+            f"{version_policy_path.relative_to(ROOT)} does not declare the canonical VERSION",
+            failures,
+        )
 
     if (ROOT / "apps/connectome").exists():
         fail(

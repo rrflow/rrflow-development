@@ -3,4 +3,4 @@
 /scripts/check_version.py @EonsofStupid
 /.github/workflows/ci.yml @EonsofStupid
 /.github/CODEOWNERS @EonsofStupid
-/docs/versioning.md @EonsofStupid
+/docs/reference/release/version-policy.md @EonsofStupid

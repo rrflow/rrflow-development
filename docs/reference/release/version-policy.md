@@ -1,10 +1,16 @@
 # RRFlow version policy
 
-Status: supporting release declaration policy. `README.md` remains the sole
-authority for product identity, current status, architecture, and roadmap.
+**Status:** active release declaration policy
+**Coordinate:** `rrflow://rrflow-instance/data/reference/release/version-policy`
+**Owner:** product-version declaration, mirroring, and change control
+
+The repository root [`README.md`](../../../README.md) remains the sole authority
+for product identity and current maturity. The
+[release roadmap](../../roadmap/rrflow-1.0.md) owns completion and readiness.
 
 RRFlow's canonical current release-train version is `1.0.0`. The checked-in
-`VERSION` file is the human- and automation-readable source of truth.
+[`VERSION`](../../../VERSION) file is the human- and automation-readable source
+of truth.
 
 The version is intentionally frozen while RRFlow converges on its first alpha
 baseline. Pre-alpha, alpha, optimized, stable, and releasable are evidence
@@ -36,10 +42,11 @@ or Connectome product release.
   pull request that changes `VERSION`.
 - The pull request must state the old version, new version, compatibility
   impact, migration requirements, and release/rollback plan.
-- `scripts/check_version.py` and CI reject version drift. `.github/CODEOWNERS`
-  requests owner review for every version authority and guard. Repository
-  branch protection must require Code Owner review for that approval rule to
-  be enforced by GitHub.
+- [`scripts/check_version.py`](../../../scripts/check_version.py) and CI reject
+  version drift. [`.github/CODEOWNERS`](../../../.github/CODEOWNERS) requests
+  owner review for every version authority and guard. Repository branch
+  protection must require Code Owner review for that approval rule to be
+  enforced by GitHub.
 
 The RRFlow release gate verifies only declarations owned by this repository.
 Connectome conformance and version alignment are enforced in Connectome before
