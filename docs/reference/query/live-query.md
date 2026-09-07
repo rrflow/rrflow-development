@@ -6,9 +6,9 @@
 
 This record describes the current query-layer behavior. It does not declare
 the live reasoning and recall loop complete. Roadmap
-[H-03](../../roadmap/rrflow-1.0.md#gate-h--complete-context-feedback-delivery-tracing-and-connectome)
+[H-03](../../roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome)
 owns the replacement of broad snapshot polling with commit-impact evaluation,
-while the [subscription contract](../../rrd-live-subscriptions-v1.md) describes
+while the [subscription contract](../protocol/subscriptions.md) describes
 the separate durable delivery authority.
 
 ## Poll contract

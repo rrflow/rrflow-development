@@ -73,6 +73,5 @@ The current index-catalogue behavior is described by the
 mutation-program behavior is described by
 [transactions and joins](transactions-and-joins.md). Current snapshot-diff
 semantics are described by [live queries](live-query.md), and public
-subscription delivery remains at
-[`docs/rrd-live-subscriptions-v1.md`](../../rrd-live-subscriptions-v1.md),
-pending their separate full-file reviews.
+subscription delivery is described by the
+[durable subscription reference](../protocol/subscriptions.md).

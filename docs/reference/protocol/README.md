@@ -10,3 +10,4 @@ do not own engine semantics, release status, or client-specific behavior.
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
 | HTTP and WebSocket server | [`rrflow://rrflow-instance/data/reference/protocol/server`](rrflow://rrflow-instance/data/reference/protocol/server) | [`server.md`](server.md) | implemented transport foundation; single-scope transactions, multiplexing, tracing, and release qualification remain open |
+| Durable subscriptions | [`rrflow://rrflow-instance/data/reference/protocol/subscriptions`](rrflow://rrflow-instance/data/reference/protocol/subscriptions) | [`subscriptions.md`](subscriptions.md) | implemented durable ACK/replay foundation; multiplexing and commit-impact live evaluation remain open |

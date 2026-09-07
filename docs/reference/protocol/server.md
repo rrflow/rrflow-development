@@ -217,7 +217,7 @@ that direct trace convergence.
 |---|---|---|
 | Contract/router parity | Every catalogued HTTP operation has exactly one dispatch; generated OpenAPI is derived from the same catalogue. | Released SDK or GraphQL conformance. |
 | Real socket process | Loopback enforcement, liveness/readiness, authentication and scope denial, bounded envelopes, session/transaction replay, concurrent idempotency, multi-model commit/reopen, query, vector, changefeed, backup/restore, and secret exclusion. | Native target storage/index execution, generalized cancellation, or full resource/trace export. |
-| Mutual-TLS configuration | The CLI requires the certificate, key, and client CA together; the server constructs a TLS 1.3 client-certificate verifier and refuses TLS without initialized application security. | The current suite has no black-box trusted-client, missing-client-certificate, or wrong-server-name handshake matrix; rotation, revocation, external identity, and production deployment integration are also open. |
+| Mutual-TLS transport | The CLI requires the certificate, key, and client CA together; a real-process Rust client test rejects a missing client certificate and wrong server name, accepts the configured identities, and carries HTTPS plus WSS subscription traffic. | Untrusted-client-chain coverage, certificate rotation and revocation, external identity, and production deployment integration remain open. |
 | Local estate driver | Exclusive root ownership, restart/reopen, identity-safe process control, bounded stop escalation, and controller kill-gap convergence. | `rrflow install`, project attunement, or a released service manager. |
 
 The focused characterization commands are:
