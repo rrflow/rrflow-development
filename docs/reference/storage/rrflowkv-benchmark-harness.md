@@ -2,170 +2,132 @@
 
 **Status:** active implementation reference; current output is diagnostic and is not RRFlow 1.0 release evidence
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-benchmark-harness`
-**Owner:** current `rrd-store` comparison mechanics, output schema, and evidence-eligibility boundary
+**Owner:** current rrflowKV benchmark mechanics, output schemas, and evidence-eligibility boundary
 
-This record describes what the checked-in benchmark executables actually do.
-The [RRFlow 1.0 roadmap](../../roadmap/rrflow-1.0.md) owns release evidence and
-the [POA&M](../../poam/rrflow-1.0-alpha.md) keeps fixed-hardware end-to-end
-qualification open. The [historical August results](../../history/rrd-lsm-promotion-benchmark.md)
-preserve prior local measurements but cannot close those gates.
-
-The word `promotion` still appears in the current executable and JSON schema.
-It means only “native met this run's Fjall-relative thresholds.” It does not
-mean rrflowKV is promoted for RRFlow 1.0, that Fjall removal is authorized, or
-that RRFlow outperforms another database generally. The naming itself remains
-subject to the Gate A-07 vocabulary audit.
+This record describes the checked-in rrflowKV evidence programs. The
+[RRFlow 1.0 roadmap](../../roadmap/rrflow-1.0.md) owns release status, and the
+[POA&M](../../poam/rrflow-1.0-alpha.md) owns unresolved qualification gaps.
+Historical comparison artifacts remain evidence about the code that produced
+them; they are not a compatibility requirement or a current acceptance oracle.
 
 ## Executable boundaries
 
 | Boundary | Checkout source | Current responsibility |
 |---|---|---|
-| General storage comparison | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Generates an append/replay corpus and compares Fjall with the current native store. |
-| AI storage-access comparison | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Exercises selected hot, cold, missing, historical, and metadata-fan-out access shapes. |
-| Retained-artifact assertions | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Checks frozen JSON structure and recorded verdicts; it does not rerun their measurements. |
-| Mixed-mutation correctness | [`mixed_storage_soak.rs`](../../../crates/persistence/rrd-store/tests/mixed_storage_soak.rs) | Compares deterministic put/overwrite/delete/reopen/compaction state with independent and Fjall oracles. |
-| Scheduled execution | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the general and AI matrices on `ubuntu-latest` and uploads per-run artifacts. |
+| Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
+| AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
+| Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
+| Retained comparison provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Validates the retained SurrealDB differential artifact; it does not execute a current performance workload. |
+| Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
 
-These are `rrd-store` physical and semantic-storage workloads. They do not
-exercise the complete RrdEngine authorization, RRFlowQL, graph, BM25, vector,
-RRF, context-packet, transport, attunement, or Connectome flow. A green storage
-comparison is therefore neither an end-to-end context result nor a recall
-quality result.
+These programs cover physical and semantic storage only. They do not exercise
+the complete `RrdEngine` authorization, RRFlowQL, graph, BM25, vector, RRF,
+context-packet, transport, attunement, or Connectome flow. Passing them is not
+end-to-end reasoning or recall evidence.
 
-## General comparison protocol
+## Semantic storage protocol
 
-The format-4 executable accepts positive `trials`, `operations`, `batch-size`,
-`reads`, and `read-width` values. Batch size and read width cannot exceed the
-operation count. For each trial it creates fresh per-backend directories and
-runs each backend in a separate child process. Backend order alternates by
-trial to reduce a fixed first/second ordering bias.
+The format-5 semantic program accepts positive `trials`, `operations`,
+`batch-size`, `reads`, and `read-width` values. Batch size and read width cannot
+exceed the operation count. Every trial uses a fresh directory and an isolated
+child process so allocator and process high-water measurements do not leak
+across trials.
 
-The write corpus appends one claim for every ordinal in `0..operations` in
-authoritative batches. Measured reads deterministically select bounded ordinal
-ranges. Full verification separately pages over the entire semantic sequence
-and checks cardinality and the exact `payload-{ordinal}` object for every
-claim. That is a meaningful exactness oracle for this corpus; it does not test
-updates, deletes, graph edges, secondary indexes, or concurrent transactions.
+The write phase appends one claim for each ordinal in `0..operations` using
+authoritative batches. After a clean reopen, full verification pages over the
+entire semantic sequence and checks exact cardinality and the exact
+`payload-{ordinal}` object for every claim. Timed reads then select deterministic
+bounded sequence ranges. Maintenance compacts unpinned history, collects
+unreachable files, and closes and reopens the store before a second verification
+and read pass.
 
-Each backend is observed at three lifecycle points:
+The output retains each raw trial plus the median aggregate in `rrflow_kv`.
+Latency aggregates are medians of each trial's percentile, not percentiles over
+one combined sample population. A correctness failure terminates the program;
+there is no external-engine ratio or promotion verdict.
 
-| Point | Meaning | Cross-backend verdict use |
-|---|---|---|
-| `active` | Logical writes completed while the engine remains open. | Informational footprint only. |
-| `reopened` | Clean close/open, complete verification, then bounded measured reads without explicit maintenance. | Used by the current comparator for recovery, reads, RSS, and allocated footprint. |
-| `maintained` | Each backend runs its own declared maintenance actions and reopens. | Diagnostic only because actions and resulting physical shapes differ. |
+## AI storage-access protocol
 
-The parent retains every raw child result and reports medians of per-trial
-metrics. Aggregate latency percentiles are medians of each trial's percentile;
-they are not percentiles over a single combined sample population. The harness
-has no warm-up phase, confidence interval, outlier policy, CPU/NUMA pinning,
-frequency control, or device-cache control. Alternation and medians reduce
-some noise but do not make the result statistically portable.
+The format-4 AI program accepts one workload and payload profile per run:
 
-## Current comparator verdict
+| Dimension | Values |
+|---|---|
+| Workload | `current-hot-hit`, `cold-hit`, `point-miss`, `historical-hot-hit`, `metadata-fanout` |
+| Payload | `repeated-byte`, `structured-json`, `deterministic-entropy`, `embedding-f32` |
 
-The current `promotion` object fails if correctness fails or native is worse
-than Fjall for any of these available measurements:
+Setup publishes a cold immutable corpus, flushes it, then overwrites a bounded
+hot set in the active memtable. Timed reads use either the current or retained
+historical snapshot. Metadata fan-out mixes hot hits, immutable hits, and misses
+in each `get_many` request. The program verifies every timed result against its
+deterministic expected value.
 
-- write or clean-reopen read throughput;
-- write or clean-reopen read p95 latency;
-- clean-reopen recovery time;
-- clean-reopen process peak RSS; or
-- clean-reopen allocated storage footprint.
+Embedding-shaped bytes exercise payload size and access locality only. This is
+not HNSW, exact-vector, semantic-quality, or RRF evidence.
 
-Maintained results and apparent-byte ratios do not participate. A platform
-that does not expose RSS or allocated bytes yields no failure for that missing
-cell. Consequently `promotion.passes=true` means only that the implemented
-checks found no failing available cell in that run.
+## Lifecycle measurements
 
-## Output schema and provenance gap
+Both programs report three explicit physical points:
 
-Format 4 currently records:
+| Point | Meaning |
+|---|---|
+| `active` | Writes completed while the store or read snapshot remains open. |
+| `reopened` | Clean close/open and complete verification before explicit maintenance. |
+| `maintained` | rrflowKV flush/compaction/garbage collection completed, followed by another clean reopen and verification. |
 
-- millisecond wall-clock time, architecture, operating-system family, and
-  logical CPU count;
-- input counts, aggregation language, lifecycle/footprint language, and the
-  verification description;
-- every Fjall/native child result, aggregate metrics, ratios, physical native
-  counters, and the comparator verdict.
+The harness records apparent bytes and, where the platform exposes them,
+allocated bytes derived from filesystem block accounting. These values are
+diagnostic until a fixed-hardware qualification run binds its environment and
+source provenance.
 
-It does not record:
+## Provenance still required for release evidence
 
-- the executed Git revision or dirty-worktree digest;
-- the `Cargo.lock`, source-tree, or benchmark-binary digest;
-- the exact command, dataset seed, or corpus digest;
-- Rust compiler, target triple, build flags, or dependency identities;
-- CPU model, memory topology, kernel, filesystem, mount options, storage
-  device, power/frequency policy, or competing host load; or
-- CI run identity and immutable runner/hardware identity.
+Current JSON records wall-clock time, architecture, operating-system family,
+workload configuration, units, raw trials, aggregates, lifecycle footprints,
+and rrflowKV physical counters where applicable. It does not yet bind:
 
-The scheduled workflow uses `ubuntu-latest`. That is remote execution, but it
-is not fixed hardware and the checked-in JSON does not bind itself to its
-workflow run or source revision. The retained August JSON can be structurally
-validated and hashed, but its exact execution environment cannot be recreated
-from the artifact alone. It is historical diagnostic data, not admissible
-Gate J evidence.
+1. the exact clean Git revision, source-tree and lockfile digests, executable
+   digest, compiler, target triple, build flags, or complete command;
+2. CPU model, memory topology, kernel, filesystem and mount options, storage
+   device, power/frequency policy, or competing host load;
+3. a fixed dataset/corpus digest, warm-up policy, confidence interval, outlier
+   policy, CPU/NUMA affinity, or device-cache state; or
+4. the end-to-end governed reasoning/recall workloads and quality metrics
+   required by the release gates.
 
-## Concrete artifact example
+The scheduled workflow uses `ubuntu-latest`; its artifacts are useful regression
+diagnostics, not fixed-hardware release evidence. The
+[historical August record](../../history/rrd-lsm-promotion-benchmark.md) retains
+prior comparison provenance without making it current RRFlow behavior.
 
-[`2026-08-23-rrd-lsm-standard-streaming-scan-v4.json`](../../../eval/results/2026-08-23-rrd-lsm-standard-streaming-scan-v4.json)
-is a real nine-trial, 2,048-operation format-4 artifact. Its SHA-256 in this
-checkout is
-`ac30f4ad07534fcf1747b1358123a17ce86be65a96aec9aa9693e2bf98563ac9`.
-It records x86-64 Linux, eight logical CPUs, complete-corpus verification, raw
-trials, ratios, and a passing comparator verdict. It has no `git_revision`,
-`command`, `cpu_model`, or `compiler` field. The retained-artifact test proves
-its checked-in structure and numeric assertions; it cannot prove that the same
-numbers describe the current source tree.
+## Reproduction
 
-The historical record links the other retained green and red artifacts. A red
-cell remains red; results from different runs are never averaged together to
-erase it.
-
-## Evidence required for release use
-
-Before a benchmark artifact can support a roadmap gate, its schema and runner
-must bind at least:
-
-1. exact clean source revision, lockfile and harness digests, compiler/target,
-   complete command, comparator identity, and input seed/corpus digest;
-2. stable hardware and operating environment, including CPU, memory, kernel,
-   filesystem, storage device, relevant mount/power settings, and isolation;
-3. warm-up and sampling rules, raw trials, measurement units, missing-cell
-   handling, and explicit pass/fail policy without discarded failures;
-4. exact correctness oracle, lifecycle point, physical-byte method, and
-   artifact digest; and
-5. for RRFlow release claims, the actual end-to-end governed reasoning/recall
-   workloads and quality metrics required by J-02 through J-05—not only this
-   storage microbenchmark.
-
-This list is an evidence eligibility contract, not a claim that those changes
-already exist.
-
-## Reproduction and validation
-
-Run the current scheduled general profile locally:
+Run the semantic profile:
 
 ```bash
 cargo run --release --locked -p rrd-store --example engine_benchmark -- \
   --trials 9 --operations 2048 --batch-size 64 \
   --reads 1024 --read-width 32 \
-  --output target/rrflowkv-standard-format-4.json
+  --output target/rrflow-kv-standard-format-5.json
 ```
 
-Omitting `--require-promotion` is deliberate for exploratory runs: the JSON
-still contains the comparator verdict, while a noisy local machine does not
-turn that verdict into a release decision. The scheduled workflow command
-exercises the current threshold behavior; it still does not supply immutable
-hardware or complete artifact provenance.
-
-Validate the retained diagnostic artifacts and the mixed-mutation oracle:
+Run one AI access profile:
 
 ```bash
-cargo test -p rrd-store --test benchmark_evidence
-cargo test -p rrd-store --test mixed_storage_soak
+cargo run --release --locked -p rrd-store --example ai_hotset_benchmark -- \
+  --workload metadata-fanout --payload-profile embedding-f32 \
+  --trials 5 --cold-keys 8192 --hot-keys 128 --reads 8192 \
+  --batch-size 128 --value-bytes 128 --fanout-width 32 \
+  --output target/rrflow-kv-ai-metadata-fanout-embedding-f32.json
 ```
 
-The first command validates frozen artifact structure and stated historical
-cells. The second executes current code against its deterministic oracle.
-Neither command supplies the missing fixed-hardware end-to-end Gate J proof.
+Validate current storage behavior separately from retained evidence:
+
+```bash
+cargo test -p rrd-store --test rrflow_kv_model_soak
+cargo test -p rrd-store --test durability
+cargo test -p rrd-store --test snapshot
+cargo test -p rrd-store --test benchmark_evidence
+```
+
+These checks keep useful workload and provenance coverage alive. None alone
+closes a roadmap performance or end-to-end context-flow gate.

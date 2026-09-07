@@ -7,7 +7,7 @@
 
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_store::{ControlTransition, Engine};
+use rrd_store::{ControlTransition, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};

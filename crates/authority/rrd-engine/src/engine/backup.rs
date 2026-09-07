@@ -229,7 +229,7 @@ impl RrdEngine {
             .ok_or_else(|| ServiceError::Backup("backup is not catalogued".into()))?;
         let target = self.restore_root()?.join(request.restore_id.as_str());
         let (inventory, reopened, recovered) = if target.exists() {
-            let restored = rrd_store::PersistentEngine::open(&target)?;
+            let restored = rrd_store::RrflowKvStore::open(&target)?;
             if restored.sequence()? != backup.archive.claim_sequence
                 || restored.runtime_cursor()? != backup.archive.runtime_cursor
             {

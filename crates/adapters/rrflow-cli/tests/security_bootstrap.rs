@@ -1,6 +1,6 @@
 use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
 use rrd_security::SecurityRepository;
-use rrd_store::PersistentEngine;
+use rrd_store::RrflowKvStore;
 use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -37,7 +37,7 @@ fn bootstrap_is_private_idempotent_restart_safe_and_drift_denying() {
         .unwrap()
         .contains("unchanged"));
 
-    let engine = PersistentEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let state = SecurityRepository::new(&engine, CanonicalId::new("kube-instance").unwrap())
         .load()
         .unwrap()

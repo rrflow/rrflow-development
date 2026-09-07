@@ -1,4 +1,4 @@
-//! Backend-independent, content-authenticated logical archive and native restore.
+//! Content-authenticated logical archive and rrflowKV restore.
 
 mod export;
 mod format;

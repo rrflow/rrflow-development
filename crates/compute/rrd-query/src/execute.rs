@@ -9,7 +9,7 @@ use rrd_core::{
     resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeGraphSnapshot,
     RuntimeMutation, RuntimeReadValidation, RuntimeValue, SeriesValue,
 };
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
@@ -89,7 +89,7 @@ pub struct QueryExecution {
     pub analysis: Option<FusionAnalysis>,
 }
 
-pub fn execute<E: Engine>(
+pub fn execute<E: StorageEngine>(
     engine: &E,
     plan: &PhysicalPlan,
     budget: &ExecutionBudget,
@@ -405,7 +405,7 @@ impl ReadPath {
         }
     }
 
-    fn load<E: Engine>(
+    fn load<E: StorageEngine>(
         &self,
         engine: &E,
         stamp: &rrd_core::ReadStamp,

@@ -28,10 +28,9 @@ pub use engine::{
 };
 #[cfg(feature = "full")]
 pub use operator::{
-    digest, BackupCatalogue, BackupEntry, Claim, ClaimReader, FormatMigrationEdge,
-    FormatMigrationLedger, LogicalArchiveInventory, LogicalRestoreReport, MigrationReport, Millis,
-    NativeApplicationFormat, OperatorInvocation, OperatorInvocationInput, OperatorResult, Outcome,
-    Predicate, Producer, Reader, RemovalReport, ScopeId, Subject, Trigger,
+    digest, BackupCatalogue, BackupEntry, Claim, ClaimReader, LogicalArchiveInventory,
+    LogicalRestoreReport, Millis, OperatorInvocation, OperatorInvocationInput, OperatorResult,
+    Outcome, Predicate, Producer, Reader, RemovalReport, ScopeId, Subject, Trigger,
 };
 #[cfg(feature = "full")]
 pub use runtime::*;

@@ -3,14 +3,14 @@ use crate::{
     Query, QueryExecution, Result,
 };
 use rrd_core::ReadStamp;
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 
 /// One provider-neutral RRFlowQL pipeline bound to a caller-owned read stamp.
 ///
 /// The caller decides when the read coordinate is captured. Every catalogue,
 /// bound query, physical plan, and execution produced here must retain that
 /// coordinate, including when observability writes advance the live head.
-pub struct StampedQueryPipeline<'a, E: Engine> {
+pub struct StampedQueryPipeline<'a, E: StorageEngine> {
     engine: &'a E,
     read: ReadStamp,
 }
@@ -22,7 +22,7 @@ pub struct StampedQueryExecution {
     pub execution: QueryExecution,
 }
 
-impl<'a, E: Engine> StampedQueryPipeline<'a, E> {
+impl<'a, E: StorageEngine> StampedQueryPipeline<'a, E> {
     pub fn new(engine: &'a E, read: ReadStamp) -> Result<Self> {
         read.validate()
             .map_err(|error| Error::Integrity(error.to_string()))?;

@@ -3,7 +3,7 @@ use rrd_core::{
     RuntimeType, RuntimeValue, ScopeId, SpanId, TraceDataClass, TraceDomain, TraceId, TraceLink,
     TraceOutcome,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn trace_id() -> TraceId {
     TraceId::new("0123456789abcdef0123456789abcdef").unwrap()
@@ -13,7 +13,7 @@ fn span_id() -> SpanId {
     SpanId::new("0123456789abcdef").unwrap()
 }
 
-fn exercise(engine: &dyn Engine) -> Vec<Vec<u8>> {
+fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
     let scope = ScopeId::new("instance:trace-differential").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "install persisted runtime tracing");
     schema.events.insert(
@@ -93,14 +93,11 @@ fn exercise(engine: &dyn Engine) -> Vec<Vec<u8>> {
 }
 
 #[test]
-fn persisted_trace_events_are_identical_across_reference_compatibility_and_native_engines() {
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+fn persisted_trace_events_are_identical_across_storage_profiles() {
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
 
     let expected = exercise(&memory);
-    assert_eq!(exercise(&fjall), expected);
-    assert_eq!(exercise(&native), expected);
+    assert_eq!(exercise(&rrflow_kv), expected);
 }

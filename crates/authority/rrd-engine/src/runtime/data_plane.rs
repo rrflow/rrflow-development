@@ -16,7 +16,7 @@ use rrd_inference::{
     EmbeddingRequest, EmbeddingSourceReader, ExecutionTarget, PreparedEmbedding,
 };
 use rrd_query::Catalog;
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use rrd_vector::{
     AccessPathKind, PreparedVectorSearch, ScoreMetric, SearchExecution, SearchMode, SearchRequest,
     VectorQuery, VectorRuntime,
@@ -44,7 +44,7 @@ pub fn execute_traced_embedding<E, S, B>(
     at: Millis,
 ) -> Result<TracedEmbeddingExecution, Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
     S: EmbeddingSourceReader,
     B: EmbeddingBackend,
 {
@@ -269,7 +269,7 @@ struct DurableEmbeddingBackend<'a, E, B> {
     read: ReadStamp,
 }
 
-impl<E: Engine, B: EmbeddingBackend> EmbeddingBackend for DurableEmbeddingBackend<'_, E, B> {
+impl<E: StorageEngine, B: EmbeddingBackend> EmbeddingBackend for DurableEmbeddingBackend<'_, E, B> {
     fn descriptor(&self) -> &EmbeddingBackendDescriptor {
         self.backend.descriptor()
     }
@@ -352,7 +352,7 @@ impl<E: Engine, B: EmbeddingBackend> EmbeddingBackend for DurableEmbeddingBacken
     }
 }
 
-pub fn execute_traced_vector_search<E: Engine>(
+pub fn execute_traced_vector_search<E: StorageEngine>(
     store: &E,
     runtime: &VectorRuntime,
     request: &SearchRequest,
@@ -589,7 +589,7 @@ fn vector_request_attributes(
     attributes
 }
 
-fn required_projection_cursor<E: Engine>(
+fn required_projection_cursor<E: StorageEngine>(
     store: &E,
     read: &ReadStamp,
     family: ProjectionFamily,
@@ -621,7 +621,7 @@ fn required_projection_cursor<E: Engine>(
 /// Rebases an exact write read stamp only across mutations proven to be
 /// observability-only. Any record/relation/vector/claim/event other than the
 /// canonical trace event makes the original data transaction stale.
-fn trace_only_rebase<E: Engine>(
+fn trace_only_rebase<E: StorageEngine>(
     store: &E,
     original: &ReadStamp,
 ) -> Result<ReadStamp, Box<dyn std::error::Error>> {
@@ -927,7 +927,7 @@ fn error_attributes(stage: &str, class: &str, rendered: &str) -> RuntimeProperti
 }
 
 #[allow(clippy::too_many_arguments)]
-fn fail_data_plane<E: Engine, T>(
+fn fail_data_plane<E: StorageEngine, T>(
     store: &E,
     child: Option<DurableTraceSpan>,
     root: DurableTraceSpan,

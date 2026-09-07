@@ -5,7 +5,7 @@ use rrd_cluster::{
     WriteConsistency, ZoneId,
 };
 use rrd_core::ScopeId;
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::BTreeSet;
 
 fn node(index: u8) -> PlacementNode {
@@ -176,7 +176,7 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
     let first = catalogue();
 
     {
-        let engine = NativeEngine::open(&root).unwrap();
+        let engine = RrflowKvStore::open(&root).unwrap();
         let read = engine.runtime_read_stamp(&scope).unwrap();
         let commit = first
             .prepare_runtime_commit(
@@ -214,7 +214,7 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
         engine.commit_runtime(&commit).unwrap();
     }
 
-    let reopened = NativeEngine::open(&root).unwrap();
+    let reopened = RrflowKvStore::open(&root).unwrap();
     let (_, snapshot) = reopened.runtime_data_snapshot(&scope, 200, 10_000).unwrap();
     let restored = DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, &cluster)
         .unwrap()

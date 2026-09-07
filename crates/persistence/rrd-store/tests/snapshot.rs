@@ -7,7 +7,7 @@ use rrd_core::{
     RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
     RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
-use rrd_store::{Engine, Error, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn schema() -> RuntimeSchemaRegistry {
     let mut registry = RuntimeSchemaRegistry::empty(1, "snapshot test schema");
@@ -70,7 +70,7 @@ fn item(scope: &ScopeId, expected_cursor: u64, id: &str) -> RuntimeCommit {
     }
 }
 
-fn assert_snapshot_contract(engine: &dyn Engine) {
+fn assert_snapshot_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:snapshot").unwrap();
     engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
 
@@ -126,16 +126,13 @@ fn assert_snapshot_contract(engine: &dyn Engine) {
 #[test]
 fn all_engines_enforce_identical_snapshot_semantics() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = RrflowMxEngine::new();
-    assert_snapshot_contract(&fjall);
-    assert_snapshot_contract(&native);
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
+    assert_snapshot_contract(&rrflow_kv);
     assert_snapshot_contract(&memory);
 }
 
-fn assert_historical_authenticated_point_read(engine: &dyn Engine) {
+fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:historical-proof").unwrap();
     engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
     engine.commit_runtime(&pulse(&scope, 1)).unwrap();
@@ -168,28 +165,25 @@ fn assert_historical_authenticated_point_read(engine: &dyn Engine) {
 #[test]
 fn retained_prefix_proofs_survive_later_commits_on_all_engines() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = RrflowMxEngine::new();
-    assert_historical_authenticated_point_read(&fjall);
-    assert_historical_authenticated_point_read(&native);
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
+    assert_historical_authenticated_point_read(&rrflow_kv);
     assert_historical_authenticated_point_read(&memory);
 }
 
 #[test]
-fn fjall_snapshot_catalog_survives_restart() {
+fn rrflow_kv_snapshot_catalog_survives_wal_restart() {
     let dir = tempfile::tempdir().unwrap();
     let scope = ScopeId::new("instance:restart").unwrap();
     let handle = {
-        let store = Store::open(dir.path()).unwrap();
+        let store = RrflowKvStore::open(dir.path()).unwrap();
         store.commit_runtime(&bootstrap(&scope, 0)).unwrap();
         store
             .open_runtime_snapshot(&scope, "agent:restart", 10, 100)
             .unwrap()
     };
 
-    let reopened = Store::open(dir.path()).unwrap();
+    let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(
         reopened.runtime_snapshots(20).unwrap(),
         vec![handle.clone()]
@@ -205,12 +199,12 @@ fn fjall_snapshot_catalog_survives_restart() {
 }
 
 #[test]
-fn native_snapshot_catalog_survives_flush_and_restart() {
+fn rrflow_kv_snapshot_catalog_survives_flush_and_restart() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("native");
-    let scope = ScopeId::new("instance:native-restart").unwrap();
+    let path = dir.path().join("rrflow-kv");
+    let scope = ScopeId::new("instance:rrflow-kv-restart").unwrap();
     let handle = {
-        let store = NativeEngine::open(&path).unwrap();
+        let store = RrflowKvStore::open(&path).unwrap();
         store.commit_runtime(&bootstrap(&scope, 0)).unwrap();
         let handle = store
             .open_runtime_snapshot(&scope, "agent:restart", 10, 100)
@@ -218,7 +212,7 @@ fn native_snapshot_catalog_survives_flush_and_restart() {
         store.flush(15).unwrap();
         handle
     };
-    let reopened = NativeEngine::open(&path).unwrap();
+    let reopened = RrflowKvStore::open(&path).unwrap();
     assert_eq!(
         reopened.runtime_snapshots(20).unwrap(),
         vec![handle.clone()]
@@ -231,11 +225,11 @@ fn native_snapshot_catalog_survives_flush_and_restart() {
 }
 
 #[test]
-fn native_snapshot_leases_pin_physical_manifests_until_release_or_expiry() {
+fn rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("native");
+    let path = dir.path().join("rrflow-kv");
     let scope = ScopeId::new("instance:physical-pin").unwrap();
-    let store = NativeEngine::open(&path).unwrap();
+    let store = RrflowKvStore::open(&path).unwrap();
     store.commit_runtime(&bootstrap(&scope, 0)).unwrap();
     let handle = store
         .open_runtime_snapshot(&scope, "agent:pin", 1_000, 100)
@@ -263,7 +257,7 @@ fn native_snapshot_leases_pin_physical_manifests_until_release_or_expiry() {
     ));
 }
 
-fn assert_data_transaction_contract(engine: &dyn Engine) {
+fn assert_data_transaction_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:transaction").unwrap();
     let read = engine.runtime_read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(read.clone(), bootstrap(&scope, 0)).unwrap();
@@ -325,17 +319,13 @@ fn assert_data_transaction_contract(engine: &dyn Engine) {
 #[test]
 fn data_transactions_bind_writes_to_their_read_state_on_all_engines() {
     let dir = tempfile::tempdir().unwrap();
-    assert_data_transaction_contract(&Store::open(dir.path()).unwrap());
-    let native_dir = tempfile::tempdir().unwrap();
-    assert_data_transaction_contract(
-        &NativeEngine::open(&native_dir.path().join("native")).unwrap(),
-    );
-    assert_data_transaction_contract(&RrflowMxEngine::new());
+    assert_data_transaction_contract(&RrflowKvStore::open(dir.path()).unwrap());
+    assert_data_transaction_contract(&RrflowMxStore::new());
 }
 
 fn assert_concurrent_compare_and_swap<E>(engine: Arc<E>)
 where
-    E: Engine + Send + Sync + 'static,
+    E: StorageEngine + Send + Sync + 'static,
 {
     let scope = ScopeId::new("instance:race").unwrap();
     engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
@@ -391,36 +381,26 @@ where
 #[test]
 fn concurrent_transactions_never_lose_an_update() {
     let dir = tempfile::tempdir().unwrap();
-    assert_concurrent_compare_and_swap(Arc::new(Store::open(dir.path()).unwrap()));
-    let native_dir = tempfile::tempdir().unwrap();
-    assert_concurrent_compare_and_swap(Arc::new(
-        NativeEngine::open(&native_dir.path().join("native")).unwrap(),
-    ));
-    assert_concurrent_compare_and_swap(Arc::new(RrflowMxEngine::new()));
+    assert_concurrent_compare_and_swap(Arc::new(RrflowKvStore::open(dir.path()).unwrap()));
+    assert_concurrent_compare_and_swap(Arc::new(RrflowMxStore::new()));
 }
 
 #[test]
 fn deterministic_mixed_scope_trace_is_identical_across_backends() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = RrflowMxEngine::new();
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
     let scopes = [
         ScopeId::new("instance:trace-a").unwrap(),
         ScopeId::new("instance:trace-b").unwrap(),
     ];
 
     for scope in &scopes {
-        let cursor = fjall.runtime_cursor().unwrap();
+        let cursor = rrflow_kv.runtime_cursor().unwrap();
         let commit = bootstrap(scope, cursor);
         assert_eq!(
-            fjall.commit_runtime(&commit).unwrap().commit_id,
+            rrflow_kv.commit_runtime(&commit).unwrap().commit_id,
             memory.commit_runtime(&commit).unwrap().commit_id
-        );
-        assert_eq!(
-            fjall.runtime_cursor().unwrap(),
-            native.commit_runtime(&commit).unwrap().last_cursor
         );
     }
 
@@ -431,82 +411,57 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
         let scope = &scopes[(state >> 63) as usize];
-        let cursor = fjall.runtime_cursor().unwrap();
+        let cursor = rrflow_kv.runtime_cursor().unwrap();
         let commit = pulse(scope, cursor);
-        let left = fjall.commit_runtime(&commit).unwrap();
+        let left = rrflow_kv.commit_runtime(&commit).unwrap();
         let right = memory.commit_runtime(&commit).unwrap();
-        let native_outcome = native.commit_runtime(&commit).unwrap();
         assert_eq!(left.commit_id, right.commit_id);
-        assert_eq!(left.commit_id, native_outcome.commit_id);
         assert_eq!(left.last_cursor, right.last_cursor);
-        assert_eq!(left.last_cursor, native_outcome.last_cursor);
 
         if step == 15 {
-            let left = fjall
+            let left = rrflow_kv
                 .open_runtime_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
                 .unwrap();
             let right = memory
                 .open_runtime_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
                 .unwrap();
-            let native_handle = native
-                .open_runtime_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
-                .unwrap();
             assert_eq!(left, right);
-            assert_eq!(left, native_handle);
             frozen = Some(left);
         }
         if step % 7 == 0 {
             let after = cursor.saturating_sub(3);
             assert_eq!(
-                fjall.runtime_changes_since(after, 4, Some(scope)).unwrap(),
+                rrflow_kv
+                    .runtime_changes_since(after, 4, Some(scope))
+                    .unwrap(),
                 memory.runtime_changes_since(after, 4, Some(scope)).unwrap()
             );
             assert_eq!(
-                fjall.runtime_changes_since(after, 4, Some(scope)).unwrap(),
-                native.runtime_changes_since(after, 4, Some(scope)).unwrap()
-            );
-            assert_eq!(
-                fjall.runtime_read_stamp(scope).unwrap(),
+                rrflow_kv.runtime_read_stamp(scope).unwrap(),
                 memory.runtime_read_stamp(scope).unwrap()
-            );
-            assert_eq!(
-                fjall.runtime_read_stamp(scope).unwrap(),
-                native.runtime_read_stamp(scope).unwrap()
             );
         }
     }
 
     let frozen = frozen.unwrap();
     assert_eq!(
-        fjall
+        rrflow_kv
             .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
             .unwrap(),
         memory
             .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
             .unwrap()
     );
-    assert_eq!(
-        fjall
-            .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
-            .unwrap(),
-        native
-            .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
-            .unwrap()
-    );
     let mut after = 0;
     let mut replayed = Vec::new();
     loop {
-        let left = fjall
+        let left = rrflow_kv
             .runtime_snapshot_changes(&frozen, after, 3, 10_500)
             .unwrap();
         let right = memory
             .runtime_snapshot_changes(&frozen, after, 3, 10_500)
             .unwrap();
-        let native_page = native
-            .runtime_snapshot_changes(&frozen, after, 3, 10_500)
-            .unwrap();
         assert_eq!(left, right);
-        assert_eq!(left, native_page);
         let has_more = left.has_more();
         let through = left.through_cursor;
         replayed.extend(left.changes);
@@ -517,7 +472,7 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
         assert!(through > after);
         after = through;
     }
-    let one_page = fjall
+    let one_page = rrflow_kv
         .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
         .unwrap();
     assert_eq!(replayed, one_page.changes);

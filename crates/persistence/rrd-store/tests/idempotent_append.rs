@@ -1,5 +1,5 @@
 use rrd_core::{Claim, Predicate, Producer, Subject};
-use rrd_store::{Engine, Error, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 const DIGEST_A: &str = "3c94150b4ea4f9dcb27d3b602e9f190debe656533c047b99e11367bc6a28017f";
 const DIGEST_B: &str = "4c94150b4ea4f9dcb27d3b602e9f190debe656533c047b99e11367bc6a28017f";
@@ -19,7 +19,7 @@ fn claim() -> Claim {
     )
 }
 
-fn assert_contract(engine: &dyn Engine) {
+fn assert_contract(engine: &dyn StorageEngine) {
     let first = engine
         .append_batch_idempotent("request-key-1", DIGEST_A, &[claim()])
         .unwrap();
@@ -40,40 +40,22 @@ fn assert_contract(engine: &dyn Engine) {
 
 #[test]
 fn every_engine_enforces_the_same_idempotency_contract() {
-    assert_contract(&RrflowMxEngine::new());
-    let native_root = tempfile::tempdir().unwrap();
-    assert_contract(&NativeEngine::open(&native_root.path().join("native")).unwrap());
-    let fjall_root = tempfile::tempdir().unwrap();
-    assert_contract(&Store::open(&fjall_root.path().join("fjall")).unwrap());
+    assert_contract(&RrflowMxStore::new());
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    assert_contract(&RrflowKvStore::open(rrflow_kv_root.path()).unwrap());
 }
 
 #[test]
-fn accepted_receipt_replays_after_native_and_fjall_restart() {
+fn accepted_receipt_replays_after_rrflow_kv_restart() {
     let root = tempfile::tempdir().unwrap();
-    for (name, native) in [("native", true), ("fjall", false)] {
-        let path = root.path().join(name);
-        if native {
-            let engine = NativeEngine::open(&path).unwrap();
-            engine
-                .append_batch_idempotent("restart-key", DIGEST_A, &[claim()])
-                .unwrap();
-            drop(engine);
-            let replay = NativeEngine::open(&path)
-                .unwrap()
-                .append_batch_idempotent("restart-key", DIGEST_A, &[claim()])
-                .unwrap();
-            assert!(replay.idempotent_replay);
-        } else {
-            let engine = Store::open(&path).unwrap();
-            engine
-                .append_batch_idempotent("restart-key", DIGEST_A, &[claim()])
-                .unwrap();
-            drop(engine);
-            let replay = Store::open(&path)
-                .unwrap()
-                .append_batch_idempotent("restart-key", DIGEST_A, &[claim()])
-                .unwrap();
-            assert!(replay.idempotent_replay);
-        }
-    }
+    let engine = RrflowKvStore::open(root.path()).unwrap();
+    engine
+        .append_batch_idempotent("restart-key", DIGEST_A, &[claim()])
+        .unwrap();
+    drop(engine);
+    let replay = RrflowKvStore::open(root.path())
+        .unwrap()
+        .append_batch_idempotent("restart-key", DIGEST_A, &[claim()])
+        .unwrap();
+    assert!(replay.idempotent_replay);
 }

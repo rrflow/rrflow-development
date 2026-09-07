@@ -4,7 +4,7 @@ use super::format::{
     LogicalArchiveProgress, LogicalRestoreReport, PrefixInventory,
 };
 use super::receipt::{load_receipt, remove_receipt, restore_paths, write_receipt, RestoreReceipt};
-use crate::{Engine, Error, NativeEngine, Result};
+use crate::{Error, Result, RrflowKvStore, StorageEngine};
 use rrd_core::{RuntimeCommitOutcome, RuntimeMutation};
 use std::fs;
 use std::path::Path;
@@ -55,7 +55,7 @@ pub fn restore_logical_archive_to_new_root_with_progress(
         ));
     }
     let resumed = staging.exists();
-    let engine = NativeEngine::open(&staging)?;
+    let engine = RrflowKvStore::open(&staging)?;
     let mut prefix = reconcile_staging_prefix(archive, &expected, &engine)?;
     if receipt_path.exists() {
         let receipt = load_receipt::<RestoreReceipt>(&receipt_path)?;
@@ -131,11 +131,11 @@ pub fn restore_logical_archive_to_new_root_with_progress(
     engine.flush(at)?;
     drop(engine);
 
-    let reopened = NativeEngine::open(&staging)?;
+    let reopened = RrflowKvStore::open(&staging)?;
     verify_watermarks(&reopened, &expected)?;
     drop(reopened);
     populate_staging(&staging)?;
-    let reopened = NativeEngine::open(&staging)?;
+    let reopened = RrflowKvStore::open(&staging)?;
     verify_watermarks(&reopened, &expected)?;
     drop(reopened);
     if target.exists() {
@@ -161,7 +161,7 @@ pub fn restore_logical_archive_to_new_root_with_progress(
 fn reconcile_staging_prefix(
     archive: &Path,
     expected: &LogicalArchiveInventory,
-    engine: &NativeEngine,
+    engine: &RrflowKvStore,
 ) -> Result<PrefixInventory> {
     let actual_claims = engine.sequence()?;
     let actual_cursor = engine.runtime_cursor()?;
@@ -209,7 +209,7 @@ fn reconcile_staging_prefix(
 }
 
 fn verify_action_present(
-    engine: &NativeEngine,
+    engine: &RrflowKvStore,
     action: &ArchiveAction,
     claim_sequence: u64,
     runtime_cursor: u64,
@@ -349,7 +349,10 @@ fn action_watermarks(
     }
 }
 
-fn verify_watermarks(engine: &impl Engine, expected: &LogicalArchiveInventory) -> Result<()> {
+fn verify_watermarks(
+    engine: &impl StorageEngine,
+    expected: &LogicalArchiveInventory,
+) -> Result<()> {
     let sequence = engine.sequence()?;
     let cursor = engine.runtime_cursor()?;
     if sequence != expected.claim_sequence || cursor != expected.runtime_cursor {

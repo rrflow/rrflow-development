@@ -6,7 +6,7 @@ use rrd_engine::{
     publish_traced_vector_artifact, reopen_vector_runtime, reopen_vector_runtime_metadata,
     vector_artifact_catalog_entries,
 };
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{
     HnswConfig, HnswIndex, ScoreMetric, TurboQuantBits, TurboQuantSegment, TurboQuantSegmentConfig,
     VectorCandidate, VectorRuntime, VECTOR_ARTIFACT_RECORD_TYPE,
@@ -73,7 +73,7 @@ fn hnsw_generation(candidates: Vec<VectorCandidate>, generation: u64) -> HnswInd
 fn metadata_manifest_exposes_only_the_active_projection_generation() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        RrflowMxEngine::new(),
+        RrflowMxStore::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -115,7 +115,7 @@ fn metadata_manifest_exposes_only_the_active_projection_generation() {
 fn turboquant(candidates: Vec<VectorCandidate>) -> TurboQuantSegment {
     TurboQuantSegment::build(
         TurboQuantSegmentConfig {
-            id: ProjectionId::new("vector:legacy-turbo:body").unwrap(),
+            id: ProjectionId::new("vector:turboquant:body").unwrap(),
             scope: scope(),
             field: "body".into(),
             dimensions: 2,
@@ -136,7 +136,7 @@ fn turboquant(candidates: Vec<VectorCandidate>) -> TurboQuantSegment {
 fn publication_atomically_binds_typed_record_object_and_serving_view() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        RrflowMxEngine::new(),
+        RrflowMxStore::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -189,7 +189,7 @@ fn publication_atomically_binds_typed_record_object_and_serving_view() {
 fn generic_publication_rejects_turboquant_before_durable_or_serving_mutation() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        RrflowMxEngine::new(),
+        RrflowMxStore::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -212,7 +212,7 @@ fn generic_publication_rejects_turboquant_before_durable_or_serving_mutation() {
 }
 
 #[test]
-fn native_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
+fn rrflow_kv_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
     let root = tempdir().unwrap();
     let engine_path = root.path().join("engine");
     let object_path = root.path().join("objects");
@@ -220,7 +220,7 @@ fn native_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
     let object_sha;
     {
         let data = DataRuntime::new(
-            NativeEngine::open(&engine_path).unwrap(),
+            RrflowKvStore::open(&engine_path).unwrap(),
             LocalObjectStore::open(&object_path).unwrap(),
         );
         let mut runtime = VectorRuntime::new(canonical.clone()).unwrap();
@@ -237,7 +237,7 @@ fn native_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
     }
 
     let reopened_data = DataRuntime::new(
-        NativeEngine::open(&engine_path).unwrap(),
+        RrflowKvStore::open(&engine_path).unwrap(),
         LocalObjectStore::open(&object_path).unwrap(),
     );
     let reopened = reopen_vector_runtime(&reopened_data, &scope(), canonical.clone()).unwrap();
@@ -255,7 +255,7 @@ fn native_reopen_reconstructs_catalog_and_missing_bytes_fail_closed() {
 fn authoritative_revision_conflict_does_not_mutate_a_fresh_serving_view() {
     let object_dir = tempdir().unwrap();
     let data = DataRuntime::new(
-        RrflowMxEngine::new(),
+        RrflowMxStore::new(),
         LocalObjectStore::open(object_dir.path()).unwrap(),
     );
     let canonical = candidates();
@@ -286,7 +286,7 @@ fn authoritative_revision_conflict_does_not_mutate_a_fresh_serving_view() {
     assert_eq!(stale.catalog().revision, 0);
 }
 
-fn published_entry<E: Engine>(
+fn published_entry<E: StorageEngine>(
     engine: E,
     object_path: &std::path::Path,
 ) -> rrd_vector::VectorArtifactCatalogEntry {
@@ -306,17 +306,12 @@ fn published_entry<E: Engine>(
 }
 
 #[test]
-fn catalog_publication_is_logically_identical_across_memory_fjall_and_native() {
+fn catalog_publication_is_logically_identical_across_rrflow_mx_and_rrflow_kv() {
     let root = tempdir().unwrap();
-    let memory = published_entry(RrflowMxEngine::new(), &root.path().join("memory-objects"));
-    let fjall = published_entry(
-        Store::open(&root.path().join("fjall-engine")).unwrap(),
-        &root.path().join("fjall-objects"),
+    let memory = published_entry(RrflowMxStore::new(), &root.path().join("memory-objects"));
+    let rrflow_kv = published_entry(
+        RrflowKvStore::open(&root.path().join("rrflow-kv-engine")).unwrap(),
+        &root.path().join("rrflow-kv-objects"),
     );
-    let native = published_entry(
-        NativeEngine::open(&root.path().join("native-engine")).unwrap(),
-        &root.path().join("native-objects"),
-    );
-    assert_eq!(memory, fjall);
-    assert_eq!(memory, native);
+    assert_eq!(memory, rrflow_kv);
 }

@@ -8,7 +8,7 @@ use rrd_core::{
     RuntimeType, RuntimeValue, ScopeId,
 };
 use rrd_engine::{execute_traced_artifact_transfer, DurableArtifactTransferObserver};
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -44,7 +44,7 @@ struct TraceView {
     attributes: BTreeMap<String, RuntimeValue>,
 }
 
-fn traces<E: Engine>(engine: &E) -> Vec<TraceView> {
+fn traces<E: StorageEngine>(engine: &E) -> Vec<TraceView> {
     engine
         .runtime_changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
@@ -77,7 +77,7 @@ fn traces<E: Engine>(engine: &E) -> Vec<TraceView> {
         .collect()
 }
 
-fn exercise<E: Engine>(
+fn exercise<E: StorageEngine>(
     engine: E,
     source_path: &std::path::Path,
     target_path: &std::path::Path,
@@ -133,25 +133,18 @@ fn exercise<E: Engine>(
 fn cluster_object_transfer_is_causal_private_and_equal_across_engines() {
     let root = tempfile::tempdir().unwrap();
     let (memory_receipt, memory) = exercise(
-        RrflowMxEngine::new(),
+        RrflowMxStore::new(),
         &root.path().join("memory-source"),
         &root.path().join("memory-target"),
     );
-    let (fjall_receipt, fjall) = exercise(
-        Store::open(&root.path().join("fjall-engine")).unwrap(),
-        &root.path().join("fjall-source"),
-        &root.path().join("fjall-target"),
-    );
-    let (native_receipt, native) = exercise(
-        NativeEngine::open(&root.path().join("native-engine")).unwrap(),
-        &root.path().join("native-source"),
-        &root.path().join("native-target"),
+    let (rrflow_kv_receipt, rrflow_kv) = exercise(
+        RrflowKvStore::open(&root.path().join("rrflow-kv-engine")).unwrap(),
+        &root.path().join("rrflow-kv-source"),
+        &root.path().join("rrflow-kv-target"),
     );
 
-    assert_eq!(memory_receipt, fjall_receipt);
-    assert_eq!(memory_receipt, native_receipt);
-    assert_eq!(memory, fjall);
-    assert_eq!(memory, native);
+    assert_eq!(memory_receipt, rrflow_kv_receipt);
+    assert_eq!(memory, rrflow_kv);
     assert_eq!(memory.len(), 4);
     assert_eq!(memory[0].name, "cluster.artifact_transfer");
     assert_eq!(memory[1].name, "object.replicate");
@@ -170,7 +163,7 @@ fn cluster_object_transfer_is_causal_private_and_equal_across_engines() {
 fn transport_observations_persist_as_one_causal_project_trace() {
     let root = tempfile::tempdir().unwrap();
     let source = LocalObjectStore::open(root.path().join("observed-source")).unwrap();
-    let runtime = DataRuntime::new(RrflowMxEngine::new(), source);
+    let runtime = DataRuntime::new(RrflowMxStore::new(), source);
     let object = runtime
         .stage_object(
             "vector:observed@1:bytes",

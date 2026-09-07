@@ -8,7 +8,7 @@ use base64::Engine as _;
 use hmac::{Hmac, KeyInit, Mac};
 use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
 use rrd_core::{digest, RuntimeValue};
-use rrd_store::{ControlJournalEntry, ControlTransition, Engine};
+use rrd_store::{ControlJournalEntry, ControlTransition, StorageEngine};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::{BTreeMap, BTreeSet};
@@ -475,7 +475,7 @@ pub struct SecurityRepository<'a, E> {
     instance: CanonicalId,
 }
 
-impl<'a, E: Engine> SecurityRepository<'a, E> {
+impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
     pub fn new(engine: &'a E, instance: CanonicalId) -> Self {
         Self { engine, instance }
     }

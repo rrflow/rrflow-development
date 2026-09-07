@@ -1,11 +1,11 @@
 //! Child process for the durability test in `tests/durability.rs`.
 //!
-//! Writes claims through a [`Writer`], optionally flushes, then announces
+//! Writes claims through a [`ClaimBatchWriter`], optionally flushes, then announces
 //! readiness and blocks. The parent terminates it with SIGKILL, so no
 //! destructor, no `Drop`, and no shutdown path can contribute to what survives.
 //!
 //! ```text
-//! durability-child <db-path> <count> <flush|noflush|native-transaction|native-lock>
+//! durability-child <db-path> <count> <flush|noflush|rrflow-kv-transaction|rrflow-kv-lock>
 //! ```
 
 use rrd_core::{
@@ -14,7 +14,7 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry,
     RuntimeSeriesSample, RuntimeType, RuntimeVector, ScopeId, SeriesValue, Subject, VectorValue,
 };
-use rrd_store::{Engine, NativeEngine, Store, Writer, WriterConfig};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::Path;
@@ -27,17 +27,17 @@ fn main() {
     let count: usize = args.next().expect("count").parse().expect("count");
     let mode = args
         .next()
-        .expect("flush|noflush|native-transaction|native-lock");
+        .expect("flush|noflush|rrflow-kv-transaction|rrflow-kv-lock");
     let path = Path::new(&path);
 
     match mode.as_str() {
-        "native-transaction" => native_transaction(path),
-        "native-lock" => hold_native_lock(path),
+        "rrflow-kv-transaction" => rrflow_kv_transaction(path),
+        "rrflow-kv-lock" => hold_rrflow_kv_lock(path),
         "flush" | "noflush" => {}
         other => panic!("unknown durability child mode {other:?}"),
     }
 
-    let store = Arc::new(Store::open(path).expect("open store"));
+    let store = Arc::new(RrflowKvStore::open(path).expect("open store"));
 
     // In `noflush` mode the delay must exceed the lifetime of the process, so
     // that an absent claim proves the contract rather than losing a race with
@@ -48,9 +48,9 @@ fn main() {
         Duration::from_secs(3600)
     };
 
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay,
             max_batch: 1024,
             queue_capacity: 8192,
@@ -83,9 +83,9 @@ fn main() {
     ready_and_wait()
 }
 
-fn native_transaction(path: &Path) -> ! {
-    let engine = NativeEngine::open(path).expect("open native engine");
-    let scope = ScopeId::new("instance:native-durability").unwrap();
+fn rrflow_kv_transaction(path: &Path) -> ! {
+    let engine = RrflowKvStore::open(path).expect("open rrflowKV store");
+    let scope = ScopeId::new("instance:rrflow-kv-durability").unwrap();
     let read = engine.runtime_read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(
         read,
@@ -94,7 +94,7 @@ fn native_transaction(path: &Path) -> ! {
             at: 100,
             actor: "agent:durability-child".into(),
             expected_cursor: 0,
-            mutations: native_mixed_family_mutations(),
+            mutations: rrflow_kv_mixed_family_mutations(),
         },
     )
     .unwrap();
@@ -103,9 +103,9 @@ fn native_transaction(path: &Path) -> ! {
     ready_and_wait()
 }
 
-fn native_mixed_family_mutations() -> Vec<RuntimeMutation> {
+fn rrflow_kv_mixed_family_mutations() -> Vec<RuntimeMutation> {
     let entity = RuntimeType::new("entity").unwrap();
-    let mut registry = RuntimeSchemaRegistry::empty(1, "native durability schema");
+    let mut registry = RuntimeSchemaRegistry::empty(1, "rrflowKV durability schema");
     registry
         .records
         .insert(entity.clone(), RuntimeRecordSchema::default());
@@ -209,15 +209,15 @@ fn native_mixed_family_mutations() -> Vec<RuntimeMutation> {
                 Producer {
                     actor: "agent:durability-child".into(),
                     on_behalf_of: None,
-                    session: Some("native-sigkill".into()),
+                    session: Some("rrflow-kv-sigkill".into()),
                 },
             ),
         },
     ]
 }
 
-fn hold_native_lock(path: &Path) -> ! {
-    let _engine = NativeEngine::open(path).expect("open native lock owner");
+fn hold_rrflow_kv_lock(path: &Path) -> ! {
+    let _engine = RrflowKvStore::open(path).expect("open rrflowKV lock owner");
     ready_and_wait()
 }
 

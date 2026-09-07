@@ -6,7 +6,7 @@
 
 use rrd_core::reference::MemoryClaims;
 use rrd_core::{Claim, Predicate, Producer, Subject};
-use rrd_store::{Store, Writer, WriterConfig};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use std::sync::Arc;
 
 fn producer() -> Producer {
@@ -28,10 +28,15 @@ fn claim(i: usize) -> Claim {
     )
 }
 
-fn store() -> (tempfile::TempDir, Store) {
+fn store() -> (tempfile::TempDir, RrflowKvStore) {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     (dir, store)
+}
+
+fn all_claims(store: &RrflowKvStore) -> Vec<Claim> {
+    let through = store.sequence().unwrap();
+    store.claims_in_range(0, through).unwrap()
 }
 
 #[test]
@@ -100,12 +105,7 @@ fn claims_are_returned_in_append_order() {
         .collect();
     store.append_batch(&claims).unwrap();
 
-    let objects: Vec<String> = store
-        .all_claims()
-        .unwrap()
-        .into_iter()
-        .map(|c| c.object)
-        .collect();
+    let objects: Vec<String> = all_claims(&store).into_iter().map(|c| c.object).collect();
     let expected: Vec<String> = (0..40).map(|i| format!("v{i}")).collect();
     assert_eq!(objects, expected);
 }
@@ -121,7 +121,7 @@ fn a_full_scan_reproduces_every_stored_claim_against_the_grounding_reference() {
         reference.insert(c.clone()).unwrap();
     }
 
-    let mut scanned = store.all_claims().unwrap();
+    let mut scanned = all_claims(&store);
     let mut expected: Vec<Claim> = reference.iter().cloned().collect();
     // Compare as sets: the index scans in append order, the reference in key
     // order. Content must agree exactly.
@@ -167,20 +167,20 @@ fn the_index_stays_consistent_with_the_watermark_across_batches() {
 fn the_index_survives_reopen_and_continues() {
     let dir = tempfile::tempdir().unwrap();
     {
-        let store = Store::open(dir.path()).unwrap();
+        let store = RrflowKvStore::open(dir.path()).unwrap();
         store
             .append_batch(&(0..30).map(claim).collect::<Vec<_>>())
             .unwrap();
     }
-    let reopened = Store::open(dir.path()).unwrap();
+    let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(reopened.sequence().unwrap(), 30);
-    assert_eq!(reopened.all_claims().unwrap().len(), 30);
+    assert_eq!(all_claims(&reopened).len(), 30);
 
     reopened
         .append_batch(&(30..45).map(claim).collect::<Vec<_>>())
         .unwrap();
     assert_eq!(reopened.sequence().unwrap(), 45);
-    assert_eq!(reopened.all_claims().unwrap().len(), 45);
+    assert_eq!(all_claims(&reopened).len(), 45);
     // The claims appended after reopen are addressable by the range that
     // excludes everything written before it.
     let tail: Vec<String> = reopened
@@ -195,8 +195,8 @@ fn the_index_survives_reopen_and_continues() {
 #[test]
 fn the_index_is_consistent_after_writer_driven_appends() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Arc::new(Store::open(dir.path()).unwrap());
-    let writer = Writer::spawn(Arc::clone(&store), WriterConfig::default());
+    let store = Arc::new(RrflowKvStore::open(dir.path()).unwrap());
+    let writer = ClaimBatchWriter::spawn(Arc::clone(&store), ClaimBatchWriterConfig::default());
     for i in 0..1_000 {
         writer.submit(claim(i)).unwrap();
     }
@@ -220,5 +220,5 @@ fn a_rejected_batch_leaves_no_index_entries() {
 
     // The transaction was not committed, so neither claims nor index advanced.
     assert_eq!(store.sequence().unwrap(), 5);
-    assert_eq!(store.all_claims().unwrap().len(), 5);
+    assert_eq!(all_claims(&store).len(), 5);
 }

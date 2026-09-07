@@ -7,7 +7,7 @@
 
 use rrd_core::reference::MemoryClaims;
 use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
-use rrd_store::Store;
+use rrd_store::{RrflowKvStore, StorageEngine};
 
 fn producer() -> Producer {
     Producer {
@@ -81,7 +81,7 @@ fn pairs() -> Vec<(Subject, Predicate)> {
 #[test]
 fn adapter_matches_grounding_reference_across_the_corpus() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     let mut reference = MemoryClaims::new();
 
     let claims = corpus();
@@ -131,7 +131,7 @@ fn adapter_matches_grounding_reference_across_the_corpus() {
 #[test]
 fn batch_allocates_contiguous_sequences_and_advances_the_watermark() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(store.sequence().unwrap(), 0);
 
     let first = store
@@ -156,7 +156,7 @@ fn batch_allocates_contiguous_sequences_and_advances_the_watermark() {
 #[test]
 fn empty_batch_is_a_no_write_and_does_not_advance_the_watermark() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     store
         .append_batch(&[claim("a", "p", "1", 100, None)])
         .unwrap();
@@ -172,12 +172,12 @@ fn claims_and_watermark_survive_reopen() {
     let expected_sequence = claims.len() as u64;
 
     {
-        let store = Store::open(dir.path()).unwrap();
+        let store = RrflowKvStore::open(dir.path()).unwrap();
         store.append_batch(&claims).unwrap();
         assert_eq!(store.sequence().unwrap(), expected_sequence);
     }
 
-    let reopened = Store::open(dir.path()).unwrap();
+    let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(
         reopened.sequence().unwrap(),
         expected_sequence,
@@ -208,7 +208,7 @@ fn claims_and_watermark_survive_reopen() {
 #[test]
 fn invalid_claim_is_rejected_before_any_write() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     // An inverted valid-time interval must abort the batch, leaving the
     // watermark untouched.
     let bad = claim("a", "p", "x", 200, Some(100));
@@ -219,7 +219,7 @@ fn invalid_claim_is_rejected_before_any_write() {
 #[test]
 fn access_records_are_written_without_blocking_reads() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     let subject = Subject::new("wp3").unwrap();
     let predicate = Predicate::new("status").unwrap();
     store
@@ -236,7 +236,7 @@ fn access_records_are_written_without_blocking_reads() {
             )
             .unwrap();
     }
-    assert_eq!(store.access_count(), 10);
+    assert_eq!(store.access_count().unwrap(), 10);
     // The claim remains readable after telemetry writes.
     assert!(store.as_of(&subject, &predicate, 150).unwrap().is_some());
 }

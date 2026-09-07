@@ -1,27 +1,12 @@
 //! # rrd-store
 //!
-//! The semantic storage port shared by persistent rrflowKV and volatile
-//! rrflowMX, plus the transitional Fjall compatibility adapter scheduled for
-//! removal before RRFlow 1.0.
+//! The semantic storage boundary shared by persistent rrflowKV and volatile
+//! rrflowMX.
 //!
-//! ## Corrections applied
-//!
-//! This crate exists partly to carry the corrections recorded in `SPEC.md` §11,
-//! derived from audit of `native/fjall-vortex-runtime/src/main.rs`:
-//!
-//! 1. Sequence allocation occurs inside the write transaction, so it does not
-//!    depend on an external lock for correctness.
-//! 2. Sequence increment uses `checked_add`.
-//! 3. A claim write issues one fsync, not two.
-//! 4. Reads take a snapshot and acquire no write lock.
-//! 5. [`Store::append_batch`] amortizes both transport and fsync cost.
-//!
-//! ## Concurrency
-//!
-//! [`Store`] holds no mutex. Fjall is internally synchronized for multi-threaded
-//! access, and `SingleWriterTxDatabase` serializes write transactions itself. The
-//! external mutex in the prior runtime protected only correction 1; with that
-//! corrected, reads run concurrently.
+//! rrflowKV is the only durable implementation. rrflowMX is the non-durable
+//! conformance and embedded-memory profile. Both expose the same stamped
+//! transactions, temporal claims, snapshots, audit chain, and projection work;
+//! callers select a profile only at the engine composition root.
 
 mod archive;
 mod backup;
@@ -33,14 +18,11 @@ mod footprint;
 mod gc;
 mod invocation;
 mod keyspaces;
-mod migration;
-mod native;
 mod object;
-mod persistent;
+mod outcome;
 mod projection;
+mod rrflow_kv;
 mod s3;
-mod store;
-mod upgrade;
 mod writer;
 
 pub use archive::{
@@ -59,27 +41,17 @@ pub use backup::{
 };
 pub use control::{ControlJournalEntry, ControlTransition};
 pub use ds::{DataRuntime, DataRuntimeAccess, DataRuntimeRef, DataRuntimeStep};
-pub use engine::{Engine, EngineBox, PhysicalStoreEvidence, RrflowMxEngine};
+pub use engine::{PhysicalStoreEvidence, RrflowMxStore, StorageEngine, StorageProfile};
 pub use error::{Error, Result};
 pub use footprint::{measure_storage_footprint, FootprintBytes, StorageFootprint};
 pub use gc::{PairStatus, RemovalReport, Verdict};
 pub use invocation::{Invocation, InvocationInput, Outcome, Trigger};
 pub use keyspaces::Durability;
-pub use migration::{
-    migrate_fjall_to_native, migrate_fjall_to_native_with_fault, migration_status,
-    rollback_fjall_migration, MigrationFault, MigrationInventory, MigrationPhase, MigrationReport,
-};
-pub use native::{
-    native_database_artifact_view, native_runtime_commit_context, native_runtime_commit_outcome,
-    native_snapshot_all_object_references, native_snapshot_artifact_view,
-    native_snapshot_object_references, prepare_native_runtime_commit, NativeEngine,
-    NativeRuntimeCommitPlan,
-};
 pub use object::{
     ImmutableObjectStore, LocalObjectStore, MemoryObjectStore, ObjectInventory,
     ObjectInventoryEntry, ObjectInventoryState, ObjectStep, ObjectStoreBox, VerifiedObject,
 };
-pub use persistent::{PersistentBackend, PersistentEngine};
+pub use outcome::{AppendOutcome, IdempotentAppendOutcome};
 pub use projection::{
     CurrentProjection, GroundedStamp, GroundingReport, ProjectionStatus, RebuildOutcome,
     CURRENT_PROJECTION,
@@ -91,16 +63,15 @@ pub use rrd_core::{
 pub use rrd_lsm::{
     publish_rename as publish_durable_rename, sync_directory as sync_directory_metadata,
 };
+pub use rrflow_kv::{
+    prepare_rrflow_kv_commit, rrflow_kv_commit_context, rrflow_kv_commit_outcome,
+    rrflow_kv_database_artifact_view, rrflow_kv_snapshot_all_object_references,
+    rrflow_kv_snapshot_artifact_view, rrflow_kv_snapshot_object_references, RrflowKvCommitPlan,
+    RrflowKvStore,
+};
 pub use s3::{
     ConditionalPut, S3Authentication, S3CompatibleObjectStore, S3MultipartUpload, S3ObjectClient,
     S3ObjectMetadata, S3TransferPolicy, S3TransportCapabilities, S3UploadedPart,
     DEFAULT_S3_RANGE_BYTES, S3_MAX_PARTS, S3_MAX_PART_BYTES, S3_MIN_PART_BYTES,
 };
-pub use store::{AppendOutcome, IdempotentAppendOutcome, Store};
-pub use upgrade::{
-    migrate_native_format, migrate_native_format_with_fault, native_format_migration_edge,
-    native_format_migration_status, rollback_native_format, rollback_native_format_with_fault,
-    FormatMigrationEdge, FormatMigrationFault, FormatMigrationLedger, FormatMigrationPhase,
-    NativeApplicationFormat, SUPPORTED_NATIVE_FORMAT_MIGRATIONS,
-};
-pub use writer::{Writer, WriterConfig, WriterStats};
+pub use writer::{ClaimBatchWriter, ClaimBatchWriterConfig, ClaimBatchWriterStats};

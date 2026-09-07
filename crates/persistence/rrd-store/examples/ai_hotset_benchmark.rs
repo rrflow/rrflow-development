@@ -1,14 +1,12 @@
-//! Isolated Fjall/RRD LSM read profiles for an AI runtime's control and metadata sets.
+//! Isolated rrflowKV read profiles for AI control and metadata access patterns.
 //!
 //! Setup is deliberately excluded from measurement: a cold immutable corpus is
 //! published first, then a small set of routing, lease, cursor, and outcome-like
 //! keys is overwritten in the active memtable. The measured phase selects one
-//! explicit point or metadata-fan-out workload. These are physical profiles,
-//! not a general database benchmark.
+//! explicit point or metadata-fan-out workload. This program records absolute
+//! correctness, latency, throughput, and footprint evidence; it does not use an
+//! external storage engine as RRFlow's acceptance authority.
 
-use fjall::{
-    KeyspaceCreateOptions, PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace,
-};
 use rrd_lsm::{Database, Durability, Mutation, WriteBatch};
 use rrd_store::{measure_storage_footprint, FootprintBytes, StorageFootprint};
 use serde::{Deserialize, Serialize};
@@ -19,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-const FORMAT_VERSION: u16 = 3;
+const FORMAT_VERSION: u16 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -142,7 +140,7 @@ struct Latency {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Trial {
-    backend: String,
+    storage_profile: String,
     correctness_verified: bool,
     reads_per_second: f64,
     items_per_sample: usize,
@@ -179,31 +177,8 @@ struct Evidence {
     latency_unit: &'static str,
     footprint_contract: &'static str,
     config: Config,
-    fjall_version: &'static str,
-    fjall_trials: Vec<Trial>,
-    native_trials: Vec<Trial>,
-    fjall: Trial,
-    native: Trial,
-    native_to_fjall_read_throughput: f64,
-    native_to_fjall_p95_latency: f64,
-    footprint_comparison: FootprintComparison,
-    promotion: PromotionVerdict,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct FootprintComparison {
-    promotion_state: &'static str,
-    native_to_fjall_reopened_apparent: f64,
-    native_to_fjall_reopened_allocated: Option<f64>,
-    fjall_reopened_allocated_to_live_payload: Option<f64>,
-    native_reopened_allocated_to_live_payload: Option<f64>,
-    maintained_cross_backend_comparable: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct PromotionVerdict {
-    passes: bool,
-    failures: Vec<String>,
+    trials: Vec<Trial>,
+    rrflow_kv: Trial,
 }
 
 fn main() {
@@ -218,45 +193,18 @@ fn run() -> Result<(), String> {
     if arguments.first().is_some_and(|value| value == "--child") {
         return run_child(&arguments);
     }
-    let (config, output, require_promotion) = parse(&arguments)?;
+    let (config, output) = parse(&arguments)?;
     let root = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let mut fjall_trials = Vec::with_capacity(config.trials);
-    let mut native_trials = Vec::with_capacity(config.trials);
+    let mut trials = Vec::with_capacity(config.trials);
     for trial in 0..config.trials {
         let trial_root = root.path().join(format!("trial-{trial}"));
         fs::create_dir_all(&trial_root).map_err(|error| error.to_string())?;
-        let mut measure = |backend: &str| -> Result<(), String> {
-            let result = launch_child(backend, &trial_root.join(backend), &config)?;
-            if backend == "fjall" {
-                fjall_trials.push(result);
-            } else {
-                native_trials.push(result);
-            }
-            Ok(())
-        };
-        if trial % 2 == 0 {
-            measure("fjall")?;
-            measure("native")?;
-        } else {
-            measure("native")?;
-            measure("fjall")?;
-        }
+        trials.push(launch_child(&trial_root.join("rrflow-kv"), &config)?);
     }
-    let fjall = aggregate("fjall", &fjall_trials);
-    let native = aggregate("native", &native_trials);
-    if !fjall.correctness_verified || !native.correctness_verified {
-        return Err("one or more isolated trials failed correctness".into());
+    let rrflow_kv = aggregate("rrflow_kv", &trials);
+    if !rrflow_kv.correctness_verified {
+        return Err("one or more isolated rrflowKV trials failed correctness".into());
     }
-    let throughput_ratio = native.reads_per_second / fjall.reads_per_second;
-    let p95_ratio = native.latency.p95_ns as f64 / fjall.latency.p95_ns.max(1) as f64;
-    let footprint_comparison = footprint_comparison(&fjall, &native);
-    let promotion = promotion(
-        &fjall,
-        &native,
-        throughput_ratio,
-        p95_ratio,
-        &footprint_comparison,
-    );
     let evidence = Evidence {
         format_version: FORMAT_VERSION,
         measured_at_unix_ms: SystemTime::now()
@@ -270,17 +218,10 @@ fn run() -> Result<(), String> {
             "median of per-trial metrics; latency percentiles are medians of each isolated trial's percentile",
         throughput_unit: "resolved key items per second",
         latency_unit: "nanoseconds per point request or complete fan-out request",
-        footprint_contract: "active is measured while the read snapshot is open; reopened follows a clean close/open with no explicit maintenance; maintained follows backend-native flush, major compaction, unreachable-file collection where available, and a second clean reopen; promotion does not compare backend-native maintained states",
+        footprint_contract: "active is measured while the read snapshot is open; reopened follows a clean close/open with no explicit maintenance; maintained follows rrflowKV flush, compaction, unreachable-file collection, and a second clean reopen",
         config,
-        fjall_version: "3.1.8",
-        native_to_fjall_read_throughput: throughput_ratio,
-        native_to_fjall_p95_latency: p95_ratio,
-        footprint_comparison,
-        promotion,
-        fjall_trials,
-        native_trials,
-        fjall,
-        native,
+        trials,
+        rrflow_kv,
     };
     let bytes = serde_json::to_vec_pretty(&evidence).map_err(|error| error.to_string())?;
     if let Some(output) = output {
@@ -293,26 +234,14 @@ fn run() -> Result<(), String> {
         "{}",
         String::from_utf8(bytes).map_err(|error| error.to_string())?
     );
-    if require_promotion && !evidence.promotion.passes {
-        return Err(format!(
-            "strict AI-read promotion gate failed: {}",
-            evidence.promotion.failures.join("; ")
-        ));
-    }
     Ok(())
 }
 
-fn parse(arguments: &[String]) -> Result<(Config, Option<PathBuf>, bool), String> {
+fn parse(arguments: &[String]) -> Result<(Config, Option<PathBuf>), String> {
     let mut config = Config::default();
     let mut output = None;
-    let mut require_promotion = false;
     let mut index = 0;
     while index < arguments.len() {
-        if arguments[index] == "--require-promotion" {
-            require_promotion = true;
-            index += 1;
-            continue;
-        }
         let value = arguments
             .get(index + 1)
             .ok_or_else(|| format!("missing value after {}", arguments[index]))?;
@@ -364,12 +293,12 @@ fn parse(arguments: &[String]) -> Result<(Config, Option<PathBuf>, bool), String
     if config.payload_profile == PayloadProfile::EmbeddingF32 && config.value_bytes % 4 != 0 {
         return Err("embedding-f32 value bytes must be divisible by four".into());
     }
-    Ok((config, output, require_promotion))
+    Ok((config, output))
 }
 
-fn launch_child(backend: &str, path: &Path, config: &Config) -> Result<Trial, String> {
+fn launch_child(path: &Path, config: &Config) -> Result<Trial, String> {
     let output = Command::new(std::env::current_exe().map_err(|error| error.to_string())?)
-        .args(["--child", backend, "--path"])
+        .args(["--child", "--path"])
         .arg(path)
         .args(["--trials", "1"])
         .args(["--workload", config.workload.cli_str()])
@@ -384,7 +313,7 @@ fn launch_child(backend: &str, path: &Path, config: &Config) -> Result<Trial, St
         .map_err(|error| error.to_string())?;
     if !output.status.success() {
         return Err(format!(
-            "{backend} child failed: {}",
+            "rrflowKV child failed: {}",
             String::from_utf8_lossy(&output.stderr)
         ));
     }
@@ -392,29 +321,19 @@ fn launch_child(backend: &str, path: &Path, config: &Config) -> Result<Trial, St
 }
 
 fn run_child(arguments: &[String]) -> Result<(), String> {
-    let backend = arguments
-        .get(1)
-        .ok_or_else(|| "child backend is required".to_owned())?;
-    if arguments.get(2).map(String::as_str) != Some("--path") {
+    if arguments.get(1).map(String::as_str) != Some("--path") {
         return Err("child path is required".into());
     }
     let path = PathBuf::from(
         arguments
-            .get(3)
+            .get(2)
             .ok_or_else(|| "child path value is required".to_owned())?,
     );
-    let (config, output, require_promotion) = parse(&arguments[4..])?;
+    let (config, output) = parse(&arguments[3..])?;
     if output.is_some() {
         return Err("child output path is not supported".into());
     }
-    if require_promotion {
-        return Err("child cannot require a promotion verdict".into());
-    }
-    let trial = match backend.as_str() {
-        "fjall" => run_fjall(&path, &config)?,
-        "native" => run_native(&path, &config)?,
-        _ => return Err(format!("unknown child backend {backend}")),
-    };
+    let trial = run_rrflow_kv(&path, &config)?;
     println!(
         "{}",
         serde_json::to_string(&trial).map_err(|error| error.to_string())?
@@ -422,113 +341,7 @@ fn run_child(arguments: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-fn run_fjall(path: &Path, config: &Config) -> Result<Trial, String> {
-    let database = SingleWriterTxDatabase::builder(path)
-        .manual_journal_persist(true)
-        .open()
-        .map_err(|error| error.to_string())?;
-    let keyspace = database
-        .keyspace("runtime", KeyspaceCreateOptions::default)
-        .map_err(|error| error.to_string())?;
-    for start in (0..config.cold_keys).step_by(config.batch_size) {
-        let mut transaction = database.write_tx().durability(Some(PersistMode::SyncAll));
-        for index in start..(start + config.batch_size).min(config.cold_keys) {
-            transaction.insert(&keyspace, key(index), value(config, index, false));
-        }
-        transaction.commit().map_err(|error| error.to_string())?;
-    }
-    keyspace
-        .as_ref()
-        .rotate_memtable_and_wait()
-        .map_err(|error| error.to_string())?;
-    let historical = database.read_tx();
-    let mut transaction = database.write_tx().durability(Some(PersistMode::SyncAll));
-    for index in 0..config.hot_keys {
-        transaction.insert(&keyspace, key(index), value(config, index, true));
-    }
-    transaction.commit().map_err(|error| error.to_string())?;
-    let current = database.read_tx();
-    let snapshot = if config.workload.uses_historical_snapshot() {
-        &historical
-    } else {
-        &current
-    };
-    let measured = if config.workload == Workload::MetadataFanout {
-        measure_fanout(config, |keys| {
-            keys.iter()
-                .map(|key| {
-                    snapshot
-                        .get(&keyspace, key)
-                        .map(|value| value.map(|value| value.to_vec()))
-                        .map_err(|error| error.to_string())
-                })
-                .collect()
-        })
-    } else {
-        measure(config, |index| {
-            Ok(snapshot
-                .get(&keyspace, key(index))
-                .map_err(|error| error.to_string())?
-                .map(|value| value.to_vec()))
-        })
-    }?;
-    let active = storage_footprint(path)?;
-    drop(current);
-    drop(historical);
-    drop(keyspace);
-    drop(database);
-
-    let reopened_database = SingleWriterTxDatabase::builder(path)
-        .manual_journal_persist(true)
-        .open()
-        .map_err(|error| error.to_string())?;
-    let reopened_keyspace = reopened_database
-        .keyspace("runtime", KeyspaceCreateOptions::default)
-        .map_err(|error| error.to_string())?;
-    verify_fjall_current(&reopened_database, &reopened_keyspace, config)?;
-    let reopened = storage_footprint(path)?;
-    reopened_keyspace
-        .as_ref()
-        .rotate_memtable_and_wait()
-        .map_err(|error| error.to_string())?;
-    reopened_keyspace
-        .as_ref()
-        .major_compact()
-        .map_err(|error| error.to_string())?;
-    reopened_database
-        .persist(PersistMode::SyncAll)
-        .map_err(|error| error.to_string())?;
-    drop(reopened_keyspace);
-    drop(reopened_database);
-
-    let maintained_database = SingleWriterTxDatabase::builder(path)
-        .manual_journal_persist(true)
-        .open()
-        .map_err(|error| error.to_string())?;
-    let maintained_keyspace = maintained_database
-        .keyspace("runtime", KeyspaceCreateOptions::default)
-        .map_err(|error| error.to_string())?;
-    verify_fjall_current(&maintained_database, &maintained_keyspace, config)?;
-    let maintained = storage_footprint(path)?;
-
-    Ok(finish_trial(
-        "fjall",
-        measured,
-        lifecycle_footprint(
-            config,
-            active,
-            reopened,
-            maintained,
-            vec![
-                "flush_active_memtable".into(),
-                "major_compact".into(),
-                "persist_and_clean_reopen".into(),
-            ],
-        )?,
-    ))
-}
-
-fn run_native(path: &Path, config: &Config) -> Result<Trial, String> {
+fn run_rrflow_kv(path: &Path, config: &Config) -> Result<Trial, String> {
     let mut database = Database::create(path).map_err(|error| error.to_string())?;
     for start in (0..config.cold_keys).step_by(config.batch_size) {
         let operations = (start..(start + config.batch_size).min(config.cold_keys))
@@ -583,7 +396,7 @@ fn run_native(path: &Path, config: &Config) -> Result<Trial, String> {
     drop(database);
 
     let mut reopened_database = Database::open(path).map_err(|error| error.to_string())?;
-    verify_native_current(&reopened_database, config)?;
+    verify_rrflow_kv_current(&reopened_database, config)?;
     let reopened = storage_footprint(path)?;
     reopened_database
         .flush_memtable(2)
@@ -597,11 +410,11 @@ fn run_native(path: &Path, config: &Config) -> Result<Trial, String> {
     drop(reopened_database);
 
     let maintained_database = Database::open(path).map_err(|error| error.to_string())?;
-    verify_native_current(&maintained_database, config)?;
+    verify_rrflow_kv_current(&maintained_database, config)?;
     let maintained = storage_footprint(path)?;
 
     Ok(finish_trial(
-        "native",
+        "rrflow_kv",
         measured,
         lifecycle_footprint(
             config,
@@ -799,9 +612,13 @@ fn next_state(mut state: u64) -> u64 {
     state
 }
 
-fn finish_trial(backend: &str, measured: ReadMeasurement, footprint: LifecycleFootprint) -> Trial {
+fn finish_trial(
+    storage_profile: &str,
+    measured: ReadMeasurement,
+    footprint: LifecycleFootprint,
+) -> Trial {
     Trial {
-        backend: backend.into(),
+        storage_profile: storage_profile.into(),
         correctness_verified: measured.correctness_verified,
         reads_per_second: measured.reads_per_second,
         items_per_sample: measured.items_per_sample,
@@ -848,26 +665,7 @@ fn storage_footprint(path: &Path) -> Result<StorageFootprint, String> {
     measure_storage_footprint(path).map_err(|error| error.to_string())
 }
 
-fn verify_fjall_current(
-    database: &SingleWriterTxDatabase,
-    keyspace: &SingleWriterTxKeyspace,
-    config: &Config,
-) -> Result<(), String> {
-    let snapshot = database.read_tx();
-    for index in 0..config.cold_keys {
-        let actual = snapshot
-            .get(keyspace, key(index))
-            .map_err(|error| error.to_string())?
-            .map(|bytes| bytes.to_vec());
-        let expected = Some(value(config, index, index < config.hot_keys));
-        if actual != expected {
-            return Err(format!("fjall current value differs at key {index}"));
-        }
-    }
-    Ok(())
-}
-
-fn verify_native_current(database: &Database, config: &Config) -> Result<(), String> {
+fn verify_rrflow_kv_current(database: &Database, config: &Config) -> Result<(), String> {
     let snapshot = database.snapshot();
     for index in 0..config.cold_keys {
         let actual = database
@@ -875,7 +673,7 @@ fn verify_native_current(database: &Database, config: &Config) -> Result<(), Str
             .map_err(|error| error.to_string())?;
         let expected = Some(value(config, index, index < config.hot_keys));
         if actual != expected {
-            return Err(format!("native current value differs at key {index}"));
+            return Err(format!("rrflowKV current value differs at key {index}"));
         }
     }
     Ok(())
@@ -897,9 +695,9 @@ fn percentile(samples: &[Duration], quantile: f64) -> u64 {
     u64::try_from(samples[index].as_nanos()).unwrap_or(u64::MAX)
 }
 
-fn aggregate(backend: &str, trials: &[Trial]) -> Trial {
+fn aggregate(storage_profile: &str, trials: &[Trial]) -> Trial {
     Trial {
-        backend: backend.into(),
+        storage_profile: storage_profile.into(),
         correctness_verified: trials.iter().all(|trial| trial.correctness_verified),
         reads_per_second: median_f64(trials.iter().map(|trial| trial.reads_per_second).collect()),
         items_per_sample: trials[0].items_per_sample,
@@ -989,65 +787,6 @@ fn aggregate_footprint_bytes(values: &[FootprintBytes]) -> FootprintBytes {
         apparent_bytes: median_u64(values.iter().map(|value| value.apparent_bytes).collect()),
         allocated_bytes: (allocated.len() == values.len()).then(|| median_u64(allocated)),
         files: median_u64(values.iter().map(|value| value.files).collect()),
-    }
-}
-
-fn promotion(
-    fjall: &Trial,
-    native: &Trial,
-    throughput_ratio: f64,
-    p95_ratio: f64,
-    footprint: &FootprintComparison,
-) -> PromotionVerdict {
-    let mut failures = Vec::new();
-    if !fjall.correctness_verified || !native.correctness_verified {
-        failures.push("one or more backends failed correctness".into());
-    }
-    if throughput_ratio < 1.0 {
-        failures.push(format!(
-            "native item throughput ratio {throughput_ratio:.3} is below 1.000"
-        ));
-    }
-    if p95_ratio > 1.0 {
-        failures.push(format!(
-            "native p95 request-latency ratio {p95_ratio:.3} exceeds 1.000"
-        ));
-    }
-    if footprint
-        .native_to_fjall_reopened_allocated
-        .is_some_and(|ratio| ratio > 1.0)
-    {
-        failures.push(format!(
-            "native clean-reopen allocated-footprint ratio {:.3} exceeds 1.000",
-            footprint
-                .native_to_fjall_reopened_allocated
-                .expect("ratio was checked above")
-        ));
-    }
-    PromotionVerdict {
-        passes: failures.is_empty(),
-        failures,
-    }
-}
-
-fn footprint_comparison(fjall: &Trial, native: &Trial) -> FootprintComparison {
-    let fjall_reopened = &fjall.footprint.reopened;
-    let native_reopened = &native.footprint.reopened;
-    FootprintComparison {
-        promotion_state: "clean_reopen_without_explicit_maintenance",
-        native_to_fjall_reopened_apparent: native_reopened.apparent_bytes as f64
-            / fjall_reopened.apparent_bytes.max(1) as f64,
-        native_to_fjall_reopened_allocated: native_reopened
-            .allocated_bytes
-            .zip(fjall_reopened.allocated_bytes)
-            .map(|(native, fjall)| native as f64 / fjall.max(1) as f64),
-        fjall_reopened_allocated_to_live_payload: fjall_reopened
-            .allocated_bytes
-            .map(|bytes| bytes as f64 / fjall.footprint.logical_live_payload_bytes.max(1) as f64),
-        native_reopened_allocated_to_live_payload: native_reopened
-            .allocated_bytes
-            .map(|bytes| bytes as f64 / native.footprint.logical_live_payload_bytes.max(1) as f64),
-        maintained_cross_backend_comparable: false,
     }
 }
 

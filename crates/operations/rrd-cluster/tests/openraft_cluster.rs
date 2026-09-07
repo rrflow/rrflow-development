@@ -17,7 +17,7 @@ use rrd_core::{
     RuntimeCommit, RuntimeMutation, RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType,
     ScopeId,
 };
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::sync::Arc;
@@ -475,7 +475,7 @@ fn real_consensus_replicates_canonical_runtime_truth_to_every_voter() {
         let directories = cluster.shutdown().await;
 
         for id in [1, 2, 3, 4] {
-            let engine = NativeEngine::open(directories[&id].path()).unwrap();
+            let engine = RrflowKvStore::open(directories[&id].path()).unwrap();
             assert_eq!(engine.runtime_cursor().unwrap(), 1, "node {id}");
             assert!(engine
                 .runtime_commit_outcome(&commit.digest())

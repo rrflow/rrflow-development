@@ -1,5 +1,5 @@
 use rrd_core::{digest, ProjectionId, ScopeId};
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use rrd_vector::{
     CollectionError, CollectionMutationContext, NamedVectorConfig, PayloadIndexDefinition,
     PayloadIndexKind, ScoreMetric, VectorCollectionDefinition, VectorCollectionRepository,
@@ -29,7 +29,7 @@ fn payload_index_and_collection_deletion_lifecycles_reopen_and_replay() {
     let delete_collection_digest = digest::sha256_hex(b"delete-collection");
 
     {
-        let engine = NativeEngine::open(&root).unwrap();
+        let engine = RrflowKvStore::open(&root).unwrap();
         let repository = VectorCollectionRepository::new(&engine, scope.clone());
         repository
             .ensure(
@@ -57,7 +57,7 @@ fn payload_index_and_collection_deletion_lifecycles_reopen_and_replay() {
         assert_eq!(catalogue.collections[&collection_id].generation, 2);
     }
 
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = VectorCollectionRepository::new(&engine, scope);
     let (catalogue, index, replay) = repository
         .ensure_payload_index(
@@ -125,7 +125,7 @@ fn payload_index_and_collection_deletion_lifecycles_reopen_and_replay() {
     assert!(catalogue.collections.is_empty());
     drop(engine);
 
-    let reopened = NativeEngine::open(&root).unwrap();
+    let reopened = RrflowKvStore::open(&root).unwrap();
     let repository = VectorCollectionRepository::new(
         &reopened,
         ScopeId::new("instance:collection-lifecycle").unwrap(),
@@ -169,7 +169,7 @@ fn native_collection_catalogue_reopens_and_replays_exactly() {
     let scope = ScopeId::new("instance:collections").unwrap();
     let request_digest = digest::sha256_hex(b"ensure-documents-v1");
     {
-        let engine = NativeEngine::open(&root).unwrap();
+        let engine = RrflowKvStore::open(&root).unwrap();
         let repository = VectorCollectionRepository::new(&engine, scope.clone());
         let (catalogue, replay) = repository
             .ensure(
@@ -188,7 +188,7 @@ fn native_collection_catalogue_reopens_and_replays_exactly() {
         assert_eq!(engine.control_journal_since(0, 10).unwrap().len(), 1);
     }
 
-    let reopened = NativeEngine::open(&root).unwrap();
+    let reopened = RrflowKvStore::open(&root).unwrap();
     let repository = VectorCollectionRepository::new(&reopened, scope);
     let (catalogue, replay) = repository
         .ensure(

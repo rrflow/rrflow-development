@@ -16,7 +16,7 @@ use rrd_core::{
     ObjectReference, RuntimeChange, RuntimeCommit, RuntimeMutation, RuntimeRecordSchema,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValue, ScopeId,
 };
-use rrd_store::{Engine, LocalObjectStore, NativeEngine};
+use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
@@ -467,7 +467,7 @@ fn independent_processes_recover_fail_over_snapshot_and_reject_corruption() {
 }
 
 fn project_changes(root: &Path) -> Vec<RuntimeChange> {
-    let engine = NativeEngine::open(root).unwrap();
+    let engine = RrflowKvStore::open(root).unwrap();
     engine
         .runtime_changes_since(0, usize::MAX, Some(&project_scope()))
         .unwrap()

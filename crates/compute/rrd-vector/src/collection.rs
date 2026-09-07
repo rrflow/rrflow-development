@@ -1,6 +1,6 @@
 use crate::{EmbeddingModelBinding, ScoreMetric};
 use rrd_core::{digest, ProjectionId, ScopeId};
-use rrd_store::{ControlTransition, Engine};
+use rrd_store::{ControlTransition, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -333,13 +333,13 @@ impl CollectionMutationContext {
     }
 }
 
-pub struct VectorCollectionRepository<'a, E: Engine + ?Sized> {
+pub struct VectorCollectionRepository<'a, E: StorageEngine + ?Sized> {
     engine: &'a E,
     scope: ScopeId,
     key: String,
 }
 
-impl<'a, E: Engine> VectorCollectionRepository<'a, E> {
+impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
     pub fn new(engine: &'a E, scope: ScopeId) -> Self {
         let key = format!("server/state/vector-collection-catalogue/{scope}");
         Self { engine, scope, key }

@@ -4,7 +4,7 @@ use rrd_estate::{
     ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     LOCAL_OPERATOR_POLICY_FORMAT,
 };
-use rrd_store::{Engine, PersistentEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -157,7 +157,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(value(&invoke(desired.clone()))["idempotent_replay"], false);
     assert_eq!(value(&invoke(desired))["idempotent_replay"], true);
 
-    let engine = PersistentEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let repository = EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
     let transition_context = |at, request: &str| MutationContext {
         at,
@@ -272,7 +272,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(accepted["job"]["recovery_policy"]["revision"], 1);
     assert_eq!(value(&invoke(backup))["idempotent_replay"], true);
 
-    let engine = PersistentEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let repository = EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
     let document = repository.load().unwrap().unwrap();
     assert_eq!(document.revision, 9);

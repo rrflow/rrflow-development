@@ -27,10 +27,11 @@ specified only by the engine data-flow record and is delivered by roadmap
 Gate C-06. When C-06 changes the physical format, its accepted format material
 replaces this body in place and the pre-alpha format detail is removed.
 
-The checkout also contains executable readers for manifest v1, mutation batch
-v1, segment v1/v2, and an existing-directory Fjall backend path. Those are
-observed pre-release removal debt, not supported alpha architecture. Gate C-05 must
-remove them directly before the alpha baseline; this document does not
+The checkout still contains executable readers for manifest v1, mutation batch
+v1, and segment v1/v2. Those are observed pre-release removal debt, not
+supported alpha architecture. The alternate Fjall store, selector, and
+migration executor are absent. Gate C-05 must remove the remaining earlier
+physical readers directly before the alpha baseline; this document does not
 normalize them as product requirements.
 
 ## Implemented object set
@@ -246,7 +247,8 @@ cargo test -p rrd-lsm
 ```
 
 Those tests prove the present physical contract only. C-05 requires removal
-evidence for every pre-1.0 reader and alternate backend. C-06 requires new
+evidence for every pre-1.0 reader and continued absence of alternate stores.
+C-06 requires new
 vectors, property and crash tests, and fixed-hardware comparison for the hybrid
 Arrow-compatible target. Gate F requires streamed
 projection/predicate/budget counters through DataFusion. Passing this suite

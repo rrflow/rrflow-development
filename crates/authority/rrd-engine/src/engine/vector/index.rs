@@ -257,7 +257,7 @@ fn replay_vector_index<E>(
     vector_name: &CanonicalId,
 ) -> Result<EnsureVectorIndexResult>
 where
-    E: rrd_store::Engine,
+    E: rrd_store::StorageEngine,
 {
     let entry = crate::vector_artifact_catalog_entries(storage, descriptor.scope())
         .map_err(|error| ServiceError::Vector(error.to_string()))?

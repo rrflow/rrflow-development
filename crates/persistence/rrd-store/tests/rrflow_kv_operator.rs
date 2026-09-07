@@ -3,7 +3,7 @@ use rrd_lsm::{
     DatabaseOptions, MaintenancePolicy, DEFAULT_MEMTABLE_MAX_VERSIONS,
     DEFAULT_WAL_PAYLOAD_MAX_BYTES,
 };
-use rrd_store::{Engine, InvocationInput, NativeEngine, Outcome, Store, Trigger};
+use rrd_store::{InvocationInput, Outcome, RrflowKvStore, StorageEngine, Trigger};
 
 fn claim(subject: &str, object: &str) -> Claim {
     Claim::new(
@@ -33,16 +33,13 @@ fn invocation<'a>(arguments: &'a [String]) -> InvocationInput<'a> {
 }
 
 #[test]
-fn native_operator_evidence_matches_fjall_and_survives_reopen() {
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native_path = native_root.path().join("native");
-    let native = NativeEngine::open(&native_path).unwrap();
+fn rrflow_kv_operator_evidence_survives_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("rrflow-kv");
+    let store = RrflowKvStore::open(&path).unwrap();
     let claims = [claim("wp3", "active"), claim("wp4", "planned")];
-    Engine::append_batch(&fjall, &claims).unwrap();
-    Engine::append_batch(&native, &claims).unwrap();
-    let physical = native.physical_store_evidence().unwrap();
+    StorageEngine::append_batch(&store, &claims).unwrap();
+    let physical = store.physical_store_evidence().unwrap();
     assert_eq!(
         physical.wal_payload_max_bytes,
         Some(DEFAULT_WAL_PAYLOAD_MAX_BYTES as u64)
@@ -70,30 +67,16 @@ fn native_operator_evidence_matches_fjall_and_survives_reopen() {
     let reader = Reader::new("agent:clyffy").unwrap();
     let subject = Subject::new("wp3").unwrap();
     let predicate = Predicate::new("status").unwrap();
-    Engine::observe(&fjall, &reader, &subject, &predicate, 5_000).unwrap();
-    Engine::observe(&native, &reader, &subject, &predicate, 5_000).unwrap();
-    assert_eq!(
-        fjall.removal_report(1_000, 9_000).unwrap(),
-        native.removal_report(1_000, 9_000).unwrap()
-    );
-    assert_eq!(fjall.access_count(), native.access_count().unwrap());
+    StorageEngine::observe(&store, &reader, &subject, &predicate, 5_000).unwrap();
+    let removal_report = store.removal_report(1_000, 9_000).unwrap();
+    assert_eq!(store.access_count().unwrap(), 1);
 
     let arguments = vec!["subject=wp3".into(), "subject=wp4".into()];
-    assert_eq!(
-        fjall.record_invocation(invocation(&arguments)).unwrap(),
-        native.record_invocation(invocation(&arguments)).unwrap()
-    );
-    assert_eq!(
-        fjall.invocation_count().unwrap(),
-        native.invocation_count().unwrap()
-    );
-    assert_eq!(
-        fjall.invocations_since(0).unwrap(),
-        native.invocations_since(0).unwrap()
-    );
+    store.record_invocation(invocation(&arguments)).unwrap();
+    assert_eq!(store.invocation_count().unwrap(), 1);
 
-    drop(native);
-    let reopened = NativeEngine::open(&native_path).unwrap();
+    drop(store);
+    let reopened = RrflowKvStore::open(&path).unwrap();
     assert_eq!(reopened.invocation_count().unwrap(), 1);
     assert_eq!(reopened.access_count().unwrap(), 1);
     assert_eq!(
@@ -102,15 +85,15 @@ fn native_operator_evidence_matches_fjall_and_survives_reopen() {
     );
     assert_eq!(
         reopened.removal_report(1_000, 9_000).unwrap(),
-        fjall.removal_report(1_000, 9_000).unwrap()
+        removal_report
     );
 }
 
 #[test]
-fn native_engine_applies_explicit_project_maintenance_bounds() {
+fn rrflow_kv_applies_explicit_project_maintenance_bounds() {
     let root = tempfile::tempdir().unwrap();
-    let path = root.path().join("native");
-    let engine = NativeEngine::open_with_options(
+    let path = root.path().join("rrflow-kv");
+    let engine = RrflowKvStore::open_with_options(
         &path,
         DatabaseOptions {
             maintenance: MaintenancePolicy {
@@ -121,8 +104,8 @@ fn native_engine_applies_explicit_project_maintenance_bounds() {
         },
     )
     .unwrap();
-    Engine::append_batch(&engine, &[claim("bounded", "active")]).unwrap();
-    Engine::observe(
+    StorageEngine::append_batch(&engine, &[claim("bounded", "active")]).unwrap();
+    StorageEngine::observe(
         &engine,
         &Reader::new("agent:clyffy").unwrap(),
         &Subject::new("bounded").unwrap(),

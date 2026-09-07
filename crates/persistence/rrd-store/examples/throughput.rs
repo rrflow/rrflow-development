@@ -12,7 +12,7 @@
 //! ```
 
 use rrd_core::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
-use rrd_store::{Store, Writer, WriterConfig};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -45,7 +45,7 @@ fn main() {
         .expect("usage: throughput <db-path>");
     let path = std::path::PathBuf::from(path);
     let _ = std::fs::remove_dir_all(&path);
-    let store_arc = Arc::new(Store::open(&path).expect("open store"));
+    let store_arc = Arc::new(RrflowKvStore::open(&path).expect("open store"));
     let store = Arc::clone(&store_arc);
 
     // Warm the journal and page cache so the first batch is not an outlier.
@@ -99,9 +99,9 @@ fn main() {
 
     for &delay_ms in &[1u64, 5, 20] {
         let store = Arc::clone(&store_arc);
-        let writer = Writer::spawn(
+        let writer = ClaimBatchWriter::spawn(
             store,
-            WriterConfig {
+            ClaimBatchWriterConfig {
                 flush_delay: Duration::from_millis(delay_ms),
                 max_batch: 512,
                 queue_capacity: 8192,

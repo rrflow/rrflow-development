@@ -10,7 +10,7 @@ use rrd_core::{
     RuntimeSchemaRegistry, RuntimeTraceEvent, RuntimeValue, ScopeId, SpanId, TraceDataClass,
     TraceDomain, TraceId, TraceLink, TraceOutcome,
 };
-use rrd_store::{Engine, Error};
+use rrd_store::{Error, StorageEngine};
 use std::time::Instant;
 
 const TRACE_COMMIT_RETRIES: usize = 16;
@@ -71,7 +71,7 @@ pub struct DurableTraceSpan {
 
 impl DurableTraceSpan {
     #[allow(clippy::too_many_arguments)]
-    pub fn start<E: Engine>(
+    pub fn start<E: StorageEngine>(
         store: &E,
         scope: ScopeId,
         actor: impl Into<String>,
@@ -126,7 +126,7 @@ impl DurableTraceSpan {
             .saturating_add(self.started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
     }
 
-    pub fn finish<E: Engine>(
+    pub fn finish<E: StorageEngine>(
         mut self,
         store: &E,
         outcome: TraceOutcome,
@@ -183,7 +183,7 @@ fn insert_attribute(
 
 /// Installs the strict trace event schema without emitting a synthetic event.
 /// Returns `None` when the exact declaration is already installed.
-pub fn install_runtime_trace_contract<E: Engine>(
+pub fn install_runtime_trace_contract<E: StorageEngine>(
     store: &E,
     scope: &ScopeId,
     at: Millis,
@@ -194,7 +194,7 @@ pub fn install_runtime_trace_contract<E: Engine>(
 
 /// Persists one immutable trace micro-event. Missing or outdated trace schema
 /// is migrated in the same atomic runtime commit as the event.
-pub fn record_runtime_trace<E: Engine>(
+pub fn record_runtime_trace<E: StorageEngine>(
     store: &E,
     scope: &ScopeId,
     actor: &str,
@@ -205,7 +205,7 @@ pub fn record_runtime_trace<E: Engine>(
         .ok_or_else(|| "a runtime trace event produced no commit".into())
 }
 
-fn commit_trace<E: Engine>(
+fn commit_trace<E: StorageEngine>(
     store: &E,
     scope: &ScopeId,
     at: Millis,

@@ -7,7 +7,7 @@ use rrd_estate::{
     MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary, ReceiptRequest,
     ScheduleBackup, SetDesired,
 };
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::fs;
 use std::path::PathBuf;
 
@@ -24,7 +24,7 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
     }
 }
 
-fn prepare_backup_job<E: Engine>(engine: &E) {
+fn prepare_backup_job<E: StorageEngine>(engine: &E) {
     let repository = EstateRepository::new(engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -143,7 +143,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
     let database = temporary.path().join("estate-native");
     let marker = temporary.path().join("effect.marker");
     {
-        let engine = NativeEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         prepare_backup_job(&engine);
         let mut reconciler = BackupReconciler::new(
             &engine,
@@ -178,7 +178,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
         );
     }
 
-    let engine = NativeEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let mut reconciler = BackupReconciler::new(
         &engine,
         id("estate-a"),
@@ -209,7 +209,7 @@ fn prepared_job_replays_one_durable_effect_after_reopen() {
 
 #[test]
 fn expired_prepared_lease_is_taken_over_and_stale_worker_is_fenced() {
-    let engine = rrd_store::RrflowMxEngine::new();
+    let engine = rrd_store::RrflowMxStore::new();
     prepare_backup_job(&engine);
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository

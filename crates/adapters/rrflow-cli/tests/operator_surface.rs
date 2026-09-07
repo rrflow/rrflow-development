@@ -5,7 +5,7 @@
 //! guarantee meaningful: a command that forgot to record itself would pass a
 //! library-level test and fail here.
 
-use rrd_store::{Engine, NativeEngine, PersistentBackend, PersistentEngine, Store};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -78,99 +78,27 @@ fn a_claim_can_be_asserted_and_resolved() {
     let (ok, out, err) = rrflow(&db, &["status", "--json"]);
     assert!(ok, "status failed: {err}");
     let status: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert_eq!(status["storage_backend"], "rrd_lsm");
+    assert_eq!(status["storage_backend"], "rrflow_kv");
 }
 
 #[test]
-fn storage_migration_runs_offline_and_exposes_status_and_rollback() {
-    let root = tempfile::tempdir().unwrap();
-    let db = root.path().join("storage-migration");
-    let fjall = Store::open(&db).unwrap();
-    Engine::put_projection(&fjall, "cli-migration", b"preserved").unwrap();
-    drop(fjall);
-
-    let (ok, out, err) = rrflow(&db, &["storage", "migrate", "--json"]);
-    assert!(ok, "storage migrate failed: {err}");
-    let report: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert_eq!(report["phase"], "complete");
-    assert_eq!(
-        PersistentEngine::open(&db).unwrap().backend(),
-        PersistentBackend::Native
-    );
-
-    let (ok, out, err) = rrflow(&db, &["storage", "status", "--json"]);
-    assert!(ok, "storage status failed: {err}");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&out).unwrap()["phase"],
-        "complete"
-    );
-
-    let (ok, out, err) = rrflow(&db, &["storage", "rollback", "--json"]);
-    assert!(ok, "storage rollback failed: {err}");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&out).unwrap()["phase"],
-        "rolled_back"
-    );
-    let restored = PersistentEngine::open(&db).unwrap();
-    assert_eq!(restored.backend(), PersistentBackend::FjallCompatibility);
-    assert_eq!(
-        restored.get_projection("cli-migration").unwrap(),
-        Some(b"preserved".to_vec())
-    );
-}
-
-#[test]
-fn native_format_upgrade_cli_resumes_and_reports_the_ledger() {
-    let root = tempfile::tempdir().unwrap();
-    let db = root.path().join("native-format-upgrade");
-    drop(rrd_lsm::Database::create(&db).unwrap());
-    let legacy = NativeEngine::open(&db).unwrap();
-    legacy.put_projection("cli-format", b"preserved").unwrap();
-    drop(legacy);
-
-    let (ok, out, err) = rrflow(&db, &["storage", "format-upgrade", "--json"]);
-    assert!(ok, "native format upgrade failed: {err}");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&out).unwrap()["phase"],
-        "complete"
-    );
-    let (ok, out, err) = rrflow(&db, &["storage", "format-status", "--json"]);
-    assert!(ok, "native format status failed: {err}");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&out).unwrap()["phase"],
-        "complete"
-    );
-    assert_eq!(
-        NativeEngine::open(&db)
-            .unwrap()
-            .get_projection("cli-format")
-            .unwrap(),
-        Some(b"preserved".to_vec())
-    );
-
-    let (ok, out, err) = rrflow(&db, &["storage", "format-rollback", "--json"]);
-    assert!(ok, "native format rollback failed: {err}");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&out).unwrap()["phase"],
-        "rolled_back"
-    );
-    let (ok, out, err) = rrflow(&db, &["storage", "format-status", "--json"]);
-    assert!(ok, "native format rollback status failed: {err}");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&out).unwrap()["phase"],
-        "rolled_back"
-    );
-    assert_eq!(
-        NativeEngine::open(&db)
-            .unwrap()
-            .get_projection("cli-format")
-            .unwrap(),
-        Some(b"preserved".to_vec())
-    );
-    assert!(root
-        .path()
-        .join(".native-format-upgrade.native-format-v2-retired")
-        .is_dir());
+fn storage_rejects_nonexistent_selector_migration_and_upgrade_actions() {
+    let db = scratch("storage-command-boundary");
+    for action in [
+        "migrate",
+        "status",
+        "rollback",
+        "format-upgrade",
+        "format-rollback",
+        "format-status",
+    ] {
+        let (ok, _, error) = rrflow(&db, &["storage", action]);
+        assert!(!ok, "storage {action} unexpectedly parsed");
+        assert!(
+            error.contains(&format!("unrecognized subcommand '{action}'")),
+            "unexpected rejection for storage {action}: {error}"
+        );
+    }
 }
 
 #[test]
@@ -308,10 +236,7 @@ fn backup_catalogue_cli_creates_lists_and_restores() {
         ],
     );
     assert!(ok, "backup restore failed: {err}");
-    assert_eq!(
-        PersistentEngine::open(&target).unwrap().sequence().unwrap(),
-        1
-    );
+    assert_eq!(RrflowKvStore::open(&target).unwrap().sequence().unwrap(), 1);
 }
 
 #[test]
@@ -682,9 +607,9 @@ fn identity_bind_resolve_and_readme_warp_share_the_persistent_engine() {
 }
 
 #[test]
-fn retired_reasoning_ledger_commands_are_not_an_operator_surface() {
-    let db = scratch("retired-reasoning-ledger");
+fn unsupported_reasoning_ledger_commands_are_not_an_operator_surface() {
+    let db = scratch("unsupported-reasoning-ledger");
     let (ok, _, error) = rrflow(&db, &["reasoning", "show"]);
-    assert!(!ok, "the retired router command must not parse");
+    assert!(!ok, "an unsupported router command must not parse");
     assert!(error.contains("unrecognized subcommand 'reasoning'"));
 }

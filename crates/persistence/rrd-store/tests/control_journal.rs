@@ -1,4 +1,4 @@
-use rrd_store::{ControlTransition, Engine, Error, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{ControlTransition, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn transition(expected: Option<&[u8]>, replacement: Option<&[u8]>, at: u64) -> ControlTransition {
     keyed_transition("server/state/session/session-1", expected, replacement, at)
@@ -22,7 +22,7 @@ fn keyed_transition(
     }
 }
 
-fn assert_atomic_batch(engine: &dyn Engine) {
+fn assert_atomic_batch(engine: &dyn StorageEngine) {
     let entries = engine
         .commit_control_batch(&[
             keyed_transition("server/state/audit/record-1", None, Some(b"record"), 20),
@@ -61,7 +61,7 @@ fn assert_atomic_batch(engine: &dyn Engine) {
     );
 }
 
-fn assert_journal(engine: &dyn Engine) {
+fn assert_journal(engine: &dyn StorageEngine) {
     assert_eq!(engine.control_sequence().unwrap(), 0);
     let created = engine
         .commit_control_transition(&transition(None, Some(b"open"), 10))
@@ -98,54 +98,30 @@ fn assert_journal(engine: &dyn Engine) {
 
 #[test]
 fn every_engine_materializes_and_journals_the_same_cas_transitions() {
-    let memory = RrflowMxEngine::new();
+    let memory = RrflowMxStore::new();
     assert_journal(&memory);
     assert_atomic_batch(&memory);
-    let native = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native.path().join("native")).unwrap();
-    assert_journal(&native);
-    assert_atomic_batch(&native);
-    let fjall = tempfile::tempdir().unwrap();
-    let fjall = Store::open(&fjall.path().join("fjall")).unwrap();
-    assert_journal(&fjall);
-    assert_atomic_batch(&fjall);
+    let rrflow_kv = tempfile::tempdir().unwrap();
+    let rrflow_kv = RrflowKvStore::open(rrflow_kv.path()).unwrap();
+    assert_journal(&rrflow_kv);
+    assert_atomic_batch(&rrflow_kv);
 }
 
 #[test]
 fn materialized_state_and_hash_chain_survive_restart() {
     let root = tempfile::tempdir().unwrap();
-    for native in [true, false] {
-        let path = root.path().join(if native { "native" } else { "fjall" });
-        if native {
-            let engine = NativeEngine::open(&path).unwrap();
-            engine
-                .commit_control_transition(&transition(None, Some(b"open"), 10))
-                .unwrap();
-            drop(engine);
-            let reopened = NativeEngine::open(&path).unwrap();
-            assert_eq!(
-                reopened
-                    .control_record("server/state/session/session-1")
-                    .unwrap(),
-                Some(b"open".to_vec())
-            );
-            assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 1);
-            assert_eq!(reopened.control_sequence().unwrap(), 1);
-        } else {
-            let engine = Store::open(&path).unwrap();
-            engine
-                .commit_control_transition(&transition(None, Some(b"open"), 10))
-                .unwrap();
-            drop(engine);
-            let reopened = Store::open(&path).unwrap();
-            assert_eq!(
-                reopened
-                    .control_record("server/state/session/session-1")
-                    .unwrap(),
-                Some(b"open".to_vec())
-            );
-            assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 1);
-            assert_eq!(reopened.control_sequence().unwrap(), 1);
-        }
-    }
+    let engine = RrflowKvStore::open(root.path()).unwrap();
+    engine
+        .commit_control_transition(&transition(None, Some(b"open"), 10))
+        .unwrap();
+    drop(engine);
+    let reopened = RrflowKvStore::open(root.path()).unwrap();
+    assert_eq!(
+        reopened
+            .control_record("server/state/session/session-1")
+            .unwrap(),
+        Some(b"open".to_vec())
+    );
+    assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 1);
+    assert_eq!(reopened.control_sequence().unwrap(), 1);
 }

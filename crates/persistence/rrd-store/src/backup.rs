@@ -2,9 +2,9 @@
 
 use crate::{
     export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root,
-    restore_logical_archive_to_new_root_with, ControlTransition, Engine, Error,
-    ImmutableObjectStore, LocalObjectStore, LogicalArchiveInventory, LogicalRestoreReport,
-    NativeEngine, Result,
+    restore_logical_archive_to_new_root_with, ControlTransition, Error, ImmutableObjectStore,
+    LocalObjectStore, LogicalArchiveInventory, LogicalRestoreReport, Result, RrflowKvStore,
+    StorageEngine,
 };
 use rrd_core::digest;
 use rrd_core::{ObjectReference, RuntimeMutation, ScopeId};
@@ -191,7 +191,7 @@ struct StoredCatalogue {
 
 /// Creates or reuses a content-addressed archive and atomically adds its
 /// coverage record to the catalogue.
-pub fn create_logical_backup<E: Engine>(
+pub fn create_logical_backup<E: StorageEngine>(
     engine: &E,
     catalogue_root: &Path,
     label: &str,
@@ -275,7 +275,7 @@ pub fn create_logical_backup<E: Engine>(
 /// Logical replay and object bytes remain separate physical artifacts, but
 /// one authenticated catalogue entry binds their content identities. A
 /// concurrent source mutation rejects the backup before it is catalogued.
-pub fn create_application_backup<E: Engine, O: ImmutableObjectStore>(
+pub fn create_application_backup<E: StorageEngine, O: ImmutableObjectStore>(
     engine: &E,
     objects: &O,
     catalogue_root: &Path,
@@ -605,7 +605,7 @@ fn retain_catalogue_entry(catalogue_root: &Path, entry: BackupEntry) -> Result<B
     Ok(entry)
 }
 
-fn object_references_at(engine: &impl Engine, head: u64) -> Result<Vec<ObjectReference>> {
+fn object_references_at(engine: &impl StorageEngine, head: u64) -> Result<Vec<ObjectReference>> {
     let mut after = 0u64;
     let mut objects = std::collections::BTreeMap::<String, ObjectReference>::new();
     while after < head {
@@ -647,7 +647,7 @@ fn object_references_at(engine: &impl Engine, head: u64) -> Result<Vec<ObjectRef
 }
 
 fn retain_catalogues(
-    engine: &impl Engine,
+    engine: &impl StorageEngine,
     catalogue_root: &Path,
 ) -> Result<(String, CatalogueManifestInventory)> {
     let source_control_sequence = engine.control_sequence()?;
@@ -887,7 +887,7 @@ fn validate_catalogue_manifest(manifest: &CatalogueManifest) -> Result<()> {
 
 fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Result<()> {
     validate_catalogue_manifest(manifest)?;
-    let engine = NativeEngine::open(staging_root)?;
+    let engine = RrflowKvStore::open(staging_root)?;
     for scope in &manifest.scopes {
         let records = manifest
             .records
@@ -958,7 +958,7 @@ fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Resu
 }
 
 fn verify_restored_catalogues(manifest: &CatalogueManifest, restored_root: &Path) -> Result<()> {
-    let engine = NativeEngine::open(restored_root)?;
+    let engine = RrflowKvStore::open(restored_root)?;
     for record in &manifest.records {
         if engine.control_record(&record.key)?.as_deref() != Some(record.value.as_slice()) {
             return Err(Error::Archive(format!(

@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  strict-local-promotion:
+  rrflow-kv-semantic:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -45,22 +45,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.98.0
       - uses: Swatinem/rust-cache@v2
-      - name: Run isolated Fjall/native matrix
+      - name: Run isolated rrflowKV semantic profile
         run: >-
           cargo run --release --locked -p rrd-store --example engine_benchmark --
           --trials 9 --operations ${{ matrix.operations }}
           --batch-size ${{ matrix.batch_size }} --reads ${{ matrix.reads }}
           --read-width ${{ matrix.read_width }}
-          --output target/rrd-lsm-${{ matrix.profile }}.json --require-promotion
+          --output target/rrflow-kv-${{ matrix.profile }}.json
       - name: Retain raw benchmark evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rrd-lsm-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: target/rrd-lsm-${{ matrix.profile }}.json
+          name: rrflow-kv-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: target/rrflow-kv-${{ matrix.profile }}.json
           if-no-files-found: error
 
-  ai-read-promotion:
+  rrflow-kv-ai-reads:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -94,12 +94,11 @@ jobs:
           --trials 5 --cold-keys 8192
           --hot-keys 128 --reads 8192 --batch-size 128 --value-bytes 128
           --fanout-width 32
-          --output target/rrd-lsm-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
-          --require-promotion
+          --output target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
       - name: Retain raw AI-read evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rrd-lsm-ai-${{ matrix.workload }}-${{ matrix.payload }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: target/rrd-lsm-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
+          name: rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
           if-no-files-found: error

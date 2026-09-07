@@ -4,13 +4,13 @@ use rrd_core::{
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
     RuntimeValue, RuntimeValueType, ScopeId,
 };
-use rrd_engine::{load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
     SECURITY_FORMAT,
 };
 use rrd_server::RrdHttpServer;
-use rrd_store::{Engine, PersistentEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::io::Write as _;
@@ -51,7 +51,7 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         })
         .collect(),
     };
-    let storage = PersistentEngine::open(&store).unwrap();
+    let storage = RrflowKvStore::open(&store).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "Daemon context fixture");
     registry.records.insert(
         RuntimeType::new("note").unwrap(),
@@ -103,9 +103,13 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .unwrap();
     drop(storage);
 
-    let token_key = load_or_create_token_key(&store.join("RRD.SERVER.SECRET")).unwrap();
-    let engine =
-        RrdEngine::open_bound_with_token_key(&binding, instance.clone(), token_key, 2).unwrap();
+    let engine = RrdEngine::open_bound_with_token_key_file(
+        &binding,
+        instance.clone(),
+        &store.join("RRD.SERVER.SECRET"),
+        2,
+    )
+    .unwrap();
     let server = RrdHttpServer::bind_project(
         engine,
         binding.authority_binding().unwrap(),
@@ -192,7 +196,7 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
 
     shutdown.send(()).unwrap();
     server_thread.join().unwrap().unwrap();
-    let storage = PersistentEngine::open(&store).unwrap();
+    let storage = RrflowKvStore::open(&store).unwrap();
     let audit = SecurityRepository::new(&storage, instance)
         .audit_since(0, 256)
         .unwrap();
@@ -213,9 +217,13 @@ fn daemon_mode_refuses_an_unsecured_server() {
     let binding = InstanceBinding::discover(&project).unwrap();
     let store = binding.expected_store();
     let instance = CanonicalId::new("mcp-unsecured-test").unwrap();
-    let token_key = load_or_create_token_key(&store.join("RRD.SERVER.SECRET")).unwrap();
-    let engine =
-        RrdEngine::open_bound_with_token_key(&binding, instance.clone(), token_key, 1).unwrap();
+    let engine = RrdEngine::open_bound_with_token_key_file(
+        &binding,
+        instance.clone(),
+        &store.join("RRD.SERVER.SECRET"),
+        1,
+    )
+    .unwrap();
     let server = RrdHttpServer::bind_project(
         engine,
         binding.authority_binding().unwrap(),

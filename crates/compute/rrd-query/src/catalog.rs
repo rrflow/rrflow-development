@@ -2,7 +2,7 @@ use crate::{Error, IndexCatalogue, IndexCatalogueRepository, Result, Source};
 use rrd_core::{
     Predicate, ReadStamp, RuntimeMutation, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -260,7 +260,7 @@ fn latest(history: &[u64], known_at_cursor: u64) -> u64 {
 }
 
 impl Catalog {
-    pub fn capture<E: Engine>(engine: &E, scope: &ScopeId) -> Result<Self> {
+    pub fn capture<E: StorageEngine>(engine: &E, scope: &ScopeId) -> Result<Self> {
         let read = engine.runtime_read_stamp(scope)?;
         Self::capture_at(engine, read)
     }
@@ -269,7 +269,7 @@ impl Catalog {
     /// This is the observer-safe path for instrumented execution: telemetry
     /// may advance the live head after `read` is captured without changing
     /// what `KNOWN HEAD` meant to the query.
-    pub fn capture_at<E: Engine>(engine: &E, read: ReadStamp) -> Result<Self> {
+    pub fn capture_at<E: StorageEngine>(engine: &E, read: ReadStamp) -> Result<Self> {
         read.validate()
             .map_err(|error| Error::Catalog(error.to_string()))?;
         let limit = usize::try_from(read.commit_cursor).map_err(|_| {

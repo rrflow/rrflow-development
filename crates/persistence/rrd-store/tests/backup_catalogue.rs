@@ -6,7 +6,8 @@ use rrd_core::{
 use rrd_store::{
     create_application_backup, create_logical_backup, load_backup_catalogue,
     prune_backup_catalogue, restore_catalogued_backup, verify_backup_catalogue, BackupCoverage,
-    BackupPrunePlan, ControlTransition, DataRuntime, Engine, LocalObjectStore, NativeEngine,
+    BackupPrunePlan, ControlTransition, DataRuntime, LocalObjectStore, RrflowKvStore,
+    StorageEngine,
 };
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
@@ -29,7 +30,7 @@ fn claim(name: &str, at: u64) -> Claim {
 #[test]
 fn catalogues_multiple_cuts_and_restores_the_selected_backup() {
     let root = tempfile::tempdir().unwrap();
-    let engine = NativeEngine::open(&root.path().join("source")).unwrap();
+    let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
     engine.append_batch(&[claim("one", 10)]).unwrap();
     let first = create_logical_backup(&engine, &catalogue_root, "first", 100).unwrap();
@@ -45,7 +46,7 @@ fn catalogues_multiple_cuts_and_restores_the_selected_backup() {
 
     let target = root.path().join("restored-first");
     restore_catalogued_backup(&catalogue_root, &first.backup_id, &target, 300).unwrap();
-    let restored = NativeEngine::open(&target).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(restored.sequence().unwrap(), 1);
     assert_eq!(
         restored.claims_in_range(0, 1).unwrap(),
@@ -56,7 +57,7 @@ fn catalogues_multiple_cuts_and_restores_the_selected_backup() {
 #[test]
 fn repeated_identical_backup_is_idempotent() {
     let root = tempfile::tempdir().unwrap();
-    let engine = NativeEngine::open(&root.path().join("source")).unwrap();
+    let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
     engine.append_batch(&[claim("one", 10)]).unwrap();
     let first = create_logical_backup(&engine, &catalogue_root, "daily", 100).unwrap();
@@ -70,7 +71,7 @@ fn repeated_identical_backup_is_idempotent() {
 #[test]
 fn authenticated_prune_is_partition_bound_replayable_and_preserves_shared_artifacts() {
     let root = tempfile::tempdir().unwrap();
-    let engine = NativeEngine::open(&root.path().join("source")).unwrap();
+    let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let objects = LocalObjectStore::open(root.path().join("source-objects")).unwrap();
     let catalogue_root = root.path().join("catalogue");
     let first =
@@ -129,7 +130,7 @@ fn authenticated_prune_is_partition_bound_replayable_and_preserves_shared_artifa
 #[test]
 fn prune_rejects_incomplete_or_corrupt_inventory_before_publication() {
     let root = tempfile::tempdir().unwrap();
-    let engine = NativeEngine::open(&root.path().join("source")).unwrap();
+    let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
     engine.append_batch(&[claim("one", 10)]).unwrap();
     let first = create_logical_backup(&engine, &catalogue_root, "first", 100).unwrap();
@@ -167,7 +168,7 @@ fn prune_rejects_incomplete_or_corrupt_inventory_before_publication() {
 #[test]
 fn archive_or_catalogue_corruption_fails_closed() {
     let root = tempfile::tempdir().unwrap();
-    let engine = NativeEngine::open(&root.path().join("source")).unwrap();
+    let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
     engine.append_batch(&[claim("one", 10)]).unwrap();
     let entry = create_logical_backup(&engine, &catalogue_root, "daily", 100).unwrap();
@@ -193,7 +194,7 @@ fn archive_or_catalogue_corruption_fails_closed() {
 fn application_backup_payload_corruption_fails_before_restore_publication() {
     let root = tempfile::tempdir().unwrap();
     let runtime = DataRuntime::new(
-        NativeEngine::open(&root.path().join("source")).unwrap(),
+        RrflowKvStore::open(&root.path().join("source")).unwrap(),
         LocalObjectStore::open(root.path().join("source-objects")).unwrap(),
     );
     let scope = ScopeId::new("instance:complete-backup").unwrap();
@@ -277,7 +278,7 @@ fn application_backup_payload_corruption_fails_before_restore_publication() {
 fn application_backup_restores_object_catalogue_and_audit_closure() {
     let root = tempfile::tempdir().unwrap();
     let runtime = DataRuntime::new(
-        NativeEngine::open(&root.path().join("source")).unwrap(),
+        RrflowKvStore::open(&root.path().join("source")).unwrap(),
         LocalObjectStore::open(root.path().join("source-objects")).unwrap(),
     );
     let scope = ScopeId::new("instance:closure").unwrap();
@@ -377,7 +378,7 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
 
     let target = root.path().join("restored");
     restore_catalogued_backup(&catalogue_root, &entry.backup_id, &target, 200).unwrap();
-    let restored = NativeEngine::open(&target).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(
         restored.control_record(&catalogue_key).unwrap(),
         Some(catalogue_value)

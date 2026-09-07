@@ -12,7 +12,7 @@ use rrd_core::{
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
     RuntimeValue, RuntimeValueType, ScopeId, TraceDataClass, TraceDomain, TraceLink, TraceOutcome,
 };
-use rrd_store::{DataRuntimeAccess, Engine, Error as StoreError, ImmutableObjectStore};
+use rrd_store::{DataRuntimeAccess, Error as StoreError, ImmutableObjectStore, StorageEngine};
 use rrd_vector::{
     QuantizationArtifactCatalogue, QuantizationArtifactEntry, QuantizationArtifactState,
     QuantizationLifecycleAction, QuantizationLifecycleEvent, VectorArtifact,
@@ -607,7 +607,7 @@ pub fn quantization_artifact_catalogue<E>(
     scope: &ScopeId,
 ) -> Result<QuantizationArtifactCatalogue, Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
 {
     quantization_artifact_catalogue_at_read(engine, scope).map(|(_, catalogue)| catalogue)
 }
@@ -617,7 +617,7 @@ fn quantization_artifact_catalogue_at_read<E>(
     scope: &ScopeId,
 ) -> Result<(ReadStamp, QuantizationArtifactCatalogue), Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
 {
     let read = engine.runtime_read_stamp(scope)?;
     let mut cursor = 0;
@@ -1014,7 +1014,7 @@ pub fn vector_artifact_catalog_entries<E>(
     scope: &ScopeId,
 ) -> Result<Vec<VectorArtifactCatalogEntry>, Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
 {
     let mut cursor = 0;
     let mut changes = Vec::new();
@@ -1419,7 +1419,7 @@ fn quantization_finish_attributes(
     ])
 }
 
-fn finish_publication_error<E: Engine, T>(
+fn finish_publication_error<E: StorageEngine, T>(
     store: &E,
     span: DurableTraceSpan,
     stage: &str,

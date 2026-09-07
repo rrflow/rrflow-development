@@ -4,7 +4,7 @@ use rrd_estate::{
     EstateRepository, LeaseRequest, MutationContext, ObservationRequest, ObservedPhase,
     ReceiptBoundary, ReceiptRequest, ScheduleBackup, SetDesired,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
@@ -19,7 +19,7 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
     }
 }
 
-fn prepare_stopped_instance<E: Engine>(engine: &E) {
+fn prepare_stopped_instance<E: StorageEngine>(engine: &E) {
     let repository = EstateRepository::new(engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -102,7 +102,7 @@ fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
     let root = tempfile::tempdir().unwrap();
     let database = root.path().join("estate-native");
     {
-        let engine = NativeEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         prepare_stopped_instance(&engine);
         let repository = EstateRepository::new(&engine, id("estate-a"));
         let accepted = repository.schedule_backup(&backup_request()).unwrap();
@@ -116,7 +116,7 @@ fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
         assert_eq!(public.jobs[0].label, "daily.0001");
     }
 
-    let engine = NativeEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     let replay = repository.schedule_backup(&backup_request()).unwrap();
     assert!(replay.idempotent_replay);
@@ -142,7 +142,7 @@ fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
 
 #[test]
 fn backup_schedule_denies_an_unobserved_or_running_instance() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))

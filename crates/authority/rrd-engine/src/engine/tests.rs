@@ -11,7 +11,7 @@ use rrd_contract::{
 };
 use rrd_core::digest;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState};
-use rrd_store::{ControlTransition, Engine};
+use rrd_store::{ControlTransition, StorageEngine};
 use serde_json::Value;
 
 const TOKEN_KEY: [u8; 32] = [7; 32];

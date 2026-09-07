@@ -8,7 +8,7 @@ use rrd_core::{
     RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue,
     RuntimeValueType, RuntimeVector, ScopeId, SeriesValue, VectorValue,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn kind(value: &str) -> RuntimeType {
     RuntimeType::new(value).unwrap()
@@ -323,7 +323,7 @@ fn initial_mutations() -> Vec<RuntimeMutation> {
     ]
 }
 
-fn exercise(engine: &dyn Engine) -> (ScopeId, u64) {
+fn exercise(engine: &dyn StorageEngine) -> (ScopeId, u64) {
     let scope = ScopeId::new("instance:unified-catalogue").unwrap();
     let initial = RuntimeCommit {
         scope: scope.clone(),
@@ -382,36 +382,20 @@ fn exercise(engine: &dyn Engine) -> (ScopeId, u64) {
 
 #[test]
 fn cross_model_catalogue_changes_are_atomic_and_equal_across_engines() {
-    exercise(&RrflowMxEngine::new());
+    exercise(&RrflowMxStore::new());
 
-    let compatibility = tempfile::tempdir().unwrap();
-    exercise(&Store::open(compatibility.path()).unwrap());
-
-    let native = tempfile::tempdir().unwrap();
-    exercise(&NativeEngine::open(native.path()).unwrap());
+    let rrflow_kv = tempfile::tempdir().unwrap();
+    exercise(&RrflowKvStore::open(rrflow_kv.path()).unwrap());
 }
 
 #[test]
-fn unified_catalogue_survives_compatibility_and_native_reopen() {
-    let compatibility = tempfile::tempdir().unwrap();
+fn unified_catalogue_survives_rrflow_kv_reopen() {
+    let rrflow_kv = tempfile::tempdir().unwrap();
     let (scope, cursor) = {
-        let engine = Store::open(compatibility.path()).unwrap();
+        let engine = RrflowKvStore::open(rrflow_kv.path()).unwrap();
         exercise(&engine)
     };
-    let reopened = Store::open(compatibility.path()).unwrap();
-    assert_eq!(reopened.runtime_cursor().unwrap(), cursor);
-    assert_eq!(
-        reopened.runtime_schema(&scope).unwrap().unwrap(),
-        catalogue(2, true)
-    );
-
-    let native = tempfile::tempdir().unwrap();
-    let path = native.path().join("native");
-    let (scope, cursor) = {
-        let engine = NativeEngine::open(&path).unwrap();
-        exercise(&engine)
-    };
-    let reopened = NativeEngine::open(&path).unwrap();
+    let reopened = RrflowKvStore::open(rrflow_kv.path()).unwrap();
     assert_eq!(reopened.runtime_cursor().unwrap(), cursor);
     assert_eq!(
         reopened.runtime_schema(&scope).unwrap().unwrap(),
@@ -419,7 +403,7 @@ fn unified_catalogue_survives_compatibility_and_native_reopen() {
     );
 }
 
-fn exercise_crud(engine: &dyn Engine) -> (ScopeId, u64, rrd_core::RuntimeDataSnapshot) {
+fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrd_core::RuntimeDataSnapshot) {
     let (scope, cursor) = exercise(engine);
     let mut updated_vector = vector(Some(101));
     updated_vector.valid_from = 103;
@@ -637,41 +621,21 @@ fn exercise_crud(engine: &dyn Engine) -> (ScopeId, u64, rrd_core::RuntimeDataSna
 
 #[test]
 fn multi_model_create_update_retire_and_recreate_are_identical_across_engines() {
-    let (_, _, memory) = exercise_crud(&RrflowMxEngine::new());
+    let (_, _, memory) = exercise_crud(&RrflowMxStore::new());
 
-    let compatibility = tempfile::tempdir().unwrap();
-    let (_, _, fjall) = exercise_crud(&Store::open(compatibility.path()).unwrap());
-    assert_eq!(memory, fjall);
-
-    let native = tempfile::tempdir().unwrap();
-    let (_, _, native) = exercise_crud(&NativeEngine::open(native.path()).unwrap());
-    assert_eq!(memory, native);
+    let rrflow_kv = tempfile::tempdir().unwrap();
+    let (_, _, persisted) = exercise_crud(&RrflowKvStore::open(rrflow_kv.path()).unwrap());
+    assert_eq!(memory, persisted);
 }
 
 #[test]
-fn mixed_model_crud_snapshot_is_exact_after_fjall_and_native_reopen() {
-    let compatibility = tempfile::tempdir().unwrap();
+fn mixed_model_crud_snapshot_is_exact_after_rrflow_kv_reopen() {
+    let rrflow_kv = tempfile::tempdir().unwrap();
     let (scope, cursor, expected) = {
-        let engine = Store::open(compatibility.path()).unwrap();
+        let engine = RrflowKvStore::open(rrflow_kv.path()).unwrap();
         exercise_crud(&engine)
     };
-    let reopened = Store::open(compatibility.path()).unwrap();
-    assert_eq!(reopened.runtime_cursor().unwrap(), cursor);
-    assert_eq!(
-        reopened
-            .runtime_data_snapshot(&scope, 106, 4_096)
-            .unwrap()
-            .1,
-        expected
-    );
-
-    let native = tempfile::tempdir().unwrap();
-    let path = native.path().join("native");
-    let (scope, cursor, expected) = {
-        let engine = NativeEngine::open(&path).unwrap();
-        exercise_crud(&engine)
-    };
-    let reopened = NativeEngine::open(&path).unwrap();
+    let reopened = RrflowKvStore::open(rrflow_kv.path()).unwrap();
     assert_eq!(reopened.runtime_cursor().unwrap(), cursor);
     assert_eq!(
         reopened
@@ -684,7 +648,7 @@ fn mixed_model_crud_snapshot_is_exact_after_fjall_and_native_reopen() {
 
 #[test]
 fn concurrent_updates_from_one_read_stamp_allow_exactly_one_writer() {
-    let engine = std::sync::Arc::new(RrflowMxEngine::new());
+    let engine = std::sync::Arc::new(RrflowMxStore::new());
     let (scope, cursor) = exercise(engine.as_ref());
     let commits = ["writer-a", "writer-b"].map(|actor| RuntimeCommit {
         scope: scope.clone(),

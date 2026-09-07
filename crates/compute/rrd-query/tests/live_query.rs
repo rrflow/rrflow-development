@@ -5,7 +5,7 @@ use rrd_core::{
 };
 use rrd_query::parse;
 use rrd_query::{poll_live_query, Error, LiveQueryBudget, LiveQueryDelta, Parameters};
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
@@ -24,7 +24,7 @@ fn record(id: &str, status: &str) -> RuntimeRecord {
     }
 }
 
-fn seed<E: Engine>(engine: &E) {
+fn seed<E: StorageEngine>(engine: &E) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "live query fixture");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -52,7 +52,7 @@ fn seed<E: Engine>(engine: &E) {
         .unwrap();
 }
 
-fn exercise<E: Engine>(engine: &E) -> LiveQueryDelta {
+fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
     seed(engine);
     engine
         .commit_runtime(&RuntimeCommit {
@@ -142,19 +142,17 @@ fn exercise<E: Engine>(engine: &E) -> LiveQueryDelta {
 
 #[test]
 fn semantic_deltas_are_identical_across_every_engine() {
-    let expected = exercise(&RrflowMxEngine::new());
-    let fjall_root = tempfile::tempdir().unwrap();
-    assert_eq!(expected, exercise(&Store::open(fjall_root.path()).unwrap()));
-    let native_root = tempfile::tempdir().unwrap();
+    let expected = exercise(&RrflowMxStore::new());
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
     assert_eq!(
         expected,
-        exercise(&NativeEngine::open(&native_root.path().join("native")).unwrap())
+        exercise(&RrflowKvStore::open(rrflow_kv_root.path()).unwrap())
     );
 }
 
 #[test]
 fn resume_and_snapshot_contracts_fail_closed() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     seed(&engine);
     let fixed = parse("FROM record:document AT VALID 100 KNOWN 2 PROJECT id").unwrap();
     assert!(matches!(

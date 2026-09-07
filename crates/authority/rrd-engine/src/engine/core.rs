@@ -1,13 +1,13 @@
 use super::*;
 
 pub struct RrdEngine {
-    pub(crate) storage: EngineBox,
+    pub(crate) storage: StorageProfile,
     pub(crate) objects: ObjectStoreBox,
     pub(crate) storage_root: Option<PathBuf>,
     pub(in crate::engine) instance: CanonicalId,
     pub(crate) token_key: [u8; 32],
-    /// Serializes the local definition/validation/commit boundary. The native
-    /// store already owns the cross-process writer lock; this closes the
+    /// Serializes the local definition/validation/commit boundary. rrflowKV
+    /// already owns the cross-process writer lock; this closes the
     /// in-process race between publishing a unique index and committing data.
     pub(crate) transaction_gate: Mutex<()>,
     /// Tracks invocation reservations currently executing through a supported
@@ -35,10 +35,7 @@ impl RrdEngine {
         root: &Path,
         instance: CanonicalId,
     ) -> Result<Self> {
-        let mut engine = Self::open(root, instance, [0_u8; TOKEN_KEY_BYTES])?;
-        engine.token_key = load_or_create_token_key(&root.join("RRD.SECRET"))
-            .map_err(|error| ServiceError::Storage(error.to_string()))?;
-        Ok(engine)
+        Self::open_with_token_key_file(root, instance, &root.join("RRD.SECRET"))
     }
 
     pub(in crate::engine) fn query_scope(&self, requested: &str) -> Result<ScopeId> {
@@ -58,18 +55,33 @@ impl RrdEngine {
         )
     }
 
+    /// Opens the persistent engine before loading or creating its local
+    /// token-signing key. rrflowKV intentionally requires an empty directory
+    /// when it creates a new database, so file-backed credentials must never
+    /// be created in the engine root first.
+    pub fn open_with_token_key_file(
+        root: &Path,
+        instance: CanonicalId,
+        token_key_file: &Path,
+    ) -> Result<Self> {
+        let mut engine = Self::open(root, instance, [0_u8; TOKEN_KEY_BYTES])?;
+        engine.token_key = load_or_create_token_key(token_key_file)
+            .map_err(|error| ServiceError::Storage(error.to_string()))?;
+        Ok(engine)
+    }
+
     pub fn open_with_vector_residency(
         root: &Path,
         instance: CanonicalId,
         token_key: [u8; 32],
         limits: crate::VectorResidencyLimits,
     ) -> Result<Self> {
-        let storage = PersistentEngine::open(root)?;
+        let storage = RrflowKvStore::open(root)?;
         let objects = rrd_store::LocalObjectStore::open(root.join("immutable"))?;
         let vector_residency = crate::VectorResidencyManager::new(limits)
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
         Ok(Self {
-            storage: EngineBox::persistent(storage),
+            storage: StorageProfile::rrflow_kv(storage),
             objects: ObjectStoreBox::new(objects),
             storage_root: Some(root.to_path_buf()),
             instance,
@@ -83,8 +95,7 @@ impl RrdEngine {
     }
 
     /// Creates one process-local RRD authority backed by volatile rrflowMX.
-    /// The
-    /// full composition remains intact: sessions, transactions, policy,
+    /// The full composition remains intact: sessions, transactions, policy,
     /// queries, audit, changefeeds, and subscriptions use the same engine
     /// methods as embedded and daemon profiles. Durability-only operations
     /// fail explicitly because rrflowMX has no storage path.
@@ -105,7 +116,7 @@ impl RrdEngine {
         let vector_residency = crate::VectorResidencyManager::new(limits)
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
         Ok(Self {
-            storage: EngineBox::rrflow_mx(),
+            storage: StorageProfile::rrflow_mx(),
             objects: ObjectStoreBox::new(MemoryObjectStore::new()),
             storage_root: None,
             instance,

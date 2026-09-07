@@ -3,7 +3,7 @@
 **Status:** active supporting execution map; it cannot mark a release gate complete
 **Coordinate:** `rrflow://rrflow-instance/data/execution-map/rrflow-1.0`
 **Owner:** file, symbol, dependency, test, and stop-condition mapping for the canonical RRFlow 1.0 roadmap
-**Source baseline revision:** `79d81b0`
+**File baseline:** generated inventory committed with this map
 **Reviewed:** 2026-09-06
 
 The canonical [RRFlow 1.0 roadmap](rrflow-1.0.md) owns dependency order,
@@ -84,7 +84,7 @@ These mappings eliminate the present naming ambiguity:
 | RRD | the one Reason Ready Daemon/runtime for a project instance | `rrd-server` process over one `RrdEngine`; embedded callers still use `RrdEngine` |
 | `RrdEngine` | sole authentication, authorization, semantic transaction, mutation, and orchestration authority | `crates/authority/rrd-engine` |
 | rrflowDB | the durable, per-project AI estate as observed through `RrdEngine` | composition of core types, store repositories, rrflowKV, native indexes, and query execution; never a parallel crate or backend |
-| rrflowKV | RRFlow's local durable physical profile | `rrd-lsm` plus the native physical implementation in `rrd-store` |
+| rrflowKV | RRFlow's local durable physical profile | `rrd-lsm` plus `RrflowKvStore` in `rrd-store` |
 | rrflowMX | RRFlow Memory Execution, the non-durable profile behind the same transaction contract | the in-memory implementation in `rrd-store`; not Dragonfly, Redis, or a cache |
 | rrflowQL | parse, bind, logical plan, physical selection, native operators, and DataFusion analytical execution | `crates/compute/rrd-query` |
 | Arrow substrate | the typed columnar batch/buffer interchange for analytical execution | Arrow crates used by rrflowKV page readers, native operators, rrflowQL, and DataFusion |
@@ -93,12 +93,12 @@ These mappings eliminate the present naming ambiguity:
 | LFG | one replaceable local routing-model adapter | `RouterBackend` in `rrd-inference`, adapter in planned `rrflow-lfg`, orchestration in `RrdEngine` |
 | external project data | PostgreSQL, Turso, Dragonfly, SQL stores, object stores, and other operator/application systems | discovered source descriptors and explicit adapters; never implicit rrflowDB persistence |
 
-The internal trait currently named `rrd_store::Engine` overlaps mentally with
-`RrdEngine`. A-07 renames it directly to `StorageEngine`; C-02 then narrows
-that same port to transactional point/range primitives plus semantic
-repositories. The final code must not retain `Engine`, `NativeEngine`,
-`PersistentEngine`, or `EngineBox` as aliases. The intended concrete names are
-`RrflowKvStore`, `RrflowMxStore`, and `StorageProfile`.
+The storage port is `rrd_store::StorageEngine`; `RrdEngine` remains the sole
+composition and mutation authority. C-02 narrows that storage port to
+transactional point/range primitives plus semantic repositories. The code must
+not reintroduce `Engine`, `NativeEngine`, `PersistentEngine`, or `EngineBox` as
+aliases. The concrete profile names are `RrflowKvStore`, `RrflowMxStore`, and
+`StorageProfile`.
 
 ## Frozen target source tree
 
@@ -251,7 +251,7 @@ committed project change set -> determine affected phases only
 |---|---|---|
 | `rrd-core` | canonical IDs, scopes, runtime values/mutations, read stamps, bitemporal values, reasoning-tree contract, trace links | keep semantic types; move physical key encoding out of `key.rs` during A-07/C-01; add only event primitives proven generic |
 | `rrd-lsm` | WAL, version chains, snapshots, manifest/CURRENT, immutable row-block segments, cache, compaction, snapshot bundles, I/O tiers, failure injection | add transaction conflicts; replace current segment format with key spine + column pages; delete every pre-1.0 reader; prove crash/lifetime safety |
-| `rrd-store` | Fjall `Store`, native store, rrflowMX, common semantic trait, runtime commits, current projections, archives/backups/object tiers | remove Fjall and backend selectors; split the giant trait; freeze binary keys; make semantic batch/index maintenance atomic; direct stamped reads |
+| `rrd-store` | `RrflowKvStore`, `RrflowMxStore`, `StorageEngine`, runtime commits, current projections, archives/backups/object tiers, and absolute rrflowKV diagnostic workloads | narrow the broad trait; freeze binary keys; make semantic batch/index maintenance atomic; add direct stamped reads; never restore a backend selector |
 | `rrd-query` | parser, binder, plan, index catalogue, BM25 implementation, DataFusion execution, spill pool, live polling | replace eager `Vec<QueryRow>` and `MemorySource`; add streaming provider/pushdown/native operators; replace two-snapshot live diff |
 | `rrd-vector` | exact oracle, immutable segments, HNSW, filtered planning, catalogues, compact dense artifacts, quantization, and accelerator code | bind all artifacts to canonical source cursors; persist atomic deltas; exact-rerank; remove alternate TurboQuant catalogue paths; benchmark codecs before retaining them |
 | `rrd-inference` | provider-neutral embedding jobs/backend and local FastEmbed adapter | add manifest handshake and separate `RouterBackend`; LFG remains an outward adapter |
@@ -270,8 +270,8 @@ complete.
 | Capability family | Current implementation that must be read in full | Characterization inventory that must be preserved or strengthened | Canonical convergence | Gates |
 |---|---|---|---|---|
 | rrflowKV WAL, MVCC, manifests, recovery, compaction, hot reads, block filtering, and decoded-block caching | `rrd-lsm/src/{wal,memtable,database,manifest,segment}.rs`; `rrd-store/examples/ai_hotset_benchmark.rs` | `rrd-lsm/tests/{wal,mvcc,manifest,failure_matrix,compaction,segment,snapshot_memory}.rs`; `rrd-store/tests/{durability,snapshot,benchmark_evidence}.rs` | Keep the useful durability, snapshot, bounded-cache, filter, and physical-counter behavior while replacing the port and row-only segment format; prove the final key spine, Arrow pages, buffer lifetime, and measured cache decision. | C-02, C-04, C-06, C-07, F-05, J-04 |
-| rrflowMX/rrflowKV semantic equivalence | `rrd-store/src/{engine,native,persistent,ds}.rs` | `rrd-store/tests/{engine,persistent,snapshot,runtime,unified_data,native_operator}.rs`; vector engine differential tests | Rename and narrow one `StorageEngine` port, then run the same transaction, point/range, snapshot, graph, index, and query corpus against `RrflowMxStore` and `RrflowKvStore`; durability assertions apply only to rrflowKV. | A-07, C-02, C-03, C-04 |
-| Stamped transactions, identity, authorization, and audit | `rrd-core/src/runtime.rs`; `rrd-store/src/{engine,native,store,control}.rs`; `rrd-engine/src/engine/{transaction,query_transaction,session,security,invocation,control}.rs`; `rrd-security/src/lib.rs` | `rrd-store/tests/{control_journal,durability,snapshot}.rs`; `rrd-engine/src/engine/tests/{query_transaction,security,transaction_stamp,recovery}.rs`; `rrd-security/tests/security_authority.rs`; `rrd-server/tests/http_process.rs` | Preserve authenticated `ReadStamp`, `DataTransaction`, conflict, idempotency, audit-chain, and policy semantics while making one transaction port and one cross-surface authorization path. | C-02, C-03, H-04, H-05, J-02 |
+| rrflowMX/rrflowKV semantic equivalence | `rrd-store/src/{engine,rrflow_kv,ds}.rs` | `rrd-store/tests/{engine,snapshot,runtime,unified_data,rrflow_kv_operator,rrflow_kv_model_soak}.rs`; vector engine differential tests | Narrow the one `StorageEngine` port, then run the same transaction, point/range, snapshot, graph, index, and query corpus against `RrflowMxStore` and `RrflowKvStore`; durability assertions apply only to rrflowKV. | A-07, C-02, C-03, C-04 |
+| Stamped transactions, identity, authorization, and audit | `rrd-core/src/runtime.rs`; `rrd-store/src/{engine,rrflow_kv,control}.rs`; `rrd-engine/src/engine/{transaction,query_transaction,session,security,invocation,control}.rs`; `rrd-security/src/lib.rs` | `rrd-store/tests/{control_journal,durability,snapshot}.rs`; `rrd-engine/src/engine/tests/{query_transaction,security,transaction_stamp,recovery}.rs`; `rrd-security/tests/security_authority.rs`; `rrd-server/tests/http_process.rs` | Preserve authenticated `ReadStamp`, `DataTransaction`, conflict, idempotency, audit-chain, and policy semantics while making one transaction port and one cross-surface authorization path. | C-02, C-03, H-04, H-05, J-02 |
 | Deterministic embedding, vector search, compact artifacts, HNSW, quantization, and accelerator admission | `rrd-inference/src/{lib,fastembed_local}.rs`; `rrd-vector/src/{contract,catalog,exact,filter,plan,segment,compact,hnsw,quantization,accelerator,runtime}.rs`; `rrd-engine/src/engine/{inference,vector}.rs` | `rrd-inference/tests/pipeline.rs`; `rrd-vector/tests/{golden,exact_model,engine_differential,model_binding,compact_dense,online_hnsw,quantization_matrix,accelerator,recall_gate}.rs`; `rrd-engine/src/engine/tests/{vector_index,native_inference}.rs` | Keep deterministic model/provenance binding and exact oracles; commit canonical vectors and index deltas atomically, bind projections to one source cursor, filter candidates, and exact-rerank before results become authoritative. | D-05, E-04, E-05, F-03, H-01, J-04 |
 | Edge packaging and public delivery | `rrd-engine/src/edge.rs`; `rrflow-edge/src/main.rs` | `rrflow-edge/tests/{offline,evidence}.rs`; `rrd-client/tests/real_server.rs`; `rrd-server/tests/http_process.rs`; `rrflow-mcp/tests/{stdio,stdio_daemon}.rs` | Retain deterministic offline artifact and provenance checks as outward packaging evidence; all reads and mutations continue through public RRD capabilities with no edge-owned engine state. | H-04, H-07, J-03, J-05 |
 | Temporal graph, BM25, hybrid retrieval, and context evidence | `rrd-query/src/{bm25,index,execute,plan}.rs`; `rrd-engine/src/engine/{context,retrieval,retrieval_query}.rs` | `rrd-query/tests/{query,index_catalogue,golden}.rs`; `rrd-engine/src/engine/tests/{context,index_foundation}.rs`; `rrd-engine/tests/{runtime_query_trace,runtime_data_plane_trace}.rs` | Replace broad snapshot reconstruction with transactional adjacency/BM25/vector access paths, cost-selected at one stamp and fused with bounded deterministic evidence. | E-01, E-02, E-03, E-05, F-03, H-01, H-02, H-05 |
@@ -288,19 +288,15 @@ the cross-file behavior that a mechanical inventory cannot infer.
 
 ### Mandatory direct convergence
 
-| Current path/symbol | Final disposition | Gate |
+| Requirement | Current state and remaining disposition | Gate |
 |---|---|---|
-| `rrd-store/Cargo.toml` `fjall` dependency | delete after native conformance baseline | C-05 |
-| `rrd-store/src/store.rs::Store` | delete Fjall implementation | C-05 |
-| `rrd-store/src/persistent.rs::{PersistentBackend,PersistentEngine}` | replace with one `RrflowKvStore::open`; no selector/alias | A-07, C-05 |
-| `rrd-store/src/migration.rs` and `tests/migration.rs` | delete runtime migration surface and test | C-05 |
-| `rrd-store/src/upgrade.rs` | delete the pre-release format upgrade executor; 1.0 tests create the accepted format directly | C-05 |
-| `rrd-store/src/keyspaces.rs::NativeKeyCodec::{TextV1,TagV2}` | replace with one ordered typed tuple codec | C-01, C-05 |
-| `rrd-store/src/native.rs::legacy_storage_key` and codec transcoding | delete; this is an existing symbol name, not a supported surface | C-05 |
+| Fjall, `Store`, `PersistentBackend`, `PersistentEngine`, migration, and upgrade runtime surfaces | absent; keep absent and enforce with dependency metadata and symbol searches | A-07, C-05 |
+| `rrd-store/src/keyspaces.rs` current RRDSK002 codec | replace with one frozen ordered typed tuple codec and one rejection path for every other storage format | C-01, C-05 |
 | `rrd-lsm/src/segment.rs::decode_legacy` | delete when hybrid segment format lands; this is an existing symbol name, not a supported reader | C-05, C-06 |
 | pre-1.0 version branching in `rrd-lsm/src/{batch,manifest,segment}.rs` | retain only the final 1.0 version; corrupt/unknown versions fail | C-05, C-07 |
-| `rrd-store/src/engine.rs::Engine` | rename directly to `StorageEngine`, then narrow it in C-02; no alias | A-07, C-02 |
-| `NativeEngine`, `RrflowMxEngine`, `EngineBox` | direct rename to `RrflowKvStore`, `RrflowMxStore`, `StorageProfile` | A-07 |
+| `StorageEngine` | current canonical storage port; narrow it in C-02 without reintroducing aliases | A-07, C-02 |
+| `RrflowKvStore`, `RrflowMxStore`, `StorageProfile` | current concrete names; preserve direct naming and verify every caller uses them | A-07 |
+| rrflowKV semantic and AI-access benchmarks | current absolute rrflowKV diagnostics; add immutable source/environment provenance and fixed-hardware thresholds before release use | C-06, F-05, J-04 |
 | `rrd-query/src/arrow.rs::ArrowSnapshot` | replace with stamped batch/page adapters | F-01 |
 | `rrd-query/src/execute.rs::execute` eager loading | split into native access and streaming execution | F-01..F-04 |
 | `rrd-query/src/live.rs::poll_live_query` two-snapshot diff | replace with commit-impact evaluation | H-03 |
@@ -472,8 +468,8 @@ Read all 20 `Cargo.toml` files, root `Cargo.toml`, `Cargo.lock`, every crate
 `lib.rs`/`main.rs`, and `workspace_architecture.rs`. Produce the reviewed
 dependency table in the A-07 commit before any physical move.
 
-Direct renames, with compiler errors allowed between edits but not at the
-package commit:
+Verify these direct names, with compiler errors allowed between edits but not
+at the package commit:
 
 - `rrd_store::Engine` -> `StorageEngine` without a forwarding re-export;
 - `NativeEngine` -> `RrflowKvStore`;
@@ -483,7 +479,7 @@ package commit:
   with no re-export or transitional alias.
 
 `rrd-contract/src/lib.rs` (currently 6,333 lines), `rrd-core/src/runtime.rs`,
-`rrd-store/src/native.rs`, and other monoliths are split only along already
+`rrd-store/src/rrflow_kv.rs`, and other monoliths are split only along already
 accepted responsibilities. Splitting is mechanical first; behavioral changes
 remain in their later gates.
 
@@ -543,7 +539,7 @@ after lowering equivalence is established.
 ### C-01 — one ordered binary key codec
 
 Files: `rrd-core/src/key.rs`, `rrd-store/src/keyspaces.rs`,
-`rrd-store/src/native.rs`, new `rrd-store/src/key_codec.rs`, their unit tests,
+`rrd-store/src/rrflow_kv.rs`, new `rrd-store/src/key_codec.rs`, their unit tests,
 and a new frozen hex fixture.
 
 Tuple fields are length/type encoded and escape-safe. The prefix is
@@ -554,7 +550,7 @@ ordering is explicit and tested. `prefix_end` has property tests over all byte
 values. Conceptual `*`, `~`, and `+` family notation is documentation only,
 never a raw delimiter contract.
 
-C-01 freezes the codec and switches fresh native writes/reads to it in one
+C-01 freezes the codec and switches fresh rrflowKV writes/reads to it in one
 reviewed batch. Existing pre-1.0 readers are removed in C-05; there is no dual
 write and no new data is emitted in an earlier codec.
 
@@ -575,7 +571,7 @@ write skew so the code does not accidentally claim strict serializability.
 
 ### C-03 — one semantic mutation batch
 
-Refactor `NativeRuntimeCommitPlan` in `rrd-store/src/native.rs` into repository
+Refactor `RrflowKvCommitPlan` in `rrd-store/src/rrflow_kv.rs` into repository
 plans under `rrd-store/src/access/`. The engine validates the plan; the store
 encodes it; one `StorageEngine` commit writes all current/temporal data,
 both adjacency directions, synchronous indexes, runtime entry, projection
@@ -595,13 +591,12 @@ Add physical counters proving the selected key ranges and decoded values.
 
 ### C-05 — remove alternate pre-release execution
 
-Delete Fjall dependency, `Store`, backend selection, migration command/API,
-pre-1.0 storage key codec, upgrade executor, and all earlier
-batch/segment/manifest read branches. Merge any valid requirement from the
-migration documents into the current owner, then remove the duplicate
-documents and success tests. Unknown or pre-1.0 physical bytes fail with one
-explicit unsupported-format error. Fresh-database, corrupt-format, and native
-close/reopen tests replace alternate-path success tests.
+The Fjall dependency, `Store`, backend selector, migration command/API, and
+format-upgrade executor must remain absent. Remove all earlier batch, segment, and
+manifest read branches still present in `rrd-lsm`. Unknown or pre-1.0 physical
+bytes fail with one explicit unsupported-format error. Fresh-database,
+corrupt-format, and rrflowKV close/reopen tests replace alternate-path success
+tests.
 
 ### C-06 — hybrid immutable segment format
 

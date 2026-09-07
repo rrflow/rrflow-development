@@ -1,7 +1,7 @@
-//! Native `RRD LSM` implementation of the semantic [`Engine`] port.
+//! Persistent rrflowKV implementation of the semantic [`StorageEngine`] port.
 //!
 //! Logical keyspaces are encoded as stable byte prefixes inside one atomic
-//! native database. One semantic commit becomes one `RRD LSM` write batch; the
+//! rrflowKV database. One semantic commit becomes one rrflowKV write batch; the
 //! database's physical MVCC sequence is deliberately independent of claim and
 //! runtime cursors stored in the batch.
 
@@ -9,12 +9,12 @@ use crate::control::{
     validate_control_batch, validate_control_key, verify_control_page, verify_control_tail,
     ControlJournalEntry, ControlTransition,
 };
-use crate::engine::{validate_idempotency, Engine, PhysicalStoreEvidence};
+use crate::engine::{validate_idempotency, PhysicalStoreEvidence, StorageEngine};
 use crate::error::{Error, Result};
 use crate::gc::{build_report, RemovalReport, Tally};
 use crate::invocation::{self, Invocation, InvocationInput};
 use crate::keyspaces::{self, Durability};
-use crate::store::{AppendOutcome, IdempotentAppendOutcome};
+use crate::outcome::{AppendOutcome, IdempotentAppendOutcome};
 use rrd_core::{
     key, projection_family, AuditEnvelope, Claim, ClaimSource, Millis, ObjectReference, Predicate,
     ProjectionWork, ReadStamp, Reader, RetentionPin, RuntimeChange, RuntimeChangePage,
@@ -33,22 +33,21 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 
 const RUNTIME_CHECKPOINT_PREFIX: &str = "runtime-";
-const NATIVE_SEQUENCE_VALUE_MAGIC: &[u8; 8] = b"RRDNSI01";
 
-pub struct NativeEngine {
+pub struct RrflowKvStore {
     path: PathBuf,
     database: Mutex<Database>,
 }
 
-impl NativeEngine {
-    /// Opens an existing native database or creates one when `path` is absent.
+impl RrflowKvStore {
+    /// Opens an existing rrflowKV database or creates one when `path` is absent.
     /// An existing but invalid directory fails closed rather than being
     /// silently reinitialized.
     pub fn open(path: &Path) -> Result<Self> {
         Self::open_with_options(path, DatabaseOptions::default())
     }
 
-    /// Opens with explicit native cache and mutable-state bounds. Persistent
+    /// Opens with explicit rrflowKV cache and mutable-state bounds. Persistent
     /// format identity is unchanged; these are process-local operating limits.
     pub fn open_with_options(path: &Path, options: DatabaseOptions) -> Result<Self> {
         let total_started = Instant::now();
@@ -66,26 +65,22 @@ impl NativeEngine {
                 .is_none();
         let database_started = Instant::now();
         let mut database = if !path.exists() || empty {
-            Database::create_with_application_format(
-                path,
-                options,
-                keyspaces::NATIVE_KEYSPACE_TAG_FORMAT_V2,
-            )?
+            Database::create_with_application_format(path, options, keyspaces::RRFLOW_KV_FORMAT)?
         } else {
             Database::open_with_options(path, options).map_err(|error| {
                 Error::Substrate(format!(
-                    "cannot open native database {}: {error}",
+                    "cannot open rrflowKV database {}: {error}",
                     path.display()
                 ))
             })?
         };
         let database_open_ms = database_started.elapsed().as_millis() as u64;
-        let _codec = keyspaces::NativeKeyCodec::from_application_format(
+        let _codec = keyspaces::RrflowKvKeyCodec::from_application_format(
             database.manifest().application_format,
         )
         .ok_or_else(|| {
             Error::Substrate(format!(
-                "unsupported native application format {:?}",
+                "unsupported rrflowKV application format {:?}",
                 database.manifest().application_format
             ))
         })?;
@@ -98,12 +93,12 @@ impl NativeEngine {
         })?;
         let checkpoint_reconcile_ms = checkpoints_started.elapsed().as_millis() as u64;
         tracing::info!(
-            target: "rrd_store::open",
+            target: "rrflow_kv::open",
             path = %path.display(),
             database_open_ms,
             checkpoint_reconcile_ms,
             total_ms = total_started.elapsed().as_millis() as u64,
-            "native engine open phases completed"
+            "rrflowKV store open phases completed"
         );
         let path = database.root().to_owned();
         Ok(Self {
@@ -116,7 +111,7 @@ impl NativeEngine {
         &self.path
     }
 
-    /// Publishes the current native memtable as an immutable segment.
+    /// Publishes the current rrflowKV memtable as an immutable segment.
     pub fn flush(&self, at: Millis) -> Result<Option<Manifest>> {
         self.lock()?.flush_memtable(at).map_err(Error::from)
     }
@@ -125,7 +120,7 @@ impl NativeEngine {
         Ok(self.lock()?.manifest().clone())
     }
 
-    /// Compacts native state after reconciling physical manifest pins with the
+    /// Compacts rrflowKV state after reconciling physical manifest pins with the
     /// authoritative logical snapshot catalog.
     pub fn compact(&self, now: Millis, at: Millis) -> Result<Option<CompactionOutcome>> {
         let mut database = self.lock()?;
@@ -141,8 +136,8 @@ impl NativeEngine {
         database.garbage_collect().map_err(Error::from)
     }
 
-    /// Derives the same evidence-backed removal report as the compatibility
-    /// adapter from native claim and access keyspaces.
+    /// Derives an evidence-backed removal report from rrflowKV claim and access
+    /// keyspaces.
     pub fn removal_report(&self, since: Millis, evaluated_at: Millis) -> Result<RemovalReport> {
         let database = self.lock()?;
         let snapshot = database.snapshot();
@@ -184,15 +179,14 @@ impl NativeEngine {
         Ok(build_report(tallies, since, evaluated_at)?)
     }
 
-    /// Exact native access-record count. The compatibility adapter exposes an
-    /// approximate count because that is all its keyspace API promises.
+    /// Exact rrflowKV access-record count.
     pub fn access_count(&self) -> Result<usize> {
         let database = self.lock()?;
         Ok(scan_space(&database, database.snapshot(), keyspaces::ACCESS, &[])?.len())
     }
 
     /// Persists one authoritative operator invocation and its ordinal in one
-    /// native batch.
+    /// rrflowKV batch.
     #[tracing::instrument(level = "debug", skip_all, fields(command = input.command))]
     pub fn record_invocation(&self, input: InvocationInput<'_>) -> Result<Invocation> {
         let mut database = self.lock()?;
@@ -249,15 +243,15 @@ impl NativeEngine {
 
     /// Replays one already-authenticated logical-archive commit while
     /// preserving its original audit envelope. This is deliberately crate
-    /// private: ordinary callers must use the live Engine transaction path,
-    /// which validates a read stamp against the current database state.
+    /// private: ordinary callers must use the live `StorageEngine` transaction
+    /// path, which validates a read stamp against the current database state.
     pub(crate) fn restore_runtime_commit(
         &self,
         commit: &RuntimeCommit,
         audit: &AuditEnvelope,
     ) -> Result<RuntimeCommitOutcome> {
         let mut database = self.lock()?;
-        let plan = prepare_native_runtime_commit_at_read(&database, commit, None, Some(audit))?;
+        let plan = prepare_rrflow_kv_commit_at_read(&database, commit, None, Some(audit))?;
         let (outcome, operations) = plan.into_parts();
         write(&mut database, operations, Durability::Authoritative)?;
         Ok(outcome)
@@ -266,11 +260,11 @@ impl NativeEngine {
     fn lock(&self) -> Result<MutexGuard<'_, Database>> {
         self.database
             .lock()
-            .map_err(|_| Error::Substrate("native database mutex poisoned".into()))
+            .map_err(|_| Error::Substrate("rrflowKV database mutex poisoned".into()))
     }
 }
 
-impl ClaimSource for NativeEngine {
+impl ClaimSource for RrflowKvStore {
     type Error = Error;
 
     fn versions_at_or_before(
@@ -313,8 +307,9 @@ impl ClaimSource for NativeEngine {
         for subject in subjects {
             let prefix =
                 encoded_storage_key(&database, keyspaces::CLAIMS, &key::subject_prefix(subject))?;
-            let end = prefix_end(&prefix)
-                .ok_or_else(|| Error::Substrate("native claim prefix has no upper bound".into()))?;
+            let end = prefix_end(&prefix).ok_or_else(|| {
+                Error::Substrate("rrflowKV claim prefix has no upper bound".into())
+            })?;
             unique_ranges.insert(prefix, end);
         }
         let ranges = unique_ranges.into_iter().collect::<Vec<_>>();
@@ -334,7 +329,7 @@ impl ClaimSource for NativeEngine {
     }
 }
 
-impl Engine for NativeEngine {
+impl StorageEngine for RrflowKvStore {
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         let database = self.lock()?;
         let manifest = database.manifest();
@@ -345,8 +340,8 @@ impl Engine for NativeEngine {
         let maintenance_stats = database.maintenance_stats();
         let memtable = database.memtable().profile();
         Ok(PhysicalStoreEvidence {
-            backend: "rrd_lsm".into(),
-            evidence_level: "native_counters".into(),
+            backend: "rrflow_kv".into(),
+            evidence_level: "rrflow_kv_counters".into(),
             physical_sequence: Some(database.snapshot().sequence),
             manifest_generation: Some(manifest.generation),
             durable_sequence: Some(manifest.durable_sequence),
@@ -548,14 +543,14 @@ impl Engine for NativeEngine {
         &self,
         transition: &ControlTransition,
     ) -> Result<ControlJournalEntry> {
-        commit_native_control_transition(self, transition, None).map(|(_, entry)| entry)
+        commit_rrflow_kv_control_transition(self, transition, None).map(|(_, entry)| entry)
     }
 
     fn commit_control_batch(
         &self,
         transitions: &[ControlTransition],
     ) -> Result<Vec<ControlJournalEntry>> {
-        commit_native_control_batch(self, transitions)
+        commit_rrflow_kv_control_batch(self, transitions)
     }
 
     fn commit_catalog_transition(
@@ -563,7 +558,7 @@ impl Engine for NativeEngine {
         scope: &ScopeId,
         transition: &ControlTransition,
     ) -> Result<(u64, ControlJournalEntry)> {
-        let (revision, entry) = commit_native_control_transition(self, transition, Some(scope))?;
+        let (revision, entry) = commit_rrflow_kv_control_transition(self, transition, Some(scope))?;
         Ok((
             revision.expect("catalogue transition assigns a revision"),
             entry,
@@ -656,19 +651,15 @@ impl Engine for NativeEngine {
             &key::sequence_key(last),
         )?;
         let end = prefix_end(&inclusive_end)
-            .ok_or_else(|| Error::Substrate("native sequence range has no upper bound".into()))?;
+            .ok_or_else(|| Error::Substrate("rrflowKV sequence range has no upper bound".into()))?;
         let expected = usize::try_from(last - from)
-            .map_err(|_| Error::Substrate("native sequence range exceeds usize".into()))?;
+            .map_err(|_| Error::Substrate("rrflowKV sequence range exceeds usize".into()))?;
         let mut claims = Vec::with_capacity(expected);
         database.scan_each(
             &start,
             Some(&end),
             snapshot,
             |_, sequence_value| -> Result<()> {
-                if let Some(encoded) = decode_native_sequence_value(sequence_value)? {
-                    claims.push(serde_json::from_slice(encoded)?);
-                    return Ok(());
-                }
                 let encoded = database
                     .get(
                         &encoded_storage_key(&database, keyspaces::CLAIMS, sequence_value)?,
@@ -676,7 +667,7 @@ impl Engine for NativeEngine {
                     )?
                     .ok_or_else(|| {
                         Error::Substrate(format!(
-                            "native sequence index references an absent claim in ({from}, {last}]"
+                            "rrflowKV sequence index references an absent claim in ({from}, {last}]"
                         ))
                     })?;
                 claims.push(serde_json::from_slice(&encoded)?);
@@ -685,7 +676,7 @@ impl Engine for NativeEngine {
         )?;
         if claims.len() != expected {
             return Err(Error::Substrate(format!(
-                "native sequence index returned {} rows for expected interval ({from}, {last}]",
+                "rrflowKV sequence index returned {} rows for expected interval ({from}, {last}]",
                 claims.len()
             )));
         }
@@ -772,7 +763,7 @@ impl Engine for NativeEngine {
 
     fn runtime_read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
         let database = self.lock()?;
-        native_read_stamp(&database, database.snapshot(), scope)
+        rrflow_kv_read_stamp(&database, database.snapshot(), scope)
     }
 
     fn open_runtime_snapshot(
@@ -784,7 +775,7 @@ impl Engine for NativeEngine {
     ) -> Result<SnapshotHandle> {
         let mut database = self.lock()?;
         let handle = SnapshotHandle::new(
-            native_read_stamp(&database, database.snapshot(), scope)?,
+            rrflow_kv_read_stamp(&database, database.snapshot(), scope)?,
             owner,
             now,
             ttl,
@@ -848,7 +839,7 @@ impl Engine for NativeEngine {
                 expired_at: handle.expires_at,
             });
         }
-        native_change_page(
+        rrflow_kv_change_page(
             &database,
             snapshot,
             handle.read.commit_cursor,
@@ -910,9 +901,10 @@ impl Engine for NativeEngine {
     ) -> Result<RuntimeChangePage> {
         let database = self.lock()?;
         let snapshot = database.snapshot();
-        let validation = validate_native_read_stamp(&database, snapshot, read)?;
+        let validation = validate_rrflow_kv_read_stamp(&database, snapshot, read)?;
         if limit == 1 && after < read.commit_cursor && read.accumulator_root.is_some() {
-            let mut page = native_authenticated_point_page(&database, snapshot, read, after + 1)?;
+            let mut page =
+                rrflow_kv_authenticated_point_page(&database, snapshot, read, after + 1)?;
             if validation.method == "full_hash_chain_replay" {
                 page.validation.method = "full_hash_chain_replay_then_rfc9162_inclusion".into();
                 page.validation.change_reads = page
@@ -922,7 +914,7 @@ impl Engine for NativeEngine {
             }
             return Ok(page);
         }
-        let mut page = native_change_page(
+        let mut page = rrflow_kv_change_page(
             &database,
             snapshot,
             read.commit_cursor,
@@ -942,7 +934,7 @@ impl Engine for NativeEngine {
         commit.validate()?;
         crate::engine::validate_retirement_targets(self, commit)?;
         let mut database = self.lock()?;
-        let plan = prepare_native_runtime_commit_at_read(&database, commit, read, None)?;
+        let plan = prepare_rrflow_kv_commit_at_read(&database, commit, read, None)?;
         let (outcome, operations) = plan.into_parts();
         write(&mut database, operations, Durability::Authoritative)?;
         Ok(outcome)
@@ -957,7 +949,7 @@ impl Engine for NativeEngine {
         let database = self.lock()?;
         let snapshot = database.snapshot();
         let head = read_sequence(&database, snapshot, keyspaces::RUNTIME_CURSOR)?;
-        native_change_page(&database, snapshot, head, after, limit, scope)
+        rrflow_kv_change_page(&database, snapshot, head, after, limit, scope)
     }
 
     fn runtime_outbox_since(&self, after: u64, limit: usize) -> Result<Vec<ProjectionWork>> {
@@ -1008,48 +1000,30 @@ impl Engine for NativeEngine {
     }
 }
 
-#[cfg(test)]
-fn encode_native_sequence_value(encoded_claim: &[u8]) -> Vec<u8> {
-    let mut value = Vec::with_capacity(NATIVE_SEQUENCE_VALUE_MAGIC.len() + encoded_claim.len());
-    value.extend_from_slice(NATIVE_SEQUENCE_VALUE_MAGIC);
-    value.extend_from_slice(encoded_claim);
-    value
-}
-
-fn decode_native_sequence_value(value: &[u8]) -> Result<Option<&[u8]>> {
-    let Some(encoded) = value.strip_prefix(NATIVE_SEQUENCE_VALUE_MAGIC) else {
-        return Ok(None);
-    };
-    if encoded.is_empty() {
-        return Err(Error::Substrate("empty native sequence envelope".into()));
-    }
-    Ok(Some(encoded))
-}
-
-/// A validated native runtime transaction that has not yet crossed the WAL
+/// A validated rrflowKV runtime transaction that has not yet crossed the WAL
 /// durability boundary. The caller may append metadata operations and publish
-/// the combined vector as one RRD LSM [`WriteBatch`].
+/// the combined vector as one rrflowKV [`WriteBatch`].
 ///
 /// Planning reads the supplied database's current snapshot. Correct callers
 /// therefore hold the database's exclusive writer guard from planning through
-/// publication; `NativeEngine` does this internally and the Raft adapter uses
+/// publication; `RrflowKvStore` does this internally and the Raft adapter uses
 /// the same discipline.
 #[derive(Debug)]
-pub struct NativeRuntimeCommitPlan {
+pub struct RrflowKvCommitPlan {
     outcome: RuntimeCommitOutcome,
     operations: Vec<Mutation>,
 }
 
-/// Reads the exact native cursor/schema pair needed to prepare a runtime
-/// transaction outside `NativeEngine` while retaining one database snapshot.
+/// Reads the exact rrflowKV cursor/schema pair needed to prepare a runtime
+/// transaction outside `RrflowKvStore` while retaining one database snapshot.
 /// Coordinators use this before submitting the resulting commit through their
 /// own durability boundary (for example, a Raft log).
-pub fn native_runtime_commit_context(
+pub fn rrflow_kv_commit_context(
     database: &Database,
     scope: &ScopeId,
 ) -> Result<(ReadStamp, Option<RuntimeSchemaRegistry>)> {
     let snapshot = database.snapshot();
-    let read = native_read_stamp(database, snapshot, scope)?;
+    let read = rrflow_kv_read_stamp(database, snapshot, scope)?;
     let schema = get_json(
         database,
         snapshot,
@@ -1062,13 +1036,13 @@ pub fn native_runtime_commit_context(
         != read.schema_revision
     {
         return Err(Error::Substrate(
-            "native runtime schema differs from its read stamp".into(),
+            "rrflowKV runtime schema differs from its read stamp".into(),
         ));
     }
     Ok((read, schema))
 }
 
-impl NativeRuntimeCommitPlan {
+impl RrflowKvCommitPlan {
     pub fn outcome(&self) -> &RuntimeCommitOutcome {
         &self.outcome
     }
@@ -1077,35 +1051,33 @@ impl NativeRuntimeCommitPlan {
         (self.outcome, self.operations)
     }
 
-    /// Lowers the staged canonical mutations to the authenticated key format
-    /// of `database` before an external coordinator combines them with its own
-    /// metadata in one write batch.
+    /// Verifies the target database format before an external coordinator
+    /// combines these canonical mutations with its metadata in one batch.
     pub fn into_parts_for(
         self,
         database: &Database,
     ) -> Result<(RuntimeCommitOutcome, Vec<Mutation>)> {
-        let mut operations = self.operations;
-        transcode_operations(database, &mut operations)?;
-        Ok((self.outcome, operations))
+        database_codec(database)?;
+        Ok((self.outcome, self.operations))
     }
 }
 
-/// Validates and lowers one canonical [`RuntimeCommit`] into native RRD LSM
+/// Validates and lowers one canonical [`RuntimeCommit`] into rrflowKV
 /// mutations without writing them. This is the composition boundary used when
 /// a coordinator must atomically include its own durable metadata.
-pub fn prepare_native_runtime_commit(
+pub fn prepare_rrflow_kv_commit(
     database: &Database,
     commit: &RuntimeCommit,
-) -> Result<NativeRuntimeCommitPlan> {
-    prepare_native_runtime_commit_at_read(database, commit, None, None)
+) -> Result<RrflowKvCommitPlan> {
+    prepare_rrflow_kv_commit_at_read(database, commit, None, None)
 }
 
-fn prepare_native_runtime_commit_at_read(
+fn prepare_rrflow_kv_commit_at_read(
     database: &Database,
     commit: &RuntimeCommit,
     read: Option<&ReadStamp>,
     archived_audit: Option<&AuditEnvelope>,
-) -> Result<NativeRuntimeCommitPlan> {
+) -> Result<RrflowKvCommitPlan> {
     commit.validate()?;
     let snapshot = database.snapshot();
     if read.is_some() && archived_audit.is_some() {
@@ -1119,7 +1091,7 @@ fn prepare_native_runtime_commit_at_read(
             read.validate()?;
         }
     } else if let Some(read) = read {
-        validate_native_read_stamp(database, snapshot, read)?;
+        validate_rrflow_kv_read_stamp(database, snapshot, read)?;
     }
     let commit_id = commit.digest();
     let start = read_sequence(database, snapshot, keyspaces::RUNTIME_CURSOR)?;
@@ -1130,7 +1102,7 @@ fn prepare_native_runtime_commit_at_read(
         });
     }
     let (mut accumulator, bootstrap_nodes) =
-        native_runtime_accumulator_with(database, snapshot, start)?;
+        rrflow_kv_runtime_accumulator_with(database, snapshot, start)?;
 
     let previous_schema: Option<RuntimeSchemaRegistry> = get_json(
         database,
@@ -1178,7 +1150,7 @@ fn prepare_native_runtime_commit_at_read(
             .values()
             .any(|schema| !schema.unique_properties.is_empty())
         {
-            native_values_for_scope::<RuntimeRecord>(
+            rrflow_kv_values_for_scope::<RuntimeRecord>(
                 database,
                 snapshot,
                 keyspaces::RUNTIME_RECORDS,
@@ -1190,7 +1162,7 @@ fn prepare_native_runtime_commit_at_read(
         let existing_relations = if effective_schema.relations.values().any(|schema| {
             schema.unique_pair || schema.max_outgoing.is_some() || schema.max_incoming.is_some()
         }) {
-            native_values_for_scope::<RuntimeRelation>(
+            rrflow_kv_values_for_scope::<RuntimeRelation>(
                 database,
                 snapshot,
                 keyspaces::RUNTIME_RELATIONS,
@@ -1489,16 +1461,16 @@ fn prepare_native_runtime_commit_at_read(
         outcome.commit_id.as_bytes(),
         serde_json::to_vec(&outcome)?,
     );
-    Ok(NativeRuntimeCommitPlan {
+    Ok(RrflowKvCommitPlan {
         outcome,
         operations,
     })
 }
 
-/// Reads a previously accepted native runtime outcome from a caller-held
+/// Reads a previously accepted rrflowKV runtime outcome from a caller-held
 /// database snapshot. Coordinators use this before planning so content-addressed
 /// retries remain idempotent even when the transport request id changes.
-pub fn native_runtime_commit_outcome(
+pub fn rrflow_kv_commit_outcome(
     database: &Database,
     commit_id: &str,
 ) -> Result<Option<RuntimeCommitOutcome>> {
@@ -1524,7 +1496,7 @@ fn scan_claims(database: &Database, prefix: Vec<u8>, from: Vec<u8>) -> Result<Ve
     let start = encoded_storage_key(database, keyspaces::CLAIMS, &from)?;
     let full_prefix = encoded_storage_key(database, keyspaces::CLAIMS, &prefix)?;
     let end = prefix_end(&full_prefix)
-        .ok_or_else(|| Error::Substrate("native claim prefix has no upper bound".into()))?;
+        .ok_or_else(|| Error::Substrate("rrflowKV claim prefix has no upper bound".into()))?;
     database
         .scan(&start, Some(&end), snapshot)?
         .into_iter()
@@ -1593,8 +1565,8 @@ fn runtime_checkpoint_name(id: &SnapshotId) -> String {
     format!("{RUNTIME_CHECKPOINT_PREFIX}{}", id.as_str())
 }
 
-fn commit_native_control_transition(
-    engine: &NativeEngine,
+fn commit_rrflow_kv_control_transition(
+    engine: &RrflowKvStore,
     transition: &ControlTransition,
     catalog_scope: Option<&ScopeId>,
 ) -> Result<(Option<u64>, ControlJournalEntry)> {
@@ -1693,8 +1665,8 @@ fn commit_native_control_transition(
     Ok((catalog_revision, entry))
 }
 
-fn commit_native_control_batch(
-    engine: &NativeEngine,
+fn commit_rrflow_kv_control_batch(
+    engine: &RrflowKvStore,
     transitions: &[ControlTransition],
 ) -> Result<Vec<ControlJournalEntry>> {
     validate_control_batch(transitions)?;
@@ -1783,7 +1755,7 @@ fn commit_native_control_batch(
     Ok(entries)
 }
 
-fn native_read_stamp(
+fn rrflow_kv_read_stamp(
     database: &Database,
     snapshot: Snapshot,
     scope: &ScopeId,
@@ -1811,7 +1783,7 @@ fn native_read_stamp(
     .transpose()
     .map_err(|error| Error::CorruptWatermark(error.to_string()))?
     .filter(|digest| !digest.is_empty());
-    match load_native_runtime_accumulator(database, snapshot, commit_cursor)? {
+    match load_rrflow_kv_runtime_accumulator(database, snapshot, commit_cursor)? {
         Some(accumulator) => ReadStamp::authenticated(
             scope.clone(),
             schema_revision,
@@ -1831,7 +1803,7 @@ fn native_read_stamp(
     .map_err(Error::from)
 }
 
-fn validate_native_read_stamp(
+fn validate_rrflow_kv_read_stamp(
     database: &Database,
     snapshot: Snapshot,
     read: &ReadStamp,
@@ -1842,7 +1814,7 @@ fn validate_native_read_stamp(
         return Err(Error::ReadStampUnavailable(read.manifest_id.clone()));
     }
     if read.commit_cursor == current && read.accumulator_root.is_some() {
-        let accumulator = load_native_runtime_accumulator(database, snapshot, current)?
+        let accumulator = load_rrflow_kv_runtime_accumulator(database, snapshot, current)?
             .ok_or_else(|| Error::ReadStampMismatch(read.manifest_id.clone()))?;
         let head_digest = get(
             database,
@@ -1897,7 +1869,7 @@ fn validate_native_read_stamp(
         }
         Some(change.digest)
     };
-    let page = native_change_page(
+    let page = rrflow_kv_change_page(
         database,
         snapshot,
         read.commit_cursor,
@@ -1920,7 +1892,7 @@ fn validate_native_read_stamp(
     )?;
     if let Some(root) = read.accumulator_root.as_deref() {
         RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
-            read_native_accumulator_node(database, snapshot, level, index)
+            read_rrflow_kv_accumulator_node(database, snapshot, level, index)
         })?;
     }
     if read.catalog_revision != catalog_revision
@@ -1936,7 +1908,7 @@ fn validate_native_read_stamp(
     ))
 }
 
-fn load_native_runtime_accumulator(
+fn load_rrflow_kv_runtime_accumulator(
     database: &Database,
     snapshot: Snapshot,
     expected_size: u64,
@@ -1963,15 +1935,17 @@ fn load_native_runtime_accumulator(
     }
 }
 
-fn native_runtime_accumulator_with(
+fn rrflow_kv_runtime_accumulator_with(
     database: &Database,
     snapshot: Snapshot,
     expected_size: u64,
 ) -> Result<(RuntimeLogAccumulator, Vec<RuntimeMerkleNode>)> {
-    if let Some(accumulator) = load_native_runtime_accumulator(database, snapshot, expected_size)? {
+    if let Some(accumulator) =
+        load_rrflow_kv_runtime_accumulator(database, snapshot, expected_size)?
+    {
         return Ok((accumulator, Vec::new()));
     }
-    let page = native_change_page(database, snapshot, expected_size, 0, usize::MAX, None)?;
+    let page = rrflow_kv_change_page(database, snapshot, expected_size, 0, usize::MAX, None)?;
     let mut accumulator = RuntimeLogAccumulator::new();
     let mut nodes = Vec::new();
     for change in &page.changes {
@@ -1985,7 +1959,7 @@ fn native_runtime_accumulator_with(
     Ok((accumulator, nodes))
 }
 
-fn native_authenticated_point_page(
+fn rrflow_kv_authenticated_point_page(
     database: &Database,
     snapshot: Snapshot,
     read: &ReadStamp,
@@ -1995,15 +1969,15 @@ fn native_authenticated_point_page(
         .accumulator_root
         .as_deref()
         .ok_or_else(|| Error::ReadStampMismatch(read.manifest_id.clone()))?;
-    let accumulator = match load_native_runtime_accumulator(database, snapshot, read.commit_cursor)
-    {
-        Ok(Some(accumulator)) if accumulator.root == root => accumulator,
-        Ok(_) | Err(_) => {
-            RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
-                read_native_accumulator_node(database, snapshot, level, index)
-            })?
-        }
-    };
+    let accumulator =
+        match load_rrflow_kv_runtime_accumulator(database, snapshot, read.commit_cursor) {
+            Ok(Some(accumulator)) if accumulator.root == root => accumulator,
+            Ok(_) | Err(_) => {
+                RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
+                    read_rrflow_kv_accumulator_node(database, snapshot, level, index)
+                })?
+            }
+        };
     let change: RuntimeChange = get_json(
         database,
         snapshot,
@@ -2012,7 +1986,7 @@ fn native_authenticated_point_page(
     )?
     .ok_or_else(|| Error::ReadStampUnavailable(read.manifest_id.clone()))?;
     let proof = accumulator.inclusion_proof(cursor - 1, |level, index| {
-        read_native_accumulator_node(database, snapshot, level, index)
+        read_rrflow_kv_accumulator_node(database, snapshot, level, index)
     })?;
     let proof_nodes = proof.path.len();
     proof.verify_change(&change, root)?;
@@ -2026,7 +2000,7 @@ fn native_authenticated_point_page(
     })
 }
 
-fn read_native_accumulator_node(
+fn read_rrflow_kv_accumulator_node(
     database: &Database,
     snapshot: Snapshot,
     level: u8,
@@ -2048,7 +2022,7 @@ fn read_native_accumulator_node(
     })
 }
 
-fn native_change_page(
+fn rrflow_kv_change_page(
     database: &Database,
     snapshot: Snapshot,
     head: u64,
@@ -2127,7 +2101,7 @@ fn native_change_page(
     })
 }
 
-fn native_values_for_scope<T: DeserializeOwned>(
+fn rrflow_kv_values_for_scope<T: DeserializeOwned>(
     database: &Database,
     snapshot: Snapshot,
     space: &str,
@@ -2143,16 +2117,16 @@ fn native_values_for_scope<T: DeserializeOwned>(
 
 /// Reads the exact immutable-object closure for one scope from an authenticated
 /// physical snapshot before that snapshot is installed on a replica.
-pub fn native_snapshot_object_references(
+pub fn rrflow_kv_snapshot_object_references(
     bundle: &SnapshotBundleFile,
     scope: &ScopeId,
 ) -> Result<Vec<ObjectReference>> {
-    native_snapshot_artifact_view(bundle, scope).map(|(_, objects)| objects)
+    rrflow_kv_snapshot_artifact_view(bundle, scope).map(|(_, objects)| objects)
 }
 
 /// Reads the exact project read stamp and immutable-object closure directly
 /// from an authenticated physical snapshot.
-pub fn native_snapshot_artifact_view(
+pub fn rrflow_kv_snapshot_artifact_view(
     bundle: &SnapshotBundleFile,
     scope: &ScopeId,
 ) -> Result<(ReadStamp, Vec<ObjectReference>)> {
@@ -2226,18 +2200,18 @@ pub fn native_snapshot_artifact_view(
             head_digest,
         )?,
     };
-    let objects = native_snapshot_objects(bundle, Some(scope))?;
+    let objects = rrflow_kv_snapshot_objects(bundle, Some(scope))?;
     Ok((read, objects))
 }
 
-/// Reads the project artifact view from a live native database snapshot. This
+/// Reads the project artifact view from a live rrflowKV database snapshot. This
 /// is used by the cluster adapter without reopening a second database handle.
-pub fn native_database_artifact_view(
+pub fn rrflow_kv_database_artifact_view(
     database: &Database,
     scope: &ScopeId,
 ) -> Result<(ReadStamp, Vec<ObjectReference>)> {
     let snapshot = database.snapshot();
-    let read = native_read_stamp(database, snapshot, scope)?;
+    let read = rrflow_kv_read_stamp(database, snapshot, scope)?;
     let rows = scan_space(database, snapshot, keyspaces::RUNTIME_OBJECTS, &[])?;
     let objects = decode_snapshot_objects(database_codec(database)?, rows, Some(scope))?;
     Ok((read, objects))
@@ -2246,13 +2220,13 @@ pub fn native_database_artifact_view(
 /// Reads every immutable reference in a physical snapshot. Unlike the
 /// project-specific transfer view, this permits multiple scopes and is the
 /// final target-side activation gate.
-pub fn native_snapshot_all_object_references(
+pub fn rrflow_kv_snapshot_all_object_references(
     bundle: &SnapshotBundleFile,
 ) -> Result<Vec<ObjectReference>> {
-    native_snapshot_objects(bundle, None)
+    rrflow_kv_snapshot_objects(bundle, None)
 }
 
-fn native_snapshot_objects(
+fn rrflow_kv_snapshot_objects(
     bundle: &SnapshotBundleFile,
     required_scope: Option<&ScopeId>,
 ) -> Result<Vec<ObjectReference>> {
@@ -2266,13 +2240,13 @@ fn native_snapshot_objects(
 }
 
 fn decode_snapshot_objects(
-    codec: keyspaces::NativeKeyCodec,
+    codec: keyspaces::RrflowKvKeyCodec,
     values: Vec<(Vec<u8>, Vec<u8>)>,
     required_scope: Option<&ScopeId>,
 ) -> Result<Vec<ObjectReference>> {
     if values.len() > 1_000_000 {
         return Err(Error::Substrate(
-            "native snapshot object-reference limit exceeded".into(),
+            "rrflowKV snapshot object-reference limit exceeded".into(),
         ));
     }
     let mut objects = values
@@ -2282,14 +2256,14 @@ fn decode_snapshot_objects(
             object.validate()?;
             let logical = strip_space(codec, keyspaces::RUNTIME_OBJECTS, &stored_key)?;
             let split = logical.iter().position(|byte| *byte == 0).ok_or_else(|| {
-                Error::Substrate("native snapshot object key has no scope boundary".into())
+                Error::Substrate("rrflowKV snapshot object key has no scope boundary".into())
             })?;
             let encoded_scope = std::str::from_utf8(&logical[..split])
                 .map_err(|error| Error::Substrate(error.to_string()))?;
             let encoded_scope = ScopeId::new(encoded_scope)?;
             if required_scope.is_some_and(|scope| scope != &encoded_scope) {
                 return Err(Error::Substrate(
-                    "native snapshot object project scope differs from the transfer".into(),
+                    "rrflowKV snapshot object project scope differs from the transfer".into(),
                 ));
             }
             let expected = codec
@@ -2300,7 +2274,7 @@ fn decode_snapshot_objects(
                 .expect("canonical keyspace");
             if stored_key != expected {
                 return Err(Error::Substrate(
-                    "native snapshot object key/value identity differs from its canonical reference"
+                    "rrflowKV snapshot object key/value identity differs from its canonical reference"
                         .into(),
                 ));
             }
@@ -2314,7 +2288,7 @@ fn decode_snapshot_objects(
             .any(|pair| pair[0].reference >= pair[1].reference)
     {
         return Err(Error::Substrate(
-            "native snapshot contains duplicate object references".into(),
+            "rrflowKV snapshot contains duplicate object references".into(),
         ));
     }
     Ok(objects)
@@ -2332,12 +2306,8 @@ fn runtime_identity_key(scope: &ScopeId, reference: &RuntimeRef) -> Vec<u8> {
     key
 }
 
-fn write(
-    database: &mut Database,
-    mut operations: Vec<Mutation>,
-    durability: Durability,
-) -> Result<()> {
-    transcode_operations(database, &mut operations)?;
+fn write(database: &mut Database, operations: Vec<Mutation>, durability: Durability) -> Result<()> {
+    database_codec(database)?;
     database.write_owned(
         WriteBatch::new(operations)?,
         match durability {
@@ -2346,34 +2316,6 @@ fn write(
         },
     )?;
     Ok(())
-}
-
-fn transcode_operations(database: &Database, operations: &mut [Mutation]) -> Result<()> {
-    let codec = database_codec(database)?;
-    if codec == keyspaces::NativeKeyCodec::TagV2 {
-        return Ok(());
-    }
-    for operation in operations {
-        let key = match operation {
-            Mutation::Put { key, .. } | Mutation::Delete { key } => key,
-        };
-        *key = transcode_staged_key(codec, std::mem::take(key))?;
-    }
-    Ok(())
-}
-
-fn transcode_staged_key(codec: keyspaces::NativeKeyCodec, staged: Vec<u8>) -> Result<Vec<u8>> {
-    let (&tag, logical) = staged
-        .split_first()
-        .ok_or_else(|| Error::Substrate("staged native key is empty".into()))?;
-    let space = keyspaces::native_keyspace_for_tag(tag)
-        .ok_or_else(|| Error::Substrate(format!("unknown staged native keyspace tag {tag}")))?;
-    match codec {
-        keyspaces::NativeKeyCodec::TextV1 => keyspaces::NativeKeyCodec::TextV1
-            .encode(space, logical)
-            .ok_or_else(|| Error::Substrate(format!("unknown native keyspace {space:?}"))),
-        keyspaces::NativeKeyCodec::TagV2 => Ok(staged),
-    }
 }
 
 fn put(operations: &mut Vec<Mutation>, space: &str, key: &[u8], value: Vec<u8>) {
@@ -2462,33 +2404,26 @@ fn scan_space_from(
 }
 
 fn storage_key(space: &str, key: &[u8]) -> Vec<u8> {
-    keyspaces::NativeKeyCodec::TagV2
+    keyspaces::RrflowKvKeyCodec
         .encode(space, key)
-        .expect("native mutations use a canonical keyspace")
+        .expect("rrflowKV mutations use a canonical keyspace")
 }
 
-#[cfg(test)]
-fn legacy_storage_key(space: &str, key: &[u8]) -> Vec<u8> {
-    keyspaces::NativeKeyCodec::TextV1
-        .encode(space, key)
-        .expect("native tests use a canonical keyspace")
-}
-
-fn database_codec(database: &Database) -> Result<keyspaces::NativeKeyCodec> {
-    keyspaces::NativeKeyCodec::from_application_format(database.manifest().application_format)
+fn database_codec(database: &Database) -> Result<keyspaces::RrflowKvKeyCodec> {
+    keyspaces::RrflowKvKeyCodec::from_application_format(database.manifest().application_format)
         .ok_or_else(|| {
             Error::Substrate(format!(
-                "unsupported native application format {:?}",
+                "unsupported rrflowKV application format {:?}",
                 database.manifest().application_format
             ))
         })
 }
 
-fn snapshot_codec(bundle: &SnapshotBundleFile) -> Result<keyspaces::NativeKeyCodec> {
-    keyspaces::NativeKeyCodec::from_application_format(bundle.source_manifest.application_format)
+fn snapshot_codec(bundle: &SnapshotBundleFile) -> Result<keyspaces::RrflowKvKeyCodec> {
+    keyspaces::RrflowKvKeyCodec::from_application_format(bundle.source_manifest.application_format)
         .ok_or_else(|| {
             Error::Substrate(format!(
-                "unsupported native snapshot application format {:?}",
+                "unsupported rrflowKV snapshot application format {:?}",
                 bundle.source_manifest.application_format
             ))
         })
@@ -2497,17 +2432,17 @@ fn snapshot_codec(bundle: &SnapshotBundleFile) -> Result<keyspaces::NativeKeyCod
 fn encoded_storage_key(database: &Database, space: &str, key: &[u8]) -> Result<Vec<u8>> {
     database_codec(database)?
         .encode(space, key)
-        .ok_or_else(|| Error::Substrate(format!("unknown native keyspace {space:?}")))
+        .ok_or_else(|| Error::Substrate(format!("unknown rrflowKV keyspace {space:?}")))
 }
 
 fn strip_space<'a>(
-    codec: keyspaces::NativeKeyCodec,
+    codec: keyspaces::RrflowKvKeyCodec,
     space: &str,
     stored: &'a [u8],
 ) -> Result<&'a [u8]> {
     codec
         .strip(space, stored)
-        .ok_or_else(|| Error::Substrate(format!("key escaped native keyspace {space}")))
+        .ok_or_else(|| Error::Substrate(format!("key escaped rrflowKV keyspace {space}")))
 }
 
 fn prefix_end(prefix: &[u8]) -> Option<Vec<u8>> {
@@ -2533,13 +2468,13 @@ mod tests {
 
     fn claim() -> Claim {
         Claim::new(
-            rrd_core::Subject::new("legacy-subject").unwrap(),
-            rrd_core::Predicate::new("legacy-predicate").unwrap(),
-            "legacy-value",
+            rrd_core::Subject::new("test-subject").unwrap(),
+            rrd_core::Predicate::new("test-predicate").unwrap(),
+            "test-value",
             10,
             11,
             Producer {
-                actor: "native-test".into(),
+                actor: "rrflow-kv-test".into(),
                 on_behalf_of: None,
                 session: None,
             },
@@ -2547,11 +2482,11 @@ mod tests {
     }
 
     fn failure_transaction(database: &Database) -> DataTransaction {
-        let scope = ScopeId::new("instance:native-failure").unwrap();
-        let read = native_read_stamp(database, database.snapshot(), &scope).unwrap();
+        let scope = ScopeId::new("instance:rrflow-kv-failure").unwrap();
+        let read = rrflow_kv_read_stamp(database, database.snapshot(), &scope).unwrap();
         let item_kind = RuntimeType::new("item").unwrap();
         let item = RuntimeRef::new("item", "one").unwrap();
-        let mut registry = RuntimeSchemaRegistry::empty(1, "native failure matrix");
+        let mut registry = RuntimeSchemaRegistry::empty(1, "rrflowKV failure matrix");
         registry
             .records
             .insert(item_kind.clone(), RuntimeRecordSchema::default());
@@ -2569,7 +2504,7 @@ mod tests {
             RuntimeCommit {
                 scope,
                 at: 100,
-                actor: "agent:native-failure".into(),
+                actor: "agent:rrflow-kv-failure".into(),
                 expected_cursor: 0,
                 mutations: vec![
                     RuntimeMutation::Schema { registry },
@@ -2596,9 +2531,9 @@ mod tests {
                             100,
                             100,
                             Producer {
-                                actor: "agent:native-failure".into(),
+                                actor: "agent:rrflow-kv-failure".into(),
                                 on_behalf_of: None,
-                                session: Some("native-failure".into()),
+                                session: Some("rrflow-kv-failure".into()),
                             },
                         ),
                     },
@@ -2609,19 +2544,19 @@ mod tests {
     }
 
     #[test]
-    fn native_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary() {
+    fn rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary() {
         for mode in [FailureMode::Crash, FailureMode::StorageFull] {
             for boundary in [WriteBoundary::BeforeWalAppend, WriteBoundary::WalSynced] {
                 let directory = tempfile::tempdir().unwrap();
-                let root = directory.path().join("native-failure");
+                let root = directory.path().join("rrflow-kv-failure");
                 let mut database = Database::create_with_application_format(
                     &root,
                     DatabaseOptions::default(),
-                    keyspaces::NATIVE_KEYSPACE_TAG_FORMAT_V2,
+                    keyspaces::RRFLOW_KV_FORMAT,
                 )
                 .unwrap();
                 let transaction = failure_transaction(&database);
-                let plan = prepare_native_runtime_commit_at_read(
+                let plan = prepare_rrflow_kv_commit_at_read(
                     &database,
                     &transaction.commit,
                     Some(&transaction.read),
@@ -2629,8 +2564,7 @@ mod tests {
                 )
                 .unwrap();
                 let expected = plan.outcome().clone();
-                let (_, mut operations) = plan.into_parts();
-                transcode_operations(&database, &mut operations).unwrap();
+                let (_, operations) = plan.into_parts();
                 let error = database
                     .write_owned_with_failure(
                         WriteBatch::new(operations).unwrap(),
@@ -2734,73 +2668,16 @@ mod tests {
     }
 
     #[test]
-    fn legacy_inline_sequence_envelope_remains_strict_and_readable() {
-        let claim = claim();
-        let claim_key = key::claim_key(
-            &claim.subject,
-            &claim.predicate,
-            claim.valid_from,
-            claim.tx_time,
-        );
-        let encoded = serde_json::to_vec(&claim).unwrap();
-        let envelope = encode_native_sequence_value(&encoded);
-        assert_eq!(
-            decode_native_sequence_value(&envelope).unwrap(),
-            Some(encoded.as_slice())
-        );
-        assert_eq!(decode_native_sequence_value(&claim_key).unwrap(), None);
-        assert!(decode_native_sequence_value(NATIVE_SEQUENCE_VALUE_MAGIC).is_err());
-    }
-
-    #[test]
-    fn native_replay_reads_compact_key_reference_sequence_values() {
+    fn new_rrflow_kv_database_authenticates_and_reopens_compact_keyspace_tags() {
         let directory = tempfile::tempdir().unwrap();
-        let root = directory.path().join("legacy-native");
-        let claim = claim();
-        let claim_key = key::claim_key(
-            &claim.subject,
-            &claim.predicate,
-            claim.valid_from,
-            claim.tx_time,
-        );
-        let mut database = Database::create(&root).unwrap();
-        database
-            .write_owned(
-                WriteBatch::new(vec![
-                    Mutation::Put {
-                        key: legacy_storage_key(keyspaces::SEQUENCE_INDEX, &key::sequence_key(1)),
-                        value: claim_key.clone(),
-                    },
-                    Mutation::Put {
-                        key: legacy_storage_key(keyspaces::CLAIMS, &claim_key),
-                        value: serde_json::to_vec(&claim).unwrap(),
-                    },
-                    Mutation::Put {
-                        key: legacy_storage_key(keyspaces::META, keyspaces::SEQUENCE_WATERMARK),
-                        value: b"1".to_vec(),
-                    },
-                ])
-                .unwrap(),
-                rrd_lsm::Durability::Authoritative,
-            )
-            .unwrap();
-        drop(database);
-
-        let engine = NativeEngine::open(&root).unwrap();
-        assert_eq!(Engine::claims_in_range(&engine, 0, 1).unwrap(), vec![claim]);
-    }
-
-    #[test]
-    fn new_native_database_authenticates_and_reopens_compact_keyspace_tags() {
-        let directory = tempfile::tempdir().unwrap();
-        let root = directory.path().join("compact-native");
+        let root = directory.path().join("compact-rrflow-kv");
         let expected = claim();
-        let engine = NativeEngine::open(&root).unwrap();
+        let engine = RrflowKvStore::open(&root).unwrap();
         assert_eq!(
             engine.manifest().unwrap().application_format,
-            Some(keyspaces::NATIVE_KEYSPACE_TAG_FORMAT_V2)
+            Some(keyspaces::RRFLOW_KV_FORMAT)
         );
-        Engine::append_batch(&engine, std::slice::from_ref(&expected)).unwrap();
+        StorageEngine::append_batch(&engine, std::slice::from_ref(&expected)).unwrap();
         {
             let database = engine.lock().unwrap();
             let rows = database
@@ -2808,73 +2685,44 @@ mod tests {
                 .unwrap();
             assert_eq!(rows.len(), 1);
             assert_eq!(rows[0].0.first(), Some(&1));
-            assert!(database
-                .get(
-                    &legacy_storage_key(
-                        keyspaces::CLAIMS,
-                        &key::claim_key(
-                            &expected.subject,
-                            &expected.predicate,
-                            expected.valid_from,
-                            expected.tx_time,
-                        )
-                    ),
-                    database.snapshot(),
-                )
-                .unwrap()
-                .is_none());
         }
         engine.flush(12).unwrap();
         drop(engine);
 
-        let reopened = NativeEngine::open(&root).unwrap();
+        let reopened = RrflowKvStore::open(&root).unwrap();
         assert_eq!(
             reopened.manifest().unwrap().application_format,
-            Some(keyspaces::NATIVE_KEYSPACE_TAG_FORMAT_V2)
+            Some(keyspaces::RRFLOW_KV_FORMAT)
         );
         assert_eq!(
-            Engine::claims_in_range(&reopened, 0, 1).unwrap(),
+            StorageEngine::claims_in_range(&reopened, 0, 1).unwrap(),
             vec![expected]
         );
     }
 
     #[test]
-    fn native_open_denies_unknown_authenticated_application_format() {
+    fn rrflow_kv_open_denies_unknown_authenticated_application_format() {
         let directory = tempfile::tempdir().unwrap();
-        let root = directory.path().join("unknown-native-format");
+        let root = directory.path().join("unknown-rrflow-kv-format");
         drop(
             Database::create_with_application_format(&root, DatabaseOptions::default(), 7).unwrap(),
         );
         assert!(matches!(
-            NativeEngine::open(&root),
-            Err(Error::Substrate(reason)) if reason.contains("unsupported native application format")
+            RrflowKvStore::open(&root),
+            Err(Error::Substrate(reason)) if reason.contains("unsupported rrflowKV application format")
         ));
-    }
-
-    #[test]
-    fn compact_write_transcoder_denies_malformed_or_unknown_staged_keys() {
-        assert!(transcode_staged_key(keyspaces::NativeKeyCodec::TagV2, Vec::new()).is_err());
-        assert!(
-            transcode_staged_key(keyspaces::NativeKeyCodec::TagV2, b"\x13logical".to_vec())
-                .is_err()
-        );
-        assert_eq!(
-            transcode_staged_key(keyspaces::NativeKeyCodec::TagV2, b"\x01logical".to_vec(),)
-                .unwrap(),
-            b"\x01logical"
-        );
-        assert_eq!(
-            transcode_staged_key(keyspaces::NativeKeyCodec::TextV1, b"\x01logical".to_vec(),)
-                .unwrap(),
-            b"claims\0logical"
-        );
     }
 
     #[test]
     fn snapshot_object_closure_denies_foreign_project_references() {
         let directory = tempfile::tempdir().unwrap();
-        let root = directory.path().join("multi-project-native");
-        let mut database = Database::create(&root).unwrap();
+        let root = directory.path().join("multi-project-rrflow-kv");
+        let mut database = Database::create_with_application_format(
+            &root,
+            DatabaseOptions::default(),
+            keyspaces::RRFLOW_KV_FORMAT,
+        )
+        .unwrap();
         let first_scope = ScopeId::new("project:first").unwrap();
         let second_scope = ScopeId::new("project:second").unwrap();
         let object = |id: &str, bytes: &[u8]| {
@@ -2899,14 +2747,14 @@ mod tests {
             .write_owned(
                 WriteBatch::new(vec![
                     Mutation::Put {
-                        key: legacy_storage_key(
+                        key: storage_key(
                             keyspaces::RUNTIME_OBJECTS,
                             &runtime_identity_key(&first_scope, &first.reference),
                         ),
                         value: serde_json::to_vec(&first).unwrap(),
                     },
                     Mutation::Put {
-                        key: legacy_storage_key(
+                        key: storage_key(
                             keyspaces::RUNTIME_OBJECTS,
                             &runtime_identity_key(&second_scope, &second.reference),
                         ),
@@ -2920,7 +2768,7 @@ mod tests {
         let spool = directory.path().join("multi-project.snapshot");
         let bundle = database.export_snapshot_file(1, &spool).unwrap();
 
-        let error = native_snapshot_object_references(&bundle, &first_scope).unwrap_err();
+        let error = rrflow_kv_snapshot_object_references(&bundle, &first_scope).unwrap_err();
         assert!(error.to_string().contains("project scope"));
     }
 }

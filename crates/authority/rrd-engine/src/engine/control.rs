@@ -9,7 +9,7 @@ pub(in crate::engine) struct EngineControlContext<'a> {
 }
 
 pub(in crate::engine) fn commit_engine_control(
-    engine: &impl Engine,
+    engine: &impl StorageEngine,
     key: String,
     expected: Option<Vec<u8>>,
     state: &impl Serialize,

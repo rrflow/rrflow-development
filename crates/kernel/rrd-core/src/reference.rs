@@ -137,8 +137,8 @@ mod tests {
     }
 
     #[test]
-    fn as_of_matches_the_fjall_verified_expectations() {
-        // Same seven cases proven against Fjall 3.1.8 on 2026-08-09.
+    fn as_of_matches_the_canonical_boundary_expectations() {
+        // Seven cases cover the canonical point-in-time boundary behavior.
         let s = store();
         let subj = Subject::new("wp3").unwrap();
         let pred = Predicate::new("status").unwrap();

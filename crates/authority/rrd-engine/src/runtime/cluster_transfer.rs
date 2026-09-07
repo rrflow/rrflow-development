@@ -8,11 +8,11 @@ use rrd_cluster::{
 use rrd_core::{
     Millis, RuntimeProperties, RuntimeValue, TraceDataClass, TraceDomain, TraceLink, TraceOutcome,
 };
-use rrd_store::{Engine, ImmutableObjectStore};
+use rrd_store::{ImmutableObjectStore, StorageEngine};
 use std::sync::Arc;
 
-/// Fail-closed adapter from transport observations into Rrd's authoritative
-/// project trace log. Clustered deployments should supply an `Engine` whose
+/// Fail-closed adapter from transport observations into RRD's authoritative
+/// project trace log. Clustered deployments should supply a `StorageEngine` whose
 /// writes already cross their consensus boundary; this adapter never claims a
 /// direct local write is a replicated commit.
 #[derive(Clone)]
@@ -23,7 +23,7 @@ pub struct DurableArtifactTransferObserver<E> {
 
 impl<E> DurableArtifactTransferObserver<E>
 where
-    E: Engine + Send + Sync + 'static,
+    E: StorageEngine + Send + Sync + 'static,
 {
     pub fn new(store: Arc<E>, actor: impl Into<String>) -> Result<Self, ClusterError> {
         let actor = actor.into();
@@ -45,7 +45,7 @@ where
 
 impl<E> ArtifactTransferObserver for DurableArtifactTransferObserver<E>
 where
-    E: Engine + Send + Sync + 'static,
+    E: StorageEngine + Send + Sync + 'static,
 {
     fn observe(
         &self,
@@ -57,7 +57,7 @@ where
     }
 }
 
-pub fn record_artifact_transfer_observation<E: Engine>(
+pub fn record_artifact_transfer_observation<E: StorageEngine>(
     store: &E,
     actor: &str,
     observation: ArtifactTransferObservation,
@@ -81,7 +81,7 @@ pub fn execute_traced_artifact_transfer<E, S, T>(
     at: Millis,
 ) -> Result<ArtifactTransferReceipt, Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
     S: ImmutableObjectStore,
     T: ImmutableObjectStore,
 {
@@ -216,7 +216,7 @@ fn receipt_attributes(receipt: &ArtifactTransferReceipt) -> RuntimeProperties {
     ])
 }
 
-fn finish_transfer_error<E: Engine, T>(
+fn finish_transfer_error<E: StorageEngine, T>(
     store: &E,
     storage: Option<DurableTraceSpan>,
     root: DurableTraceSpan,

@@ -4,7 +4,7 @@ use rrd_core::{
     RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType,
     ScopeId, Subject,
 };
-use rrd_store::{Engine, Error, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::BTreeMap;
 
 fn record(kind: &str, id: &str) -> RuntimeRecord {
@@ -84,7 +84,7 @@ fn test_schema() -> RuntimeMutation {
     RuntimeMutation::Schema { registry }
 }
 
-fn assert_schema_free_claim_contract(engine: &dyn Engine) {
+fn assert_schema_free_claim_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:schema-free-claims").unwrap();
     let outcome = engine
         .commit_runtime(&RuntimeCommit {
@@ -132,16 +132,13 @@ fn assert_schema_free_claim_contract(engine: &dyn Engine) {
 
 #[test]
 fn claim_only_runtime_commits_share_the_transaction_log_without_synthetic_schema() {
-    assert_schema_free_claim_contract(&RrflowMxEngine::new());
+    assert_schema_free_claim_contract(&RrflowMxStore::new());
 
-    let compatibility_root = tempfile::tempdir().unwrap();
-    assert_schema_free_claim_contract(&Store::open(compatibility_root.path()).unwrap());
-
-    let native_root = tempfile::tempdir().unwrap();
-    assert_schema_free_claim_contract(&NativeEngine::open(native_root.path()).unwrap());
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    assert_schema_free_claim_contract(&RrflowKvStore::open(rrflow_kv_root.path()).unwrap());
 }
 
-fn assert_runtime_contract(engine: &dyn Engine) {
+fn assert_runtime_contract(engine: &dyn StorageEngine) {
     let first = commit(0, "instance:a");
     let outcome = engine.commit_runtime(&first).unwrap();
     assert_eq!(outcome.first_cursor, 1);
@@ -182,19 +179,16 @@ fn assert_runtime_contract(engine: &dyn Engine) {
 #[test]
 fn all_engines_enforce_the_same_runtime_contract() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = RrflowMxEngine::new();
-    assert_runtime_contract(&fjall);
-    assert_runtime_contract(&native);
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
+    assert_runtime_contract(&rrflow_kv);
     assert_runtime_contract(&memory);
 }
 
 #[test]
 fn dangling_relation_rejects_the_entire_commit() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     let bad = RuntimeCommit {
         scope: ScopeId::new("instance:a").unwrap(),
         at: 100,
@@ -224,7 +218,7 @@ fn dangling_relation_rejects_the_entire_commit() {
 #[test]
 fn scope_filter_advances_across_nonmatching_changes() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     store.commit_runtime(&commit(0, "instance:a")).unwrap();
     let only_b = ScopeId::new("instance:b").unwrap();
     let page = store.runtime_changes_since(0, 3, Some(&only_b)).unwrap();
@@ -237,13 +231,13 @@ fn scope_filter_advances_across_nonmatching_changes() {
 fn runtime_log_survives_reopen_and_continues_its_hash_chain() {
     let dir = tempfile::tempdir().unwrap();
     let first_digest = {
-        let store = Store::open(dir.path()).unwrap();
+        let store = RrflowKvStore::open(dir.path()).unwrap();
         store.commit_runtime(&commit(0, "instance:a")).unwrap();
         store.runtime_changes_since(4, 1, None).unwrap().changes[0]
             .digest
             .clone()
     };
-    let reopened = Store::open(dir.path()).unwrap();
+    let reopened = RrflowKvStore::open(dir.path()).unwrap();
     let next = RuntimeCommit {
         scope: ScopeId::new("instance:b").unwrap(),
         at: 200,
@@ -270,18 +264,18 @@ fn runtime_log_survives_reopen_and_continues_its_hash_chain() {
 }
 
 #[test]
-fn native_runtime_log_survives_flush_reopen_and_continues_its_hash_chain() {
+fn rrflow_kv_runtime_log_survives_flush_reopen_and_continues_its_hash_chain() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("native");
+    let path = dir.path().join("rrflow-kv");
     let first_digest = {
-        let store = NativeEngine::open(&path).unwrap();
+        let store = RrflowKvStore::open(&path).unwrap();
         store.commit_runtime(&commit(0, "instance:a")).unwrap();
         store.flush(150).unwrap();
         store.runtime_changes_since(4, 1, None).unwrap().changes[0]
             .digest
             .clone()
     };
-    let reopened = NativeEngine::open(&path).unwrap();
+    let reopened = RrflowKvStore::open(&path).unwrap();
     let next = RuntimeCommit {
         scope: ScopeId::new("instance:b").unwrap(),
         at: 200,
@@ -307,7 +301,7 @@ fn native_runtime_log_survives_flush_reopen_and_continues_its_hash_chain() {
     assert_eq!(reopened.runtime_cursor().unwrap(), 7);
 }
 
-fn assert_schema_contract(engine: &dyn Engine) {
+fn assert_schema_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:schema").unwrap();
     let error = engine
         .commit_runtime(&RuntimeCommit {
@@ -444,27 +438,13 @@ fn assert_schema_contract(engine: &dyn Engine) {
 #[test]
 fn all_engines_enforce_schema_types_cardinality_and_migrations() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native_path = native_dir.path().join("native");
-    let native = NativeEngine::open(&native_path).unwrap();
-    let memory = RrflowMxEngine::new();
-    assert_schema_contract(&fjall);
-    assert_schema_contract(&native);
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
+    assert_schema_contract(&rrflow_kv);
     assert_schema_contract(&memory);
 
-    drop(fjall);
-    let reopened = Store::open(dir.path()).unwrap();
-    assert_eq!(
-        reopened
-            .runtime_schema(&ScopeId::new("instance:schema").unwrap())
-            .unwrap()
-            .unwrap()
-            .revision,
-        2
-    );
-    drop(native);
-    let reopened = NativeEngine::open(&native_path).unwrap();
+    drop(rrflow_kv);
+    let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(
         reopened
             .runtime_schema(&ScopeId::new("instance:schema").unwrap())

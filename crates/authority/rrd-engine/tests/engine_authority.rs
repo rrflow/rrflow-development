@@ -10,15 +10,14 @@ use rrd_contract::{
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
     EstateAdminAction, EstateAdminResult, InstanceBinding, InstanceManifest, Invocation,
-    InvocationCredential, NativeApplicationFormat, RrdEngine, RrdOperation,
-    SecurityBootstrapOutcome, ServiceError,
+    InvocationCredential, RrdEngine, RrdOperation, SecurityBootstrapOutcome, ServiceError,
 };
 use rrd_estate::{
     DesiredPhase, DesiredTarget, EstateRepository, LeaseRequest, LocalEstatePermission,
     LocalOperatorPolicy, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -67,14 +66,6 @@ fn diagnostic_request(scope: &str) -> ReadDiagnosticSnapshot {
         audit_after_sequence: 0,
         audit_limit: 64,
     }
-}
-
-#[test]
-fn engine_exposes_only_the_reviewed_native_format_successor() {
-    let matrix = RrdEngine::supported_native_format_migrations();
-    assert_eq!(matrix.len(), 1);
-    assert_eq!(matrix[0].source, NativeApplicationFormat::TextV1);
-    assert_eq!(matrix[0].target, NativeApplicationFormat::TagV2);
 }
 
 #[test]
@@ -567,7 +558,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     }
     let state_root = fs::canonicalize(state_root).unwrap();
     let source = state_root.join("instances/instance-a/.rrflow/rrd");
-    drop(rrd_store::PersistentEngine::open(&source).unwrap());
+    drop(rrd_store::RrflowKvStore::open(&source).unwrap());
 
     let key_path = temporary.path().join("operator.key");
     let policy_path = temporary.path().join("operator.json");
@@ -594,7 +585,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     fs::write(&policy_path, serde_json::to_vec(&policy).unwrap()).unwrap();
     private(&policy_path);
 
-    let authority = rrd_store::PersistentEngine::open(&database).unwrap();
+    let authority = rrd_store::RrflowKvStore::open(&database).unwrap();
     let repository = EstateRepository::new(&authority, canonical("estate-a"));
     let estate_context = |at, request: &str, operation: &str| MutationContext {
         at,
@@ -676,7 +667,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     drop(authority);
 
     for (job, scheduled_at) in [("backup-one", 100), ("backup-two", 200)] {
-        let authority = rrd_store::PersistentEngine::open(&database).unwrap();
+        let authority = rrd_store::RrflowKvStore::open(&database).unwrap();
         EstateRepository::new(&authority, canonical("estate-a"))
             .schedule_backup(&ScheduleBackup {
                 context: estate_context(scheduled_at, job, job),
@@ -850,7 +841,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     assert!(recovered_gap.idempotent_replay);
 
     let divergent_target = state_root.join("restores/instance-a/restore-divergent");
-    let divergent = rrd_store::PersistentEngine::open(&divergent_target).unwrap();
+    let divergent = rrd_store::RrflowKvStore::open(&divergent_target).unwrap();
     divergent
         .append_batch(&[Claim::new(
             Subject::new("restore:divergent").unwrap(),

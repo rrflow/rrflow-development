@@ -8,8 +8,8 @@ use rrd_core::{
     ScopeId, SeriesValue, Subject, VectorNormalization, VectorValue,
 };
 use rrd_store::{
-    DataRuntime, DataRuntimeStep, Engine, Error, LocalObjectStore, NativeEngine, RrflowMxEngine,
-    Store,
+    DataRuntime, DataRuntimeStep, Error, LocalObjectStore, RrflowKvStore, RrflowMxStore,
+    StorageEngine,
 };
 use tempfile::tempdir;
 
@@ -48,7 +48,7 @@ fn record(id: &str) -> RuntimeRecord {
     }
 }
 
-fn bootstrap(engine: &dyn Engine, scope: &ScopeId) -> u64 {
+fn bootstrap(engine: &dyn StorageEngine, scope: &ScopeId) -> u64 {
     engine
         .commit_runtime(&RuntimeCommit {
             scope: scope.clone(),
@@ -157,7 +157,7 @@ fn unified_mutations(object: rrd_core::ObjectReference) -> Vec<RuntimeMutation> 
     ]
 }
 
-fn exercise_unified_commit<E: Engine>(engine: E) {
+fn exercise_unified_commit<E: StorageEngine>(engine: E) {
     let object_directory = tempdir().unwrap();
     let runtime = DataRuntime::new(
         engine,
@@ -212,21 +212,17 @@ fn exercise_unified_commit<E: Engine>(engine: E) {
 }
 
 #[test]
-fn unified_transaction_and_evidence_match_across_all_engines() {
-    exercise_unified_commit(RrflowMxEngine::new());
+fn unified_transaction_and_evidence_match_across_storage_profiles() {
+    exercise_unified_commit(RrflowMxStore::new());
 
-    let fjall_directory = tempdir().unwrap();
-    exercise_unified_commit(Store::open(fjall_directory.path()).unwrap());
-
-    let native_directory = tempdir().unwrap();
-    let native_path = native_directory.path().join("native");
-    exercise_unified_commit(NativeEngine::open(&native_path).unwrap());
+    let rrflow_kv_directory = tempdir().unwrap();
+    exercise_unified_commit(RrflowKvStore::open(rrflow_kv_directory.path()).unwrap());
 }
 
 #[test]
 fn dangling_late_family_rolls_back_every_earlier_family() {
     let directory = tempdir().unwrap();
-    let engine = NativeEngine::open(&directory.path().join("native")).unwrap();
+    let engine = RrflowKvStore::open(&directory.path().join("rrflow-kv")).unwrap();
     let scope = ScopeId::new("instance:rollback").unwrap();
     let cursor = bootstrap(&engine, &scope);
     let commit = RuntimeCommit {
@@ -265,7 +261,7 @@ fn dangling_late_family_rolls_back_every_earlier_family() {
 #[test]
 fn object_and_commit_failure_boundaries_are_recoverable() {
     let directory = tempdir().unwrap();
-    let engine = NativeEngine::open(&directory.path().join("native")).unwrap();
+    let engine = RrflowKvStore::open(&directory.path().join("rrflow-kv")).unwrap();
     let objects = LocalObjectStore::open(directory.path().join("objects")).unwrap();
     let runtime = DataRuntime::new(engine, objects);
     let scope = ScopeId::new("instance:faults").unwrap();
@@ -323,16 +319,16 @@ fn object_and_commit_failure_boundaries_are_recoverable() {
 }
 
 #[test]
-fn native_unified_evidence_survives_reopen_and_retry() {
+fn rrflow_kv_unified_evidence_survives_reopen_and_retry() {
     let directory = tempdir().unwrap();
-    let database_path = directory.path().join("native");
+    let database_path = directory.path().join("rrflow-kv");
     let object_path = directory.path().join("objects");
     let scope = ScopeId::new("instance:reopen").unwrap();
     let transaction;
     let outcome;
     {
         let runtime = DataRuntime::new(
-            NativeEngine::open(&database_path).unwrap(),
+            RrflowKvStore::open(&database_path).unwrap(),
             LocalObjectStore::open(&object_path).unwrap(),
         );
         let cursor = bootstrap(runtime.engine(), &scope);
@@ -360,7 +356,7 @@ fn native_unified_evidence_survives_reopen_and_retry() {
     }
 
     let reopened = DataRuntime::new(
-        NativeEngine::open(&database_path).unwrap(),
+        RrflowKvStore::open(&database_path).unwrap(),
         LocalObjectStore::open(&object_path).unwrap(),
     );
     assert_eq!(reopened.commit(&transaction).unwrap(), outcome);

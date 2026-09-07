@@ -10,7 +10,7 @@ use rrd_operator_knowledge::{
     OperatorSearchControls, OperatorSearchRequest, OperatorSourceRevision, OperatorSyncWork,
     ReferenceOperatorAdapter, ReferenceOperatorWriter, OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{
     EmbeddingModelBinding, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
@@ -28,7 +28,7 @@ fn model() -> EmbeddingModelBinding {
     }
 }
 
-fn fixture<E: Engine>(store: &E) -> Vec<VectorCandidate> {
+fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
     let mut registry = RuntimeSchemaRegistry::empty(1, "operator trace fixture");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -159,7 +159,10 @@ fn revision(project_id: &str, stable: &str) -> OperatorSourceRevision {
     }
 }
 
-fn request<E: Engine>(store: &E, knowledge: &OperatorKnowledgeBinding) -> OperatorSearchRequest {
+fn request<E: StorageEngine>(
+    store: &E,
+    knowledge: &OperatorKnowledgeBinding,
+) -> OperatorSearchRequest {
     OperatorSearchRequest {
         contract_version: OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
         binding_digest: knowledge.digest().unwrap(),
@@ -207,7 +210,7 @@ struct TraceView {
     encoded: String,
 }
 
-fn traces<E: Engine>(store: &E) -> Vec<TraceView> {
+fn traces<E: StorageEngine>(store: &E) -> Vec<TraceView> {
     store
         .runtime_changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
@@ -242,7 +245,7 @@ fn traces<E: Engine>(store: &E) -> Vec<TraceView> {
         .collect()
 }
 
-fn exercise<E: Engine>(
+fn exercise<E: StorageEngine>(
     store: &E,
     instance: &InstanceBinding,
 ) -> (rrd_engine::TracedOperatorSearch, Vec<TraceView>) {
@@ -268,18 +271,14 @@ fn operator_search_is_project_bound_private_and_equal_across_engines() {
     let instance_root = tempfile::tempdir().unwrap();
     InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
     let instance = InstanceBinding::discover(instance_root.path()).unwrap();
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native_path = native_root.path().join("native");
-    let native = NativeEngine::open(&native_path).unwrap();
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv_path = rrflow_kv_root.path().join("rrflow-kv");
+    let rrflow_kv = RrflowKvStore::open(&rrflow_kv_path).unwrap();
 
     let (memory_result, memory_traces) = exercise(&memory, &instance);
-    let (fjall_result, fjall_traces) = exercise(&fjall, &instance);
-    let (native_result, native_traces) = exercise(&native, &instance);
-    assert_eq!(memory_result, fjall_result);
-    assert_eq!(memory_result, native_result);
+    let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv, &instance);
+    assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.result.hits.len(), 2);
     assert_eq!(memory.runtime_cursor().unwrap(), 12);
     let normalize = |traces: &[TraceView]| {
@@ -296,8 +295,7 @@ fn operator_search_is_project_bound_private_and_equal_across_engines() {
             })
             .collect::<Vec<_>>()
     };
-    assert_eq!(normalize(&memory_traces), normalize(&fjall_traces));
-    assert_eq!(normalize(&memory_traces), normalize(&native_traces));
+    assert_eq!(normalize(&memory_traces), normalize(&rrflow_kv_traces));
     assert_eq!(
         memory_traces
             .iter()
@@ -325,9 +323,9 @@ fn operator_search_is_project_bound_private_and_equal_across_engines() {
         assert!(!encoded.contains(secret), "trace leaked {secret}");
     }
 
-    drop(native);
-    let reopened = NativeEngine::open(&native_path).unwrap();
-    assert_eq!(normalize(&traces(&reopened)), normalize(&native_traces));
+    drop(rrflow_kv);
+    let reopened = RrflowKvStore::open(&rrflow_kv_path).unwrap();
+    assert_eq!(normalize(&traces(&reopened)), normalize(&rrflow_kv_traces));
 }
 
 #[test]
@@ -336,7 +334,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
     InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
     let instance = InstanceBinding::discover(instance_root.path()).unwrap();
 
-    let stale_store = RrflowMxEngine::new();
+    let stale_store = RrflowMxStore::new();
     let candidates = fixture(&stale_store);
     let stale_knowledge = knowledge(&instance);
     let stale_request = request(&stale_store, &stale_knowledge);
@@ -360,7 +358,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
         ["running", "running", "denied", "denied"]
     );
 
-    let projection_store = RrflowMxEngine::new();
+    let projection_store = RrflowMxStore::new();
     let candidates = fixture(&projection_store);
     let mut projection_knowledge = knowledge(&instance);
     projection_knowledge.projection.source_cursor = 6;
@@ -386,7 +384,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
         ["running", "running", "denied", "denied"]
     );
 
-    let foreign_store = RrflowMxEngine::new();
+    let foreign_store = RrflowMxStore::new();
     let candidates = fixture(&foreign_store);
     let mut foreign = knowledge(&instance);
     foreign.project_id = "another-project".into();
@@ -421,7 +419,7 @@ fn traced_outbox_retry_applies_external_payload_once() {
     let instance_root = tempfile::tempdir().unwrap();
     InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
     let instance = InstanceBinding::discover(instance_root.path()).unwrap();
-    let store = RrflowMxEngine::new();
+    let store = RrflowMxStore::new();
     let candidates = fixture(&store);
     let knowledge = knowledge(&instance);
     let source = store

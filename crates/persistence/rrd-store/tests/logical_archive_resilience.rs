@@ -8,7 +8,7 @@ use rrd_core::{
 use rrd_store::{
     export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,
     restore_logical_archive_to_new_root, restore_logical_archive_to_new_root_with_progress,
-    DataRuntime, Engine, Error, LocalObjectStore, LogicalArchiveCheckpoint, NativeEngine,
+    DataRuntime, Error, LocalObjectStore, LogicalArchiveCheckpoint, RrflowKvStore, StorageEngine,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::OpenOptions;
@@ -30,8 +30,8 @@ fn claim(name: impl std::fmt::Display, at: u64) -> Claim {
     )
 }
 
-fn mixed_source(root: &Path) -> NativeEngine {
-    let engine = NativeEngine::open(root).unwrap();
+fn mixed_source(root: &Path) -> RrflowKvStore {
+    let engine = RrflowKvStore::open(root).unwrap();
     engine.append_batch(&[claim("before", 10)]).unwrap();
     engine
         .commit_runtime(&RuntimeCommit {
@@ -60,7 +60,7 @@ fn mixed_source(root: &Path) -> NativeEngine {
     engine
 }
 
-fn assert_same_runtime(left: &NativeEngine, right: &NativeEngine) {
+fn assert_same_runtime(left: &RrflowKvStore, right: &RrflowKvStore) {
     assert_eq!(left.sequence().unwrap(), right.sequence().unwrap());
     assert_eq!(
         left.runtime_cursor().unwrap(),
@@ -278,7 +278,7 @@ fn interrupted_restore_reconciles_action_ahead_of_receipt() {
 
     let report = restore_logical_archive_to_new_root(&archive, &target, 101).unwrap();
     assert!(report.resumed);
-    assert_same_runtime(&source, &NativeEngine::open(&target).unwrap());
+    assert_same_runtime(&source, &RrflowKvStore::open(&target).unwrap());
 }
 
 #[test]
@@ -304,7 +304,7 @@ fn interrupted_restore_after_receipt_resumes_without_duplicate_mutations() {
     )
     .unwrap_err();
     restore_logical_archive_to_new_root(&archive, &target, 101).unwrap();
-    assert_same_runtime(&source, &NativeEngine::open(&target).unwrap());
+    assert_same_runtime(&source, &RrflowKvStore::open(&target).unwrap());
 }
 
 #[test]
@@ -338,7 +338,7 @@ fn tampered_restore_receipt_is_denied_before_target_publication() {
 #[test]
 fn claim_stream_crosses_multiple_pages_without_reordering() {
     let root = tempfile::tempdir().unwrap();
-    let source = NativeEngine::open(&root.path().join("source")).unwrap();
+    let source = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let claims = (1..=2_100)
         .map(|index| claim(index, index))
         .collect::<Vec<_>>();
@@ -349,7 +349,7 @@ fn claim_stream_crosses_multiple_pages_without_reordering() {
     assert_eq!(inventory.standalone_claims, 2_100);
     restore_logical_archive_to_new_root(&archive, &target, 100).unwrap();
     assert_eq!(
-        NativeEngine::open(&target)
+        RrflowKvStore::open(&target)
             .unwrap()
             .claims_in_range(0, 2_100)
             .unwrap(),
@@ -360,7 +360,7 @@ fn claim_stream_crosses_multiple_pages_without_reordering() {
 #[test]
 fn one_commit_split_across_runtime_pages_remains_atomic() {
     let root = tempfile::tempdir().unwrap();
-    let source = NativeEngine::open(&root.path().join("source")).unwrap();
+    let source = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let mutations = (1..=1_100)
         .map(|index| RuntimeMutation::Claim {
             claim: claim(format!("runtime-{index}"), index),
@@ -381,7 +381,7 @@ fn one_commit_split_across_runtime_pages_remains_atomic() {
     assert_eq!(inventory.runtime_commits, 1);
     assert_eq!(inventory.runtime_mutations, 1_100);
     restore_logical_archive_to_new_root(&archive, &target, 100).unwrap();
-    let restored = NativeEngine::open(&target).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(
         restored.runtime_commit_outcome(&outcome.commit_id).unwrap(),
         Some(outcome)
@@ -395,7 +395,7 @@ fn every_canonical_runtime_family_and_transaction_audit_round_trips() {
     let source_path = root.path().join("source");
     let objects = root.path().join("objects");
     let runtime = DataRuntime::new(
-        NativeEngine::open(&source_path).unwrap(),
+        RrflowKvStore::open(&source_path).unwrap(),
         LocalObjectStore::open(&objects).unwrap(),
     );
     let scope = ScopeId::new("instance:all-families").unwrap();
@@ -434,7 +434,7 @@ fn every_canonical_runtime_family_and_transaction_audit_round_trips() {
     let target = root.path().join("restored");
     export_logical_archive(runtime.engine(), &archive).unwrap();
     restore_logical_archive_to_new_root(&archive, &target, 100).unwrap();
-    let restored = NativeEngine::open(&target).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
     assert_same_runtime(runtime.engine(), &restored);
     assert_eq!(
         restored.runtime_audit(&outcome.commit_id).unwrap(),

@@ -1,12 +1,10 @@
-//! The storage port, proven by differential: the Fjall engine and the reference engine must be
-//! indistinguishable through the trait — same legacy claim reads, same projection, same
-//! grounding stamp digest. This test is what makes "fold in storage" a
-//! contract rather than a promise: a bbolt engine in Go, or a rrflow-native
-//! engine in Rust, is correct exactly when this differential (and the
-//! golden key vectors in rrd-core) holds for it.
+//! The storage contract proven across rrflowMX and rrflowKV.
+//!
+//! Both profiles must produce identical claim reads, projections, and
+//! grounding stamps through the same engine boundary.
 
 use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
-use rrd_store::{Engine, GroundingReport, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{GroundingReport, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(
@@ -35,22 +33,23 @@ fn corpus() -> Vec<Claim> {
 }
 
 #[test]
-fn compatibility_physical_maintenance_preserves_exact_semantics_across_reopen() {
+fn rrflow_kv_physical_maintenance_preserves_exact_semantics_across_reopen() {
     let parent = tempfile::tempdir().unwrap();
-    let root = parent.path().join("fjall");
-    let store = Store::open(&root).unwrap();
-    Engine::append_batch(&store, &corpus()).unwrap();
-    let before = Engine::claims_in_range(&store, 0, corpus().len() as u64).unwrap();
-    store.compact_physical().unwrap();
+    let root = parent.path().join("rrflow-kv");
+    let store = RrflowKvStore::open(&root).unwrap();
+    StorageEngine::append_batch(&store, &corpus()).unwrap();
+    let before = StorageEngine::claims_in_range(&store, 0, corpus().len() as u64).unwrap();
+    store.flush(1_000).unwrap();
+    store.compact(1_001, 1_001).unwrap();
     assert_eq!(
-        Engine::claims_in_range(&store, 0, corpus().len() as u64).unwrap(),
+        StorageEngine::claims_in_range(&store, 0, corpus().len() as u64).unwrap(),
         before
     );
     drop(store);
 
-    let reopened = Store::open(&root).unwrap();
+    let reopened = RrflowKvStore::open(&root).unwrap();
     assert_eq!(
-        Engine::claims_in_range(&reopened, 0, corpus().len() as u64).unwrap(),
+        StorageEngine::claims_in_range(&reopened, 0, corpus().len() as u64).unwrap(),
         before
     );
 }
@@ -58,54 +57,36 @@ fn compatibility_physical_maintenance_preserves_exact_semantics_across_reopen() 
 #[test]
 fn all_engines_are_indistinguishable_through_the_port() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = RrflowMxEngine::new();
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
 
-    for engine in [
-        &fjall as &dyn AnyEngine,
-        &native as &dyn AnyEngine,
-        &memory as &dyn AnyEngine,
-    ] {
+    for engine in [&rrflow_kv as &dyn AnyEngine, &memory as &dyn AnyEngine] {
         engine.load(&corpus());
     }
 
     // Same sequence, same interval replay, same subjects.
     assert_eq!(
-        Engine::sequence(&fjall).unwrap(),
-        Engine::sequence(&memory).unwrap()
+        StorageEngine::sequence(&rrflow_kv).unwrap(),
+        StorageEngine::sequence(&memory).unwrap()
     );
     assert_eq!(
-        Engine::sequence(&fjall).unwrap(),
-        Engine::sequence(&native).unwrap()
+        StorageEngine::claims_in_range(&rrflow_kv, 2, 5).unwrap(),
+        StorageEngine::claims_in_range(&memory, 2, 5).unwrap()
     );
     assert_eq!(
-        Engine::claims_in_range(&fjall, 2, 5).unwrap(),
-        Engine::claims_in_range(&memory, 2, 5).unwrap()
-    );
-    assert_eq!(
-        Engine::claims_in_range(&fjall, 2, 5).unwrap(),
-        Engine::claims_in_range(&native, 2, 5).unwrap()
-    );
-    assert_eq!(
-        Engine::subjects(&fjall).unwrap(),
-        Engine::subjects(&memory).unwrap()
-    );
-    assert_eq!(
-        Engine::subjects(&fjall).unwrap(),
-        Engine::subjects(&native).unwrap()
+        StorageEngine::subjects(&rrflow_kv).unwrap(),
+        StorageEngine::subjects(&memory).unwrap()
     );
 
     // Same projection after rebuild, and the SAME grounding digest — the
     // stamp names content, not the engine that computed it.
     let ga = match (
-        fjall.rebuild_current().unwrap(),
-        fjall.ground_current(500).unwrap(),
+        rrflow_kv.rebuild_current().unwrap(),
+        rrflow_kv.ground_current(500).unwrap(),
     ) {
         (_, GroundingReport::Grounded(stamp)) => stamp,
         (_, GroundingReport::Divergence { differences }) => {
-            panic!("fjall diverged: {differences:?}")
+            panic!("rrflowKV diverged: {differences:?}")
         }
     };
     let gb = match (
@@ -117,32 +98,22 @@ fn all_engines_are_indistinguishable_through_the_port() {
             panic!("memory diverged: {differences:?}")
         }
     };
-    let gc = match (
-        native.rebuild_current().unwrap(),
-        native.ground_current(500).unwrap(),
-    ) {
-        (_, GroundingReport::Grounded(stamp)) => stamp,
-        (_, GroundingReport::Divergence { differences }) => {
-            panic!("native diverged: {differences:?}")
-        }
-    };
     assert_eq!(ga.sequence, gb.sequence);
-    assert_eq!(ga.sequence, gc.sequence);
     assert_eq!(
         ga.digest, gb.digest,
         "grounding digests agree across engines"
     );
-    assert_eq!(ga.digest, gc.digest, "native grounding digest agrees");
 
     // The quarantine semantics ride the trait too: corrupt the reference
     // engine's stored blob and the provided ground_current halts it.
-    let bytes = Engine::get_projection(&memory, rrd_store::CURRENT_PROJECTION)
+    let bytes = StorageEngine::get_projection(&memory, rrd_store::CURRENT_PROJECTION)
         .unwrap()
         .unwrap();
     let corrupted = String::from_utf8(bytes)
         .unwrap()
         .replacen("\"done\"", "\"drifted\"", 1);
-    Engine::put_projection(&memory, rrd_store::CURRENT_PROJECTION, corrupted.as_bytes()).unwrap();
+    StorageEngine::put_projection(&memory, rrd_store::CURRENT_PROJECTION, corrupted.as_bytes())
+        .unwrap();
     assert!(matches!(
         memory.ground_current(600).unwrap(),
         GroundingReport::Divergence { .. }
@@ -156,36 +127,28 @@ fn all_engines_are_indistinguishable_through_the_port() {
 #[test]
 fn a_rejected_batch_is_atomic_in_all_engines() {
     let dir = tempfile::tempdir().unwrap();
-    let fjall = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
-    let memory = RrflowMxEngine::new();
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let memory = RrflowMxStore::new();
     let valid = claim("wp3", "status", "valid", 100);
     let mut invalid = claim("wp4", "status", "invalid", 200);
     invalid.valid_to = Some(200);
-    assert!(Engine::append_batch(&fjall, &[valid.clone(), invalid.clone()]).is_err());
-    assert!(Engine::append_batch(&memory, &[valid, invalid]).is_err());
-    let valid = claim("wp3", "status", "valid", 100);
-    let mut invalid = claim("wp4", "status", "invalid", 200);
-    invalid.valid_to = Some(200);
-    assert!(Engine::append_batch(&native, &[valid, invalid]).is_err());
-    assert_eq!(Engine::sequence(&fjall).unwrap(), 0);
-    assert_eq!(Engine::sequence(&memory).unwrap(), 0);
-    assert_eq!(Engine::sequence(&native).unwrap(), 0);
-    assert!(Engine::subjects(&fjall).unwrap().is_empty());
-    assert!(Engine::subjects(&memory).unwrap().is_empty());
-    assert!(Engine::subjects(&native).unwrap().is_empty());
+    assert!(StorageEngine::append_batch(&rrflow_kv, &[valid.clone(), invalid.clone()]).is_err());
+    assert!(StorageEngine::append_batch(&memory, &[valid, invalid]).is_err());
+    assert_eq!(StorageEngine::sequence(&rrflow_kv).unwrap(), 0);
+    assert_eq!(StorageEngine::sequence(&memory).unwrap(), 0);
+    assert!(StorageEngine::subjects(&rrflow_kv).unwrap().is_empty());
+    assert!(StorageEngine::subjects(&memory).unwrap().is_empty());
 }
 
 #[test]
 fn assert_retires_the_previous_claim_atomically() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     let first = claim("wp3", "status", "failing", 100);
     let mut second = claim("wp3", "status", "passing", 200);
     second.tx_time = 250;
-    Engine::assert(&store, &first).unwrap();
-    Engine::assert(&store, &second).unwrap();
+    StorageEngine::assert(&store, &first).unwrap();
+    StorageEngine::assert(&store, &second).unwrap();
     let history = store.history(&first.subject, &first.predicate).unwrap();
     let retired = history
         .iter()
@@ -215,8 +178,8 @@ fn assert_retires_the_previous_claim_atomically() {
 trait AnyEngine {
     fn load(&self, claims: &[Claim]);
 }
-impl<E: Engine> AnyEngine for E {
+impl<E: StorageEngine> AnyEngine for E {
     fn load(&self, claims: &[Claim]) {
-        Engine::append_batch(self, claims).unwrap();
+        StorageEngine::append_batch(self, claims).unwrap();
     }
 }

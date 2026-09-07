@@ -5,7 +5,7 @@ use rrd_estate::{
     EstateDriver, EstateRepository, MutationContext, ObservedPhase, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired,
 };
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -124,7 +124,7 @@ fn run_one_step(
     at: u64,
     inject_lost_acknowledgement: bool,
 ) -> ReconcileOutcome {
-    let engine = NativeEngine::open(database).unwrap();
+    let engine = RrflowKvStore::open(database).unwrap();
     let mut reconciler = Reconciler::new(
         &engine,
         id("estate-a"),
@@ -149,7 +149,7 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
     let database = directory.path().join("estate-native");
     let world = directory.path().join("fake-world.json");
     {
-        let engine = NativeEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .create(&context(10, "create-estate", "create-estate"))
@@ -192,7 +192,7 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
         serde_json::from_slice(&std::fs::read(&world).unwrap()).unwrap();
     assert_eq!(fake_world.effects.get("deploy-project-a"), Some(&1));
 
-    let reopened = NativeEngine::open(&database).unwrap();
+    let reopened = RrflowKvStore::open(&database).unwrap();
     let repository = EstateRepository::new(&reopened, id("estate-a"));
     let document = repository.load().unwrap().unwrap();
     let operation = document.operation(&id("deploy-project-a")).unwrap();
@@ -229,7 +229,7 @@ fn takeover_waits_for_expiry_and_preserves_the_prepared_boundary() {
     let database = directory.path().join("estate-native");
     let world = directory.path().join("fake-world.json");
     {
-        let engine = NativeEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .create(&context(10, "create-estate", "create-estate"))
@@ -258,7 +258,7 @@ fn takeover_waits_for_expiry_and_preserves_the_prepared_boundary() {
         ReconcileBoundary::LeaseAcquired,
     );
 
-    let engine = NativeEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     let document = repository.load().unwrap().unwrap();
     let operation = document.operation(&id("deploy-project-a")).unwrap();
@@ -283,7 +283,7 @@ fn a_new_desired_generation_supersedes_unfinished_work() {
     let database = directory.path().join("estate-native");
     let world = directory.path().join("fake-world.json");
     {
-        let engine = NativeEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .create(&context(10, "create-estate", "create-estate"))

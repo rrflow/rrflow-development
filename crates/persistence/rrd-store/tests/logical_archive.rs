@@ -3,8 +3,8 @@ use rrd_core::{
 };
 use rrd_core::{RuntimeEventSchema, RuntimeSchemaRegistry, RuntimeType};
 use rrd_store::{
-    export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root, Engine,
-    NativeEngine,
+    export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root,
+    RrflowKvStore, StorageEngine,
 };
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
@@ -34,8 +34,8 @@ fn runtime_claim(expected_cursor: u64, value: Claim) -> RuntimeCommit {
     }
 }
 
-fn source(root: &std::path::Path) -> NativeEngine {
-    let engine = NativeEngine::open(root).unwrap();
+fn source(root: &std::path::Path) -> RrflowKvStore {
+    let engine = RrflowKvStore::open(root).unwrap();
     engine
         .append_batch(&[claim("standalone-before", 10)])
         .unwrap();
@@ -87,7 +87,7 @@ fn exports_inspects_and_restores_exact_log_coordinates() {
     assert!(report.reopened);
     assert_eq!(report.inventory, exported);
 
-    let restored = NativeEngine::open(&target).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(restored.sequence().unwrap(), source.sequence().unwrap());
     assert_eq!(
         restored.runtime_cursor().unwrap(),
@@ -129,7 +129,7 @@ fn corruption_is_denied_before_target_publication_and_retry_succeeds() {
 
     std::fs::write(&archive, original).unwrap();
     restore_logical_archive_to_new_root(&archive, &target, 101).unwrap();
-    assert_eq!(NativeEngine::open(&target).unwrap().sequence().unwrap(), 5);
+    assert_eq!(RrflowKvStore::open(&target).unwrap().sequence().unwrap(), 5);
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn restore_preserves_the_original_transaction_audit_envelope() {
     export_logical_archive(&source, &archive).unwrap();
     restore_logical_archive_to_new_root(&archive, &target, 100).unwrap();
 
-    let restored = NativeEngine::open(&target).unwrap();
+    let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(
         restored.runtime_audit(&outcome.commit_id).unwrap(),
         Some(expected_audit),

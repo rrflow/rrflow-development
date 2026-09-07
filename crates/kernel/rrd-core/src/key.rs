@@ -16,10 +16,9 @@
 //! retirement guarantee in `SPEC.md` §6 and is covered by
 //! `rrd-store/tests/bitemporal.rs`.
 //!
-//! Verified against Fjall 3.1.8 on 2026-08-09 (`SPEC.md` §6.1): prefix scan
-//! returned newest-first ordering, all valid-time boundary cases resolved
-//! correctly, and the adversarial neighbours `wp3x/status`, `wp3/statusx`, and
-//! `wp/status` produced no leakage.
+//! The deterministic reference and storage differential suites verify
+//! newest-first ordering, every valid-time boundary, and isolation from the
+//! adversarial neighbours `wp3x/status`, `wp3/statusx`, and `wp/status`.
 
 use crate::error::{Error, Result};
 use crate::ident::{Predicate, Reader, Subject, SEP};

@@ -169,7 +169,7 @@ pub enum Command {
         #[command(subcommand)]
         action: IdentityAction,
     },
-    /// Offline storage migration and recovery operations.
+    /// Content-authenticated logical archive and retained backup operations.
     Storage {
         #[command(subcommand)]
         action: StorageAction,
@@ -262,12 +262,6 @@ pub enum DevAction {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum StorageAction {
-    /// Start or resume the explicit Fjall-to-RRD LSM migration.
-    Migrate,
-    /// Inspect the durable migration marker without opening the database.
-    Status,
-    /// Restore the retained Fjall source if native has not diverged.
-    Rollback,
     /// Export a content-authenticated, backend-independent logical archive.
     ArchiveExport {
         #[arg(long)]
@@ -302,12 +296,6 @@ pub enum StorageAction {
         #[arg(long)]
         backup_id: String,
     },
-    /// Start or resume the exact-successor native application-format upgrade.
-    FormatUpgrade,
-    /// Restore the retained predecessor if the visible successor has not diverged.
-    FormatRollback,
-    /// Inspect the authenticated native application-format migration ledger.
-    FormatStatus,
 }
 
 impl Command {
@@ -344,15 +332,6 @@ impl Command {
                 action: IdentityAction::Resolve { .. },
             } => "identity-resolve",
             Command::Storage {
-                action: StorageAction::Migrate,
-            } => "storage-migrate",
-            Command::Storage {
-                action: StorageAction::Status,
-            } => "storage-status",
-            Command::Storage {
-                action: StorageAction::Rollback,
-            } => "storage-rollback",
-            Command::Storage {
                 action: StorageAction::ArchiveExport { .. },
             } => "storage-archive-export",
             Command::Storage {
@@ -370,15 +349,6 @@ impl Command {
             Command::Storage {
                 action: StorageAction::BackupRestore { .. },
             } => "storage-backup-restore",
-            Command::Storage {
-                action: StorageAction::FormatUpgrade,
-            } => "storage-format-upgrade",
-            Command::Storage {
-                action: StorageAction::FormatRollback,
-            } => "storage-format-rollback",
-            Command::Storage {
-                action: StorageAction::FormatStatus,
-            } => "storage-format-status",
         }
     }
 
@@ -549,7 +519,6 @@ impl Command {
                 format!("catalogue={}", catalogue.display()),
                 format!("backup_id={backup_id}"),
             ],
-            Command::Storage { .. } => Vec::new(),
             Command::Dev {
                 action: DevAction::Doctor { root },
             } => vec![format!("root={}", root.display())],
@@ -588,9 +557,8 @@ impl Command {
     }
 }
 
-/// Executes commands that must run before the normal persistent Engine is
-/// opened. Migration deliberately takes exclusive ownership of the database
-/// directory and therefore cannot travel through the invocation wrapper.
+/// Executes topology and storage operations that own their open/restore
+/// boundary instead of travelling through the invocation wrapper.
 pub fn execute_offline(
     db: &std::path::Path,
     command: &Command,
@@ -674,30 +642,6 @@ pub fn execute_offline(
         _ => return None,
     };
     Some((|| match action {
-        StorageAction::Migrate | StorageAction::Status | StorageAction::Rollback => {
-            let report = match action {
-                StorageAction::Migrate => Some(RrdEngine::migrate_storage(db, now)?),
-                StorageAction::Status => RrdEngine::storage_migration_status(db)?,
-                StorageAction::Rollback => Some(RrdEngine::rollback_storage_migration(db)?),
-                _ => unreachable!("matched migration action"),
-            };
-            let text = if json {
-                serde_json::to_string_pretty(&report)?
-            } else if let Some(report) = report {
-                format!(
-                    "storage migration {:?}: {} entries / {} bytes / sha256 {}\nFjall backup: {}\nArchive: {}",
-                    report.phase,
-                    report.inventory.entries,
-                    report.inventory.payload_bytes,
-                    report.inventory.archive_sha256,
-                    report.fjall_backup.display(),
-                    report.archive.display(),
-                )
-            } else {
-                "no storage migration marker".into()
-            };
-            Ok(text.into())
-        }
         StorageAction::ArchiveExport { archive } => {
             let engine = RrdEngine::open_project_store(db)?;
             let inventory = engine.export_logical_archive(archive)?;
@@ -795,54 +739,6 @@ pub fn execute_offline(
                     backup_id,
                     report.target.display()
                 )
-            };
-            Ok(text.into())
-        }
-        StorageAction::FormatUpgrade => {
-            let ledger = RrdEngine::migrate_native_format(db, now)?;
-            let text = if json {
-                serde_json::to_string_pretty(&ledger)?
-            } else {
-                format!(
-                    "native format migration {:?}: {:?} -> {} / {} entries / sha256 {}",
-                    ledger.phase,
-                    ledger.source_application_format,
-                    ledger.target_application_format,
-                    ledger.inventory.entries,
-                    ledger.inventory.archive_sha256
-                )
-            };
-            Ok(text.into())
-        }
-        StorageAction::FormatRollback => {
-            let ledger = RrdEngine::rollback_native_format(db)?;
-            let text = if json {
-                serde_json::to_string_pretty(&ledger)?
-            } else {
-                format!(
-                    "native format rollback {:?}: {:?} <- {} / {} entries / sha256 {}",
-                    ledger.phase,
-                    ledger.source_application_format,
-                    ledger.target_application_format,
-                    ledger.inventory.entries,
-                    ledger.inventory.archive_sha256
-                )
-            };
-            Ok(text.into())
-        }
-        StorageAction::FormatStatus => {
-            let ledger = RrdEngine::native_format_migration_status(db)?;
-            let text = if json {
-                serde_json::to_string_pretty(&ledger)?
-            } else if let Some(ledger) = ledger {
-                format!(
-                    "native format migration {:?}: {:?} -> {}",
-                    ledger.phase,
-                    ledger.source_application_format,
-                    ledger.target_application_format
-                )
-            } else {
-                "no native format migration ledger".into()
             };
             Ok(text.into())
         }

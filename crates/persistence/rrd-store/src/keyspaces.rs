@@ -1,22 +1,8 @@
-//! Keyspace names and durability classes.
-//!
-//! A keyspace here is a Fjall 3.x keyspace: one LSM tree within one database,
-//! named a *partition* before Fjall 3.0.
-//!
-//! Durability accounts for 0.431 ms of a 0.562 ms claim write (`SPEC.md` §2), so
-//! telemetry must not incur it. `SPEC.md` §7.1 assigns each keyspace a class.
-
-use fjall::PersistMode;
+//! Canonical rrflowKV keyspaces, physical tags, and durability classes.
 
 /// Authoritative claims.
 pub const CLAIMS: &str = "claims";
-/// Sequence index: append sequence to canonical claim key. Current native and
-/// Fjall writes use the compact key reference; native still reads the legacy
-/// inline `RRDNSI01` claim envelope during format transition.
-///
-/// Replaces the `events` keyspace carried over from the prior runtime, which was
-/// allocated for a term the specification never defined and which nothing wrote
-/// to. The mapping is part of the persisted-format compatibility contract.
+/// Sequence index: append sequence to canonical claim key.
 pub const SEQUENCE_INDEX: &str = "sequence_index";
 /// Read telemetry. Loss on crash is acceptable.
 pub const ACCESS: &str = "access";
@@ -51,16 +37,12 @@ pub const RUNTIME_COMMITS: &str = "runtime_commits";
 /// Latest authoritative schema registry for each runtime scope. Every update
 /// is also present in the hash-chained runtime change log.
 pub const RUNTIME_SCHEMAS: &str = "runtime_schemas";
-/// Persisted leased read stamps. Native `RRD LSM` uses the same catalog to pin
-/// physical manifests; the append-only compatibility engine needs no further
-/// retention machinery yet.
+/// Persisted leased read stamps. rrflowKV uses the same catalogue to pin
+/// physical manifests.
 pub const RUNTIME_SNAPSHOTS: &str = "runtime_snapshots";
 
-/// Every logical keyspace owned by the persistent Engine contract, in the
-/// canonical order used by storage migration archives. Adding a keyspace is a
-/// format decision: migrations deny unknown source keyspaces and therefore
-/// cannot silently omit newly introduced state.
-pub const ALL: [&str; 18] = [
+#[cfg(test)]
+const ALL: [&str; 18] = [
     CLAIMS,
     SEQUENCE_INDEX,
     ACCESS,
@@ -81,56 +63,30 @@ pub const ALL: [&str; 18] = [
     RUNTIME_SNAPSHOTS,
 ];
 
-/// Manifest-authenticated native logical-key encoding. Format 1 stores the
-/// UTF-8 keyspace name followed by NUL. Format 2 stores one stable non-zero tag;
-/// the archive remains logical and therefore independent of either encoding.
-pub(crate) const NATIVE_KEYSPACE_TAG_FORMAT_V2: u64 = 0x5252_4453_4b30_3032; // `RRDSK002`
+/// Manifest-authenticated rrflowKV application format (`RRDSK002`).
+pub(crate) const RRFLOW_KV_FORMAT: u64 = 0x5252_4453_4b30_3032;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum NativeKeyCodec {
-    TextV1,
-    TagV2,
-}
+pub(crate) struct RrflowKvKeyCodec;
 
-impl NativeKeyCodec {
+impl RrflowKvKeyCodec {
     pub(crate) fn from_application_format(format: Option<u64>) -> Option<Self> {
-        match format {
-            None => Some(Self::TextV1),
-            Some(NATIVE_KEYSPACE_TAG_FORMAT_V2) => Some(Self::TagV2),
-            Some(_) => None,
-        }
+        (format == Some(RRFLOW_KV_FORMAT)).then_some(Self)
     }
 
     pub(crate) fn encode(self, space: &str, key: &[u8]) -> Option<Vec<u8>> {
-        match self {
-            Self::TextV1 => {
-                let mut stored = Vec::with_capacity(space.len() + 1 + key.len());
-                stored.extend_from_slice(space.as_bytes());
-                stored.push(0);
-                stored.extend_from_slice(key);
-                Some(stored)
-            }
-            Self::TagV2 => {
-                let mut stored = Vec::with_capacity(1 + key.len());
-                stored.push(native_keyspace_tag(space)?);
-                stored.extend_from_slice(key);
-                Some(stored)
-            }
-        }
+        let mut stored = Vec::with_capacity(1 + key.len());
+        stored.push(rrflow_kv_keyspace_tag(space)?);
+        stored.extend_from_slice(key);
+        Some(stored)
     }
 
     pub(crate) fn strip<'a>(self, space: &str, stored: &'a [u8]) -> Option<&'a [u8]> {
-        match self {
-            Self::TextV1 => {
-                let prefix = self.encode(space, &[])?;
-                stored.strip_prefix(prefix.as_slice())
-            }
-            Self::TagV2 => stored.strip_prefix(&[native_keyspace_tag(space)?]),
-        }
+        stored.strip_prefix(&[rrflow_kv_keyspace_tag(space)?])
     }
 }
 
-pub(crate) fn native_keyspace_tag(space: &str) -> Option<u8> {
+pub(crate) fn rrflow_kv_keyspace_tag(space: &str) -> Option<u8> {
     match space {
         CLAIMS => Some(1),
         SEQUENCE_INDEX => Some(2),
@@ -154,59 +110,38 @@ pub(crate) fn native_keyspace_tag(space: &str) -> Option<u8> {
     }
 }
 
-pub(crate) fn native_keyspace_for_tag(tag: u8) -> Option<&'static str> {
-    tag.checked_sub(1)
-        .and_then(|index| ALL.get(usize::from(index)))
-        .copied()
-}
-
 #[cfg(test)]
-mod native_key_codec_tests {
+mod rrflow_kv_key_codec_tests {
     use super::*;
 
     #[test]
-    fn native_keyspace_tags_are_frozen_unique_and_canonical() {
+    fn rrflow_kv_keyspace_tags_are_frozen_unique_and_canonical() {
         let tags = ALL
             .iter()
-            .map(|space| native_keyspace_tag(space).unwrap())
+            .map(|space| rrflow_kv_keyspace_tag(space).unwrap())
             .collect::<Vec<_>>();
         assert_eq!(tags, (1_u8..=18).collect::<Vec<_>>());
-        for (space, tag) in ALL.iter().zip(tags) {
-            assert_eq!(native_keyspace_for_tag(tag), Some(*space));
-        }
+        assert_eq!(RrflowKvKeyCodec::from_application_format(None), None);
         assert_eq!(
-            NativeKeyCodec::from_application_format(None),
-            Some(NativeKeyCodec::TextV1)
+            RrflowKvKeyCodec::from_application_format(Some(RRFLOW_KV_FORMAT)),
+            Some(RrflowKvKeyCodec)
         );
-        assert_eq!(
-            NativeKeyCodec::from_application_format(Some(NATIVE_KEYSPACE_TAG_FORMAT_V2)),
-            Some(NativeKeyCodec::TagV2)
-        );
-        assert_eq!(NativeKeyCodec::from_application_format(Some(7)), None);
-        assert_eq!(native_keyspace_tag("unknown"), None);
-        assert_eq!(native_keyspace_for_tag(0), None);
-        assert_eq!(native_keyspace_for_tag(19), None);
+        assert_eq!(RrflowKvKeyCodec::from_application_format(Some(7)), None);
+        assert_eq!(rrflow_kv_keyspace_tag("unknown"), None);
     }
 
     #[test]
-    fn native_key_codecs_round_trip_frozen_wire_bytes() {
+    fn rrflow_kv_key_codec_round_trips_frozen_wire_bytes() {
         let logical = b"subject/predicate";
-        let legacy = NativeKeyCodec::TextV1.encode(CLAIMS, logical).unwrap();
-        assert_eq!(legacy, b"claims\0subject/predicate");
-        assert_eq!(
-            NativeKeyCodec::TextV1.strip(CLAIMS, &legacy),
-            Some(logical.as_slice())
-        );
-
-        let compact = NativeKeyCodec::TagV2.encode(CLAIMS, logical).unwrap();
+        let compact = RrflowKvKeyCodec.encode(CLAIMS, logical).unwrap();
         assert_eq!(compact, b"\x01subject/predicate");
         assert_eq!(
-            NativeKeyCodec::TagV2.strip(CLAIMS, &compact),
+            RrflowKvKeyCodec.strip(CLAIMS, &compact),
             Some(logical.as_slice())
         );
 
-        assert_eq!(NativeKeyCodec::TagV2.encode("unknown", logical), None);
-        assert_eq!(NativeKeyCodec::TagV2.strip(SEQUENCE_INDEX, &compact), None);
+        assert_eq!(RrflowKvKeyCodec.encode("unknown", logical), None);
+        assert_eq!(RrflowKvKeyCodec.strip(SEQUENCE_INDEX, &compact), None);
     }
 }
 
@@ -246,8 +181,8 @@ pub const RUNTIME_CURSOR: &[u8] = b"watermark/runtime/cursor";
 pub const RUNTIME_LAST_DIGEST: &[u8] = b"watermark/runtime/last-digest";
 pub const RUNTIME_LAST_AUDIT_DIGEST: &[u8] = b"watermark/runtime/last-audit-digest";
 /// Versioned RFC 9162 compact frontier for the global runtime log. Complete
-/// subtree nodes share this META keyspace so migrations and snapshots cannot
-/// accidentally omit proof state.
+/// subtree nodes share this META keyspace so snapshots cannot accidentally
+/// omit proof state.
 pub const RUNTIME_ACCUMULATOR_STATE: &[u8] = b"runtime/merkle/v1/state";
 const RUNTIME_ACCUMULATOR_NODE_PREFIX: &[u8] = b"runtime/merkle/v1/node/";
 
@@ -267,18 +202,4 @@ pub enum Durability {
     /// Telemetry writes. Buffered; a periodic flush or a later authoritative
     /// write carries them to disk.
     Buffered,
-}
-
-impl Durability {
-    /// Persist mode supplied to the write transaction.
-    ///
-    /// `Authoritative` returns `Some(SyncAll)`, which is the sole fsync for the
-    /// transaction. `SPEC.md` §11 correction 3: the commit carries durability, so
-    /// no separate persist call follows it.
-    pub fn persist_mode(self) -> Option<PersistMode> {
-        match self {
-            Durability::Authoritative => Some(PersistMode::SyncAll),
-            Durability::Buffered => Some(PersistMode::Buffer),
-        }
-    }
 }

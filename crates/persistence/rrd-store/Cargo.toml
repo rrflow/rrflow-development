@@ -4,12 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "rrflow storage contract and transitional Fjall adapter: atomic runtime commits, durability, and replay."
+description = "RRFlow storage semantics for persistent rrflowKV and volatile rrflowMX."
 
 [dependencies]
 rrd-core = { path = "../../kernel/rrd-core" }
 rrd-lsm = { path = "../rrd-lsm" }
-fjall = "=3.1.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

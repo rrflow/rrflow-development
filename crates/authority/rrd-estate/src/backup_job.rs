@@ -5,7 +5,7 @@ use super::{
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_store::{ControlTransition, Engine};
+use rrd_store::{ControlTransition, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -147,7 +147,7 @@ pub struct BackupFailRequest {
     pub error: String,
 }
 
-impl<'a, E: Engine + ?Sized> EstateRepository<'a, E> {
+impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     pub fn schedule_backup(&self, request: &ScheduleBackup) -> Result<BackupScheduleOutcome> {
         validate_context(&request.context)?;
         validate_ascii_key(&request.idempotency_key, "backup idempotency key")?;

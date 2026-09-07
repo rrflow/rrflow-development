@@ -5,7 +5,7 @@ use rrd_security::{
     JwtIssueRequest, JwtIssuer, PolicyPredicate, Principal, PrincipalKind, ResourceGrant, Role,
     SecurityRepository, SecurityState, SECURITY_FORMAT,
 };
-use rrd_store::{ControlTransition, Engine, NativeEngine, RrflowMxEngine};
+use rrd_store::{ControlTransition, RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -52,7 +52,7 @@ fn state(secret: &[u8]) -> SecurityState {
 fn policy_is_persistent_exact_scope_and_deny_by_default() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("security");
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&engine, CanonicalId::new("alpha").unwrap());
     repository
         .initialize(
@@ -126,7 +126,7 @@ fn policy_is_persistent_exact_scope_and_deny_by_default() {
     ));
     drop(engine);
 
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&engine, CanonicalId::new("alpha").unwrap());
     assert_eq!(repository.load().unwrap().unwrap().revision, 1);
     assert!(repository
@@ -144,7 +144,7 @@ fn policy_is_persistent_exact_scope_and_deny_by_default() {
 fn audit_is_redacted_idempotent_authenticated_and_replayable() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("security");
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&engine, CanonicalId::new("alpha").unwrap());
     repository
         .initialize(
@@ -179,7 +179,7 @@ fn audit_is_redacted_idempotent_authenticated_and_replayable() {
     ));
     drop(engine);
 
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&engine, CanonicalId::new("alpha").unwrap());
     let page = repository.audit_since(0, 10).unwrap();
     assert_eq!(page.records.len(), 2);
@@ -203,7 +203,7 @@ fn audit_is_redacted_idempotent_authenticated_and_replayable() {
 
 #[test]
 fn concurrent_audit_append_has_one_linear_chain_without_forks() {
-    let engine = Arc::new(RrflowMxEngine::new());
+    let engine = Arc::new(RrflowMxStore::new());
     SecurityRepository::new(engine.as_ref(), CanonicalId::new("alpha").unwrap())
         .initialize(
             state(b"concurrent-secret"),
@@ -251,7 +251,7 @@ fn concurrent_audit_append_has_one_linear_chain_without_forks() {
 
 #[test]
 fn audit_read_rejects_a_substituted_durable_head() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     let instance = CanonicalId::new("alpha").unwrap();
     SecurityRepository::new(&engine, instance.clone())
         .initialize(
@@ -367,7 +367,7 @@ fn roles_jwt_external_identity_rotation_revocation_and_reopen_share_one_authorit
         identity_bindings: BTreeMap::from([(binding.id.clone(), binding)]),
         jwt_issuers: BTreeMap::from([(issuer_id.clone(), issuer)]),
     };
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&engine, CanonicalId::new("alpha").unwrap());
     repository
         .initialize(
@@ -430,7 +430,7 @@ fn roles_jwt_external_identity_rotation_revocation_and_reopen_share_one_authorit
         .is_err());
     drop(engine);
 
-    let engine = NativeEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&engine, CanonicalId::new("alpha").unwrap());
     assert_eq!(
         repository
@@ -526,7 +526,7 @@ fn cyclic_roles_and_ambiguous_equally_specific_policy_fail_closed() {
     assert!(authority.validate().is_err());
 
     let temporary = tempfile::tempdir().unwrap();
-    let engine = NativeEngine::open(temporary.path()).unwrap();
+    let engine = RrflowKvStore::open(temporary.path()).unwrap();
     let mut ambiguous = state(b"secret");
     let constrained = CanonicalId::new("constrained-reader").unwrap();
     ambiguous.roles.insert(

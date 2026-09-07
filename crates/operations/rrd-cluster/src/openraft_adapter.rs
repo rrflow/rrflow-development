@@ -30,10 +30,9 @@ use rrd_lsm::{
     SNAPSHOT_BUNDLE_MAX_BYTES,
 };
 use rrd_store::{
-    native_runtime_commit_context, native_runtime_commit_outcome,
-    native_snapshot_all_object_references, native_snapshot_artifact_view,
-    native_snapshot_object_references, prepare_native_runtime_commit, Error as StoreError,
-    LocalObjectStore,
+    prepare_rrflow_kv_commit, rrflow_kv_commit_context, rrflow_kv_commit_outcome,
+    rrflow_kv_snapshot_all_object_references, rrflow_kv_snapshot_artifact_view,
+    rrflow_kv_snapshot_object_references, Error as StoreError, LocalObjectStore,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -988,7 +987,7 @@ impl RaftStateMachine<RrdRaftTypeConfig> for RrdRaftStateMachine {
             ));
         }
         let mut verified_digests = BTreeSet::new();
-        for object in native_snapshot_all_object_references(&bundle)
+        for object in rrflow_kv_snapshot_all_object_references(&bundle)
             .map_err(|error| storage_error(subject.clone(), ErrorVerb::Read, error.to_string()))?
         {
             if !verified_digests.insert(object.sha256.clone()) {
@@ -1091,7 +1090,7 @@ impl RrdRaftStateMachine {
             ErrorVerb::Read,
         )
         .map_err(|error| ClusterError::Unavailable(error.to_string()))?;
-        native_runtime_commit_context(&database, scope)
+        rrflow_kv_commit_context(&database, scope)
             .map_err(|error| ClusterError::Unavailable(error.to_string()))
     }
 
@@ -1171,13 +1170,14 @@ impl RrdRaftStateMachine {
                 "cached snapshot state differs from its transfer metadata",
             ));
         }
-        let (read, objects) = native_snapshot_artifact_view(&bundle, scope).map_err(|error| {
-            storage_error(
-                ErrorSubject::Snapshot(Some(meta.signature())),
-                ErrorVerb::Read,
-                error.to_string(),
-            )
-        })?;
+        let (read, objects) =
+            rrflow_kv_snapshot_artifact_view(&bundle, scope).map_err(|error| {
+                storage_error(
+                    ErrorSubject::Snapshot(Some(meta.signature())),
+                    ErrorVerb::Read,
+                    error.to_string(),
+                )
+            })?;
         if objects.is_empty() {
             return Ok(None);
         }
@@ -1251,7 +1251,7 @@ impl RrdRaftStateMachine {
         manifest
             .validate()
             .map_err(|error| storage_error(subject.clone(), ErrorVerb::Write, error.to_string()))?;
-        let snapshot_objects = native_snapshot_object_references(&bundle, &manifest.scope)
+        let snapshot_objects = rrflow_kv_snapshot_object_references(&bundle, &manifest.scope)
             .map_err(|error| storage_error(subject.clone(), ErrorVerb::Read, error.to_string()))?;
         if state.last_applied != meta.last_log_id
             || state.last_membership != meta.last_membership
@@ -1555,12 +1555,12 @@ fn apply_command(
             }
             RrdRaftOperation::RuntimeCommit { commit } => {
                 let commit_id = commit.digest();
-                match native_runtime_commit_outcome(database, &commit_id) {
+                match rrflow_kv_commit_outcome(database, &commit_id) {
                     Ok(Some(outcome)) => {
                         reason = "canonical runtime transaction was already committed".into();
                         runtime_outcome = Some(outcome);
                     }
-                    Ok(None) => match prepare_native_runtime_commit(database, commit) {
+                    Ok(None) => match prepare_rrflow_kv_commit(database, commit) {
                         Ok(plan) => {
                             let (outcome, runtime_operations) =
                                 plan.into_parts_for(database).map_err(|error| {

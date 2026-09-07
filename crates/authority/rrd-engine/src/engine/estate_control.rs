@@ -911,7 +911,7 @@ impl RrdEngine {
                             "existing restore target is not a direct canonical directory".into(),
                         ));
                     }
-                    let restored = PersistentEngine::open(&target)?;
+                    let restored = RrflowKvStore::open(&target)?;
                     if restored.sequence()? != entry.archive.claim_sequence
                         || restored.runtime_cursor()? != entry.archive.runtime_cursor
                     {
@@ -934,7 +934,7 @@ impl RrdEngine {
                         &target,
                         at,
                     )?;
-                    let restored = PersistentEngine::open(&target)?;
+                    let restored = RrflowKvStore::open(&target)?;
                     if restored.sequence()? != report.inventory.claim_sequence
                         || restored.runtime_cursor()? != report.inventory.runtime_cursor
                     {
@@ -1360,7 +1360,7 @@ fn derived_recovery_operation_id(
 
 #[allow(clippy::too_many_arguments)]
 fn commit_local_recovery_control(
-    engine: &impl Engine,
+    engine: &impl StorageEngine,
     key: String,
     expected: Option<Vec<u8>>,
     state: &impl Serialize,

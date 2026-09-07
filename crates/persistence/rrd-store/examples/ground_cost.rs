@@ -10,8 +10,8 @@
 //! ```
 
 use rrd_core::{Claim, Predicate, Producer, Subject};
-use rrd_store::Engine;
-use rrd_store::{GroundingReport, Store};
+use rrd_store::StorageEngine;
+use rrd_store::{GroundingReport, RrflowKvStore};
 use std::time::Instant;
 
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
         .map(|c| c.parse().expect("claim count"))
         .unwrap_or(10_000);
 
-    let store = Store::open(std::path::Path::new(&dir)).expect("open store");
+    let store = RrflowKvStore::open(std::path::Path::new(&dir)).expect("open store");
 
     // 200 subjects x 5 predicates, versions distributed across them: enough
     // pair cardinality that the projection is a real map, not a scalar.

@@ -53,7 +53,7 @@ pub use recovery::{
 
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_store::{ControlTransition, Engine};
+use rrd_store::{ControlTransition, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -751,13 +751,13 @@ pub struct ActivityEvidence {
     pub heartbeat_at: Option<u64>,
 }
 
-pub struct EstateRepository<'a, E: Engine + ?Sized> {
+pub struct EstateRepository<'a, E: StorageEngine + ?Sized> {
     engine: &'a E,
     estate_id: CanonicalId,
     key: String,
 }
 
-impl<'a, E: Engine + ?Sized> EstateRepository<'a, E> {
+impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     pub fn new(engine: &'a E, estate_id: CanonicalId) -> Self {
         let key = format!("server/state/estate/{estate_id}/document");
         Self {

@@ -6,7 +6,7 @@
 //! so any sequence-derived reconstruction would have been wrong.
 
 use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
-use rrd_store::Store;
+use rrd_store::{RrflowKvStore, StorageEngine};
 
 fn producer() -> Producer {
     Producer {
@@ -32,7 +32,7 @@ fn recorded(subject: &str, predicate: &str, object: &str, valid_from: u64, tx_ti
 #[test]
 fn a_correction_at_the_same_valid_from_preserves_the_claim_it_corrects() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     let subject = Subject::new("wp3").unwrap();
     let predicate = Predicate::new("status").unwrap();
 
@@ -69,7 +69,7 @@ fn a_correction_at_the_same_valid_from_preserves_the_claim_it_corrects() {
 #[test]
 fn stored_claim_count_tracks_the_sequence_watermark() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
 
     // Deliberately collision-prone: one subject and predicate, one valid_from,
     // many successive corrections.
@@ -94,7 +94,7 @@ fn stored_claim_count_tracks_the_sequence_watermark() {
 #[test]
 fn distinct_valid_times_are_unaffected_by_the_transaction_time_field() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     let subject = Subject::new("wp3").unwrap();
     let predicate = Predicate::new("status").unwrap();
 

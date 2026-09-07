@@ -13,8 +13,8 @@ use rrd_security::{
     Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState, SECURITY_FORMAT,
 };
 use rrd_server::{HttpError, RrdHttpServer, RrdJwtVerificationKey, RRD_MAX_BODY_BYTES};
-use rrd_store::Engine;
-use rrd_store::PersistentEngine;
+use rrd_store::RrflowKvStore;
+use rrd_store::StorageEngine;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
@@ -141,9 +141,12 @@ fn start_configured(
     jwt_verification_key: Option<RrdJwtVerificationKey>,
 ) -> RunningServer {
     let fixture = acquire_server_fixture();
-    let token_key = load_or_create_token_key(&root.join("RRD.SERVER.SECRET")).unwrap();
-    let engine =
-        RrdEngine::open(root, CanonicalId::new("socket-test").unwrap(), token_key).unwrap();
+    let engine = RrdEngine::open_with_token_key_file(
+        root,
+        CanonicalId::new("socket-test").unwrap(),
+        &root.join("RRD.SERVER.SECRET"),
+    )
+    .unwrap();
     let bind = "127.0.0.1:0".parse().unwrap();
     let server = match jwt_verification_key {
         Some(key) => RrdHttpServer::bind_with_jwt(engine, bind, key).unwrap(),
@@ -324,7 +327,7 @@ fn start_root() -> (tempfile::TempDir, PathBuf, RunningServer) {
 }
 
 fn seed_query_fixture(root: &Path) {
-    let engine = PersistentEngine::open(root).unwrap();
+    let engine = RrflowKvStore::open(root).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "RRD query fixture");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -418,7 +421,7 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("instance");
     seed_query_fixture(&root);
-    let engine = PersistentEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let instance = CanonicalId::new("socket-test").unwrap();
     let resource = rrd_contract::ResourcePath {
         segments: vec![rrd_contract::ResourceId::new(
@@ -646,7 +649,7 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     assert!(!json_lines.contains("local-api-key"));
     assert!(!json_lines.contains(token));
     server.stop();
-    let reopened = PersistentEngine::open(&root).unwrap();
+    let reopened = RrflowKvStore::open(&root).unwrap();
     assert_eq!(reopened.runtime_cursor().unwrap(), 2);
     let journal = reopened.control_journal_since(0, 64).unwrap();
     let encoded = serde_json::to_string(&journal).unwrap();
@@ -714,7 +717,7 @@ fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token_and_lease(
         expires_at_unix_ms: u64::MAX,
         disabled: false,
     };
-    let storage = PersistentEngine::open(&root).unwrap();
+    let storage = RrflowKvStore::open(&root).unwrap();
     SecurityRepository::new(&storage, CanonicalId::new("socket-test").unwrap())
         .initialize(
             SecurityState {
@@ -732,9 +735,12 @@ fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token_and_lease(
         )
         .unwrap();
     drop(storage);
-    let token_key = load_or_create_token_key(&root.join("RRD.SERVER.SECRET")).unwrap();
-    let engine =
-        RrdEngine::open(&root, CanonicalId::new("socket-test").unwrap(), token_key).unwrap();
+    let engine = RrdEngine::open_with_token_key_file(
+        &root,
+        CanonicalId::new("socket-test").unwrap(),
+        &root.join("RRD.SERVER.SECRET"),
+    )
+    .unwrap();
     let jwt = engine
         .issue_principal_jwt(
             &principal_id,
@@ -834,7 +840,7 @@ fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token_and_lease(
     assert_eq!(payload(&replay)["session_id"], session_id);
     server.stop();
 
-    let storage = PersistentEngine::open(&root).unwrap();
+    let storage = RrflowKvStore::open(&root).unwrap();
     let repository = SecurityRepository::new(&storage, CanonicalId::new("socket-test").unwrap());
     let audit = repository.audit_since(0, 64).unwrap();
     assert!(audit.records.iter().any(|(_, record)| {
@@ -1295,7 +1301,7 @@ fn managed_backup_and_restore_are_authenticated_replay_safe_and_path_closed() {
         .path()
         .join("rrd-service/socket-test/restores/restore-a");
     assert!(restored_root.join("CURRENT").is_file());
-    let restored_engine = PersistentEngine::open(&restored_root).unwrap();
+    let restored_engine = RrflowKvStore::open(&restored_root).unwrap();
     assert_eq!(restored_engine.sequence().unwrap(), 0);
     assert_eq!(restored_engine.runtime_cursor().unwrap(), 2);
     drop(restored_engine);
@@ -2088,7 +2094,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     );
     server.stop();
 
-    let engine = PersistentEngine::open(&root).unwrap();
+    let engine = RrflowKvStore::open(&root).unwrap();
     let page = engine
         .runtime_changes_since(0, 32, Some(&ScopeId::new("instance:socket-test").unwrap()))
         .unwrap();
@@ -2102,7 +2108,7 @@ fn authenticated_estate_read_returns_the_public_snapshot_only() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("instance");
     {
-        let engine = PersistentEngine::open(&root).unwrap();
+        let engine = RrflowKvStore::open(&root).unwrap();
         let repository =
             rrd_estate::EstateRepository::new(&engine, CanonicalId::new("estate-a").unwrap());
         repository
@@ -2257,7 +2263,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         shutdown_complete,
     };
 
-    assert!(PersistentEngine::open(&root).is_err());
+    assert!(RrflowKvStore::open(&root).is_err());
     let (status, capabilities) = http(process.address, "GET", "/v1/capabilities", &[], &[]);
     assert_eq!(status, 200);
     assert_eq!(payload(&capabilities)["deployment_mode"], "local_daemon");
@@ -2387,7 +2393,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
     );
 
     process.stop();
-    let reopened = PersistentEngine::open(&root).unwrap();
+    let reopened = RrflowKvStore::open(&root).unwrap();
     assert_eq!(reopened.runtime_cursor().unwrap(), 3);
 }
 

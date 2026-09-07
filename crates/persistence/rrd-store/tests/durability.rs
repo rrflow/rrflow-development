@@ -13,7 +13,7 @@
 //! database is placed beside the compiled binary in the target directory.
 
 use rrd_core::{RuntimeMutation, ScopeId};
-use rrd_store::{Engine, NativeEngine, Store};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -67,7 +67,7 @@ fn flushed_claims_survive_sigkill() {
     let db = scratch("flushed");
     run_and_kill(&db, 500, "flush");
 
-    let store = Store::open(&db).expect("reopen after kill");
+    let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(
         store.sequence().unwrap(),
         500,
@@ -82,7 +82,7 @@ fn unflushed_claims_are_not_claimed_as_durable() {
     // committed by the timer before the kill.
     run_and_kill(&db, 500, "noflush");
 
-    let store = Store::open(&db).expect("reopen after kill");
+    let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(
         store.sequence().unwrap(),
         0,
@@ -98,9 +98,9 @@ fn the_sequence_index_agrees_with_the_watermark_after_sigkill() {
     let db = scratch("index-consistency");
     run_and_kill(&db, 500, "flush");
 
-    let store = Store::open(&db).expect("reopen after kill");
+    let store = RrflowKvStore::open(&db).expect("reopen after kill");
     let watermark = store.sequence().unwrap();
-    let scanned = store.all_claims().unwrap().len();
+    let scanned = store.claims_in_range(0, watermark).unwrap().len();
     assert_eq!(watermark, 500);
     assert_eq!(
         scanned, watermark as usize,
@@ -113,10 +113,13 @@ fn an_unflushed_index_is_as_empty_as_the_claims_it_indexes() {
     let db = scratch("index-unflushed");
     run_and_kill(&db, 500, "noflush");
 
-    let store = Store::open(&db).expect("reopen after kill");
+    let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(store.sequence().unwrap(), 0);
     assert_eq!(
-        store.all_claims().unwrap().len(),
+        store
+            .claims_in_range(0, store.sequence().unwrap())
+            .unwrap()
+            .len(),
         0,
         "index entries survived a termination that the claims did not"
     );
@@ -128,7 +131,7 @@ fn a_reopened_store_continues_the_sequence_rather_than_restarting_it() {
     run_and_kill(&db, 100, "flush");
     run_and_kill(&db, 100, "flush");
 
-    let store = Store::open(&db).expect("reopen after kill");
+    let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(
         store.sequence().unwrap(),
         200,
@@ -137,12 +140,12 @@ fn a_reopened_store_continues_the_sequence_rather_than_restarting_it() {
 }
 
 #[test]
-fn native_stamped_multi_family_transaction_survives_sigkill_atomically() {
-    let db = scratch("native-mixed-family");
-    run_and_kill(&db, 0, "native-transaction");
+fn rrflow_kv_stamped_multi_family_transaction_survives_sigkill_atomically() {
+    let db = scratch("rrflow-kv-mixed-family");
+    run_and_kill(&db, 0, "rrflow-kv-transaction");
 
-    let engine = NativeEngine::open(&db).expect("reopen native engine after kill");
-    let scope = ScopeId::new("instance:native-durability").unwrap();
+    let engine = RrflowKvStore::open(&db).expect("reopen rrflowKV store after kill");
+    let scope = ScopeId::new("instance:rrflow-kv-durability").unwrap();
     assert_eq!(engine.runtime_cursor().unwrap(), 9);
     assert_eq!(engine.sequence().unwrap(), 1);
 
@@ -207,13 +210,13 @@ fn native_stamped_multi_family_transaction_survives_sigkill_atomically() {
 }
 
 #[test]
-fn native_writer_lock_fails_fast_across_processes_and_recovers_after_owner_death() {
-    let db = scratch("native-writer-owner");
-    let mut owner = spawn_until_ready(&db, 0, "native-lock");
+fn rrflow_kv_writer_lock_fails_fast_across_processes_and_recovers_after_owner_death() {
+    let db = scratch("rrflow-kv-writer-owner");
+    let mut owner = spawn_until_ready(&db, 0, "rrflow-kv-lock");
     let contender_path = db.clone();
     let (sender, receiver) = mpsc::sync_channel(1);
     let contender = thread::spawn(move || {
-        let result = NativeEngine::open(&contender_path)
+        let result = RrflowKvStore::open(&contender_path)
             .map(|_| ())
             .map_err(|error| error.to_string());
         sender.send(result).unwrap();
@@ -224,14 +227,14 @@ fn native_writer_lock_fails_fast_across_processes_and_recovers_after_owner_death
         Err(error) => {
             kill_child(&mut owner);
             contender.join().unwrap();
-            panic!("second native writer did not fail promptly: {error}");
+            panic!("second rrflowKV writer did not fail promptly: {error}");
         }
     };
     contender.join().unwrap();
-    let error = result.expect_err("second native writer unexpectedly opened");
+    let error = result.expect_err("second rrflowKV writer unexpectedly opened");
     assert!(error.contains("active writer"), "{error}");
 
     kill_child(&mut owner);
-    let reopened = NativeEngine::open(&db).expect("reopen after writer owner death");
+    let reopened = RrflowKvStore::open(&db).expect("reopen after writer owner death");
     assert_eq!(reopened.runtime_cursor().unwrap(), 0);
 }

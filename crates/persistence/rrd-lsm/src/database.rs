@@ -263,9 +263,9 @@ impl CompactionBoundary {
     }
 }
 
-/// Single-writer native database with crash-ordered WAL → segment → manifest
-/// publication. Fjall remains the compatibility oracle until the Engine-level
-/// differential and performance gates close.
+/// Single-writer RRFlow LSM database with crash-ordered WAL → segment →
+/// manifest publication. RRFlow's model, differential, recovery, and benchmark
+/// gates define its correctness and performance requirements.
 pub struct Database {
     root: PathBuf,
     manifests: ManifestStore,
@@ -433,7 +433,7 @@ impl Database {
             wal_recovery_ms,
             wal_payload_bytes,
             total_ms = total_started.elapsed().as_millis() as u64,
-            "native LSM open phases completed"
+            "rrflowKV LSM open phases completed"
         );
         Ok(Self {
             root: root.to_owned(),

@@ -1,7 +1,7 @@
 use crate::{bind, execute, plan, Catalog, Error, ExecutionBudget, Parameters, QueryRow, Result};
 use crate::{CursorExpr, Query};
 use rrd_core::{digest, ScopeId};
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -47,7 +47,7 @@ impl LiveQueryDelta {
     }
 }
 
-pub fn poll_live_query<E: Engine>(
+pub fn poll_live_query<E: StorageEngine>(
     engine: &E,
     scope: &ScopeId,
     query: &Query,
@@ -140,7 +140,7 @@ pub fn poll_live_query<E: Engine>(
     })
 }
 
-fn execute_at<E: Engine>(
+fn execute_at<E: StorageEngine>(
     engine: &E,
     catalogue: &Catalog,
     query: &Query,

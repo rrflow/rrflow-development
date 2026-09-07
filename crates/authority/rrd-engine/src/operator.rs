@@ -1,13 +1,13 @@
-//! Engine-owned embedded and offline operator operations.
+//! `RrdEngine`-owned embedded and operator operations.
 //!
 //! This module is private: outward adapters receive [`crate::RrdEngine`] and
 //! engine-owned value types, never a second storage-opening handle or an
-//! `rrd_store::Engine` escape.
+//! `rrd_store::StorageEngine` escape.
 
-use crate::{load_or_create_token_key, InstanceBinding, RrdEngine, ServiceError};
+use crate::{InstanceBinding, RrdEngine, ServiceError};
 use rrd_contract::CanonicalId;
 use rrd_core::{RuntimeCommit, RuntimeMutation};
-use rrd_store::Engine as _;
+use rrd_store::StorageEngine as _;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15,9 +15,8 @@ pub use rrd_core::{
     digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ScopeId, Subject,
 };
 pub use rrd_store::{
-    BackupCatalogue, BackupEntry, FormatMigrationEdge, FormatMigrationLedger,
-    Invocation as OperatorInvocation, InvocationInput as OperatorInvocationInput,
-    LogicalArchiveInventory, LogicalRestoreReport, MigrationReport, NativeApplicationFormat,
+    BackupCatalogue, BackupEntry, Invocation as OperatorInvocation,
+    InvocationInput as OperatorInvocationInput, LogicalArchiveInventory, LogicalRestoreReport,
     Outcome, RemovalReport, Trigger,
 };
 
@@ -26,9 +25,9 @@ pub type OperatorResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 const LOCAL_TOKEN_KEY_FILE: &str = "RRD.SECRET";
 
 impl RrdEngine {
-    fn persistent_storage(&self) -> OperatorResult<&rrd_store::PersistentEngine> {
+    fn persistent_storage(&self) -> OperatorResult<&rrd_store::RrflowKvStore> {
         self.storage
-            .as_persistent()
+            .as_rrflow_kv()
             .ok_or_else(|| "operation requires a persistent RRD root".into())
     }
 
@@ -71,10 +70,32 @@ impl RrdEngine {
         let instance = CanonicalId::new(binding.manifest.id.clone())
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
         let database = binding.expected_store();
-        let mut engine = Self::open(&database, instance, [0_u8; 32])?;
-        engine.token_key = load_or_create_token_key(&database.join(LOCAL_TOKEN_KEY_FILE))
-            .map_err(|error| ServiceError::Storage(error.to_string()))?;
+        let engine = Self::open_with_token_key_file(
+            &database,
+            instance,
+            &database.join(LOCAL_TOKEN_KEY_FILE),
+        )?;
         engine.bind_project_authority(binding, wall_clock_millis())?;
+        Ok(engine)
+    }
+
+    /// Opens one project-bound engine using a durable local token-key file.
+    /// Storage initialization always precedes credential creation.
+    pub fn open_bound_with_token_key_file(
+        binding: &InstanceBinding,
+        instance: CanonicalId,
+        token_key_file: &Path,
+        at: u64,
+    ) -> crate::Result<Self> {
+        binding
+            .require_runtime_ready()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        binding
+            .verify_store_path(&binding.expected_store())
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let engine =
+            Self::open_with_token_key_file(&binding.expected_store(), instance, token_key_file)?;
+        engine.bind_project_authority(binding, at)?;
         Ok(engine)
     }
 
@@ -265,18 +286,6 @@ impl RrdEngine {
         crate::execute_traced_query(&self.storage, scope, source, parameters, budget, actor, at)
     }
 
-    pub fn migrate_storage(db: &Path, now: Millis) -> OperatorResult<MigrationReport> {
-        Ok(rrd_store::migrate_fjall_to_native(db, now)?)
-    }
-
-    pub fn storage_migration_status(db: &Path) -> OperatorResult<Option<MigrationReport>> {
-        Ok(rrd_store::migration_status(db)?)
-    }
-
-    pub fn rollback_storage_migration(db: &Path) -> OperatorResult<MigrationReport> {
-        Ok(rrd_store::rollback_fjall_migration(db)?)
-    }
-
     pub fn inspect_logical_archive(archive: &Path) -> OperatorResult<LogicalArchiveInventory> {
         Ok(rrd_store::inspect_logical_archive(archive)?)
     }
@@ -304,24 +313,6 @@ impl RrdEngine {
         Ok(rrd_store::restore_catalogued_backup(
             catalogue, backup_id, db, now,
         )?)
-    }
-
-    pub fn migrate_native_format(db: &Path, now: Millis) -> OperatorResult<FormatMigrationLedger> {
-        Ok(rrd_store::migrate_native_format(db, now)?)
-    }
-
-    pub fn supported_native_format_migrations() -> &'static [FormatMigrationEdge] {
-        &rrd_store::SUPPORTED_NATIVE_FORMAT_MIGRATIONS
-    }
-
-    pub fn rollback_native_format(db: &Path) -> OperatorResult<FormatMigrationLedger> {
-        Ok(rrd_store::rollback_native_format(db)?)
-    }
-
-    pub fn native_format_migration_status(
-        db: &Path,
-    ) -> OperatorResult<Option<FormatMigrationLedger>> {
-        Ok(rrd_store::native_format_migration_status(db)?)
     }
 
     pub fn canonical_project_root_for_store(path: &Path) -> OperatorResult<PathBuf> {

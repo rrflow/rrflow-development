@@ -5,7 +5,7 @@ use crate::{
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,7 +62,7 @@ pub enum BackupReconcileOutcome {
     },
 }
 
-pub struct BackupReconciler<'a, E: Engine + ?Sized, D: EstateBackupDriver> {
+pub struct BackupReconciler<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> {
     repository: EstateRepository<'a, E>,
     estate_id: CanonicalId,
     worker: CanonicalId,
@@ -70,7 +70,7 @@ pub struct BackupReconciler<'a, E: Engine + ?Sized, D: EstateBackupDriver> {
     driver: D,
 }
 
-impl<'a, E: Engine + ?Sized, D: EstateBackupDriver> BackupReconciler<'a, E, D> {
+impl<'a, E: StorageEngine + ?Sized, D: EstateBackupDriver> BackupReconciler<'a, E, D> {
     pub fn new(
         engine: &'a E,
         estate_id: CanonicalId,

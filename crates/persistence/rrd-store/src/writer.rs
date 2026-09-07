@@ -10,8 +10,8 @@
 //!
 //! ## Durability contract
 //!
-//! - After [`Writer::flush`] returns `Ok`, every claim submitted before that call
-//!   is durable.
+//! - After [`ClaimBatchWriter::flush`] returns `Ok`, every claim submitted
+//!   before that call is durable.
 //! - Before `flush` returns, a submitted claim MAY be lost on process
 //!   termination. This is the documented and tested boundary; see
 //!   `tests/durability.rs`.
@@ -26,29 +26,30 @@
 //! |----------|---------|----------------|
 //! | Continuous, does not await durability | `submit` repeatedly, `flush` at a task boundary | 0.0055 ms |
 //! | Requires durability before proceeding | `submit` then `flush` | 0.438 ms |
-//! | Requires durability before proceeding | `submit`, then block on [`Writer::durable_through`] | 21.264 ms at a 20 ms interval |
+//! | Requires durability before proceeding | `submit`, then block on [`ClaimBatchWriter::durable_through`] | 21.264 ms at a 20 ms interval |
 //!
 //! The third row is an anti-pattern. Blocking on `durable_through` waits out the
 //! full interval for a batch that will never fill, so it pays the interval as
-//! latency and gains no amortization. [`Writer::flush`] commits immediately and
-//! bypasses the interval; its cost is independent of `flush_delay`.
+//! latency and gains no amortization. [`ClaimBatchWriter::flush`] commits
+//! immediately and bypasses the interval; its cost is independent of
+//! `flush_delay`.
 //!
-//! [`Writer::durable_through`] is provided for progress reporting, not as a
-//! synchronization primitive.
+//! [`ClaimBatchWriter::durable_through`] is provided for progress reporting,
+//! not as a synchronization primitive.
 //!
 //! ## Backpressure
 //!
-//! The queue is bounded. [`Writer::submit`] blocks when the queue is full rather
-//! than growing without limit, so a producer faster than the substrate is slowed
-//! rather than exhausting memory. Blocking occurrences are counted in
-//! [`WriterStats::backpressure_waits`], which is the signal for tuning
-//! [`WriterConfig::queue_capacity`] from evidence rather than assumption.
+//! The queue is bounded. [`ClaimBatchWriter::submit`] blocks when the queue is
+//! full rather than growing without limit, so a producer faster than the
+//! substrate is slowed rather than exhausting memory. Blocking occurrences are counted in
+//! [`ClaimBatchWriterStats::backpressure_waits`], which is the signal for tuning
+//! [`ClaimBatchWriterConfig::queue_capacity`] from evidence rather than assumption.
 //!
 //! Implemented on `std` synchronization only. The kernel and this adapter carry
 //! no async runtime.
 
 use crate::error::{Error, Result};
-use crate::store::Store;
+use crate::{RrflowKvStore, StorageEngine};
 use rrd_core::Claim;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -56,16 +57,16 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WriterConfig {
+pub struct ClaimBatchWriterConfig {
     /// Maximum time a submitted claim waits before its batch is committed.
     pub flush_delay: Duration,
     /// Maximum claims committed in one transaction.
     pub max_batch: usize,
-    /// Maximum claims buffered before [`Writer::submit`] blocks.
+    /// Maximum claims buffered before [`ClaimBatchWriter::submit`] blocks.
     pub queue_capacity: usize,
 }
 
-impl Default for WriterConfig {
+impl Default for ClaimBatchWriterConfig {
     fn default() -> Self {
         Self {
             flush_delay: Duration::from_millis(5),
@@ -76,16 +77,16 @@ impl Default for WriterConfig {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct WriterStats {
+pub struct ClaimBatchWriterStats {
     pub claims_submitted: u64,
     pub claims_committed: u64,
     pub batches_committed: u64,
     pub largest_batch: usize,
-    /// Occurrences of [`Writer::submit`] blocking on a full queue.
+    /// Occurrences of [`ClaimBatchWriter::submit`] blocking on a full queue.
     pub backpressure_waits: u64,
 }
 
-impl WriterStats {
+impl ClaimBatchWriterStats {
     /// Mean claims per committed batch. Zero when nothing has been committed.
     pub fn mean_batch_size(&self) -> f64 {
         if self.batches_committed == 0 {
@@ -102,7 +103,7 @@ struct State {
     submitted: u64,
     /// Claims durable on disk.
     durable_through: u64,
-    stats: WriterStats,
+    stats: ClaimBatchWriterStats,
     failure: Option<String>,
     /// Set by `flush` so the worker can distinguish an explicit durability
     /// boundary from a spurious wakeup or a producer arriving before its wait.
@@ -120,16 +121,16 @@ struct Shared {
     drained: Condvar,
 }
 
-pub struct Writer {
+pub struct ClaimBatchWriter {
     shared: Arc<Shared>,
     handle: Option<JoinHandle<()>>,
     stopping: Arc<AtomicBool>,
-    config: WriterConfig,
+    config: ClaimBatchWriterConfig,
 }
 
-impl Writer {
+impl ClaimBatchWriter {
     /// Starts the commit thread.
-    pub fn spawn(store: Arc<Store>, config: WriterConfig) -> Self {
+    pub fn spawn(store: Arc<RrflowKvStore>, config: ClaimBatchWriterConfig) -> Self {
         assert!(config.max_batch > 0, "max_batch must be non-zero");
         assert!(config.queue_capacity > 0, "queue_capacity must be non-zero");
 
@@ -138,7 +139,7 @@ impl Writer {
                 pending: Vec::new(),
                 submitted: 0,
                 durable_through: 0,
-                stats: WriterStats::default(),
+                stats: ClaimBatchWriterStats::default(),
                 failure: None,
                 flush_requested: false,
                 shutdown: false,
@@ -151,7 +152,7 @@ impl Writer {
 
         let thread_shared = Arc::clone(&shared);
         let handle = std::thread::Builder::new()
-            .name("rrflow-writer".into())
+            .name("rrflow-kv-claim-writer".into())
             .spawn(move || commit_loop(store, thread_shared, config))
             .expect("spawn writer thread");
 
@@ -227,7 +228,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn stats(&self) -> WriterStats {
+    pub fn stats(&self) -> ClaimBatchWriterStats {
         self.shared
             .state
             .lock()
@@ -240,7 +241,7 @@ impl Writer {
     /// Intended for progress reporting. Callers MUST NOT block on this value to
     /// await durability: doing so waits out the full `flush_delay` for a batch
     /// that will never fill, measured at 21.264 ms against 0.438 ms for
-    /// [`Writer::flush`] under a 20 ms interval. Use `flush` instead.
+    /// [`ClaimBatchWriter::flush`] under a 20 ms interval. Use `flush` instead.
     pub fn durable_through(&self) -> u64 {
         self.shared
             .state
@@ -249,7 +250,7 @@ impl Writer {
             .durable_through
     }
 
-    /// Count of claims accepted by [`Writer::submit`].
+    /// Count of claims accepted by [`ClaimBatchWriter::submit`].
     pub fn submitted(&self) -> u64 {
         self.shared
             .state
@@ -281,7 +282,7 @@ impl Writer {
     }
 }
 
-impl Drop for Writer {
+impl Drop for ClaimBatchWriter {
     fn drop(&mut self) {
         // Best effort: a dropped writer must not leave the commit thread running
         // or silently discard buffered claims.
@@ -289,7 +290,7 @@ impl Drop for Writer {
     }
 }
 
-fn commit_loop(store: Arc<Store>, shared: Arc<Shared>, config: WriterConfig) {
+fn commit_loop(store: Arc<RrflowKvStore>, shared: Arc<Shared>, config: ClaimBatchWriterConfig) {
     loop {
         let batch = {
             let mut state = shared.state.lock().expect("writer state poisoned");

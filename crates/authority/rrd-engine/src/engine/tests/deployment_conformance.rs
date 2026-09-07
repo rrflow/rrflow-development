@@ -179,7 +179,7 @@ fn rrflow_mx_and_rrflow_kv_composition_roots_pass_one_datafusion_corpus() {
         embedded.deployment_mode(),
         rrd_contract::DeploymentMode::Embedded
     );
-    assert_eq!(embedded.readiness(1).unwrap().backend.as_str(), "rrd_lsm");
+    assert_eq!(embedded.readiness(1).unwrap().backend.as_str(), "rrflow_kv");
     assert!(RrdEngine::open(root.path(), instance(), TOKEN_KEY).is_err());
     assert_eq!(run_corpus(&embedded, "embedded"), corpus.expected_ids);
     drop(embedded);

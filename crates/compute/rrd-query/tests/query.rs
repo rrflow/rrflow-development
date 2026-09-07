@@ -13,7 +13,7 @@ use rrd_query::{
 use rrd_query::{
     parse, ComparisonOperator, CursorExpr, Projection, Query, Source, TemporalSelector, TimeExpr,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn value(value: &str) -> RuntimeValue {
@@ -180,7 +180,7 @@ fn fixture_commit() -> RuntimeCommit {
     }
 }
 
-fn execute_fixture<E: Engine>(engine: &E, text: &str) -> rrd_query::QueryExecution {
+fn execute_fixture<E: StorageEngine>(engine: &E, text: &str) -> rrd_query::QueryExecution {
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query = parse(text).unwrap();
@@ -192,7 +192,7 @@ fn execute_fixture<E: Engine>(engine: &E, text: &str) -> rrd_query::QueryExecuti
     .unwrap()
 }
 
-fn execute_text<E: Engine>(
+fn execute_text<E: StorageEngine>(
     engine: &E,
     text: &str,
 ) -> (rrd_query::PhysicalPlan, rrd_query::QueryExecution) {
@@ -211,7 +211,7 @@ fn flattened_rows(execution: &rrd_query::QueryExecution) -> Vec<rrd_query::Query
         .collect()
 }
 
-fn seed_historical_corrections<E: Engine>(engine: &E) {
+fn seed_historical_corrections<E: StorageEngine>(engine: &E) {
     let first = fixture_commit();
     let head = engine.commit_runtime(&first).unwrap().last_cursor;
     engine
@@ -248,7 +248,7 @@ fn seed_historical_corrections<E: Engine>(engine: &E) {
         .unwrap();
 }
 
-fn historical_outcome<E: Engine>(engine: &E) -> (String, String, String, String, u64, u64) {
+fn historical_outcome<E: StorageEngine>(engine: &E) -> (String, String, String, String, u64, u64) {
     let (historical_plan, historical_record) = execute_text(
         engine,
         "FROM record:document AT VALID 100 KNOWN 10 WHERE id = \"a\" PROJECT title EXPLAIN CONTRACT",
@@ -282,18 +282,14 @@ fn historical_outcome<E: Engine>(engine: &E) -> (String, String, String, String,
 }
 
 #[test]
-fn memory_fjall_and_native_return_identical_exact_rows() {
-    let memory = RrflowMxEngine::new();
+fn rrflow_mx_and_rrflow_kv_return_identical_exact_rows() {
+    let memory = RrflowMxStore::new();
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
-    let native_dir = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_dir.path().join("native")).unwrap();
+    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
     let text = "FROM record:document AT VALID 100 KNOWN HEAD WHERE status = \"open\" PROJECT id, title EXPLAIN CONTRACT";
     let left = execute_fixture(&memory, text);
-    let right = execute_fixture(&store, text);
-    let native_result = execute_fixture(&native, text);
+    let right = execute_fixture(&rrflow_kv, text);
     assert_eq!(left, right);
-    assert_eq!(left, native_result);
     assert_eq!(left.returned_rows, 1);
     assert_eq!(left.batches[0].rows[0].values["id"], value("a"));
     assert_eq!(left.batches[0].rows[0].values["title"], value("Alpha"));
@@ -331,7 +327,7 @@ fn memory_fjall_and_native_return_identical_exact_rows() {
 
 #[test]
 fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let scope = ScopeId::new("instance:test").unwrap();
     let read = engine.runtime_read_stamp(&scope).unwrap();
@@ -410,7 +406,7 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
 
 #[test]
 fn explain_analyze_reports_governed_streaming_plane_and_preserves_reference_rows() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query = parse(
@@ -477,7 +473,7 @@ fn equi_join_uses_one_stamp_matches_the_reference_oracle_and_is_strictly_bounded
         ("right.to_id".into(), RuntimeValue::String("b".into())),
     ])];
 
-    let memory = RrflowMxEngine::new();
+    let memory = RrflowMxStore::new();
     let memory_execution = execute_fixture(&memory, text);
     assert_eq!(
         flattened_rows(&memory_execution)
@@ -491,20 +487,16 @@ fn equi_join_uses_one_stamp_matches_the_reference_oracle_and_is_strictly_bounded
         .iter()
         .all(|batch| batch.rows.len() <= ExecutionBudget::default().max_batch_rows));
 
-    let compatibility = tempfile::tempdir().unwrap();
-    let fjall = execute_fixture(&Store::open(compatibility.path()).unwrap(), text);
-    assert_eq!(flattened_rows(&fjall), flattened_rows(&memory_execution));
-
-    let native = tempfile::tempdir().unwrap();
-    let native_path = native.path().join("native");
-    let native_rows = {
-        let engine = NativeEngine::open(&native_path).unwrap();
+    let rrflow_kv = tempfile::tempdir().unwrap();
+    let rrflow_kv_path = rrflow_kv.path().join("rrflow-kv");
+    let persisted_rows = {
+        let engine = RrflowKvStore::open(&rrflow_kv_path).unwrap();
         flattened_rows(&execute_fixture(&engine, text))
     };
-    let reopened = NativeEngine::open(&native_path).unwrap();
+    let reopened = RrflowKvStore::open(&rrflow_kv_path).unwrap();
     let (_, reopened_execution) = execute_text(&reopened, text);
-    assert_eq!(flattened_rows(&reopened_execution), native_rows);
-    assert_eq!(native_rows, flattened_rows(&memory_execution));
+    assert_eq!(flattened_rows(&reopened_execution), persisted_rows);
+    assert_eq!(persisted_rows, flattened_rows(&memory_execution));
 
     let catalog = Catalog::capture(&memory, &ScopeId::new("instance:test").unwrap()).unwrap();
     let unfiltered = parse(
@@ -553,24 +545,19 @@ fn equi_join_uses_one_stamp_matches_the_reference_oracle_and_is_strictly_bounded
 }
 
 #[test]
-fn valid_time_and_known_at_are_stable_across_engines_and_native_reopen() {
-    let memory = RrflowMxEngine::new();
+fn valid_time_and_known_at_are_stable_across_profiles_and_rrflow_kv_reopen() {
+    let memory = RrflowMxStore::new();
     seed_historical_corrections(&memory);
     let expected = historical_outcome(&memory);
 
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    seed_historical_corrections(&fjall);
-    assert_eq!(historical_outcome(&fjall), expected);
-
-    let native_root = tempfile::tempdir().unwrap();
-    let native_path = native_root.path().join("native");
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv_path = rrflow_kv_root.path().join("rrflow-kv");
     {
-        let native = NativeEngine::open(&native_path).unwrap();
-        seed_historical_corrections(&native);
-        assert_eq!(historical_outcome(&native), expected);
+        let rrflow_kv = RrflowKvStore::open(&rrflow_kv_path).unwrap();
+        seed_historical_corrections(&rrflow_kv);
+        assert_eq!(historical_outcome(&rrflow_kv), expected);
     }
-    let reopened = NativeEngine::open(&native_path).unwrap();
+    let reopened = RrflowKvStore::open(&rrflow_kv_path).unwrap();
     assert_eq!(historical_outcome(&reopened), expected);
     assert_eq!(
         expected,
@@ -599,14 +586,11 @@ fn series_and_geo_queries_match_every_persistent_engine() {
             RuntimeValue::Decimal("-122.4".into()),
         ),
     ] {
-        let memory = RrflowMxEngine::new();
-        let fjall_root = tempfile::tempdir().unwrap();
-        let fjall = Store::open(fjall_root.path()).unwrap();
-        let native_root = tempfile::tempdir().unwrap();
-        let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+        let memory = RrflowMxStore::new();
+        let rrflow_kv_root = tempfile::tempdir().unwrap();
+        let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
         let left = execute_fixture(&memory, text);
-        assert_eq!(left, execute_fixture(&fjall, text), "{text}");
-        assert_eq!(left, execute_fixture(&native, text), "{text}");
+        assert_eq!(left, execute_fixture(&rrflow_kv, text), "{text}");
         assert_eq!(left.returned_rows, 1, "{text}");
         assert_eq!(left.batches[0].rows[0].values[field], expected, "{text}");
     }
@@ -615,7 +599,7 @@ fn series_and_geo_queries_match_every_persistent_engine() {
         "FROM series:metric AT VALID 99 KNOWN HEAD PROJECT *",
         "FROM geo:location AT VALID 9 KNOWN HEAD PROJECT *",
     ] {
-        let engine = RrflowMxEngine::new();
+        let engine = RrflowMxStore::new();
         assert_eq!(execute_fixture(&engine, text).returned_rows, 0, "{text}");
     }
 }
@@ -623,14 +607,11 @@ fn series_and_geo_queries_match_every_persistent_engine() {
 #[test]
 fn typed_comparisons_match_every_persistent_engine_and_reject_unsupported_ordering() {
     let text = "FROM series:metric AT VALID 100 KNOWN HEAD WHERE observed_at >= 100 AND series_id != \"other\" PROJECT series_id, observed_at EXPLAIN CONTRACT";
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
     let expected = execute_fixture(&memory, text);
-    assert_eq!(expected, execute_fixture(&fjall, text));
-    assert_eq!(expected, execute_fixture(&native, text));
+    assert_eq!(expected, execute_fixture(&rrflow_kv, text));
     assert_eq!(expected.returned_rows, 1);
     assert_eq!(
         expected.batches[0].rows[0].values["observed_at"],
@@ -644,7 +625,7 @@ fn typed_comparisons_match_every_persistent_engine_and_reject_unsupported_orderi
         "observed_at > 99",
         "observed_at >= 100",
     ] {
-        let engine = RrflowMxEngine::new();
+        let engine = RrflowMxStore::new();
         let query = format!(
             "FROM series:metric AT VALID 100 KNOWN HEAD WHERE {predicate} PROJECT observed_at"
         );
@@ -677,14 +658,11 @@ fn bounded_graph_traversal_is_deterministic_across_every_engine() {
             "a",
         ),
     ] {
-        let memory = RrflowMxEngine::new();
-        let fjall_root = tempfile::tempdir().unwrap();
-        let fjall = Store::open(fjall_root.path()).unwrap();
-        let native_root = tempfile::tempdir().unwrap();
-        let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+        let memory = RrflowMxStore::new();
+        let rrflow_kv_root = tempfile::tempdir().unwrap();
+        let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
         let left = execute_fixture(&memory, text);
-        assert_eq!(left, execute_fixture(&fjall, text), "{text}");
-        assert_eq!(left, execute_fixture(&native, text), "{text}");
+        assert_eq!(left, execute_fixture(&rrflow_kv, text), "{text}");
         assert_eq!(left.returned_rows, 1, "{text}");
         assert_eq!(
             left.batches[0].rows[0].values["node_id"],
@@ -699,7 +677,7 @@ fn bounded_graph_traversal_is_deterministic_across_every_engine() {
 
 #[test]
 fn all_source_families_execute_at_explicit_time() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     for (text, identity) in [
@@ -738,7 +716,7 @@ fn all_source_families_execute_at_explicit_time() {
 
 #[test]
 fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
-    fn exercise<E: Engine>(engine: &E) -> rrd_query::QueryExecution {
+    fn exercise<E: StorageEngine>(engine: &E) -> rrd_query::QueryExecution {
         engine.commit_runtime(&fixture_commit()).unwrap();
         let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
         let query = parse(
@@ -779,14 +757,11 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
         .unwrap()
     }
 
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
     let expected = exercise(&memory);
-    assert_eq!(expected, exercise(&fjall));
-    assert_eq!(expected, exercise(&native));
+    assert_eq!(expected, exercise(&rrflow_kv));
     assert_eq!(expected.scanned_changes, 1);
     assert_eq!(expected.stamp_validation, "rfc9162_inclusion_proof");
     assert_eq!(expected.stamp_validation_max_changes, 1);
@@ -797,7 +772,7 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
 
 #[test]
 fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query =
@@ -820,7 +795,7 @@ fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
 #[test]
 fn cursor_lookup_uses_authenticated_logarithmic_validation() {
     const EVENTS: u64 = 4_096;
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     let fixture_head = engine
         .commit_runtime(&fixture_commit())
         .unwrap()
@@ -886,7 +861,7 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
 
 #[test]
 fn text_and_typed_sdk_produce_the_same_plan() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let parsed = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
@@ -907,7 +882,7 @@ fn text_and_typed_sdk_produce_the_same_plan() {
 
 #[test]
 fn binding_and_budget_fail_closed() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     engine.commit_runtime(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let unknown = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT missing").unwrap();
@@ -959,7 +934,7 @@ fn binding_and_budget_fail_closed() {
 
 #[test]
 fn event_queries_honor_cursor_typed_retirement_at_valid_time() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     let initial = engine.commit_runtime(&fixture_commit()).unwrap();
     engine
         .commit_runtime(&RuntimeCommit {

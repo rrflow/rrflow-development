@@ -6,7 +6,7 @@ use rrd_estate::{
     ObservedPhase, PinRecoveryPoint, PrepareRecoveryPrune, ReceiptBoundary, ReceiptRequest,
     RecordRestoreEvidence, ReleaseRecoveryPin, ScheduleBackup, SetDesired, SetRecoveryPolicy,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
@@ -21,7 +21,7 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
     }
 }
 
-fn prepare_stopped_instance<E: Engine>(engine: &E) {
+fn prepare_stopped_instance<E: StorageEngine>(engine: &E) {
     let repository = EstateRepository::new(engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -85,7 +85,7 @@ fn prepare_stopped_instance<E: Engine>(engine: &E) {
         .unwrap();
 }
 
-fn set_policy<E: Engine>(engine: &E, at: u64, operation: &str) {
+fn set_policy<E: StorageEngine>(engine: &E, at: u64, operation: &str) {
     EstateRepository::new(engine, id("estate-a"))
         .set_recovery_policy(&SetRecoveryPolicy {
             context: context(at, operation, operation),
@@ -99,7 +99,7 @@ fn set_policy<E: Engine>(engine: &E, at: u64, operation: &str) {
         .unwrap();
 }
 
-fn complete_backup<E: Engine>(engine: &E, job: &str, created_at: u64, hex: char) -> String {
+fn complete_backup<E: StorageEngine>(engine: &E, job: &str, created_at: u64, hex: char) -> String {
     let repository = EstateRepository::new(engine, id("estate-a"));
     repository
         .schedule_backup(&ScheduleBackup {
@@ -150,7 +150,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
     let root = tempfile::tempdir().unwrap();
     let database = root.path().join("estate-native");
     {
-        let engine = NativeEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         prepare_stopped_instance(&engine);
         set_policy(&engine, 75, "set-policy");
         let backup_id = complete_backup(&engine, "backup-one", 80, '3');
@@ -170,7 +170,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
         assert!(!serde_json::to_string(&public).unwrap().contains("path"));
     }
 
-    let engine = NativeEngine::open(&database).unwrap();
+    let engine = RrflowKvStore::open(&database).unwrap();
     let replay = EstateRepository::new(&engine, id("estate-a"))
         .set_recovery_policy(&SetRecoveryPolicy {
             context: context(75, "set-policy", "set-policy"),
@@ -207,7 +207,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
 
 #[test]
 fn explicit_holds_drive_deterministic_prune_evidence() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     prepare_stopped_instance(&engine);
     set_policy(&engine, 75, "set-policy");
     let first = complete_backup(&engine, "backup-one", 80, '3');
@@ -292,7 +292,7 @@ fn explicit_holds_drive_deterministic_prune_evidence() {
 
 #[test]
 fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     prepare_stopped_instance(&engine);
     set_policy(&engine, 75, "set-policy");
     let backup_id = complete_backup(&engine, "backup-one", 80, '3');
@@ -333,7 +333,7 @@ fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
 
 #[test]
 fn legacy_backup_jobs_decode_without_recovery_policy_snapshots() {
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     prepare_stopped_instance(&engine);
     let scheduled = EstateRepository::new(&engine, id("estate-a"))
         .schedule_backup(&ScheduleBackup {

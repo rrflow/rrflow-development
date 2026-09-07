@@ -16,14 +16,14 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     RuntimeValueType, ScopeId,
 };
-use rrd_engine::{load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
     SECURITY_FORMAT,
 };
 use rrd_server::RrdHttpServer;
 use rrd_server::RrdMutualTlsServerConfig;
-use rrd_store::{Engine, PersistentEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::{ClientConfig as RustlsClientConfig, RootCertStore};
 use serde_json::{json, Value};
@@ -75,7 +75,7 @@ fn instance_resource() -> ResourcePath {
     }
 }
 
-fn seed(engine: &PersistentEngine, scope: &str) {
+fn seed(engine: &RrflowKvStore, scope: &str) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "Rust SDK fixture");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -241,7 +241,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
     InstanceManifest::ensure_dedicated_as(&project, "sdk-test").unwrap();
     let binding = InstanceBinding::discover(&project).unwrap();
     let root = binding.expected_store();
-    let storage = PersistentEngine::open(&root).unwrap();
+    let storage = RrflowKvStore::open(&root).unwrap();
     seed(&storage, "instance:sdk-test");
     let runtime_head = storage.runtime_cursor().unwrap();
     storage
@@ -312,9 +312,13 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         )
         .unwrap();
     drop(storage);
-    let token_key = load_or_create_token_key(&root.join("RRD.SERVER.SECRET")).unwrap();
-    let engine =
-        RrdEngine::open_bound_with_token_key(&binding, instance.clone(), token_key, 2).unwrap();
+    let engine = RrdEngine::open_bound_with_token_key_file(
+        &binding,
+        instance.clone(),
+        &root.join("RRD.SERVER.SECRET"),
+        2,
+    )
+    .unwrap();
     let authority = binding.authority_binding().unwrap();
     let server =
         RrdHttpServer::bind_project(engine, authority, "127.0.0.1:0".parse().unwrap()).unwrap();
@@ -818,7 +822,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
 async fn loopback_rust_client_passes_the_shared_deployment_corpus() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("local-conformance");
-    let storage = PersistentEngine::open(&root).unwrap();
+    let storage = RrflowKvStore::open(&root).unwrap();
     let instance = CanonicalId::new("local-conformance").unwrap();
     let principal = Principal {
         id: CanonicalId::new("local-client").unwrap(),
@@ -863,8 +867,12 @@ async fn loopback_rust_client_passes_the_shared_deployment_corpus() {
         .unwrap();
     drop(storage);
 
-    let token_key = load_or_create_token_key(&root.join("RRD.SERVER.SECRET")).unwrap();
-    let engine = RrdEngine::open(&root, instance.clone(), token_key).unwrap();
+    let engine = RrdEngine::open_with_token_key_file(
+        &root,
+        instance.clone(),
+        &root.join("RRD.SERVER.SECRET"),
+    )
+    .unwrap();
     let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
     let address = server.local_addr();
     let (shutdown, receiver) = tokio::sync::oneshot::channel();
@@ -904,7 +912,7 @@ async fn loopback_rust_client_passes_the_shared_deployment_corpus() {
 async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("mtls-instance");
-    let storage = PersistentEngine::open(&root).unwrap();
+    let storage = RrflowKvStore::open(&root).unwrap();
     let instance = CanonicalId::new("mtls-sdk-test").unwrap();
     let principal = Principal {
         id: CanonicalId::new("mtls-client").unwrap(),
@@ -963,8 +971,12 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
     let (client_chain, client_key) =
         test_identity(&issuer, Vec::new(), ExtendedKeyUsagePurpose::ClientAuth);
     let server_tls = RrdMutualTlsServerConfig::new(server_chain, server_key, roots(&ca)).unwrap();
-    let token_key = load_or_create_token_key(&root.join("RRD.SERVER.SECRET")).unwrap();
-    let engine = RrdEngine::open(&root, instance.clone(), token_key).unwrap();
+    let engine = RrdEngine::open_with_token_key_file(
+        &root,
+        instance.clone(),
+        &root.join("RRD.SERVER.SECRET"),
+    )
+    .unwrap();
     let server =
         RrdHttpServer::bind_mtls(engine, "127.0.0.1:0".parse().unwrap(), server_tls).unwrap();
     let endpoint = format!("https://localhost:{}", server.local_addr().port());

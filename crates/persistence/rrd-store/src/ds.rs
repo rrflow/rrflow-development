@@ -4,7 +4,7 @@
 //! their references, audit envelope, and projection work become visible in one
 //! engine transaction. Failed commits leave explicit orphans for later GC.
 
-use crate::{Engine, Error, ImmutableObjectStore, Result};
+use crate::{Error, ImmutableObjectStore, Result, StorageEngine};
 use rrd_core::{
     DataTransaction, ObjectReference, RuntimeCommitOutcome, RuntimeMutation, RuntimeRef,
 };
@@ -36,10 +36,10 @@ pub struct DataRuntimeRef<'a, E, O> {
 }
 
 pub trait DataRuntimeAccess {
-    type Engine: Engine;
+    type StorageEngine: StorageEngine;
     type Objects: ImmutableObjectStore;
 
-    fn engine(&self) -> &Self::Engine;
+    fn engine(&self) -> &Self::StorageEngine;
     fn objects(&self) -> &Self::Objects;
 
     fn stage_object(
@@ -84,11 +84,11 @@ pub trait DataRuntimeAccess {
     }
 }
 
-impl<E: Engine, O: ImmutableObjectStore> DataRuntimeAccess for DataRuntime<E, O> {
-    type Engine = E;
+impl<E: StorageEngine, O: ImmutableObjectStore> DataRuntimeAccess for DataRuntime<E, O> {
+    type StorageEngine = E;
     type Objects = O;
 
-    fn engine(&self) -> &Self::Engine {
+    fn engine(&self) -> &Self::StorageEngine {
         &self.engine
     }
 
@@ -97,17 +97,17 @@ impl<E: Engine, O: ImmutableObjectStore> DataRuntimeAccess for DataRuntime<E, O>
     }
 }
 
-impl<'a, E: Engine, O: ImmutableObjectStore> DataRuntimeRef<'a, E, O> {
+impl<'a, E: StorageEngine, O: ImmutableObjectStore> DataRuntimeRef<'a, E, O> {
     pub const fn new(engine: &'a E, objects: &'a O) -> Self {
         Self { engine, objects }
     }
 }
 
-impl<E: Engine, O: ImmutableObjectStore> DataRuntimeAccess for DataRuntimeRef<'_, E, O> {
-    type Engine = E;
+impl<E: StorageEngine, O: ImmutableObjectStore> DataRuntimeAccess for DataRuntimeRef<'_, E, O> {
+    type StorageEngine = E;
     type Objects = O;
 
-    fn engine(&self) -> &Self::Engine {
+    fn engine(&self) -> &Self::StorageEngine {
         self.engine
     }
 
@@ -116,7 +116,7 @@ impl<E: Engine, O: ImmutableObjectStore> DataRuntimeAccess for DataRuntimeRef<'_
     }
 }
 
-impl<E: Engine, O: ImmutableObjectStore> DataRuntime<E, O> {
+impl<E: StorageEngine, O: ImmutableObjectStore> DataRuntime<E, O> {
     pub fn new(engine: E, objects: O) -> Self {
         Self { engine, objects }
     }

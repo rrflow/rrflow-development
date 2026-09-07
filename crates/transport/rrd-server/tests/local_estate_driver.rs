@@ -5,7 +5,7 @@ use rrd_estate::{
     LocalReadiness, LocalShutdown, MutationContext, OperationKind, OperationState,
     ReconcileBoundary, ReconcileOutcome, Reconciler, SetDesired, LOCAL_DEPLOYMENT_FORMAT,
 };
-use rrd_store::PersistentEngine;
+use rrd_store::RrflowKvStore;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -139,7 +139,7 @@ fn catalog() -> LocalDeploymentCatalog {
 }
 
 fn step(database: &Path, state_root: &Path, at: u64) -> ReconcileOutcome {
-    let engine = PersistentEngine::open(database).unwrap();
+    let engine = RrflowKvStore::open(database).unwrap();
     let driver = LocalProcessDriver::new(state_root, catalog()).unwrap();
     let mut reconciler =
         Reconciler::new(&engine, id("estate-a"), id("worker-one"), 30_000, driver).unwrap();
@@ -245,7 +245,7 @@ fn run_controller_and_kill(
                     thread::sleep(Duration::from_millis(10));
                     continue 'retry;
                 }
-                let engine = PersistentEngine::open(database).unwrap();
+                let engine = RrflowKvStore::open(database).unwrap();
                 let repository = EstateRepository::new(&engine, id("estate-a"));
                 let document = repository.load().unwrap().unwrap();
                 let operation_failures = document
@@ -277,7 +277,7 @@ fn run_controller_and_kill(
 }
 
 fn operation_state(database: &Path, operation: &str) -> (OperationState, u64) {
-    let engine = PersistentEngine::open(database).unwrap();
+    let engine = RrflowKvStore::open(database).unwrap();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     let document = repository.load().unwrap().unwrap();
     (
@@ -318,7 +318,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
         state_root: state_root.clone(),
     };
     {
-        let engine = PersistentEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository.create(&context(10, "create-estate")).unwrap();
         repository
@@ -388,7 +388,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
         ReconcileBoundary::Completed,
     );
     {
-        let engine = PersistentEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .set_desired(&SetDesired {
@@ -569,7 +569,7 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
         state_root: state_root.clone(),
     };
     {
-        let engine = PersistentEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository.create(&context(10, "create-estate")).unwrap();
         repository
@@ -624,7 +624,7 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
     );
 
     {
-        let engine = PersistentEngine::open(&database).unwrap();
+        let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .set_desired(&SetDesired {

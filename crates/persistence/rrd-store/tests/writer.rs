@@ -1,7 +1,7 @@
 //! Group-commit writer behaviour. `SPEC.md` §8.1.
 
 use rrd_core::{Claim, ClaimReader, Predicate, Producer, Subject};
-use rrd_store::{Store, Writer, WriterConfig};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -20,16 +20,16 @@ fn claim(i: usize) -> Claim {
     )
 }
 
-fn store() -> (tempfile::TempDir, Arc<Store>) {
+fn store() -> (tempfile::TempDir, Arc<RrflowKvStore>) {
     let dir = tempfile::tempdir().unwrap();
-    let store = Arc::new(Store::open(dir.path()).unwrap());
+    let store = Arc::new(RrflowKvStore::open(dir.path()).unwrap());
     (dir, store)
 }
 
 #[test]
 fn flush_makes_every_prior_submission_readable() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(Arc::clone(&store), WriterConfig::default());
+    let writer = ClaimBatchWriter::spawn(Arc::clone(&store), ClaimBatchWriterConfig::default());
     for i in 0..250 {
         writer.submit(claim(i)).unwrap();
     }
@@ -52,7 +52,7 @@ fn flush_makes_every_prior_submission_readable() {
 #[test]
 fn flush_on_an_empty_queue_returns_without_committing() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(Arc::clone(&store), WriterConfig::default());
+    let writer = ClaimBatchWriter::spawn(Arc::clone(&store), ClaimBatchWriterConfig::default());
     writer.flush().unwrap();
     writer.flush().unwrap();
     assert_eq!(store.sequence().unwrap(), 0);
@@ -62,9 +62,9 @@ fn flush_on_an_empty_queue_returns_without_committing() {
 #[test]
 fn elapsed_delay_commits_without_an_explicit_flush() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_millis(20),
             ..Default::default()
         },
@@ -85,9 +85,9 @@ fn elapsed_delay_commits_without_an_explicit_flush() {
 #[test]
 fn pending_claims_do_not_commit_before_a_trigger() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_secs(3600),
             max_batch: 512,
             queue_capacity: 4096,
@@ -115,9 +115,9 @@ fn a_lone_claim_reaches_durability_within_a_bound_set_by_the_delay() {
     // 20 ms interval so that it verifies the timer without depending on
     // scheduler precision.
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_millis(20),
             max_batch: 512,
             queue_capacity: 4096,
@@ -140,9 +140,9 @@ fn a_lone_claim_reaches_durability_within_a_bound_set_by_the_delay() {
 #[test]
 fn durable_through_never_exceeds_submitted() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_millis(1),
             ..Default::default()
         },
@@ -164,9 +164,9 @@ fn a_full_batch_commits_without_waiting_for_the_delay() {
     let (_dir, store) = store();
     // A delay long enough that any commit within the deadline must have been
     // triggered by batch size rather than by elapsed time.
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_secs(3600),
             max_batch: 16,
             queue_capacity: 4096,
@@ -190,9 +190,9 @@ fn a_full_batch_commits_without_waiting_for_the_delay() {
 #[test]
 fn a_full_queue_applies_backpressure_rather_than_growing() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_millis(1),
             max_batch: 8,
             queue_capacity: 16,
@@ -222,9 +222,9 @@ fn a_full_queue_applies_backpressure_rather_than_growing() {
 #[test]
 fn shutdown_commits_outstanding_claims() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_secs(3600),
             ..Default::default()
         },
@@ -240,9 +240,9 @@ fn shutdown_commits_outstanding_claims() {
 fn dropping_the_writer_commits_outstanding_claims() {
     let (_dir, store) = store();
     {
-        let writer = Writer::spawn(
+        let writer = ClaimBatchWriter::spawn(
             Arc::clone(&store),
-            WriterConfig {
+            ClaimBatchWriterConfig {
                 flush_delay: Duration::from_secs(3600),
                 ..Default::default()
             },
@@ -257,7 +257,10 @@ fn dropping_the_writer_commits_outstanding_claims() {
 #[test]
 fn concurrent_producers_all_reach_durability() {
     let (_dir, store) = store();
-    let writer = Arc::new(Writer::spawn(Arc::clone(&store), WriterConfig::default()));
+    let writer = Arc::new(ClaimBatchWriter::spawn(
+        Arc::clone(&store),
+        ClaimBatchWriterConfig::default(),
+    ));
     let threads: Vec<_> = (0..8)
         .map(|t| {
             let writer = Arc::clone(&writer);
@@ -279,7 +282,7 @@ fn concurrent_producers_all_reach_durability() {
 #[test]
 fn a_malformed_claim_is_rejected_at_submit_and_does_not_enter_the_queue() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(Arc::clone(&store), WriterConfig::default());
+    let writer = ClaimBatchWriter::spawn(Arc::clone(&store), ClaimBatchWriterConfig::default());
 
     let mut bad = claim(0);
     bad.valid_to = Some(50); // inverted interval against valid_from = 100
@@ -296,9 +299,9 @@ fn a_malformed_claim_is_rejected_at_submit_and_does_not_enter_the_queue() {
 #[test]
 fn batching_reduces_commits_far_below_claim_count() {
     let (_dir, store) = store();
-    let writer = Writer::spawn(
+    let writer = ClaimBatchWriter::spawn(
         Arc::clone(&store),
-        WriterConfig {
+        ClaimBatchWriterConfig {
             flush_delay: Duration::from_millis(50),
             max_batch: 512,
             queue_capacity: 8192,

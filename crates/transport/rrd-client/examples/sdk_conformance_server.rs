@@ -5,13 +5,13 @@ use rrd_core::{
     digest, RuntimeCommit, RuntimeMutation, RuntimePropertySchema, RuntimeRecordSchema,
     RuntimeSchemaRegistry, RuntimeType, RuntimeValueType, ScopeId,
 };
-use rrd_engine::{load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_estate::{EstateRepository, MutationContext};
 use rrd_security::{
     Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState, SECURITY_FORMAT,
 };
 use rrd_server::RrdHttpServer;
-use rrd_store::{Engine, PersistentEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fs::OpenOptions;
@@ -49,17 +49,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     InstanceManifest::ensure_dedicated_as(&project, corpus.identity.instance.as_str())?;
     let binding = InstanceBinding::discover(&project)?;
     let root = binding.expected_store();
-    let storage = PersistentEngine::open(&root)?;
+    let storage = RrflowKvStore::open(&root)?;
     seed_schema(&storage, &corpus)?;
     seed_estate(&storage, &corpus)?;
     seed_security(&storage, &corpus)?;
     drop(storage);
 
-    let token_key = load_or_create_token_key(&root.join("RRD.SERVER.SECRET"))?;
-    let engine = RrdEngine::open_bound_with_token_key(
+    let engine = RrdEngine::open_bound_with_token_key_file(
         &binding,
         corpus.identity.instance.clone(),
-        token_key,
+        &root.join("RRD.SERVER.SECRET"),
         2,
     )?;
     let authority = binding.authority_binding()?;
@@ -138,7 +137,7 @@ impl Arguments {
 }
 
 fn seed_schema(
-    storage: &PersistentEngine,
+    storage: &RrflowKvStore,
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut registry = RuntimeSchemaRegistry::empty(1, "SDK conformance schema");
@@ -163,7 +162,7 @@ fn seed_schema(
 }
 
 fn seed_estate(
-    storage: &PersistentEngine,
+    storage: &RrflowKvStore,
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
     EstateRepository::new(storage, corpus.identity.estate.clone()).create(&MutationContext {
@@ -176,7 +175,7 @@ fn seed_estate(
 }
 
 fn seed_security(
-    storage: &PersistentEngine,
+    storage: &RrflowKvStore,
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let instance_resource = ResourcePath {

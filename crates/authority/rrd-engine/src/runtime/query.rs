@@ -1,4 +1,4 @@
-//! Explicit, durably traced `RRFlowQL -> RRD query engine -> execution` orchestration.
+//! Explicit, durably traced `rrflowQL -> RrdEngine -> execution` orchestration.
 //!
 //! Connectome's GET query lens remains read-only. Operator and MCP execution
 //! use this boundary when the query itself should become optimization evidence.
@@ -13,7 +13,7 @@ use rrd_core::{
 use rrd_query::{BoundQuery, PhysicalPlan, QueryExecution, StampedQueryPipeline};
 pub use rrd_query::{ExecutionBudget, Parameters};
 use rrd_query::{Query, Source, QUERY_CONTRACT_VERSION};
-use rrd_store::{Engine, PhysicalStoreEvidence};
+use rrd_store::{PhysicalStoreEvidence, StorageEngine};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -67,7 +67,7 @@ fn scalar_parameter(name: &str, value: &Value) -> Result<RuntimeValue, Box<dyn s
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_traced_query<E: Engine>(
+pub fn execute_traced_query<E: StorageEngine>(
     store: &E,
     scope: ScopeId,
     source: &str,
@@ -132,7 +132,7 @@ pub fn execute_traced_query<E: Engine>(
         identity,
         None,
         TraceDomain::Query,
-        "query.run",
+        "rrflow.query.run",
         at,
         TraceDataClass::Control,
         links.clone(),
@@ -162,7 +162,7 @@ pub fn execute_traced_query<E: Engine>(
         );
     }
 
-    let prepare_identity = root_identity.child(&[b"rrd.query.parse_bind"])?;
+    let prepare_identity = root_identity.child(&[b"rrflow.query.parse_bind"])?;
     let prepare = match DurableTraceSpan::start(
         store,
         scope.clone(),
@@ -170,7 +170,7 @@ pub fn execute_traced_query<E: Engine>(
         prepare_identity,
         Some(root_identity.span_id.clone()),
         TraceDomain::Query,
-        "rrd.query.parse_bind",
+        "rrflow.query.parse_bind",
         root.observed_at(),
         TraceDataClass::Control,
         links.clone(),
@@ -211,7 +211,7 @@ pub fn execute_traced_query<E: Engine>(
                 Some(prepare),
                 root,
                 "parse_bind",
-                mx_error_class(&error),
+                query_error_class(&error),
                 TraceOutcome::Error,
                 error.into(),
             )
@@ -250,7 +250,7 @@ pub fn execute_traced_query<E: Engine>(
         );
     }
 
-    let planning_identity = root_identity.child(&[b"rrd.query.plan"])?;
+    let planning_identity = root_identity.child(&[b"rrflow.query.plan"])?;
     let planning = match DurableTraceSpan::start(
         store,
         scope.clone(),
@@ -258,7 +258,7 @@ pub fn execute_traced_query<E: Engine>(
         planning_identity,
         Some(root_identity.span_id.clone()),
         TraceDomain::Planning,
-        "rrd.query.plan",
+        "rrflow.query.plan",
         root.observed_at(),
         TraceDataClass::Control,
         links.clone(),
@@ -285,7 +285,7 @@ pub fn execute_traced_query<E: Engine>(
                 Some(planning),
                 root,
                 "planning",
-                mx_error_class(&error),
+                query_error_class(&error),
                 TraceOutcome::Error,
                 error.into(),
             )
@@ -340,8 +340,8 @@ pub fn execute_traced_query<E: Engine>(
         );
     }
 
-    let execution_identity = root_identity.child(&[b"rrd.query.execute"])?;
-    let storage_identity = execution_identity.child(&[b"rrd.lsm.runtime_read"])?;
+    let execution_identity = root_identity.child(&[b"rrflow.query.execute"])?;
+    let storage_identity = execution_identity.child(&[b"rrflow.storage.runtime_read"])?;
     let mut execution_links = links;
     execution_links.push(TraceLink::Plan {
         plan_digest: plan.digest.clone(),
@@ -353,7 +353,7 @@ pub fn execute_traced_query<E: Engine>(
         execution_identity.clone(),
         Some(root_identity.span_id),
         TraceDomain::Query,
-        "rrd.query.execute",
+        "rrflow.query.execute",
         root.observed_at(),
         TraceDataClass::Control,
         execution_links,
@@ -379,7 +379,7 @@ pub fn execute_traced_query<E: Engine>(
         storage_identity,
         Some(execution_identity.span_id),
         TraceDomain::Storage,
-        "rrd.lsm.runtime_read",
+        "rrflow.storage.runtime_read",
         root.observed_at(),
         TraceDataClass::Control,
         execution_links_for_storage(&read, &plan),
@@ -412,7 +412,7 @@ pub fn execute_traced_query<E: Engine>(
             } else {
                 TraceOutcome::Error
             };
-            let error_class = mx_error_class(&error);
+            let error_class = query_error_class(&error);
             let rendered = error.to_string();
             let mut storage_attributes =
                 physical_storage_attributes(&physical_before, &physical_after, None);
@@ -907,7 +907,7 @@ fn source_identity(source: &Source) -> (&'static str, String) {
     }
 }
 
-fn mx_error_class(error: &rrd_query::Error) -> &'static str {
+fn query_error_class(error: &rrd_query::Error) -> &'static str {
     match error {
         rrd_query::Error::Catalog(_) => "catalog",
         rrd_query::Error::Binding(_) => "binding",
@@ -918,7 +918,7 @@ fn mx_error_class(error: &rrd_query::Error) -> &'static str {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn fail_query<E: Engine, T>(
+fn fail_query<E: StorageEngine, T>(
     store: &E,
     stage: Option<DurableTraceSpan>,
     root: DurableTraceSpan,

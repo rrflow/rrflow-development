@@ -225,7 +225,7 @@ impl ImmutableObjectStore for MemoryObjectStore {
     }
 }
 
-/// Type-erased immutable-object authority paired with [`crate::EngineBox`].
+/// Type-erased immutable-object authority paired with [`crate::StorageProfile`].
 pub struct ObjectStoreBox(Box<dyn ImmutableObjectStore>);
 
 impl ObjectStoreBox {

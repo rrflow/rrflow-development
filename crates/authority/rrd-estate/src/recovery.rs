@@ -4,7 +4,7 @@ use super::{
 };
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -220,7 +220,7 @@ pub struct EstateRetentionDecision {
     pub prune_candidate_backup_ids: Vec<String>,
 }
 
-impl<'a, E: Engine + ?Sized> EstateRepository<'a, E> {
+impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     pub fn set_recovery_policy(
         &self,
         request: &SetRecoveryPolicy,

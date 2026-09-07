@@ -4,7 +4,7 @@ use rrd_estate::{
     LeaseRequest, MutationContext, ObservationRequest, ObservedPhase, ReceiptBoundary,
     ReceiptRequest, ScheduleBackup, SetDesired,
 };
-use rrd_store::{verify_backup_catalogue, NativeEngine, PersistentEngine};
+use rrd_store::{verify_backup_catalogue, RrflowKvStore};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -24,7 +24,7 @@ fn context(at: u64, request: &str, operation: &str) -> MutationContext {
 }
 
 fn prepare(database: &Path, state_root: &Path) {
-    let engine = NativeEngine::open(database).unwrap();
+    let engine = RrflowKvStore::open(database).unwrap();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -95,7 +95,7 @@ fn prepare(database: &Path, state_root: &Path) {
         })
         .unwrap();
     let source = state_root.join("instances/instance-a/.rrflow/rrd");
-    drop(PersistentEngine::open(&source).unwrap());
+    drop(RrflowKvStore::open(&source).unwrap());
 }
 
 fn command(database: &Path, state_root: &Path, at: u64) -> Command {
@@ -163,7 +163,7 @@ fn run_and_kill(database: &Path, state_root: &Path, marker: &Path, at: u64, afte
 }
 
 fn job_state(database: &Path) -> (BackupJobState, u64) {
-    let engine = PersistentEngine::open(database).unwrap();
+    let engine = RrflowKvStore::open(database).unwrap();
     let document = EstateRepository::new(&engine, id("estate-a"))
         .load()
         .unwrap()

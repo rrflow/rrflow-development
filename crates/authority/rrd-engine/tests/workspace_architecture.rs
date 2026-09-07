@@ -822,7 +822,7 @@ fn collect_authority_source_tree(crates: &Path, directory: &Path, violations: &m
         // product surface before the first cfg(test) boundary is not.
         let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
         if [
-            "PersistentEngine::open(",
+            "RrflowKvStore::open(",
             "EmbeddedOperator",
             ".runtime_store(",
             "rrd_engine::operator",

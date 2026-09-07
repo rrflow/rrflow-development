@@ -1,9 +1,8 @@
-//! Deterministic physical storage differential required before Fjall removal.
+//! Deterministic rrflowKV physical-storage differential against an exact model.
 //!
 //! This intentionally exercises raw put/update/delete semantics: the typed
 //! runtime contract does not yet define referentially safe entity deletion.
 
-use fjall::{KeyspaceCreateOptions, PersistMode, Readable, SingleWriterTxDatabase};
 use rrd_core::digest::Sha256;
 use rrd_lsm::{Database, Durability, Mutation, WriteBatch};
 use std::collections::BTreeMap;
@@ -14,15 +13,10 @@ const KEY_CARDINALITY: u64 = 2_048;
 const SEED: u64 = 0x6a09_e667_f3bc_c909;
 
 #[test]
-fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
+fn mixed_put_update_delete_reopen_compaction_matches_exact_model() {
     let root = tempfile::tempdir().unwrap();
-    let native_path = root.path().join("native");
-    let fjall_path = root.path().join("fjall");
-    let mut native = Database::create(&native_path).unwrap();
-    let mut fjall = open_fjall(&fjall_path);
-    let mut keyspace = fjall
-        .keyspace("soak", KeyspaceCreateOptions::default)
-        .unwrap();
+    let rrflow_kv_path = root.path().join("rrflow-kv");
+    let mut rrflow_kv = Database::create(&rrflow_kv_path).unwrap();
     let mut model = BTreeMap::<Vec<u8>, Vec<u8>>::new();
     let mut random = SEED;
     let mut puts = 0u64;
@@ -32,8 +26,7 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
     let mut compaction_count = 0u64;
 
     for (epoch, offset) in (0..OPERATIONS).step_by(BATCH).enumerate() {
-        let mut native_ops = Vec::with_capacity(BATCH);
-        let mut fjall_tx = fjall.write_tx().durability(Some(PersistMode::SyncAll));
+        let mut rrflow_kv_ops = Vec::with_capacity(BATCH);
         for operation in offset..(offset + BATCH).min(OPERATIONS) {
             random = random
                 .wrapping_mul(6_364_136_223_846_793_005)
@@ -41,8 +34,7 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
             let key = format!("key/{:04}", random % KEY_CARDINALITY).into_bytes();
             if (random >> 17).is_multiple_of(5) {
                 model.remove(&key);
-                fjall_tx.remove(&keyspace, &key);
-                native_ops.push(Mutation::Delete { key });
+                rrflow_kv_ops.push(Mutation::Delete { key });
                 deletes += 1;
             } else {
                 if model.contains_key(&key) {
@@ -52,43 +44,35 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
                 }
                 let value = format!("value/{operation:08}/{random:016x}").into_bytes();
                 model.insert(key.clone(), value.clone());
-                fjall_tx.insert(&keyspace, &key, &value);
-                native_ops.push(Mutation::Put { key, value });
+                rrflow_kv_ops.push(Mutation::Put { key, value });
             }
         }
-        fjall_tx.commit().unwrap();
-        native
+        rrflow_kv
             .write_owned(
-                WriteBatch::new(native_ops).unwrap(),
+                WriteBatch::new(rrflow_kv_ops).unwrap(),
                 Durability::Authoritative,
             )
             .unwrap();
-        native.flush_memtable((epoch + 1) as u64).unwrap();
+        rrflow_kv.flush_memtable((epoch + 1) as u64).unwrap();
 
         if (epoch + 1) % 10 == 0 {
-            native.compact(&[], (epoch + 1) as u64).unwrap();
+            rrflow_kv.compact(&[], (epoch + 1) as u64).unwrap();
             compaction_count += 1;
         }
         if (epoch + 1) % 8 == 0 {
-            drop(keyspace);
-            drop(fjall);
-            drop(native);
-            fjall = open_fjall(&fjall_path);
-            keyspace = fjall
-                .keyspace("soak", KeyspaceCreateOptions::default)
-                .unwrap();
-            native = Database::open(&native_path).unwrap();
+            drop(rrflow_kv);
+            rrflow_kv = Database::open(&rrflow_kv_path).unwrap();
             reopen_count += 1;
         }
         if (epoch + 1) % 5 == 0 {
-            assert_all_equal(&native, &fjall, &keyspace, &model);
+            assert_matches_model(&rrflow_kv, &model);
         }
     }
 
-    assert_all_equal(&native, &fjall, &keyspace, &model);
+    assert_matches_model(&rrflow_kv, &model);
     let digest = model_digest(&model);
     let actual = serde_json::json!({
-        "contract": "rrd-lsm-fjall-mixed-storage-soak-v1",
+        "contract": "rrflow-kv-exact-model-soak-v1",
         "seed": format!("0x{SEED:016x}"),
         "operations": OPERATIONS,
         "inserts": puts,
@@ -99,7 +83,7 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
         "reopens": reopen_count,
         "compactions": compaction_count,
         "final_sha256": digest,
-        "result": "identical",
+        "result": "matches_exact_model",
     });
     eprintln!("{actual}");
     let checked: serde_json::Value = serde_json::from_str(include_str!(
@@ -107,7 +91,6 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
     ))
     .unwrap();
     for field in [
-        "contract",
         "seed",
         "operations",
         "inserts",
@@ -118,7 +101,6 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
         "reopens",
         "compactions",
         "final_sha256",
-        "result",
     ] {
         assert_eq!(
             checked[field], actual[field],
@@ -127,37 +109,16 @@ fn mixed_put_update_delete_reopen_compaction_matches_fjall_and_model() {
     }
 }
 
-fn open_fjall(path: &std::path::Path) -> SingleWriterTxDatabase {
-    SingleWriterTxDatabase::builder(path)
-        .manual_journal_persist(true)
-        .open()
-        .unwrap()
-}
-
-fn assert_all_equal(
-    native: &Database,
-    fjall: &SingleWriterTxDatabase,
-    keyspace: &fjall::SingleWriterTxKeyspace,
-    model: &BTreeMap<Vec<u8>, Vec<u8>>,
-) {
-    let native_values: BTreeMap<_, _> = native
-        .scan(&[], None, native.snapshot())
+fn assert_matches_model(rrflow_kv: &Database, model: &BTreeMap<Vec<u8>, Vec<u8>>) {
+    let stored_values: BTreeMap<_, _> = rrflow_kv
+        .scan(&[], None, rrflow_kv.snapshot())
         .unwrap()
         .into_iter()
         .collect();
-    let fjall_values: BTreeMap<_, _> = fjall
-        .read_tx()
-        .iter(keyspace)
-        .map(|item| {
-            let (key, value) = item.into_inner().unwrap();
-            (key.to_vec(), value.to_vec())
-        })
-        .collect();
     assert_eq!(
-        &native_values, model,
-        "RRD LSM differs from reference model"
+        &stored_values, model,
+        "rrflowKV differs from the exact reference model"
     );
-    assert_eq!(&fjall_values, model, "Fjall differs from reference model");
 }
 
 fn model_digest(model: &BTreeMap<Vec<u8>, Vec<u8>>) -> String {

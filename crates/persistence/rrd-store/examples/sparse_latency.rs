@@ -16,7 +16,7 @@
 //! ```
 
 use rrd_core::{Claim, Predicate, Producer, Subject};
-use rrd_store::{Store, Writer, WriterConfig};
+use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -49,7 +49,7 @@ fn main() {
         .expect("usage: sparse_latency <db-path>");
     let path = std::path::PathBuf::from(path);
     let _ = std::fs::remove_dir_all(&path);
-    let store = Arc::new(Store::open(&path).expect("open store"));
+    let store = Arc::new(RrflowKvStore::open(&path).expect("open store"));
 
     println!(
         "{:>10}  {:>10}  {:>8}  {:>10}  {:>10}  {:>10}  {:>8}",
@@ -59,9 +59,9 @@ fn main() {
 
     for &delay_ms in &[1u64, 5, 20] {
         for &gap_ms in &[0u64, 2, 25] {
-            let writer = Writer::spawn(
+            let writer = ClaimBatchWriter::spawn(
                 Arc::clone(&store),
-                WriterConfig {
+                ClaimBatchWriterConfig {
                     flush_delay: Duration::from_millis(delay_ms),
                     max_batch: 512,
                     queue_capacity: 8192,
@@ -113,9 +113,9 @@ fn main() {
 
     for &delay_ms in &[1u64, 20] {
         for pattern in ["wait on timer", "submit + flush"] {
-            let writer = Writer::spawn(
+            let writer = ClaimBatchWriter::spawn(
                 Arc::clone(&store),
-                WriterConfig {
+                ClaimBatchWriterConfig {
                     flush_delay: Duration::from_millis(delay_ms),
                     max_batch: 512,
                     queue_capacity: 8192,

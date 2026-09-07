@@ -11,7 +11,7 @@ use rrd_operator_knowledge::{
     OperatorKnowledgeWriter, OperatorSearchRequest, OperatorSearchResult, OperatorSyncOperation,
     OperatorSyncReceipt, OperatorSyncWork,
 };
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct TracedOperatorSearch {
@@ -39,7 +39,7 @@ pub fn execute_traced_operator_sync<E, W>(
     at: Millis,
 ) -> Result<TracedOperatorSync, Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
     W: OperatorKnowledgeWriter,
 {
     knowledge.validate()?;
@@ -211,7 +211,7 @@ pub fn execute_traced_operator_search<E, A>(
     at: Millis,
 ) -> Result<TracedOperatorSearch, Box<dyn std::error::Error>>
 where
-    E: Engine,
+    E: StorageEngine,
     A: OperatorKnowledgeAdapter,
 {
     knowledge.validate()?;
@@ -532,7 +532,7 @@ fn sync_operation_name(operation: OperatorSyncOperation) -> &'static str {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn fail_operator<E: Engine, T>(
+fn fail_operator<E: StorageEngine, T>(
     store: &E,
     child: Option<DurableTraceSpan>,
     root: DurableTraceSpan,

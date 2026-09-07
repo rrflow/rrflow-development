@@ -5,7 +5,7 @@ use rrd_query::parse;
 use rrd_query::{
     bind, plan, Catalog, IndexCatalogueRepository, Parameters, SchemaVersion, SourceWatermarks,
 };
-use rrd_store::RrflowMxEngine;
+use rrd_store::RrflowMxStore;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -32,7 +32,7 @@ fn physical_plan_matches_golden_vector() {
         RuntimeType::new("tool_result").unwrap(),
         RuntimeEventSchema::default(),
     );
-    let engine = RrflowMxEngine::new();
+    let engine = RrflowMxStore::new();
     let catalog = Catalog {
         read,
         schemas: vec![SchemaVersion {

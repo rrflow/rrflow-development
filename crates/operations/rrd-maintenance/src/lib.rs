@@ -10,7 +10,7 @@ use rrd_core::{
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
     RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
-use rrd_store::Engine;
+use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -623,13 +623,13 @@ pub struct MaintenanceEvent {
     pub state_sha256: String,
 }
 
-pub struct MaintenanceRepository<'a, E: Engine + ?Sized> {
+pub struct MaintenanceRepository<'a, E: StorageEngine + ?Sized> {
     engine: &'a E,
     instance_id: String,
     scope: ScopeId,
 }
 
-impl<'a, E: Engine + ?Sized> MaintenanceRepository<'a, E> {
+impl<'a, E: StorageEngine + ?Sized> MaintenanceRepository<'a, E> {
     pub fn new(engine: &'a E, instance_id: impl Into<String>) -> Result<Self> {
         let instance_id = instance_id.into();
         text_field("instance_id", &instance_id, false)?;

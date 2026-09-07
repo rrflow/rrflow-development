@@ -5,7 +5,7 @@ use rrd_estate::{
     AuthorityStatus, DesiredPhase, DesiredTarget, Error, EstateRepository, MutationContext,
     SetDesired,
 };
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 
 fn id(value: &str) -> CanonicalId {
     CanonicalId::new(value).unwrap()
@@ -198,7 +198,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
         }],
     };
     {
-        let engine = NativeEngine::open(&path).unwrap();
+        let engine = RrflowKvStore::open(&path).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
         repository
             .create(&context(10, "create-estate", "create-estate"))
@@ -225,7 +225,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
         assert_eq!(replay.document.revision, accepted.document.revision);
     }
 
-    let reopened = NativeEngine::open(&path).unwrap();
+    let reopened = RrflowKvStore::open(&path).unwrap();
     let repository = EstateRepository::new(&reopened, id("estate-a"));
     let document = repository.load().unwrap().unwrap();
     document.validate().unwrap();
@@ -272,7 +272,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
 
 #[test]
 fn references_generations_and_idempotency_fail_closed() {
-    let engine = rrd_store::RrflowMxEngine::new();
+    let engine = rrd_store::RrflowMxStore::new();
     let repository = EstateRepository::new(&engine, id("estate-a"));
     repository
         .create(&context(10, "create-estate", "create-estate"))
@@ -344,7 +344,7 @@ fn references_generations_and_idempotency_fail_closed() {
 }
 
 fn document_resource(
-    repository: &EstateRepository<'_, rrd_store::RrflowMxEngine>,
+    repository: &EstateRepository<'_, rrd_store::RrflowMxStore>,
     resource_id: &str,
     context: MutationContext,
     idempotency_key: &str,

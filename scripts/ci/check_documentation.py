@@ -380,14 +380,16 @@ def main() -> int:
 
     benchmark_harness = RRFLOWKV_BENCHMARK_HARNESS.read_text(encoding="utf-8")
     for required_section in (
-        "## General comparison protocol",
-        "## Output schema and provenance gap",
-        "## Evidence required for release use",
+        "## Semantic storage protocol",
+        "## AI storage-access protocol",
+        "## Lifecycle measurements",
+        "## Provenance still required for release evidence",
+        "## Reproduction",
     ):
         if required_section not in benchmark_harness:
             failures.append(f"the benchmark-harness reference lacks {required_section}")
     if "not RRFlow 1.0 release evidence" not in benchmark_harness:
-        failures.append("the local comparator is not separated from release evidence")
+        failures.append("the rrflowKV diagnostics are not separated from release evidence")
 
     historical_lsm_benchmark = HISTORICAL_LSM_BENCHMARK.read_text(encoding="utf-8")
     historical_lsm_header = "\n".join(historical_lsm_benchmark.splitlines()[:12])

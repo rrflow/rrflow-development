@@ -3,8 +3,8 @@
 //! digest; a crash mid-rebuild replays the interval rather than skipping it.
 
 use rrd_core::{Claim, Predicate, Producer, Subject};
-use rrd_store::Engine;
-use rrd_store::{Error, GroundingReport, ProjectionStatus, Store, CURRENT_PROJECTION};
+use rrd_store::StorageEngine;
+use rrd_store::{Error, GroundingReport, ProjectionStatus, RrflowKvStore, CURRENT_PROJECTION};
 
 fn claim(subject: &str, predicate: &str, object: &str, from: u64) -> Claim {
     Claim::new(
@@ -35,7 +35,7 @@ fn corpus() -> Vec<Claim> {
 #[test]
 fn rebuild_applies_the_interval_and_advances_the_watermark_with_it() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     store.append_batch(&corpus()).unwrap();
 
     let outcome = store.rebuild_current().unwrap();
@@ -65,7 +65,7 @@ fn rebuild_applies_the_interval_and_advances_the_watermark_with_it() {
 #[test]
 fn a_crash_mid_rebuild_replays_the_interval_rather_than_skipping_it() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     store.append_batch(&corpus()[..3]).unwrap();
     store.rebuild_current().unwrap();
     store.append_batch(&corpus()[3..]).unwrap();
@@ -101,7 +101,7 @@ fn a_crash_mid_rebuild_replays_the_interval_rather_than_skipping_it() {
 #[test]
 fn a_matching_projection_emits_grounded_with_a_stable_digest() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     store.append_batch(&corpus()).unwrap();
     store.rebuild_current().unwrap();
 
@@ -134,7 +134,7 @@ fn a_matching_projection_emits_grounded_with_a_stable_digest() {
 #[test]
 fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     store.append_batch(&corpus()).unwrap();
     store.rebuild_current().unwrap();
 
@@ -184,7 +184,7 @@ fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
     // flush, unlike ordinary Buffered projection writes.
     drop(projection);
     drop(store);
-    let reopened = Store::open(dir.path()).unwrap();
+    let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert!(
         matches!(
             reopened.current_projection().unwrap().status,

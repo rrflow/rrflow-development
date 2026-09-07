@@ -10,7 +10,7 @@ use rrd_inference::{
     EmbeddingBackend, EmbeddingJob, EmbeddingSourceReader, EmbeddingSourceSnapshot,
     FeatureHashBackend, NetworkPolicy, EMBEDDING_CONTRACT_VERSION,
 };
-use rrd_store::{DataRuntime, Engine, LocalObjectStore, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{
     HnswConfig, HnswIndex, ScoreMetric, SearchMode, SearchRequest, VectorCandidate, VectorQuery,
     VectorRuntime,
@@ -21,7 +21,7 @@ fn scope() -> ScopeId {
     ScopeId::new("instance:data-plane-trace").unwrap()
 }
 
-fn fixture<E: Engine>(store: &E) -> Vec<VectorCandidate> {
+fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
     let scope = scope();
     let mut registry = RuntimeSchemaRegistry::empty(1, "vector trace fixture");
     registry.records.insert(
@@ -91,7 +91,7 @@ fn fixture<E: Engine>(store: &E) -> Vec<VectorCandidate> {
         .collect()
 }
 
-fn request<E: Engine>(store: &E, mode: SearchMode) -> SearchRequest {
+fn request<E: StorageEngine>(store: &E, mode: SearchMode) -> SearchRequest {
     SearchRequest {
         scope: scope(),
         read: store.runtime_read_stamp(&scope()).unwrap(),
@@ -120,7 +120,7 @@ struct TraceView {
     encoded: String,
 }
 
-fn trace_views<E: Engine>(store: &E) -> Vec<TraceView> {
+fn trace_views<E: StorageEngine>(store: &E) -> Vec<TraceView> {
     store
         .runtime_changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
@@ -157,7 +157,7 @@ fn trace_views<E: Engine>(store: &E) -> Vec<TraceView> {
         .collect()
 }
 
-fn exercise<E: Engine>(store: &E) -> (rrd_engine::TracedVectorSearch, Vec<TraceView>) {
+fn exercise<E: StorageEngine>(store: &E) -> (rrd_engine::TracedVectorSearch, Vec<TraceView>) {
     let candidates = fixture(store);
     let runtime = VectorRuntime::new(candidates).unwrap();
     let result = execute_traced_vector_search(
@@ -174,18 +174,14 @@ fn exercise<E: Engine>(store: &E) -> (rrd_engine::TracedVectorSearch, Vec<TraceV
 
 #[test]
 fn vector_search_is_causal_private_and_equal_across_all_engines() {
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native_path = native_root.path().join("native");
-    let native = NativeEngine::open(&native_path).unwrap();
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv_path = rrflow_kv_root.path().join("rrflow-kv");
+    let rrflow_kv = RrflowKvStore::open(&rrflow_kv_path).unwrap();
 
     let (memory_result, memory_traces) = exercise(&memory);
-    let (fjall_result, fjall_traces) = exercise(&fjall);
-    let (native_result, native_traces) = exercise(&native);
-    assert_eq!(memory_result, fjall_result);
-    assert_eq!(memory_result, native_result);
+    let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv);
+    assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.prepared.plan().required_source_cursor, 7);
     assert_eq!(memory_result.execution.hits.len(), 1);
     assert_eq!(memory.runtime_cursor().unwrap(), 14);
@@ -205,8 +201,7 @@ fn vector_search_is_causal_private_and_equal_across_all_engines() {
             })
             .collect::<Vec<_>>()
     };
-    assert_eq!(normalize(&memory_traces), normalize(&fjall_traces));
-    assert_eq!(normalize(&memory_traces), normalize(&native_traces));
+    assert_eq!(normalize(&memory_traces), normalize(&rrflow_kv_traces));
     assert_eq!(
         memory_traces
             .iter()
@@ -241,14 +236,14 @@ fn vector_search_is_causal_private_and_equal_across_all_engines() {
         RuntimeValue::Unsigned(7)
     );
 
-    drop(native);
-    let reopened = NativeEngine::open(&native_path).unwrap();
+    drop(rrflow_kv);
+    let reopened = RrflowKvStore::open(&rrflow_kv_path).unwrap();
     assert_eq!(trace_views(&reopened).len(), 6);
 }
 
 #[test]
 fn projection_publication_and_approximate_selection_remain_fresh_across_trace_events() {
-    let store = RrflowMxEngine::new();
+    let store = RrflowMxStore::new();
     let candidates = fixture(&store);
     let objects = tempfile::tempdir().unwrap();
     let data = DataRuntime::new(store, LocalObjectStore::open(objects.path()).unwrap());
@@ -306,7 +301,7 @@ fn projection_publication_and_approximate_selection_remain_fresh_across_trace_ev
 
 #[test]
 fn required_approximate_failure_closes_the_planning_tree_as_a_denial() {
-    let store = RrflowMxEngine::new();
+    let store = RrflowMxStore::new();
     let candidates = fixture(&store);
     let runtime = VectorRuntime::new(candidates).unwrap();
     let error = execute_traced_vector_search(
@@ -331,7 +326,7 @@ fn required_approximate_failure_closes_the_planning_tree_as_a_denial() {
 
 const EMBEDDING_BYTES: &[u8] = b"super-secret-embedding-source";
 
-fn embedding_fixture<E: Engine>(store: &E) {
+fn embedding_fixture<E: StorageEngine>(store: &E) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "embedding trace fixture");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -364,7 +359,7 @@ fn embedding_fixture<E: Engine>(store: &E) {
         .unwrap();
 }
 
-fn embedding_job<E: Engine>(store: &E, backend: &FeatureHashBackend) -> EmbeddingJob {
+fn embedding_job<E: StorageEngine>(store: &E, backend: &FeatureHashBackend) -> EmbeddingJob {
     EmbeddingJob {
         contract_version: EMBEDDING_CONTRACT_VERSION,
         id: RuntimeId::new("embedding-job-1").unwrap(),
@@ -409,7 +404,7 @@ fn embedding_reader(job: &EmbeddingJob) -> SequenceReader {
     }
 }
 
-fn exercise_embedding<E: Engine>(
+fn exercise_embedding<E: StorageEngine>(
     store: &E,
 ) -> (rrd_engine::TracedEmbeddingExecution, Vec<TraceView>) {
     embedding_fixture(store);
@@ -425,18 +420,14 @@ fn exercise_embedding<E: Engine>(
 
 #[test]
 fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines() {
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native_path = native_root.path().join("native");
-    let native = NativeEngine::open(&native_path).unwrap();
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv_path = rrflow_kv_root.path().join("rrflow-kv");
+    let rrflow_kv = RrflowKvStore::open(&rrflow_kv_path).unwrap();
 
     let (memory_result, memory_traces) = exercise_embedding(&memory);
-    let (fjall_result, fjall_traces) = exercise_embedding(&fjall);
-    let (native_result, native_traces) = exercise_embedding(&native);
-    assert_eq!(memory_result, fjall_result);
-    assert_eq!(memory_result, native_result);
+    let (rrflow_kv_result, rrflow_kv_traces) = exercise_embedding(&rrflow_kv);
+    assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.commit.first_cursor, 8);
     assert_eq!(memory_result.commit.last_cursor, 8);
     assert_eq!(memory.runtime_cursor().unwrap(), 10);
@@ -456,8 +447,7 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
             })
             .collect::<Vec<_>>()
     };
-    assert_eq!(normalize(&memory_traces), normalize(&fjall_traces));
-    assert_eq!(normalize(&memory_traces), normalize(&native_traces));
+    assert_eq!(normalize(&memory_traces), normalize(&rrflow_kv_traces));
     assert_eq!(
         memory_traces
             .iter()
@@ -492,8 +482,8 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
     assert_eq!(vector_work.len(), 1);
     assert_eq!(vector_work[0].source_cursor, 8);
 
-    drop(native);
-    let reopened = NativeEngine::open(&native_path).unwrap();
+    drop(rrflow_kv);
+    let reopened = RrflowKvStore::open(&rrflow_kv_path).unwrap();
     assert_eq!(trace_views(&reopened).len(), 6);
     assert_eq!(
         reopened
@@ -509,7 +499,7 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
 
 #[test]
 fn embedding_source_change_after_inference_denies_without_a_vector_commit() {
-    let store = RrflowMxEngine::new();
+    let store = RrflowMxStore::new();
     embedding_fixture(&store);
     let mut backend = FeatureHashBackend::new(16, 7).unwrap();
     let job = embedding_job(&store, &backend);
@@ -557,7 +547,7 @@ struct MutatingReader<'a, E> {
     reads: usize,
 }
 
-impl<E: Engine> EmbeddingSourceReader for MutatingReader<'_, E> {
+impl<E: StorageEngine> EmbeddingSourceReader for MutatingReader<'_, E> {
     fn read(&mut self, _source: &RuntimeRef) -> rrd_core::Result<EmbeddingSourceSnapshot> {
         self.reads += 1;
         if self.reads == 2 {
@@ -585,7 +575,7 @@ impl<E: Engine> EmbeddingSourceReader for MutatingReader<'_, E> {
 
 #[test]
 fn embedding_rebase_rejects_non_trace_mutations_even_when_source_bytes_match() {
-    let store = RrflowMxEngine::new();
+    let store = RrflowMxStore::new();
     embedding_fixture(&store);
     let mut backend = FeatureHashBackend::new(16, 7).unwrap();
     let job = embedding_job(&store, &backend);

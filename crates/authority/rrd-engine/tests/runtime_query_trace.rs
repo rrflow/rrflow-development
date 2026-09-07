@@ -4,14 +4,14 @@ use rrd_core::{
     RuntimeValueType, ScopeId,
 };
 use rrd_engine::{execute_traced_query, query_parameters_from_json, ExecutionBudget, Parameters};
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
     ScopeId::new("instance:query-trace").unwrap()
 }
 
-fn fixture<E: Engine>(store: &E) {
+fn fixture<E: StorageEngine>(store: &E) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "traced query fixture");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -80,7 +80,7 @@ struct TraceView {
     encoded: String,
 }
 
-fn trace_views<E: Engine>(store: &E) -> Vec<TraceView> {
+fn trace_views<E: StorageEngine>(store: &E) -> Vec<TraceView> {
     store
         .runtime_changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
@@ -122,7 +122,7 @@ fn parameters() -> Parameters {
     query_parameters_from_json(&serde_json::json!({"status":"operator-secret"})).unwrap()
 }
 
-fn exercise<E: Engine>(store: &E) -> (rrd_engine::TracedQueryExecution, Vec<TraceView>) {
+fn exercise<E: StorageEngine>(store: &E) -> (rrd_engine::TracedQueryExecution, Vec<TraceView>) {
     fixture(store);
     let result = execute_traced_query(
         store,
@@ -139,17 +139,13 @@ fn exercise<E: Engine>(store: &E) -> (rrd_engine::TracedQueryExecution, Vec<Trac
 
 #[test]
 fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
 
     let (memory_result, memory_traces) = exercise(&memory);
-    let (fjall_result, fjall_traces) = exercise(&fjall);
-    let (native_result, native_traces) = exercise(&native);
-    assert_eq!(memory_result, fjall_result);
-    assert_eq!(memory_result, native_result);
+    let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv);
+    assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.execution.known_at_cursor, 3);
     assert_eq!(memory_result.execution.scanned_changes, 3);
     assert_eq!(memory_result.execution.returned_rows, 1);
@@ -162,7 +158,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
     let normalize_logical = |traces: &[TraceView]| {
         traces
             .iter()
-            .filter(|trace| trace.name != "rrd.lsm.runtime_read")
+            .filter(|trace| trace.name != "rrflow.storage.runtime_read")
             .map(|trace| {
                 (
                     trace.name.clone(),
@@ -179,11 +175,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
     };
     assert_eq!(
         normalize_logical(&memory_traces),
-        normalize_logical(&fjall_traces)
-    );
-    assert_eq!(
-        normalize_logical(&memory_traces),
-        normalize_logical(&native_traces)
+        normalize_logical(&rrflow_kv_traces)
     );
     assert_eq!(
         memory_traces
@@ -195,27 +187,29 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
             ))
             .collect::<Vec<_>>(),
         [
-            ("query.run", "start", "running"),
-            ("rrd.query.parse_bind", "start", "running"),
-            ("rrd.query.parse_bind", "finish", "ok"),
-            ("rrd.query.plan", "start", "running"),
-            ("rrd.query.plan", "finish", "ok"),
-            ("rrd.query.execute", "start", "running"),
-            ("rrd.lsm.runtime_read", "start", "running"),
-            ("rrd.lsm.runtime_read", "finish", "ok"),
-            ("rrd.query.execute", "finish", "ok"),
-            ("query.run", "finish", "ok"),
+            ("rrflow.query.run", "start", "running"),
+            ("rrflow.query.parse_bind", "start", "running"),
+            ("rrflow.query.parse_bind", "finish", "ok"),
+            ("rrflow.query.plan", "start", "running"),
+            ("rrflow.query.plan", "finish", "ok"),
+            ("rrflow.query.execute", "start", "running"),
+            ("rrflow.storage.runtime_read", "start", "running"),
+            ("rrflow.storage.runtime_read", "finish", "ok"),
+            ("rrflow.query.execute", "finish", "ok"),
+            ("rrflow.query.run", "finish", "ok"),
         ]
     );
     let root_span = &memory_traces[0].span_id;
     assert!(memory_traces
         .iter()
-        .filter(|trace| trace.name != "query.run" && trace.name != "rrd.lsm.runtime_read")
+        .filter(|trace| {
+            trace.name != "rrflow.query.run" && trace.name != "rrflow.storage.runtime_read"
+        })
         .all(|trace| trace.parent_span_id.as_ref() == Some(root_span)));
     let execution_span = &memory_traces[5].span_id;
     assert!(memory_traces
         .iter()
-        .filter(|trace| trace.name == "rrd.lsm.runtime_read")
+        .filter(|trace| trace.name == "rrflow.storage.runtime_read")
         .all(|trace| trace.parent_span_id.as_ref() == Some(execution_span)));
     assert!(memory_traces
         .iter()
@@ -244,52 +238,52 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
         RuntimeValue::String("rrflow_mx".into())
     );
     assert_eq!(
-        fjall_traces[7].attributes["backend"],
-        RuntimeValue::String("fjall_compatibility".into())
+        rrflow_kv_traces[7].attributes["backend"],
+        RuntimeValue::String("rrflow_kv".into())
     );
     assert_eq!(
-        native_traces[7].attributes["physical_evidence"],
-        RuntimeValue::String("native_counters".into())
+        rrflow_kv_traces[7].attributes["physical_evidence"],
+        RuntimeValue::String("rrflow_kv_counters".into())
     );
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("block_bytes_loaded_delta"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_requested_mode"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_reads_delta"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_bytes_read_delta"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_max_request_bytes"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_peak_request_bytes"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("filter_checks_delta"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("filter_negatives_delta"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("compaction_debt_segments"));
-    assert!(native_traces[7]
+    assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("compaction_target_segment_bytes"));
     assert_eq!(
-        native_traces[7].attributes["stamp_validation"],
+        rrflow_kv_traces[7].attributes["stamp_validation"],
         RuntimeValue::String("full_hash_chain_replay".into())
     );
 }
 
 #[test]
 fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
-    let parse_store = RrflowMxEngine::new();
+    let parse_store = RrflowMxStore::new();
     fixture(&parse_store);
     let error = execute_traced_query(
         &parse_store,
@@ -309,12 +303,12 @@ fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
         parse_traces[2].attributes["error_class"],
         RuntimeValue::String("parse".into())
     );
-    assert_eq!(parse_traces[3].name, "query.run");
+    assert_eq!(parse_traces[3].name, "rrflow.query.run");
     assert!(parse_traces
         .iter()
         .all(|trace| !trace.encoded.contains("operator-secret")));
 
-    let budget_store = RrflowMxEngine::new();
+    let budget_store = RrflowMxStore::new();
     fixture(&budget_store);
     let budget = ExecutionBudget {
         max_scanned_changes: 1,

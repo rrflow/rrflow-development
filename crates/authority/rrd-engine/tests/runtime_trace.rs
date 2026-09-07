@@ -3,7 +3,7 @@ use rrd_core::{
     ScopeId, TraceDataClass, TraceDomain, TraceOutcome,
 };
 use rrd_engine::{install_runtime_trace_contract, record_runtime_trace, TraceIdentity};
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::sync::{Arc, Barrier};
 
 fn scope() -> ScopeId {
@@ -14,7 +14,7 @@ fn identity(seed: &str) -> TraceIdentity {
     TraceIdentity::derive(&[seed.as_bytes()]).unwrap()
 }
 
-fn phases<E: Engine>(store: &E) -> Vec<(String, String)> {
+fn phases<E: StorageEngine>(store: &E) -> Vec<(String, String)> {
     store
         .runtime_changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
@@ -35,7 +35,7 @@ fn phases<E: Engine>(store: &E) -> Vec<(String, String)> {
         .collect()
 }
 
-fn exercise<E: Engine>(store: &E) -> Vec<Vec<u8>> {
+fn exercise<E: StorageEngine>(store: &E) -> Vec<Vec<u8>> {
     let scope = scope();
     assert!(
         install_runtime_trace_contract(store, &scope, 1, "test:bootstrap")
@@ -52,13 +52,13 @@ fn exercise<E: Engine>(store: &E) -> Vec<Vec<u8>> {
     record_runtime_trace(
         store,
         &scope,
-        "hook:test",
+        "engine:test",
         RuntimeTraceEvent::start(
             identity.trace_id.clone(),
             identity.span_id.clone(),
             None,
             TraceDomain::Lifecycle,
-            "lifecycle.pre-tool-use",
+            "reasoning.before-capability",
             10,
             TraceDataClass::Control,
             Vec::new(),
@@ -70,13 +70,13 @@ fn exercise<E: Engine>(store: &E) -> Vec<Vec<u8>> {
     record_runtime_trace(
         store,
         &scope,
-        "hook:test",
+        "engine:test",
         RuntimeTraceEvent::finish(
             identity.trace_id,
             identity.span_id,
             None,
             TraceDomain::Lifecycle,
-            "lifecycle.pre-tool-use",
+            "reasoning.before-capability",
             11,
             250,
             TraceOutcome::Ok,
@@ -111,20 +111,17 @@ fn exercise<E: Engine>(store: &E) -> Vec<Vec<u8>> {
 }
 
 #[test]
-fn trace_schema_and_events_match_reference_compatibility_and_native_engines() {
-    let memory = RrflowMxEngine::new();
-    let fjall_root = tempfile::tempdir().unwrap();
-    let fjall = Store::open(fjall_root.path()).unwrap();
-    let native_root = tempfile::tempdir().unwrap();
-    let native = NativeEngine::open(&native_root.path().join("native")).unwrap();
+fn trace_schema_and_events_match_rrflow_mx_and_rrflow_kv() {
+    let memory = RrflowMxStore::new();
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
     let expected = exercise(&memory);
-    assert_eq!(exercise(&fjall), expected);
-    assert_eq!(exercise(&native), expected);
+    assert_eq!(exercise(&rrflow_kv), expected);
 }
 
 #[test]
 fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
-    let store = RrflowMxEngine::new();
+    let store = RrflowMxStore::new();
     let scope = scope();
     let mut wrong = RuntimeSchemaRegistry::empty(1, "deliberately incomplete trace schema");
     wrong.events.insert(
@@ -135,7 +132,7 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
         .commit_runtime(&rrd_core::RuntimeCommit {
             scope: scope.clone(),
             at: 1,
-            actor: "test:legacy".into(),
+            actor: "test:fixture".into(),
             expected_cursor: 0,
             mutations: vec![RuntimeMutation::Schema { registry: wrong }],
         })
@@ -151,7 +148,7 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
             identity.span_id,
             None,
             TraceDomain::Lifecycle,
-            "instance.migrate-trace",
+            "runtime.trace-schema-repair",
             2,
             TraceOutcome::Ok,
             TraceDataClass::Control,
@@ -169,21 +166,21 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
 #[test]
 fn authoritative_start_survives_reopen_as_an_honest_incomplete_span() {
     let root = tempfile::tempdir().unwrap();
-    let path = root.path().join("native");
+    let path = root.path().join("rrflow-kv");
     let scope = scope();
     let identity = identity("crash-visible-start");
     {
-        let store = NativeEngine::open(&path).unwrap();
+        let store = RrflowKvStore::open(&path).unwrap();
         record_runtime_trace(
             &store,
             &scope,
-            "hook:test",
+            "engine:test",
             RuntimeTraceEvent::start(
                 identity.trace_id,
                 identity.span_id,
                 None,
                 TraceDomain::Lifecycle,
-                "lifecycle.post-tool-use",
+                "reasoning.after-capability",
                 10,
                 TraceDataClass::Control,
                 Vec::new(),
@@ -193,13 +190,13 @@ fn authoritative_start_survives_reopen_as_an_honest_incomplete_span() {
         )
         .unwrap();
     }
-    let reopened = NativeEngine::open(&path).unwrap();
+    let reopened = RrflowKvStore::open(&path).unwrap();
     assert_eq!(phases(&reopened), [("start".into(), "running".into())]);
 }
 
 #[test]
 fn concurrent_trace_writers_rebase_without_losing_events() {
-    let store = Arc::new(RrflowMxEngine::new());
+    let store = Arc::new(RrflowMxStore::new());
     let barrier = Arc::new(Barrier::new(8));
     let mut threads = Vec::new();
     for index in 0..8_u64 {
@@ -218,7 +215,7 @@ fn concurrent_trace_writers_rebase_without_losing_events() {
                     identity.span_id,
                     None,
                     TraceDomain::Storage,
-                    "rrd_lsm.concurrent-observation",
+                    "rrflow_kv.concurrent-observation",
                     index + 1,
                     TraceOutcome::Ok,
                     TraceDataClass::Control,

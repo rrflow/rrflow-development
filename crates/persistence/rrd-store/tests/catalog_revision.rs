@@ -1,5 +1,5 @@
 use rrd_core::ScopeId;
-use rrd_store::{ControlTransition, Engine, Error, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{ControlTransition, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn scope(name: &str) -> ScopeId {
     ScopeId::new(name).unwrap()
@@ -18,7 +18,7 @@ fn catalogue_transition(key_suffix: &str) -> ControlTransition {
     }
 }
 
-fn assert_catalogue_revision_contract(engine: &dyn Engine, key_suffix: &str) {
+fn assert_catalogue_revision_contract(engine: &dyn StorageEngine, key_suffix: &str) {
     let target = scope("instance:catalogue-target");
     let unrelated = scope("instance:catalogue-unrelated");
     let stale = engine.runtime_read_stamp(&target).unwrap();
@@ -56,55 +56,30 @@ fn assert_catalogue_revision_contract(engine: &dyn Engine, key_suffix: &str) {
 
 #[test]
 fn every_engine_binds_catalogue_transitions_to_the_scope_read_stamp() {
-    assert_catalogue_revision_contract(&RrflowMxEngine::new(), "rrflow_mx");
+    assert_catalogue_revision_contract(&RrflowMxStore::new(), "rrflow_mx");
 
-    let fjall_root = tempfile::tempdir().unwrap();
-    assert_catalogue_revision_contract(&Store::open(fjall_root.path()).unwrap(), "fjall");
-
-    let native_root = tempfile::tempdir().unwrap();
-    assert_catalogue_revision_contract(&NativeEngine::open(native_root.path()).unwrap(), "native");
+    let rrflow_kv_root = tempfile::tempdir().unwrap();
+    assert_catalogue_revision_contract(
+        &RrflowKvStore::open(rrflow_kv_root.path()).unwrap(),
+        "rrflow_kv",
+    );
 }
 
 #[test]
-fn fjall_catalogue_revision_survives_reopen() {
+fn rrflow_kv_catalogue_revision_survives_reopen() {
     let root = tempfile::tempdir().unwrap();
-    let target = scope("instance:catalogue-reopen-fjall");
+    let target = scope("instance:catalogue-reopen-rrflow-kv");
     let stale = {
-        let engine = Store::open(root.path()).unwrap();
+        let engine = RrflowKvStore::open(root.path()).unwrap();
         let stale = engine.runtime_read_stamp(&target).unwrap();
         let (revision, _) = engine
-            .commit_catalog_transition(&target, &catalogue_transition("reopen-fjall"))
+            .commit_catalog_transition(&target, &catalogue_transition("reopen-rrflow-kv"))
             .unwrap();
         assert_eq!(revision, 1);
         stale
     };
 
-    let reopened = Store::open(root.path()).unwrap();
-    let fresh = reopened.runtime_read_stamp(&target).unwrap();
-    assert_eq!(fresh.catalog_revision, 1);
-    assert_eq!(fresh.commit_cursor, stale.commit_cursor);
-    assert_ne!(fresh.manifest_id, stale.manifest_id);
-    assert!(matches!(
-        reopened.runtime_read_changes(&stale, stale.commit_cursor, 1),
-        Err(Error::ReadStampMismatch(_))
-    ));
-}
-
-#[test]
-fn native_catalogue_revision_survives_reopen() {
-    let root = tempfile::tempdir().unwrap();
-    let target = scope("instance:catalogue-reopen-native");
-    let stale = {
-        let engine = NativeEngine::open(root.path()).unwrap();
-        let stale = engine.runtime_read_stamp(&target).unwrap();
-        let (revision, _) = engine
-            .commit_catalog_transition(&target, &catalogue_transition("reopen-native"))
-            .unwrap();
-        assert_eq!(revision, 1);
-        stale
-    };
-
-    let reopened = NativeEngine::open(root.path()).unwrap();
+    let reopened = RrflowKvStore::open(root.path()).unwrap();
     let fresh = reopened.runtime_read_stamp(&target).unwrap();
     assert_eq!(fresh.catalog_revision, 1);
     assert_eq!(fresh.commit_cursor, stale.commit_cursor);

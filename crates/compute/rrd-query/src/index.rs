@@ -7,7 +7,7 @@ use rrd_core::{
     digest, DataTransaction, ProjectionId, ProjectionStamp, ProjectionState, ReadStamp,
     RuntimeMutation, RuntimeRecord, RuntimeValue, ScopeId, DATA_RUNTIME_CONTRACT_VERSION,
 };
-use rrd_store::{ControlTransition, Durability, Engine};
+use rrd_store::{ControlTransition, Durability, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -379,13 +379,13 @@ impl IndexMutationContext {
     }
 }
 
-pub struct IndexCatalogueRepository<'a, E: Engine + ?Sized> {
+pub struct IndexCatalogueRepository<'a, E: StorageEngine + ?Sized> {
     engine: &'a E,
     scope: ScopeId,
     key: String,
 }
 
-impl<'a, E: Engine> IndexCatalogueRepository<'a, E> {
+impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
     pub fn new(engine: &'a E, scope: ScopeId) -> Self {
         let key = format!("server/state/index-catalogue/{scope}");
         Self { engine, scope, key }
@@ -941,7 +941,7 @@ fn validate_unique_rows(definition: &IndexDefinition, rows: &[QueryRow]) -> Resu
 /// prospective transaction state. Callers serialize this check with the
 /// authoritative commit; rebuilding, quarantined, retiring, or stale data
 /// indexes remain constraints even though planners reject them as access paths.
-pub fn validate_unique_indexes<E: Engine>(
+pub fn validate_unique_indexes<E: StorageEngine>(
     engine: &E,
     transaction: &DataTransaction,
     _default_valid_at: u64,
@@ -985,7 +985,7 @@ pub fn validate_unique_indexes<E: Engine>(
     Ok(())
 }
 
-fn validate_unique_definition<E: Engine>(
+fn validate_unique_definition<E: StorageEngine>(
     engine: &E,
     read: &ReadStamp,
     definition: &IndexDefinition,
@@ -1008,7 +1008,7 @@ fn validate_unique_definition<E: Engine>(
     )
 }
 
-fn current_records_at_read<E: Engine>(
+fn current_records_at_read<E: StorageEngine>(
     engine: &E,
     read: &ReadStamp,
 ) -> Result<BTreeMap<rrd_core::RuntimeRef, RuntimeRecord>> {
@@ -1162,7 +1162,7 @@ fn validate_analytics(
     Ok(())
 }
 
-fn maintenance_evidence<E: Engine>(
+fn maintenance_evidence<E: StorageEngine>(
     engine: &E,
     scope: &ScopeId,
     id: &ProjectionId,

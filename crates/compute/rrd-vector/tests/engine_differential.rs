@@ -3,11 +3,11 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     RuntimeVector, ScopeId, VectorValue,
 };
-use rrd_store::{Engine, NativeEngine, RrflowMxEngine, Store};
+use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{search_changes_exact, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
 use tempfile::tempdir;
 
-fn commit(engine: &dyn Engine, scope: &ScopeId) -> ReadStamp {
+fn commit(engine: &dyn StorageEngine, scope: &ScopeId) -> ReadStamp {
     let mut schema = RuntimeSchemaRegistry::empty(1, "vector differential");
     schema.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -58,7 +58,7 @@ fn commit(engine: &dyn Engine, scope: &ScopeId) -> ReadStamp {
     engine.runtime_read_stamp(scope).unwrap()
 }
 
-fn search(engine: &dyn Engine) -> Vec<(String, f64)> {
+fn search(engine: &dyn StorageEngine) -> Vec<(String, f64)> {
     let scope = ScopeId::new("instance:vector-differential").unwrap();
     let read = commit(engine, &scope);
     let page = engine.runtime_read_changes(&read, 0, usize::MAX).unwrap();
@@ -86,16 +86,12 @@ fn search(engine: &dyn Engine) -> Vec<(String, f64)> {
 }
 
 #[test]
-fn exact_search_is_identical_across_memory_fjall_and_native_logs() {
-    let memory = search(&RrflowMxEngine::new());
+fn exact_search_is_identical_across_rrflow_mx_and_rrflow_kv() {
+    let memory = search(&RrflowMxStore::new());
 
-    let fjall_directory = tempdir().unwrap();
-    let fjall = search(&Store::open(fjall_directory.path()).unwrap());
+    let rrflow_kv_directory = tempdir().unwrap();
+    let rrflow_kv = search(&RrflowKvStore::open(rrflow_kv_directory.path()).unwrap());
 
-    let native_directory = tempdir().unwrap();
-    let native = search(&NativeEngine::open(&native_directory.path().join("native")).unwrap());
-
-    assert_eq!(memory, fjall);
-    assert_eq!(memory, native);
+    assert_eq!(memory, rrflow_kv);
     assert_eq!(memory[0].0, "a");
 }

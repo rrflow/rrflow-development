@@ -1,7 +1,7 @@
 //! Removal candidacy by query.
 
 use rrd_core::{Claim, Predicate, Producer, Reader, Subject};
-use rrd_store::{Store, Verdict};
+use rrd_store::{RrflowKvStore, StorageEngine, Verdict};
 
 fn producer() -> Producer {
     Producer {
@@ -26,9 +26,9 @@ fn reader(name: &str) -> Reader {
     Reader::new(name).unwrap()
 }
 
-fn store() -> (tempfile::TempDir, Store) {
+fn store() -> (tempfile::TempDir, RrflowKvStore) {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::open(dir.path()).unwrap();
+    let store = RrflowKvStore::open(dir.path()).unwrap();
     (dir, store)
 }
 

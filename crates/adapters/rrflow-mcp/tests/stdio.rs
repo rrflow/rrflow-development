@@ -3,7 +3,7 @@ use rrd_core::{
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
     RuntimeValueType, ScopeId,
 };
-use rrd_store::{Engine, PersistentEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::BTreeMap;
 use std::io::Write as _;
 use std::process::{Command, Stdio};
@@ -13,7 +13,7 @@ fn stdio_context_flows_through_the_single_engine_operation() {
     let root = tempfile::tempdir().unwrap();
     rrd_engine::InstanceManifest::ensure_dedicated_as(root.path(), "mcp-context-test").unwrap();
     let db = root.path().join(".rrflow/rrd");
-    let storage = PersistentEngine::open(&db).unwrap();
+    let storage = RrflowKvStore::open(&db).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "MCP context fixture");
     registry.records.insert(
         RuntimeType::new("note").unwrap(),

@@ -1,25 +1,12 @@
 //! The canonical storage port used by the RRFlow engine.
 //!
-//! rrflow's value is the semantic layer — bi-temporal claims, durability
-//! classes, projections that ground against their log, recall, the ledger.
-//! The engine underneath is a *port*: eight primitives (append, sequence,
-//! range, subjects, observe, projection get/put, and the `ClaimSource`
-//! reads) that any backend can supply. Everything else — assert,
-//! current-state projection, rebuild, grounding, quarantine, reset — is
-//! **provided by this trait**, so an engine implements the primitives and
-//! inherits the semantics. That layering is the contract a parity
-//! implementation follows in another language: the Go/bbolt engine
-//! implements these same primitives over the same key encodings
-//! (`rrd-core/fixtures/golden-vectors.json` is the cross-language proof)
-//! and the semantic layer above it is a translation, not a redesign.
+//! The port owns semantics shared by the two RRFlow storage profiles:
+//! persistent rrflowKV and volatile rrflowMX. Both profiles implement the same
+//! claim, stamped transaction, snapshot, audit, and projection behavior. Only
+//! rrflowKV adds WAL-backed durability and physical storage evidence.
 //!
-//! Two RRFlow storage profiles ship in Rust today: [`crate::NativeEngine`]
-//! implements persistent rrflowKV and [`RrflowMxEngine`] implements volatile
-//! rrflowMX. [`Store`] remains only as the transitional Fjall compatibility
-//! adapter scheduled for removal by the RRFlow 1.0 checklist. Cache tiers
-//! (Moka in-process, Dragonfly shared)
-//! compose *around* an engine rather than implementing this trait: they
-//! accelerate reads and must never be the system of record.
+//! Cache and external database adapters compose above this boundary. They may
+//! accelerate or supply data, but they cannot become a second state authority.
 
 use crate::control::{
     validate_control_batch, validate_control_key, verify_control_page, verify_control_tail,
@@ -27,11 +14,11 @@ use crate::control::{
 };
 use crate::error::{Error, Result};
 use crate::keyspaces::Durability;
+use crate::outcome::{AppendOutcome, IdempotentAppendOutcome};
 use crate::projection::{
     difference, CurrentProjection, GroundedStamp, GroundingReport, ProjectionStatus,
     CURRENT_PROJECTION,
 };
-use crate::store::{AppendOutcome, IdempotentAppendOutcome, Store};
 use rrd_core::reference::MemoryClaims;
 use rrd_core::{
     projection_family, resolve_as_of, AuditEnvelope, Claim, ClaimSource, DataTransaction,
@@ -173,7 +160,7 @@ impl PhysicalStoreEvidence {
     }
 }
 
-pub trait Engine: ClaimSource<Error = Error> {
+pub trait StorageEngine: ClaimSource<Error = Error> {
     // ---- primitives every backend supplies ----
 
     /// Appends claims atomically with authoritative durability, advancing
@@ -491,7 +478,7 @@ pub trait Engine: ClaimSource<Error = Error> {
         }
     }
 
-    /// [`Engine::put_projection_with`] at the Buffered default: a projection
+    /// [`StorageEngine::put_projection_with`] at the Buffered default: a projection
     /// is derivable, so a crash-lost write costs a rebuild, never truth.
     fn put_projection(&self, name: &str, bytes: &[u8]) -> Result<()> {
         self.put_projection_with(name, bytes, Durability::Buffered)
@@ -613,7 +600,7 @@ pub trait Engine: ClaimSource<Error = Error> {
 /// Validate every retirement against one pre-commit authenticated snapshot.
 /// The backend cursor CAS remains the final authority if another writer
 /// advances after this read and before the physical transaction begins.
-pub(crate) fn validate_retirement_targets<E: Engine + ?Sized>(
+pub(crate) fn validate_retirement_targets<E: StorageEngine + ?Sized>(
     engine: &E,
     commit: &RuntimeCommit,
 ) -> Result<()> {
@@ -697,147 +684,6 @@ fn schema_at_read(read: &ReadStamp, page: &RuntimeChangePage) -> Result<RuntimeS
     Ok(schema)
 }
 
-impl Engine for Store {
-    fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
-        Ok(PhysicalStoreEvidence::logical_only("fjall_compatibility"))
-    }
-
-    fn append_batch(&self, claims: &[Claim]) -> Result<AppendOutcome> {
-        Store::append_batch(self, claims)
-    }
-    fn append_batch_idempotent(
-        &self,
-        idempotency_key: &str,
-        operation_sha256: &str,
-        claims: &[Claim],
-    ) -> Result<IdempotentAppendOutcome> {
-        Store::append_batch_idempotent(self, idempotency_key, operation_sha256, claims)
-    }
-    fn control_record(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        Store::control_record(self, key)
-    }
-    fn commit_control_transition(
-        &self,
-        transition: &ControlTransition,
-    ) -> Result<ControlJournalEntry> {
-        Store::commit_control_transition(self, transition)
-    }
-    fn commit_control_batch(
-        &self,
-        transitions: &[ControlTransition],
-    ) -> Result<Vec<ControlJournalEntry>> {
-        Store::commit_control_batch(self, transitions)
-    }
-    fn commit_catalog_transition(
-        &self,
-        scope: &ScopeId,
-        transition: &ControlTransition,
-    ) -> Result<(u64, ControlJournalEntry)> {
-        Store::commit_catalog_transition(self, scope, transition)
-    }
-    fn control_journal_since(&self, after: u64, limit: usize) -> Result<Vec<ControlJournalEntry>> {
-        Store::control_journal_since(self, after, limit)
-    }
-    fn control_sequence(&self) -> Result<u64> {
-        Store::control_sequence(self)
-    }
-    fn sequence(&self) -> Result<u64> {
-        Store::sequence(self)
-    }
-    fn claims_in_range(&self, from: u64, to: u64) -> Result<Vec<Claim>> {
-        Store::claims_in_range(self, from, to)
-    }
-    fn subjects(&self) -> Result<Vec<Subject>> {
-        Store::subjects(self)
-    }
-    fn observe(
-        &self,
-        reader: &Reader,
-        subject: &Subject,
-        predicate: &Predicate,
-        at: Millis,
-    ) -> Result<()> {
-        Store::observe(self, reader, subject, predicate, at)
-    }
-    fn get_projection(&self, name: &str) -> Result<Option<Vec<u8>>> {
-        Store::get_projection(self, name)
-    }
-    fn put_projection_with(&self, name: &str, bytes: &[u8], durability: Durability) -> Result<()> {
-        Store::put_projection_with(self, name, bytes, durability)
-    }
-    fn runtime_cursor(&self) -> Result<u64> {
-        Store::runtime_cursor(self)
-    }
-    fn runtime_schema(&self, scope: &ScopeId) -> Result<Option<RuntimeSchemaRegistry>> {
-        Store::runtime_schema(self, scope)
-    }
-    fn runtime_read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
-        Store::runtime_read_stamp(self, scope)
-    }
-    fn open_runtime_snapshot(
-        &self,
-        scope: &ScopeId,
-        owner: &str,
-        now: Millis,
-        ttl: Millis,
-    ) -> Result<SnapshotHandle> {
-        Store::open_runtime_snapshot(self, scope, owner, now, ttl)
-    }
-    fn runtime_snapshot_changes(
-        &self,
-        snapshot: &SnapshotHandle,
-        after: u64,
-        limit: usize,
-        now: Millis,
-    ) -> Result<RuntimeChangePage> {
-        Store::runtime_snapshot_changes(self, snapshot, after, limit, now)
-    }
-    fn release_runtime_snapshot(&self, id: &SnapshotId) -> Result<bool> {
-        Store::release_runtime_snapshot(self, id)
-    }
-    fn runtime_snapshots(&self, now: Millis) -> Result<Vec<SnapshotHandle>> {
-        Store::runtime_snapshots(self, now)
-    }
-    fn runtime_retention_pins(&self, now: Millis) -> Result<Vec<RetentionPin>> {
-        Store::runtime_retention_pins(self, now)
-    }
-    fn runtime_read_changes(
-        &self,
-        read: &ReadStamp,
-        after: u64,
-        limit: usize,
-    ) -> Result<RuntimeChangePage> {
-        Store::runtime_read_changes(self, read, after, limit)
-    }
-    fn commit_runtime(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
-        Store::commit_runtime(self, commit)
-    }
-    fn commit_runtime_at_read(
-        &self,
-        commit: &RuntimeCommit,
-        read: Option<&ReadStamp>,
-    ) -> Result<RuntimeCommitOutcome> {
-        Store::commit_runtime_at_read(self, commit, read)
-    }
-    fn runtime_changes_since(
-        &self,
-        after: u64,
-        limit: usize,
-        scope: Option<&ScopeId>,
-    ) -> Result<RuntimeChangePage> {
-        Store::runtime_changes_since(self, after, limit, scope)
-    }
-    fn runtime_outbox_since(&self, after: u64, limit: usize) -> Result<Vec<ProjectionWork>> {
-        Store::runtime_outbox_since(self, after, limit)
-    }
-    fn runtime_audit(&self, commit_id: &str) -> Result<Option<AuditEnvelope>> {
-        Store::runtime_audit(self, commit_id)
-    }
-    fn runtime_commit_outcome(&self, commit_id: &str) -> Result<Option<RuntimeCommitOutcome>> {
-        Store::runtime_commit_outcome(self, commit_id)
-    }
-}
-
 /// rrflowMX: the process-local, volatile implementation of the complete
 /// semantic storage port.
 ///
@@ -846,12 +692,12 @@ impl Engine for Store {
 /// process. Arrow working sets and DataFusion execution are layered above this
 /// port in `rrd-query`; they are not alternate state owned by rrflowMX.
 #[derive(Default)]
-pub struct RrflowMxEngine {
-    inner: Mutex<RrflowMxEngineInner>,
+pub struct RrflowMxStore {
+    inner: Mutex<RrflowMxStoreInner>,
 }
 
 #[derive(Default)]
-struct RrflowMxEngineInner {
+struct RrflowMxStoreInner {
     claims: MemoryClaims,
     /// Append order, so `claims_in_range` replays exactly like a log.
     order: Vec<Claim>,
@@ -878,7 +724,7 @@ struct RrflowMxEngineInner {
     catalog_revisions: BTreeMap<ScopeId, u64>,
 }
 
-impl RrflowMxEngine {
+impl RrflowMxStore {
     pub fn new() -> Self {
         Self::default()
     }
@@ -889,7 +735,7 @@ impl RrflowMxEngine {
     }
 }
 
-impl ClaimSource for RrflowMxEngine {
+impl ClaimSource for RrflowMxStore {
     type Error = Error;
 
     fn versions_at_or_before(
@@ -944,15 +790,15 @@ pub(crate) fn validate_idempotency(key: &str, digest: &str) -> Result<()> {
     Ok(())
 }
 
-impl Engine for RrflowMxEngine {
+impl StorageEngine for RrflowMxStore {
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         Ok(PhysicalStoreEvidence::logical_only("rrflow_mx"))
     }
 
     fn append_batch(&self, claims: &[Claim]) -> Result<AppendOutcome> {
         let mut inner = self.inner.lock().expect("engine mutex");
-        // Match Fjall rollback: reject the whole batch before mutating either
-        // authoritative collection if any member is invalid.
+        // Reject the whole batch before mutating either authoritative
+        // collection if any member is invalid.
         for claim in claims {
             claim.validate()?;
         }
@@ -1647,47 +1493,48 @@ impl Engine for RrflowMxEngine {
     }
 }
 
-/// One composition-root-owned storage authority selected before the service
-/// starts. This wrapper keeps the engine generic internally while preventing
-/// outward adapters from opening a second physical store or branching around
-/// the [`Engine`] contract.
-pub enum EngineBox {
-    RrflowMx(RrflowMxEngine),
-    Persistent(crate::PersistentEngine),
+/// One composition-root-owned RRFlow storage profile.
+///
+/// The upper engine composition root selects the profile once: rrflowKV is
+/// persistent and rrflowMX is process-local. This enum owns no selection
+/// heuristics and cannot open storage on its own.
+pub enum StorageProfile {
+    RrflowMx(RrflowMxStore),
+    RrflowKv(crate::RrflowKvStore),
 }
 
-impl EngineBox {
+impl StorageProfile {
     pub fn rrflow_mx() -> Self {
-        Self::RrflowMx(RrflowMxEngine::new())
+        Self::RrflowMx(RrflowMxStore::new())
     }
 
-    pub fn persistent(engine: crate::PersistentEngine) -> Self {
-        Self::Persistent(engine)
+    pub fn rrflow_kv(store: crate::RrflowKvStore) -> Self {
+        Self::RrflowKv(store)
     }
 
-    pub fn as_persistent(&self) -> Option<&crate::PersistentEngine> {
+    pub fn as_rrflow_kv(&self) -> Option<&crate::RrflowKvStore> {
         match self {
             Self::RrflowMx(_) => None,
-            Self::Persistent(engine) => Some(engine),
+            Self::RrflowKv(store) => Some(store),
         }
     }
 
     pub fn backend_name(&self) -> &'static str {
         match self {
             Self::RrflowMx(_) => "rrflow_mx",
-            Self::Persistent(engine) => engine.backend().as_str(),
+            Self::RrflowKv(_) => "rrflow_kv",
         }
     }
 
-    fn engine(&self) -> &(dyn Engine + Send + Sync) {
+    fn engine(&self) -> &(dyn StorageEngine + Send + Sync) {
         match self {
             Self::RrflowMx(engine) => engine,
-            Self::Persistent(engine) => engine,
+            Self::RrflowKv(engine) => engine,
         }
     }
 }
 
-impl ClaimSource for EngineBox {
+impl ClaimSource for StorageProfile {
     type Error = Error;
 
     fn versions_at_or_before(
@@ -1709,7 +1556,7 @@ impl ClaimSource for EngineBox {
     }
 }
 
-impl Engine for EngineBox {
+impl StorageEngine for StorageProfile {
     fn append_batch(&self, claims: &[Claim]) -> Result<AppendOutcome> {
         self.engine().append_batch(claims)
     }
@@ -1876,7 +1723,7 @@ impl Engine for EngineBox {
     }
 }
 
-fn rrflow_mx_read_stamp(inner: &RrflowMxEngineInner, scope: &ScopeId) -> Result<ReadStamp> {
+fn rrflow_mx_read_stamp(inner: &RrflowMxStoreInner, scope: &ScopeId) -> Result<ReadStamp> {
     ReadStamp::authenticated(
         scope.clone(),
         inner
@@ -1899,7 +1746,7 @@ fn rrflow_mx_read_stamp(inner: &RrflowMxEngineInner, scope: &ScopeId) -> Result<
 }
 
 fn rrflow_mx_validate_read_stamp(
-    inner: &RrflowMxEngineInner,
+    inner: &RrflowMxStoreInner,
     read: &ReadStamp,
 ) -> Result<rrd_core::RuntimeReadValidation> {
     read.validate()?;
@@ -1976,7 +1823,7 @@ fn rrflow_mx_validate_read_stamp(
 }
 
 fn rrflow_mx_commit_control_transition(
-    inner: &mut RrflowMxEngineInner,
+    inner: &mut RrflowMxStoreInner,
     transition: &ControlTransition,
     catalog_scope: Option<&ScopeId>,
 ) -> Result<(Option<u64>, ControlJournalEntry)> {
@@ -2034,7 +1881,7 @@ fn rrflow_mx_commit_control_transition(
 }
 
 fn rrflow_mx_authenticated_point_page(
-    inner: &RrflowMxEngineInner,
+    inner: &RrflowMxStoreInner,
     read: &ReadStamp,
     cursor: u64,
 ) -> Result<RuntimeChangePage> {

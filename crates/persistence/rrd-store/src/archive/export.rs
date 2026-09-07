@@ -7,7 +7,7 @@ use super::receipt::{
     export_paths, load_receipt, remove_export_artifacts, remove_receipt, write_receipt,
     ExportReceipt,
 };
-use crate::{Engine, Error, Result};
+use crate::{Error, Result, StorageEngine};
 use rrd_core::{AuditEnvelope, Claim, RuntimeChange, RuntimeCommit, RuntimeMutation};
 use std::collections::VecDeque;
 use std::fs;
@@ -27,7 +27,7 @@ struct SourceSummary {
     runtime_audit_sha256: Option<String>,
 }
 
-pub fn export_logical_archive<E: Engine>(
+pub fn export_logical_archive<E: StorageEngine>(
     engine: &E,
     destination: &Path,
 ) -> Result<LogicalArchiveInventory> {
@@ -38,7 +38,7 @@ pub fn export_logical_archive<E: Engine>(
 /// checkpoints to `progress`. Returning an error from the callback simulates
 /// interruption and intentionally leaves the exact private partial/receipt
 /// artifacts for the next call to reconcile and resume.
-pub fn export_logical_archive_with_progress<E: Engine>(
+pub fn export_logical_archive_with_progress<E: StorageEngine>(
     engine: &E,
     destination: &Path,
     mut progress: impl FnMut(&LogicalArchiveProgress) -> Result<()>,
@@ -219,12 +219,12 @@ fn inventory_matches_source(inventory: &LogicalArchiveInventory, source: &Source
         && inventory.runtime_audit_sha256 == source.runtime_audit_sha256
 }
 
-fn scan_source(engine: &impl Engine) -> Result<SourceSummary> {
+fn scan_source(engine: &impl StorageEngine) -> Result<SourceSummary> {
     stream_source(engine, |_, _| Ok(()))
 }
 
 fn stream_source(
-    engine: &impl Engine,
+    engine: &impl StorageEngine,
     mut emit: impl FnMut(&ArchiveAction, &[u8]) -> Result<()>,
 ) -> Result<SourceSummary> {
     let claim_sequence = engine.sequence()?;
@@ -337,7 +337,7 @@ struct ClaimPager<'a, E> {
     page: VecDeque<Claim>,
 }
 
-impl<'a, E: Engine> ClaimPager<'a, E> {
+impl<'a, E: StorageEngine> ClaimPager<'a, E> {
     fn new(engine: &'a E, head: u64) -> Self {
         Self {
             engine,
@@ -386,7 +386,7 @@ struct RuntimeCommitPager<'a, E> {
     previous_audit_sha256: Option<String>,
 }
 
-impl<'a, E: Engine> RuntimeCommitPager<'a, E> {
+impl<'a, E: StorageEngine> RuntimeCommitPager<'a, E> {
     fn new(engine: &'a E, head: u64) -> Self {
         Self {
             engine,

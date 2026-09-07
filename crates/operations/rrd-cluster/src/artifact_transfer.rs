@@ -7,8 +7,8 @@ use crate::{
 };
 use rrd_core::{RuntimeMutation, ScopeId};
 use rrd_store::{
-    publish_durable_rename, sync_directory_metadata, Engine, Error as StoreError,
-    ImmutableObjectStore, LocalObjectStore,
+    publish_durable_rename, sync_directory_metadata, Error as StoreError, ImmutableObjectStore,
+    LocalObjectStore, StorageEngine,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File, OpenOptions};
@@ -196,7 +196,7 @@ struct SessionInventoryEntry {
 
 /// Captures every immutable object reference visible at one exact project read
 /// and binds its digest closure into the replica transfer plan.
-pub fn prepare_artifact_transfer<E: Engine>(
+pub fn prepare_artifact_transfer<E: StorageEngine>(
     mut plan: crate::ReplicaTransferPlan,
     engine: &E,
     scope: &ScopeId,

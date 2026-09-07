@@ -1,5 +1,5 @@
 use rrd_contract::CanonicalId;
-use rrd_engine::{load_or_create_token_key, InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_server::{RrdHttpServer, RrdJwtVerificationKey, RrdMutualTlsServerConfig};
 use rustls::RootCertStore;
 use std::fs::File;
@@ -63,9 +63,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let key_path = args
         .token_key_file
         .unwrap_or_else(|| database.join("RRD.SECRET"));
-    let token_key = load_or_create_token_key(&key_path)?;
     let instance = CanonicalId::new(binding.manifest.id.clone())?;
-    let engine = RrdEngine::open_bound_with_token_key(&binding, instance, token_key, now())?;
+    let engine = RrdEngine::open_bound_with_token_key_file(&binding, instance, &key_path, now())?;
     let project = engine
         .project_authority_binding()?
         .ok_or("bound RRD engine has no persisted project authority")?;

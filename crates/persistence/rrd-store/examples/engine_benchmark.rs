@@ -1,12 +1,13 @@
-//! Reproducible Fjall/native promotion benchmark.
+//! Reproducible rrflowKV semantic-storage benchmark.
 //!
-//! Each backend runs in an isolated child process against a fresh directory.
-//! The parent emits one versioned JSON evidence document; it does not turn a
-//! single machine run into a universal performance claim.
+//! Each trial runs in an isolated child process against a fresh directory. The
+//! parent emits one versioned JSON evidence document containing absolute
+//! correctness, throughput, latency, recovery, memory, maintenance, and
+//! footprint measurements. A single machine run is not a universal claim.
 
 use rrd_core::{Claim, Predicate, Producer, Subject};
 use rrd_store::{
-    measure_storage_footprint, Engine, FootprintBytes, NativeEngine, StorageFootprint, Store,
+    measure_storage_footprint, FootprintBytes, RrflowKvStore, StorageEngine, StorageFootprint,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -16,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-const FORMAT_VERSION: u16 = 4;
+const FORMAT_VERSION: u16 = 5;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Config {
@@ -50,8 +51,8 @@ struct Latency {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct BackendResult {
-    backend: String,
+struct Trial {
+    storage_profile: String,
     correctness_verified: bool,
     write_operations_per_second: f64,
     write_batch_latency: Latency,
@@ -68,7 +69,7 @@ struct BackendResult {
     maintenance_peak_rss_kib: Option<u64>,
     footprint: LifecycleFootprint,
     semantic_sequence: u64,
-    native_maintenance: Option<MaintenanceEvidence>,
+    maintenance: MaintenanceEvidence,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,28 +112,6 @@ struct ProbeResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Ratios {
-    native_to_fjall_write_throughput: f64,
-    native_to_fjall_read_throughput: f64,
-    native_to_fjall_write_p95: f64,
-    native_to_fjall_read_p95: f64,
-    native_to_fjall_maintained_read_throughput: f64,
-    native_to_fjall_maintained_read_p95: f64,
-    native_to_fjall_recovery: f64,
-    native_to_fjall_maintained_recovery: f64,
-    native_to_fjall_peak_rss: Option<f64>,
-    native_to_fjall_reopened_apparent: f64,
-    native_to_fjall_reopened_allocated: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PromotionVerdict {
-    policy: String,
-    passes: bool,
-    failures: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Evidence {
     format_version: u16,
     measured_at_unix_ms: u128,
@@ -143,12 +122,8 @@ struct Evidence {
     footprint_contract: String,
     verification_contract: String,
     config: Config,
-    fjall_trials: Vec<BackendResult>,
-    native_trials: Vec<BackendResult>,
-    fjall: BackendResult,
-    native: BackendResult,
-    ratios: Ratios,
-    promotion: PromotionVerdict,
+    trials: Vec<Trial>,
+    rrflow_kv: Trial,
 }
 
 fn main() {
@@ -172,34 +147,18 @@ fn run() -> Result<(), String> {
     {
         return run_probe(&arguments);
     }
-    let (config, output, require_promotion) = parse_parent(&arguments)?;
+    let (config, output) = parse_parent(&arguments)?;
     let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let mut fjall_trials = Vec::with_capacity(config.trials);
-    let mut native_trials = Vec::with_capacity(config.trials);
+    let mut trials = Vec::with_capacity(config.trials);
     for trial in 0..config.trials {
         let trial_root = directory.path().join(format!("trial-{trial}"));
         fs::create_dir_all(&trial_root).map_err(|error| error.to_string())?;
-        let mut measure = |backend: &str| -> Result<(), String> {
-            let result = launch_child(backend, &trial_root.join(backend), &config)?;
-            if backend == "fjall" {
-                fjall_trials.push(result);
-            } else {
-                native_trials.push(result);
-            }
-            Ok(())
-        };
-        if trial % 2 == 0 {
-            measure("fjall")?;
-            measure("native")?;
-        } else {
-            measure("native")?;
-            measure("fjall")?;
-        }
+        trials.push(launch_child(&trial_root.join("rrflow-kv"), &config)?);
     }
-    let fjall = aggregate("fjall", &fjall_trials);
-    let native = aggregate("native", &native_trials);
-    let ratios = ratios(&fjall, &native);
-    let promotion = promotion(&fjall, &native, &ratios);
+    let rrflow_kv = aggregate("rrflow_kv", &trials);
+    if !rrflow_kv.correctness_verified {
+        return Err("one or more isolated rrflowKV trials failed correctness".into());
+    }
     let evidence = Evidence {
         format_version: FORMAT_VERSION,
         measured_at_unix_ms: SystemTime::now()
@@ -213,20 +172,14 @@ fn run() -> Result<(), String> {
             .unwrap_or(1),
         aggregation: "median of per-trial metrics; latency percentiles are medians of each isolated trial's percentile"
             .into(),
-        footprint_contract: "active follows identical logical writes while the engine is open; reopened follows a clean close/open and verification without explicit maintenance and is the only cross-backend footprint promotion state; maintained follows each backend's declared native maintenance actions and is diagnostic-only"
+        footprint_contract: "active follows logical writes while rrflowKV is open; reopened follows a clean close/open and full verification before maintenance; maintained follows compaction, unreachable-file collection, and another clean reopen"
             .into(),
         verification_contract: "the complete corpus is verified in read-width pages before measured reads; every page has its exact cardinality and every claim object is checked against its append ordinal; peak RSS is process VmHWM across recovery, paged verification, and measured bounded reads"
             .into(),
         config,
-        fjall_trials,
-        native_trials,
-        fjall,
-        native,
-        ratios,
-        promotion,
+        trials,
+        rrflow_kv,
     };
-    let promotion_passes = evidence.promotion.passes;
-    let promotion_failures = evidence.promotion.failures.clone();
     let bytes = serde_json::to_vec_pretty(&evidence).map_err(|error| error.to_string())?;
     if let Some(output) = output {
         if let Some(parent) = output.parent() {
@@ -239,26 +192,14 @@ fn run() -> Result<(), String> {
         "{}",
         String::from_utf8(bytes).map_err(|error| error.to_string())?
     );
-    if require_promotion && !promotion_passes {
-        return Err(format!(
-            "strict promotion gate failed: {}",
-            promotion_failures.join("; ")
-        ));
-    }
     Ok(())
 }
 
-fn parse_parent(arguments: &[String]) -> Result<(Config, Option<PathBuf>, bool), String> {
+fn parse_parent(arguments: &[String]) -> Result<(Config, Option<PathBuf>), String> {
     let mut config = Config::default();
     let mut output = None;
-    let mut require_promotion = false;
     let mut index = 0;
     while index < arguments.len() {
-        if arguments[index] == "--require-promotion" {
-            require_promotion = true;
-            index += 1;
-            continue;
-        }
         let value = arguments
             .get(index + 1)
             .ok_or_else(|| format!("missing value after {}", arguments[index]))?;
@@ -276,7 +217,7 @@ fn parse_parent(arguments: &[String]) -> Result<(Config, Option<PathBuf>, bool),
     if config.batch_size > config.operations || config.read_width > config.operations {
         return Err("batch size and read width cannot exceed operations".into());
     }
-    Ok((config, output, require_promotion))
+    Ok((config, output))
 }
 
 fn parse_positive(value: &str, label: &str) -> Result<usize, String> {
@@ -289,11 +230,10 @@ fn parse_positive(value: &str, label: &str) -> Result<usize, String> {
     Ok(parsed)
 }
 
-fn launch_child(backend: &str, path: &Path, config: &Config) -> Result<BackendResult, String> {
+fn launch_child(path: &Path, config: &Config) -> Result<Trial, String> {
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
     let output = Command::new(executable)
         .arg("--child")
-        .arg(backend)
         .arg("--path")
         .arg(path)
         .arg("--operations")
@@ -310,7 +250,7 @@ fn launch_child(backend: &str, path: &Path, config: &Config) -> Result<BackendRe
         .map_err(|error| error.to_string())?;
     if !output.status.success() {
         return Err(format!(
-            "{backend} child failed: {}",
+            "rrflowKV child failed: {}",
             String::from_utf8_lossy(&output.stderr)
         ));
     }
@@ -318,29 +258,19 @@ fn launch_child(backend: &str, path: &Path, config: &Config) -> Result<BackendRe
 }
 
 fn run_child(arguments: &[String]) -> Result<(), String> {
-    let backend = arguments
-        .get(1)
-        .ok_or_else(|| "missing child backend".to_owned())?;
-    if arguments.get(2).map(String::as_str) != Some("--path") {
+    if arguments.get(1).map(String::as_str) != Some("--path") {
         return Err("child requires --path".into());
     }
     let path = PathBuf::from(
         arguments
-            .get(3)
+            .get(2)
             .ok_or_else(|| "child requires a path".to_owned())?,
     );
-    let (config, output, require_promotion) = parse_parent(&arguments[4..])?;
+    let (config, output) = parse_parent(&arguments[3..])?;
     if output.is_some() {
         return Err("child cannot write an output file".into());
     }
-    if require_promotion {
-        return Err("child cannot require a promotion verdict".into());
-    }
-    let result = match backend.as_str() {
-        "fjall" => run_fjall(&path, &config)?,
-        "native" => run_native(&path, &config)?,
-        _ => return Err(format!("unknown child backend {backend}")),
-    };
+    let result = run_rrflow_kv(&path, &config)?;
     println!(
         "{}",
         serde_json::to_string(&result).map_err(|error| error.to_string())?
@@ -348,11 +278,10 @@ fn run_child(arguments: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-fn launch_probe(backend: &str, path: &Path, config: &Config) -> Result<ProbeResult, String> {
+fn launch_probe(path: &Path, config: &Config) -> Result<ProbeResult, String> {
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
     let output = Command::new(executable)
         .arg("--probe")
-        .arg(backend)
         .arg("--path")
         .arg(path)
         .arg("--operations")
@@ -369,7 +298,7 @@ fn launch_probe(backend: &str, path: &Path, config: &Config) -> Result<ProbeResu
         .map_err(|error| error.to_string())?;
     if !output.status.success() {
         return Err(format!(
-            "{backend} probe failed: {}",
+            "rrflowKV probe failed: {}",
             String::from_utf8_lossy(&output.stderr)
         ));
     }
@@ -377,34 +306,24 @@ fn launch_probe(backend: &str, path: &Path, config: &Config) -> Result<ProbeResu
 }
 
 fn run_probe(arguments: &[String]) -> Result<(), String> {
-    let backend = arguments
-        .get(1)
-        .ok_or_else(|| "missing probe backend".to_owned())?;
-    if arguments.get(2).map(String::as_str) != Some("--path") {
+    if arguments.get(1).map(String::as_str) != Some("--path") {
         return Err("probe requires --path".into());
     }
     let path = PathBuf::from(
         arguments
-            .get(3)
+            .get(2)
             .ok_or_else(|| "probe requires a path".to_owned())?,
     );
-    let (config, output, require_promotion) = parse_parent(&arguments[4..])?;
+    let (config, output) = parse_parent(&arguments[3..])?;
     if output.is_some() {
         return Err("probe cannot write an output file".into());
     }
-    if require_promotion {
-        return Err("probe cannot require a promotion verdict".into());
-    }
     let started = Instant::now();
-    let engine: Box<dyn Engine> = match backend.as_str() {
-        "fjall" => Box::new(Store::open(&path).map_err(|error| error.to_string())?),
-        "native" => Box::new(NativeEngine::open(&path).map_err(|error| error.to_string())?),
-        _ => return Err(format!("unknown probe backend {backend}")),
-    };
+    let engine = RrflowKvStore::open(&path).map_err(|error| error.to_string())?;
     let sequence = engine.sequence().map_err(|error| error.to_string())?;
     let recovery = started.elapsed();
-    let correctness_verified = verify(engine.as_ref(), &config, sequence)?;
-    let (read_samples, read_elapsed) = read_workload(engine.as_ref(), &config)?;
+    let correctness_verified = verify(&engine, &config, sequence)?;
+    let (read_samples, read_elapsed) = read_workload(&engine, &config)?;
     let result = ProbeResult {
         correctness_verified,
         semantic_sequence: sequence,
@@ -420,74 +339,13 @@ fn run_probe(arguments: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-fn run_fjall(path: &Path, config: &Config) -> Result<BackendResult, String> {
-    let store = Store::open(path).map_err(|error| error.to_string())?;
-    let (write_samples, write_elapsed) = write_workload(&store, config)?;
-    let write_peak_rss_kib = peak_rss_kib();
-    let active = storage_footprint(path)?;
-    drop(store);
-    let probe = launch_probe("fjall", path, config)?;
-    let reopened = storage_footprint(path)?;
-    let maintained_store = Store::open(path).map_err(|error| error.to_string())?;
-    let maintained_sequence = maintained_store
-        .sequence()
-        .map_err(|error| error.to_string())?;
-    let before_maintenance_verified = verify(&maintained_store, config, maintained_sequence)?;
-    let maintenance_started = Instant::now();
-    maintained_store
-        .compact_physical()
-        .map_err(|error| error.to_string())?;
-    let maintenance_ns = nanos(maintenance_started.elapsed());
-    let maintenance_peak_rss_kib = peak_rss_kib();
-    drop(maintained_store);
-    let maintained_store = Store::open(path).map_err(|error| error.to_string())?;
-    let maintained_sequence = maintained_store
-        .sequence()
-        .map_err(|error| error.to_string())?;
-    let maintained_verified = verify(&maintained_store, config, maintained_sequence)?;
-    drop(maintained_store);
-    let maintained_probe = launch_probe("fjall", path, config)?;
-    let maintained = storage_footprint(path)?;
-    Ok(BackendResult {
-        backend: "fjall".into(),
-        correctness_verified: probe.correctness_verified
-            && before_maintenance_verified
-            && maintained_verified,
-        write_operations_per_second: rate(config.operations, write_elapsed),
-        write_batch_latency: summarize(write_samples),
-        read_operations_per_second: probe.read_operations_per_second,
-        read_latency: probe.read_latency,
-        maintained_read_operations_per_second: maintained_probe.read_operations_per_second,
-        maintained_read_latency: maintained_probe.read_latency,
-        recovery_ns: probe.recovery_ns,
-        maintained_recovery_ns: maintained_probe.recovery_ns,
-        uncompacted_recovery_ns: None,
-        maintenance_ns: Some(maintenance_ns),
-        write_peak_rss_kib,
-        peak_rss_kib: probe.peak_rss_kib,
-        maintenance_peak_rss_kib,
-        footprint: LifecycleFootprint {
-            active,
-            reopened,
-            maintained,
-            maintained_actions: vec![
-                "flush_all_keyspaces".into(),
-                "major_compact_all_keyspaces".into(),
-                "persist_and_clean_reopen".into(),
-            ],
-        },
-        semantic_sequence: probe.semantic_sequence,
-        native_maintenance: None,
-    })
-}
-
-fn run_native(path: &Path, config: &Config) -> Result<BackendResult, String> {
-    let store = NativeEngine::open(path).map_err(|error| error.to_string())?;
+fn run_rrflow_kv(path: &Path, config: &Config) -> Result<Trial, String> {
+    let store = RrflowKvStore::open(path).map_err(|error| error.to_string())?;
     let (write_samples, write_elapsed) = write_workload(&store, config)?;
     let physical = store
         .physical_store_evidence()
         .map_err(|error| error.to_string())?;
-    let native_maintenance = Some(MaintenanceEvidence {
+    let maintenance = MaintenanceEvidence {
         wal_payload_bytes: required(physical.wal_payload_bytes, "WAL payload bytes")?,
         wal_payload_max_bytes: required(physical.wal_payload_max_bytes, "WAL payload byte limit")?,
         memtable_versions: required(physical.memtable_versions, "memtable versions")?,
@@ -529,13 +387,13 @@ fn run_native(path: &Path, config: &Config) -> Result<BackendResult, String> {
             "failed maintenance flushes",
         )?,
         oversized_batches: required(physical.oversized_batches, "oversized batches")?,
-    });
+    };
     let write_peak_rss_kib = peak_rss_kib();
     let active = storage_footprint(path)?;
     drop(store);
-    let probe = launch_probe("native", path, config)?;
+    let probe = launch_probe(path, config)?;
     let reopened_footprint = storage_footprint(path)?;
-    let reopened = NativeEngine::open(path).map_err(|error| error.to_string())?;
+    let reopened = RrflowKvStore::open(path).map_err(|error| error.to_string())?;
     let sequence = reopened.sequence().map_err(|error| error.to_string())?;
     let verified = verify(&reopened, config, sequence)?;
     let maintenance_started = Instant::now();
@@ -543,19 +401,19 @@ fn run_native(path: &Path, config: &Config) -> Result<BackendResult, String> {
     reopened
         .garbage_collect(1, 1)
         .map_err(|error| error.to_string())?;
-    let maintenance = maintenance_started.elapsed();
+    let maintenance_elapsed = maintenance_started.elapsed();
     let maintenance_peak_rss_kib = peak_rss_kib();
     drop(reopened);
-    let maintained_store = NativeEngine::open(path).map_err(|error| error.to_string())?;
+    let maintained_store = RrflowKvStore::open(path).map_err(|error| error.to_string())?;
     let maintained_sequence = maintained_store
         .sequence()
         .map_err(|error| error.to_string())?;
     let maintained_verified = verify(&maintained_store, config, maintained_sequence)?;
     drop(maintained_store);
-    let maintained_probe = launch_probe("native", path, config)?;
+    let maintained_probe = launch_probe(path, config)?;
     let maintained = storage_footprint(path)?;
-    Ok(BackendResult {
-        backend: "native".into(),
+    Ok(Trial {
+        storage_profile: "rrflow_kv".into(),
         correctness_verified: verified && probe.correctness_verified && maintained_verified,
         write_operations_per_second: rate(config.operations, write_elapsed),
         write_batch_latency: summarize(write_samples),
@@ -566,7 +424,7 @@ fn run_native(path: &Path, config: &Config) -> Result<BackendResult, String> {
         recovery_ns: probe.recovery_ns,
         maintained_recovery_ns: maintained_probe.recovery_ns,
         uncompacted_recovery_ns: Some(probe.recovery_ns),
-        maintenance_ns: Some(nanos(maintenance)),
+        maintenance_ns: Some(nanos(maintenance_elapsed)),
         write_peak_rss_kib,
         peak_rss_kib: probe.peak_rss_kib,
         maintenance_peak_rss_kib,
@@ -582,16 +440,16 @@ fn run_native(path: &Path, config: &Config) -> Result<BackendResult, String> {
             ],
         },
         semantic_sequence: probe.semantic_sequence,
-        native_maintenance,
+        maintenance,
     })
 }
 
 fn required(value: Option<u64>, name: &str) -> Result<u64, String> {
-    value.ok_or_else(|| format!("native physical evidence omitted {name}"))
+    value.ok_or_else(|| format!("rrflowKV physical evidence omitted {name}"))
 }
 
 fn write_workload(
-    engine: &dyn Engine,
+    engine: &dyn StorageEngine,
     config: &Config,
 ) -> Result<(Vec<Duration>, Duration), String> {
     let corpus = (0..config.operations)
@@ -605,7 +463,7 @@ fn write_workload(
                 Producer {
                     actor: "benchmark".into(),
                     on_behalf_of: None,
-                    session: Some("engine-promotion-v1".into()),
+                    session: Some("rrflow-kv-benchmark-v1".into()),
                 },
             )
         })
@@ -625,7 +483,7 @@ fn write_workload(
 }
 
 fn read_workload(
-    engine: &dyn Engine,
+    engine: &dyn StorageEngine,
     config: &Config,
 ) -> Result<(Vec<Duration>, Duration), String> {
     let read_started = Instant::now();
@@ -650,7 +508,7 @@ fn read_workload(
     Ok((read_samples, read_started.elapsed()))
 }
 
-fn verify(engine: &dyn Engine, config: &Config, sequence: u64) -> Result<bool, String> {
+fn verify(engine: &dyn StorageEngine, config: &Config, sequence: u64) -> Result<bool, String> {
     if sequence != config.operations as u64 {
         return Ok(false);
     }
@@ -690,9 +548,9 @@ fn summarize(mut samples: Vec<Duration>) -> Latency {
     }
 }
 
-fn aggregate(backend: &str, trials: &[BackendResult]) -> BackendResult {
-    BackendResult {
-        backend: backend.into(),
+fn aggregate(storage_profile: &str, trials: &[Trial]) -> Trial {
+    Trial {
+        storage_profile: storage_profile.into(),
         correctness_verified: trials.iter().all(|trial| trial.correctness_verified),
         write_operations_per_second: median_f64(
             trials
@@ -764,16 +622,11 @@ fn aggregate(backend: &str, trials: &[BackendResult]) -> BackendResult {
         ),
         footprint: aggregate_lifecycle_footprint(trials),
         semantic_sequence: median_u64(trials.iter().map(|trial| trial.semantic_sequence).collect()),
-        native_maintenance: aggregate_maintenance(
-            trials
-                .iter()
-                .filter_map(|trial| trial.native_maintenance.as_ref())
-                .collect(),
-        ),
+        maintenance: aggregate_maintenance(trials.iter().map(|trial| &trial.maintenance).collect()),
     }
 }
 
-fn aggregate_lifecycle_footprint(trials: &[BackendResult]) -> LifecycleFootprint {
+fn aggregate_lifecycle_footprint(trials: &[Trial]) -> LifecycleFootprint {
     LifecycleFootprint {
         active: aggregate_storage_footprint(
             trials.iter().map(|trial| &trial.footprint.active).collect(),
@@ -834,8 +687,8 @@ fn aggregate_footprint_bytes(values: &[FootprintBytes]) -> FootprintBytes {
     }
 }
 
-fn aggregate_maintenance(values: Vec<&MaintenanceEvidence>) -> Option<MaintenanceEvidence> {
-    (!values.is_empty()).then(|| MaintenanceEvidence {
+fn aggregate_maintenance(values: Vec<&MaintenanceEvidence>) -> MaintenanceEvidence {
+    MaintenanceEvidence {
         wal_payload_bytes: median_u64(values.iter().map(|value| value.wal_payload_bytes).collect()),
         wal_payload_max_bytes: median_u64(
             values
@@ -898,7 +751,7 @@ fn aggregate_maintenance(values: Vec<&MaintenanceEvidence>) -> Option<Maintenanc
         write_stalls: median_u64(values.iter().map(|value| value.write_stalls).collect()),
         failed_flushes: median_u64(values.iter().map(|value| value.failed_flushes).collect()),
         oversized_batches: median_u64(values.iter().map(|value| value.oversized_batches).collect()),
-    })
+    }
 }
 
 fn aggregate_latency(trials: Vec<&Latency>) -> Latency {
@@ -937,78 +790,6 @@ fn nanos(duration: Duration) -> u64 {
 
 fn rate(operations: usize, elapsed: Duration) -> f64 {
     operations as f64 / elapsed.as_secs_f64()
-}
-
-fn ratios(fjall: &BackendResult, native: &BackendResult) -> Ratios {
-    Ratios {
-        native_to_fjall_write_throughput: native.write_operations_per_second
-            / fjall.write_operations_per_second,
-        native_to_fjall_read_throughput: native.read_operations_per_second
-            / fjall.read_operations_per_second,
-        native_to_fjall_write_p95: native.write_batch_latency.p95_ns as f64
-            / fjall.write_batch_latency.p95_ns.max(1) as f64,
-        native_to_fjall_read_p95: native.read_latency.p95_ns as f64
-            / fjall.read_latency.p95_ns.max(1) as f64,
-        native_to_fjall_maintained_read_throughput: native.maintained_read_operations_per_second
-            / fjall.maintained_read_operations_per_second,
-        native_to_fjall_maintained_read_p95: native.maintained_read_latency.p95_ns as f64
-            / fjall.maintained_read_latency.p95_ns.max(1) as f64,
-        native_to_fjall_recovery: native.recovery_ns as f64 / fjall.recovery_ns.max(1) as f64,
-        native_to_fjall_maintained_recovery: native.maintained_recovery_ns as f64
-            / fjall.maintained_recovery_ns.max(1) as f64,
-        native_to_fjall_peak_rss: native
-            .peak_rss_kib
-            .zip(fjall.peak_rss_kib)
-            .map(|(native, fjall)| native as f64 / fjall.max(1) as f64),
-        native_to_fjall_reopened_apparent: native.footprint.reopened.apparent_bytes as f64
-            / fjall.footprint.reopened.apparent_bytes.max(1) as f64,
-        native_to_fjall_reopened_allocated: native
-            .footprint
-            .reopened
-            .allocated_bytes
-            .zip(fjall.footprint.reopened.allocated_bytes)
-            .map(|(native, fjall)| native as f64 / fjall.max(1) as f64),
-    }
-}
-
-fn promotion(fjall: &BackendResult, native: &BackendResult, ratios: &Ratios) -> PromotionVerdict {
-    let mut failures = Vec::new();
-    if !fjall.correctness_verified || !native.correctness_verified {
-        failures.push("correctness verification failed".into());
-    }
-    if ratios.native_to_fjall_write_throughput < 1.0 {
-        failures.push("native write throughput is below Fjall".into());
-    }
-    if ratios.native_to_fjall_read_throughput < 1.0 {
-        failures.push("native bounded-replay throughput is below Fjall".into());
-    }
-    if ratios.native_to_fjall_write_p95 > 1.0 {
-        failures.push("native write p95 exceeds Fjall".into());
-    }
-    if ratios.native_to_fjall_read_p95 > 1.0 {
-        failures.push("native clean-reopen read p95 exceeds Fjall".into());
-    }
-    if ratios.native_to_fjall_recovery > 1.0 {
-        failures.push("native clean-reopen recovery exceeds Fjall".into());
-    }
-    if ratios
-        .native_to_fjall_peak_rss
-        .is_some_and(|ratio| ratio > 1.0)
-    {
-        failures.push("native peak RSS exceeds Fjall".into());
-    }
-    if ratios
-        .native_to_fjall_reopened_allocated
-        .is_some_and(|ratio| ratio > 1.0)
-    {
-        failures.push("native clean-reopen allocated footprint exceeds Fjall".into());
-    }
-    PromotionVerdict {
-        policy: "correctness required; native must be equal-or-better for throughput, p95, symmetric clean-reopen recovery/RSS, and allocated footprint when the platform exposes it; backend-native maintained footprints are diagnostic-only"
-            .into(),
-        passes: failures.is_empty(),
-        failures,
-    }
 }
 
 fn peak_rss_kib() -> Option<u64> {

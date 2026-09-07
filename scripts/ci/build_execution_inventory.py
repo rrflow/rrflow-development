@@ -155,25 +155,37 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07"),
     "crates/persistence/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
     "crates/persistence/rrd-store/src/keyspaces.rs": ("C-01", "C-05"),
-    "crates/persistence/rrd-store/src/native.rs": (
+    "crates/persistence/rrd-store/src/rrflow_kv.rs": (
         "C-01",
         "C-02",
         "C-03",
         "C-04",
         "C-05",
     ),
-    "crates/persistence/rrd-store/src/persistent.rs": ("C-02", "C-05"),
+    "crates/persistence/rrd-store/src/outcome.rs": ("C-02", "C-03"),
     "crates/persistence/rrd-store/src/control.rs": ("C-03", "H-05"),
+    "crates/persistence/rrd-store/examples/engine_benchmark.rs": (
+        "C-02",
+        "C-04",
+        "C-06",
+        "J-04",
+    ),
     "crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs": (
         "C-04",
         "C-06",
         "F-05",
         "J-04",
     ),
-    "crates/persistence/rrd-store/src/migration.rs": ("C-05", "J-01"),
-    "crates/persistence/rrd-store/src/upgrade.rs": ("C-05", "J-01"),
-    "crates/persistence/rrd-store/tests/migration.rs": ("C-05", "J-01"),
-    "crates/persistence/rrd-store/tests/native_format_upgrade.rs": ("C-05", "J-01"),
+    "crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs": (
+        "C-02",
+        "C-03",
+        "C-05",
+    ),
+    "crates/persistence/rrd-store/tests/rrflow_kv_open.rs": ("C-05",),
+    "crates/persistence/rrd-store/tests/rrflow_kv_operator.rs": (
+        "C-03",
+        "C-04",
+    ),
     "crates/compute/rrd-query/src/arrow.rs": ("F-01", "F-02"),
     "crates/compute/rrd-query/src/execute.rs": (
         "E-01",
@@ -277,13 +289,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
 }
 
 REMOVE_OR_REWRITE = {
-    "crates/persistence/rrd-store/src/migration.rs": "remove after native-only reopen evidence; do not retain a runtime migration API",
-    "crates/persistence/rrd-store/src/upgrade.rs": "remove after the final 1.0 format is frozen; pre-release data is regenerated, not upgraded",
-    "crates/persistence/rrd-store/tests/migration.rs": "remove with the retired Fjall runtime migration surface",
-    "crates/persistence/rrd-store/tests/native_format_upgrade.rs": "replace with rejection tests for non-1.0 formats, then rename to the final format test",
-    "crates/persistence/rrd-store/src/persistent.rs": "rewrite as the single rrflowKV persistent opener with no backend selector",
     "crates/persistence/rrd-lsm/src/segment.rs": "split into the planned segment modules while replacing row-only and pre-1.0 decoding paths",
-    "crates/persistence/rrd-store/src/keyspaces.rs": "replace TextV1/TagV2 branching with the frozen ordered binary tuple codec",
     "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
     "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
     "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",

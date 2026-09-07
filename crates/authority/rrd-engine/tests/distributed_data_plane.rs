@@ -7,7 +7,7 @@ use rrd_cluster::{
 use rrd_contract::CanonicalId;
 use rrd_core::digest;
 use rrd_engine::RrdEngine;
-use rrd_store::{Engine, NativeEngine};
+use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn node(index: u8) -> PlacementNode {
@@ -97,7 +97,7 @@ fn metadata_commit_and_consistency_routes_share_one_engine_authority() {
     drop(engine);
 
     {
-        let store = NativeEngine::open(&root).unwrap();
+        let store = RrflowKvStore::open(&root).unwrap();
         store.commit_runtime(&prepared.commit).unwrap();
     }
 

@@ -1,4 +1,4 @@
-//! Substrate adapter errors.
+//! rrflowKV, rrflowMX, archive, and object-storage errors.
 
 use std::fmt;
 
@@ -50,8 +50,6 @@ pub enum Error {
     /// A transport-classified remote failure that the bounded object retry
     /// policy may repeat. All other errors fail immediately.
     RemoteObjectTransient(String),
-    /// Explicit storage migration failed closed.
-    Migration(String),
     /// Logical archive export, validation, or restore failed closed.
     Archive(String),
     /// A referenced immutable object is absent.
@@ -117,7 +115,6 @@ impl fmt::Display for Error {
             Error::RemoteObjectTransient(message) => {
                 write!(f, "transient remote object store: {message}")
             }
-            Error::Migration(message) => write!(f, "storage migration: {message}"),
             Error::Archive(message) => write!(f, "logical archive: {message}"),
             Error::ObjectMissing(digest) => write!(f, "object missing: {digest}"),
             Error::ObjectCorrupt { expected, actual } => write!(
@@ -134,12 +131,6 @@ impl fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
-
-impl From<fjall::Error> for Error {
-    fn from(value: fjall::Error) -> Self {
-        Error::Substrate(value.to_string())
-    }
-}
 
 impl From<rrd_lsm::Error> for Error {
     fn from(value: rrd_lsm::Error) -> Self {

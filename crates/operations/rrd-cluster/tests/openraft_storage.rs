@@ -17,7 +17,7 @@ use rrd_core::{
     RuntimeType, ScopeId,
 };
 use rrd_lsm::{recover, Database, Durability, Mutation, SnapshotBundle, WriteBatch};
-use rrd_store::{Engine, LocalObjectStore, NativeEngine};
+use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -442,7 +442,8 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
             drop(state_machine);
             drop(log_store);
 
-            let source_native = NativeEngine::open(directory.path()).map_err(test_storage_error)?;
+            let source_native =
+                RrflowKvStore::open(directory.path()).map_err(test_storage_error)?;
             let transfer = prepare_artifact_transfer(
                 ReplicaTransferPlan {
                     contract_version: CLUSTER_CONTRACT_VERSION,
@@ -487,7 +488,7 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
                 "runtime truth and Raft state must share one WAL frame"
             );
 
-            let native = NativeEngine::open(directory.path()).map_err(test_storage_error)?;
+            let native = RrflowKvStore::open(directory.path()).map_err(test_storage_error)?;
             assert_eq!(native.runtime_cursor().map_err(test_storage_error)?, 2);
             assert_eq!(
                 native
@@ -627,7 +628,7 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
             drop(target_state);
             drop(target_log);
             let target_native =
-                NativeEngine::open(target_directory.path()).map_err(test_storage_error)?;
+                RrflowKvStore::open(target_directory.path()).map_err(test_storage_error)?;
             assert_eq!(
                 target_native.runtime_cursor().map_err(test_storage_error)?,
                 2
@@ -744,7 +745,7 @@ fn stale_runtime_cursor_is_a_durable_denial_not_a_partial_apply() {
             drop(state_machine);
             drop(log_store);
 
-            let native = NativeEngine::open(directory.path()).map_err(test_storage_error)?;
+            let native = RrflowKvStore::open(directory.path()).map_err(test_storage_error)?;
             assert_eq!(native.runtime_cursor().map_err(test_storage_error)?, 1);
             drop(native);
             let (_, mut reopened) =
