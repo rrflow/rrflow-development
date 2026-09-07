@@ -14,3 +14,4 @@ the target fast and analytical paths, the
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
 | Multi-model reads | [`rrflow://rrflow-instance/data/reference/query/multi-model`](rrflow://rrflow-instance/data/reference/query/multi-model) | [`multi-model.md`](multi-model.md) | implemented breadth over materialized snapshots; native access paths remain open |
+| Query index catalogue | [`rrflow://rrflow-instance/data/reference/query/index-catalogue`](rrflow://rrflow-instance/data/reference/query/index-catalogue) | [`index-catalogue.md`](index-catalogue.md) | persistent catalogue and snapshot artifacts; native incremental index storage remains open |

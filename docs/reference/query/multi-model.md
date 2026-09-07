@@ -68,9 +68,8 @@ native rrflowKV access paths. Gates C and E must establish those persistent
 paths before Gate F replaces eager snapshots with stamped streams from the
 hybrid rrflowKV segment layout.
 
-The current index-catalogue behavior remains at the temporary checkout record
-[`docs/rrflowql-index-catalogue-v1.md`](../../rrflowql-index-catalogue-v1.md)
-until its own KB-05 review. Live-query semantics remain at
+The current index-catalogue behavior is described by the
+[query index catalogue](index-catalogue.md). Live-query semantics remain at
 [`docs/rrflowql-live-query-v1.md`](../../rrflowql-live-query-v1.md), and public
 subscription delivery remains at
 [`docs/rrd-live-subscriptions-v1.md`](../../rrd-live-subscriptions-v1.md),
