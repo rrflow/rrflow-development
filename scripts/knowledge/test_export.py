@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused KB-03 tests for deterministic Markdown knowledge export."""
+"""Focused KB-03/KB-04 tests for deterministic knowledge export and CI drift."""
 
 from __future__ import annotations
 
@@ -15,6 +15,13 @@ SPEC = importlib.util.spec_from_file_location("rrflow_knowledge_export", EXPORT_
 assert SPEC is not None and SPEC.loader is not None
 EXPORT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EXPORT)
+CHECK_PATH = ROOT / "scripts/ci/check_documentation.py"
+CHECK_SPEC = importlib.util.spec_from_file_location(
+    "rrflow_documentation_policy", CHECK_PATH
+)
+assert CHECK_SPEC is not None and CHECK_SPEC.loader is not None
+CHECK = importlib.util.module_from_spec(CHECK_SPEC)
+CHECK_SPEC.loader.exec_module(CHECK)
 
 REVISION = "0123456789abcdef0123456789abcdef01234567"
 
@@ -145,6 +152,7 @@ class KnowledgeExportTests(unittest.TestCase):
                 len(first["manifest"]),
                 len(first["records"]) + len(first["exclusions"]),
             )
+            self.assertEqual(CHECK.knowledge_package_drift_failures(ROOT), [])
 
     def test_duplicate_coordinate_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -171,6 +179,77 @@ class KnowledgeExportTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(EXPORT.ExportError, "does not link the record"):
                 EXPORT.build_package(root, repository="example", revision=REVISION)
+
+    def test_ci_policy_rejects_unclassified_eligible_record(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_repository(root)
+            write(
+                root / "docs/architecture/unclassified.md",
+                """# Unclassified architecture
+
+**Status:** active architecture record
+**Owner:** architecture behavior
+
+This active record has not received its stable coordinate.
+""",
+            )
+            failures = CHECK.knowledge_package_drift_failures(root)
+            self.assertTrue(
+                any(
+                    "active or historical record is unclassified" in failure
+                    for failure in failures
+                ),
+                failures,
+            )
+
+    def test_ci_policy_rejects_changed_body_without_digest_change(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_repository(root)
+            package = EXPORT.build_package(
+                root, repository="example", revision=REVISION
+            )
+            package["records"][0]["body"] += "Undigested change.\n"
+            failures = CHECK.knowledge_package_integrity_failures(package)
+            self.assertTrue(
+                any(
+                    "body changed without a matching body digest" in failure
+                    for failure in failures
+                ),
+                failures,
+            )
+
+    def test_ci_policy_rejects_unstable_record_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_repository(root)
+            package = EXPORT.build_package(
+                root, repository="example", revision=REVISION
+            )
+            package["records"].reverse()
+            failures = CHECK.knowledge_package_integrity_failures(package)
+            self.assertTrue(
+                any("records are not ordered" in failure for failure in failures),
+                failures,
+            )
+
+    def test_ci_policy_rejects_missing_exclusion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_repository(root)
+            package = EXPORT.build_package(
+                root, repository="example", revision=REVISION
+            )
+            package["exclusions"].pop()
+            discovered = {
+                path.relative_to(root).as_posix() for path in EXPORT._discover(root)
+            }
+            failures = CHECK.knowledge_package_integrity_failures(package, discovered)
+            self.assertTrue(
+                any("has no ledger entry" in failure for failure in failures),
+                failures,
+            )
 
     def test_non_utf8_source_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

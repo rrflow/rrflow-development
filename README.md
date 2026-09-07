@@ -78,10 +78,10 @@ and all observed deficiencies are maintained in the
 The canonical checklist and accepted evidence are in the
 [release roadmap](docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist).
 The next executable package is
-[A-06 / KB-04](docs/roadmap/rrflow-1.0.md#a-06-knowledge-bootstrap-sequence):
-enforce documentation-package drift and reproducibility in CI. B-01 and B-02
-remain completed contract work; later Gate B work remains paused until A-06
-and A-07 are complete.
+[A-06 / KB-05](docs/roadmap/rrflow-1.0.md#a-06-knowledge-bootstrap-sequence):
+resolve the remaining flat supporting records one complete file at a time.
+B-01 and B-02 remain completed contract work; later Gate B work remains paused
+until A-06 and A-07 are complete.
 
 ## Knowledge warp points
 

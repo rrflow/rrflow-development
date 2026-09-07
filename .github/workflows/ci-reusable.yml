@@ -113,6 +113,16 @@ jobs:
         run: python3 scripts/ci/check_workflow.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
+      - name: Enforce knowledge-package drift and reproducibility
+        run: |
+          set -euo pipefail
+          revision="$(git rev-parse --verify HEAD)"
+          first="$RUNNER_TEMP/rrflow-knowledge-first.jsonl"
+          second="$RUNNER_TEMP/rrflow-knowledge-second.jsonl"
+          python3 scripts/knowledge/export.py --revision "$revision" --output "$first"
+          python3 scripts/knowledge/export.py --revision "$revision" --output "$second"
+          cmp --silent "$first" "$second"
+          python3 scripts/knowledge/test_export.py
       - name: Enforce exhaustive RRFlow 1.0 file planning
         run: python3 scripts/ci/build_execution_inventory.py --check
       - name: Enforce generated product-surface parity

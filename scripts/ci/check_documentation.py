@@ -3,12 +3,22 @@
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import re
 import sys
 from pathlib import Path
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
+KNOWLEDGE_EXPORT_PATH = ROOT / "scripts" / "knowledge" / "export.py"
+KNOWLEDGE_EXPORT_SPEC = importlib.util.spec_from_file_location(
+    "rrflow_knowledge_export", KNOWLEDGE_EXPORT_PATH
+)
+if KNOWLEDGE_EXPORT_SPEC is None or KNOWLEDGE_EXPORT_SPEC.loader is None:
+    raise RuntimeError(f"cannot load knowledge exporter from {KNOWLEDGE_EXPORT_PATH}")
+KNOWLEDGE_EXPORT = importlib.util.module_from_spec(KNOWLEDGE_EXPORT_SPEC)
+KNOWLEDGE_EXPORT_SPEC.loader.exec_module(KNOWLEDGE_EXPORT)
 README = ROOT / "README.md"
 DOCS_INDEX = ROOT / "docs" / "README.md"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
@@ -43,16 +53,7 @@ REFERENCE_LINK = re.compile(r"(?m)^\[[^\]\n]+\]:\s*(\S+)")
 MARKDOWN_HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
-CANONICAL_DIRECTORIES = (
-    "architecture",
-    "decisions",
-    "objectives",
-    "roadmap",
-    "poam",
-    "reference",
-    "research",
-    "history",
-)
+CANONICAL_DIRECTORIES = tuple(sorted(KNOWLEDGE_EXPORT.CLASSIFICATIONS))
 
 
 def header_field(source: str, name: str) -> str | None:
@@ -142,6 +143,157 @@ def markdown_anchors(source: str) -> set[str]:
     return anchors
 
 
+def knowledge_package_integrity_failures(
+    package: dict[str, object], discovered_paths: set[str] | None = None
+) -> list[str]:
+    """Check one generated package without treating it as editable authority."""
+    failures: list[str] = []
+    manifest = package["manifest"]
+    records = package["records"]
+    exclusions = package["exclusions"]
+    if (
+        not isinstance(manifest, list)
+        or not isinstance(records, list)
+        or not isinstance(exclusions, list)
+    ):
+        return ["knowledge package collections are not lists"]
+
+    manifest_paths = [str(entry["source_path"]) for entry in manifest]
+    record_paths = [str(record["source_path"]) for record in records]
+    exclusion_paths = [str(exclusion["source_path"]) for exclusion in exclusions]
+    record_coordinates = [str(record["coordinate"]) for record in records]
+
+    if manifest_paths != sorted(manifest_paths, key=str.encode):
+        failures.append("knowledge manifest is not ordered by source path")
+    if records != sorted(
+        records,
+        key=lambda record: (
+            str(record["coordinate"]).encode(),
+            str(record["source_path"]).encode(),
+        ),
+    ):
+        failures.append(
+            "knowledge records are not ordered by coordinate and source path"
+        )
+    if exclusion_paths != sorted(exclusion_paths, key=str.encode):
+        failures.append("knowledge exclusions are not ordered by source path")
+    if len(manifest_paths) != len(set(manifest_paths)):
+        failures.append("knowledge manifest contains a duplicate source path")
+    if len(record_paths) != len(set(record_paths)):
+        failures.append("knowledge records contain a duplicate source path")
+    if len(record_coordinates) != len(set(record_coordinates)):
+        failures.append("knowledge records contain a duplicate coordinate")
+    if len(exclusion_paths) != len(set(exclusion_paths)):
+        failures.append("knowledge exclusions contain a duplicate source path")
+    if set(record_paths) & set(exclusion_paths):
+        failures.append("a knowledge source is both included and excluded")
+    if discovered_paths is not None and (
+        len(manifest_paths) != len(discovered_paths)
+        or set(manifest_paths) != discovered_paths
+    ):
+        failures.append(
+            "knowledge manifest does not cover every discovered source exactly once"
+        )
+
+    records_by_path = {str(record["source_path"]): record for record in records}
+    exclusions_by_path = {
+        str(exclusion["source_path"]): exclusion for exclusion in exclusions
+    }
+    for record in records:
+        body_sha256 = hashlib.sha256(str(record["body"]).encode("utf-8")).hexdigest()
+        if body_sha256 != record["body_sha256"]:
+            failures.append(
+                f"{record['source_path']}: body changed without a matching body digest"
+            )
+        if KNOWLEDGE_EXPORT.record_digest(record) != record["record_sha256"]:
+            failures.append(
+                f"{record['source_path']}: record changed without a matching record digest"
+            )
+
+    for entry in manifest:
+        source_path = str(entry["source_path"])
+        disposition = entry["disposition"]
+        if disposition["disposition"] == "included":
+            record = records_by_path.get(source_path)
+            if record is None:
+                failures.append(f"{source_path}: included manifest entry has no record")
+                continue
+            if (
+                entry["source_sha256"] != record["body_sha256"]
+                or disposition["coordinate"] != record["coordinate"]
+                or disposition["classification"] != record["classification"]
+                or disposition["record_sha256"] != record["record_sha256"]
+            ):
+                failures.append(f"{source_path}: included manifest entry drifted")
+        elif disposition["disposition"] == "excluded":
+            exclusion = exclusions_by_path.get(source_path)
+            if exclusion is None:
+                failures.append(
+                    f"{source_path}: excluded manifest entry has no ledger entry"
+                )
+                continue
+            if (
+                entry["source_sha256"] != exclusion["source_sha256"]
+                or disposition["reason_code"] != exclusion["reason_code"]
+                or not str(exclusion["reason"]).strip()
+            ):
+                failures.append(f"{source_path}: exclusion ledger entry drifted")
+        else:
+            failures.append(f"{source_path}: manifest disposition is unknown")
+
+    if set(manifest_paths) != set(record_paths) | set(exclusion_paths):
+        failures.append(
+            "knowledge records and exclusions do not partition the manifest"
+        )
+    if KNOWLEDGE_EXPORT.package_digest(package) != package["package_sha256"]:
+        failures.append("knowledge package changed without a matching package digest")
+    return failures
+
+
+def knowledge_package_drift_failures(root: Path) -> list[str]:
+    """Enforce KB-03 eligibility, ownership, and reproducibility as CI policy."""
+    try:
+        first = KNOWLEDGE_EXPORT.build_package(
+            root, repository="rrflow", revision="kb-04-documentation-policy"
+        )
+        second = KNOWLEDGE_EXPORT.build_package(
+            root, repository="rrflow", revision="kb-04-documentation-policy"
+        )
+    except (KNOWLEDGE_EXPORT.ExportError, OSError) as error:
+        return [f"knowledge package export failed: {error}"]
+
+    failures: list[str] = []
+    first_bytes = KNOWLEDGE_EXPORT.encode_package(first)
+    if first_bytes != KNOWLEDGE_EXPORT.encode_package(second):
+        failures.append("repeated knowledge exports are not byte-identical")
+
+    discovered = {
+        path.relative_to(root).as_posix() for path in KNOWLEDGE_EXPORT._discover(root)
+    }
+    failures.extend(knowledge_package_integrity_failures(first, discovered))
+    manifest_by_path = {str(entry["source_path"]): entry for entry in first["manifest"]}
+    for path in KNOWLEDGE_EXPORT._discover(root):
+        source_path = path.relative_to(root).as_posix()
+        relative = Path(source_path)
+        if (
+            len(relative.parts) < 3
+            or relative.parts[0] != "docs"
+            or relative.parts[1] not in KNOWLEDGE_EXPORT.CLASSIFICATIONS
+        ):
+            continue
+        body = KNOWLEDGE_EXPORT._normalize(path.read_bytes(), source_path)
+        status = KNOWLEDGE_EXPORT._header_field(body, "Status")
+        classified_status = status is not None and status.casefold().startswith(
+            ("active", "historical")
+        )
+        disposition = manifest_by_path[source_path]["disposition"]
+        if classified_status and disposition["disposition"] != "included":
+            failures.append(
+                f"{source_path}: active or historical record is unclassified"
+            )
+    return failures
+
+
 def main() -> int:
     failures: list[str] = []
     readme = README.read_text(encoding="utf-8")
@@ -167,6 +319,8 @@ def main() -> int:
         failures.append("README.md is missing a required knowledge warp point")
     if "## RRFlow 1.0 execution checklist" in readme:
         failures.append("README.md duplicates the detailed RRFlow 1.0 roadmap")
+
+    failures.extend(knowledge_package_drift_failures(ROOT))
 
     docs_index = DOCS_INDEX.read_text(encoding="utf-8")
     if "## Documentation taxonomy" not in docs_index:
@@ -389,7 +543,9 @@ def main() -> int:
         if required_section not in benchmark_harness:
             failures.append(f"the benchmark-harness reference lacks {required_section}")
     if "not RRFlow 1.0 release evidence" not in benchmark_harness:
-        failures.append("the rrflowKV diagnostics are not separated from release evidence")
+        failures.append(
+            "the rrflowKV diagnostics are not separated from release evidence"
+        )
 
     historical_lsm_benchmark = HISTORICAL_LSM_BENCHMARK.read_text(encoding="utf-8")
     historical_lsm_header = "\n".join(historical_lsm_benchmark.splitlines()[:12])

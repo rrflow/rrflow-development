@@ -71,7 +71,7 @@ Checklist rules:
 - stop at the first failed gate, repair it, and rerun the smallest owning test
   before continuing.
 
-The next executable item remains **A-06**, specifically **KB-04**. B-01 and
+The next executable item remains **A-06**, specifically **KB-05**. B-01 and
 B-02 remain completed contract work, but no further Gate B work proceeds until
 A-06 and A-07 correct the pre-release documentation and source-boundary
 assumptions.
@@ -99,7 +99,7 @@ gate by itself.
 | [x] | KB-01 | Establish the master system overview, accepted single-engine ADR, canonical component terminology, and indexed warp points. | Root and boundary portals link the owners; documentation policy checks their coordinates, required sections, terminology, indexes, and local links. |
 | [x] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
 | [x] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
-| [ ] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
+| [x] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
 | [ ] | KB-05 | Resolve remaining flat supporting documents one complete file at a time: retain a record only when it owns current knowledge, merge accepted material into its existing owner, and remove the redundant source. Do not create another archive for unresolved or duplicate pre-release material. | Each reviewed file has one current owner or is removed after accepted content is integrated; retained records have one coordinate and index entry, with no copied authority body and passing link/terminology checks. |
 | [ ] | KB-06 | Import a verified KB-03 package through persisted attunement checkpoints and authorized `RrdEngine` mutations. | D-02 and D-05 evidence proves digest-bound resume, idempotency, authorization, atomic mutation, and rejection of package or configuration drift. |
 | [ ] | KB-07 | Prove close/reopen, readback, warp resolution, incremental update, rollback, and recovery against rrflowDB. | Durable tests reproduce every imported record and relationship at its committed read stamp after restart and failure injection. |
@@ -150,6 +150,31 @@ KB-03 evidence (2026-09-06):
 - Seven focused exporter tests and all seven Rust knowledge-contract tests
   passed. Generated packages remain temporary/ignored artifacts and are not
   checked in as editable documentation authority.
+
+KB-04 evidence (2026-09-07):
+
+- The documentation policy loads the KB-03 exporter as the single eligibility,
+  classification, ownership, and package-construction implementation. It
+  exports the repository twice with fixed provenance, compares canonical
+  bytes, and independently validates manifest coverage, ordering, unique
+  coordinates and paths, body/record/package digests, and the inclusion versus
+  exclusion partition.
+- Active or historical records under every exporter-recognized documentation
+  taxonomy fail when excluded or unclassified. The prior smaller hard-coded
+  policy directory list was removed so `guides`, `operations`, and `evidence`
+  cannot silently bypass the exporter rules.
+- The existing CI authority performs two real exports at the checked-out Git
+  revision into independent temporary files, requires byte identity, and runs
+  the focused exporter/policy corpus. Generated output remains temporary and
+  cannot become editable documentation authority.
+- Eleven Python tests cover Rust/Python golden-digest parity, repeated export,
+  complete independent inventory, duplicate coordinates, missing owner links,
+  unclassified eligible records, changed bodies with stale digests, unstable
+  record ordering, missing exclusions, non-UTF-8 input, and unsafe tracked
+  output. All passed along with Ruff, documentation policy, CI policy, two real
+  80-source exports (27 included and 53 explicitly excluded), the seven Rust
+  knowledge-contract tests, strict `rrd-contract` Clippy, version policy,
+  formatting, and generated-surface parity.
 
 A-02 evidence (2026-09-04):
 

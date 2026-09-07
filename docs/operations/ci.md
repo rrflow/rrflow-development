@@ -29,6 +29,12 @@ tracked or non-ignored path and every gated future path before code execution
 begins; regenerate it with `python3 scripts/ci/build_execution_inventory.py`
 after an accepted path or content change.
 
+The same partition enforces the documentation bootstrap package. The
+documentation policy builds and validates two in-memory packages through the
+single exporter, while the workflow exports twice at the checked-out revision,
+compares the exact JSONL bytes, and runs the focused drift corpus. Package
+outputs remain temporary and are never editable documentation authority.
+
 The five engine suites cover every workspace package exactly once, but package
 names do not define CI ownership. A failure is reported against the subsystem
 whose behavior is being qualified. This keeps the hosted fallback below its
