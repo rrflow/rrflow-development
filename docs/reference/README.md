@@ -11,6 +11,7 @@ must consume. They do not own delivery status or replace executable contracts.
 |---|---|---|---|
 | Provider-neutral agent bootstrap | [`rrflow://rrflow-instance/data/reference/agent-bootstrap`](rrflow://rrflow-instance/data/reference/agent-bootstrap) | [`agent-bootstrap.md`](agent-bootstrap.md) | target contract; partial checkout forwarding |
 | Seat identity and memory warps | [`rrflow://rrflow-instance/data/reference/seat-identity`](rrflow://rrflow-instance/data/reference/seat-identity) | [`seat-identity.md`](seat-identity.md) | implemented contract and CLI boundary |
+| Context and recall | [`rrflow://rrflow-instance/data/reference-index/context`](rrflow://rrflow-instance/data/reference-index/context) | [`context/`](context/) | recursive semantic retrieval exists; native graph/index/DataFusion routing remains open |
 | Logical data models and schemas | [`rrflow://rrflow-instance/data/reference-index/data`](rrflow://rrflow-instance/data/reference-index/data) | [`data/`](data/) | implemented logical catalogue; native physical access remains open |
 | Inference and model-bound compute | [`rrflow://rrflow-instance/data/reference-index/inference`](rrflow://rrflow-instance/data/reference-index/inference) | [`inference/`](inference/) | provider-neutral execution and provenance exist; deployment attunement remains open |
 | Query language and execution behavior | [`rrflow://rrflow-instance/data/reference-index/query`](rrflow://rrflow-instance/data/reference-index/query) | [`query/`](query/) | implemented behavior separated from target access-path work |

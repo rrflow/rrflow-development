@@ -13,8 +13,8 @@ evidence.
 The [collection record](collections.md) owns named-vector and point
 administration. The [HNSW projection](hnsw-projection.md) and
 [quantization lifecycle](quantization-lifecycle.md) own their physical artifact
-semantics. Recursive multimodal retrieval has a separate KB-05 record and is
-not redefined here.
+semantics. [Recursive retrieval](../context/retrieval.md) owns fusion,
+reranking, and result shaping and is not redefined here.
 
 ## Exact semantic oracle
 
