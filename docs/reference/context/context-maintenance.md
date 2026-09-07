@@ -155,12 +155,45 @@ not the accepted implementation. The crate currently:
 - hardcodes eight history classes and a 50–75% reduction range; and
 - has no focused test target and no caller outside its own package.
 
-A-07 must inventory any reusable pure validation functions, then prevent this
-crate from becoming an accepted operations boundary. I-03 re-expresses the
-behavior as a generic routine definition plus public engine operations; C-04
-and H-05 provide bounded stamped reads and evidence; J-01 removes the
-standalone repository, private event/state vocabulary, JSON-wrapper records,
-and direct-store path. No forwarding wrapper or compatibility type survives.
+### Existing capability disposition
+
+The implementation is not deleted merely because its boundary is wrong. The
+following matrix is the required A-07 preservation ledger. A later source
+change must cite the destination and acceptance proof for every **preserve** or
+**generalize** row before removing the current construct.
+
+| Current construct or behavior | Disposition | Canonical destination and required proof |
+|---|---|---|
+| `MaintenanceInventory` and `HistoryClassInventory`: stable source cut, per-class counts, checked byte/token totals, derivation labels | Preserve | A typed context-projection inventory produced at one `ReadStamp`; tests reject overflow, duplicate/missing policy classes, total mismatch, missing derivation, and stale or incomplete sources. |
+| `HistoryClass`, `HistoryClass::ALL`, and built-in default dispositions | Replace | Versioned estate policy or attuned specialization defines classifications and protected categories. No Rust enum freezes a universal project history taxonomy. |
+| `ContextDisposition::{Hot,Warm,Cold}` | Generalize | The delivery labels `injected`, `recall eligible`, and `retained evidence`; tests prove they alter projection eligibility without claiming physical storage movement or deleting canonical data. |
+| `MaintenanceDecision`: proposed versus selected disposition, rationale, and mandatory operator note on override | Preserve | Typed proposal/review records in generic routine checkpoints; tests reject an unaccounted source and an unexplained override and retain actor plus affected identities. |
+| `ProjectionPlan`: deterministic accounting, checked totals, source binding, and content digest | Preserve | A content-addressed projection proposal bound to exact source/policy/builder/model revisions; deterministic rebuild and tamper tests must pass. |
+| Fixed `DEFAULT/MIN/MAX_TARGET_REDUCTION_BPS` and the 128–32,000 injected-token clamp | Reject | Estate policy and request budgets declare goals and ceilings. A safe zero-reduction result remains valid, and tests cannot require a universal percentage or token range. |
+| `ProtectionEvidence`: verified archive/catalogue identity and coverage of both source watermarks | Generalize | A verified recovery point covering the exact source cut and every non-rebuildable referenced object; short-coverage, corrupt, wrong-estate, and reopen tests fail closed. |
+| `ValidationGate`, exact gate-set checks, pending/pass/fail status, summaries, and evidence digests | Generalize | The routine revision declares its complete required evidence set. Tests reject missing, duplicate, unknown, digestless terminal, stale-input, and failed evidence and keep activation closed. |
+| `MaintenanceObservation`: measured task success, context tokens, latency, evidence, and accept/rollback decision | Preserve and extend | Typed observation evidence following the [model-context effect plan](../../evidence/test-plans/model-context-effect.md), including quality, recall, work, bytes/tokens, latency, failures, and declared evaluator provenance. |
+| `MaintenanceRun` revision, predecessor/state digests, actor/time attribution, terminal guards, and required-stage shape | Generalize | Generic `RoutineRun` plus immutable checkpoints; CAS/restart/tamper tests prove monotonic revisions, digest lineage, required inputs, terminal immutability, and no inferred completion. |
+| `MaintenanceStage` and `MaintenanceStatus` as a fixed operation-specific state machine | Replace | Inventory/protect/propose/review/validate/activate/observe are nodes in one versioned routine definition using the generic I-03 status vocabulary; other routines use the same executor. |
+| Expected run revision and captured runtime cursor conflict checks | Preserve | `RrdEngine` compare-and-swap over routine and active-projection records at one authorized write stamp; stale revision/cursor tests commit nothing. |
+| Only one active maintenance run and one instance-global active projection | Generalize | Estate policy defines concurrency and a typed projection address defines the active generation. Idempotency and conflict tests prevent competing activation without imposing a global singleton on unrelated context profiles. |
+| `ActiveMaintenanceProjection`: monotonic generation, predecessor digest, source run, active/rollback lineage, and prior plan | Preserve | Immutable projection generations plus one CAS-controlled active pointer; close/reopen, competing activation, lineage corruption, and compensating rollback tests pass. |
+| Verification that rollback still owns the active generation it applied | Preserve | An observation can compensate only the exact active generation produced by its run; intervening activation causes a conflict and no mutation. |
+| Atomic publication of run revision, matching event, and optional projection | Preserve | One authorized rrflowKV batch commits checkpoint, canonical engine event, active-pointer change, outbox, and audit evidence all-or-nothing under C-03/I-01/I-03. |
+| `MaintenanceEvent` and matching state/event replay validation | Generalize | One canonical engine-event envelope references the routine/checkpoint identity and digest; replay tests detect missing, duplicate, reordered, or disagreeing evidence without making events the run authority. |
+| `runs`, `active_run`, `run`, and `active_projection` reads | Preserve | Bounded public `RrdEngine` operations using direct typed rrflowKV keys at one stamp; HTTP/WebSocket/SDK/CLI/MCP/Connectome conformance resolves identical identities. |
+| `start`, `protect`, `propose`, `review`, `validate_evidence`, `apply`, `observe`, and `cancel` repository methods | Generalize | Generic routine start/step/review/cancel operations and the context-projection operation family; kill/retry/lease/cancellation/compensation tests exercise the definition through the shared executor. |
+| Direct `StorageEngine`, `commit_runtime`, private `maintenance:*` scope, private schema/event types, cursor-zero replay, and JSON-wrapper records | Reject | Authorized engine operations, canonical estate scope, typed records, canonical events, and bounded direct reads. Repository and dependency searches must show the old path absent. |
+| `MaintenanceError`, `MAINTENANCE_FORMAT_VERSION`, `default_decisions`, and `pending_gates` as package-local API | Replace | Public contract errors, versioned routine/template manifests, and digest-bound installed definition data; no forwarding alias or compatibility reader remains. |
+
+A-07 must identify the reusable validation logic behind the preserved rows and
+assign it to its final contract or engine module before structural edits. I-03
+then re-expresses behavior as a generic routine definition plus public engine
+operations; C-03/C-04 provide atomic writes and bounded stamped reads; H-05
+provides evidence. J-01 may remove `rrd-maintenance`, its dependency edge,
+private vocabulary, and JSON storage only after the new focused corpus covers
+every preserved/generalized row. No forwarding wrapper or compatibility type
+survives.
 
 ## Acceptance
 
@@ -169,5 +202,5 @@ by other project work can preview, authorize, interrupt, resume, activate,
 observe, and roll back a context projection; every step survives rrflowKV
 reopen; baseline and candidate evidence are reproducible; and HTTP, WebSocket,
 SDK, CLI, MCP, and Connectome resolve the same run and projection identities.
-The existing standalone types or a successful compile do not satisfy that
-proof.
+The existing standalone types, a successful compile, or deletion of the old
+crate do not satisfy that proof.
