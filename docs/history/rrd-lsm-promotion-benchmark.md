@@ -227,7 +227,21 @@ metadata fan-out. It runs repeated-byte, structured JSON,
 deterministic-entropy, and embedding-like payloads as applicable. All eight
 local five-trial cells pass exact correctness, native-throughput, native-p95,
 and clean-reopen allocated-footprint gates. The design audit, commands, bounded
-claims, and versioned raw results are in
-[`rrd-lsm-fjall-ai-audit.md`](../rrd-lsm-fjall-ai-audit.md). The scheduled/manual
-workflow reruns each mode and retains its raw artifact separately from the
-general promotion matrix.
+claims, and remaining qualification requirements now belong to the current
+[benchmark-harness reference](../reference/storage/rrflowkv-benchmark-harness.md)
+and C/J roadmap gates. The historical raw artifacts are retained separately
+from the general comparison matrix:
+
+- [`current hot hit`](../../eval/results/2026-08-22-rrd-lsm-ai-current-hot-hit.json)
+- [`cold immutable hit`](../../eval/results/2026-08-22-rrd-lsm-ai-cold-hit.json)
+- [`point miss`](../../eval/results/2026-08-22-rrd-lsm-ai-point-miss.json)
+- [`historical hot-key version`](../../eval/results/2026-08-22-rrd-lsm-ai-historical-hot-hit.json)
+- [`metadata fan-out`](../../eval/results/2026-08-22-rrd-lsm-ai-metadata-fanout.json)
+- [`metadata fan-out with structured JSON`](../../eval/results/2026-08-22-rrd-lsm-ai-metadata-fanout-structured-json.json)
+- [`metadata fan-out with deterministic entropy`](../../eval/results/2026-08-22-rrd-lsm-ai-metadata-fanout-deterministic-entropy.json)
+- [`metadata fan-out with embedding-shaped bytes`](../../eval/results/2026-08-22-rrd-lsm-ai-metadata-fanout-embedding-f32.json)
+- [`embedding batch-v2 rerun`](../../eval/results/2026-08-23-rrd-lsm-ai-embedding-batch-v2.json)
+
+These artifacts characterize the historical tree only. They lack the complete
+provenance and end-to-end workload required by J-04 and cannot qualify current
+RRFlow behavior.

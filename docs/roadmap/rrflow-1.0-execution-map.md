@@ -456,6 +456,7 @@ Resolved full-file reviews:
 | `docs/rrd-time-travel-rollback.md` | `docs/reference/data/time-travel-and-rollback.md` | Preserved the tested independent valid-time/known-cursor reads, historical index rejection, and forward-only structural compensation design; removed stale backend and outward-surface claims; and exposed the eager replay path plus the untested, plan-only record/relation compensation boundary as C/E/F/H and future delivery work. |
 | `docs/rrd-tiered-persistence.md` | `docs/reference/storage/tiered-persistence.md` | Preserved the tested local mmap/io_uring/bounded segment I/O, separate cache accounting, immutable-object port, and snapshot movement primitives; removed stale RRD and gate names; and distinguished those primitives from unimplemented Arrow-page zero-copy, remote segment placement, DevForge CoW placement, and engine-coordinated hot-to-cold hibernation. |
 | `docs/rrd-logical-archive.md` | `docs/reference/storage/logical-archive.md` | Preserved the tested bounded stable-cut export, framed integrity checks, resumable restore, exact runtime/audit replay, catalogue pruning, and optional object/catalogue closure; distinguished a generic logical source from rrflowKV-only restore; exposed the logical-only CLI, excluded projections/telemetry/leases/physical pages, and pre-release `rrd` format names; and kept this recovery path separate from C/E/F online persistence, indexing, and DataFusion execution. |
+| `docs/rrd-lsm-fjall-ai-audit.md` | Requirements merged into C-06, C-07, and J-04; raw results remain under `eval/results/` and are linked by `docs/history/rrd-lsm-promotion-benchmark.md` | Removed the duplicate flat narrative after confirming Fjall is absent from workspace manifests and runtime source. Preserved mixed-family policy admission, bounded maintenance/backpressure, operational counters, compaction/cache interference, long-duration RSS, exact provenance, and physical-byte accounting as current acceptance requirements; retained dated results only as historical evidence that cannot close a 1.0 gate. |
 
 No row authorizes a blind move. The file must first be read in full, compared
 to current code and its target owner, and then retained as the owner, merged
@@ -635,6 +636,14 @@ sorted immutable memtable into the hybrid layout; compaction merges versions
 and rebuilds pages under a byte as well as row budget. Point/range reads use
 the spine without DataFusion. Analytical scans project only needed pages.
 
+Use one generic page contract with explicit data-family and statistics
+descriptors. Test mixed control, causal-stream, temporal-entity, search-metadata,
+and vector-shaped traffic before adding family-aware page grouping, restart
+compression, filters, pinning, or cache admission. Retain a specialization only
+when fixed-corpus evidence improves its declared access pattern without
+regressing correctness, memory bounds, or another family; otherwise keep the
+simpler shared policy.
+
 Do not claim Lance compatibility. Freeze RRFlow-owned binary vectors, fuzz
 decoders, differential reads against the memtable oracle, and report borrowed,
 read, decoded, copied, allocated, and decompressed bytes.
@@ -645,8 +654,13 @@ Extend existing WAL, manifest, compaction, snapshot, failure-matrix, tiered-I/O,
 and memory tests. Add mapped-buffer pinning tests where compaction deletes an
 old generation while Arrow still owns a batch. Add ENOSPC/short-write,
 checksum, torn current pointer, orphan cleanup, concurrent pinned snapshot,
-and repeated crash/reopen cases. No following gate begins while any
-acknowledged write can be lost or a mapped buffer can dangle.
+and repeated crash/reopen cases. Exercise bounded automatic flush/compaction,
+write stalls and backpressure, global write-buffer accounting, mixed-family
+compaction/cache interference, and sustained/long-duration RSS. Expose the
+write-buffer, cache, disk, compaction, stall, and failure counters needed to
+explain each result. No following gate begins while an acknowledged write can
+be lost, memory can grow without its declared bound, or a mapped buffer can
+dangle.
 
 ## Gate D work packages
 
@@ -922,7 +936,12 @@ and evidence across embedded, HTTP, WebSocket, SDK, MCP, and Connectome reads.
   `fixtures/release/deployment-baselines-v1.toml`; record artifact and installed
   bytes, commands, elapsed time, services, ports, configuration, secrets,
   readiness, and persistent readback. “Smoke Lance,” “easier to deploy,” or any
-  other comparative claim is forbidden until like-for-like data exists.
+  other comparative claim is forbidden until like-for-like data exists. Bind
+  each run to the exact revision, binary, toolchain, host, filesystem, device,
+  corpus, warm-up, cache state, and failed samples; report logical, apparent,
+  allocated, cached, and resident bytes separately. Include mixed-family
+  interference and sustained/long-duration maintenance rather than promoting a
+  short local microbenchmark.
 - J-05: use `scripts/release/assemble.py` and `scripts/release/verify.py` to
   produce and verify one signed reproducible default distribution containing
   all default-distribution first-party executables and linked engine
