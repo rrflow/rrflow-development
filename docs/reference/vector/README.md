@@ -13,3 +13,4 @@ and F.
 |---|---|---|---|
 | Collections and points | [`rrflow://rrflow-instance/data/reference/vector/collections`](rrflow://rrflow-instance/data/reference/vector/collections) | [`collections.md`](collections.md) | persistent administration and point semantics; native point/payload access remains open |
 | Search semantics and execution | [`rrflow://rrflow-instance/data/reference/vector/search`](rrflow://rrflow-instance/data/reference/vector/search) | [`search.md`](search.md) | exact oracle and rebuildable HNSW execution exist; direct incremental persistence remains open |
+| HNSW projection | [`rrflow://rrflow-instance/data/reference/vector/hnsw-projection`](rrflow://rrflow-instance/data/reference/vector/hnsw-projection) | [`hnsw-projection.md`](hnsw-projection.md) | deterministic immutable generations and exact overlay exist; compact native graph storage remains open |
