@@ -382,7 +382,7 @@ host locale/filesystem.
 Each row is a separate full-file review and commit. Destination directories
 and their `README.md` indexes are created only with their first real record.
 
-| Current record | Planned destination/classification |
+| KB-05 baseline record | Planned destination/classification |
 |---|---|
 | `docs/anytype-ui-research.md` | merge any still-valid interaction requirements into the current Connectome/public-client owner, then remove |
 | `docs/blueprint-triage.md` | merge every still-open verified deficiency into the POA&M, then remove |
@@ -435,6 +435,12 @@ and their `README.md` indexes are created only with their first real record.
 | `docs/rrd-dotnet-client-v1.md` | `docs/reference/sdk/dotnet.md` |
 | `docs/rrd-unified-retrieval-v1.md` | `docs/reference/context/retrieval.md` |
 | `docs/operations/ci.md` | retain at `docs/operations/ci.md`; create the operations index in the same commit |
+
+Resolved full-file reviews:
+
+| Baseline record | Canonical record | Review result |
+|---|---|---|
+| `docs/rrflowql-multimodel-v1.md` | `docs/reference/query/multi-model.md` | Preserved the tested source-family, temporal, traversal, and typed-predicate semantics; replaced the removed Fjall claim with rrflowMX/rrflowKV evidence; and made the eager `QueryRow`/Arrow allocation plus native-access-path gaps explicit. |
 
 No row authorizes a blind move. The file must first be read in full, compared
 to current code and its target owner, and then retained as the owner, merged
