@@ -449,6 +449,7 @@ Resolved full-file reviews:
 | `docs/rrd-vector-search.md` | `docs/reference/vector/search.md` | Preserved the tested exact oracle, planner, HNSW, overlay, rerank, reopen, and bounded recall evidence; removed duplicated collection/retrieval/quantization narrative; and exposed whole-log reconstruction plus the older catalogue reader as C-04/C-05 work. |
 | `docs/rrd-hnsw-online-v2.md` | `docs/reference/vector/hnsw-projection.md` | Preserved format-v2 identity, deterministic traversal, immutable generation, exact-overlay, filtering, and recall semantics; clarified that incremental advance clones the active graph; and exposed JSON graph storage plus whole-log candidate discovery as E-04/C-04 work. |
 | `docs/rrd-quantization-lifecycle-v1.md` | `docs/reference/vector/quantization-lifecycle.md` | Preserved the tested canonical lifecycle, binary mmap codecs, exact rerank, recovery, byte, bias, and recall evidence; exposed whole-log full rebuild input; and marked the TurboQuant ensure adapter for C-05/J-01 removal. |
+| `docs/rrd-vector-memory-tiers-v1.md` | `docs/reference/vector/memory-tiers.md` | Preserved the tested hard-bounded pinned, byte-bounded cached LRU, transient cold mmap/owned, pressure, and restart behavior; separated artifact residency from rrflowMX and DataFusion memory; and exposed whole-log candidate reconstruction plus JSON HNSW cold loading as C-04/E-04 work. |
 
 No row authorizes a blind move. The file must first be read in full, compared
 to current code and its target owner, and then retained as the owner, merged
