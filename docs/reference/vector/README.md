@@ -12,3 +12,4 @@ and F.
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
 | Collections and points | [`rrflow://rrflow-instance/data/reference/vector/collections`](rrflow://rrflow-instance/data/reference/vector/collections) | [`collections.md`](collections.md) | persistent administration and point semantics; native point/payload access remains open |
+| Search semantics and execution | [`rrflow://rrflow-instance/data/reference/vector/search`](rrflow://rrflow-instance/data/reference/vector/search) | [`search.md`](search.md) | exact oracle and rebuildable HNSW execution exist; direct incremental persistence remains open |
