@@ -30,7 +30,7 @@ The target layers are:
 ```text
 CLI / MCP / Node / Connectome
               |
-          RRFlowQL
+          rrflowQL
      parse -> AST -> bind
               |
           RRD query executor
@@ -51,7 +51,7 @@ CLI / MCP / Node / Connectome
 These names describe real boundaries to build, not aliases for the current
 `Engine` trait:
 
-- **RRFlowQL** owns syntax, parsing, diagnostics, and AST-to-logical-plan
+- **rrflowQL** owns syntax, parsing, diagnostics, and AST-to-logical-plan
   lowering. It does not perform storage I/O.
 - **RRD query executor** owns catalog binding, capability checking, optimization, physical
   planning, execution budgets, and streaming results.
@@ -75,7 +75,7 @@ backend, network client, GPU runtime, or object-store SDK.
 | Optimistic conflict detection | Exact expected runtime cursor is checked in the write transaction | Generalize to transaction read stamps and explicit conflict classes |
 | Storage abstraction | `rrd_store::Engine` provides claim/runtime primitives | Split logical DS transactions from physical KV operations; the current trait remains the migration harness |
 | Native storage | Absent; Fjall is the compatibility adapter | Build WAL, MVCC, manifests, recovery, checkpoint pinning, and compaction in `RRD LSM` |
-| Query language | Absent | Build typed `RRFlowQL`; do not grow ad-hoc endpoint parameters into a language |
+| Query language | Absent | Build typed `rrflowQL`; do not grow ad-hoc endpoint parameters into a language |
 | Planner/executor | Absent | Build `RRD query executor` with logical/physical plans and observable plan decisions |
 | General snapshots | Runtime graph can be reconstructed at a cursor | Add stable snapshot identity, catalog/schema revision, leases, retention pins, and lifecycle APIs |
 | Object storage | Absent | Stage immutable content-addressed objects; atomically publish references through `RRD storage coordinator` |
@@ -255,7 +255,7 @@ It may not silently serve stale derived state. Approximate search must return
 its index generation, coverage cursor, algorithm, parameters, and exact-rerank
 policy in the observable plan.
 
-## `RRFlowQL` and `RRD query executor`
+## `rrflowQL` and `RRD query executor`
 
 The language should begin small and composable:
 
@@ -413,7 +413,7 @@ and disjoint identities, repeatable scans agree across page sizes, and every
 live lease produces a stable logical retention pin. Native physical
 manifest/segment attachment remains correctly assigned to M3.
 
-### M2 — `RRFlowQL` algebra and `RRD query executor` reference executor
+### M2 — `rrflowQL` algebra and `RRD query executor` reference executor
 
 - Create parser/AST, catalog binder, logical plan, physical operators, streaming
   results, `EXPLAIN CONTRACT`, and budgets.

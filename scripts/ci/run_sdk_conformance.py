@@ -47,7 +47,14 @@ LANGUAGE_COMMANDS = {
     ],
     "go": [["go", "-C", "sdks/go", "run", "./cmd/conformance"]],
     "java": [
-        ["mvn", "-f", "sdks/java/pom.xml", "--batch-mode", "-Dtest=SdkConformanceTest", "test"]
+        [
+            "mvn",
+            "-f",
+            "sdks/java/pom.xml",
+            "--batch-mode",
+            "-Dtest=SdkConformanceTest",
+            "test",
+        ]
     ],
     "dotnet": [
         [
@@ -76,7 +83,9 @@ def require_toolchains() -> None:
         }
     )
     if missing:
-        raise RuntimeError(f"supported SDK toolchains are missing: {', '.join(missing)}")
+        raise RuntimeError(
+            f"supported SDK toolchains are missing: {', '.join(missing)}"
+        )
 
 
 def run(command: list[str], env: dict[str, str] | None = None) -> None:
@@ -84,7 +93,9 @@ def run(command: list[str], env: dict[str, str] | None = None) -> None:
     subprocess.run(command, cwd=ROOT, env=env, check=True)
 
 
-def wait_for_manifest(path: Path, process: subprocess.Popen[bytes]) -> dict[str, object]:
+def wait_for_manifest(
+    path: Path, process: subprocess.Popen[bytes]
+) -> dict[str, object]:
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:
         if path.is_file():
@@ -94,9 +105,13 @@ def wait_for_manifest(path: Path, process: subprocess.Popen[bytes]) -> dict[str,
             return json.loads(path.read_text(encoding="utf-8"))
         status = process.poll()
         if status is not None:
-            raise RuntimeError(f"SDK conformance harness exited before readiness with {status}")
+            raise RuntimeError(
+                f"SDK conformance harness exited before readiness with {status}"
+            )
         time.sleep(0.025)
-    raise RuntimeError("SDK conformance harness did not publish readiness within 30 seconds")
+    raise RuntimeError(
+        "SDK conformance harness did not publish readiness within 30 seconds"
+    )
 
 
 def main() -> None:
@@ -138,7 +153,11 @@ def main() -> None:
         target
         / "debug"
         / "examples"
-        / ("sdk_conformance_server.exe" if os.name == "nt" else "sdk_conformance_server")
+        / (
+            "sdk_conformance_server.exe"
+            if os.name == "nt"
+            else "sdk_conformance_server"
+        )
     )
     if not harness.is_file():
         raise RuntimeError(f"SDK conformance harness binary is absent: {harness}")
@@ -164,14 +183,21 @@ def main() -> None:
             if manifest.get("corpus_sha256") != digest:
                 raise RuntimeError("harness and orchestrator corpus digests differ")
             retry_urls = manifest.get("retry_base_urls")
-            if not isinstance(retry_urls, dict) or set(retry_urls) != set(LANGUAGE_COMMANDS):
-                raise RuntimeError("harness retry endpoint ownership differs from supported SDKs")
+            if not isinstance(retry_urls, dict) or set(retry_urls) != set(
+                LANGUAGE_COMMANDS
+            ):
+                raise RuntimeError(
+                    "harness retry endpoint ownership differs from supported SDKs"
+                )
             environment = os.environ.copy()
             environment["RRD_SDK_CONFORMANCE_MANIFEST"] = str(manifest_path)
             for language, commands in LANGUAGE_COMMANDS.items():
                 for command in commands:
                     run(command, environment)
-                print(f"SDK conformance OK: language={language} corpus_sha256={digest}", flush=True)
+                print(
+                    f"SDK conformance OK: language={language} corpus_sha256={digest}",
+                    flush=True,
+                )
         finally:
             shutdown_path.touch(exist_ok=True)
             try:

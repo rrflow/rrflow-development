@@ -147,7 +147,7 @@ pub fn execute_traced_query<E: StorageEngine>(
             "parse_bind",
             "empty_query",
             TraceOutcome::Denied,
-            "RRFlowQL query must not be empty".into(),
+            "rrflowQL query must not be empty".into(),
         );
     }
     if source.len() > MAX_QUERY_BYTES {
@@ -158,7 +158,7 @@ pub fn execute_traced_query<E: StorageEngine>(
             "parse_bind",
             "contract_limit",
             TraceOutcome::Denied,
-            format!("RRFlowQL query exceeds {MAX_QUERY_BYTES} bytes").into(),
+            format!("rrflowQL query exceeds {MAX_QUERY_BYTES} bytes").into(),
         );
     }
 

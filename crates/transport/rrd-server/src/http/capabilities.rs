@@ -86,7 +86,7 @@ pub(super) fn capabilities(
                 rrd_contract::MAX_TRANSACTION_CLAIMS as u64,
             )]),
             limitation: Some(
-                "atomic schema, claim, record, relation, event, vector, series, geo, and pre-staged object-reference commits with durable all-model prospective read-your-writes; mutating RRFlowQL remains open"
+                "atomic schema, claim, record, relation, event, vector, series, geo, and pre-staged object-reference commits with durable all-model prospective read-your-writes; mutating rrflowQL remains open"
                     .into(),
             ),
         },
@@ -105,7 +105,7 @@ pub(super) fn capabilities(
                 ),
             ]),
             limitation: Some(
-                "exact session-scoped RRFlowQL/RRD query engine reads; mutating RRFlowQL remains open"
+                "exact session-scoped rrflowQL/RRD query engine reads; mutating rrflowQL remains open"
                     .into(),
             ),
         },
@@ -244,7 +244,7 @@ pub(super) fn capabilities(
             },
             limits: BTreeMap::new(),
             limitation: Some(if security_enforced {
-                "revisioned principals, inherited roles, credentials, issuers, external identity bindings, exact resource grants, and compiled tenant/row/field RRFlowQL policy; constrained operations without an injector deny"
+                "revisioned principals, inherited roles, credentials, issuers, external identity bindings, exact resource grants, and compiled tenant/row/field rrflowQL policy; constrained operations without an injector deny"
                     .into()
             } else {
                 "no persistent security authority is initialized for this instance".into()

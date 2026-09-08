@@ -153,7 +153,7 @@ pub enum RouteSignalValue {
     Digest(String),
 }
 
-/// Strict JSON-like recipe parameters. This is separate from RRFlowQL values:
+/// Strict JSON-like recipe parameters. This is separate from rrflowQL values:
 /// a routing model cannot smuggle query or storage semantics into a recipe.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(

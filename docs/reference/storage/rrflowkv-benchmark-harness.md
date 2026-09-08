@@ -21,7 +21,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
 
 These programs cover physical and semantic storage only. They do not exercise
-the complete `RrdEngine` authorization, RRFlowQL, graph, BM25, vector, RRF,
+the complete `RrdEngine` authorization, rrflowQL, graph, BM25, vector, RRF,
 context-packet, transport, attunement, or Connectome flow. Passing them is not
 end-to-end reasoning or recall evidence.
 

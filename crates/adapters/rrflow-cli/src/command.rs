@@ -114,7 +114,7 @@ pub enum Command {
         #[arg(long, default_value_t = 0)]
         since: Millis,
     },
-    /// Execute one explicit, durably traced RRFlowQL query. Raw query and
+    /// Execute one explicit, durably traced rrflowQL query. Raw query and
     /// parameter values are returned but never persisted as trace attributes.
     Query {
         /// Project root used to prove this database belongs to one instance.
@@ -123,7 +123,7 @@ pub enum Command {
         /// One concrete runtime scope. Defaults to this engine's bound instance.
         #[arg(long)]
         scope: Option<String>,
-        /// RRFlowQL source text.
+        /// rrflowQL source text.
         #[arg(long)]
         ql: String,
         /// Scalar binder value as NAME=JSON. Repeatable.

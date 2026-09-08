@@ -1,4 +1,4 @@
-//! RRFlowQL syntax, deterministic binding, planning, and execution.
+//! rrflowQL syntax, deterministic binding, planning, and execution.
 //!
 //! The implementation begins from an exact stamped authoritative-log scan and
 //! admits narrower authoritative paths only when the bound query proves them

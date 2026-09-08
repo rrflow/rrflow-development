@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "Native Rrd storage engine: versioned WAL, MVCC, segments, and manifests."
+description = "Native RRD storage engine: versioned WAL, MVCC, segments, and manifests."
 
 [dependencies]
 rrd-core = { path = "../../kernel/rrd-core" }

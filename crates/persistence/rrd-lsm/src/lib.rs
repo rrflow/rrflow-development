@@ -1,4 +1,4 @@
-//! Native storage substrate for Rrd.
+//! Native storage substrate for RRD.
 //!
 //! This crate begins at the durable boundary. One accepted atomic batch is one
 //! checksummed WAL frame. Recovery accepts only a contiguous valid prefix;

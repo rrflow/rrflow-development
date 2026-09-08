@@ -1,4 +1,4 @@
-//! OpenRaft adapter over the Rrd-native durable key/value substrate.
+//! OpenRaft adapter over the RRD-native durable key/value substrate.
 //!
 //! Adapter v4 physically separates node-local Raft history from transferable
 //! canonical state. Votes, logs, purge/commit cursors, and snapshot cache
@@ -642,7 +642,7 @@ fn ensure_adapter_database(
     }
     if snapshot.sequence != 0 {
         return Err(ClusterError::Denied(
-            "existing database is not a Rrd OpenRaft v4 storage domain".into(),
+            "existing database is not an RRD OpenRaft v4 storage domain".into(),
         ));
     }
     let mut operations = vec![put_json(config_key, &expected)?];

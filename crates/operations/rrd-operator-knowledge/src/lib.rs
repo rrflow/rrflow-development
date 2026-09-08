@@ -1,8 +1,8 @@
 //! Project-scoped external operator knowledge.
 //!
-//! Rrd owns policy, evidence, and freshness decisions. An adapter owns its
+//! RRD owns policy, evidence, and freshness decisions. An adapter owns its
 //! external transaction and returns bounded identities plus plan evidence. No
-//! type in this crate claims a transaction spanning Rrd and the external
+//! type in this crate claims a transaction spanning RRD and the external
 //! system.
 
 use rrd_core::{
@@ -253,7 +253,7 @@ impl OperatorSearchControls {
 pub struct OperatorSearchRequest {
     pub contract_version: u16,
     pub binding_digest: String,
-    /// Lowest canonical Rrd cursor the external projection must cover.
+    /// Lowest canonical RRD cursor the external projection must cover.
     pub required_source_cursor: u64,
     pub search: SearchRequest,
     pub controls: OperatorSearchControls,
@@ -404,7 +404,7 @@ pub enum OperatorSyncOperation {
     DeleteVector,
 }
 
-/// Idempotent work derived from Rrd's already-committed projection outbox.
+/// Idempotent work derived from RRD's already-committed projection outbox.
 /// Payload bytes remain caller-owned; the durable identity binds the exact
 /// canonical mutation and payload digest that an adapter must apply.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

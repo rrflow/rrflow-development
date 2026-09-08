@@ -45,7 +45,7 @@
             {
               "surface": "rrflowql",
               "disposition": "unavailable",
-              "reason": "No RRFlowQL statement maps this fixture operation."
+              "reason": "No rrflowQL statement maps this fixture operation."
             },
             {
               "surface": "graphql",

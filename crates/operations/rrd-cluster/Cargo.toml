@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "Canonical Multi-AZ contracts and deterministic failure simulation for Rrd."
+description = "Canonical Multi-AZ contracts and deterministic failure simulation for RRD."
 
 [features]
 default = []

@@ -1,7 +1,7 @@
 use super::*;
 
 impl RrdEngine {
-    /// Execute a bounded RRFlowQL mutation program through the canonical
+    /// Execute a bounded rrflowQL mutation program through the canonical
     /// session transaction authority. Parsing and binding complete before a
     /// transaction is opened; publication remains one existing runtime commit.
     pub fn execute_query_transaction(

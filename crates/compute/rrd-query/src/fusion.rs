@@ -137,7 +137,7 @@ impl TableProvider for RrdSnapshotTableProvider {
     }
 }
 
-/// Execute relational RRFlowQL operators through DataFusion's logical and
+/// Execute relational rrflowQL operators through DataFusion's logical and
 /// physical planners over the immutable Arrow snapshot captured for the read
 /// stamp. MATCH is excluded because BM25 scoring owns its ranking and limit.
 pub fn execute_snapshot(

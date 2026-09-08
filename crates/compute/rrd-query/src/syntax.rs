@@ -1,4 +1,4 @@
-//! `RRFlowQL`: a small, explicit query grammar that lowers into `RRD query engine`.
+//! `rrflowQL`: a small, explicit query grammar that lowers into `RRD query engine`.
 //!
 //! Parsing is intentionally separate from binding and execution. The parser
 //! validates syntax and identifiers, but only a catalog can decide whether a
@@ -360,7 +360,7 @@ pub enum TransactionDisposition {
     Cancel,
 }
 
-/// A bounded RRFlowQL transaction program. Mutation payloads remain typed
+/// A bounded rrflowQL transaction program. Mutation payloads remain typed
 /// bindings so the language never invents a second serialization contract for
 /// the canonical transaction mutation vocabulary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

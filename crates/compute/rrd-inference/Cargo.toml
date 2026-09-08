@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "Provider-neutral, provenance-bound embedding jobs for Rrd."
+description = "Provider-neutral, provenance-bound embedding jobs for RRD."
 
 [features]
 default = []

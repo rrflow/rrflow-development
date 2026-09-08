@@ -8,7 +8,7 @@
 small binary can build and query the compact dense artifact without an HTTP
 client, async runtime, model downloader, cluster service, object-store SDK,
 GPU runtime, or TLS dependency. It is not rrflowMX, rrflowKV, rrflowDB,
-RRFlowQL, a project installer, an attunement runtime, or a Connectome server.
+rrflowQL, a project installer, an attunement runtime, or a Connectome server.
 
 The current CLI supports only:
 
@@ -43,7 +43,7 @@ does not establish superiority over another database.
 ## Missing product behavior
 
 This binary does not open persistent engine state, authenticate a project
-session, run RRFlowQL/DataFusion, traverse graph relationships, fuse BM25 and
+session, run rrflowQL/DataFusion, traverse graph relationships, fuse BM25 and
 vector results, execute reasoning trees, install adapters, perform attunement,
 or expose HTTP/WebSocket/MCP/SDK operations. It cannot be cited as the first
 usable alpha or as evidence that Connectome can attach to rrflowDB.

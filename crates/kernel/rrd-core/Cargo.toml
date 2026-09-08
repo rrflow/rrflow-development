@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "rrflow kernel: bi-temporal claims, key encoding, supersession. No transport, no policy, no storage engine."
+description = "RRFlow kernel: bi-temporal claims, key encoding, supersession. No transport, no policy, no storage engine."
 
 # rrd-core must compile and test with every outer layer removed.
 # It must never depend on a concrete storage engine, transport, or tier policy.

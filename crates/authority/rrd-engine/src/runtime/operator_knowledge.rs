@@ -23,7 +23,7 @@ pub struct TracedOperatorSync {
     pub receipt: OperatorSyncReceipt,
 }
 
-/// Applies one already-committed Rrd outbox item to external operator
+/// Applies one already-committed RRD outbox item to external operator
 /// knowledge. The payload is caller-owned and content-verified; only its digest
 /// enters the trace. A crash between external apply and trace finish is safe
 /// because the same work identity must replay idempotently at the adapter.
@@ -198,7 +198,7 @@ where
 }
 
 /// Executes one external search through its immutable instance binding. The
-/// adapter owns its external snapshot; Rrd persists only bounded causal
+/// adapter owns its external snapshot; RRD persists only bounded causal
 /// evidence and never claims that trace commits share the external transaction.
 #[allow(clippy::too_many_arguments)]
 pub fn execute_traced_operator_search<E, A>(

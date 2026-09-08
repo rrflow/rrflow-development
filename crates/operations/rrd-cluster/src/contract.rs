@@ -326,7 +326,7 @@ impl SnapshotVector {
     }
 
     /// Partial-order comparison. `Concurrent` is intentionally preserved;
-    /// Rrd never fabricates a total cluster cursor.
+    /// RRD never fabricates a total cluster cursor.
     pub fn relation(&self, other: &Self) -> Result<VectorRelation> {
         self.validate()?;
         other.validate()?;

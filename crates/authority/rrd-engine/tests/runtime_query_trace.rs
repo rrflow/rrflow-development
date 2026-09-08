@@ -288,7 +288,7 @@ fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
     let error = execute_traced_query(
         &parse_store,
         scope(),
-        "this is not RRFlowQL and contains operator-secret",
+        "this is not rrflowQL and contains operator-secret",
         &Parameters::new(),
         &ExecutionBudget::default(),
         "operator:test",

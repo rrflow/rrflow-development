@@ -17,7 +17,7 @@ the superseding records linked above.
 
 The repository now has an executable shared retrieval vertical:
 
-- `rrd-query` parses, binds, and plans RRFlowQL, converts the captured stamped
+- `rrd-query` parses, binds, and plans rrflowQL, converts the captured stamped
   snapshot to typed Arrow batches, and executes non-text relational operators
   through DataFusion 55.
 - BM25 analysis, corpus statistics, deterministic authenticated artifacts,
@@ -98,7 +98,7 @@ Primary references:
 7. Mutations publish projection work/invalidation through the same atomic
    runtime commit. Index refresh may be asynchronous; freshness evidence may
    not be.
-8. RRFlowQL is the temporal and multi-model language front end. It lowers to
+8. rrflowQL is the temporal and multi-model language front end. It lowers to
    DataFusion expressions/plans directly; it is not converted into a second SQL
    string and reparsed.
 9. Arrow schemas are versioned RRD contracts. Runtime values are mapped to
@@ -119,7 +119,7 @@ Primary references:
   revision, and typed user properties.
 - Differentially prove Arrow round trips against the current reference rows.
 
-**Exit gate:** every currently supported RRFlowQL source produces equivalent,
+**Exit gate:** every currently supported rrflowQL source produces equivalent,
 deterministically ordered typed rows from the same immutable `ReadStamp`.
 
 ### Q2 — DataFusion execution plane
@@ -127,7 +127,7 @@ deterministically ordered typed rows from the same immutable `ReadStamp`.
 - Introduce an `RrdSnapshotTableProvider` over the Q1 snapshot. Its `scan`
   method performs no storage I/O and honors projection, filter, and limit
   pushdown only when semantics are exact.
-- Lower bound RRFlowQL filters, projections, ordering, and limits to DataFusion
+- Lower bound rrflowQL filters, projections, ordering, and limits to DataFusion
   logical expressions.
 - Execute through DataFusion's physical planner and Arrow batch streams.
 - Retain RRFlow's authorization, temporal binding, graph expansion, read-stamp
@@ -159,7 +159,7 @@ DataFusion retains those predicates above the scan.
   configuration digests.
 - Validate canonical encoding and the artifact digest before publication and
   after reopen.
-- Add a RRFlowQL text-match predicate and bind it only to string fields.
+- Add an rrflowQL text-match predicate and bind it only to string fields.
 - Select a ready matching BM25 artifact when fresh. Otherwise run the same
   scorer over an authoritative bounded snapshot or deny when the exact fallback
   exceeds its budget.

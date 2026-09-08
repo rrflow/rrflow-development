@@ -142,7 +142,7 @@ fn transaction_programs_are_bounded_canonical_and_have_one_disposition() {
 #[test]
 fn strings_preserve_unicode_and_supported_escapes() {
     let query = parse(
-        "FROM record:doc AT VALID 1 KNOWN HEAD WHERE title = \"Rrd \\\"α\\\"\\nline\" PROJECT title",
+        "FROM record:doc AT VALID 1 KNOWN HEAD WHERE title = \"RRD \\\"α\\\"\\nline\" PROJECT title",
     )
     .unwrap();
     assert_eq!(parse(&query.canonical()).unwrap(), query);

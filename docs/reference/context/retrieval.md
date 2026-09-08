@@ -11,7 +11,7 @@ The operation is real and replays after reopening persistent engine state, but
 its current physical execution is materially short of the Gate E/F/H target.
 
 This record owns the recursive retrieval algebra. It does not redefine vector
-search, RRFlowQL, graph traversal, context-packet assembly, or reasoning-tree
+search, rrflowQL, graph traversal, context-packet assembly, or reasoning-tree
 execution.
 
 ## Authority and snapshot
@@ -45,7 +45,7 @@ whole runtime-change scan -> in-memory collection vectors
         |
         +--> nearest ------> search_vectors_at -> another runtime-change scan
         |
-        +--> keyword ------> stamped RRFlowQL pipeline -> materialized batches
+        +--> keyword ------> stamped rrflowQL pipeline -> materialized batches
         |
         +--> recommend/discover/context -> in-memory exact scoring
         |
@@ -76,7 +76,7 @@ The public Rust contract supports:
 
 - `nearest` over dense, sparse, or multi-dense named vectors, with current
   exact or eligible approximate vector paths;
-- `keyword` through the stamped RRFlowQL match query;
+- `keyword` through the stamped rrflowQL match query;
 - `recommend` with average-vector or best-score positive/negative examples;
 - `discover` with a target and ordered positive/negative context pairs;
 - `context` with context pairs and no target;

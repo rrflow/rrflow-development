@@ -49,7 +49,7 @@ fn job(bytes: &[u8], backend: &FeatureHashBackend) -> EmbeddingJob {
 
 #[test]
 fn offline_generation_is_deterministic_normalized_and_provenance_bound() {
-    let bytes = b"Rrd makes source-grounded reasoning durable";
+    let bytes = b"RRD makes source-grounded reasoning durable";
     let mut backend = FeatureHashBackend::new(64, 7).unwrap();
     let job = job(bytes, &backend);
     let snapshot =

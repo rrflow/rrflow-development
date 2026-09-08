@@ -18,7 +18,7 @@ This boundary is separate from both principal execution profiles:
 - **rrflowKV** is the persistent storage substrate. Its committed state and
   immutable artifact receipts survive restart; resident decoded objects do
   not.
-- **RRFlowQL/DataFusion** is the planned columnar query path in Gate F. Its
+- **rrflowQL/DataFusion** is the planned columnar query path in Gate F. Its
   Arrow memory pools, streaming batches, spill policy, and execution budgets
   are not owned by `VectorResidencyManager`.
 

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "RRFlowQL syntax, catalog binding, deterministic planning, and execution."
+description = "rrflowQL syntax, catalog binding, deterministic planning, and execution."
 
 [dependencies]
 rrd-core = { path = "../../kernel/rrd-core" }

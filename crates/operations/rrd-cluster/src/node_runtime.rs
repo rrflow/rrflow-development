@@ -1,4 +1,4 @@
-//! Process boundary for one durable Rrd Raft node.
+//! Process boundary for one durable RRD Raft node.
 //!
 //! Raft traffic uses the authenticated transport. Administrative lifecycle
 //! commands use a bounded, versioned JSON-lines protocol over the process's

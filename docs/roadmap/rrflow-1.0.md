@@ -103,10 +103,9 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1h**, the repository-wide case-insensitive
-vocabulary, closure, dependency-direction, generated-inventory, and all-target
-acceptance pass for the complete A-07.1 candidate. A-07.0 completed the
-reviewed implementation-requirements mapping. A-07.1a directly converged the
+The next executable item is **A-07.2**, the causal-evidence vocabulary freeze.
+A-07.0 completed the reviewed implementation-requirements mapping. A-07.1a
+directly converged the
 governed-function catalogue/binding vocabulary and module boundary. A-07.1b
 then split the Rust SDK by accepted responsibility and removed its public
 bearer-bearing session field while preserving the characterized transport
@@ -123,9 +122,12 @@ or generated-model behavior. A-07.1g pinned and centralized the .NET workspace
 inputs, moved its README and generated operation projection to their one direct
 paths, and split its current HTTP implementation without changing the exported
 assembly surface. None of these slices qualifies its capability or completes
-A-07. B-01 and B-02 remain completed contract work; no
-further Gate B work proceeds until A-07 corrects the complete pre-release
-source, package, public, and trace-vocabulary assumptions.
+A-07. A-07.1h then classified the remaining contextual naming forms and proved
+case-insensitive path/package uniqueness, repository-contained Cargo inputs,
+locked dependency direction, generated inventory, and all-target compilation
+for the combined A-07.1 candidate. B-01 and B-02 remain completed contract
+work; no further Gate B work proceeds until A-07.2 freezes the complete
+pre-release causal-evidence vocabulary and closes A-07.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -498,7 +500,41 @@ A-07.1g .NET SDK responsibility-boundary evidence (2026-09-08):
   crash/reopen, native graph/index atomicity, stamped Arrow/DataFusion,
   persistent reasoning/context/feedback, and Connectome remain owned by their
   B through J gates and POAM-011.
-- A-07 and A-07.1 remain unchecked; A-07.1h is next.
+- At the A-07.1g revision, A-07 remained unchecked and A-07.1h was the final
+  package/type/path closure pass.
+
+A-07.1h repository-closure and vocabulary evidence (2026-09-08):
+
+- The contextual vocabulary is now explicit: product prose uses `RRFlow`,
+  `RRD`, `RrdEngine`, rrflowDB, rrflowKV, rrflowMX, rrflowQL, Arrow, and
+  DataFusion; Rust, frozen wire/path values, and generated languages retain
+  only their required identifier casing. Third-party names remain confined to
+  locked dependencies, outward adapters, comparisons, or provenance records.
+- Workspace architecture now rejects Cargo target or path-dependency inputs
+  outside the repository, non-member local dependencies, direct or transitive
+  Git dependencies, tracked submodules, escaping or unresolved tracked
+  symlinks, case-insensitive tracked-path/package collisions, noncanonical
+  package descriptions, the retired uppercase query-language spelling in
+  active first-party prose, and host-specific
+  absolute paths in build or install inputs. Six focused detector/closure
+  checks increased that suite from 17 to 23 tests.
+- Locked Cargo metadata, both governed-function contract/profile fixtures, all
+  23 workspace-architecture tests, the exact retired-symbol search, and the
+  complete locked workspace all-target check passed. Focused query parser,
+  inference pipeline, public-contract, query-trace, and optional cluster/
+  operator-knowledge compilation checks also passed for the files whose public
+  diagnostics or examples received canonical spelling.
+- Deterministic inventory, documentation, workflow, version, generated-surface,
+  knowledge-export, formatting, lint, and diff checks passed as recorded in the
+  supporting execution-map journal. The public contract retains the same 33
+  operation descriptors; only its human-facing unavailable-surface reason uses
+  canonical rrflowQL spelling.
+- This proves A-07.1 source/package/type/path closure, not an engine
+  capability. A-07 remains unchecked until A-07.2 freezes causal evidence.
+  rrflowMX/rrflowKV equivalence and durability, native graph/index atomicity,
+  streamed stamped Arrow/DataFusion execution, persisted reasoning/recall,
+  installation/attunement, SDK/Connectome conformance, and release proof remain
+  owned by their open gates.
 
 A-02 evidence (2026-09-04):
 

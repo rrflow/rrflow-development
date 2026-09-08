@@ -19,7 +19,7 @@ use std::time::Instant;
 
 pub const PGVECTOR_LIVE_IMPLEMENTATION_VERSION: &str = "rrflow-pgvector-live-v1";
 
-/// Non-secret deployment identity for one pgvector relation and Rrd control
+/// Non-secret deployment identity for one pgvector relation and RRD control
 /// schema. Connection strings, passwords, and root certificates never enter
 /// this serializable contract.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -220,7 +220,7 @@ impl PgvectorLiveAdapter {
         })
     }
 
-    /// Installs only Rrd's control schema and the project revision row. The
+    /// Installs only RRD's control schema and the project revision row. The
     /// operator knowledge relation remains application-owned. Existing source
     /// identity cannot be overwritten by a different deployment.
     pub fn install_control_schema(

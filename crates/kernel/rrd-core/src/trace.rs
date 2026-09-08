@@ -154,7 +154,7 @@ pub enum TraceLink {
         provider: String,
         invocation_id: String,
     },
-    /// Correlates a Rrd operation with a project-scoped external knowledge
+    /// Correlates an RRD operation with a project-scoped external knowledge
     /// source such as pgvector without claiming cross-system ACID semantics.
     OperatorKnowledge {
         adapter: String,

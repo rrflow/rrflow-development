@@ -1,9 +1,9 @@
-//! Protocol-first cluster contracts for Rrd.
+//! Protocol-first cluster contracts for RRD.
 //!
 //! It freezes the placement, consistency, snapshot-vector, routing, transfer,
 //! and transaction-scope contracts and supplies a deterministic failure
 //! simulator. The optional `openraft-adapter` feature adds a real consensus
-//! engine, atomic canonical runtime application, and Rrd-native durable store,
+//! engine, atomic canonical runtime application, and RRD-native durable store,
 //! including authenticated runtime-bearing snapshot transfer across physically
 //! separate local-Raft and canonical-state domains. The further opt-in
 //! `openraft-transport` feature adds identity-bound TLS 1.3 RPCs, complete-state

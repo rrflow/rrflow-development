@@ -5,7 +5,7 @@ use crate::{
 use rrd_core::ReadStamp;
 use rrd_store::StorageEngine;
 
-/// One provider-neutral RRFlowQL pipeline bound to a caller-owned read stamp.
+/// One provider-neutral rrflowQL pipeline bound to a caller-owned read stamp.
 ///
 /// The caller decides when the read coordinate is captured. Every catalogue,
 /// bound query, physical plan, and execution produced here must retain that

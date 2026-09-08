@@ -1,4 +1,4 @@
-//! Exact semantic oracle and projection contracts for Rrd vector search.
+//! Exact semantic oracle and projection contracts for RRD vector search.
 //!
 //! The exact path is truth. Approximate indexes may propose candidates later,
 //! but must publish coverage/freshness evidence and are measured against this

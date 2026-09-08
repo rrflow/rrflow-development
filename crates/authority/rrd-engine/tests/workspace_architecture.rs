@@ -9,13 +9,27 @@ struct WorkspaceMetadata {
     root: PathBuf,
     packages: BTreeMap<String, PackageDependencies>,
     target_sources: BTreeSet<PathBuf>,
+    dependency_inputs: Vec<DependencyInput>,
 }
 
 struct PackageDependencies {
     manifest: PathBuf,
+    description: String,
     workspace: BTreeSet<String>,
     all: BTreeSet<String>,
     targets: BTreeSet<String>,
+}
+
+struct DependencyInput {
+    owner: String,
+    name: String,
+    path: Option<PathBuf>,
+    source: Option<String>,
+}
+
+struct GitIndexEntry {
+    mode: String,
+    path: PathBuf,
 }
 
 #[test]
@@ -373,7 +387,7 @@ fn engine_has_no_transport_dependencies() {
 }
 
 #[test]
-fn legacy_service_name_is_absent() {
+fn retired_service_name_is_absent() {
     let metadata = workspace_metadata();
     let forbidden = ["Rrd", "Service"].concat();
     let mut violations = Vec::new();
@@ -385,7 +399,7 @@ fn legacy_service_name_is_absent() {
     violations.sort();
     assert!(
         violations.is_empty(),
-        "the legacy service symbol must not survive as an alias, declaration, import, or use; found in: {violations:#?}"
+        "the retired service symbol must not survive as an alias, declaration, import, or use; found in: {violations:#?}"
     );
 }
 
@@ -513,6 +527,262 @@ fn every_workspace_target_source_is_tracked() {
     );
 }
 
+#[test]
+fn workspace_source_inputs_are_repository_closed() {
+    let metadata = workspace_metadata();
+    let canonical_root = fs::canonicalize(&metadata.root)
+        .unwrap_or_else(|error| panic!("cannot resolve {}: {error}", metadata.root.display()));
+    let member_roots = metadata
+        .packages
+        .values()
+        .map(|package| {
+            let directory = metadata
+                .root
+                .join(&package.manifest)
+                .parent()
+                .expect("workspace package manifest must have a parent")
+                .to_path_buf();
+            fs::canonicalize(&directory)
+                .unwrap_or_else(|error| panic!("cannot resolve {}: {error}", directory.display()))
+        })
+        .collect::<BTreeSet<_>>();
+
+    let mut violations = Vec::new();
+    for source in &metadata.target_sources {
+        let path = metadata.root.join(source);
+        let canonical = fs::canonicalize(&path)
+            .unwrap_or_else(|error| panic!("cannot resolve {}: {error}", path.display()));
+        if !canonical.starts_with(&canonical_root) {
+            violations.push(format!(
+                "Cargo target {} resolves outside the repository to {}",
+                source.display(),
+                canonical.display()
+            ));
+        }
+    }
+
+    for dependency in &metadata.dependency_inputs {
+        if dependency
+            .source
+            .as_deref()
+            .is_some_and(|source| source.starts_with("git+"))
+        {
+            violations.push(format!(
+                "{} depends on Git source {} as {}",
+                dependency.owner,
+                dependency.source.as_deref().unwrap_or_default(),
+                dependency.name
+            ));
+        }
+        let Some(path) = &dependency.path else {
+            continue;
+        };
+        let canonical = fs::canonicalize(path)
+            .unwrap_or_else(|error| panic!("cannot resolve {}: {error}", path.display()));
+        if !canonical.starts_with(&canonical_root) {
+            violations.push(format!(
+                "{} depends on local package {} outside the repository at {}",
+                dependency.owner,
+                dependency.name,
+                canonical.display()
+            ));
+        } else if !member_roots.contains(&canonical) {
+            violations.push(format!(
+                "{} depends on local package {} at {}, but that package is not a workspace member",
+                dependency.owner,
+                dependency.name,
+                canonical.display()
+            ));
+        }
+    }
+
+    let lock_path = metadata.root.join("Cargo.lock");
+    let lock = fs::read_to_string(&lock_path)
+        .unwrap_or_else(|error| panic!("cannot read {}: {error}", lock_path.display()));
+    if lock
+        .lines()
+        .any(|line| line.trim_start().starts_with("source = \"git+"))
+    {
+        violations.push("Cargo.lock contains a transitive Git source".to_owned());
+    }
+
+    for entry in git_index_entries(&metadata.root) {
+        if entry.mode == "160000" {
+            violations.push(format!(
+                "tracked Git submodule supplies repository input at {}",
+                entry.path.display()
+            ));
+        }
+        if entry.mode != "120000" {
+            continue;
+        }
+        let path = metadata.root.join(&entry.path);
+        match fs::canonicalize(&path) {
+            Ok(canonical) if canonical.starts_with(&canonical_root) => {}
+            Ok(canonical) => violations.push(format!(
+                "tracked symlink {} escapes the repository to {}",
+                entry.path.display(),
+                canonical.display()
+            )),
+            Err(error) => violations.push(format!(
+                "tracked symlink {} cannot be resolved: {error}",
+                entry.path.display()
+            )),
+        }
+    }
+
+    violations.sort();
+    assert!(
+        violations.is_empty(),
+        "RRFlow first-party source must be supplied by this workspace without Git, submodule, or escaping-path inputs: {violations:#?}"
+    );
+}
+
+#[test]
+fn tracked_paths_are_case_insensitively_unique() {
+    let metadata = workspace_metadata();
+    let mut folded_paths = BTreeMap::<String, BTreeSet<PathBuf>>::new();
+    for entry in git_index_entries(&metadata.root) {
+        folded_paths
+            .entry(entry.path.to_string_lossy().to_lowercase())
+            .or_default()
+            .insert(entry.path);
+    }
+    let collisions = folded_paths
+        .into_iter()
+        .filter_map(|(folded, paths)| (paths.len() > 1).then_some((folded, paths)))
+        .collect::<Vec<_>>();
+    assert!(
+        collisions.is_empty(),
+        "tracked paths collide on case-insensitive filesystems: {collisions:#?}"
+    );
+
+    let mut folded_packages = BTreeMap::<String, BTreeSet<String>>::new();
+    for name in metadata.packages.keys() {
+        folded_packages
+            .entry(name.to_lowercase())
+            .or_default()
+            .insert(name.clone());
+    }
+    let package_collisions = folded_packages
+        .into_iter()
+        .filter_map(|(folded, names)| (names.len() > 1).then_some((folded, names)))
+        .collect::<Vec<_>>();
+    assert!(
+        package_collisions.is_empty(),
+        "workspace package names collide case-insensitively: {package_collisions:#?}"
+    );
+}
+
+#[test]
+fn workspace_manifest_descriptions_use_canonical_product_spelling() {
+    let metadata = workspace_metadata();
+    let canonical_terms = [
+        "rrflowDB",
+        "rrflowKV",
+        "rrflowMX",
+        "rrflowQL",
+        "RRFlow",
+        "RRD",
+        "DataFusion",
+    ];
+    let mut violations = Vec::new();
+    for (package_name, package) in &metadata.packages {
+        for term in noncanonical_ascii_terms(&package.description, &canonical_terms) {
+            violations.push(format!(
+                "{package_name} description uses {term:?} instead of its canonical spelling"
+            ));
+        }
+    }
+    violations.sort();
+    assert!(
+        violations.is_empty(),
+        "workspace package metadata has non-canonical product spelling: {violations:#?}"
+    );
+}
+
+#[test]
+fn active_product_text_uses_canonical_rrflowql_spelling() {
+    let metadata = workspace_metadata();
+    let forbidden = ["RRFlow", "QL"].concat();
+    let mut violations = Vec::new();
+    for entry in git_index_entries(&metadata.root) {
+        if !is_active_product_text(&entry.path) {
+            continue;
+        }
+        let path = metadata.root.join(&entry.path);
+        let bytes = fs::read(&path)
+            .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
+        if bytes
+            .windows(forbidden.len())
+            .any(|window| window == forbidden.as_bytes())
+        {
+            violations.push(entry.path);
+        }
+    }
+    violations.sort();
+    assert!(
+        violations.is_empty(),
+        "active RRFlow source or documentation uses a non-canonical rrflowQL spelling: {violations:#?}"
+    );
+}
+
+#[test]
+fn architecture_text_detectors_reject_host_and_spelling_drift() {
+    let canonical_terms = [
+        "rrflowDB",
+        "rrflowKV",
+        "rrflowMX",
+        "rrflowQL",
+        "RRFlow",
+        "RRD",
+        "DataFusion",
+    ];
+    assert!(noncanonical_ascii_terms("RRFlow query engine", &canonical_terms).is_empty());
+    assert!(noncanonical_ascii_terms("rrflowQL query engine", &canonical_terms).is_empty());
+    assert_eq!(
+        noncanonical_ascii_terms("rrflowql query engine", &canonical_terms),
+        vec!["rrflowql"]
+    );
+    assert!(contains_host_specific_absolute_path(
+        "tool = /workspace/operator/private-generator"
+    ));
+    assert!(contains_host_specific_absolute_path(
+        "tool = C:\\Users\\operator\\private-generator.exe"
+    ));
+    assert!(!contains_host_specific_absolute_path(
+        "tool = scripts/generate.py"
+    ));
+}
+
+#[test]
+fn active_build_and_install_inputs_are_host_independent() {
+    let metadata = workspace_metadata();
+    let mut violations = Vec::new();
+    for entry in git_index_entries(&metadata.root) {
+        if !is_build_or_install_input(&entry.path) {
+            continue;
+        }
+        let path = metadata.root.join(&entry.path);
+        let bytes = fs::read(&path)
+            .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
+        let source = std::str::from_utf8(&bytes).unwrap_or_else(|error| {
+            panic!(
+                "active build/install input {} must be UTF-8 text: {error}",
+                entry.path.display()
+            )
+        });
+        if contains_host_specific_absolute_path(source) {
+            violations.push(entry.path);
+        }
+    }
+    violations.sort();
+    assert!(
+        violations.is_empty(),
+        "active build/install inputs contain a host-specific absolute path: {violations:#?}"
+    );
+}
+
 fn workspace_metadata() -> WorkspaceMetadata {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let workspace_root = manifest_dir
@@ -573,6 +843,7 @@ fn workspace_metadata() -> WorkspaceMetadata {
 
     let mut packages = BTreeMap::new();
     let mut target_sources = BTreeSet::new();
+    let mut dependency_inputs = Vec::new();
     for package in package_values {
         let id = package["id"].as_str().expect("package IDs must be strings");
         if !member_ids.contains(id) {
@@ -646,6 +917,12 @@ fn workspace_metadata() -> WorkspaceMetadata {
             let dependency_name = dependency["name"]
                 .as_str()
                 .expect("dependency names must be strings");
+            dependency_inputs.push(DependencyInput {
+                owner: name.to_owned(),
+                name: dependency_name.to_owned(),
+                path: dependency["path"].as_str().map(PathBuf::from),
+                source: dependency["source"].as_str().map(str::to_owned),
+            });
             if workspace_names.contains(dependency_name) {
                 assert!(
                     dependency["rename"].is_null(),
@@ -666,6 +943,10 @@ fn workspace_metadata() -> WorkspaceMetadata {
                     name.to_owned(),
                     PackageDependencies {
                         manifest,
+                        description: package["description"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
                         workspace,
                         all,
                         targets,
@@ -680,6 +961,7 @@ fn workspace_metadata() -> WorkspaceMetadata {
         root,
         packages,
         target_sources,
+        dependency_inputs,
     }
 }
 
@@ -729,6 +1011,139 @@ fn names(values: &[&str]) -> BTreeSet<String> {
     values.iter().map(|value| (*value).to_owned()).collect()
 }
 
+fn noncanonical_ascii_terms(value: &str, canonical_terms: &[&str]) -> Vec<String> {
+    let lowercase = value.to_ascii_lowercase();
+    let bytes = value.as_bytes();
+    let mut violations = Vec::new();
+    for canonical in canonical_terms {
+        let needle = canonical.to_ascii_lowercase();
+        for (offset, _) in lowercase.match_indices(&needle) {
+            let end = offset + needle.len();
+            let starts_at_boundary = offset == 0
+                || (!bytes[offset - 1].is_ascii_alphanumeric() && bytes[offset - 1] != b'_');
+            let ends_at_boundary =
+                end == bytes.len() || (!bytes[end].is_ascii_alphanumeric() && bytes[end] != b'_');
+            if starts_at_boundary && ends_at_boundary && &value[offset..end] != *canonical {
+                violations.push(value[offset..end].to_owned());
+            }
+        }
+    }
+    violations
+}
+
+fn git_index_entries(root: &Path) -> Vec<GitIndexEntry> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args(["ls-files", "--stage", "-z"])
+        .output()
+        .expect("git ls-files --stage must start");
+    assert!(
+        output.status.success(),
+        "git ls-files --stage failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+        .map(|record| {
+            let record = std::str::from_utf8(record).expect("repository paths must be valid UTF-8");
+            let (metadata, path) = record
+                .split_once('\t')
+                .expect("git index record must contain a path");
+            GitIndexEntry {
+                mode: metadata
+                    .split_whitespace()
+                    .next()
+                    .expect("git index record must contain a mode")
+                    .to_owned(),
+                path: PathBuf::from(path),
+            }
+        })
+        .collect()
+}
+
+fn is_build_or_install_input(path: &Path) -> bool {
+    let encoded = path.to_string_lossy();
+    if encoded.starts_with(".cargo/")
+        || encoded.starts_with(".github/workflows/")
+        || encoded.starts_with("deploy/")
+        || encoded.starts_with("scripts/")
+        || encoded.contains("/install/")
+        || encoded.contains("/templates/")
+    {
+        return true;
+    }
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    matches!(
+        name,
+        "AGENTS.md"
+            | "Cargo.lock"
+            | "Cargo.toml"
+            | "Dockerfile"
+            | "Makefile"
+            | "build.rs"
+            | "clippy.toml"
+            | "deny.toml"
+            | "global.json"
+            | "go.mod"
+            | "go.sum"
+            | "package.json"
+            | "pnpm-lock.yaml"
+            | "pom.xml"
+            | "pyproject.toml"
+            | "ruff.toml"
+            | "rust-toolchain"
+            | "rust-toolchain.toml"
+            | "rustfmt.toml"
+            | "uv.lock"
+    ) || ["csproj", "props", "slnx", "targets"]
+        .iter()
+        .any(|extension| path.extension().is_some_and(|value| value == *extension))
+}
+
+fn is_active_product_text(path: &Path) -> bool {
+    let encoded = path.to_string_lossy();
+    if path == Path::new("README.md") {
+        return true;
+    }
+    if !encoded.starts_with("crates/") && !encoded.starts_with("docs/") {
+        return false;
+    }
+    matches!(
+        path.extension().and_then(|extension| extension.to_str()),
+        Some("json" | "jsonl" | "md" | "rs" | "toml")
+    )
+}
+
+fn contains_host_specific_absolute_path(source: &str) -> bool {
+    let lower = source.to_ascii_lowercase();
+    if ["/workspace/", "/users/", "/tmp/", "file:///"]
+        .iter()
+        .any(|value| lower.contains(value))
+    {
+        return true;
+    }
+    if lower.match_indices("/home/").any(|(offset, _)| {
+        let owner = lower[offset + "/home/".len()..]
+            .split(['/', '\\', ' ', '\"', '\'', '\n', '\r', '\t'])
+            .next()
+            .unwrap_or_default();
+        owner != "runner"
+    }) {
+        return true;
+    }
+    lower.as_bytes().windows(9).any(|window| {
+        window[0].is_ascii_alphabetic()
+            && window[1] == b':'
+            && matches!(window[2], b'/' | b'\\')
+            && &window[3..8] == b"users"
+            && matches!(window[8], b'/' | b'\\')
+    })
+}
+
 fn collect_rust_sources(directory: &Path, violations: &mut Vec<PathBuf>, forbidden: &str) {
     let mut entries = fs::read_dir(directory)
         .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", directory.display()))
@@ -749,7 +1164,10 @@ fn collect_rust_sources(directory: &Path, violations: &mut Vec<PathBuf>, forbidd
         } else if path.extension().is_some_and(|extension| extension == "rs") {
             let source = fs::read_to_string(&path)
                 .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
-            if source.contains(forbidden) {
+            if source
+                .to_ascii_lowercase()
+                .contains(&forbidden.to_ascii_lowercase())
+            {
                 violations.push(path);
             }
         }

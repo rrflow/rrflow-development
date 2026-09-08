@@ -82,7 +82,7 @@ dimensions, and dense shape, generates one query vector, and invokes
 Current search still reconstructs candidates from the runtime change log;
 C-04 and E-04 must replace that path with native persistent reads and vector
 access. DataFusion does not participate in this operation today; a later
-RRFlowQL path must preserve the same model and read-stamp identity.
+rrflowQL path must preserve the same model and read-stamp identity.
 
 ## Admission invariants
 

@@ -299,7 +299,7 @@ impl ExecuteQuery {
     }
 }
 
-/// A bounded RRFlowQL transaction program plus canonical typed mutation
+/// A bounded rrflowQL transaction program plus canonical typed mutation
 /// bindings. The program selects ordering and commit/cancel disposition; the
 /// bindings reuse the one public transaction mutation vocabulary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -4921,7 +4921,7 @@ impl DeploymentConformanceQuery {
     pub fn validate(&self) -> Result<()> {
         if self.rrflowql.is_empty() || self.rrflowql.len() > MAX_QUERY_BYTES {
             return invalid(format!(
-                "deployment conformance RRFlowQL must contain 1..={MAX_QUERY_BYTES} bytes"
+                "deployment conformance rrflowQL must contain 1..={MAX_QUERY_BYTES} bytes"
             ));
         }
         if self.edge_text.is_empty() || self.edge_text.len() > MAX_MESSAGE_BYTES {

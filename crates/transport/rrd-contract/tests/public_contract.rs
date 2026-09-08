@@ -124,7 +124,7 @@ fn contract_fixture() -> ContractFixture {
                             disposition: SurfaceDisposition::Unavailable,
                             entrypoints: Vec::new(),
                             reason: Some(
-                                "No RRFlowQL statement maps this fixture operation.".into(),
+                                "No rrflowQL statement maps this fixture operation.".into(),
                             ),
                         },
                         SurfaceBinding {
