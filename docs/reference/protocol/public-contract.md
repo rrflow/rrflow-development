@@ -136,7 +136,7 @@ The boundary is intentionally explicit:
 | Java client | Generates an enum and a generic synchronous call over all 33 HTTP descriptors, but has no concrete operation payload validation, async/WebSocket or remote transport, opaque credential, or reproducible offline Maven/JAR qualification. | The [Java SDK reference](../sdk/java.md) records the exact request/response, credential, retry/cancellation, concurrency, transport, artifact, JDK/toolchain, and conformance boundary. |
 | .NET client | Generates an enum and a generic asynchronous call over all 33 HTTP descriptors, but has no concrete operation payload validation, WebSocket or remote transport, opaque credential, or reproducible signed NuGet/toolchain qualification. | The [.NET SDK reference](../sdk/dotnet.md) records the exact request/response, credential, retry/cancellation, concurrency, transport, artifact, trimming/AOT, SDK/runtime, and conformance boundary. |
 | Shared generated-SDK corpus | OpenAPI and one shared semantic corpus exist as generation/conformance inputs. | Every supported language must run the same real-daemon corpus; schema generation alone is not qualification. |
-| GraphQL | No public GraphQL operation or executor is established. | B-05 schema-derived lowering into the same bound RRFlow request, with no second executor. |
+| GraphQL | B-05 supplies bounded, schema-derived query lowering into the same `Query`, `Parameters`, and `BoundQuery` path as rrflowQL. No public GraphQL operation, resolver, or second executor is established. | H-04 outward HTTP carriage and cross-surface authorization/semantic equivalence. |
 | MCP, CLI, Connectome, and model adapters | May consume public contracts but cannot infer engine state or implement missing semantics. | H-04 through H-07 and the relevant D/G/I gates. |
 
 The crate also exports attunement, router, reasoning-tree, knowledge-package,
@@ -159,7 +159,7 @@ prove that engine by itself:
 | Graph, BM25, vector, and retrieval | Typed graph mutations, scalar/BM25 catalogue kinds, named dense/sparse/multi-dense vectors, HNSW/TurboQuant configuration, filters, exact/approximate search, recursive retrieval, and RRF evidence can be represented. | E-01 through E-05 and F-03 must prove transactional native access paths, exact fallbacks, deterministic fusion, recall, update/delete, and reopen behavior. |
 | Context and reasoning | Bounded context packets, reasoning trees, route requests/decisions, and B-03 model-manifest pre-load admission have provider-neutral contracts. | G/H must prove executable routing, persisted CAS tree execution, engine-selected fast or analytical paths, authorized same-stamp context, feedback, and replay. |
 | Installation and knowledge | Provider-neutral installation/attunement jobs and content-addressed knowledge packages have contracts. | D and KB-06 through KB-08 must prove preview/apply, persisted resume, project inventory, authorized import, close/reopen, readback, and warp resolution. |
-| Delivery and clients | Changefeeds, durable subscriptions, endpoint discovery, OpenAPI, the B-04 closed multiplexed WebSocket protocol, its Rust client/server implementation, and SDK corpus types exist. | B-05, H-03/H-04, and J must prove commit-impact delivery, operation execution/cancellation, cross-surface equivalence, correlated traces, and a clean self-contained deployment. |
+| Delivery and clients | Changefeeds, durable subscriptions, endpoint discovery, OpenAPI, the B-04 closed multiplexed WebSocket protocol, its Rust client/server implementation, B-05 GraphQL-to-bound-query lowering, and SDK corpus types exist. | H-03/H-04 and J must prove commit-impact delivery, operation execution/cancellation, public GraphQL carriage, cross-surface equivalence, correlated traces, and a clean self-contained deployment. |
 
 Passing a row's serialization test cannot satisfy the behavioral proof in the
 last column. The proof must exercise `RrdEngine`, the selected rrflowMX or
@@ -192,6 +192,7 @@ silently repaired during this KB-05 documentation-classification package.
 |---|---|---|
 | `cargo test -p rrd-contract --test public_contract --locked` | Strict selected wire shapes, bounds, 33-operation catalogue, one generic WebSocket descriptor, OpenAPI digest, deployment/SDK corpus validation, and selected cross-language digest vectors. | Server dispatch, storage semantics, DataFusion streaming, native indexes, reasoning execution, or all-language SDK conformance. |
 | `cargo test -p rrd-contract --test websocket_contract --locked` | The B-04 golden frame contract, sender directions, sequence and connection integrity, exact correlations/resume coordinates, negotiated/hard resource limits, and malformed/unknown representation rejection. | H-04 operation execution, generated-language carriage, or release qualification. |
+| `cargo test -p rrd-query --test graphql_equivalence --locked` | B-05 schema-derived GraphQL parsing, lowering, bound-query/digest equality with rrflowQL, historical-schema binding, typed variables, and fail-closed unsupported shapes. | A public GraphQL route, transport authentication, engine execution, storage/index behavior, or cross-surface qualification. |
 | Normal-dependency inspection | `rrd-contract` has no RRFlow implementation crate in its normal dependency graph; `rrd-core` is test-only. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
 | Generated-surface parity check | Checked-in generated OpenAPI/SDK artifacts match the current OpenAPI projection. | Real-process semantic equivalence or complete SDK operation coverage. |
 | Server and client suites | Separately documented real-process HTTP, mutual-TLS, WebSocket, and durable-subscription behavior. | The complete target engine or released deployment. |
@@ -210,6 +211,11 @@ silently repaired during this KB-05 documentation-classification package.
   `crates/transport/rrd-contract/src/sdk_conformance.rs`
 - Frozen selected wire sample:
   `crates/transport/rrd-contract/fixtures/public-contract-v1.json`
+- Frozen GraphQL/rrflowQL equivalence sample:
+  `crates/transport/rrd-contract/fixtures/graphql-equivalence-v1.json`
+- GraphQL lowering and equivalence proof:
+  `crates/compute/rrd-query/src/graphql.rs` and
+  `crates/compute/rrd-query/tests/graphql_equivalence.rs`
 - Contract characterization:
   `crates/transport/rrd-contract/tests/public_contract.rs`
 - Runtime capability composition:

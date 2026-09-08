@@ -909,6 +909,7 @@ fn source_identity(source: &Source) -> (&'static str, String) {
 
 fn query_error_class(error: &rrd_query::Error) -> &'static str {
     match error {
+        rrd_query::Error::Graphql(_) => "graphql",
         rrd_query::Error::Catalog(_) => "catalog",
         rrd_query::Error::Binding(_) => "binding",
         rrd_query::Error::Budget(_) => "budget",
@@ -962,5 +963,17 @@ fn fail_query<E: StorageEngine, T>(
             trace_errors.join("; ")
         )
         .into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::query_error_class;
+
+    #[test]
+    fn graphql_errors_retain_their_canonical_trace_class() {
+        let error = rrd_query::Error::Graphql("unsupported operation".into());
+
+        assert_eq!(query_error_class(&error), "graphql");
     }
 }

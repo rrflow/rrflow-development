@@ -702,7 +702,10 @@ fn comparison_label(comparison: ComparisonOperator) -> &'static str {
     }
 }
 
-fn fields_for_source(source: &Source, schema: &RuntimeSchemaRegistry) -> Result<FieldCatalog> {
+pub(crate) fn fields_for_source(
+    source: &Source,
+    schema: &RuntimeSchemaRegistry,
+) -> Result<FieldCatalog> {
     let (builtins, properties): (BuiltinFields, Vec<(String, RuntimeValueType)>) = match source {
         Source::Record { kind } => {
             let definition = schema.records.get(kind).ok_or_else(|| {

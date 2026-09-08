@@ -5,6 +5,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Catalog(String),
+    Graphql(String),
     Binding(String),
     Budget(String),
     Execution(String),
@@ -15,6 +16,7 @@ impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (kind, detail) = match self {
             Self::Catalog(value) => ("catalog", value),
+            Self::Graphql(value) => ("GraphQL adapter", value),
             Self::Binding(value) => ("binding", value),
             Self::Budget(value) => ("budget", value),
             Self::Execution(value) => ("execution", value),

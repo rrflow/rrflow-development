@@ -32,7 +32,7 @@ Roadmap completion currently stands at:
 | Gate | Purpose | Complete |
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
-| B | public, install, routing, model, WebSocket, and GraphQL contracts | 4 / 5 |
+| B | public, install, routing, model, WebSocket, and GraphQL contracts | 5 / 5 |
 | C | sole hybrid persistent rrflowKV substrate | 1 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
@@ -103,9 +103,9 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **B-05**, GraphQL lowering into the one RRFlow
-query representation. C-01's independent physical-key package is also
-complete, but B-05 remains the release-spine prerequisite before C-02 begins.
+The next executable item is **C-02**, one snapshot-isolation transaction port
+with identical rrflowMX and rrflowKV semantics. C-01's independent
+physical-key package and every Gate B contract package are complete.
 A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
@@ -114,9 +114,9 @@ source; and A-07.2 froze the 13 trace boundaries, 53 canonical operations, 14
 typed causal-link forms, 46 type-checked canonical attributes, W3C propagation
 rules, diagnostic projection, and exact shrinking current-producer inventories.
 This is vocabulary and traceability completion, not engine-capability
-qualification. B-01 through B-04 are completed contract/admission work; B-05
-now resumes the dependency spine. B-04 does not claim H-04 generic operation
-dispatch or generated-SDK parity.
+qualification. B-01 through B-05 are completed contract/admission work. B-04
+does not claim H-04 generic operation dispatch or generated-SDK parity, and
+B-05 does not claim a public GraphQL endpoint or a second query executor.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -646,7 +646,7 @@ the generic tree contract, and no obsolete lifecycle implementation.
 | [x] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
 | [x] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
 | [x] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
-| [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and rrflowQL produce the same authorized logical request without a second executor. |
+| [x] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and rrflowQL produce the same bound logical request; the shared engine authorization path is unchanged and no second executor exists. |
 
 B-01 evidence (2026-09-04):
 
@@ -762,6 +762,34 @@ B-04 evidence (2026-09-08):
   passed. This evidence does not qualify persistence, native indexes,
   Arrow/DataFusion execution, reasoning, installation, generated-SDK parity,
   Connectome, or release.
+
+B-05 evidence (2026-09-08):
+
+- `rrd-query` now owns a bounded GraphQL query-ingress adapter. It parses with
+  a standards-based GraphQL parser, selects exactly one query operation and
+  one root source, derives permitted source/field definitions from the
+  catalogue at the requested historical cursor, validates declared scalar
+  variables and schema membership, and lowers into the existing `Query` plus
+  `Parameters` representation before calling the ordinary `bind` path.
+- The adapter supports the seven existing rrflowQL source families, temporal
+  coordinates, filters, projection, bounded limits, explain modes, directed
+  traversal, and one bounded equi-join. Mutations, subscriptions, fragments,
+  directives, undeclared or unused variables, unknown arguments, unknown
+  fields/sources, invalid GraphQL names, future cursors, oversized documents,
+  and excess variables fail closed. It contains no resolver, storage trait,
+  executor, transport, authorization decision, or mutation authority.
+- `graphql-equivalence-v1.json` freezes five record/event/traversal/join/claim
+  pairs and nine denial cases. Each accepted pair produces the same complete
+  `BoundQuery` and bound digest from GraphQL and rrflowQL; the derived schema
+  digest is also frozen. A historical-schema test and typed-default test prove
+  the adapter cannot invent a second field or parameter model.
+- `cargo test -p rrd-query --locked` passed 50 tests across all package
+  targets, including all four GraphQL equivalence/denial cases. Strict
+  all-target Clippy passed for `rrd-query` and `rrd-engine`; all 23 workspace
+  architecture checks passed; and `cargo check --workspace --all-targets
+  --locked` passed all 20 packages. This closes Gate B only. H-04 still owns
+  the public GraphQL HTTP adapter and cross-surface authorization/semantic
+  proof; C-02 now resumes the engine dependency spine.
 
 Gate B exits only when other languages and LFG can implement the contracts from
 golden vectors without importing Rust internals.

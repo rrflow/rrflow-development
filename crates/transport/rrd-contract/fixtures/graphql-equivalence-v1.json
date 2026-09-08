@@ -1,0 +1,153 @@
+{
+  "contract_version": 1,
+  "cases": [
+    {
+      "name": "record_variables_filter_limit_and_explain",
+      "graphql": {
+        "contract_version": 1,
+        "document": "query Document($when: Unsigned!, $cursor: Unsigned!, $status: String!) { record(kind: \"document\", validAt: $when, knownAt: $cursor, where: [{field: \"status\", comparison: EQ, value: $status}], limit: 10, explain: CONTRACT) { id status } }",
+        "operation_name": "Document",
+        "variables": {
+          "cursor": {
+            "type": "unsigned",
+            "value": 4
+          },
+          "status": {
+            "type": "string",
+            "value": "open"
+          },
+          "when": {
+            "type": "unsigned",
+            "value": 100
+          }
+        }
+      },
+      "rrflowql": "FROM record:document AT VALID $when KNOWN $cursor WHERE status = $status PROJECT id, status LIMIT 10 EXPLAIN CONTRACT",
+      "expected_schema_digest": "8eaeb3f41ccd7581f2d65346c7a8ec491e4bf13aae9bb25893ba726a5fe44ff0",
+      "expected_bound_digest": "e524a56987c8794a91b3a3712cdd318e88da7a1b3a68b5007a4f057972baa68a"
+    },
+    {
+      "name": "exact_event_cursor",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ event(kind: \"tool_result\", validAt: 100, knownAt: 4, where: [{field: \"cursor\", comparison: EQ, value: 4}], explain: CONTRACT) { cursor } }"
+      },
+      "rrflowql": "FROM event:tool_result AT VALID 100 KNOWN 4 WHERE cursor = 4 PROJECT cursor EXPLAIN CONTRACT",
+      "expected_schema_digest": "8eaeb3f41ccd7581f2d65346c7a8ec491e4bf13aae9bb25893ba726a5fe44ff0",
+      "expected_bound_digest": "da49abf677154a6d63295c9909e3a4698bb2977e8b0c79ca62dc2565de677d08"
+    },
+    {
+      "name": "directed_traversal",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ traverse(relation: \"depends_on\", startKind: \"document\", startId: \"a\", direction: OUTGOING, depth: 4, validAt: 100, knownAt: HEAD) { node_id depth path } }"
+      },
+      "rrflowql": "FROM traverse:depends_on START document:a DIRECTION OUTGOING DEPTH 4 AT VALID 100 KNOWN HEAD PROJECT node_id, depth, path",
+      "expected_schema_digest": "8eaeb3f41ccd7581f2d65346c7a8ec491e4bf13aae9bb25893ba726a5fe44ff0",
+      "expected_bound_digest": "b03debeff193644db91e6da355802a215d5a1f3b6c92d1eded5364f5c26e0ecc"
+    },
+    {
+      "name": "record_relation_join",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ record(kind: \"document\", validAt: 100, knownAt: HEAD, join: {family: RELATION, kind: \"depends_on\", leftField: \"id\", rightField: \"from_id\"}) { left { id } right { to_id } } }"
+      },
+      "rrflowql": "FROM record:document JOIN relation:depends_on ON id = from_id AT VALID 100 KNOWN HEAD PROJECT left.id, right.to_id",
+      "expected_schema_digest": "8eaeb3f41ccd7581f2d65346c7a8ec491e4bf13aae9bb25893ba726a5fe44ff0",
+      "expected_bound_digest": "50007ef776bdbb52fbb51d213db7de12032402a45f1f8e65305b40691aa35f4d"
+    },
+    {
+      "name": "claim_filter",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ claim(predicate: \"status\", validAt: 100, knownAt: HEAD, where: [{field: \"object\", comparison: EQ, value: \"ready\"}]) { subject object } }"
+      },
+      "rrflowql": "FROM claim:status AT VALID 100 KNOWN HEAD WHERE object = \"ready\" PROJECT subject, object",
+      "expected_schema_digest": "8eaeb3f41ccd7581f2d65346c7a8ec491e4bf13aae9bb25893ba726a5fe44ff0",
+      "expected_bound_digest": "e9d1b0b0bb4e90bda1f2dce704df15024efdaec6b060cf1eed080733cd42d518"
+    }
+  ],
+  "denials": [
+    {
+      "name": "mutation_is_not_a_query_adapter",
+      "graphql": {
+        "contract_version": 1,
+        "document": "mutation { record(kind: \"document\", validAt: 100, knownAt: HEAD) { id } }"
+      },
+      "error_contains": "mutation and subscription operations are not query ingress"
+    },
+    {
+      "name": "unknown_schema_source",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ record(kind: \"missing\", validAt: 100, knownAt: HEAD) { id } }"
+      },
+      "error_contains": "source is not present in the captured schema"
+    },
+    {
+      "name": "unknown_schema_field",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ record(kind: \"document\", validAt: 100, knownAt: HEAD) { imaginary } }"
+      },
+      "error_contains": "is not present in the selected source"
+    },
+    {
+      "name": "undeclared_variable",
+      "graphql": {
+        "contract_version": 1,
+        "document": "query Invalid { record(kind: \"document\", validAt: $when, knownAt: HEAD) { id } }",
+        "operation_name": "Invalid"
+      },
+      "error_contains": "variable $when is not defined"
+    },
+    {
+      "name": "extra_variable",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ record(kind: \"document\", validAt: 100, knownAt: HEAD) { id } }",
+        "variables": {
+          "unused": {
+            "type": "unsigned",
+            "value": 1
+          }
+        }
+      },
+      "error_contains": "variable $unused was not declared"
+    },
+    {
+      "name": "fragment_is_not_silently_reinterpreted",
+      "graphql": {
+        "contract_version": 1,
+        "document": "query WithFragment { record(kind: \"document\", validAt: 100, knownAt: HEAD) { ...Fields } } fragment Fields on Document { id }",
+        "operation_name": "WithFragment"
+      },
+      "error_contains": "fragments are outside the 1.0 lowering contract"
+    },
+    {
+      "name": "directive_is_not_silently_dropped",
+      "graphql": {
+        "contract_version": 1,
+        "document": "query Directed @skip(if: true) { record(kind: \"document\", validAt: 100, knownAt: HEAD) { id } }",
+        "operation_name": "Directed"
+      },
+      "error_contains": "operation directives are not lowerable"
+    },
+    {
+      "name": "unknown_argument",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ record(kind: \"document\", validAt: 100, knownAt: HEAD, backend: \"kv\") { id } }"
+      },
+      "error_contains": "unknown GraphQL arguments"
+    },
+    {
+      "name": "future_cursor",
+      "graphql": {
+        "contract_version": 1,
+        "document": "{ record(kind: \"document\", validAt: 100, knownAt: 5) { id } }"
+      },
+      "error_contains": "exceeds captured head"
+    }
+  ]
+}

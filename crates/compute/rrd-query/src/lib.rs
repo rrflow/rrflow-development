@@ -11,6 +11,7 @@ mod catalog;
 mod error;
 mod execute;
 mod fusion;
+mod graphql;
 mod index;
 mod live;
 mod pipeline;
@@ -29,6 +30,11 @@ pub use catalog::{Catalog, SchemaVersion, SourceWatermarks};
 pub use error::{Error, Result};
 pub use execute::{execute, ExecutionBudget, QueryBatch, QueryExecution, QueryRow};
 pub use fusion::{execute_snapshot, FusionAnalysis, FusionBudget};
+pub use graphql::{
+    bind_graphql, derive_graphql_schema, lower_graphql, GraphqlFieldDefinition, GraphqlRequest,
+    GraphqlSchema, GraphqlSourceDefinition, GraphqlSourceFamily, LoweredGraphqlQuery,
+    GRAPHQL_ADAPTER_CONTRACT_VERSION, MAX_GRAPHQL_DOCUMENT_BYTES, MAX_GRAPHQL_VARIABLES,
+};
 pub use index::{
     validate_unique_indexes, IndexAnalyticsArtifact, IndexArtifact, IndexArtifactPublication,
     IndexArtifactReference, IndexCatalogue, IndexCatalogueRepository, IndexCountGroup,

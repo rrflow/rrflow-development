@@ -101,7 +101,7 @@ diagnostic-export rules. Exact current trace names and attributes that await
 their behavior-owning C-through-I gates are finite shrinking inventories, not
 alternate APIs. This completes structural and evidence vocabulary only; it
 does not qualify persistence, native indexes, DataFusion streaming, reasoning,
-installation, or cross-surface observability. B-01 through B-04 are complete:
+installation, or cross-surface observability. B-01 through B-05 are complete:
 router model artifacts, tokenizer, output schema, capabilities, resource
 limits, runtime ABI/device, quantization, and deterministic grammar now fail
 closed before model loading. One authenticated `/v1/ws` connection now carries
@@ -109,14 +109,16 @@ the closed, bounded request, cancellation, subscription, delivery, ACK,
 heartbeat, error, and backpressure vocabulary; the Rust client/server proof
 covers multiplexed durable subscriptions, exact replay coordinates, and
 malicious peers. Generic operation execution remains fail-closed until H-04;
-the next executable package is
-[B-05 GraphQL lowering](docs/roadmap/rrflow-1.0-execution-map.md#b-05--graphql-lowering-only).
+GraphQL now parses and validates against a read-stamped schema catalogue and
+lowers into the same bound rrflowQL `Query` representation, with no resolver,
+storage call, authorization bypass, or second executor. Its outward HTTP
+surface remains H-04 work. The next executable package is
+[C-02 transaction parity](docs/roadmap/rrflow-1.0-execution-map.md#c-02--transaction-port-and-mxkv-conformance).
 The independent C-01 storage package is also complete: all live rrflowKV
 application keys now use the manifest-authenticated `RRKV0001` typed ordered
 codec, and physical-key authority has left the kernel. This is the key spine,
 not the still-open transaction-parity, native-index, hybrid Arrow-page,
-DataFusion-streaming, or persistent reasoning/recall work. B-05 remains the
-release-spine prerequisite before C-02 begins.
+DataFusion-streaming, or persistent reasoning/recall work.
 
 ## Knowledge warp points
 
