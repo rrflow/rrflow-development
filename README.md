@@ -24,6 +24,7 @@ release-ready.
 | Understand the product, components, and boundaries | [RRFlow system overview](docs/architecture/system-overview.md) |
 | Understand project, estate, RRD instance, environment, deployment, and physical placement | [RRFlow instance topology](docs/architecture/instance-topology.md) |
 | Select and prove deployment form, storage profile, and endpoint presentation independently | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
+| Deploy one installed RRD instance through Kubernetes without creating another authority | [RRFlow Kubernetes deployment adapter](docs/reference/deployment/kubernetes-operator.md) |
 | Understand the unavailable distributed target and disposition of current cluster code | [RRFlow distributed cluster contract](docs/reference/distributed/cluster-contract.md) |
 | Follow writes, persistence, reads, Arrow/DataFusion, and context end to end | [RRFlow engine data flow](docs/architecture/engine-data-flow.md) |
 | Understand why all capabilities remain under one authority | [ADR-0001: single-engine authority](docs/decisions/0001-single-engine-authority.md) |
@@ -65,6 +66,7 @@ definition; this portal does not reproduce those bodies.
 | Durable provider-neutral self and `rrflow://` record resolution | [Seat identity and memory warps](docs/reference/seat-identity.md) |
 | Estate desired/observed state and fenced external effects | [RRFlow estate control](docs/reference/operations/estate-control.md) |
 | Embedded, single-node, cluster, rrflowMX, rrflowKV, loopback, and network combinations | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
+| Kubernetes projection, reconciliation, readiness, deletion, and qualification | [RRFlow Kubernetes deployment adapter](docs/reference/deployment/kubernetes-operator.md) |
 | Distributed consistency, replication, recovery, and qualification | [RRFlow distributed cluster contract](docs/reference/distributed/cluster-contract.md) |
 | Local RRD launch, authenticated readiness, and bounded shutdown | [RRFlow local process adapter](docs/reference/deployment/local-process-driver.md) |
 | Connectome HTTP bootstrap and mesh boundary | [Client bootstrap boundary](docs/architecture/system-overview.md#client-bootstrap-boundary) and [roadmap H-06/H-07](docs/roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome) |
@@ -104,6 +106,7 @@ one repository fallback; the linked record owns the content.
 | Master system overview | [`rrflow://rrflow-instance/data/architecture/system-overview`](rrflow://rrflow-instance/data/architecture/system-overview) | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) |
 | Project, estate, instance, and deployment topology | [`rrflow://rrflow-instance/data/architecture/instance-topology`](rrflow://rrflow-instance/data/architecture/instance-topology) | [`docs/architecture/instance-topology.md`](docs/architecture/instance-topology.md) |
 | Deployment profiles and cross-profile conformance | [`rrflow://rrflow-instance/data/reference/deployment/modes`](rrflow://rrflow-instance/data/reference/deployment/modes) | [`docs/reference/deployment/modes.md`](docs/reference/deployment/modes.md) |
+| Kubernetes deployment adapter | [`rrflow://rrflow-instance/data/reference/deployment/kubernetes-operator`](rrflow://rrflow-instance/data/reference/deployment/kubernetes-operator) | [`docs/reference/deployment/kubernetes-operator.md`](docs/reference/deployment/kubernetes-operator.md) |
 | Distributed cluster contract | [`rrflow://rrflow-instance/data/reference/distributed/cluster-contract`](rrflow://rrflow-instance/data/reference/distributed/cluster-contract) | [`docs/reference/distributed/cluster-contract.md`](docs/reference/distributed/cluster-contract.md) |
 | Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |
 | Engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`docs/architecture/engine-data-flow.md`](docs/architecture/engine-data-flow.md) |

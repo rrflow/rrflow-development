@@ -14,7 +14,9 @@ desired/observed operational semantics, the
 deployment-form, storage-profile, and endpoint-presentation combinations plus
 their conformance boundaries, the
 [local-process adapter](../reference/deployment/local-process-driver.md) owns
-host-local launch/readiness/shutdown effects, and the
+host-local launch/readiness/shutdown effects, the
+[Kubernetes adapter](../reference/deployment/kubernetes-operator.md) owns the
+Kubernetes projection and effect boundary for one installed instance, and the
 [roadmap](../roadmap/rrflow-1.0.md) owns implementation order and evidence. This
 record owns only the topology that those components inhabit.
 

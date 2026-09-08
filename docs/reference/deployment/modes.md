@@ -16,6 +16,8 @@ owns the common write, read, Arrow/DataFusion, reasoning, and recall paths. The
 [distributed cluster contract](../distributed/cluster-contract.md) owns the
 unavailable clustered target and the disposition of current cluster code. The
 [local-process adapter](local-process-driver.md) owns host process effects, the
+[Kubernetes adapter](kubernetes-operator.md) owns Kubernetes projection and
+reconciliation for one installed instance, the
 [server reference](../protocol/server.md) owns HTTP/WebSocket behavior, and the
 [roadmap](../../roadmap/rrflow-1.0.md) owns implementation order and completion
 evidence. This record owns only the profile classification and the proof needed
