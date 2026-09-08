@@ -586,6 +586,7 @@ they share one rrflowDB transaction, graph, query, and evidence model:
 | Routine run | Durable execution state pinned to one routine revision, activation event, specialization, policy, and input digest. | Redefining its routine during replay or inferring success from a trace/client. |
 | Skill package | Immutable instructions, schemas, examples, evaluation cases, and resource descriptors resolved at a read stamp. | Permissions, mutation, process execution, scheduling, or database/index selection. |
 | Function | A bounded deterministic transform or proposed-transaction validator executed by an engine-owned sandbox. | Durable orchestration, post-commit event matching, network access, or lifecycle state. |
+| External activity | One prepared, fenced attempt to invoke an installed model, process, network, or MCP capability and return a bounded observation for engine validation. | Canonical mutation, routine advancement, retries, authorization, verification, or direct storage/query/index access. |
 | Host-event adapter | Explicit translation of one authenticated external occurrence into the public engine-event submission contract. | Automatic installation, canonical state, routine scheduling, or storage access. |
 | MCP adapter | Projection of public RRD operations/resources/tasks and, when configured, transport for one external capability invocation. | A second context assembler, workflow engine, database trigger system, or presentation authority. |
 
@@ -666,9 +667,15 @@ capability reference. It cannot name a Rust function, executable path, shell
 fragment, provider, MCP endpoint, storage profile, KV prefix, table provider,
 graph implementation, BM25 implementation, HNSW generation, TurboQuant
 generation, or DataFusion node. The installed specialization resolves generic
-capabilities to exact authorized bindings. This is how a generic
-`verification` step can become Cargo, pnpm, pytest, or another direct argv only
-after project inventory and operator policy prove that binding.
+capabilities to exact authorized bindings. This is how a generic `verification`
+step can become a direct-process Cargo or pytest binding, or a package-script
+pnpm/npm binding, only after project inventory and operator policy prove the
+complete invocation closure. A literal package-manager argv is not shell-free
+when the selected manifest script, lifecycle companions, or wrappers invoke a
+shell. The
+[project command capability contract](../reference/automation/project-command-capabilities.md)
+owns discovery, binding, activity, observation, receipt, sandbox, and
+re-inventory semantics.
 
 ### Skill resolution
 
@@ -801,7 +808,7 @@ compile cannot substitute for this proof.
 | Embedding and vectors | Deterministic local embedding, model/provenance binding, exact search, filtered planning, compact dense artifacts, HNSW, quantization, and accelerator differential checks exist. | D-05/E-04/E-05/F-03 must bind canonical vectors and every derived artifact to one committed source cursor, maintain atomic deltas, and preserve exact fallback/reranking. |
 | Graph and BM25 | Semantic graph and lexical foundations exist, but current context execution still reconstructs broad snapshots. | Transactionally maintained adjacency and BM25 access paths with exact fallback, reopen, corruption, and bounded-work proof. |
 | Reasoning and context | Generic reasoning-tree, router, context-plan, evidence, and bounded context contracts exist; current assembly uses snapshot BM25, exact vectors, graph BFS, and RRF. | G/H must persist CAS tree execution and dynamically select native or analytical paths without adding another model, planner, or context authority. |
-| Automation, skills, and MCP | A deterministic JavaScript/WebAssembly function catalogue and synchronous proposed-transaction bindings exist; MCP exposes one context tool; no canonical engine event, post-commit trigger, durable routine, skill package, or external MCP capability runner exists. The package-command note now describes only the target capability boundary and claims no evidence. | I must directly converge event terminology, retain the bounded function sandbox under its narrower name, persist triggers/routines/skills through `RrdEngine`, project them across public surfaces, and remove all host-lifecycle residue. |
+| Automation, skills, and MCP | A deterministic JavaScript/WebAssembly function catalogue and synchronous proposed-transaction bindings exist; MCP exposes one context tool. No canonical engine event, post-commit trigger, durable routine, skill package, project-command candidate/binding, external activity operation, or conforming capability runner exists. The [project command reference](../reference/automation/project-command-capabilities.md) specifies only the target boundary and claims no implementation evidence. | D-06/I must directly converge event/function terminology, retain the bounded function sandbox under its narrower name, add discovery and immutable installed bindings, persist prepared activities/accepted receipts/triggers/routines/skills through `RrdEngine`, project them across public surfaces, and remove all host-lifecycle residue. |
 | Edge and outward delivery | The separate `rrflow-edge` adapter has deterministic offline/provenance evidence; HTTP, SDK, MCP, CLI, and subscriptions have partial real-process coverage. | H/J must route every surface through the same public operations and prove correlated identity, authorization, stamp, result, restart, and distribution behavior. |
 
 These differences are tracked by POAM-002 through POAM-010 and their owning

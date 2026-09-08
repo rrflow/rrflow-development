@@ -118,6 +118,12 @@ RRFlow-owned scaffolding named by the accepted plan and leaves project-owned
 artifacts and rrflowDB state intact unless a separate destructive operation is
 explicitly authorized.
 
+The [project command capability contract](automation/project-command-capabilities.md)
+owns the exact distinction between discovered command facts, inactive
+candidates, installed bindings, prepared external activities, adapter
+observations, accepted receipts, and project re-inventory. This bootstrap
+record does not duplicate those process-execution semantics.
+
 SurrealDB, Qdrant, Lance, Fjall, and other Rust codebases are engineering
 references, not RRFlow module templates. Authorized source adaptation starts
 by recording the exact useful behavior, algorithm, failure semantics, and
