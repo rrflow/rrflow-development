@@ -882,6 +882,15 @@ surfaces.
 
 ### Gate J — RRFlow 1.0 release proof
 
+Incremental pre-release source and evidence are published only to the private
+`rrflow/rrflow-development` repository. The private `rrflow/rrflow`
+repository receives no development branch, tag, binary, artifact, or release;
+it is an explicit promotion destination only after every Gate J prerequisite
+passes and the repository owner approves the exact revision and artifacts.
+Promotion records the source and destination URLs, refs, commit and tree
+digests, manifest digest, artifact digests, verification evidence, and owner
+decision. A force push or history rewrite is never a release mechanism.
+
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
 | [ ] | J-01 | Remove every superseded pre-release entrypoint, format/catalogue reader, missing-field fallback, backend selector, migration executor, editor/provider-owned automatic hook, duplicate source of truth, transitional alias, and stale generated artifact. | workspace | Strict warning/dependency/terminology searches, negative format fixtures, and all-target builds prove only the accepted RRFlow 1.0 surfaces remain and superseded RRFlow state fails closed. |

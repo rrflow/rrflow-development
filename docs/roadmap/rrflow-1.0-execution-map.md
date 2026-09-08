@@ -2133,6 +2133,15 @@ and evidence across embedded, HTTP, WebSocket, SDK, MCP, and Connectome reads.
 
 ### Gate J — release proof
 
+The private `rrflow/rrflow-development` repository owns incremental
+pre-release source, evidence, and release-candidate history. The private
+`rrflow/rrflow` repository is a promotion destination only: no development
+branch, tag, binary, artifact, or release may be pushed there until all Gate J
+prerequisites pass and the repository owner authorizes the exact immutable
+revision and artifact set. Promotion must record resolved source/destination
+URLs and refs, commit/tree/manifest/artifact digests, verification evidence,
+and the owner decision. Force pushes and history rewrites are prohibited.
+
 - J-01: remove all alternate pre-release entrypoints, readers, backend
   selectors, migration executors, transitional aliases, provider-hook paths,
   and stale generated outputs; run strict repository searches.
@@ -2170,6 +2179,22 @@ and evidence across embedded, HTTP, WebSocket, SDK, MCP, and Connectome reads.
   the complete install/readiness/commit/reopen check on a clean machine without
   a compiler, source checkout, sibling repository, local cache, package
   registry, external database/query/vector service, or outbound network.
+
+#### Development repository separation journal
+
+```text
+gate/package: release repository separation policy / documentation-only pre-release safeguard
+revision: parent 5769a62fe10139a1908dba846629af38245bc14f; result is the commit containing this entry
+baseline files/digests: AGENTS.md=b8209c1e2dcb70304099a4f5be21a1e0ae68fcca89e31aa36c62f0cf29335021; canonical roadmap=52f66a7c20ddcae64403cc073bbdbfe476114376db735c23990a4860f00e711b; execution map=6634e038daec1b151b1444cee537f4407f3b4391713e15e663c535e2f1237785
+files read in full: AGENTS.md; root README immediately before B-04; canonical roadmap including complete Gate J; execution-map Gate J package; current Git remote configuration and resolved remote refs
+files changed/created/deleted/moved: add the same development/promotion boundary to AGENTS.md, the canonical Gate J owner, and this execution package. No file was created, deleted, moved, aliased, or renamed; no code, dependency, version, checklist status, binary, artifact, tag, or release changed
+contract or behavior changed: pre-release source/evidence/candidate pushes may target only private rrflow/rrflow-development. Private rrflow/rrflow receives content only through an owner-authorized, digest-recorded Gate J promotion; force pushes and history rewrites are prohibited. Local remote names are insufficient evidence, so each push/promotion resolves and records URL, ref, and exact revision
+smallest test command and result: deterministic inventory generated and rechecked 889 current/generated/planned records; documentation policy passed with 90 statuses and 88 classified coordinates plus local-link validation; all 11 knowledge-export tests passed; version policy remained 1.0.0; and diff integrity passed
+external-state evidence: private https://github.com/rrflow/rrflow-development.git was created without generated content and accepted 5769a62fe10139a1908dba846629af38245bc14f at refs/heads/main; private official https://github.com/rrflow/rrflow.git refs/heads/agent/connectome-temporal-runtime-visualizer remained 63bc2331fcbc5c71aaa123cd44aedeb65d5c7b65. The checkout push default and tracked upstream resolve to development/main
+not run and reason: no Cargo, SDK, persistence, graph/index, Arrow/DataFusion, reasoning, install, Connectome, binary, signing, or deployment suite can qualify a documentation-only remote policy; the complete B-04 owning and cross-boundary suites passed in the immediately preceding committed package
+remaining known errors: GitHub reported one 65.15 MiB Biome binary in prior reachable history even though the current tree tracks zero node_modules paths. J-01/J-03/J-05 must decide and prove clean release-history/artifact assembly without rewriting the development record. All open engine and release gates remain unchanged
+roadmap checkbox changed: no
+```
 
 ## Repository-wide run checklist
 

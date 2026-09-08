@@ -23,6 +23,15 @@ not use version changes as progress markers. A later version change requires
 the repository owner's explicit instruction after the alpha objective, release
 gates, optimization evidence, and release decision are complete.
 
+The private `rrflow/rrflow-development` repository is the only push target for
+incremental pre-release source, evidence, and candidate history. The private
+`rrflow/rrflow` repository is the official promotion target, not a development
+remote. Before every push, resolve the destination URL and record its remote,
+ref, and exact revision. Do not push a source ref, tag, binary, artifact, or
+release to the official repository until every Gate J prerequisite passes and
+the repository owner explicitly authorizes that exact promotion. Never use a
+force push or history rewrite as the promotion mechanism.
+
 All first-party code that implements the RRFlow engine or a bundled RRFlow
 adapter, plus its schemas, bootstrap templates, default configuration,
 installation logic, release assembly, verification, and recovery tooling, must
