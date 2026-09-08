@@ -103,16 +103,18 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1c**, the TypeScript SDK responsibility
+The next executable item is **A-07.1d**, the Python SDK responsibility
 boundary inside the package and type vocabulary work. A-07.0 completed the
 reviewed implementation-requirements mapping. A-07.1a directly converged the
 governed-function catalogue/binding vocabulary and module boundary. A-07.1b
 then split the Rust SDK by accepted responsibility and removed its public
 bearer-bearing session field while preserving the characterized transport
-surface. Neither slice qualifies its capability or completes A-07. B-01 and
-B-02 remain completed contract work; no further Gate B work proceeds until
-A-07 corrects the complete pre-release source, package, public, and
-trace-vocabulary assumptions.
+surface. A-07.1c split the TypeScript client's real HTTP responsibilities and
+renamed its conformance entry without inventing an absent WebSocket module.
+None of these slices qualifies its capability or completes A-07. B-01 and B-02
+remain completed contract work; no further Gate B work proceeds until A-07
+corrects the complete pre-release source, package, public, and trace-vocabulary
+assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -332,7 +334,37 @@ A-07.1b Rust SDK responsibility-boundary evidence (2026-09-08):
   conformance, and fail-closed harness behavior remain owned by B/D/H/J and
   POAM-011. A manifest-absent conformance invocation still reports a Cargo
   success without executing a scenario and is explicitly not evidence.
-- A-07 and A-07.1 remain unchecked; A-07.1c is next.
+- A-07 and A-07.1 remain unchecked; A-07.1c follows as the next bounded
+  subpackage.
+
+A-07.1c TypeScript SDK responsibility-boundary evidence (2026-09-08):
+
+- The former 394-line `sdks/typescript/src/index.ts` implementation body is
+  absent. Existing construction/dispatch, loopback endpoint, error, generated
+  operation typing/request coordinates, attempt/deadline, plain session, and
+  bounded Fetch/envelope behavior now live directly in their named modules;
+  `index.ts` is only the public export root.
+- All twelve former root exports, the `RrdClient` constructor, and its five
+  public methods remain. The current broad replay rule, partial ArkType
+  response validation, serializable credentials, loopback-only transport, and
+  other characterized defects were exposed in their direct owners rather than
+  silently changed or hidden.
+- `tests/sdk_conformance.ts` was directly renamed to
+  `tests/sdk-conformance.ts`, and the sole shared orchestrator caller now uses
+  that path. Missing manifest input still fails immediately; the shared real
+  daemon corpus ran successfully through Rust, TypeScript, Python, Go, Java,
+  and .NET and reported the expected corpus digest for each.
+- Generation freshness, Biome over 14 files, strict no-emit type checking, and
+  all four mock-focused tests passed. Generated parity remains 33 HTTP
+  descriptors at the unchanged OpenAPI digest.
+- This is structural convergence, not TypeScript SDK qualification. No
+  `subscription.ts` exists because there is no current socket behavior to
+  move; B-04 owns the real multiplexed protocol. Generated runtime validators,
+  opaque credentials, exact status/media/payload enforcement, semantic
+  retry/uncertainty, server cancellation, W3C propagation, HTTPS/mesh endpoint
+  resolution, browser proof, built ESM/declarations, and installed MX/KV
+  conformance remain owned by B/D/H/J and POAM-011.
+- A-07 and A-07.1 remain unchecked; A-07.1d is next.
 
 A-02 evidence (2026-09-04):
 

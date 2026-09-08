@@ -32,7 +32,7 @@ LANGUAGE_COMMANDS = {
     ],
     "typescript": [
         ["pnpm", "--dir", "sdks/typescript", "install", "--frozen-lockfile"],
-        ["pnpm", "--dir", "sdks/typescript", "exec", "tsx", "tests/sdk_conformance.ts"],
+        ["pnpm", "--dir", "sdks/typescript", "exec", "tsx", "tests/sdk-conformance.ts"],
     ],
     "python": [
         [

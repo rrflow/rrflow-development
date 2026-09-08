@@ -655,7 +655,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "sdks/typescript/src/operation.ts": ("A-07", "H-04"),
     "sdks/typescript/src/retry.ts": ("A-07", "H-04", "J-02"),
     "sdks/typescript/src/session.ts": ("A-07", "H-04", "J-02"),
-    "sdks/typescript/src/subscription.ts": ("A-07", "B-04", "H-04"),
+    "sdks/typescript/src/subscription.ts": ("B-04", "H-04"),
     "sdks/typescript/src/transport.ts": (
         "A-07",
         "B-04",

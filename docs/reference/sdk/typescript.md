@@ -49,20 +49,33 @@ sdks/typescript/
 ├── biome.json
 ├── tsconfig.json
 ├── scripts/generate.ts
-├── src/index.ts
-├── src/generated/endpoints.ts
-├── src/generated/rrd-openapi.ts
+├── src/
+│   ├── index.ts
+│   ├── client.ts
+│   ├── endpoint.ts
+│   ├── error.ts
+│   ├── operation.ts
+│   ├── retry.ts
+│   ├── session.ts
+│   ├── transport.ts
+│   └── generated/
+│       ├── endpoints.ts
+│       └── rrd-openapi.ts
 ├── tests/client.test.ts
-└── tests/sdk_conformance.ts
+└── tests/sdk-conformance.ts
 ```
 
-`src/index.ts` contains the entire 394-line runtime client. It exposes four
-ergonomic calls—capabilities, endpoint catalogue, OpenAPI, and session
-creation—and one generic `call<K extends OperationId>()`. The generic call can
-address all 33 current HTTP operation identifiers because `OperationId` is the
-key set of the generated endpoint object. That is compile-time and routing
-coverage, not behavioral coverage. There is no WebSocket implementation.
-Subscription open/close and changefeed follow are ordinary HTTP operations.
+A-07.1c removed the 394-line implementation body from `src/index.ts`. The root
+now exports the direct client, endpoint, error, operation, retry, session, and
+transport responsibilities; it is not a forwarding copy of the old runtime.
+The client still exposes four ergonomic calls—capabilities, endpoint
+catalogue, OpenAPI, and session creation—and one generic
+`call<K extends OperationId>()`. The generic call can address all 33 current
+HTTP operation identifiers because `OperationId` is the key set of the
+generated endpoint object. That is compile-time and routing coverage, not
+behavioral coverage. There is no `subscription.ts`, WebSocket implementation,
+or socket test to move: subscription open/close and changefeed follow remain
+ordinary HTTP operations until B-04 implements the real multiplexed boundary.
 
 ## Generated authority and operation coverage
 
@@ -286,7 +299,8 @@ The current evidence is bounded:
 
 | Command or probe | Observed result | Honest boundary |
 |---|---|---|
-| `pnpm --dir sdks/typescript check` | generation check, Biome, typecheck, and 4 tests passed | Generator freshness and selected mocked HTTP behavior; no real engine, browser, WebSocket, package-consumer, or fault matrix. |
+| A-07.1c public-surface inventory | All twelve pre-split root exports, the `RrdClient` constructor, and all five public methods remain. | Source/API-shape preservation only; not runtime operation conformance. |
+| `pnpm --dir sdks/typescript check` | generation check, Biome over 14 files, typecheck, and 4 tests passed | Generator freshness and selected mocked HTTP behavior; no browser, WebSocket, package-consumer, or fault matrix. |
 | Conformance entry with `RRD_SDK_CONFORMANCE_MANIFEST` absent | failed immediately with the required-manifest assertion | Correct fail-closed harness configuration; no scenario executed. |
 | Conformance entry against the live example harness | passed and reported corpus SHA-256 `b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2` | Real HTTP against the present direct-seeded rrflowKV fixture; not D-01 installation, rrflowMX parity, browser/HTTPS/WSS, or complete labelled behavior. |
 | Generated-surface parity | 33 HTTP endpoint descriptors matched the OpenAPI digest | Method/path/auth/mutation projection only; not runtime validation or semantic execution. |
@@ -308,41 +322,43 @@ result, denial, stamp, digest, receipt, trace, and resource accounting across
 HTTP, multiplexed WebSocket, Rust, TypeScript, every other supported SDK, CLI,
 MCP, GraphQL, and Connectome.
 
-## Direct-convergence file plan
+## Direct-convergence source boundary
 
-A-07 freezes and creates the responsibility seams without preserving the
-monolithic implementation as a forwarding layer:
+A-07.1c established the source seams for behavior that actually exists. It did
+not create an empty subscription module or future validators/tests as false
+success surfaces:
 
 ```text
 sdks/typescript/src/
 ├── index.ts                 # narrow public exports
-├── client.ts                # construction and typed public calls
-├── endpoint.ts              # installed candidates and expected identities
-├── error.ts                 # closed redacted error union
-├── operation.ts             # generated binding and full validation
-├── retry.ts                 # semantic retry/deadline/certainty policy
-├── session.ts               # opaque secret-bearing handle
-├── subscription.ts          # multiplexed protocol state machine
-├── transport.ts             # environment-neutral HTTP carriage port
+├── client.ts                # current construction/discovery/generic dispatch
+├── endpoint.ts              # current credential-free loopback profile
+├── error.ts                 # current string-bearing error classes
+├── operation.ts             # current generated typing/request coordinates
+├── retry.ts                 # current broad attempt/deadline calculation
+├── session.ts               # current plain enumerable credential object
+├── transport.ts             # current bounded Fetch/envelope handling
+├── subscription.ts          # planned B-04; absent until behavior exists
 └── generated/
     ├── endpoints.ts
     ├── rrd-openapi.ts
-    └── validators.ts
+    └── validators.ts        # planned H-04
 
 sdks/typescript/tests/
-├── operation-coverage.test.ts
-├── protocol-validation.test.ts
-├── transport-faults.test.ts
-├── package-consumer.test.ts
-├── browser-conformance.test.ts
+├── operation-coverage.test.ts    # planned H-04
+├── protocol-validation.test.ts   # planned H-04/J-02
+├── transport-faults.test.ts      # planned B-04/H-04/H-07/J-02
+├── package-consumer.test.ts      # planned J-03/J-05
+├── browser-conformance.test.ts   # planned H-04/H-07/J-03
 └── sdk-conformance.ts
 ```
 
 The execution order is:
 
-1. **A-07:** split the current behavior into the named seams, rename the
-   conformance file directly, preserve generator/local-test characterization,
-   and leave no old forwarding module.
+1. **A-07.1c (implemented; A-07 remains open):** split every current
+   responsibility directly, rename the conformance file, preserve the public
+   surface plus generator/mock/live characterization, and leave no old
+   implementation or forwarding module.
 2. **B-04:** implement the common multiplexed state machine and bounded
    browser/Node WebSocket carriage.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap.
