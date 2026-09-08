@@ -419,6 +419,44 @@ fn retired_fixed_reasoning_ledger_api_is_absent() {
 }
 
 #[test]
+fn retired_function_authority_vocabulary_is_absent() {
+    let metadata = workspace_metadata();
+    let retired_symbols = [
+        ["Automation", "Catalogue"].concat(),
+        ["ReplaceAutomation", "Catalogue"].concat(),
+        ["ListAutomation", "Catalogue"].concat(),
+        ["Automation", "Head"].concat(),
+        ["Function", "Trigger"].concat(),
+        ["automation_", "catalogue"].concat(),
+        ["automation_", "revision"].concat(),
+        ["trigger_", "id"].concat(),
+    ];
+    let mut violations = Vec::new();
+    for relative in [
+        "crates/transport/rrd-contract",
+        "crates/authority/rrd-engine",
+    ] {
+        for retired in &retired_symbols {
+            collect_rust_sources(&metadata.root.join(relative), &mut violations, retired);
+        }
+    }
+    violations.sort();
+    violations.dedup();
+    assert!(
+        violations.is_empty(),
+        "retired function-catalogue or transaction-binding vocabulary remains in: {violations:#?}"
+    );
+    assert!(
+        !metadata
+            .root
+            .join("crates/authority/rrd-engine/src/engine")
+            .join(["auto", "mation.rs"].concat())
+            .exists(),
+        "the overloaded engine function module must be removed"
+    );
+}
+
+#[test]
 fn retired_pre_release_identity_is_absent_from_the_active_repository() {
     let metadata = workspace_metadata();
     let retired_brand = ["vy", "rm"].concat();

@@ -56,24 +56,27 @@ semantics, I-06 supplies installation, and H/J prove public and release behavior
 machine, or Rust authority. `Trigger` means only a persisted predicate over a
 committed canonical engine event.
 
-### Direct pre-release renames
+### Direct pre-release convergence
 
-The following current names are superseded spellings. A-07/I-01/I-02 must
-rename them directly and leave no aliases, duplicate fields, or successful
-old-shape decoder:
+The governed-function slice of A-07.1 has directly removed the overloaded
+catalogue and transaction-binding spellings from executable source. It added
+no alias or fallback decoder, and the closed-schema fixture rejects the former
+field shapes. The remaining event-capability spellings change with the sole
+engine-event envelope in I-01 so this slice does not invent an intermediate
+event contract.
 
-| Current spelling | Canonical spelling |
-|---|---|
-| `AutomationCatalogue` | `FunctionCatalogue` |
-| `ReplaceAutomationCatalogue` | `ReplaceFunctionCatalogue` |
-| `ListAutomationCatalogue` | `ListFunctionCatalogue` |
-| private `AutomationHead` | `FunctionCatalogueHead` |
-| `FunctionTrigger` | `TransactionFunctionBinding` |
-| `FunctionTriggerMutation` | `TransactionMutationKind` |
-| `FunctionTriggerEffect` | `TransactionFunctionEffect` |
-| `trigger_id` / `triggers` | `binding_id` / `transaction_bindings` |
-| `FunctionCapability::EmitEvent` | `FunctionCapability::ProposeEngineEvent` |
-| `append_event` function effect | `propose_engine_event` |
+| Superseded spelling | Canonical spelling | Current disposition |
+|---|---|---|
+| `AutomationCatalogue` | `FunctionCatalogue` | Removed from executable source in A-07.1. |
+| `ReplaceAutomationCatalogue` | `ReplaceFunctionCatalogue` | Removed from executable source in A-07.1. |
+| `ListAutomationCatalogue` | `ListFunctionCatalogue` | Removed from executable source in A-07.1. |
+| private `AutomationHead` | `FunctionCatalogueHead` | Removed from executable source in A-07.1. |
+| `FunctionTrigger` | `TransactionFunctionBinding` | Removed from executable source in A-07.1. |
+| `FunctionTriggerMutation` | `TransactionMutationKind` | Removed from executable source in A-07.1. |
+| `FunctionTriggerEffect` | `TransactionFunctionEffect` | Removed from executable source in A-07.1. |
+| `trigger_id` / `triggers` | `binding_id` / `transaction_bindings` | Former wire fields are rejected. |
+| `FunctionCapability::EmitEvent` | `FunctionCapability::ProposeEngineEvent` | Sequenced with I-01 canonical engine-event lowering. |
+| `append_event` function effect | `propose_engine_event` | Sequenced with I-01 canonical engine-event lowering. |
 
 The wire contract version is a technical schema identity, not the RRFlow
 product version. Its digest must cover every definition, binding, artifact,
@@ -340,23 +343,26 @@ external unless an operator installs a bounded adapter or capability.
 
 | Current code | Verified useful behavior | Defect or required convergence |
 |---|---|---|
-| `rrd-contract/src/function.rs` | Closed Serde shapes; content digests; ordered maps/sets; byte/depth/item/numeric limits; sequential catalogue revisions; one-attempt binding rule. | `AutomationCatalogue`/`FunctionTrigger*` are wrong names; source bytes are inline; there are no schema, artifact, runtime-build, read-stamp, authorization, or prepared-receipt coordinates and no golden/cross-language fixture. |
-| `rrd-engine/src/engine/automation.rs` catalogue code | Head/revision digest validation, immutable revision lookup, CAS replacement, and transaction revision pinning exist. | It calls `StorageEngine` directly, stores the whole JSON catalogue under private `server/state/.../automation/*` keys, and bypasses typed semantic records. The one-MiB control-value limit contradicts the advertised aggregate of up to 64 decoded 256-KiB Wasm modules; the control journal also copies replacement bytes. |
-| `rrd-engine/src/engine/automation.rs` runtimes | Fresh QuickJS contexts, memory/stack/interrupt limits, synchronous output; Wasmi eager compilation, fuel, stack/store limits, import denial, ABI/pointer/output checks. | JavaScript policy disables only selected globals and has no supported-target determinism corpus; interrupt counts are not portable fuel. Wasm start functions and default feature choices remain enabled, compilation structure is not explicitly bounded, and error classes depend partly on message text. |
-| `rrd-engine/src/engine/{automation,transaction}.rs` binding path | Original-mutation matching, stable map order, no recursive rematch, false/error rejection, derived event in the runtime commit, and revision/digest replay checks. | Authorized and terminal allowed function audits are separate control commits before the data commit, so a later conflict/storage failure can leave a false success record. Recovery re-executes under the currently installed runtime build because only the derived digest is persisted. |
-| `rrd-engine/src/engine/tests/automation.rs` | Four tests characterize JS/Wasm bounds/reopen, derived-event rejection/commit behavior, pinned revision recovery, and three security actions. | No rrflowMX/rrflowKV differential, atomic audit/receipt crash matrix, storage-size boundary, golden runtime corpus, cross-target/runtime-build proof, schema/effect authorization, corruption/upgrade case, or public-surface test exists. |
-| capability and outward surfaces | Engine-only list/replace/execute methods are described by capability discovery. | No executable HTTP/WS/SDK/CLI/MCP/Connectome function operation exists, while capability text cites retired `G06` ownership and says “deterministic” more strongly than evidence permits. |
+| `rrd-contract/src/function.rs` plus `fixtures/function-contract-v1.json` and `tests/function_contract.rs` | Canonical closed Serde shapes; content digests; ordered maps/sets; byte/depth/item/numeric limits; sequential catalogue revisions; one-attempt binding rule; one golden wire fixture; closed-schema and former-field rejection. | Source/module bytes remain inline; there are no schema, artifact, runtime-build, read-stamp, authorization, or prepared-receipt coordinates, and no cross-language fixture exists. |
+| `rrd-engine/src/engine/function/catalogue.rs` | Head/revision digest validation, immutable revision lookup, CAS replacement, and transaction revision pinning remain characterized under the function-only boundary. | It still calls `StorageEngine` directly and stores the whole JSON catalogue under private `server/state/.../function-catalogue/*` keys, bypassing typed semantic records. The one-MiB control-value limit contradicts the advertised aggregate of up to 64 decoded 256-KiB Wasm modules; the control journal also copies replacement bytes. |
+| `rrd-engine/src/engine/function/{execution,javascript,webassembly}.rs` | Fresh QuickJS contexts, memory/stack/interrupt limits, synchronous output; Wasmi eager compilation, fuel, stack/store limits, import denial, and ABI/pointer/output checks remain isolated and characterized. | JavaScript policy disables only selected globals and has no supported-target determinism corpus; interrupt counts are not portable fuel. Wasm start functions and default feature choices remain enabled, compilation structure is not explicitly bounded, and error classes depend partly on message text. |
+| `rrd-engine/src/engine/function/transaction_binding.rs` plus `engine/transaction.rs` | Original-mutation matching, stable map order, no recursive rematch, false/error rejection, derived event in the runtime commit, and revision/digest replay checks remain characterized under transaction-binding names. | Authorized and terminal allowed function audits are separate control commits before the data commit, so a later conflict/storage failure can leave false success evidence. Recovery re-executes under the currently installed runtime build because only the derived digest is persisted. |
+| `rrd-engine/src/engine/tests/function.rs`, `tests/function_conformance.rs`, and `fixtures/rrd-function-conformance-v1.json` | Four focused engine tests retain JavaScript/Wasm, binding atomicity/denial, revision-retry, and security characterization. One shared corpus now proves the selected JavaScript catalogue/read/execute/transaction result is equal on rrflowMX and rrflowKV and that the rrflowKV catalogue and invocation reopen. | The corpus does not yet cover Wasm profile equivalence, atomic audit/receipt crash gaps, storage-size boundaries, supported-target/runtime-build identity, schemas/effect-complete authorization, corruption/upgrade, or any outward surface. |
+| capability and outward surfaces | Engine-only list/replace/execute methods are described by capability discovery with current H-04/H-06 ownership and without overstating runtime determinism. | No executable HTTP/WebSocket/SDK/CLI/MCP/Connectome function operation exists. |
 
-The three contract tests, four engine automation tests, and two control-journal
-tests pass at this review. They characterize the useful foundation; they do not
-close A-07, C-03, H-04, I, or J.
+At this review, the three contract unit tests, two golden/closure tests, four
+engine function tests, one focused rrflowMX/rrflowKV/reopen conformance test,
+and two control-journal tests characterize the useful foundation. This evidence
+does not close A-07, C-03, H-04, I, or J.
 
 ## Exact implementation sequence
 
-1. **A-07:** apply the direct type/field/method renames; freeze one contract
-   fixture; split `engine/automation.rs` into the planned `engine/function/`
-   catalogue, execution, JavaScript, WebAssembly, and transaction-binding
-   modules; preserve current behavior while exposing every current gap.
+1. **A-07 governed-function slice (implemented; A-07 remains open):** the
+   direct catalogue/binding type, field, method, key, module, and test renames;
+   closed contract fixture; function-module split; and first shared
+   rrflowMX/rrflowKV/reopen corpus are present without compatibility aliases.
+   Complete the remaining A-07 package/SDK vocabulary and causal-vocabulary
+   work without hiding the C/I function gaps.
 2. **C-01 through C-04:** replace private control JSON with typed key families,
    separate content-addressed artifacts, direct stamped reads, prepared
    receipts, and one atomic effect-complete semantic commit on rrflowMX and

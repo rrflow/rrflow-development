@@ -4,7 +4,7 @@ use hmac::{Hmac, KeyInit, Mac};
 use rrd_contract::{
     transaction_operation_sha256, AbortTransaction, ActivateVectorQuantizationArtifact,
     ActivateVectorQuantizationArtifactResult, AuditDecision, AuditExport, AuditPage, AuditPhase,
-    AuditRecordSnapshot, AutomationCatalogue, BeginTransaction, BuildVectorQuantizationArtifact,
+    AuditRecordSnapshot, BeginTransaction, BuildVectorQuantizationArtifact,
     BuildVectorQuantizationArtifactResult, CanonicalId, ChangeMutationSnapshot,
     ChangefeedFollowResult, ChangefeedPage, ChangefeedValidation, ClaimChangeSnapshot,
     ClaimPromotionSnapshot, ClaimTierSnapshot, CloseSession, CloseSubscription,
@@ -27,20 +27,20 @@ use rrd_contract::{
     EnsureVectorIndex, EnsureVectorIndexResult, EnsureVectorPayloadIndex,
     EnsureVectorPayloadIndexResult, ExecuteFunction, ExecuteQuery, ExecuteQueryTransaction,
     ExecuteRetrievalQuery, ExportAudit, FollowChangefeed, ForwardRollbackCounts,
-    ForwardRollbackPlan, ForwardRollbackRequest, FunctionDefinition, FunctionExecutionResult,
-    FunctionRuntime, FunctionTrigger, FunctionTriggerEffect, FunctionTriggerMutation, HybridFusion,
-    HybridSearchHit, HybridSearchResult, InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot,
-    ListInstanceBackups, ListQueryIndexes, ListVectorCollections, ListVectorPayloadIndexes,
-    ListVectorQuantizationArtifacts, ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult,
-    LiveQueryRowChange, LogicalArchiveSnapshot, NamedVectorDefinition, OpenSubscription,
-    OpenSubscriptionResult, PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot,
-    QueryExecutionSnapshot, QueryFullTextConfiguration, QueryIndexCatalogueSnapshot,
-    QueryIndexKind, QueryIndexMaintenanceSnapshot, QueryIndexSnapshot, QueryIndexState,
-    QueryPlanCandidate, QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryTextAnalyzer,
-    QueryTextStemmer, QueryTextTokenizer, QueryTransactionResult, QueryValue, ReadAudit,
-    ReadChangefeed, ReadDataSnapshot, ReadDiagnosticSnapshot, Readiness, RenewSession,
-    ReplaceAutomationCatalogue, RequestContext, ResourceId, ResourceKind, ResourcePath,
-    RestoreInstanceBackup, RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
+    ForwardRollbackPlan, ForwardRollbackRequest, FunctionCatalogue, FunctionDefinition,
+    FunctionExecutionResult, FunctionRuntime, HybridFusion, HybridSearchHit, HybridSearchResult,
+    InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes,
+    ListVectorCollections, ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
+    ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult, LiveQueryRowChange,
+    LogicalArchiveSnapshot, NamedVectorDefinition, OpenSubscription, OpenSubscriptionResult,
+    PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
+    QueryFullTextConfiguration, QueryIndexCatalogueSnapshot, QueryIndexKind,
+    QueryIndexMaintenanceSnapshot, QueryIndexSnapshot, QueryIndexState, QueryPlanCandidate,
+    QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryTextAnalyzer, QueryTextStemmer,
+    QueryTextTokenizer, QueryTransactionResult, QueryValue, ReadAudit, ReadChangefeed,
+    ReadDataSnapshot, ReadDiagnosticSnapshot, Readiness, RenewSession, ReplaceFunctionCatalogue,
+    RequestContext, ResourceId, ResourceKind, ResourcePath, RestoreInstanceBackup,
+    RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
     RetireVectorQuantizationArtifactResult, RetrievalContextPair, RetrievalContribution,
     RetrievalFacet, RetrievalFusion, RetrievalGroup, RetrievalHit, RetrievalMatrixCell,
     RetrievalOutput, RetrievalPrefetch, RetrievalQuery, RetrievalQueryResult,
@@ -48,12 +48,13 @@ use rrd_contract::{
     RetrievalVectorExample, RetrieveVectorPoints, RuntimeChangeSnapshot, ScrollVectorPoints,
     SearchHybrid, SearchVectors, SecurityAction, SessionEndState, SessionLease, SessionLimits,
     SessionTermination, SubscriptionClientFrame, SubscriptionServerFrame, SubscriptionSnapshot,
-    SubscriptionStatus, SubscriptionStream, TransactionLease, TransactionMutation,
-    TransactionPreview, TransactionState, VectorCollectionCatalogueSnapshot,
-    VectorCollectionSnapshot, VectorEmbeddingModel, VectorIndexBuildEvidence,
-    VectorIndexBuildPolicy, VectorIndexBuildResourceEvidence, VectorIndexBuildTarget,
-    VectorIndexConfiguration, VectorIndexDifferentialStatus, VectorIndexMaintenanceMode,
-    VectorIndexMaintenanceSnapshot, VectorIndexSnapshot, VectorMemoryTier, VectorPayloadFilter,
+    SubscriptionStatus, SubscriptionStream, TransactionFunctionBinding, TransactionFunctionEffect,
+    TransactionLease, TransactionMutation, TransactionMutationKind, TransactionPreview,
+    TransactionState, VectorCollectionCatalogueSnapshot, VectorCollectionSnapshot,
+    VectorEmbeddingModel, VectorIndexBuildEvidence, VectorIndexBuildPolicy,
+    VectorIndexBuildResourceEvidence, VectorIndexBuildTarget, VectorIndexConfiguration,
+    VectorIndexDifferentialStatus, VectorIndexMaintenanceMode, VectorIndexMaintenanceSnapshot,
+    VectorIndexSnapshot, VectorMemoryTier, VectorPayloadFilter,
     VectorPayloadIndexCatalogueSnapshot, VectorPayloadIndexKind, VectorPayloadIndexSnapshot,
     VectorPayloadOperator, VectorPointBatch, VectorPointPage, VectorPointSnapshot,
     VectorProductCompression, VectorQuantizationArtifactSnapshot, VectorQuantizationArtifactState,
@@ -90,7 +91,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-mod automation;
 mod backup;
 mod changefeed;
 mod context;
@@ -102,6 +102,7 @@ mod distributed;
 mod error;
 mod estate;
 mod estate_control;
+mod function;
 mod inference;
 mod invocation;
 mod memory_estate;
@@ -226,7 +227,7 @@ struct CommitIntent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     runtime_commit_sha256: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    automation_revision: Option<u64>,
+    function_catalogue_revision: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -40,7 +40,7 @@ pub enum ServiceError {
     Function(String),
     FunctionLimit(String),
     FunctionNotFound,
-    AutomationRevisionNotFound,
+    FunctionCatalogueRevisionNotFound,
     MemoryTargetNotFound,
     SeatNotRepresented,
     Runtime(String),
@@ -91,7 +91,7 @@ impl ServiceError {
             | Self::SubscriptionLeaseExpired
             | Self::SubscriptionClosed
             | Self::SubscriptionConnectionReplaced
-            | Self::AutomationRevisionNotFound
+            | Self::FunctionCatalogueRevisionNotFound
             | Self::SeatNotRepresented
             | Self::ProjectBindingMismatch => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota

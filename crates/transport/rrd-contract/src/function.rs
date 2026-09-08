@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const FUNCTION_CONTRACT_VERSION: u16 = 1;
 pub const MAX_FUNCTIONS_PER_CATALOGUE: usize = 64;
-pub const MAX_FUNCTION_TRIGGERS_PER_CATALOGUE: usize = 128;
+pub const MAX_TRANSACTION_FUNCTION_BINDINGS_PER_CATALOGUE: usize = 128;
 pub const MAX_FUNCTION_SOURCE_BYTES: usize = 64 * 1024;
 pub const MAX_FUNCTION_WASM_BYTES: usize = 256 * 1024;
 pub const MAX_FUNCTION_INPUT_BYTES: usize = 256 * 1024;
@@ -113,8 +113,8 @@ impl FunctionRuntime {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum FunctionCapability {
-    /// Allows a trigger result object to be lowered into one typed append-only
-    /// event in the same authoritative data transaction.
+    /// Allows a transaction-function result object to be lowered into one
+    /// typed append-only event in the same authoritative data transaction.
     EmitEvent,
 }
 
@@ -179,7 +179,7 @@ impl FunctionDefinition {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 #[serde(rename_all = "snake_case")]
-pub enum FunctionTriggerMutation {
+pub enum TransactionMutationKind {
     AssertClaim,
     PutSchema,
     PutRecord,
@@ -194,7 +194,7 @@ pub enum FunctionTriggerMutation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "effect", rename_all = "snake_case", deny_unknown_fields)]
-pub enum FunctionTriggerEffect {
+pub enum TransactionFunctionEffect {
     /// The function must return boolean true or the complete transaction is
     /// refused before any data mutation is published.
     RequireTrue,
@@ -205,43 +205,49 @@ pub enum FunctionTriggerEffect {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct FunctionTrigger {
-    pub trigger_id: CanonicalId,
+pub struct TransactionFunctionBinding {
+    pub binding_id: CanonicalId,
     pub function_id: CanonicalId,
-    pub mutation: FunctionTriggerMutation,
+    pub mutation: TransactionMutationKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<CanonicalId>,
-    pub effect: FunctionTriggerEffect,
+    pub effect: TransactionFunctionEffect,
     /// V1 synchronous functions are deterministic and never retry a runtime
     /// failure internally. The enclosing idempotent transaction is the only
     /// retry boundary, so this value must be exactly one.
     pub max_attempts: u8,
 }
 
-impl FunctionTrigger {
+impl TransactionFunctionBinding {
     pub fn validate(&self, functions: &BTreeMap<CanonicalId, FunctionDefinition>) -> Result<()> {
         if self.max_attempts != 1 {
-            return invalid("v1 synchronous triggers require max_attempts=1");
+            return invalid("v1 transaction function bindings require max_attempts=1");
         }
         if self.kind.is_some()
             && matches!(
                 self.mutation,
-                FunctionTriggerMutation::AssertClaim
-                    | FunctionTriggerMutation::PutSchema
-                    | FunctionTriggerMutation::RetireData
+                TransactionMutationKind::AssertClaim
+                    | TransactionMutationKind::PutSchema
+                    | TransactionMutationKind::RetireData
             )
         {
-            return invalid("trigger kind cannot narrow a mutation without a kind coordinate");
+            return invalid(
+                "transaction function binding kind cannot narrow a mutation without a kind coordinate",
+            );
         }
-        let function = functions
-            .get(&self.function_id)
-            .ok_or_else(|| crate::ContractError("trigger references an unknown function".into()))?;
-        if matches!(self.effect, FunctionTriggerEffect::AppendEvent { .. })
+        let function = functions.get(&self.function_id).ok_or_else(|| {
+            crate::ContractError(
+                "transaction function binding references an unknown function".into(),
+            )
+        })?;
+        if matches!(self.effect, TransactionFunctionEffect::AppendEvent { .. })
             && !function
                 .capabilities
                 .contains(&FunctionCapability::EmitEvent)
         {
-            return invalid("append-event triggers require the emit_event capability");
+            return invalid(
+                "append-event transaction function bindings require the emit_event capability",
+            );
         }
         Ok(())
     }
@@ -249,22 +255,22 @@ impl FunctionTrigger {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct AutomationCatalogue {
+pub struct FunctionCatalogue {
     pub contract_version: u16,
     pub revision: u64,
     #[serde(default)]
     pub functions: BTreeMap<CanonicalId, FunctionDefinition>,
     #[serde(default)]
-    pub triggers: BTreeMap<CanonicalId, FunctionTrigger>,
+    pub transaction_bindings: BTreeMap<CanonicalId, TransactionFunctionBinding>,
 }
 
-impl AutomationCatalogue {
+impl FunctionCatalogue {
     pub fn empty() -> Self {
         Self {
             contract_version: FUNCTION_CONTRACT_VERSION,
             revision: 0,
             functions: BTreeMap::new(),
-            triggers: BTreeMap::new(),
+            transaction_bindings: BTreeMap::new(),
         }
     }
 
@@ -272,13 +278,15 @@ impl AutomationCatalogue {
         if self.contract_version != FUNCTION_CONTRACT_VERSION {
             return invalid("unsupported function contract version");
         }
-        if self.revision == 0 && (!self.functions.is_empty() || !self.triggers.is_empty()) {
-            return invalid("automation catalogue revision zero must be empty");
+        if self.revision == 0
+            && (!self.functions.is_empty() || !self.transaction_bindings.is_empty())
+        {
+            return invalid("function catalogue revision zero must be empty");
         }
         if self.functions.len() > MAX_FUNCTIONS_PER_CATALOGUE
-            || self.triggers.len() > MAX_FUNCTION_TRIGGERS_PER_CATALOGUE
+            || self.transaction_bindings.len() > MAX_TRANSACTION_FUNCTION_BINDINGS_PER_CATALOGUE
         {
-            return invalid("function or trigger catalogue exceeds the v1 bound");
+            return invalid("function catalogue exceeds the v1 bound");
         }
         for (function_id, function) in &self.functions {
             if function_id != &function.function_id {
@@ -286,34 +294,34 @@ impl AutomationCatalogue {
             }
             function.validate()?;
         }
-        for (trigger_id, trigger) in &self.triggers {
-            if trigger_id != &trigger.trigger_id {
-                return invalid("trigger catalogue key does not match trigger_id");
+        for (binding_id, binding) in &self.transaction_bindings {
+            if binding_id != &binding.binding_id {
+                return invalid("transaction function catalogue key does not match binding_id");
             }
-            trigger.validate(&self.functions)?;
+            binding.validate(&self.functions)?;
         }
         Ok(())
     }
 
     pub fn sha256(&self) -> String {
-        sha256(&serde_json::to_vec(self).expect("automation catalogue serializes"))
+        sha256(&serde_json::to_vec(self).expect("function catalogue serializes"))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct ReplaceAutomationCatalogue {
+pub struct ReplaceFunctionCatalogue {
     pub expected_revision: u64,
-    pub catalogue: AutomationCatalogue,
+    pub catalogue: FunctionCatalogue,
 }
 
-impl ReplaceAutomationCatalogue {
+impl ReplaceFunctionCatalogue {
     pub fn validate(&self) -> Result<()> {
         self.catalogue.validate()?;
         let next_revision = self
             .expected_revision
             .checked_add(1)
-            .ok_or_else(|| crate::ContractError("automation catalogue revision overflow".into()))?;
+            .ok_or_else(|| crate::ContractError("function catalogue revision overflow".into()))?;
         if self.catalogue.revision != next_revision {
             return invalid("replacement catalogue revision must follow expected_revision");
         }
@@ -323,7 +331,7 @@ impl ReplaceAutomationCatalogue {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct ListAutomationCatalogue {}
+pub struct ListFunctionCatalogue {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -456,19 +464,19 @@ mod tests {
     fn catalogue_rejects_digest_identity_capability_and_retry_substitution() {
         let function = javascript("validator", "(input) => input.allowed === true");
         let function_id = function.function_id.clone();
-        let trigger_id = CanonicalId::new("validate-record").unwrap();
-        let mut catalogue = AutomationCatalogue {
+        let binding_id = CanonicalId::new("validate-record").unwrap();
+        let mut catalogue = FunctionCatalogue {
             contract_version: FUNCTION_CONTRACT_VERSION,
             revision: 1,
             functions: [(function_id.clone(), function)].into_iter().collect(),
-            triggers: [(
-                trigger_id.clone(),
-                FunctionTrigger {
-                    trigger_id,
+            transaction_bindings: [(
+                binding_id.clone(),
+                TransactionFunctionBinding {
+                    binding_id,
                     function_id,
-                    mutation: FunctionTriggerMutation::PutRecord,
+                    mutation: TransactionMutationKind::PutRecord,
                     kind: Some(CanonicalId::new("person").unwrap()),
-                    effect: FunctionTriggerEffect::RequireTrue,
+                    effect: TransactionFunctionEffect::RequireTrue,
                     max_attempts: 1,
                 },
             )]
@@ -490,24 +498,24 @@ mod tests {
 
         let mut event_function = javascript("event-writer", "() => ({ ok: true })");
         let event_function_id = event_function.function_id.clone();
-        let event_trigger_id = CanonicalId::new("write-event").unwrap();
-        let event_trigger = FunctionTrigger {
-            trigger_id: event_trigger_id.clone(),
+        let event_binding_id = CanonicalId::new("write-event").unwrap();
+        let event_binding = TransactionFunctionBinding {
+            binding_id: event_binding_id.clone(),
             function_id: event_function_id.clone(),
-            mutation: FunctionTriggerMutation::AppendEvent,
+            mutation: TransactionMutationKind::AppendEvent,
             kind: None,
-            effect: FunctionTriggerEffect::AppendEvent {
+            effect: TransactionFunctionEffect::AppendEvent {
                 kind: CanonicalId::new("derived-event").unwrap(),
             },
             max_attempts: 1,
         };
-        let mut event_catalogue = AutomationCatalogue {
+        let mut event_catalogue = FunctionCatalogue {
             contract_version: FUNCTION_CONTRACT_VERSION,
             revision: 1,
             functions: [(event_function_id.clone(), event_function.clone())]
                 .into_iter()
                 .collect(),
-            triggers: [(event_trigger_id.clone(), event_trigger.clone())]
+            transaction_bindings: [(event_binding_id.clone(), event_binding.clone())]
                 .into_iter()
                 .collect(),
         };
@@ -520,33 +528,33 @@ mod tests {
             .insert(event_function_id, event_function);
         event_catalogue.validate().unwrap();
         event_catalogue
-            .triggers
-            .get_mut(&event_trigger_id)
+            .transaction_bindings
+            .get_mut(&event_binding_id)
             .unwrap()
             .max_attempts = 2;
         assert!(event_catalogue.validate().is_err());
 
         let function = javascript("claim-validator", "() => true");
         let function_id = function.function_id.clone();
-        let narrowed_claim = FunctionTrigger {
-            trigger_id: CanonicalId::new("narrowed-claim").unwrap(),
+        let narrowed_claim = TransactionFunctionBinding {
+            binding_id: CanonicalId::new("narrowed-claim").unwrap(),
             function_id: function_id.clone(),
-            mutation: FunctionTriggerMutation::AssertClaim,
+            mutation: TransactionMutationKind::AssertClaim,
             kind: Some(CanonicalId::new("impossible-kind").unwrap()),
-            effect: FunctionTriggerEffect::RequireTrue,
+            effect: TransactionFunctionEffect::RequireTrue,
             max_attempts: 1,
         };
         assert!(narrowed_claim
             .validate(&BTreeMap::from([(function_id, function)]))
             .is_err());
 
-        assert!(ReplaceAutomationCatalogue {
+        assert!(ReplaceFunctionCatalogue {
             expected_revision: u64::MAX,
-            catalogue: AutomationCatalogue {
+            catalogue: FunctionCatalogue {
                 contract_version: FUNCTION_CONTRACT_VERSION,
                 revision: u64::MAX,
                 functions: BTreeMap::new(),
-                triggers: BTreeMap::new(),
+                transaction_bindings: BTreeMap::new(),
             },
         }
         .validate()

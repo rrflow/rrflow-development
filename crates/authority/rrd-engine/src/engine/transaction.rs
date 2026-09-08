@@ -219,8 +219,8 @@ impl RrdEngine {
                 .map(|prepared| prepared.runtime_at_unix_ms)
                 .unwrap_or(now);
             let runtime_identity = if matches!(transaction_scope.as_str(), "claims" | "data") {
-                let catalogue = self.load_current_automation_catalogue()?;
-                self.authorize_transaction_triggers(
+                let catalogue = self.load_current_function_catalogue()?;
+                self.authorize_transaction_function_bindings(
                     &state,
                     &catalogue,
                     now,
@@ -234,7 +234,7 @@ impl RrdEngine {
                     read.commit_cursor,
                     runtime_at,
                 )?;
-                let commit = self.apply_transaction_triggers(
+                let commit = self.apply_transaction_function_bindings(
                     &catalogue,
                     request,
                     commit,
@@ -258,7 +258,7 @@ impl RrdEngine {
                 operation_sha256: request.operation_sha256.clone(),
                 runtime_at_unix_ms: Some(runtime_identity.0),
                 runtime_commit_sha256: Some(runtime_identity.1),
-                automation_revision: Some(runtime_identity.2),
+                function_catalogue_revision: Some(runtime_identity.2),
             });
             bytes = self.replace_session(
                 session_id,
@@ -285,10 +285,10 @@ impl RrdEngine {
             let commit = match prepared_runtime_commit.take() {
                 Some(commit) => commit,
                 None => {
-                    let catalogue = self.load_automation_catalogue_revision(
-                        intent.automation_revision.unwrap_or(0),
+                    let catalogue = self.load_function_catalogue_revision(
+                        intent.function_catalogue_revision.unwrap_or(0),
                     )?;
-                    self.authorize_transaction_triggers(
+                    self.authorize_transaction_function_bindings(
                         &state,
                         &catalogue,
                         now,
@@ -302,7 +302,7 @@ impl RrdEngine {
                         read.commit_cursor,
                         runtime_at,
                     )?;
-                    self.apply_transaction_triggers(
+                    self.apply_transaction_function_bindings(
                         &catalogue,
                         request,
                         commit,

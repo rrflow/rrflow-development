@@ -632,14 +632,14 @@ converge the current `RuntimeEvent` value into the canonical engine-event
 vocabulary and define its exact lowering into `RuntimeMutation::Event`; no
 forwarding event type or parallel event log survives.
 
-The existing synchronous `FunctionTrigger` behavior occurs before a proposed
-transaction commits. It is therefore a transaction function binding. It may
-validate the proposed transaction or derive an event inside that same commit,
-but it is not a post-commit event trigger. Pre-release convergence renames that
-contract directly so the word `trigger` has only one automation meaning. Its
-allowed completion receipt, audit, derived event, outbox, index changes, and
-domain mutation must share one effect-complete semantic commit; the current
-separate pre-commit audit writes are characterization, not accepted atomicity.
+The synchronous behavior formerly named `FunctionTrigger` occurs before a
+proposed transaction commits. A-07.1 directly renamed it to a transaction
+function binding with no alias or former-field decoder. It may validate the
+proposed transaction or derive an event inside that same commit, but it is not
+a post-commit event trigger. Its allowed completion receipt, audit, derived
+event, outbox, index changes, and domain mutation must share one
+effect-complete semantic commit; the current separate pre-commit audit writes
+are characterization, not accepted atomicity.
 
 ### Durable trigger and routine execution
 
@@ -819,7 +819,7 @@ compile cannot substitute for this proof.
 | Embedding and vectors | Deterministic local embedding, model/provenance binding, exact search, filtered planning, compact dense artifacts, HNSW, quantization, and accelerator differential checks exist. | D-05/E-04/E-05/F-03 must bind canonical vectors and every derived artifact to one committed source cursor, maintain atomic deltas, and preserve exact fallback/reranking. |
 | Graph and BM25 | Semantic graph and lexical foundations exist, but current context execution still reconstructs broad snapshots. | Transactionally maintained adjacency and BM25 access paths with exact fallback, reopen, corruption, and bounded-work proof. |
 | Reasoning and context | Generic reasoning-tree, router, context-plan, evidence, and bounded context contracts exist; current assembly uses snapshot BM25, exact vectors, graph BFS, and RRF. | G/H must persist CAS tree execution and dynamically select native or analytical paths without adding another model, planner, or context authority. |
-| Automation, skills, and MCP | A bounded JavaScript/WebAssembly function catalogue and synchronous proposed-transaction bindings exist; MCP exposes one context tool. The current function code has no golden/cross-language contract, native typed catalogue storage, schema-bound prepared receipt, MX/KV differential, atomic success-audit commit, runtime-build replay proof, installation path, or outward operation. No canonical engine event, post-commit trigger, durable routine, skill package, project-command candidate/binding, external activity operation, or conforming capability runner exists. The [function reference](../reference/automation/functions.md) and [project command reference](../reference/automation/project-command-capabilities.md) specify target boundaries without claiming implementation completion. | A-07/C/D/H/I/J must directly converge function/event terminology, split the overloaded module, replace private control JSON with typed engine transactions, retain only bounded runtimes that pass the declared deterministic profiles, add installation and public conformance, then add discovery, immutable installed bindings, prepared activities/accepted receipts/triggers/routines/skills through `RrdEngine` and remove all host-lifecycle residue. |
+| Automation, skills, and MCP | The canonical function-catalogue and transaction-function-binding names now own a split `engine/function/` boundary with a closed golden contract and one selected JavaScript result corpus equal on rrflowMX and rrflowKV plus rrflowKV reopen. It remains private control-JSON state with direct storage access and split audits; it has no typed artifact/schema/prepared-receipt model, full runtime/crash/size/cross-target corpus, installation path, cross-language fixture, or outward operation. MCP exposes one context tool. No canonical engine event, post-commit trigger, durable routine, skill package, project-command candidate/binding, external activity operation, or conforming capability runner exists. The [function reference](../reference/automation/functions.md) and [project command reference](../reference/automation/project-command-capabilities.md) specify target boundaries without claiming implementation completion. | Complete A-07 package/SDK and causal vocabulary; C/D/H/I/J then replace private control JSON with typed engine transactions, retain only bounded runtimes that pass the declared profiles, add installation and public conformance, and add discovery, immutable installed bindings, prepared activities/accepted receipts/triggers/routines/skills through `RrdEngine` while removing all host-lifecycle residue. |
 | Edge and outward delivery | The separate `rrflow-edge` adapter has deterministic offline/provenance evidence; HTTP, SDK, MCP, CLI, and subscriptions have partial real-process coverage. | H/J must route every surface through the same public operations and prove correlated identity, authorization, stamp, result, restart, and distribution behavior. |
 
 These differences are tracked by POAM-002 through POAM-010 and their owning

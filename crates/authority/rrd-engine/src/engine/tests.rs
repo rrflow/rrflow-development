@@ -80,11 +80,11 @@ fn commit_request(object: &str) -> CommitTransaction {
     }
 }
 
-mod automation;
 mod catalogue;
 mod context;
 mod data_crud;
 mod deployment_conformance;
+mod function;
 mod index_foundation;
 mod lifecycle;
 mod memory_estate;

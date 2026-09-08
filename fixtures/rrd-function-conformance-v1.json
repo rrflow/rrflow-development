@@ -1,0 +1,55 @@
+{
+  "catalogue": {
+    "contract_version": 1,
+    "revision": 1,
+    "functions": {
+      "allow-claim": {
+        "function_id": "allow-claim",
+        "runtime": {
+          "runtime": "java_script_es2020",
+          "source": "() => true",
+          "source_sha256": "2514aac809cba4d120d1a27aad6787c8d8e63792c7b22741ff0533e4985baca1"
+        },
+        "limits": {
+          "max_input_bytes": 4096,
+          "max_output_bytes": 4096,
+          "memory_bytes": 1048576,
+          "stack_bytes": 65536,
+          "max_interrupts": 1000,
+          "max_fuel": 100000
+        }
+      }
+    },
+    "transaction_bindings": {
+      "claim-policy": {
+        "binding_id": "claim-policy",
+        "function_id": "allow-claim",
+        "mutation": "assert_claim",
+        "effect": {
+          "effect": "require_true"
+        },
+        "max_attempts": 1
+      }
+    }
+  },
+  "execute": {
+    "function_id": "allow-claim",
+    "input": {
+      "type": "null"
+    }
+  },
+  "mutation": {
+    "mutation": "assert_claim",
+    "subject": "function-conformance",
+    "predicate": "accepted",
+    "object": "canonical-transaction-binding",
+    "valid_from": 1000,
+    "tx_time": 1000,
+    "producer": "function-conformance",
+    "confidence": 1.0
+  },
+  "expected_output": {
+    "type": "bool",
+    "value": true
+  }
+}

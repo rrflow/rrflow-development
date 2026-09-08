@@ -43,7 +43,7 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
                         ),
                         (
                             ProductSurface::Connectome,
-                            planned("Connectome operation control is scheduled by G09."),
+                            planned("Connectome operation control is scheduled by H-06."),
                         ),
                     ],
                 ),
@@ -91,7 +91,7 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
                     ),
                     (
                         ProductSurface::Connectome,
-                        planned("Connectome subscription streaming is scheduled by G09."),
+                        planned("Connectome subscription streaming is scheduled by H-06."),
                     ),
                 ],
             ),
@@ -102,7 +102,7 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
         id: "embedded-functions".into(),
         label: "Embedded functions".into(),
         category: "query".into(),
-        summary: "Run revision-pinned JavaScript ES2020 and portable WebAssembly JSON functions, including synchronous transaction triggers, inside deterministic engine-owned sandboxes.".into(),
+        summary: "Run revision-pinned JavaScript ES2020 and portable WebAssembly JSON functions, including synchronous transaction function bindings, inside bounded engine-owned sandboxes.".into(),
         bindings: surface_bindings(
             planned(FUNCTION_SURFACE_PLAN_REASON),
             [(
@@ -113,11 +113,11 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
     };
     expose(
         binding(&mut embedded_functions, ProductSurface::Engine),
-        "rrd-engine:RrdEngine::automation_catalogue",
+        "rrd-engine:RrdEngine::function_catalogue",
     );
     expose(
         binding(&mut embedded_functions, ProductSurface::Engine),
-        "rrd-engine:RrdEngine::replace_automation_catalogue",
+        "rrd-engine:RrdEngine::replace_function_catalogue",
     );
     capabilities.push(embedded_functions);
 
@@ -428,9 +428,9 @@ fn expose(binding: &mut SurfaceBinding, entrypoint: impl Into<String>) {
 const FOUNDATION_PLAN_REASON: &str =
     "Scheduled by the checked-in RRFlow foundation work plan; no executable implementation is available yet.";
 const FUNCTION_SURFACE_PLAN_REASON: &str =
-    "The engine implementation is available; generated HTTP, MCP, CLI, SDK, and Connectome bindings are owned by G06.";
+    "The engine implementation is available; generated HTTP, MCP, CLI, and SDK bindings are owned by H-04, and Connectome is owned by H-06.";
 const ENGINE_SURFACE_PLAN_REASON: &str =
-    "The engine implementation is available; generated outward bindings are owned by G06.";
+    "The engine implementation is available; generated outward bindings are owned by H-04 and Connectome is owned by H-06.";
 const NO_SURFACE_BINDING_REASON: &str =
     "No executable binding for this operation exists on this product surface.";
 

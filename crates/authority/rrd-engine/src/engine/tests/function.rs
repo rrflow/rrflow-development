@@ -2,11 +2,11 @@ use super::*;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 use rrd_contract::{
-    AutomationCatalogue, DataEventSchema, DataLogicalModel, DataRecordSchema, DataReference,
-    DataSchemaMode, DataSchemaRegistry, DataTableSchema, ExecuteFunction, FunctionCapability,
-    FunctionDefinition, FunctionLimits, FunctionRuntime, FunctionTrigger, FunctionTriggerEffect,
-    FunctionTriggerMutation, QueryValue, ReadDataSnapshot, ReplaceAutomationCatalogue,
-    WebAssemblyAbi, FUNCTION_CONTRACT_VERSION,
+    DataEventSchema, DataLogicalModel, DataRecordSchema, DataReference, DataSchemaMode,
+    DataSchemaRegistry, DataTableSchema, ExecuteFunction, FunctionCapability, FunctionCatalogue,
+    FunctionDefinition, FunctionLimits, FunctionRuntime, QueryValue, ReadDataSnapshot,
+    ReplaceFunctionCatalogue, TransactionFunctionBinding, TransactionFunctionEffect,
+    TransactionMutationKind, WebAssemblyAbi, FUNCTION_CONTRACT_VERSION,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -50,18 +50,18 @@ fn webassembly(id: &str, wat: &str) -> FunctionDefinition {
 fn catalogue(
     revision: u64,
     functions: Vec<FunctionDefinition>,
-    triggers: Vec<FunctionTrigger>,
-) -> AutomationCatalogue {
-    AutomationCatalogue {
+    transaction_bindings: Vec<TransactionFunctionBinding>,
+) -> FunctionCatalogue {
+    FunctionCatalogue {
         contract_version: FUNCTION_CONTRACT_VERSION,
         revision,
         functions: functions
             .into_iter()
             .map(|function| (function.function_id.clone(), function))
             .collect(),
-        triggers: triggers
+        transaction_bindings: transaction_bindings
             .into_iter()
-            .map(|trigger| (trigger.trigger_id.clone(), trigger))
+            .map(|binding| (binding.binding_id.clone(), binding))
             .collect(),
     }
 }
@@ -70,14 +70,14 @@ fn install(
     engine: &RrdEngine,
     lease: &rrd_contract::SessionLease,
     expected_revision: u64,
-    catalogue: AutomationCatalogue,
+    catalogue: FunctionCatalogue,
     suffix: &str,
 ) {
     engine
-        .replace_automation_catalogue(
+        .replace_function_catalogue(
             &lease.session_id,
             &lease.token,
-            &ReplaceAutomationCatalogue {
+            &ReplaceFunctionCatalogue {
                 expected_revision,
                 catalogue,
             },
@@ -118,7 +118,7 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
         "one",
     );
     let installed = engine
-        .automation_catalogue(
+        .function_catalogue(
             &lease.session_id,
             &lease.token,
             1_150,
@@ -126,10 +126,10 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
             "operation-catalogue-before-conflict",
         )
         .unwrap();
-    let conflict = engine.replace_automation_catalogue(
+    let conflict = engine.replace_function_catalogue(
         &lease.session_id,
         &lease.token,
-        &ReplaceAutomationCatalogue {
+        &ReplaceFunctionCatalogue {
             expected_revision: 0,
             catalogue: catalogue(
                 1,
@@ -147,7 +147,7 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
     assert!(matches!(conflict, Err(ServiceError::StorageConflict(_))));
     assert_eq!(
         engine
-            .automation_catalogue(
+            .function_catalogue(
                 &lease.session_id,
                 &lease.token,
                 1_152,
@@ -213,7 +213,7 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
     let restored = reopened
-        .automation_catalogue(
+        .function_catalogue(
             &lease.session_id,
             &lease.token,
             1_300,
@@ -386,15 +386,15 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
 }
 
 #[test]
-fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
+fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchanged() {
     let (_root, engine) = isolated_engine();
     let lease = engine
         .create_session(
             &session_request(10_000, 4),
-            &id("trigger-session"),
+            &id("function-binding-session"),
             1_000,
-            "request-trigger-session",
-            "operation-trigger-session",
+            "request-function-binding-session",
+            "operation-function-binding-session",
         )
         .unwrap();
     let mut event_function = javascript(
@@ -404,12 +404,12 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
     event_function
         .capabilities
         .insert(FunctionCapability::EmitEvent);
-    let trigger = FunctionTrigger {
-        trigger_id: CanonicalId::new("person-event").unwrap(),
+    let binding = TransactionFunctionBinding {
+        binding_id: CanonicalId::new("person-event").unwrap(),
         function_id: event_function.function_id.clone(),
-        mutation: FunctionTriggerMutation::PutRecord,
+        mutation: TransactionMutationKind::PutRecord,
         kind: Some(CanonicalId::new("person").unwrap()),
-        effect: FunctionTriggerEffect::AppendEvent {
+        effect: TransactionFunctionEffect::AppendEvent {
             kind: CanonicalId::new("person-changed").unwrap(),
         },
         max_attempts: 1,
@@ -418,8 +418,8 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
         &engine,
         &lease,
         0,
-        catalogue(1, vec![event_function], vec![trigger]),
-        "trigger-one",
+        catalogue(1, vec![event_function], vec![binding]),
+        "binding-one",
     );
 
     let transaction = engine
@@ -431,9 +431,9 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
                 timeout_ms: 5_000,
             },
             &mutation_context(
-                &id("begin-trigger-one"),
-                "request-begin-trigger-one",
-                "operation-begin-trigger-one",
+                &id("begin-binding-one"),
+                "request-begin-binding-one",
+                "operation-begin-binding-one",
             ),
             1_100,
         )
@@ -442,7 +442,7 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
     let changed = CanonicalId::new("person-changed").unwrap();
     let registry = DataSchemaRegistry {
         revision: 1,
-        migration: "install trigger fixture".into(),
+        migration: "install transaction function binding fixture".into(),
         catalogue: DataCatalogueIdentity::default(),
         tables: BTreeMap::from([
             (
@@ -504,11 +504,11 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
             &lease.session_id,
             &lease.token,
             &transaction.transaction_id,
-            &id("commit-trigger-one"),
+            &id("commit-binding-one"),
             &commit,
             1_200,
-            "request-commit-trigger-one",
-            "operation-commit-trigger-one",
+            "request-commit-binding-one",
+            "operation-commit-binding-one",
         )
         .unwrap();
     let snapshot = engine
@@ -520,8 +520,8 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
                 max_scanned_changes: 100,
             },
             1_201,
-            "request-trigger-snapshot",
-            "operation-trigger-snapshot",
+            "request-binding-snapshot",
+            "operation-binding-snapshot",
         )
         .unwrap();
     assert!(snapshot.entries.iter().any(|entry| {
@@ -530,30 +530,30 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
             TransactionMutation::AppendEvent { kind, .. } if kind == &changed
         )
     }));
-    let trigger_audit = SecurityRepository::new(&engine.storage, instance())
+    let binding_audit = SecurityRepository::new(&engine.storage, instance())
         .audit_since(0, 64)
         .unwrap();
-    assert!(trigger_audit.records.iter().any(|(_, record)| {
+    assert!(binding_audit.records.iter().any(|(_, record)| {
         record.action == SecurityAction::FunctionExecute
             && record.phase == rrd_contract::AuditPhase::Completed
             && record.decision == AuditDecision::Allowed
     }));
 
     let reject = javascript("reject-person", "() => false");
-    let reject_trigger = FunctionTrigger {
-        trigger_id: CanonicalId::new("reject-person").unwrap(),
+    let reject_binding = TransactionFunctionBinding {
+        binding_id: CanonicalId::new("reject-person").unwrap(),
         function_id: reject.function_id.clone(),
-        mutation: FunctionTriggerMutation::PutRecord,
+        mutation: TransactionMutationKind::PutRecord,
         kind: Some(person.clone()),
-        effect: FunctionTriggerEffect::RequireTrue,
+        effect: TransactionFunctionEffect::RequireTrue,
         max_attempts: 1,
     };
     install(
         &engine,
         &lease,
         1,
-        catalogue(2, vec![reject], vec![reject_trigger]),
-        "trigger-two",
+        catalogue(2, vec![reject], vec![reject_binding]),
+        "binding-two",
     );
     let transaction = engine
         .begin_transaction(
@@ -564,9 +564,9 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
                 timeout_ms: 5_000,
             },
             &mutation_context(
-                &id("begin-trigger-two"),
-                "request-begin-trigger-two",
-                "operation-begin-trigger-two",
+                &id("begin-binding-two"),
+                "request-begin-binding-two",
+                "operation-begin-binding-two",
             ),
             1_300,
         )
@@ -585,14 +585,14 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
         &lease.session_id,
         &lease.token,
         &transaction.transaction_id,
-        &id("commit-trigger-two"),
+        &id("commit-binding-two"),
         &CommitTransaction {
             operation_sha256: rrd_contract::transaction_operation_sha256(&mutations),
             mutations,
         },
         1_301,
-        "request-commit-trigger-two",
-        "operation-commit-trigger-two",
+        "request-commit-binding-two",
+        "operation-commit-binding-two",
     );
     assert!(matches!(rejected, Err(ServiceError::Function(_))));
     assert_eq!(engine.storage.runtime_cursor().unwrap(), before);
@@ -601,32 +601,32 @@ fn trigger_effects_commit_atomically_and_failures_leave_data_unchanged() {
 #[test]
 fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_window() {
     let root = tempfile::tempdir().unwrap();
-    let path = root.path().join("automation-retry");
+    let path = root.path().join("function-retry");
     let engine = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
     let lease = engine
         .create_session(
             &session_request(5_000, 2),
-            &id("automation-retry-session"),
+            &id("function-retry-session"),
             1_000,
-            "request-automation-retry-session",
-            "operation-automation-retry-session",
+            "request-function-retry-session",
+            "operation-function-retry-session",
         )
         .unwrap();
-    let trigger_id = CanonicalId::new("claim-validator").unwrap();
+    let binding_id = CanonicalId::new("claim-validator").unwrap();
     let accepted = javascript("claim-policy", "() => true");
-    let accepted_trigger = FunctionTrigger {
-        trigger_id: trigger_id.clone(),
+    let accepted_binding = TransactionFunctionBinding {
+        binding_id: binding_id.clone(),
         function_id: accepted.function_id.clone(),
-        mutation: FunctionTriggerMutation::AssertClaim,
+        mutation: TransactionMutationKind::AssertClaim,
         kind: None,
-        effect: FunctionTriggerEffect::RequireTrue,
+        effect: TransactionFunctionEffect::RequireTrue,
         max_attempts: 1,
     };
     install(
         &engine,
         &lease,
         0,
-        catalogue(1, vec![accepted], vec![accepted_trigger]),
+        catalogue(1, vec![accepted], vec![accepted_binding]),
         "retry-one",
     );
     let transaction = engine
@@ -635,9 +635,9 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
             &lease.token,
             &begin_request(),
             &mutation_context(
-                &id("automation-retry-begin"),
-                "request-automation-retry-begin",
-                "operation-automation-retry-begin",
+                &id("function-retry-begin"),
+                "request-function-retry-begin",
+                "operation-function-retry-begin",
             ),
             1_100,
         )
@@ -652,16 +652,16 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         runtime_at,
     )
     .unwrap();
-    let revision_one = engine.load_current_automation_catalogue().unwrap();
+    let revision_one = engine.load_current_function_catalogue().unwrap();
     let derived = engine
-        .apply_transaction_triggers(
+        .apply_transaction_function_bindings(
             &revision_one,
             &request,
             base,
             None,
             runtime_at,
-            "request-automation-retry-prepare",
-            "operation-automation-retry-prepare",
+            "request-function-retry-prepare",
+            "operation-function-retry-prepare",
         )
         .unwrap();
     let session_key = format!(
@@ -675,11 +675,11 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         .unwrap();
     let mut prepared: Value = serde_json::from_slice(&before).unwrap();
     prepared["transactions"][transaction.transaction_id.as_str()]["commit_intent"] = serde_json::json!({
-        "idempotency_key": "automation-retry-commit",
+        "idempotency_key": "function-retry-commit",
         "operation_sha256": request.operation_sha256.clone(),
         "runtime_at_unix_ms": runtime_at,
         "runtime_commit_sha256": derived.digest(),
-        "automation_revision": 1,
+        "function_catalogue_revision": 1,
     });
     engine
         .storage
@@ -690,25 +690,25 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
             at: runtime_at,
             actor: "rrd-engine-test".into(),
             action: "transaction.commit_prepared".into(),
-            request_id: "request-automation-retry-prepare".into(),
-            operation_id: "operation-automation-retry-prepare".into(),
+            request_id: "request-function-retry-prepare".into(),
+            operation_id: "operation-function-retry-prepare".into(),
         })
         .unwrap();
 
     let rejected = javascript("claim-policy", "() => false");
-    let rejected_trigger = FunctionTrigger {
-        trigger_id,
+    let rejected_binding = TransactionFunctionBinding {
+        binding_id,
         function_id: rejected.function_id.clone(),
-        mutation: FunctionTriggerMutation::AssertClaim,
+        mutation: TransactionMutationKind::AssertClaim,
         kind: None,
-        effect: FunctionTriggerEffect::RequireTrue,
+        effect: TransactionFunctionEffect::RequireTrue,
         max_attempts: 1,
     };
     install(
         &engine,
         &lease,
         1,
-        catalogue(2, vec![rejected], vec![rejected_trigger]),
+        catalogue(2, vec![rejected], vec![rejected_binding]),
         "retry-two",
     );
     drop(engine);
@@ -719,26 +719,23 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
             &lease.session_id,
             &lease.token,
             &transaction.transaction_id,
-            &id("automation-retry-commit"),
+            &id("function-retry-commit"),
             &request,
             1_300,
-            "request-automation-retry-commit",
-            "operation-automation-retry-commit",
+            "request-function-retry-commit",
+            "operation-function-retry-commit",
         )
         .unwrap();
     assert_eq!(receipt.last_runtime_cursor, Some(1));
     assert_eq!(
-        reopened
-            .load_current_automation_catalogue()
-            .unwrap()
-            .revision,
+        reopened.load_current_function_catalogue().unwrap().revision,
         2,
         "recovery must retain the newer head while executing pinned revision one",
     );
 }
 
 #[test]
-fn exact_security_actions_gate_catalogue_execution_and_transaction_triggers() {
+fn exact_security_actions_gate_catalogue_execution_and_transaction_bindings() {
     let (_root, engine) = isolated_engine();
     let admin_id = CanonicalId::new("function-admin").unwrap();
     let limited_id = CanonicalId::new("function-reader").unwrap();
@@ -831,25 +828,25 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_triggers() {
         )
         .unwrap();
     let definition = javascript("secured-policy", "() => true");
-    let trigger = FunctionTrigger {
-        trigger_id: CanonicalId::new("secured-trigger").unwrap(),
+    let binding = TransactionFunctionBinding {
+        binding_id: CanonicalId::new("secured-binding").unwrap(),
         function_id: definition.function_id.clone(),
-        mutation: FunctionTriggerMutation::AssertClaim,
+        mutation: TransactionMutationKind::AssertClaim,
         kind: None,
-        effect: FunctionTriggerEffect::RequireTrue,
+        effect: TransactionFunctionEffect::RequireTrue,
         max_attempts: 1,
     };
     install(
         &engine,
         &admin,
         0,
-        catalogue(1, vec![definition], vec![trigger]),
+        catalogue(1, vec![definition], vec![binding]),
         "secured",
     );
 
     assert_eq!(
         engine
-            .automation_catalogue(
+            .function_catalogue(
                 &limited.session_id,
                 &limited.token,
                 1_100,
@@ -875,10 +872,10 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_triggers() {
         denied_execute,
         Err(ServiceError::PermissionDenied)
     ));
-    let denied_write = engine.replace_automation_catalogue(
+    let denied_write = engine.replace_function_catalogue(
         &limited.session_id,
         &limited.token,
-        &ReplaceAutomationCatalogue {
+        &ReplaceFunctionCatalogue {
             expected_revision: 1,
             catalogue: catalogue(
                 2,
@@ -898,27 +895,27 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_triggers() {
             &limited.token,
             &begin_request(),
             &mutation_context(
-                &id("function-trigger-begin"),
-                "request-function-trigger-begin",
-                "operation-function-trigger-begin",
+                &id("function-binding-begin"),
+                "request-function-binding-begin",
+                "operation-function-binding-begin",
             ),
             1_110,
         )
         .unwrap();
     let before = engine.storage.runtime_cursor().unwrap();
-    let request = commit_request("function-trigger-must-be-denied");
-    let denied_trigger = engine.commit_transaction(
+    let request = commit_request("function-binding-must-be-denied");
+    let denied_binding = engine.commit_transaction(
         &limited.session_id,
         &limited.token,
         &transaction.transaction_id,
-        &id("function-trigger-commit"),
+        &id("function-binding-commit"),
         &request,
         1_120,
-        "request-function-trigger-denied",
-        "operation-function-trigger-denied",
+        "request-function-binding-denied",
+        "operation-function-binding-denied",
     );
     assert!(matches!(
-        denied_trigger,
+        denied_binding,
         Err(ServiceError::PermissionDenied)
     ));
     assert_eq!(engine.storage.runtime_cursor().unwrap(), before);
@@ -937,7 +934,7 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_triggers() {
             SecurityAction::FunctionCatalogueWrite,
         ),
         (
-            "request-function-trigger-denied",
+            "request-function-binding-denied",
             SecurityAction::FunctionExecute,
         ),
     ] {

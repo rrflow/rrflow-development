@@ -1,0 +1,87 @@
+{
+  "catalogue": {
+    "contract_version": 1,
+    "revision": 1,
+    "functions": {
+      "validate-record": {
+        "function_id": "validate-record",
+        "runtime": {
+          "runtime": "java_script_es2020",
+          "source": "(input) => input.allowed === true",
+          "source_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472"
+        },
+        "limits": {
+          "max_input_bytes": 4096,
+          "max_output_bytes": 4096,
+          "memory_bytes": 1048576,
+          "stack_bytes": 65536,
+          "max_interrupts": 1000,
+          "max_fuel": 100000
+        }
+      }
+    },
+    "transaction_bindings": {
+      "person-record-policy": {
+        "binding_id": "person-record-policy",
+        "function_id": "validate-record",
+        "mutation": "put_record",
+        "kind": "person",
+        "effect": {
+          "effect": "require_true"
+        },
+        "max_attempts": 1
+      }
+    }
+  },
+  "catalogue_sha256": "f4652b6819ee73e2e1e2480c43a63c7fc148eb7d5cf04579d2338fcd830a7c36",
+  "replace": {
+    "expected_revision": 0,
+    "catalogue": {
+      "contract_version": 1,
+      "revision": 1,
+      "functions": {
+        "validate-record": {
+          "function_id": "validate-record",
+          "runtime": {
+            "runtime": "java_script_es2020",
+            "source": "(input) => input.allowed === true",
+            "source_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472"
+          },
+          "limits": {
+            "max_input_bytes": 4096,
+            "max_output_bytes": 4096,
+            "memory_bytes": 1048576,
+            "stack_bytes": 65536,
+            "max_interrupts": 1000,
+            "max_fuel": 100000
+          }
+        }
+      },
+      "transaction_bindings": {
+        "person-record-policy": {
+          "binding_id": "person-record-policy",
+          "function_id": "validate-record",
+          "mutation": "put_record",
+          "kind": "person",
+          "effect": {
+            "effect": "require_true"
+          },
+          "max_attempts": 1
+        }
+      }
+    }
+  },
+  "list": {},
+  "execute": {
+    "function_id": "validate-record",
+    "input": {
+      "type": "map",
+      "value": {
+        "allowed": {
+          "type": "bool",
+          "value": true
+        }
+      }
+    }
+  }
+}

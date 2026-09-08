@@ -103,11 +103,13 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1**, the package and type vocabulary
-package. A-07.0 completed the reviewed implementation-requirements mapping but
-did not change runtime behavior or complete A-07. B-01 and B-02 remain
-completed contract work; no further Gate B work proceeds until A-07 corrects
-the pre-release source, package, public, and trace-vocabulary assumptions.
+The next executable item is **A-07.1b**, the Rust SDK responsibility boundary
+inside the package and type vocabulary work. A-07.0 completed the reviewed
+implementation-requirements mapping. A-07.1a then directly converged the
+governed-function catalogue/binding vocabulary and module boundary, but did
+not qualify that capability or complete A-07. B-01 and B-02 remain completed
+contract work; no further Gate B work proceeds until A-07 corrects the complete
+pre-release source, package, public, and trace-vocabulary assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -276,6 +278,34 @@ A-07.0 evidence (2026-09-08):
   rrflowKV durability, graph/index atomicity, streamed Arrow/DataFusion
   execution, or persisted reasoning/recall. A-07 remains unchecked and A-07.1
   is the next package.
+
+A-07.1a governed-function vocabulary evidence (2026-09-08):
+
+- The public and engine type/field/method family now uses
+  `FunctionCatalogue`, `TransactionFunctionBinding`,
+  `TransactionMutationKind`, `TransactionFunctionEffect`, `binding_id`,
+  and `transaction_bindings` directly. The former source symbols and wire
+  fields have no alias or successful decoder.
+- The overloaded `engine/automation.rs` authority is absent. Catalogue,
+  execution, JavaScript, WebAssembly, and transaction-binding responsibilities
+  are isolated under `engine/function/`; engine events, post-commit triggers,
+  routines, skills, installation, and external activities were not invented by
+  this move.
+- A closed `function-contract-v1.json` fixture and two golden/schema tests
+  freeze the current canonical shape. A shared engine fixture additionally
+  proves the selected JavaScript catalogue read/invocation/transaction result
+  equal on rrflowMX and rrflowKV, then closes/reopens rrflowKV and repeats
+  catalogue read and invocation.
+- All 17 workspace-architecture tests, two function-contract tests, four
+  engine function tests, and the one focused cross-profile/reopen test passed.
+  The architecture guard finds no former function-authority symbol in
+  executable contract/engine source.
+- This is structural convergence plus a first characterization corpus, not
+  capability qualification. Private monolithic control JSON, direct storage
+  access, split allowed audits, unbound runtime replay, inline artifacts,
+  incomplete runtime profiles, and absent install/public/cross-language proof
+  remain owned by C/D/H/I/J and POAM-008. A-07 and A-07.1 remain unchecked;
+  A-07.1b is next.
 
 A-02 evidence (2026-09-04):
 
