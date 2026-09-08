@@ -31,13 +31,17 @@ pub enum PromotionState {
     Denied,
 }
 
-/// Who produced this claim. Mandatory: a claim written by an executor on behalf
-/// of a model must be attributable to both.
+/// Current serialized provenance labels for a claim.
+///
+/// These strings are not authentication or authorization evidence. Until the
+/// C-03/G-02 convergence replaces this shape, `RrdEngine` must treat them as
+/// caller-supplied labels and must not resolve a seat or grant an operation from
+/// them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Producer {
-    /// e.g. "agent:clyffy", "human:jessay", "tool:check-datafusion"
+    /// Human-readable actor label, for example `tool:check-datafusion`.
     pub actor: String,
-    /// e.g. "claude-opus-5" when the actor wrote on a model's behalf.
+    /// Optional model attribution label, for example `claude-opus-5`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on_behalf_of: Option<String>,
     /// Session or run identifier, so a claim traces back to its context.

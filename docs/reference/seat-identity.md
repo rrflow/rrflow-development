@@ -9,6 +9,23 @@ estate. A provider account may represent a seat, but never replaces or owns
 it. Changing Claude, OpenAI, Gemini, Grok, LFG, or another provider therefore
 does not change the RRFlow identity.
 
+## Clyffy boundary
+
+**Clyffy is this project's primary RRFlow seat specialization.** It is not a
+second product, kernel, repository, daemon, model provider, storage engine,
+query engine, or lifecycle authority. Generic RRFlow installation templates do
+not hardcode Clyffy; this repository's planned versioned specialization must
+select that seat identity explicitly. Another installed project may select a
+different seat without changing RRFlow semantics.
+
+The executable Clyffy path must remain first-party Rust inside this repository.
+`RrdEngine` owns authentication, authorization, routing orchestration,
+deterministic predicates, context intent, compare-and-swap, audit, and commit.
+LFG or any other `RouterBackend` may return only one of the three bounded router
+proposals. Go can be installed as an outward SDK, generator, harness, or other
+attuned capability; it is not a Clyffy or RRFlow routing, persistence, or
+orchestration authority.
+
 ## Canonical records and relations
 
 The implemented contract uses three canonical data kinds:
@@ -24,6 +41,14 @@ valid `rrflow-represents` relation to it at the requested read coordinate.
 Provider credentials and provider runtime sessions are never fields of these
 records. The bind input hashes the provider subject and persists only its
 SHA-256 digest.
+
+Representation establishes durable attribution, not permission. The target
+request path authenticates the calling provider or local principal, resolves
+that exact identity's visible representation edge at the same `ReadStamp`, and
+then evaluates ordinary RRFlow policy for the requested operation. A caller
+cannot become Clyffy by supplying an actor string, a seat identifier, or another
+provider's subject digest, and a valid representation cannot bypass a denied
+operation.
 
 The provider-neutral schemas are implemented in
 [`memory_estate.rs`](../../crates/transport/rrd-contract/src/memory_estate.rs),
@@ -90,8 +115,21 @@ persistent engine, resolves the same seat URI, follows the warp through context
 assembly, verifies the representation edge evidence, and checks invocation
 records contain only the subject digest.
 
-This implemented seat/warp capability is not the complete installed agent
-specialization. The versioned specialization manifest, project attunement,
+This is characterization of a useful persisted foundation, not proof of the
+complete installed Clyffy path. The current `MemoryEstate*` type and module
+names conflate seat identity with an estate; the CLI supplies Clyffy-specific
+defaults instead of consuming an installed specialization; its caller commits
+the returned mutation plan manually; resolution reconstructs a broad runtime
+snapshot; the older claim path accepts an arbitrary producer actor string; and
+the authenticated session, representation edge, authorization decision, route
+packet, router proposal, and resulting mutation are not yet bound at one read
+coordinate. No `RouterBackend` dispatch exists in the checkout.
+
+These are active convergence gaps, not compatibility promises. D-01 owns the
+installed specialization and initial seat binding; A-07/C-03 own canonical
+naming and effect-complete identity attribution; G-01 through G-05 own stamped
+routing and persisted tree execution; H-04/H-05 own cross-surface identity and
+causal evidence. The versioned specialization manifest, project attunement,
 provider conformance, and normal rrflowDB-backed documentation resolution
 remain owned by the
 [agent-bootstrap reference](agent-bootstrap.md),

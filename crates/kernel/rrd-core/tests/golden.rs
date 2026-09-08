@@ -1,17 +1,15 @@
-//! Golden vectors for the cross-language storage contract.
+//! Golden vectors for the current RRFlow storage contract.
 //!
-//! A parity engine in another language — the Go/bbolt engine for the LFG
-//! side first — is byte-compatible with rrflow exactly when it reproduces
-//! these vectors: key encodings (including the inverted-timestamp ordering
-//! that makes newest-first a forward scan), prefixes and their exclusive
-//! ends, plus stamped runtime envelopes. The fixture is checked in; this
-//! test regenerates every vector from the kernel and fails on any drift,
-//! so an encoding change cannot land silently and orphan a parity
-//! implementation.
+//! These vectors characterize current key encodings (including the
+//! inverted-timestamp ordering that makes newest-first a forward scan),
+//! prefixes and their exclusive ends, plus stamped runtime envelopes. The
+//! fixture is checked in; this test regenerates every vector from the kernel
+//! and fails on any drift. It does not define another storage engine or a
+//! compatibility promise; C-01 owns the final RRFlow 1.0 codec.
 //!
 //! Regenerate deliberately with `GOLDEN_WRITE=1 cargo test -p rrd-core
 //! --test golden` — and treat a diff in the fixture as what it is: a wire
-//! format break that every engine must follow.
+//! format change that the canonical RRFlow storage boundary must review.
 
 use rrd_core::{
     key, AuditDecision, AuditEnvelope, Claim, DataTransaction, Predicate, Producer, ProjectionId,

@@ -91,6 +91,7 @@ These mappings eliminate the present naming ambiguity:
 | DataFusion | compute-only analytical planner/executor | a dependency of `rrd-query`; no direct commit, authorization, or lifecycle authority |
 | RRFlow vector subsystem | exact vectors plus payload indexes, HNSW/quantized projections, filtered candidates, and exact reranking | `rrd-vector` plus atomic canonical/index deltas in `rrd-store` |
 | LFG | one replaceable local routing-model adapter | `RouterBackend` in `rrd-inference`, adapter in planned `rrflow-lfg`, orchestration in `RrdEngine` |
+| Clyffy | this repository's primary durable RRFlow seat specialization; not a product, kernel, repository, daemon, model, store, or lifecycle | seat/provider/representation state in rrflowDB; same-stamp identity resolution, authorization, routing, and commit in `RrdEngine` |
 | external project data | PostgreSQL, Turso, Dragonfly, SQL stores, object stores, and other operator/application systems | discovered source descriptors and explicit adapters; never implicit rrflowDB persistence |
 
 The storage port is `rrd_store::StorageEngine`; `RrdEngine` remains the sole
@@ -280,6 +281,7 @@ complete.
 | Temporal graph, BM25, hybrid retrieval, and context evidence | `rrd-query/src/{bm25,index,execute,plan}.rs`; `rrd-engine/src/engine/{context,retrieval,retrieval_query}.rs` | `rrd-query/tests/{query,index_catalogue,golden}.rs`; `rrd-engine/src/engine/tests/{context,index_foundation}.rs`; `rrd-engine/tests/{runtime_query_trace,runtime_data_plane_trace}.rs` | Replace broad snapshot reconstruction with transactional adjacency/BM25/vector access paths, cost-selected at one stamp and fused with bounded deterministic evidence. | E-01, E-02, E-03, E-05, F-03, H-01, H-02, H-05 |
 | Arrow/DataFusion analytical execution | `rrd-query/src/{arrow,fusion,execute,pipeline,plan}.rs` | `rrd-query/tests/{golden,query,index_catalogue}.rs` and the DataFusion-focused unit tests inside the listed source modules | Replace complete `Vec<QueryRow>` materialization with a pinned stamped provider; push supported work into rrflowKV, compose native operators, enforce one resource budget, and report every read/decode/copy/allocation. | F-01 through F-05 |
 | Generic reasoning trees, routing, and governed mutation | `rrd-core/src/reasoning_tree.rs`; `rrd-contract/src/{reasoning_tree,router}.rs`; `rrd-engine/src/engine/{context,transaction}.rs` | `rrd-core/tests/{reasoning_tree_contract,reasoning_trace_link}.rs`; `rrd-contract/tests/{reasoning_tree_contract,router_contract}.rs`; `rrd-engine/src/engine/tests/{context,transaction_stamp}.rs` | Preserve the accepted generic tree and three bounded routing decisions; add persisted CAS execution, the model-manifest handshake, constrained LFG dispatch, and engine-selected physical work without a fixed lifecycle. | B-03, G-01 through G-05, H-01, H-05 |
+| Durable seat identity, provider representation, and routing attribution | `rrd-contract/src/memory_estate.rs`; `rrd-engine/src/engine/memory_estate.rs`; `rrd-engine/src/operator.rs`; `rrd-core/src/claim.rs`; `rrflow-cli/src/command.rs` | `rrd-engine/src/engine/tests/memory_estate.rs`; `rrflow-cli/tests/operator_surface.rs::identity_bind_resolve_and_readme_warp_share_the_persistent_engine`; `rrd-contract/tests/router_contract.rs`; claim/store golden and grounding tests | Preserve subject-digest redaction, temporal provider-to-seat representation, unrepresented denial, replacement, persistent reopen, and warp-to-context behavior. Rename the ambiguous `MemoryEstate*` surface directly; make D-01 install the specialization-selected seat without a generic Clyffy default; bind the authenticated provider identity, visible representation edge, seat, policy, route packet, proposal, mutation, audit, and trace at one coordinate; reject arbitrary producer actor strings as identity; replace broad snapshot resolution with canonical native access. | A-07, C-03, D-01, G-01 through G-05, H-01, H-04, H-05, J-01 |
 | Context projection maintenance draft | `rrd-maintenance/src/lib.rs` | no focused package test and no caller outside the package; the exhaustive preservation/disposition matrix is owned by `docs/reference/context/context-maintenance.md` | Preserve source-cut inventory/accounting, proposal and evidence completeness, review attribution, optimistic conflicts, digest lineage, atomic publication, generation ownership, observation, and compensating rollback through new generic-routine acceptance tests. Replace the direct `StorageEngine`, private scope/event/repository, cursor-zero replay, JSON-wrapper records, fixed seven-stage lifecycle, hardcoded classes/reduction/token policy, and package-local API with generic I-03 routine state and authorized `RrdEngine` operations; remove the standalone crate only after every preserved/generalized matrix row is covered, with no wrapper. | A-07, C-03, C-04, H-02, H-05, I-01, I-03, J-01 |
 | Installation, attunement, and explicit automation | `rrd-contract/src/attunement.rs`; `rrd-engine/src/engine/automation.rs`; `rrflow-cli/src/{command,dev}.rs` | `rrd-contract/tests/attunement_contract.rs`; `rrd-engine/src/engine/tests/{automation,deployment_conformance,lifecycle,recovery}.rs`; `rrflow-cli/tests/operator_surface.rs` | Build bundle-resident preview/apply, installed credential references, persisted phase jobs, incremental project specialization, canonical events, resumable routines, digest-bound skills, and optional host translators under the one `RrdEngine` authority. Estate provisioning and local authorization remain traced in their dedicated estate/security rows rather than duplicated here. | A-07, D, H-04, I, J-01, J-03, J-05 |
 | Installed project, estate, instance, environment, and physical topology | `rrd-engine/src/runtime/{instance,mod}.rs`; `rrd-contract/src/{platform,lib}.rs`; `rrd-estate/src/authority.rs`; `rrd-server/src/{main,http/server}.rs`; `rrd-cluster/src/{lib,contract}.rs` | `rrd-engine/tests/runtime_instance.rs`; `rrd-contract/tests/platform_terminology.rs`; `rrd-estate/tests/authority_catalogue.rs`; `rrd-cluster/tests/contracts.rs`; initialization callers inventoried across server, CLI, MCP, Rust client fixtures, and engine tests | Preserve canonical IDs, strict format/input rejection, exact-root containment, foreign-store denial, digest validation, desired/observed and cluster placement/snapshot/transfer safety. Replace the three competing hierarchies with one project ↔ estate ↔ instance relationship graph, operation-specific resource paths, a minimal D-01 locator, and one engine-persisted installed-estate binding shared by rrflowMX and rrflowKV. Remove startup-created manifests, historical word-order authority, private JSON binding, and duplicate operational topology with no compatibility reader. | A-07, B-04, C-02, C-03, D-01 through D-03, D-06, H-04, H-07, J-01, J-03, J-05 |
@@ -329,6 +331,9 @@ survives the owning gate.
 | `rrd-query/src/execute.rs::execute` eager loading | split into native access and streaming execution | F-01..F-04 |
 | `rrd-query/src/live.rs::poll_live_query` two-snapshot diff | replace with commit-impact evaluation | H-03 |
 | `rrd-core/tests/golden.rs` Go/bbolt/LFG parity-engine narrative | remove the provider-specific alternate-engine claim while retaining only the characterized Rust contract vectors needed until C-01 freezes the final codec; Go remains eligible only as an outward capability adapter, never an RRFlow storage or routing authority | A-07, C-01, J-01 |
+| `MemoryEstate*`, `memory_estate.rs`, hardcoded Clyffy CLI defaults, caller-committed seat plans, and broad-snapshot seat resolution | preserve provider-neutral seat/provider/relation validation, hashed subject storage, temporal representation replacement, unrepresented denial, persistent reopen, and warp-to-context behavior; rename directly to canonical seat/specialization vocabulary, derive the selected seat from D-01 installation, move planning and commit into one engine operation, and use the final native graph/index path with no alias or generic persona default | A-07, C-03, D-01, E-01, E-02, G-02, H-01, H-04, J-01 |
+| `Producer.actor`, CLI `assert --actor`, and examples/tests that treat `agent:clyffy` as sufficient identity | retain a bounded human-readable attribution label only when derived from an authenticated principal and same-stamp provider representation; never authorize, resolve self, or persist routed work from the caller string; replace successful impersonation-capable shapes and prove foreign/revoked/unrepresented denial plus attributed reopen | A-07, C-03, G-02, G-04, H-04, H-05, J-01 |
+| Clyffy as a separate kernel, repository, release manifest, management plane, lifecycle, or provider-event family | keep absent. Clyffy is this repository's specialization-selected durable seat; first-party execution remains Rust inside RRFlow, `RrdEngine` orchestrates, model backends only propose, and optional Go/provider/host integrations remain outward capabilities | A-07, D-01, G-01 through G-05, I-01 through I-06, J-01, J-03 |
 | `rrd-maintenance::MaintenanceRepository` and its fixed maintenance state/event vocabulary | satisfy every preserve/generalize row in the canonical context-maintenance disposition matrix through focused generic-routine tests, then remove the crate, direct store dependency, private scope, cursor-zero replay, JSON-wrapper records, hardcoded taxonomy/reduction/token policy, and package-local API with no alias or compatibility reader | A-07, C-03, C-04, H-02, H-05, I-01, I-03, J-01 |
 | `LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION`, its alternate encoder/decoder, `VectorRuntime::suppress_legacy_turboquant`, and the `ensure_vector_index` compatibility adapter | preserve projection provenance, lifecycle restoration, exact oracle/rerank, mmap, bounded-memory, and recall evidence in one source-stamped vector catalogue and planner; then delete the older catalogue/version/suppression/ensure path and its successful fixtures | E-04, E-05, H-01, J-01 |
 | defaulted older estate substate in `rrd-estate::EstateDocument`, optional recovery-policy decoding in `rrd-estate::{backup_job,recovery}`, and their successful missing-field fixtures | preserve current desired/observed, backup, recovery-policy, receipt, lease, and recovery-point semantics in one required canonical estate schema; remove decoding behavior and success tests that exist only for pre-release documents/jobs and add negative old-shape rejection vectors | A-07, C-05, D-02, D-10, J-01, J-02 |
@@ -480,22 +485,21 @@ authority stops the row and updates this map before work continues.
 
 | Order | Record | Review boundary |
 |---:|---|---|
-| 1 | `docs/clyffy-kernel-alpha.md` | Preserve only provider-neutral routing/orchestration requirements under RRFlow and remove the parallel-product framing. |
-| 2 | `docs/package-workflows.md` | Reconcile package workflow semantics with the canonical event, trigger, routine, skill, and adapter boundaries. |
-| 3 | `docs/rrd-functions-v1.md` | Preserve bounded function semantics while preventing a function runtime from becoming lifecycle authority. |
-| 4 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
-| 5 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
-| 6 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
-| 7 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
-| 8 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
-| 9 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
-| 10 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
-| 11 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
-| 12 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
-| 13 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
-| 14 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
+| 1 | `docs/package-workflows.md` | Reconcile package workflow semantics with the canonical event, trigger, routine, skill, and adapter boundaries. |
+| 2 | `docs/rrd-functions-v1.md` | Preserve bounded function semantics while preventing a function runtime from becoming lifecycle authority. |
+| 3 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
+| 4 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
+| 5 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
+| 6 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
+| 7 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
+| 8 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
+| 9 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
+| 10 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
+| 11 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
+| 12 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
+| 13 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
 
-After row 14, run the complete KB-05/A-06 acceptance corpus and change the
+After row 13, run the complete KB-05/A-06 acceptance corpus and change the
 canonical roadmap checkbox only if it passes. Then execute A-07.0 traceability,
 A-07.1 package/type vocabulary, and A-07.2 causal evidence vocabulary as
 separate journaled packages. B-03 is the next implementation package only
@@ -505,6 +509,7 @@ Resolved full-file reviews:
 
 | Baseline record | Canonical record | Review result |
 |---|---|---|
+| `docs/clyffy-kernel-alpha.md` | `docs/reference/seat-identity.md`; `docs/reference/agent-bootstrap.md`; `docs/architecture/{system-overview,engine-data-flow}.md`; D/G roadmap and execution packages | Preserved Clyffy as this repository's durable provider-neutral seat, explicit provider-representation metadata, bounded provider capability truth, credential separation, three-proposal model routing, engine-owned deterministic decisions, and reproducible provider/model evaluation requirements. Rejected Clyffy as another kernel/repository/release/runtime, RRO/Automaton and Fjall/compatibility authority, separate multi-instance MCP or management plane, provider/session hooks and lifecycle events, fixed product tiers, obsolete milestone/gate completion, and claimed competitive results without final subsystem evidence. Full contract/code review proved persisted subject-digest representation, replacement, unrepresented denial, reopen, and warp-to-context behavior plus the three router proposal shapes; it also exposed ambiguous `MemoryEstate*` naming, Clyffy-hardcoded CLI defaults, caller-committed plans, broad snapshot resolution, arbitrary `Producer.actor` attribution, no installed specialization, no authenticated same-stamp seat/authorization/route binding, and no `RouterBackend`. POAM-007/009 and A/C/D/G/H/J own direct convergence. |
 | `docs/rrd-security-bootstrap-v1.md` | `docs/reference/security/authority.md`; `docs/reference/agent-bootstrap.md`; D-01 roadmap/execution package | Preserved strict input decoding, bounded non-empty regular-file intent, unique identities, complete policy validation, verifier-only persistence, atomic initial policy/audit publication, exact replay, drift denial, and the rule that a network listener never offers unauthenticated bootstrap. Rejected its executable/current status, standalone command and manifest dialect, arbitrary database/absolute credential paths, caller-selected time, false validation-before-open and authenticated-transition claims, resolve-then-open race, provider-specific symlink/mode policy in the engine, no-op non-Unix privacy check, incomplete idempotency coordinates, unbounded credential validity example, SHA-256 as a generic verifier, and CLI/Kubernetes-authored policy. The accepted target is the sole local D-01 `initialize_instance` action with exact preview/apply, fresh-target proof, engine time, typed verifiers, capability-scoped/versioned secret adapters, prepared delivery receipts, one installed-binding/policy/checkpoint/audit transaction, and crash/reopen/secret-accounting evidence; no task guide was published before behavior exists. |
 | `docs/rrflow-rename-ledger.md` | `docs/architecture/system-overview.md`; `docs/reference/release/version-policy.md`; this roadmap/execution map | Preserved the single in-place pre-release identity, exhaustive naming-surface audit, repository-contained source, no-alias/direct-cutover rule, fixture verification, and separation of naming from capability evidence. Rejected its V1 compatibility-domain framing, stale statement that rrflowMX/rrflowKV cannot be canonical names, stale milestone/status authority, and successful earlier-format read requirement. RRFlow now explicitly has no legacy/deprecation line: required semantics are absorbed into one owner before superseded paths and success fixtures are removed. |
 | `docs/versioning.md` | `docs/reference/release/version-policy.md` | Preserved the frozen `1.0.0` product-version source, mirrored-package guard, explicit-owner change control, independently versioned technical identities, and separate Connectome repository boundary. Added the release reference index and updated the executable version guard, CODEOWNERS, and root warp map atomically so no old-path check or duplicate policy remains. |
@@ -552,6 +557,25 @@ knowledge moves into its one owner; unresolved work becomes a POA&M row; raw
 reproducible results remain evidence; redundant narrative is removed.
 
 #### KB-05 package journal
+
+##### `clyffy-kernel-alpha`
+
+```text
+gate/package: A-06 / KB-05 / clyffy-kernel-alpha
+revision: parent a3e2952; result is the commit containing this entry
+baseline files/digests: docs/clyffy-kernel-alpha.md=ed778bb447946de1cccd605178ef8d002f9ab81b84049677fc36211904bff4a6; complete reviewed canonical-document set=4cab921c6b72f8ca005a2e89de4de1ce376e3da69233334cb32007ea51ae0398; complete reviewed implementation/test set=493a0234e96cb613d49b89bcb4b392ca0a65c63826bd97e44e3e4c0fb3a6ba79
+files read in full: root README; flat Clyffy record; seat-identity, agent-bootstrap, single-engine, system-overview, engine-data-flow, objective, canonical-roadmap, POA&M, package-workflow, and execution-map records; complete router contract and test; complete inference implementation; complete seat/provider contract, engine implementation, engine test, CLI command implementation, and CLI operator-surface test; complete kernel key/claim implementations and golden test; complete engine operator implementation; complete store throughput example plus removal/operator/grounding tests; complete cluster node runtime revalidated against the immediately preceding full distributed-package review; deterministic inventory generator revalidated in full
+files changed/created/deleted/moved: update seat-identity, agent-bootstrap, system-overview, engine-data-flow, canonical roadmap, POA&M, this terminology/traceability/direct-convergence/resolved-review/queue/D/G/journal map, deterministic inventory generator, and generated file inventory; clarify that the current Producer actor is a non-authoritative label; correct false Go parity-engine and separate Clyffy management-plane Rust documentation; delete docs/clyffy-kernel-alpha.md; no Rust behavior, Cargo manifest, public contract, fixture, endpoint, engine, storage, query, graph, index, vector, reasoning, Arrow, or DataFusion implementation changed
+contract or behavior changed: target documentation and deterministic file-planning behavior changed; runtime behavior did not. Clyffy is now unambiguously this repository's primary durable RRFlow seat specialization, selected explicitly by the planned specialization rather than a generic template. The accepted causal path binds authenticated provider identity, temporal representation, seat attribution, independent authorization, route packet/proposal, engine-selected work, mutation, audit, trace, and reopen at one coordinate. RrdEngine remains the Rust orchestration authority; model backends only propose; Go/provider/host systems remain outward capabilities
+smallest test command and result: cargo test -p rrd-contract --test router_contract --locked — 6 passed before editing and 6 passed after editing; cargo test -p rrd-engine --lib engine::tests::memory_estate --locked — 1 passed before editing and 1 passed after editing; cargo test -p rrflow-cli --test operator_surface identity_bind_resolve_and_readme_warp_share_the_persistent_engine --locked — 1 passed before editing and 1 passed after editing; cargo test -p rrd-core --test golden --locked — 1 passed after the documentation correction
+owning package command and result: cargo test -p rrd-contract --all-targets --locked — 58 passed; cargo test -p rrd-cluster --test contracts --locked — 10 passed; cargo clippy -p rrd-core -p rrd-contract -p rrd-cluster --all-targets --locked -- -D warnings — passed
+cross-boundary command and result: cargo test -p rrd-engine --test workspace_architecture --locked — 16 passed; cargo check --workspace --all-targets --locked — passed; deterministic inventory reported 783 current/generated/planned records; documentation policy reported 87 statuses and 72 classified coordinates; generated-surface parity remained 33 HTTP operations at OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715; workflow, frozen 1.0.0 version, Ruff, Cargo formatting, Python syntax, and diff checks passed
+authoring correction: the first multi-hunk agent-bootstrap patch found a stale context and made no change; it was reapplied against the exact reviewed lines before verification
+failure/crash/differential evidence: no product verification command failed. Existing tests prove strict three-proposal router shapes and bounds; unrepresented-seat denial; subject-digest-only provider storage; temporal representation replacement; persistent seat reopen; and warp-to-context behavior. They do not prove an installed specialization, generic-template neutrality, session-to-provider authentication, same-stamp representation/authorization/routing, RouterBackend dispatch, attributed CAS, native seat access, provider conformance, or the final graph/BM25/vector/Arrow/DataFusion reasoning flow; POAM-007 and POAM-009 retain those exact deficiencies
+not run and reason: no full workspace test suite, installation/attunement executor, provider/RouterBackend/LFG conformance, identity denial matrix, complete rrflowMX/rrflowKV semantic differential, crash/ENOSPC/resource matrix, graph/BM25/vector/RRF/streamed Arrow/DataFusion context flow, SDK/MCP/Connectome corpus, or release/deployment qualification was run because this package classifies one documentation authority and changes no implementation behavior; those proofs require their dependency-ordered gates
+remaining known errors: 13 KB-05 records remain; A-06/A-07 are incomplete; POAM-007 and POAM-009 remain; `MemoryEstate*` naming, hardcoded Clyffy CLI defaults, caller-committed identity plans, broad snapshot seat resolution, arbitrary `Producer.actor` attribution, absent installed specialization, absent same-stamp authenticated seat routing, and absent RouterBackend remain in code until their mapped A/C/D/G/H/J packages execute
+roadmap checkbox changed: no
+```
 
 ##### `rrd-security-bootstrap-v1`
 
@@ -1012,7 +1036,10 @@ CLI install conformance test before adding the `install` dispatch to
 `rrflow-cli/src/command.rs`. The versioned template manifest and files under
 `rrflow-cli/templates/project-v1/` own minimal `.rrflow/config.toml`, estate
 identity, native rrflowKV placement, attunement profile, `AGENTS.md`, and
-supported forwarding-only provider files. During development, inputs are
+supported forwarding-only provider files. The specialization manifest selects
+the primary seat and allowed provider-representation candidates. The generic
+template has no hardcoded persona or provider; this repository's specialization
+selects Clyffy explicitly. During development, inputs are
 embedded in the CLI or resolved relative to an explicitly supplied, locally
 verified candidate-bundle root; J-03 assembles the complete release candidate
 and J-05 signs the reproducible distribution. Apply has no download or
@@ -1029,7 +1056,9 @@ does not open a store, read or generate a secret, contact a provider, or start
 RRD. Apply acquires an exclusive create-new installation lease, proves the
 target has no installed binding/security/canonical state, uses an engine clock,
 and commits installed binding, security state, action checkpoint, audit,
-outbox/commit evidence, and cursor in one `RrdEngine` transaction. Once an
+initial seat definition, outbox/commit evidence, and cursor in one `RrdEngine`
+transaction. Provider representation is activated only from an approved
+binding and stores neither credential nor plaintext provider subject. Once an
 installed binding exists, cold start remains unavailable even if policy is
 missing or damaged.
 
@@ -1245,11 +1274,15 @@ storage path is allowed.
   `rrflow-lfg` adapter; keep embeddings separate.
 - G-02: build a bounded route packet in
   `rrd-engine/src/engine/routing.rs` from one stamp, eligible recipes, verified
-  observations, permitted fields, and budgets.
+  observations, permitted fields, and budgets. Bind the authenticated principal,
+  visible provider-representation edge, resolved durable seat, policy revision,
+  and authorization digest at that same coordinate; never trust a caller actor
+  label as identity.
 - G-03: grammar-constrain and post-validate the three B-02 decision variants;
   malformed or injected output creates no mutation.
 - G-04: execute recipe/branch CAS through direct rrflowKV operations with no
-  DataFusion plan.
+  DataFusion plan, atomically retaining seat attribution, audit, and causal
+  trace with the tree mutation.
 - G-05: lower context requests to semantic rrflowQL intent; physical access
   stays engine-selected.
 - G-06: add reproducible routing/task/invalid/escalation evaluation with model,

@@ -33,6 +33,8 @@ authority over RRFlow lifecycle or state.
 Installation must eventually persist one immutable, versioned specialization
 manifest through `RrdEngine`. Its identity and digest bind:
 
+- the primary RRFlow seat definition and allowed provider-representation
+  candidates, without embedding provider credentials;
 - estate, project, instance, source snapshot, schema, catalogue, and policy
   coordinates;
 - discovered languages, frameworks, build systems, data sources, and verified
@@ -45,6 +47,29 @@ manifest through `RrdEngine`. Its identity and digest bind:
 Providers receive a bounded projection of this manifest through public RRFlow
 operations. They never receive raw KV keys, plaintext credentials, unrestricted
 workspace content, or authority to mutate the manifest directly.
+
+### Seat and provider truth
+
+The generic template has no built-in persona or provider. A specialization may
+select a durable primary seat and propose provider identities that can represent
+it. This repository's planned specialization must select **Clyffy**. Clyffy is
+a seat, not another product, kernel, repository, daemon, database, model, or
+lifecycle. Changing Claude, OpenAI, Gemini, Grok, LFG, or another provider does
+not replace that identity.
+
+An installed provider binding records the provider and model identifiers,
+adapter and protocol revisions, declared context/tool/streaming capabilities,
+input and output bounds, quota/rate-limit behavior, timeout/retry policy, and
+observable latency/resource fields. It references a credential capability but
+never pools or copies credentials between providers. RRFlow does not equate
+provider-specific effort labels, infer hidden reasoning, or present an
+unobservable capability as measured fact.
+
+At invocation time, `RrdEngine` must authenticate the exact provider identity,
+resolve its current `rrflow-represents` edge and the durable seat at one
+`ReadStamp`, then independently authorize the requested operation. A
+representation proves attribution only. The complete contract and current gaps
+are owned by the [seat-identity reference](seat-identity.md).
 
 ## Independent engine and project integration
 
@@ -105,6 +130,12 @@ Characterization, differential, failure-injection, and restart evidence must
 show that the adapted behavior belongs to the cohesive RRFlow engine before a
 prior implementation is removed.
 
+All first-party RRFlow and Clyffy execution code must remain Rust source inside
+this repository and ship in the self-contained RRFlow distribution. Go is an
+eligible outward SDK or explicitly installed generator, harness, or project
+capability under the adapter rules above. It is never an alternate Clyffy
+kernel, state store, router authority, or orchestration runtime.
+
 ## Installation and attunement
 
 The frozen contract already defines fresh/existing project targets; the ordered
@@ -118,16 +149,20 @@ connect -> inventory -> parse -> normalize -> entity-link
 ```
 
 `initialize_instance` is also the only initial-security bootstrap. Its action
-digest binds the project/estate/instance identity, storage profile, initial
+digest binds the project/estate/instance identity, primary seat definition,
+allowed provider-representation candidates, storage profile, initial
 principals/roles/grants, typed credential-verifier policy, opaque credential
 source or generation action, and the configuration/template/specialization
 digests. Preview displays those semantics but does not open storage, read or
 generate a secret, write a locator, contact a provider, or start RRD. Apply
 uses a local privileged fresh-target lease, engine-observed time, and the exact
-plan digest to atomically commit the installed binding, initial security
-authority, action checkpoint, audit, and commit evidence through `RrdEngine`.
-An already installed estate requires ordinary authenticated security
-administration; missing or damaged policy never re-enables cold start.
+plan digest to atomically commit the installed binding, primary seat, initial
+security authority, action checkpoint, audit, and commit evidence through
+`RrdEngine`. A provider representation becomes active only after the exact
+provider identity is authenticated and the previewed binding is authorized; no
+credential or plaintext provider subject enters the seat graph. An already
+installed estate requires ordinary authenticated security administration;
+missing or damaged policy never re-enables cold start.
 
 Credential values are not installation-plan data. The baseline generates a
 high-entropy machine credential and delivers it only through the previewed

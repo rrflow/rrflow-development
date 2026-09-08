@@ -170,6 +170,14 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
 }
 
 FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
+    "crates/kernel/rrd-core/src/claim.rs": (
+        "C-03",
+        "G-02",
+        "G-04",
+        "H-04",
+        "H-05",
+        "J-01",
+    ),
     "crates/kernel/rrd-core/src/runtime.rs": ("C-02", "C-03", "H-05"),
     "crates/kernel/rrd-core/src/reasoning_tree.rs": (
         "B-03",
@@ -179,6 +187,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-01",
         "H-05",
     ),
+    "crates/kernel/rrd-core/tests/golden.rs": ("C-01", "J-01"),
     "crates/persistence/rrd-lsm/src/database.rs": (
         "C-02",
         "C-04",
@@ -289,6 +298,27 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-01",
         "H-02",
     ),
+    "crates/authority/rrd-engine/src/engine/memory_estate.rs": (
+        "C-03",
+        "D-01",
+        "E-01",
+        "E-02",
+        "G-02",
+        "H-01",
+        "H-04",
+        "H-05",
+        "J-01",
+    ),
+    "crates/authority/rrd-engine/src/engine/tests/memory_estate.rs": (
+        "C-03",
+        "D-01",
+        "G-02",
+        "G-04",
+        "H-01",
+        "H-04",
+        "H-05",
+        "J-01",
+    ),
     "crates/authority/rrd-engine/src/engine/retrieval.rs": ("F-03", "H-01", "H-02"),
     "crates/authority/rrd-engine/src/engine/retrieval_query.rs": (
         "E-05",
@@ -326,6 +356,14 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-04",
         "H-05",
         "J-02",
+    ),
+    "crates/authority/rrd-engine/src/operator.rs": (
+        "C-03",
+        "G-02",
+        "G-04",
+        "H-04",
+        "H-05",
+        "J-01",
     ),
     "crates/authority/rrd-engine/src/engine/inference.rs": (
         "D-05",
@@ -381,7 +419,34 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
+    "crates/adapters/rrflow-cli/src/command.rs": (
+        "C-03",
+        "D-01",
+        "G-02",
+        "H-01",
+        "H-04",
+        "H-05",
+        "J-01",
+    ),
+    "crates/adapters/rrflow-cli/tests/operator_surface.rs": (
+        "C-03",
+        "D-01",
+        "G-02",
+        "G-04",
+        "H-01",
+        "H-04",
+        "H-05",
+        "J-01",
+    ),
     "crates/transport/rrd-contract/src/attunement.rs": ("D-01", "D-02", "D-05"),
+    "crates/transport/rrd-contract/src/memory_estate.rs": (
+        "C-03",
+        "D-01",
+        "G-02",
+        "H-01",
+        "H-04",
+        "J-01",
+    ),
     "crates/transport/rrd-contract/src/router.rs": ("B-03", "G-01", "G-02", "G-03"),
     "crates/transport/rrd-contract/src/reasoning_tree.rs": (
         "B-03",
@@ -390,6 +455,14 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "G-04",
         "H-01",
         "H-05",
+    ),
+    "crates/operations/rrd-cluster/src/node_runtime.rs": (
+        "D-01",
+        "G-02",
+        "H-04",
+        "H-05",
+        "J-01",
+        "J-02",
     ),
     "deploy/kubernetes/example-rrdinstance.json": (
         "A-07",
@@ -415,6 +488,11 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
 }
 
 REMOVE_OR_REWRITE = {
+    "crates/kernel/rrd-core/src/claim.rs": "derive any producer attribution from the authenticated principal and same-stamp provider representation; an arbitrary actor string cannot authorize, resolve a seat, or persist routed work",
+    "crates/transport/rrd-contract/src/memory_estate.rs": "rename the ambiguous MemoryEstate contract directly to canonical seat and provider-representation vocabulary while preserving validation, subject-digest redaction, and temporal relation semantics; leave no alias",
+    "crates/authority/rrd-engine/src/engine/memory_estate.rs": "move seat planning and commit into one authenticated engine operation, consume the installed specialization, and replace broad snapshot reconstruction with canonical native graph/index access; leave no old module or type alias",
+    "crates/authority/rrd-engine/src/operator.rs": "bind claim attribution to canonical authenticated identity and representation semantics rather than accepting Producer.actor as sufficient identity",
+    "crates/adapters/rrflow-cli/src/command.rs": "remove hardcoded Clyffy identity defaults and caller-selected actor attribution; consume the installed specialization and public authenticated engine operations",
     "crates/authority/rrd-engine/src/engine/security_bootstrap.rs": "absorb strict validation, bounded secret input, atomic initial policy/audit, exact replay, and drift denial into the D-01 install authority; remove the static rrflowKV/path/time opener and manifest dialect",
     "crates/adapters/rrflow-cli/src/bin/rrd-security-bootstrap.rs": "delete after the sole rrflow install preview/apply path performs engine-owned cold-start security; leave no forwarding binary",
     "crates/adapters/rrflow-cli/tests/security_bootstrap.rs": "move useful validation, redaction, replay, drift, and reopen cases into install conformance plus engine crash/secret matrices; reject the old command and manifest shape",

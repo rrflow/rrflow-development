@@ -38,6 +38,8 @@ RRFlow — AI governance, reasoning, recall, and context platform
 │       → exact reranking
 │
 ├── RRFlow inference — replaceable embedding and LFG adapters
+├── RRFlow seats — durable provider-neutral identities; Clyffy is this
+│   repository's primary specialization
 ├── RRFlow attunement — committed project tree → derived project knowledge
 ├── RRFlow automation — committed events, triggers, routines, and skills
 ├── RRFlow Security — identity, sessions, policy, authorization, and audit
@@ -71,6 +73,7 @@ authoritative databases or engines.
 | **project-tree snapshot** | One deterministic, bounded, committed inventory of observed root-relative project entries, errors, containment, policy, and change evidence; it is the required input to parsing and later attunement phases. | Pure proposal construction in planned `rrd-attunement`; authorized reads and commit coordination in `RrdEngine`. |
 | **RRFlow vector subsystem** | Native vector-database capability inside rrflowDB: exact values, payload filters, candidate indexes, and exact reranking. | `rrd-vector`, `rrd-query`, and `RrdEngine` |
 | **RRFlow inference** | Provider-neutral execution of embedding and routing models. | `rrd-inference`; LFG is a constrained routing adapter. |
+| **RRFlow seat** | A durable provider-neutral identity represented by one or more authenticated provider identities at a read coordinate; representation establishes attribution, not authorization. Clyffy is this repository's primary seat specialization, not another kernel, repository, runtime, or provider. | Canonical seat/provider/relation values in rrflowDB; resolution, authorization, routing, and mutation through `RrdEngine`. |
 | **engine event** | One immutable, identity- and provenance-bound occurrence committed through `RrdEngine`; it is data, not a callback or lifecycle owner. | Canonical event value in the RRFlow kernel, public submission envelope in `rrd-contract`, and semantic persistence through `rrd-store`. |
 | **trigger** | A persisted deterministic condition over committed engine events that may propose an authorized operation or routine start but cannot mutate independently. | `RrdEngine` evaluation over rrflowDB state. |
 | **routine** | A versioned, durable graph of public `RrdEngine` operations with explicit state, budgets, leases, checkpoints, cancellation, compensation, verification, and terminal outcome. | Definition and run state in rrflowDB; orchestration in `RrdEngine`. |

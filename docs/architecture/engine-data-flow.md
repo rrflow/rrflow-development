@@ -216,6 +216,60 @@ Arrow-to-tensor feature bridge. The model returns a grammar-constrained
 proposal; deterministic predicates, authorization, CAS, and persistence remain
 engine operations.
 
+## Seat attribution and routing flow
+
+```text
+provider credential or local principal
+                 |
+        authenticate exact identity
+                 |
+ capture one policy/data ReadStamp
+                 |
+ resolve visible rrflow-represents edge
+                 |
+ durable seat attribution (for example Clyffy)
+                 |
+ authorize requested semantic operation
+                 |
+ RrdEngine builds bounded route packet
+                 |
+ RouterBackend returns one proposal
+ select_recipe | advance_branch | request_context
+                 |
+ RrdEngine validates cursor, policy, fields, and budget
+          +------+------+
+          |             |
+   fast-path CAS   semantic context intent
+          |             |
+          +------+------+
+                 |
+ atomic state + attribution + audit + trace commit
+```
+
+The authenticated identity, visible representation edge, resolved seat,
+authorization digest, reasoning cursor, route input digest, proposal digest,
+and commit receipt belong to one causal operation. Representation answers
+"which durable seat is this principal acting for?" It does not grant the
+operation. Ordinary policy can still deny the represented seat, and an actor
+label supplied by a caller is never identity evidence.
+
+Clyffy is the primary seat specialization for this repository, not a routing
+model or a parallel orchestration runtime. A provider-neutral `RouterBackend`
+can propose only the three decisions above. It cannot evaluate protected edge
+conditions, select physical keys or indexes, invoke DataFusion directly,
+authorize itself, or write state. A `request_context` proposal becomes the same
+stamped semantic rrflowQL/context request available to other public clients;
+`RrdEngine` and the planner select native graph, BM25, vector, or analytical
+access.
+
+The checkout currently persists and reopens seat/provider/representation
+records and resolves record warps through context assembly. It also freezes the
+three router proposal shapes. It does not yet authenticate a provider identity
+into that representation graph, bind seat attribution into the route packet,
+dispatch a `RouterBackend`, or atomically persist routed tree state with the
+attribution and audit evidence. Those are D-01, C-03, G-01 through G-05, H-04,
+and H-05 work, not implemented flow.
+
 ## Context assembly contract
 
 The provider-neutral operation is `context-assemble`, served at

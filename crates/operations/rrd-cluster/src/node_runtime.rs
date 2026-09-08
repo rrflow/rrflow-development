@@ -2,9 +2,9 @@
 //!
 //! Raft traffic uses the authenticated transport. Administrative lifecycle
 //! commands use a bounded, versioned JSON-lines protocol over the process's
-//! inherited stdin/stdout. Keeping this surface off the network makes the
-//! executable safe to supervise while Clyffy grows a separately authenticated
-//! management plane.
+//! inherited stdin/stdout. This is current cluster characterization, not a
+//! canonical lifecycle or administrative authority; the distributed
+//! convergence gate must place administration behind `RrdEngine`.
 
 use crate::transport::RrdConsensusCommitError;
 use crate::{
