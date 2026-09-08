@@ -48,14 +48,26 @@ layout is:
 ```text
 sdks/go/
 ├── go.mod
+├── doc.go
+├── config.go
 ├── client.go
-├── models.go
+├── endpoint.go
+├── errors.go
+├── operation.go
+├── retry.go
+├── session.go
+├── transport.go
 ├── endpoints_gen.go
 ├── client_test.go
 └── cmd/
     ├── generate/main.go
     └── conformance/main.go
 ```
+
+A-07.1e directly produced this layout from the former 498-line `client.go`
+and catch-all `models.go`. `client.go` is now the 114-line public facade,
+`models.go` is absent, and every current responsibility has one source owner.
+This is source topology, not qualification of the incomplete behaviors below.
 
 `Client` is a synchronous API whose methods accept `context.Context`. It has
 helpers for capabilities, endpoint catalogue, OpenAPI, and session creation,
@@ -313,7 +325,7 @@ Automatic Go toolchain selection can download another toolchain, so a release
 test must explicitly distinguish a locally available supported toolchain from
 network-assisted success.
 
-The nested module currently has no `doc.go`, package examples,
+The nested module now has `doc.go`, but it still has no package examples,
 exported-API documentation gate, tagged-version proof, module archive
 inventory, external consumer test, supported OS/architecture matrix, or
 signed provenance. A clean `go mod tidy -diff` and a dependency-free test with
@@ -371,10 +383,11 @@ native document/temporal-graph/scalar/BM25/vector access, bounded RRF context
 selection, streamed Arrow/DataFusion analytics, and persisted
 reasoning/feedback. Go proves only faithful access to that engine.
 
-## Direct-convergence file plan
+## Current and gated file plan
 
-Go source remains one `rrd` package and is split by responsibility; it does
-not gain a second service, runtime, or `internal` engine:
+Go source remains one `rrd` package split by responsibility; it does not gain
+a second service, runtime, or `internal` engine. A-07.1e established this
+current source tree:
 
 ```text
 sdks/go/
@@ -382,35 +395,36 @@ sdks/go/
 ├── doc.go                         # package contract and canonical links
 ├── config.go                      # validated public construction inputs
 ├── client.go                      # narrow concurrent public facade
-├── endpoint.go                    # installed candidates and identities
-├── errors.go                      # closed redacted error hierarchy
-├── operation.go                   # generated binding and full validation
-├── retry.go                       # semantic retry/deadline/certainty policy
-├── session.go                     # opaque secret-bearing handle
-├── subscription.go                # multiplexed protocol state machine
-├── transport.go                   # bounded HTTP/WebSocket carriage ports
+├── endpoint.go                    # current loopback endpoint policy
+├── errors.go                      # current API-error representation
+├── operation.go                   # current generic operation construction
+├── retry.go                       # current broad attempt/deadline behavior
+├── session.go                     # current plain secret-bearing values
+├── transport.go                   # current bounded HTTP response decoding
 ├── endpoints_gen.go               # catalogue-derived descriptor projection
-├── models_gen.go                  # catalogue-derived request/result models
-├── operation_coverage_test.go
-├── protocol_validation_test.go
-├── transport_faults_test.go
-├── subscription_test.go
-├── package_consumer_test.go
+├── client_test.go                 # existing mock characterization
 └── cmd/
     ├── generate/main.go
     └── conformance/main.go
 ```
 
+The following files remain deliberately absent until their assigned gate adds
+real behavior: `subscription.go` (B-04), `models_gen.go` (H-04),
+`operation_coverage_test.go` and `protocol_validation_test.go` (H-04),
+`transport_faults_test.go` (B-04/H-04/H-07/J-02),
+`subscription_test.go` (B-04/H-04/J-02), and
+`package_consumer_test.go` (J-03/J-05).
+
 The dependency order is:
 
-1. **A-07:** mechanically split current `client.go` and `models.go`
-   responsibilities into the accepted source files; add package
-   documentation; preserve current generation, loopback/redirect denial,
+1. **A-07 SDK split (completed by A-07.1e):** the former `client.go` and
+   `models.go` responsibilities are directly split into the current tree
+   above; package documentation, generation, loopback/redirect denial,
    context propagation, envelope construction, response byte limit,
-   fail-closed harness input, race behavior, and `client_test.go`
-   characterization. Remove `models.go` after each type has one destination;
-   retain `client.go` only as the narrow facade. Do not invent validation,
-   socket, resolver, or package-release success.
+   fail-closed harness input,
+   race behavior, and `client_test.go` characterization are preserved.
+   `models.go` is absent and `client.go` is only the narrow facade. No
+   validation, socket, resolver, or package-release success was invented.
 2. **B-04:** implement the shared multiplexed state machine, Go carriage,
    correlated cancellation, and bounded goroutine/queue ownership.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap and

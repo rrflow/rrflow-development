@@ -95,19 +95,21 @@ A-06 is complete: the checkout knowledge package is classified,
 content-addressed, reproducible, and ready for later authorized import. A-07.0
 has bound every current package/root and capability family to its existing
 public surface, evidence, canonical destination, and direct-removal obligation.
-The first four bounded A-07.1 slices have directly converged the
+The first five bounded A-07.1 slices have directly converged the
 governed-function catalogue and transaction-binding vocabulary, isolated that
 implementation under its function boundary, split the Rust SDK by accepted
 responsibility, made its public session handle credential-private and
-redaction-safe, and split the TypeScript and Python SDKs' existing HTTP
+redaction-safe, and split the TypeScript, Python, and Go SDKs' existing HTTP
 behavior without inventing absent asynchronous or WebSocket surfaces. Python's
 catch-all model module is gone and its package now carries the PEP 561 typing
-marker. The retained characterization includes the initial function
+marker; Go's catch-all model module is gone and its package now has an
+idiomatic documented responsibility layout. The retained characterization
+includes the initial function
 rrflowMX/rrflowKV/reopen corpus, the Rust client's real
-loopback/mutual-TLS/WebSocket server corpus, and both generated HTTP SDKs'
+loopback/mutual-TLS/WebSocket server corpus, and all three generated HTTP SDKs'
 mock, fail-closed, and shared real-daemon corpora. These slices do not qualify
 their capabilities or complete A-07. The next executable subpackage is the
-[A-07.1e Go SDK boundary](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
+[A-07.1f Java SDK boundary](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
 B-01 and B-02 remain completed contract work; later Gate B work remains paused
 until all of A-07 is complete.
 

@@ -103,7 +103,7 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1e**, the Go SDK responsibility
+The next executable item is **A-07.1f**, the Java SDK responsibility
 boundary inside the package and type vocabulary work. A-07.0 completed the
 reviewed implementation-requirements mapping. A-07.1a directly converged the
 governed-function catalogue/binding vocabulary and module boundary. A-07.1b
@@ -113,8 +113,11 @@ surface. A-07.1c split the TypeScript client's real HTTP responsibilities and
 renamed its conformance entry without inventing an absent WebSocket module.
 A-07.1d split the Python client's existing synchronous responsibilities,
 removed its catch-all model module, and added the package typing marker without
-inventing async or socket behavior. None of these slices qualifies its
-capability or completes A-07. B-01 and B-02 remain completed contract work; no
+inventing async or socket behavior. A-07.1e split the Go client's existing
+HTTP responsibilities, removed its catch-all model module, and added package
+documentation without inventing socket or generated-model behavior. None of
+these slices qualifies its capability or completes A-07. B-01 and B-02 remain
+completed contract work; no
 further Gate B work proceeds until A-07 corrects the complete pre-release
 source, package, public, and trace-vocabulary assumptions.
 
@@ -395,6 +398,33 @@ A-07.1d Python SDK responsibility-boundary evidence (2026-09-08):
   closure, and installed MX/KV conformance remain owned by B/D/H/J and
   POAM-011.
 - A-07 and A-07.1 remain unchecked; A-07.1e is next.
+
+A-07.1e Go SDK responsibility-boundary evidence (2026-09-08):
+
+- The former 498-line `sdks/go/client.go` responsibility monolith is now a
+  114-line public facade. Current construction/configuration, loopback endpoint
+  policy, API errors, operation/resource/envelope construction, broad
+  retry/deadline behavior, plain credentials/sessions, and bounded HTTP
+  response decoding live directly in `config.go`, `endpoint.go`, `errors.go`,
+  `operation.go`, `retry.go`, `session.go`, and `transport.go`; `doc.go`
+  declares the package boundary.
+- The catch-all `models.go` is absent with no alias or forwarding file. All ten
+  former exported types and all six public `Client` methods remain, the
+  generated 33-operation projection is byte-stable, and future
+  `subscription.go`, `models_gen.go`, and qualification tests remain absent
+  until their B/H/J behavior exists.
+- Go test, race, vet, generator drift, module-tidy, and network-disabled
+  local-toolchain checks passed on Go 1.26.0/Linux amd64. Direct
+  manifest-absent conformance failed closed, while the shared real-daemon
+  corpus passed through all six SDKs at corpus digest
+  `b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2`.
+- This is structural source convergence, not Go SDK or engine qualification.
+  Concrete operation models, exact status/media/payload/identity validation,
+  opaque credentials, semantic retry/uncertainty, correlated server
+  cancellation, explicit bounded HTTP/WebSocket carriage, W3C propagation,
+  HTTPS/mesh resolution, supported toolchain/platform/consumer artifacts, and
+  installed MX/KV conformance remain owned by B/D/H/J and POAM-011.
+- A-07 and A-07.1 remain unchecked; A-07.1f is next.
 
 A-02 evidence (2026-09-04):
 
