@@ -49,16 +49,18 @@ the repository [`README.md`](../../README.md). Research notes may compare foreig
 terms, but they must link to that list instead of restating or redefining RRD
 terminology.
 
-## Existing RRD research and architecture notes
+## Existing RRFlow research and supporting notes
 
-The following reviewed history and unclassified flat records participate in
-this research trail; listing them here does not make them current authority:
+The following reviewed history, supporting references, and unclassified flat
+records participate in this research trail; listing them here does not transfer
+their authority into this index:
 
 - [`rrflow-system-convergence-architecture-research.md`](rrflow-system-convergence-architecture-research.md)
   (active primary-source basis for the 1.0 execution map)
 - [`rrd-data-services-architecture-research.md`](../history/rrd-data-services-architecture-research.md) (historical)
 - [`estate-control-v1.md`](../estate-control-v1.md) (unclassified)
-- [`local-estate-authorization-v1.md`](../local-estate-authorization-v1.md) (unclassified)
+- [`local-estate-authorization.md`](../reference/security/local-estate-authorization.md)
+  (active supporting security reference)
 - [`instance-topology.md`](../instance-topology.md) (unclassified)
 
 ## Historical research follow-ups

@@ -132,6 +132,13 @@ features; new install, attunement, routing, event, trigger, routine, skill, and
 adapter actions are introduced only with their typed engine operation and
 denial tests.
 
+The current [local-estate authorization](local-estate-authorization.md) path
+does not follow this authority. It evaluates a separate file policy and
+permission enum, then opens an engine by caller-supplied path and performs
+estate mutations without a canonical principal grant or invocation. Its useful
+exact-scope and denial-before-creation properties must be absorbed directly;
+the local file policy receives no permanent or compatibility status.
+
 The final install path must create or bind all required key material through a
 previewed, digest-bound, provider-neutral `rrflow install` plan. The existing
 standalone `rrd-security-bootstrap` helper accepts a database path, manifest,
@@ -246,6 +253,12 @@ The complete review found these direct-convergence requirements:
    attunement, routing, engine-event, trigger, routine, skill, and adapter
    operations. Their vocabulary must expand only with the owning implemented
    public operation, never as speculative permission strings.
+8. `rrd-estate::LocalOperatorPolicy` is a second file-backed identity and
+   permission authority. Estate administration and recovery accept
+   caller-selected database/policy/key/time coordinates, bypass canonical
+   sessions and `RrdOperation::EstateAdmin`, and collapse narrower permissions
+   into a broad allowed audit label. A-07 must absorb its seven real effect
+   distinctions into this authority and delete the parallel types and path.
 
 These are tracked by the [POA&M](../../poam/rrflow-1.0-alpha.md). They are not
 silently repaired during this documentation-classification package and do not
