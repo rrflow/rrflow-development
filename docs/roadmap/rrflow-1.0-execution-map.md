@@ -283,8 +283,9 @@ complete.
 | Generic reasoning trees, routing, and governed mutation | `rrd-core/src/reasoning_tree.rs`; `rrd-contract/src/{reasoning_tree,router}.rs`; `rrd-engine/src/engine/{context,transaction}.rs` | `rrd-core/tests/{reasoning_tree_contract,reasoning_trace_link}.rs`; `rrd-contract/tests/{reasoning_tree_contract,router_contract}.rs`; `rrd-engine/src/engine/tests/{context,transaction_stamp}.rs` | Preserve the accepted generic tree and three bounded routing decisions; add persisted CAS execution, the model-manifest handshake, constrained LFG dispatch, and engine-selected physical work without a fixed lifecycle. | B-03, G-01 through G-05, H-01, H-05 |
 | Durable seat identity, provider representation, and routing attribution | `rrd-contract/src/memory_estate.rs`; `rrd-engine/src/engine/memory_estate.rs`; `rrd-engine/src/operator.rs`; `rrd-core/src/claim.rs`; `rrflow-cli/src/command.rs` | `rrd-engine/src/engine/tests/memory_estate.rs`; `rrflow-cli/tests/operator_surface.rs::identity_bind_resolve_and_readme_warp_share_the_persistent_engine`; `rrd-contract/tests/router_contract.rs`; claim/store golden and grounding tests | Preserve subject-digest redaction, temporal provider-to-seat representation, unrepresented denial, replacement, persistent reopen, and warp-to-context behavior. Rename the ambiguous `MemoryEstate*` surface directly; make D-01 install the specialization-selected seat without a generic Clyffy default; bind the authenticated provider identity, visible representation edge, seat, policy, route packet, proposal, mutation, audit, and trace at one coordinate; reject arbitrary producer actor strings as identity; replace broad snapshot resolution with canonical native access. | A-07, C-03, D-01, G-01 through G-05, H-01, H-04, H-05, J-01 |
 | Context projection maintenance draft | `rrd-maintenance/src/lib.rs` | no focused package test and no caller outside the package; the exhaustive preservation/disposition matrix is owned by `docs/reference/context/context-maintenance.md` | Preserve source-cut inventory/accounting, proposal and evidence completeness, review attribution, optimistic conflicts, digest lineage, atomic publication, generation ownership, observation, and compensating rollback through new generic-routine acceptance tests. Replace the direct `StorageEngine`, private scope/event/repository, cursor-zero replay, JSON-wrapper records, fixed seven-stage lifecycle, hardcoded classes/reduction/token policy, and package-local API with generic I-03 routine state and authorized `RrdEngine` operations; remove the standalone crate only after every preserved/generalized matrix row is covered, with no wrapper. | A-07, C-03, C-04, H-02, H-05, I-01, I-03, J-01 |
+| Governed functions and proposed-transaction bindings | `rrd-contract/src/{function,lib}.rs`; `rrd-engine/src/engine/{automation,transaction,security,mod}.rs`; `rrd-engine/src/capabilities.rs`; `rrd-engine/Cargo.toml`; `rrd-store/src/control.rs`; locked `rquickjs`/`wasmi` versions in `Cargo.lock` | `rrd-contract::function::tests`; `rrd-engine::engine::tests::automation`; `rrd-store::control::tests`; no function golden fixture, MX/KV differential, effect-complete audit crash test, runtime-build/target corpus, physical-size boundary, installation test, or outward conformance exists | Preserve closed digests, canonical ordering, byte/depth/item/numeric bounds, single-attempt semantics, fresh runtimes, memory/stack/interrupt/fuel controls, import denial, revision pinning, no recursive rematch, validator denial, and derived-event commit behavior. Directly rename the catalogue and transaction binding family; split `engine/automation.rs` into `engine/function/{mod,catalogue,execution,javascript,webassembly,transaction_binding}.rs`; bind closed schemas, content-addressed artifacts, explicit runtime profiles/builds, prepared receipts, and physically satisfiable limits; replace private control JSON/direct-store access with typed stamped state; commit allowed receipt/audit/event/outbox/domain/index effects atomically; keep JSON sandboxes separate from vectorized rrflowQL/DataFusion functions; add offline install, MX/KV, crash/reopen/upgrade, resource/security, and real-surface proof. | A-07, C-01 through C-04, D-01, F-03, H-04, H-05, I-01, I-02, I-06, J-01 through J-05 |
 | Installation, attunement, and explicit automation | `rrd-contract/src/attunement.rs`; `rrd-engine/src/engine/automation.rs`; `rrflow-cli/src/{command,dev}.rs` | `rrd-contract/tests/attunement_contract.rs`; `rrd-engine/src/engine/tests/{automation,deployment_conformance,lifecycle,recovery}.rs`; `rrflow-cli/tests/operator_surface.rs` | Build bundle-resident preview/apply, installed credential references, persisted phase jobs, incremental project specialization, canonical events, resumable routines, digest-bound skills, and optional host translators under the one `RrdEngine` authority. Estate provisioning and local authorization remain traced in their dedicated estate/security rows rather than duplicated here. | A-07, D, H-04, I, J-01, J-03, J-05 |
-| Project command discovery, installed capability bindings, and external activities | `rrd-contract/src/function.rs`; `rrd-engine/src/engine/automation.rs`; `rrd-core/src/{runtime,trace}.rs`; `rrd-engine/src/runtime/trace.rs`; `rrd-estate/src/local_process.rs`; `rrflow-cli/src/dev/supervisor.rs`; `rrflow-eval/src/main.rs` | function contract/unit and engine automation tests; engine lifecycle/trace tests; local-process characterization; CLI supervisor tests; no command-capability, discovery, activity, adapter, or cross-profile conformance test exists | Retain the bounded deterministic function sandbox under function-only names, durable causal trace evidence, and the useful no-shell/path/identity/timeout/effect-gap process safety. Keep provider CLI invocation confined to evaluation. Add pure discovered-fact/candidate/binding/activity/observation/receipt contracts; deterministic discovery; engine-owned prepared dispatch, accepted receipt, reconciliation, and re-inventory; and one outward local activity adapter. Distinguish authenticated direct-process argv from package-script closures that may invoke a shell; deny incomplete closures, ambient authority, adapter-authored completion, and direct storage/query/index access. | A-07, C-03, C-04, D-03, D-06, H-05, I-01, I-03, I-06, I-07, J-01 through J-05 |
+| Project command discovery, installed capability bindings, and external activities | `rrd-contract/src/function.rs`; `rrd-engine/src/engine/automation.rs`; `rrd-core/src/{runtime,trace}.rs`; `rrd-engine/src/runtime/trace.rs`; `rrd-estate/src/local_process.rs`; `rrflow-cli/src/dev/supervisor.rs`; `rrflow-eval/src/main.rs` | function contract/unit and engine automation tests; engine lifecycle/trace tests; local-process characterization; CLI supervisor tests; no command-capability, discovery, activity, adapter, or cross-profile conformance test exists | Retain the bounded function sandbox under function-only names, durable causal trace evidence, and the useful no-shell/path/identity/timeout/effect-gap process safety. Keep provider CLI invocation confined to evaluation. Add pure discovered-fact/candidate/binding/activity/observation/receipt contracts; deterministic discovery; engine-owned prepared dispatch, accepted receipt, reconciliation, and re-inventory; and one outward local activity adapter. Distinguish authenticated direct-process argv from package-script closures that may invoke a shell; deny incomplete closures, ambient authority, adapter-authored completion, and direct storage/query/index access. | A-07, C-03, C-04, D-03, D-06, H-05, I-01, I-03, I-06, I-07, J-01 through J-05 |
 | Installed project, estate, instance, environment, and physical topology | `rrd-engine/src/runtime/{instance,mod}.rs`; `rrd-contract/src/{platform,lib}.rs`; `rrd-estate/src/authority.rs`; `rrd-server/src/{main,http/server}.rs`; `rrd-cluster/src/{lib,contract}.rs` | `rrd-engine/tests/runtime_instance.rs`; `rrd-contract/tests/platform_terminology.rs`; `rrd-estate/tests/authority_catalogue.rs`; `rrd-cluster/tests/contracts.rs`; initialization callers inventoried across server, CLI, MCP, Rust client fixtures, and engine tests | Preserve canonical IDs, strict format/input rejection, exact-root containment, foreign-store denial, digest validation, desired/observed and cluster placement/snapshot/transfer safety. Replace the three competing hierarchies with one project ↔ estate ↔ instance relationship graph, operation-specific resource paths, a minimal D-01 locator, and one engine-persisted installed-estate binding shared by rrflowMX and rrflowKV. Remove startup-created manifests, historical word-order authority, private JSON binding, and duplicate operational topology with no compatibility reader. | A-07, B-04, C-02, C-03, D-01 through D-03, D-06, H-04, H-07, J-01, J-03, J-05 |
 | Distributed placement, consensus, consistency, replica recovery, transport, and qualification | `rrd-cluster/src/{contract,authority,artifact_transfer,artifact_trace,openraft_adapter,transport,node_runtime,sim,telemetry}.rs`; `rrd-cluster/src/bin/rrd-cluster-node.rs`; `rrd-engine/src/engine/distributed.rs`; `rrd-engine/src/runtime/cluster_transfer.rs` | every `rrd-cluster/tests/{contracts,distributed_authority,artifact_transfer,model_check,simulation,openraft_storage,openraft_snapshot_file,openraft_cluster,openraft_transport,openraft_process}.rs`; `rrd-engine/tests/{distributed_data_plane,runtime_cluster_transfer_trace}.rs`; current full-package failure and hang retained in the distributed reference | Preserve epoch/quorum/failure-domain validation, read modes/stamps/vectors, route evidence, idempotency, Raft log/vote/snapshot safety, authenticated bounded transport, resumable digest-checked artifact closure, admission/telemetry, and replayable faults. Replace loose cluster/tenant/table/scope identity, monolithic JSON catalogue/schema, direct storage/object opening, raw probe/runtime-commit ingress, private transfer-session authority, cursor-zero replay, old/defaulted formats, synthetic trace names, and one-host evidence presented as engine conformance. Replicate only an engine-compiled effect-complete proposal and apply it through an injected engine-owned rrflowKV port; run the complete graph/BM25/vector/RRF/reasoning/Arrow/DataFusion corpus on independent hosts. The first alpha remains single-node; a later roadmap amendment must schedule clustered availability. | A-07, C-01 through C-07, D-01, D-06, E, F, H-04, H-05, H-07, J; later distributed gate required |
 | Deployment profiles and cross-profile conformance | `rrd-contract/src/lib.rs::{DeploymentMode,ServiceCapabilities}`; `rrd-engine/src/engine/core.rs::deployment_mode`; `rrd-server/src/http/capabilities.rs`; `fixtures/rrd-deployment-conformance-v1.json`; every generated SDK projection of `deployment_mode` | `rrd-contract/tests/public_contract.rs`; `rrd-engine/src/engine/tests/deployment_conformance.rs`; `rrd-client/tests/real_server.rs`; `rrd-server/tests/http_process.rs`; `rrflow-edge/tests/offline.rs` | Preserve strict fixture validation, MX durability-operation denial, KV writer exclusion/reopen, current DataFusion invocation, real socket/child-process behavior, TLS identity checks, and deterministic edge artifact reads as narrow characterization. Split deployment form, storage profile, endpoint presentation, and security facts; remove root/TLS/client-location inference and speculative active values; replace the two-document overclaim with layered storage-semantic, durability, form, endpoint, cluster, and derived-artifact corpora proving the full graph/index/vector/Arrow/DataFusion/reasoning flow. | A-07, B-04, C-02 through C-04, D-01, E, F, G-04, G-05, H-01 through H-05, H-07, J |
@@ -340,8 +341,9 @@ survives the owning gate.
 | defaulted older estate substate in `rrd-estate::EstateDocument`, optional recovery-policy decoding in `rrd-estate::{backup_job,recovery}`, and their successful missing-field fixtures | preserve current desired/observed, backup, recovery-policy, receipt, lease, and recovery-point semantics in one required canonical estate schema; remove decoding behavior and success tests that exist only for pre-release documents/jobs and add negative old-shape rejection vectors | A-07, C-05, D-02, D-10, J-01, J-02 |
 | `claim-transactions` and other public transport paths described as compatibility/fallback surfaces | preserve any distinct bounded operation semantics only through the canonical multi-model transaction, subscription, and WebSocket contracts; delete duplicate capability/handler/client success paths after cross-surface conformance passes | B-04, H-03, H-04, J-01 |
 | earlier cluster adapter domains | retain only explicit fail-closed format rejection evidence; no opener or migration path may accept the superseded domain | C-05, J-01 |
-| `rrd-contract::AutomationCatalogue` | directly rename/narrow to the function catalogue after full contract/surface inventory; it cannot imply ownership of routines, skills, or event triggers | A-07, I-03 |
-| `rrd-contract::FunctionTrigger*` | directly rename as proposed-transaction function binding types; reserve `Trigger` for post-commit canonical engine-event predicates | A-07, I-01, I-02 |
+| `rrd-contract::AutomationCatalogue`, `ReplaceAutomationCatalogue`, `ListAutomationCatalogue`, and private `AutomationHead` | directly rename to `FunctionCatalogue`, `ReplaceFunctionCatalogue`, `ListFunctionCatalogue`, and `FunctionCatalogueHead`; `automation` cannot remain a wire field, key family, module authority, or catalogue that implies ownership of routines, skills, or event triggers | A-07, C-01, C-03, J-01 |
+| `rrd-contract::FunctionTrigger*`, `trigger_id`, and catalogue `triggers` | directly rename to `TransactionFunctionBinding`, `TransactionMutationKind`, `TransactionFunctionEffect`, `binding_id`, and `transaction_bindings`; reserve `Trigger` exclusively for post-commit canonical engine-event predicates and reject every successful old shape | A-07, I-01, I-02, J-01 |
+| `server/state/*/automation/{head-v1,revision/*}` plus whole-catalogue JSON/control-journal replacement | replace with typed function artifacts, definitions, transaction bindings, immutable catalogue membership, prepared invocation receipts, and one CAS head through `RrdEngine`; catalogue references never repeat executable bytes and public maxima must fit the physical transaction | C-01, C-03, C-04, J-01, J-02 |
 | `rrflow-eval::run_trial` direct provider-CLI process execution | retain only as an evaluation harness with bounded evidence; it never becomes a runtime capability runner, installed binding, activity adapter, or proof of project-command conformance | A-07, D-06, G-06, I-03, J-02, J-04 |
 | `rrd_core::RuntimeEvent` plus planned public `EngineEvent` | converge into one semantic engine-event vocabulary and one lowering path; no forwarding type or parallel event log | I-01, J-01 |
 | direct-store durable trace helpers under `rrd-engine/src/runtime/trace.rs` | preserve trace evidence behavior behind authorized `RrdEngine` operations; traces never advance jobs or routine state | H-05, I-03, J-01 |
@@ -487,20 +489,19 @@ authority stops the row and updates this map before work continues.
 
 | Order | Record | Review boundary |
 |---:|---|---|
-| 1 | `docs/rrd-functions-v1.md` | Preserve bounded function semantics while preventing a function runtime from becoming lifecycle authority. |
-| 2 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
-| 3 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
-| 4 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
-| 5 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
-| 6 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
-| 7 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
-| 8 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
-| 9 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
-| 10 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
-| 11 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
-| 12 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
+| 1 | `docs/rrd-rust-client-v1.md` | Establish the reference SDK behavior from the implemented Rust client and record open conformance gaps. |
+| 2 | `docs/rrd-typescript-client-v1.md` | Reconcile the generated TypeScript projection against the shared contract and Rust reference behavior. |
+| 3 | `docs/rrd-python-client-v1.md` | Reconcile the generated Python projection against the same contract and evidence. |
+| 4 | `docs/rrd-go-client-v1.md` | Reconcile the generated Go projection without assigning Go orchestration authority. |
+| 5 | `docs/rrd-java-client-v1.md` | Reconcile the generated Java projection against the shared SDK conformance boundary. |
+| 6 | `docs/rrd-dotnet-client-v1.md` | Reconcile the generated .NET projection and close the SDK documentation set. |
+| 7 | `docs/qdrant-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing Qdrant's product model. |
+| 8 | `docs/surrealdb-capability-inventory.md` | Retain a source-pinned capability/reference inventory without importing SurrealDB's authority model. |
+| 9 | `docs/rrflow-surrealdb-differential.md` | Preserve only reproducible claim-differential inputs and results after both source inventories are canonical. |
+| 10 | `docs/anytype-ui-research.md` | Merge useful public-client/Connectome interaction requirements and remove UI product or lifecycle authority. |
+| 11 | `docs/operations/ci.md` | Re-read the retained CI owner, verify its index and commands, and record the final KB-05 supporting-file disposition. |
 
-After row 12, run the complete KB-05/A-06 acceptance corpus and change the
+After row 11, run the complete KB-05/A-06 acceptance corpus and change the
 canonical roadmap checkbox only if it passes. Then execute A-07.0 traceability,
 A-07.1 package/type vocabulary, and A-07.2 causal evidence vocabulary as
 separate journaled packages. B-03 is the next implementation package only
@@ -510,6 +511,7 @@ Resolved full-file reviews:
 
 | Baseline record | Canonical record | Review result |
 |---|---|---|
+| `docs/rrd-functions-v1.md` | `docs/reference/automation/functions.md`; A-07/C/D/F/H/I/J roadmap and execution packages | Preserved closed content digests, sorted catalogue/binding identity, bounded canonical JSON values, byte/depth/item/numeric/resource limits, fresh JavaScript/Wasm execution, Wasm import denial, one-attempt transaction semantics, pinned catalogue revisions, no recursive derived-effect rematch, validator rejection, and derived-event commit behavior. Corrected the stronger-than-evidence deterministic claim and rejected function/catalogue/lifecycle conflation. Full code-path review exposed wrong `AutomationCatalogue`/`FunctionTrigger*` names; direct `StorageEngine` access; private monolithic JSON catalogue keys; a one-MiB control-value limit that cannot represent advertised maximum Wasm content; journal duplication of executable bytes; separate allowed audits before domain commit; replay against an unbound runtime build; incomplete JavaScript/Wasm profiles and typed error limits; absent schemas/artifact/prepared receipts; and no golden, MX/KV, install, outward, or cross-runtime corpus. The canonical record now fixes exact terminology, module destinations, content-addressed persistence, effect-complete commit/recovery, binary/bundle installation, DataFusion separation, and acceptance evidence without claiming runtime completion. POAM-008 remains open. |
 | `docs/package-workflows.md` | `docs/reference/automation/project-command-capabilities.md`; `docs/reference/automation/README.md`; D-06/I-03/I-06 roadmap and execution packages | Renamed the ambiguous flat filename because `workflow` is reserved for durable routines. Preserved semantic capability names, explicit installation, exact bindings, bounded effects, freshness, verification, redaction, evidence, cross-surface authority, and the complete rejection of provider/editor/session hooks. Corrected the unsafe claim that literal `pnpm run` argv makes a command shell-free: direct-process and package-script bindings now have distinct closed invocation semantics, and mutable or unenumerable lifecycle closure fails closed. Added distinct discovered-fact, candidate, installed-binding, prepared-plan, observation, accepted-receipt, and routine-step objects; effect uncertainty/reconciliation; platform-enforced sandbox/resource policy; project re-inventory; rrflowMX/rrflowKV recovery semantics; and the strict graph/index/DataFusion boundary. Full current code/test review proved only the bounded function sandbox, synchronous transaction-function bindings, durable trace foundations, local RRD process safety fragments, duplicate CLI supervisor, and an evaluation-only provider CLI harness. It found no project-command contract, candidate discovery, engine operation, local activity adapter, installation surface, or conformance test. POAM-008 remains open and exact planned files are now assigned; no runtime capability was claimed. |
 | `docs/clyffy-kernel-alpha.md` | `docs/reference/seat-identity.md`; `docs/reference/agent-bootstrap.md`; `docs/architecture/{system-overview,engine-data-flow}.md`; D/G roadmap and execution packages | Preserved Clyffy as this repository's durable provider-neutral seat, explicit provider-representation metadata, bounded provider capability truth, credential separation, three-proposal model routing, engine-owned deterministic decisions, and reproducible provider/model evaluation requirements. Rejected Clyffy as another kernel/repository/release/runtime, RRO/Automaton and Fjall/compatibility authority, separate multi-instance MCP or management plane, provider/session hooks and lifecycle events, fixed product tiers, obsolete milestone/gate completion, and claimed competitive results without final subsystem evidence. Full contract/code review proved persisted subject-digest representation, replacement, unrepresented denial, reopen, and warp-to-context behavior plus the three router proposal shapes; it also exposed ambiguous `MemoryEstate*` naming, Clyffy-hardcoded CLI defaults, caller-committed plans, broad snapshot resolution, arbitrary `Producer.actor` attribution, no installed specialization, no authenticated same-stamp seat/authorization/route binding, and no `RouterBackend`. POAM-007/009 and A/C/D/G/H/J own direct convergence. |
 | `docs/rrd-security-bootstrap-v1.md` | `docs/reference/security/authority.md`; `docs/reference/agent-bootstrap.md`; D-01 roadmap/execution package | Preserved strict input decoding, bounded non-empty regular-file intent, unique identities, complete policy validation, verifier-only persistence, atomic initial policy/audit publication, exact replay, drift denial, and the rule that a network listener never offers unauthenticated bootstrap. Rejected its executable/current status, standalone command and manifest dialect, arbitrary database/absolute credential paths, caller-selected time, false validation-before-open and authenticated-transition claims, resolve-then-open race, provider-specific symlink/mode policy in the engine, no-op non-Unix privacy check, incomplete idempotency coordinates, unbounded credential validity example, SHA-256 as a generic verifier, and CLI/Kubernetes-authored policy. The accepted target is the sole local D-01 `initialize_instance` action with exact preview/apply, fresh-target proof, engine time, typed verifiers, capability-scoped/versioned secret adapters, prepared delivery receipts, one installed-binding/policy/checkpoint/audit transaction, and crash/reopen/secret-accounting evidence; no task guide was published before behavior exists. |
@@ -559,6 +561,26 @@ knowledge moves into its one owner; unresolved work becomes a POA&M row; raw
 reproducible results remain evidence; redundant narrative is removed.
 
 #### KB-05 package journal
+
+##### `governed-functions`
+
+```text
+gate/package: A-06 / KB-05 / governed-functions
+revision: parent c7204f4; result is the commit containing this entry
+baseline files/digests: docs/rrd-functions-v1.md=8bc0d2008f549fb6514fd920117c7b58e735c07e595ee359eea24cd811902dda; rrd-contract/function.rs=cca64b3eb22fd039c3ead75f6cd2aef836198cbb8ba0549cf97f5cf68223bf1c; rrd-contract/lib.rs=2a9b9c23126bcc7793057d64c2b7fad8937473b2376aeb72d1394c3f22812a19; rrd-engine/automation.rs=e587ad19d39a0e203f187397b3c9d47c5fbadefa9780fd5c056054ba20754f08; engine automation test=c8d4f3a0247c8689d62adfd115420e23e6ddfa59b14672a652ef283e255a6e8f; rrd-store/control.rs=1b3c405761fe94c844cbe82c9a796ef0f000cd7a400278b744b60c6ef21f1fa2; rrd-engine/transaction.rs=baa8f082080634b507133a0d7c2ed438a619f3b6831da6bfb34a6dd3cfefe12e; rrd-engine/capabilities.rs=a8dd2ac1fb3c0119f11264fb3f03760738b6ad7079b3ece184a90fe86cffe736; rrd-engine/mod.rs=8751c99a0cef91f29f896a097ffa9e86fa3a3841599e0afcf88a1e8697c577a3; rrd-engine/Cargo.toml=c5d8c9722dc434fd2079f9fcde1ee843822dc20c442f52ea160b5d9b1cf6294a; Cargo.lock=bafc36ae835b2b7af47fd560140f721f7282a9d1bee0d18c28c802025538cd7b
+files read in full: root README; flat function record; automation reference index and adjacent project-command contract; complete function contract, engine automation implementation and test, store control implementation, engine capabilities, engine module root, engine transaction implementation, and engine manifest. The contract module root, canonical roadmap, POA&M, execution map, engine-data-flow owner, and deterministic inventory generator were read in full in the immediately preceding package and reused only after unchanged hashes or all function-relevant spans were revalidated; the new canonical function record was then reread in full after authoring. The security audit call path, locked QuickJS/Wasmi entries, current Wasmi configuration source, and all named function test paths were traced before classification
+external primary references reviewed: SurrealDB custom-function and event documentation for typed invocation permissions and synchronous-versus-asynchronous separation without adopting its authority model; official QuickJS embedding API for memory, stack, and interrupt controls; locked Wasmi configuration/source for fuel, start-function, feature, and structural-limit controls; the WebAssembly deterministic profile for floating-point, relaxed-operation, and resource-dependent behavior; Apache DataFusion UDF and custom TableProvider guidance for typed vectorized Arrow computation and streamed RecordBatch execution
+files changed/created/deleted/moved: create docs/reference/automation/functions.md; update root/reference/automation indexes, engine-data-flow, canonical A-07/C-03/I-02/I-06 roadmap requirements, POAM-008, this traceability/direct-convergence/resolved-review/queue/A/C/D/H/I/journal map, deterministic planned-file inventory, and generated file plan; delete docs/rrd-functions-v1.md; no Rust behavior, Cargo manifest, public type, endpoint, SDK, engine, storage, query, graph, index, vector, reasoning, Arrow, or DataFusion implementation changed
+contract or behavior changed: target documentation and deterministic file-planning behavior changed; runtime behavior did not. Governed functions are now bounded engine-controlled computation; transaction function bindings are pre-commit validation/proposal rules; triggers are only post-commit event predicates; routines own multi-step progress; activities own nondeterministic external work; rrflowQL native functions remain vectorized Arrow/DataFusion computation. The target directly renames every overloaded catalogue/trigger spelling, separates content-addressed artifacts from typed catalogue state, binds schemas/runtime builds/prepared receipts, requires effect-complete atomic publication and recovery, and installs only manifest-verified offline artifacts through RrdEngine
+smallest test command and result: before and after editing, cargo test -p rrd-contract function::tests --locked — 3 passed; cargo test -p rrd-engine --lib engine::tests::automation --locked — 4 passed; cargo test -p rrd-store control::tests --locked — 2 passed
+owning package command and result: cargo test -p rrd-contract --all-targets --locked — 58 passed; cargo test -p rrd-engine --all-targets --locked — 108 passed, including 16 workspace-architecture tests; cargo test -p rrd-store --all-targets --locked — 140 passed; cargo clippy -p rrd-contract -p rrd-engine -p rrd-store --all-targets --locked -- -D warnings — passed
+cross-boundary command and result: cargo check --workspace --all-targets --locked — passed; deterministic inventory reported 805 current/generated/planned records; documentation policy reported 88 statuses and 75 classified coordinates; generated-surface parity remained 33 HTTP operations at OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715; 11 knowledge-export tests, workflow policy, frozen 1.0.0 version, Ruff, Python compilation, Cargo formatting, and diff checks passed
+failure/crash/differential evidence: current tests characterize function-value bounds and digests, immutable catalogue revisions, fresh QuickJS/Wasmi execution, selected runtime limits, Wasm import denial, one-attempt bindings, derived-event rejection/commit behavior, revision-pinned replay, and control-journal integrity. They do not prove the accepted schemas and artifacts, physically satisfiable aggregate sizes, portable runtime determinism, prepared receipts, runtime-build-pinned recovery, one atomic allowed-audit/domain/index/event/outbox commit, rrflowMX/rrflowKV function equivalence, crash/reopen/upgrade behavior, offline installation, or outward conformance. Passing tests cannot close A-07, C-03, H-04, I, or J; POAM-008 owns the gap
+command corrections: the first deterministic-inventory generation encountered the deliberately deleted flat file because that deletion was not yet represented in the Git index used by the generator; only the exact package paths were staged and the identical generation/check then passed. A later explicit restaging command stopped before generation because both ordinary `git add` and path-limited `git add -u` reject an already absent pathname whose deletion was already staged; existing paths were staged separately and inventory generation then passed. The first post-edit focused-test launcher used a mistyped nonexistent worktree path, so no test process started and no state changed; the exact commands were rerun from the repository root and passed. Full-file review also found and removed one residual description of the present sandbox as deterministic because current evidence does not prove portability
+not run and reason: full workspace tests, external SDK conformance, final JavaScript/Wasm supported-target corpus, function-specific MX/KV and crash/ENOSPC/resource matrices, clean offline installation, MCP/Connectome, benchmarks, and release qualification were not run because this package classifies and plans one documentation authority without changing executable behavior; the missing fixtures and implementation gates must exist before those commands can prove the target
+remaining known errors: 11 KB-05 records remain; A-06/A-07 are incomplete; POAM-008 remains; old function catalogue/binding names and shapes, private monolithic JSON/control-journal storage, direct store access, split success audits, runtime-unbound replay, incomplete runtime limits, and absent schemas/artifacts/prepared receipts/install/public surfaces remain in code until their mapped A/C/D/H/I/J packages execute
+roadmap checkbox changed: no
+```
 
 ##### `project-command-capabilities`
 
@@ -859,6 +881,15 @@ at the package commit:
 - `NativeEngine` -> `RrflowKvStore`;
 - `RrflowMxEngine` -> `RrflowMxStore`;
 - `EngineBox` -> `StorageProfile`; and
+- `AutomationCatalogue` -> `FunctionCatalogue`,
+  `ReplaceAutomationCatalogue` -> `ReplaceFunctionCatalogue`,
+  `ListAutomationCatalogue` -> `ListFunctionCatalogue`, and private
+  `AutomationHead` -> `FunctionCatalogueHead`;
+- `FunctionTrigger` -> `TransactionFunctionBinding`,
+  `FunctionTriggerMutation` -> `TransactionMutationKind`, and
+  `FunctionTriggerEffect` -> `TransactionFunctionEffect`, including direct
+  `trigger_id`/`triggers` to `binding_id`/`transaction_bindings` field changes;
+  and
 - any module/file name claiming an authority it does not own is moved directly,
   with no re-export or transitional alias.
 
@@ -867,13 +898,27 @@ at the package commit:
 accepted responsibilities. Splitting is mechanical first; behavioral changes
 remain in their later gates.
 
+For functions, retain `rrd-contract/src/function.rs` as the public contract
+owner, create its closed `fixtures/function-contract-v1.json` and
+`tests/function_contract.rs`, and directly replace
+`rrd-engine/src/engine/automation.rs` with
+`rrd-engine/src/engine/function/{mod,catalogue,execution,javascript,webassembly,transaction_binding}.rs`.
+The split preserves characterized execution while isolating the private-control
+storage and split-audit defects for C-03; it does not create event, trigger, or
+routine behavior. `fixtures/rrd-function-conformance-v1.json` and
+`rrd-engine/tests/function_conformance.rs` become the one engine/profile/surface
+corpus extended by C/H/J. No `automation` module, old field decoder, forwarding
+method, or type re-export survives the A-07 commit.
+
 Acceptance commands:
 
 ```text
 cargo metadata --format-version=1 --locked
+cargo test -p rrd-contract --test function_contract --locked
+cargo test -p rrd-engine --test function_conformance --locked
 cargo test -p rrd-engine --test workspace_architecture --locked
 cargo check --workspace --all-targets --locked
-rg -n 'NativeEngine|RrflowMxEngine|EngineBox|rrd_store::Engine' crates
+rg -n 'NativeEngine|RrflowMxEngine|EngineBox|rrd_store::Engine|AutomationCatalogue|FunctionTrigger|automation_catalogue' crates
 ```
 
 Extend `workspace_architecture.rs` in this same package to inspect Cargo
@@ -955,7 +1000,10 @@ Tuple fields are length/type encoded and escape-safe. The prefix is
 `format / tenant / scope / family`; families cover current, temporal,
 outgoing edge, incoming edge, scalar, unique, term dictionary/stat/posting,
 vector, projection delta, catalogue, runtime commit, outbox, and audit. Version
-ordering is explicit and tested. `prefix_end` has property tests over all byte
+ordering is explicit and tested. The catalogue family includes separate
+function artifact, definition, transaction binding, membership/head, and
+invocation-receipt subfamilies; it never makes executable bytes a public key or
+repeats them in a head record. `prefix_end` has property tests over all byte
 values. Conceptual `*`, `~`, and `+` family notation is documentation only,
 never a raw delimiter contract.
 
@@ -985,6 +1033,19 @@ plans under `rrd-store/src/access/`. The engine validates the plan; the store
 encodes it; one `StorageEngine` commit writes all current/temporal data,
 both adjacency directions, synchronous indexes, runtime entry, projection
 deltas, outbox, audit, and cursor. Mirror semantics in rrflowMX.
+
+For governed functions, add typed function artifact, definition, transaction
+binding, catalogue-membership/head, and prepared invocation-receipt families.
+The catalogue contains references and digests rather than inline repeated
+source/base64 bytes. Replace the private `server/state/*/automation/*` control
+records and direct `StorageEngine` calls. A transaction binding commits its
+validated prepared receipt and proposal with the domain/index/event/outbox and
+allowed audit effects; recovery reuses the receipt or known commit outcome and
+cannot execute against a different runtime build. Add the function cases to
+`rrd-store/tests/semantic_commit_atomicity.rs` and
+`rrd-engine/tests/function_conformance.rs`, including the current one-MiB
+control-value contradiction as a positive final-size and negative over-limit
+boundary.
 
 Failure injection must cover before WAL append, after append/before sync,
 after sync/before manifest visibility, and reopen. Any partially visible family
@@ -1065,7 +1126,11 @@ selects Clyffy explicitly. During development, inputs are
 embedded in the CLI or resolved relative to an explicitly supplied, locally
 verified candidate-bundle root; J-03 assembles the complete release candidate
 and J-05 signs the reproducible distribution. Apply has no download or
-sibling-discovery branch. `AGENTS.md` is the one instruction body. Existing
+sibling-discovery branch. The bundle manifest also accounts for every embedded
+function runtime/build, sealed built-in registry entry, default portable
+function artifact, schema, and golden vector; D-01 installs only the generic
+inactive foundation, while I-06 owns optional project function/binding
+activation. `AGENTS.md` is the one instruction body. Existing
 user files are never overwritten without an exact previewed action and
 explicit apply.
 
@@ -1335,7 +1400,11 @@ storage path is allowed.
 - H-04: add `rrd-server/src/http/handlers/graphql.rs` and one
   `rrd-server/tests/cross_surface_conformance.rs`; drive all public surfaces
   from one operation catalogue and cross-surface corpus; generated SDKs never
-  invent operations.
+  invent operations. Extend `fixtures/rrd-function-conformance-v1.json` so
+  function catalogue administration and standalone invocation compare the
+  same denial, stamp, catalogue/definition/artifact/runtime identities, output
+  digest, and receipt through every supported surface; do not advertise an
+  engine-only method as an outward binding.
 - H-05: correlate ingress, auth, plan, KV, graph, BM25, HNSW, DataFusion, LFG,
   commit, attunement, and delivery spans; redact before export.
 - H-06: keep Connectome in its separate repository and use only public RRD
@@ -1350,9 +1419,14 @@ storage path is allowed.
   the existing kernel `RuntimeEvent` representation into it. Public submission
   lowers to `RuntimeMutation::Event`; a committed event consumed by triggers is
   that same object plus its commit receipt, never a second event database.
+  Rename the transaction-function `EmitEvent` capability/effect to
+  `ProposeEngineEvent`; `RrdEngine` supplies and validates every authoritative
+  event coordinate before the proposal joins the semantic commit.
 - I-02: persisted triggers match committed events and may request only an
   authorized engine operation. Rename the existing synchronous proposed-
-  transaction function bindings so `Trigger` has no second meaning.
+  transaction function bindings so `Trigger` has no second meaning. The
+  function binding corpus proves it cannot consume a committed-event cursor,
+  recursively rematch its own proposal, or schedule a routine.
 - I-03: routines are versioned resumable operation graphs with checkpoint,
   budget, lease, idempotency, cancel, compensation, verification, and terminal
   state. Add `rrd-contract/src/activity.rs`, its golden fixture and test;
@@ -1372,10 +1446,13 @@ storage path is allowed.
   resolving them at a read stamp is context retrieval, not executing
   storage/lifecycle code or granting the requested capabilities.
 - I-06: `rrflow-cli/src/automation_install.rs` and its conformance test own
-  preview/apply/retire/uninstall for optional trigger, routine, host-adapter,
-  skill, and capability/activity scaffolding. They report exact files, records,
-  invocation closures, and adapter registrations; retirement blocks new work
-  while prior receipts remain readable, and uninstall removes only accepted
+  preview/apply/retire/uninstall for optional function artifacts/definitions,
+  transaction bindings, triggers, routines, host adapters, skills, and
+  capability/activity scaffolding. They report exact artifacts, schemas,
+  files, records, invocation closures, and adapter registrations; preview and
+  attunement execute no function, default artifacts resolve only from the
+  verified offline distribution, retirement blocks new work while prior
+  receipts remain readable, and uninstall removes only accepted unreferenced
   RRFlow-owned scaffolding.
 - I-07: every project-development run first binds the latest complete
   authorized project-tree snapshot; missing/stale inventory returns
@@ -1385,9 +1462,12 @@ storage path is allowed.
   under policy.
 
 The existing `engine/automation.rs` function sandbox is reusable inventory.
-First extract function execution unchanged; then implement events, triggers,
-and routines in separate modules. Do not rename the current synchronous
-function trigger and pretend Gate I is complete.
+A-07 first moves it into the exact `engine/function/` modules and applies the
+direct contract names; C-03 then replaces its private control records and split
+audit/commit behavior. I-01/I-02 connect its proposals to the final event
+contract while events, post-commit triggers, and routines remain separate
+modules. None of those mechanical or transactional steps alone completes Gate
+I.
 
 The first proof is the `error-resolution` vertical slice in the engine-flow
 owner. Its routine uses semantic operation/capability references only. The

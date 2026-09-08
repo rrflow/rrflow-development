@@ -12,9 +12,5 @@ record; it cannot claim that roadmap Gate I is implemented.
 
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
+| Governed functions and proposed-transaction bindings | [`rrflow://rrflow-instance/data/reference/automation/functions`](rrflow://rrflow-instance/data/reference/automation/functions) | [`functions.md`](functions.md) | target contract; bounded implementation exists with mapped convergence gaps |
 | Project command capabilities and activities | [`rrflow://rrflow-instance/data/reference/automation/project-command-capabilities`](rrflow://rrflow-instance/data/reference/automation/project-command-capabilities) | [`project-command-capabilities.md`](project-command-capabilities.md) | target contract; no capability/activity implementation exists |
-
-The remaining function reference is still a flat-record review item in
-[KB-05](../../roadmap/rrflow-1.0-execution-map.md#remaining-kb-05-execution-queue).
-It is not linked here until that full-file review establishes its one canonical
-record.
