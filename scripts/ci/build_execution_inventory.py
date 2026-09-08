@@ -313,6 +313,11 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/transport/rrd-contract/fixtures/model-manifest-v1.json": ("B-03",),
     "crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json": ("B-04",),
     "crates/transport/rrd-contract/tests/knowledge_contract.rs": ("KB-02",),
+    "crates/transport/rrd-contract/tests/deployment_contract.rs": (
+        "A-07",
+        "B-04",
+        "H-04",
+    ),
     "crates/transport/rrd-contract/tests/model_manifest_contract.rs": ("B-03",),
     "crates/transport/rrd-contract/tests/websocket_contract.rs": ("B-04",),
     "crates/compute/rrd-attunement/Cargo.toml": ("A-07", "D-03"),
@@ -367,6 +372,11 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/compute/rrd-query/src/physical/rrf.rs": ("F-03", "H-02"),
     "crates/compute/rrd-inference/src/router.rs": ("G-01",),
     "crates/transport/rrd-contract/src/knowledge.rs": ("KB-02",),
+    "crates/transport/rrd-contract/src/deployment.rs": (
+        "A-07",
+        "B-04",
+        "H-04",
+    ),
     "crates/transport/rrd-contract/src/model_manifest.rs": ("B-03",),
     "crates/transport/rrd-contract/src/websocket.rs": ("B-04",),
     "crates/transport/rrd-contract/src/engine_event.rs": ("I-01",),

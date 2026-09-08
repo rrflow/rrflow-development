@@ -77,27 +77,33 @@ payloads.
 
 ## Deployment and capability discovery
 
-The current deployment-mode wire values are:
+The accepted
+[deployment-profile contract](../deployment/modes.md) separates three
+coordinates:
 
 ```text
-rrflow_mx
-embedded
-local_daemon
-edge
-remote
-distributed
+deployment form:       embedded | single_node_server | clustered_server
+storage profile:       rrflow_mx | rrflow_kv
+endpoint presentation: in_process | loopback_http_websocket |
+                       network_http_websocket
 ```
 
-They describe composition or transport profiles of one RRFlow engine, not
-separate database products. `rrflow_mx` is the volatile profile; it does not
-rename rrflowMX or imply durable rrflowDB persistence. `embedded` and
-`local_daemon` describe process placement, not different semantic authorities.
-`edge`, `remote`, and `distributed` remain subject to their owning deployment
-qualification; an enum value alone is not proof that a profile works.
+Current code has one `DeploymentMode` enum containing `rrflow_mx`, `embedded`,
+`local_daemon`, `edge`, `remote`, and `distributed`. That list is conflicting
+pre-release implementation inventory: it mixes a storage profile, deployment
+forms, a derived artifact, a client-relative location, and an unavailable
+cluster claim. A-07 removes that scalar classification directly and freezes
+the structured contract with no forwarding field or successful old-shape
+decoder.
 
-`ServiceCapabilities` binds protocol and implementation identity, the active
-deployment mode, one instance resource, sorted versioned capability descriptors,
-and the cross-surface `ProductCapabilityCatalogue`. Each capability must say
+`ServiceCapabilities` currently binds protocol and implementation identity,
+one ambiguous deployment mode, one instance resource, sorted versioned
+capability descriptors, and the cross-surface `ProductCapabilityCatalogue`.
+The target descriptor instead projects the explicitly installed deployment
+form, storage profile, active endpoint presentations, security/configuration
+revisions, and available operations independently. It is supplied by the
+installed composition root; neither the engine nor server infers it from a
+storage root, TLS, address, or caller location. Each capability must still say
 whether it is unavailable, experimental, or available and may publish bounded
 limits plus an honest limitation. Product capabilities enumerate engine,
 rrflowQL, GraphQL, HTTP, WebSocket, gRPC, MCP, CLI, SDK, and Connectome
@@ -141,7 +147,7 @@ prove that engine by itself:
 
 | Public family | Representation already present | Required behavioral proof |
 |---|---|---|
-| Deployment conformance | One strict corpus can be supplied unchanged to a deployment adapter. | C-01/C-07 must run equivalent transaction, snapshot, graph, index, and query semantics on rrflowMX and rrflowKV; rrflowKV must additionally survive failure and reopen. |
+| Deployment characterization | One strict two-document fixture is supplied to current engine, client, server-process, and edge tests. | The deployment-profile owner requires separate storage-semantic, durability, deployment-form, endpoint, cluster, and derived-artifact corpora; C/E/F/G/H/J must prove the complete rrflowMX/rrflowKV and cross-surface behavior rather than treating this seed fixture as conformance. |
 | Multi-model transaction | Claims, schemas, records, relations, events, vectors, time-series samples, geo values, object references, retirement, preview, and commit receipts have typed forms. | C-03 must commit canonical model state, temporal versions, graph adjacency, synchronous indexes, runtime log, and projection deltas as one atomic rrflowKV batch. |
 | rrflowQL query | Query text, typed parameters, read coordinates, plan evidence, rows, and scan/memory/spill/time/output budgets have public forms. | C-04 and F-01 through F-05 must prove direct stamped reads and bounded streaming Arrow/DataFusion execution rather than eager whole-log or `Vec<QueryRow>` materialization. |
 | Graph, BM25, vector, and retrieval | Typed graph mutations, scalar/BM25 catalogue kinds, named dense/sparse/multi-dense vectors, HNSW/TurboQuant configuration, filters, exact/approximate search, recursive retrieval, and RRF evidence can be represented. | E-01 through E-05 and F-03 must prove transactional native access paths, exact fallbacks, deterministic fusion, recall, update/delete, and reopen behavior. |

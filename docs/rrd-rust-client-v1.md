@@ -52,11 +52,14 @@ decoding, typed wrong-key error mapping, principal session creation, exact query
 results, client-side expired-deadline denial, transaction begin/preview/abort,
 retained changefeed decoding, durable WebSocket push/reconnect replay, protected
 audit decoding, and cleartext remote endpoint denial. A second live fixture
-proves valid mTLS HTTP and WebSocket negotiation, exact remote-listen capability
-reporting, missing-client-certificate denial, and wrong-server-name denial.
-The loopback client requires the `local_daemon` capability and the mTLS client
-requires `remote`; both commit and query the exact checked-in deployment corpus
-described in [`rrd-deployment-modes-v1.md`](rrd-deployment-modes-v1.md).
+proves valid mTLS HTTP and WebSocket negotiation, the current TLS-derived
+capability label, missing-client-certificate denial, and wrong-server-name
+denial. The loopback client currently requires `local_daemon` and the mTLS
+client currently requires `remote`; those are conflicting pre-release labels,
+not the accepted profile classification. Both commit and query the same narrow
+checked-in seed corpus. Their direct convergence and complete proof boundary
+are defined by the
+[deployment-profile reference](reference/deployment/modes.md).
 The complementary real-server fault row drops a data-commit response, restarts
 the process on the same root, and proves the ordinary idempotent retry returns
 the durable receipt without duplicating any runtime change.

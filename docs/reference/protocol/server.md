@@ -2,7 +2,7 @@
 
 **Status:** active implementation reference; alpha protocol convergence remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/protocol/server`
-**Owner:** RRD HTTP/WebSocket process boundary, transport profiles, route discovery, and current conformance
+**Owner:** RRD HTTP/WebSocket process boundary, endpoint presentations, transport security, route discovery, and current conformance
 
 RRD is RRFlow's embedded and daemon runtime. The `rrd-server` package exposes
 public HTTP and WebSocket operations over the same `RrdEngine` used by
@@ -15,6 +15,9 @@ The [system overview](../../architecture/system-overview.md) owns component and
 authority boundaries. The
 [engine data-flow record](../../architecture/engine-data-flow.md) owns target
 transactional, query, Arrow/DataFusion, context, and trace flow. The
+[deployment-profile reference](../deployment/modes.md) owns the independent
+deployment-form, storage-profile, and endpoint-presentation classification and
+its cross-profile conformance. The
 [release roadmap](../../roadmap/rrflow-1.0.md) owns implementation order and
 completion evidence. This record describes the server that exists now and
 names the gaps without promoting them to completed behavior.
@@ -59,9 +62,13 @@ GET /v1/schema/openapi     # when a generated HTTP description is required
 
 Liveness proves only that the process answers. Readiness opens the configured
 instance and checks its current format and operational state. Capabilities
-characterize the active transport and supported operations; they are not
-release evidence. Connectome and SDKs must reject an unexpected protocol
-version or instance resource rather than inferring compatibility.
+characterize the installed profile and supported operations; they are not
+release evidence. The current response incorrectly derives `local_daemon`
+versus `remote` solely from whether TLS is configured. A-07/B-04/H-04 must
+replace that scalar with independently installed deployment-form,
+storage-profile, endpoint-presentation, and security facts. Connectome and SDKs
+must reject an unexpected protocol version or instance resource rather than
+inferring compatibility.
 
 There is no accepted alpha bootstrap command yet. Current code still exposes
 `rrd-server initialize` and permits startup from a raw project root; those are
@@ -71,15 +78,16 @@ guidance. Gate D-01 replaces them directly with one previewed/applied
 [local-process adapter reference](../deployment/local-process-driver.md) owns
 the exact target launch, authenticated readiness, and shutdown boundary.
 
-## Transport profiles
+## Endpoint presentations and transport security
 
-| Profile | Current enforced boundary | Still open |
+| Presentation | Current enforced boundary | Still open |
 |---|---|---|
-| Local daemon | Clear HTTP may bind only to an explicit loopback address. Library and binary startup reject non-loopback cleartext before opening a listener. | Released installation, service supervision, and client conformance remain Gate D/J work. |
-| Remote | A non-loopback listener requires TLS 1.3, a server certificate and key, a client CA, mandatory client-certificate validation, and initialized RRFlow security state. | Certificate reload, revocation handling, external identity-provider/JWK adapters, and deployment-secret integration are not complete. |
+| Loopback HTTP/WebSocket | Clear HTTP may bind only to an explicit loopback address. Library and binary startup reject non-loopback cleartext before opening a listener. | Released installation, service supervision, and client conformance remain Gate D/J work. |
+| Configured network HTTP/WebSocket | A non-loopback listener requires TLS 1.3, a server certificate and key, a client CA, mandatory client-certificate validation, and initialized RRFlow security state. | Certificate reload, revocation handling, external identity-provider/JWK adapters, and deployment-secret integration are not complete. |
 | WebSocket | The authenticated subscription stream limits messages and frames to 64 KiB and uses durable subscription state, cumulative acknowledgements, generation fencing, leases, and bounded in-flight delivery. | One multiplexed connection carrying query, mutation, subscription, cancellation, and trace streams is Gate B-04 work. |
 
-The current explicit remote invocation supplies all TLS inputs together:
+The current explicit configured-network invocation supplies all TLS inputs
+together:
 
 ```text
 rrd-server --root PROJECT --bind 0.0.0.0:9477 \
@@ -124,9 +132,9 @@ configured RRD-issued JWT; each later operation rechecks the stored principal,
 credential revision, exact action, and resource policy through `RrdEngine`.
 
 With no initialized security authority, the server advertises an anonymous
-loopback development mode. Remote TLS and JWT configuration require initialized
-security. That local mode is current characterization, not proof of the alpha
-security or installation outcome.
+loopback development mode. Configured-network TLS and JWT configuration require
+initialized security. That local mode is current characterization, not proof of
+the alpha security or installation outcome.
 
 The database-local token derivation secret is generated from operating-system
 entropy and is permission-checked on Unix. The optional token-key and JWT-key

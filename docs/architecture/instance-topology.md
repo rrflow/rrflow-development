@@ -10,6 +10,9 @@ status. The [system overview](system-overview.md) owns component meaning, the
 [engine data-flow record](engine-data-flow.md) owns execution sequence, the
 [estate-control reference](../reference/operations/estate-control.md) owns
 desired/observed operational semantics, the
+[deployment-profile reference](../reference/deployment/modes.md) owns valid
+deployment-form, storage-profile, and endpoint-presentation combinations plus
+their conformance boundaries, the
 [local-process adapter](../reference/deployment/local-process-driver.md) owns
 host-local launch/readiness/shutdown effects, and the
 [roadmap](../roadmap/rrflow-1.0.md) owns implementation order and evidence. This
@@ -30,10 +33,10 @@ project ──governed-by──> estate (rrflowDB)
                               │
                     one logical RrdEngine authority
                               │
-                  ┌───────────┴───────────┐
-                  │                       │
-          deployment form          storage profile
-       embedded/server/cluster   rrflowMX or rrflowKV
+              ┌───────────────┬───────────────┐
+              │               │               │
+       deployment form   storage profile  endpoint presentation
+    embedded/server/cluster  MX or KV     in-process/HTTP/WebSocket
 ```
 
 The relationships are deliberately not a single generic parent chain. A
@@ -92,13 +95,16 @@ claim of cross-instance ACID.
 
 ## Deployment and physical placement
 
-Deployment form and storage profile are orthogonal:
+Deployment form, storage profile, and endpoint presentation are orthogonal.
+The [deployment-profile reference](../reference/deployment/modes.md) owns their
+valid combinations, default alpha posture, runtime discovery, and layered
+conformance:
 
 | Dimension | Values | Invariant |
 |---|---|---|
 | Deployment form | embedded, single-node server, clustered server | The same instance, estate semantics, operation catalogue, security decisions, and result contracts remain visible. |
 | Storage profile | rrflowMX, rrflowDB backed by rrflowKV | Non-durability-specific behavior is equivalent. Only rrflowKV can claim crash/reopen, backup, recovery, or replicated durability. |
-| Endpoint transport | in-process, loopback HTTP/WebSocket, or configured network/mesh address | Reachability does not establish identity or authorization. Every connection performs the same RRD capability and session handshake. |
+| Endpoint presentation | in-process, loopback HTTP/WebSocket, or configured network HTTP/WebSocket | Reachability does not establish identity or authorization. An optional mesh adapter may resolve or carry a configured network endpoint but cannot create another presentation or authority. |
 
 rrflowMX is not the hot tier of rrflowDB and does not automatically flush into
 rrflowKV. rrflowKV's memtable and cache are the hot tiers of a persistent
@@ -139,7 +145,8 @@ or change an installed topology. Installation has two distinct layers:
    second project model.
 2. A canonical installed-estate binding is committed through `RrdEngine`. It
    binds the stable instance, estate, and project identities to the selected
-   storage/deployment profiles, admitted project root, installed
+   deployment form, storage profile, endpoint presentations, admitted project
+   root, installed
    configuration/template/attunement revisions, and security authority. Host
    paths and endpoints are locators/evidence, never identities or authorization.
 
@@ -278,8 +285,9 @@ Those remain open in the roadmap and POA&M.
 The topology is implemented only when a clean bundle performs a no-write
 preview and one explicit install for both an empty and existing project; every
 surface resolves the same stable project, estate, and instance through one
-authenticated `RrdEngine`; rrflowMX and rrflowKV pass the shared semantic
-corpus; rrflowKV survives reopen; environment/workspace/external capability
+authenticated `RrdEngine`; rrflowMX and rrflowKV pass the complete
+storage-profile semantic differential; rrflowKV survives reopen;
+environment/workspace/external capability
 records cannot alter authority; physical placement cannot alter logical
 identity; unauthorized, nested, neighboring, escaped, foreign, moved, and
 superseded bindings fail closed; and no `.rrflow/instance.toml`, initializer,
