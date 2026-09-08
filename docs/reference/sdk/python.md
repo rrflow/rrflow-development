@@ -52,7 +52,13 @@ sdks/python/
 ├── src/rrd_client/
 │   ├── __init__.py
 │   ├── client.py
-│   ├── models.py
+│   ├── endpoint.py
+│   ├── error.py
+│   ├── operation.py
+│   ├── retry.py
+│   ├── session.py
+│   ├── transport.py
+│   ├── py.typed
 │   └── generated/
 │       ├── __init__.py
 │       └── endpoints.py
@@ -68,6 +74,14 @@ all 33 current HTTP operation identifiers. This is routing coverage, not
 operation-semantic coverage. There is no asynchronous client and no WebSocket
 implementation; subscription administration and changefeed follow are
 ordinary HTTP calls.
+
+The A-07.1d split is direct rather than a forwarding layout. `client.py` owns
+only synchronous construction, discovery helpers, and generic dispatch;
+endpoint validation, errors, request/resource construction, attempts and
+deadlines, the current session representation, and response carriage each
+have one named module. The former catch-all `models.py` does not remain as an
+alias. This makes the current defects visible at their future correction
+boundaries; it does not qualify those boundaries.
 
 The current client usefully:
 
@@ -292,20 +306,20 @@ The resulting client must:
 
 ## Installable package boundary
 
-An offline `uv build` currently succeeds. Under Python 3.14.4 and uv 0.11.21
-the reviewed output was a 7,019-byte pure-Python wheel and a 47,763-byte source
-distribution. The wheel contains only the import package and minimal metadata;
-the source distribution also contains the generator, tests, lock, and project
-configuration. Normalized archive timestamps aid reproducibility, but one
-local build is not a reproducible-build claim.
+An offline `uv build` currently succeeds. Under Python 3.14.4 and uv 0.11.21,
+the A-07.1d output was a 9,294-byte pure-Python wheel and a 48,486-byte source
+distribution. The wheel has 14 entries; the source distribution has 18. Both
+contain `rrd_client/py.typed` and omit the removed `rrd_client/models.py`.
+That proves the intended file projection, not reproducibility or consumer
+typing behavior.
 
-The wheel omits `rrd_client/py.typed`, so it does not advertise its inline
-annotations to downstream type checkers under PEP 561. Project metadata also
-lacks the deliberate license, readme, authorship, project-link, support, and
-artifact-provenance surface needed for release. The exact runtime dependency
-pins make this checkout repeatable but have not been justified as a compatible
-consumer-library range. Only Python 3.14.4 was exercised in this review; the
-declared 3.11 minimum has no current interpreter matrix.
+Project metadata still lacks the deliberate license, readme, authorship,
+project-link, support, and artifact-provenance surface needed for release. The
+exact runtime dependency pins make this checkout repeatable but have not been
+justified as a compatible consumer-library range. Only Python 3.14.4 was
+exercised in this review; the declared 3.11 minimum has no current interpreter
+matrix. Normalized archive timestamps aid reproducibility, but one local build
+is not a reproducible-build claim.
 
 The qualified distribution contains an sdist and pure-Python wheel produced
 from one source identity, includes `py.typed`, has a closed included-file set,
@@ -328,12 +342,12 @@ Current evidence is deliberately bounded:
 | Command or probe | Observed result | Honest boundary |
 |---|---|---|
 | `uv lock --check` | resolved the locked 24-package environment | Lock consistency only; not clean offline installation or supported-version coverage. |
-| generator, Ruff, mypy, and pytest package checks | generation passed; Ruff passed; strict mypy passed; 4 mock-focused tests passed | Source hygiene and selected mocked HTTP behavior; no async, WebSocket, TLS, installed engine, or fault matrix. |
+| generator, Ruff, mypy, and pytest package checks | generation passed; Ruff passed over 13 Python files; strict mypy passed over 10 source files; 4 mock-focused tests passed | Source hygiene and selected mocked HTTP behavior; no async, WebSocket, TLS, installed engine, or fault matrix. |
 | conformance entry without `RRD_SDK_CONFORMANCE_MANIFEST` | exited 1 with the required-manifest error | Correct fail-closed harness configuration; no scenario executed. |
 | conformance entry against the live example harness | passed with corpus SHA-256 `b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2` | Real HTTP against the present direct-seeded rrflowKV fixture; not installation, rrflowMX parity, or full labelled behavior. |
 | generated-surface parity | 33 descriptors match the OpenAPI digest | Method/path/auth/mutation projection only; not runtime binding or semantic execution. |
 | injected HTTPX transport probe | replayed an unpinned query, accepted `201 text/plain` and invalid payload, serialized bearer | Reproducible open H-04 correctness/security defects. |
-| offline package build | 7,019-byte wheel and 47,763-byte sdist built | Artifact creation/content inventory only; no clean consumer, dependency closure, reproducibility, signing, or platform matrix. |
+| offline package build | 9,294-byte wheel and 48,486-byte sdist built; both contain `py.typed` and omit the removed catch-all module | Artifact creation/content inventory only; no clean consumer, dependency closure, reproducibility, signing, or platform matrix. |
 
 The live script currently exercises capability retry/version rejection,
 catalogue count, one authentication denial, session create/renew/close, vector
@@ -356,43 +370,42 @@ reasoning/feedback; the Python client merely proves faithful access to it.
 
 ## Direct-convergence file plan
 
-A-07 freezes current responsibilities and mechanically splits the monolith
-without keeping forwarding modules:
+A-07.1d has frozen the current synchronous responsibilities without keeping a
+forwarding module. The executable source layout is:
 
 ```text
 sdks/python/src/rrd_client/
 ├── __init__.py              # narrow public exports
 ├── client.py                # synchronous construction and public calls
-├── async_client.py          # native async construction and calls
-├── endpoint.py              # installed candidates and expected identities
-├── error.py                 # closed redacted error hierarchy
-├── operation.py             # generated binding and full validation
-├── retry.py                 # semantic retry/deadline/certainty policy
-├── session.py               # opaque secret-bearing handle
-├── subscription.py          # multiplexed async protocol state machine
-├── transport.py             # sync/async HTTP and WebSocket carriage ports
+├── endpoint.py              # current loopback endpoint policy
+├── error.py                 # current client and API error types
+├── operation.py             # request coordinates and resource validation
+├── retry.py                 # current broad attempt/deadline rule
+├── session.py               # current public bearer-bearing representation
+├── transport.py             # bounded HTTP response/envelope handling
 ├── py.typed
 └── generated/
     ├── __init__.py
-    ├── endpoints.py
-    └── models.py
+    └── endpoints.py
 
 sdks/python/tests/
-├── test_operation_coverage.py
-├── test_protocol_validation.py
-├── test_transport_faults.py
-├── test_async_client.py
-├── test_package_consumer.py
+├── test_client.py
 └── sdk_conformance.py
 ```
 
+`async_client.py`, `subscription.py`, generated `models.py`, and the planned
+operation-coverage, protocol-validation, transport-fault, async-client, and
+package-consumer tests deliberately do not exist yet. They are created only
+with the real behavior and negative evidence owned by their later gates.
+
 The dependency order is:
 
-1. **A-07:** split the current synchronous behavior into the accepted seams,
-   retain deterministic generation and mock characterization, add the typing
-   marker, map every old symbol/test directly, and remove `models.py` plus the
-   monolithic test after their responsibilities are represented. Do not
-   invent async, socket, resolver, or validation success.
+1. **A-07:** completed for this package: the current synchronous behavior is
+   split into the accepted seams, deterministic generation and mock
+   characterization remain, `py.typed` is packaged, and `models.py` is absent.
+   `test_client.py` remains the honest characterization corpus until later
+   gates implement the direct negative-test seams; no async, socket, resolver,
+   or validation success was invented.
 2. **B-04:** implement the shared multiplexed state machine, Python async
    carriage, and correlated cancellation contract.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap and

@@ -103,7 +103,7 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1d**, the Python SDK responsibility
+The next executable item is **A-07.1e**, the Go SDK responsibility
 boundary inside the package and type vocabulary work. A-07.0 completed the
 reviewed implementation-requirements mapping. A-07.1a directly converged the
 governed-function catalogue/binding vocabulary and module boundary. A-07.1b
@@ -111,10 +111,12 @@ then split the Rust SDK by accepted responsibility and removed its public
 bearer-bearing session field while preserving the characterized transport
 surface. A-07.1c split the TypeScript client's real HTTP responsibilities and
 renamed its conformance entry without inventing an absent WebSocket module.
-None of these slices qualifies its capability or completes A-07. B-01 and B-02
-remain completed contract work; no further Gate B work proceeds until A-07
-corrects the complete pre-release source, package, public, and trace-vocabulary
-assumptions.
+A-07.1d split the Python client's existing synchronous responsibilities,
+removed its catch-all model module, and added the package typing marker without
+inventing async or socket behavior. None of these slices qualifies its
+capability or completes A-07. B-01 and B-02 remain completed contract work; no
+further Gate B work proceeds until A-07 corrects the complete pre-release
+source, package, public, and trace-vocabulary assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -365,6 +367,34 @@ A-07.1c TypeScript SDK responsibility-boundary evidence (2026-09-08):
   resolution, browser proof, built ESM/declarations, and installed MX/KV
   conformance remain owned by B/D/H/J and POAM-011.
 - A-07 and A-07.1 remain unchecked; A-07.1d is next.
+
+A-07.1d Python SDK responsibility-boundary evidence (2026-09-08):
+
+- The former catch-all `sdks/python/src/rrd_client/models.py` is absent. The
+  synchronous facade remains in `client.py`; current loopback endpoint policy,
+  errors, request/resource construction, broad retry/deadline policy, plain
+  session shape, and bounded HTTP/envelope decoding now live directly in their
+  named modules. `__init__.py` is only the eight-symbol public export root.
+- All eight former root exports and all six public `RrdClient` methods remain.
+  Existing request bytes, 33-descriptor dispatch, loopback/redirect denial,
+  connection reuse, context-manager closure, partial response validation,
+  immediate retry behavior, and mutable bearer-bearing session dictionaries
+  are characterized rather than silently changed. No async or WebSocket file
+  was created.
+- Lock and generator freshness, Ruff over 13 Python files, strict mypy over 10
+  source files, and all four mock-focused tests passed. A locked offline build
+  produced a 9,294-byte wheel and 48,486-byte sdist; both include `py.typed`
+  and exclude the removed model module. Direct manifest-absent conformance
+  exited 1, while the shared real-daemon corpus passed through all six SDKs at
+  the expected corpus digest.
+- This is structural and packaging-topology convergence, not Python SDK or
+  engine qualification. Runtime request/result models, opaque credentials,
+  exact status/media/identity enforcement, semantic retry/uncertainty, native
+  async, multiplexed WebSocket/cancellation, W3C propagation, HTTPS/mesh
+  resolution, supported interpreter/platform consumers, signed offline
+  closure, and installed MX/KV conformance remain owned by B/D/H/J and
+  POAM-011.
+- A-07 and A-07.1 remain unchecked; A-07.1e is next.
 
 A-02 evidence (2026-09-04):
 

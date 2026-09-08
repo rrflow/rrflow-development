@@ -1180,7 +1180,7 @@ roadmap.
 | [x] | A-07.1a | Governed-function catalogue/binding direct names, closed golden contract, `engine/function/` split, retired-source guard, and first rrflowMX/rrflowKV/reopen corpus. |
 | [x] | A-07.1b | Rust SDK direct responsibility split and secret-safe public session boundary, preserving current characterized behavior. |
 | [x] | A-07.1c | TypeScript SDK direct responsibility split and direct conformance-test filename convergence. |
-| [ ] | A-07.1d | Python SDK direct responsibility split, removal of the catch-all model module, and typed-package marker. |
+| [x] | A-07.1d | Python SDK direct responsibility split, removal of the catch-all model module, and typed-package marker. |
 | [ ] | A-07.1e | Go SDK idiomatic responsibility split with one generated operation projection and no orchestration authority. |
 | [ ] | A-07.1f | Java SDK responsibility split and package documentation without a second registry or engine. |
 | [ ] | A-07.1g | .NET workspace policy and responsibility split with one generated operation projection. |
@@ -1261,20 +1261,20 @@ H-04 validation/retry/package behavior, B-04 socket, H-07 network transport,
 or J qualification complete and leaves no old implementation or forwarding
 fallback.
 
-For the Python SDK, split the current `sdks/python/src/rrd_client/client.py`
-responsibilities directly across
-`{client,endpoint,error,operation,retry,session,transport}.py`, retain
-`__init__.py` only as the narrow public export root, and remove the old
-catch-all `models.py` after every type has one destination. Preserve current
-generation, loopback and redirect denial, envelope construction, byte limit,
-context-manager closure, fail-closed harness input, and mock behavior
-mechanically. Add `py.typed` during that package. Reserve
-`async_client.py`, `subscription.py`, generated `models.py`, and the planned
-operation, protocol, transport, async, and package-consumer tests for their
-assigned B/H/J gates rather than creating empty success surfaces. A-07 does
-not claim runtime validation, async/WebSocket behavior, remote transport,
-semantic retry/cancellation, installed-engine conformance, or release package
-qualification and leaves no forwarding model/client module.
+For the Python SDK, A-07.1d directly split the former
+`sdks/python/src/rrd_client/client.py` responsibility monolith across
+`{client,endpoint,error,operation,retry,session,transport}.py`, retained
+`__init__.py` only as the narrow eight-symbol public export root, removed the
+old catch-all `models.py` after every type received one destination, and added
+`py.typed`. Current generation, loopback and redirect denial, envelope
+construction, byte limit, context-manager closure, fail-closed harness input,
+and mock behavior remain characterized. `async_client.py`, `subscription.py`,
+generated `models.py`, and the planned operation, protocol, transport, async,
+and package-consumer tests remain absent until their assigned B/H/J gates
+implement real behavior. A-07 does not claim runtime validation,
+async/WebSocket behavior, remote transport, semantic retry/cancellation,
+installed-engine conformance, or release package qualification and leaves no
+forwarding model/client module.
 
 For the Go SDK, keep one idiomatic `rrd` package and split the current
 `sdks/go/{client,models}.go` responsibilities directly across
@@ -1401,6 +1401,24 @@ failure/crash/differential evidence: the first post-split typecheck passed; the 
 not run and reason: operation-specific runtime validation, browser import/CORS/credential behavior, HTTPS/mTLS/mesh resolution, multiplexed WebSocket, correlated server cancellation, transport/resource fault injection, built ESM/declaration consumer, deterministic/offline package closure, D-01 installation, structural all-operation conformance, rrflowMX/rrflowKV semantic comparison, rrflowKV crash/reopen, graph/scalar/BM25/vector atomicity, stamped Arrow/DataFusion streaming, persisted reasoning/context/feedback, Connectome, and benchmarks were not run because this bounded package only moves current TypeScript responsibilities and its conformance filename. Those later B through J behaviors must exist before their reserved tests can qualify anything
 remaining known errors: A-07.1d through A-07.1h and A-07.2 remain before A-07 can close. TypeScript still has erased request/success payload types at runtime, permissive success status/media/error handling, plain serializable API-key/session credentials, broad immediate replay, local-only cancellation, implicit redirect following, loopback-only HTTP, no subscription/WebSocket/W3C/remote resolver, a raw private source package, and a direct-seeded label-overstated corpus. POAM-011 remains sequenced; all rrflowKV hybrid pages, native graph/index atomicity, stamped Arrow/DataFusion, persistent reasoning/recall, installation/attunement, Connectome, and release evidence remain open
 roadmap checkbox changed: no; only supporting A-07.1c subpackage status changed
+```
+
+#### A-07.1d evidence journal
+
+```text
+gate/package: A-07 / A-07.1d / Python SDK responsibility and typed-package boundary
+revision: parent 700415ec9017a4c7728cb0a0504740b779743d5f, tree e3e20e0cd6dff4ded4251e9c2014c9042d62aac3; result is the commit containing this entry
+baseline files/digests: former sdks/python/src/rrd_client/client.py=f4205382d04090a7ed87adc6e01143bec0dcf1e2b1cbfdf89003379587f582d4; former models.py=a2cffd71dfdd66d677e9afe9cd2baa6bc3b17482ec965aa318138dec3d6e6987; package __init__.py=334c7d5f0aef21a96d035eed1f0fb8d9b16b86b3f0bdb94d36184ced7ef6da55; test_client.py=22c465b520ed06573a21d69d023f09912aa25a57de321e6333be8fd78da409f8; sdk_conformance.py=adef43216f75e3aa4013b16c1d19924f6c52bdf36a80ddeaebc321f78747b84c; generate.py=3f9deed96b26a467dcc01f395d1bd50474941d012215c6c284f9f11d64125974; uv.lock=031e6b9e670b23a197353f83c9162cb71639d24e8f0659353cfe0c2ae42d8a11; pyproject.toml=a54c713877573e2897f7a647099c67b4f517991dd109f41b36565e18f3ff5b7a; conformance runner=18f63809fc675c8e3fec9f8a15a9d95d4d74793bb1a2019a5f3c9a95bea267fe; resulting ordered __init__/client/endpoint/error/operation/retry/session/transport/py.typed SHA-256 ledger=2a03d9defe25eea21749cd71e4fa92d4cd847c091e824a464d66519ec324230f
+files read in full: AGENTS.md; root README and the canonical roadmap/POA&M sections reached through its Python/A-07 warp points; the complete 442-line Python SDK reference; pyproject.toml; the complete 595-line uv.lock; generator; package and generated export roots; the complete generated 33-endpoint projection; the former complete 312-line client.py and 64-line models.py; both complete tests; and the shared conformance runner already reviewed in the immediately preceding SDK package. Every resulting source file and every changed documentation section was reread after formatting
+files changed/created/deleted/moved: retain client.py as the synchronous facade; move current loopback endpoint policy, errors, request/resource construction and identifiers, broad attempt/deadline behavior, plain session representation, and bounded HTTP response/envelope decoding directly into endpoint/error/operation/retry/session/transport.py; update the package export root without changing its eight exported symbols; add py.typed; directly remove models.py with no alias or forwarding module; leave async_client.py, subscription.py, generated models, and future focused tests absent; update the Python SDK reference, root status, canonical roadmap evidence, POAM-011, execution-map package/convergence rows, A-07.1 status, and deterministic file plan
+contract or behavior changed: the public root still exports exactly ENDPOINTS, OperationId, RequestOptions, ResourceSegment, RrdApiError, RrdClient, RrdClientError, and Session; RrdClient retains its constructor plus call, capabilities, close, create_session, endpoint_catalogue, and openapi. Existing 33-descriptor routing, request bytes, loopback and redirect denial, reusable HTTPX client, context-manager closure, partial Pydantic response validation, response cap, broad immediate retry, local deadline, error-detail loss, and public mutable secret-bearing Session mapping remain mechanically characterized. The old internal module paths are removed and the built distributions now advertise inline typing. No async, WebSocket, remote resolver, operation validator, opaque credential, engine transaction, storage profile, graph/index, Arrow/DataFusion, reasoning, install, provider, or lifecycle behavior was added
+smallest test command and result: locked Python public-surface inspection passed with the exact eight root exports and six public RrdClient methods; uv --directory sdks/python run --frozen pytest passed all 4 existing mock-focused tests
+owning package command and result: uv --directory sdks/python lock --check resolved 24 packages; generator bytes matched; Ruff lint passed and format covered 13 Python files; strict mypy passed over 10 source files; pytest passed 4 tests. A locked offline Hatchling build under Python 3.14.4 and uv 0.11.21 produced a 9,294-byte wheel with 14 entries and a 48,486-byte sdist with 18 entries; both contain py.typed and omit models.py. Direct sdk_conformance.py execution without RRD_SDK_CONFORMANCE_MANIFEST exited 1 at the required-manifest check
+cross-boundary command and result: python3 scripts/ci/run_sdk_conformance.py passed the shared direct-seeded rrflowKV real-daemon corpus through Rust, TypeScript, Python, Go, Java, and .NET, each reporting corpus SHA-256 b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2. Workspace architecture passed 17 tests; the locked workspace all-target check passed; documentation policy passed with 90 statuses and 88 classified coordinates; deterministic inventory passed with 893 current/generated/planned records; all 11 knowledge-export tests passed; generated parity remained 33 HTTP operations at OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715; version policy remained 1.0.0; Cargo formatting and diff integrity passed
+failure/crash/differential evidence: the first post-split Ruff format check rejected one wrapped operation.py signature; the locked formatter corrected only that signature and the complete rerun passed. The first artifact-content probe built both distributions but could not start a bare python executable because the host exposes Python only through the locked uv environment; the uv-interpreter rerun inspected both archives and passed. One malformed local working-directory invocation was rejected before process creation and changed nothing. This structural package creates no engine crash, rrflowMX/rrflowKV differential, recall, or performance evidence
+not run and reason: operation-specific runtime validation, native async behavior, HTTPS/mTLS/mesh resolution, multiplexed WebSocket, correlated server cancellation, transport/resource fault injection, clean external type consumer, reproducible/signed/offline dependency closure, supported interpreter/platform matrices, D-01 installation, structural all-operation conformance, rrflowMX/rrflowKV semantic comparison, rrflowKV crash/reopen, graph/scalar/BM25/vector atomicity, stamped Arrow/DataFusion streaming, persisted reasoning/context/feedback, Connectome, and benchmarks were not run because this bounded package only moves current Python responsibilities and adds the typing marker. Those later B through J behaviors must exist before their reserved seams can qualify anything
+remaining known errors: A-07.1e through A-07.1h and A-07.2 remain before A-07 can close. Python still has arbitrary request/success dictionaries, permissive success status/media/error handling, missing GET and causal identity checks, public serializable API-key/session credentials, broad immediate replay, local-only timeout cancellation, ambient HTTPX proxy/pool trust, loopback-only HTTP, no async/WebSocket/W3C/remote resolver, incomplete package metadata and qualification, and a direct-seeded label-overstated corpus. POAM-011 remains sequenced; all rrflowKV hybrid pages, native graph/index atomicity, stamped Arrow/DataFusion, persistent reasoning/recall, installation/attunement, Connectome, and release evidence remain open
+roadmap checkbox changed: no; only supporting A-07.1d subpackage status changed
 ```
 
 ### A-07.2 — freeze causal evidence vocabulary
