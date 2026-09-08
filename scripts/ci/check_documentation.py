@@ -29,6 +29,7 @@ POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
 SEAT_IDENTITY_REFERENCE = ROOT / "docs" / "reference" / "seat-identity.md"
 SYSTEM_OVERVIEW = ROOT / "docs" / "architecture" / "system-overview.md"
+INSTANCE_TOPOLOGY = ROOT / "docs" / "architecture" / "instance-topology.md"
 ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
 SINGLE_ENGINE_DECISION = ROOT / "docs" / "decisions" / "0001-single-engine-authority.md"
 SYSTEM_CONVERGENCE_RESEARCH = (
@@ -306,6 +307,7 @@ def main() -> int:
     required_warps = (
         "docs/README.md",
         "docs/architecture/system-overview.md",
+        "docs/architecture/instance-topology.md",
         "docs/architecture/engine-data-flow.md",
         "docs/decisions/0001-single-engine-authority.md",
         "docs/reference/storage/rrflowkv-current-format.md",
@@ -396,6 +398,23 @@ def main() -> int:
         system_overview
     ):
         failures.append("the system-overview owner has no durable coordinate")
+
+    instance_topology = INSTANCE_TOPOLOGY.read_text(encoding="utf-8")
+    for required_section in (
+        "## Locked alpha topology",
+        "## Canonical identities and cardinality",
+        "## Deployment and physical placement",
+        "## Installation and binding resolution",
+        "## Current implementation audit",
+        "## Direct-convergence sequence",
+        "## Acceptance",
+    ):
+        if required_section not in instance_topology:
+            failures.append(f"the instance-topology owner lacks {required_section}")
+    if "rrflow://rrflow-instance/data/architecture/instance-topology" not in (
+        instance_topology
+    ):
+        failures.append("the instance-topology owner has no durable coordinate")
 
     seat_identity_reference = SEAT_IDENTITY_REFERENCE.read_text(encoding="utf-8")
     for required_section in (
@@ -506,6 +525,7 @@ def main() -> int:
     terminology_owners = {
         README: readme,
         SYSTEM_OVERVIEW: system_overview,
+        INSTANCE_TOPOLOGY: instance_topology,
         ENGINE_DATA_FLOW: engine_data_flow,
         OBJECTIVE: objective,
         ROADMAP: roadmap,

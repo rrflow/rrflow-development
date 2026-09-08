@@ -8,7 +8,9 @@
 The repository root [README](../../README.md) is the bootstrap product portal.
 This record is the first architecture destination behind that portal. It tells
 an operator or AI system what every RRFlow component means and where detailed
-architecture lives. The [engine data-flow record](engine-data-flow.md) owns the
+architecture lives. The [instance-topology record](instance-topology.md) owns
+project, estate, RRD instance, environment, deployment, and physical-placement
+relationships. The [engine data-flow record](engine-data-flow.md) owns the
 complete read, write, Arrow/DataFusion, and context flows; the
 [roadmap](../roadmap/rrflow-1.0.md) owns implementation order and completion.
 

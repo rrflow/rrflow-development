@@ -22,6 +22,7 @@ release-ready.
 | Need | Single owning record |
 |---|---|
 | Understand the product, components, and boundaries | [RRFlow system overview](docs/architecture/system-overview.md) |
+| Understand project, estate, RRD instance, environment, deployment, and physical placement | [RRFlow instance topology](docs/architecture/instance-topology.md) |
 | Follow writes, persistence, reads, Arrow/DataFusion, and context end to end | [RRFlow engine data flow](docs/architecture/engine-data-flow.md) |
 | Understand why all capabilities remain under one authority | [ADR-0001: single-engine authority](docs/decisions/0001-single-engine-authority.md) |
 | See the measurable alpha result | [RRFlow 1.0 alpha objective](docs/objectives/rrflow-1.0-alpha.md) |
@@ -39,6 +40,7 @@ definition; this portal does not reproduce those bodies.
 | Invariant | Owning section |
 |---|---|
 | Canonical names for RRFlow, RRD, `RrdEngine`, rrflowDB, rrflowKV, rrflowMX, rrflowQL, Arrow/DataFusion, vectors, inference, LFG, and Connectome | [Canonical component terminology](docs/architecture/system-overview.md#canonical-component-terminology) |
+| One project ↔ one estate/rrflowDB ↔ one RRD instance; deployment form is separate from storage profile and physical placement | [Locked alpha topology](docs/architecture/instance-topology.md#locked-alpha-topology) |
 | One semantic, security, transaction, mutation, and context authority | [ADR-0001 decision](docs/decisions/0001-single-engine-authority.md#decision) |
 | No legacy product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
 | Persistent rrflowDB versus volatile rrflowMX | [Persistence and memory boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary) |
@@ -95,6 +97,7 @@ one repository fallback; the linked record owns the content.
 |---|---|---|
 | Knowledge structure and ownership | [`rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map`](rrflow://rrflow-instance/data/documentation-index/rrflow-knowledge-map) | [`docs/README.md`](docs/README.md) |
 | Master system overview | [`rrflow://rrflow-instance/data/architecture/system-overview`](rrflow://rrflow-instance/data/architecture/system-overview) | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) |
+| Project, estate, instance, and deployment topology | [`rrflow://rrflow-instance/data/architecture/instance-topology`](rrflow://rrflow-instance/data/architecture/instance-topology) | [`docs/architecture/instance-topology.md`](docs/architecture/instance-topology.md) |
 | Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |
 | Engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`docs/architecture/engine-data-flow.md`](docs/architecture/engine-data-flow.md) |
 | rrflowKV current physical format | [`rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`](rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format) | [`docs/reference/storage/rrflowkv-current-format.md`](docs/reference/storage/rrflowkv-current-format.md) |

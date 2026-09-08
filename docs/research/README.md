@@ -62,7 +62,8 @@ their authority into this index:
   (active implementation reference)
 - [`local-estate-authorization.md`](../reference/security/local-estate-authorization.md)
   (active supporting security reference)
-- [`instance-topology.md`](../instance-topology.md) (unclassified)
+- [`instance-topology.md`](../architecture/instance-topology.md)
+  (active accepted RRFlow architecture; research records cannot redefine it)
 
 ## Historical research follow-ups
 

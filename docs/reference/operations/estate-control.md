@@ -227,7 +227,7 @@ composition are not accepted as the target:
 | `server/state/estate/{estate}/document` | one compare-and-swap control key contains the whole aggregate | Replace with exact bounded keys and native access paths; do not preserve this key as a forwarding or compatibility record. |
 | `ControlTransition`/`ControlJournalEntry` | atomically replaces the materialized control value and appends a hash-chained journal entry containing the full replacement | Preserve CAS and tamper-evident lineage in the canonical transaction/log, but eliminate full-estate duplication and include semantic state, indexes, audit, outbox, and cursor in one commit. |
 | `ManagedInstance` plus `EstateOperation` | implements desired/observed generations, supersession, leases, receipts, observations, activity, and idempotency | Preserve and strengthen these semantics as typed records and relations under one stamp. |
-| `EstateAuthorityState` | nests twelve organisation/account/entitlement/project/environment/instance/node/shard/job/assignment/health/secret-reference resource kinds, desired/observed state, receipts, and another idempotency map inside the estate document | Do not retain a generic “authority” catalogue beside security and managed instances. The next topology review maps each useful resource/relationship to installation, topology, cluster, job, health, or secret-reference owners and removes overlap. |
+| `EstateAuthorityState` | nests twelve organisation/account/entitlement/project/environment/instance/node/shard/job/assignment/health/secret-reference resource kinds, desired/observed state, receipts, and another idempotency map inside the estate document | Do not retain a generic “authority” catalogue beside security and managed instances. The accepted [instance topology](../../architecture/instance-topology.md) maps each useful resource/relationship to installation, topology, cluster, job, health, or secret-reference owners and requires the overlap to be removed. |
 | `Reconciler<E, D>` and `BackupReconciler<E, D>` | directly construct `EstateRepository`, fabricate package-local mutation context from worker/time, and advance one durable boundary | Preserve deterministic one-boundary recovery and adapter traits, but execute each boundary as an authenticated, stamped engine operation with canonical event/evidence output. |
 | Backup/recovery methods | enforce quiescence, leases, policy snapshots, holds, deterministic prune partitions, restore evidence, and bounded collections | Preserve safety invariants in separate typed families; remove old-shape defaults and bind all state/effects to canonical policy and transaction stamps. |
 | Static `RrdEngine::*_store` methods | accept raw physical paths, caller time, worker, lease, and catalogue inputs; open a new local authority and append split authorized/completed audit records | Replace with operations on an installed engine and canonical invocation. The local authorization reference owns the exact permission convergence. |
@@ -261,7 +261,7 @@ equal-or-stronger evidence at its canonical destination.
 | Typed `EstateDriver` and `EstateBackupDriver` effects | Generalize | Installed capability adapters receive immutable effect plans and stable operation identities; no driver receives a store, credential, policy, or authority handle. |
 | Whole `EstateDocument` JSON value and full replacement in every journal record | Reject | Typed records/relations/index deltas and one canonical runtime/transaction lineage; repository searches and negative old-key/shape fixtures prove absence. |
 | Direct `StorageEngine` repository and direct-store reconciler constructors | Reject | Pure domain crate plus authorized `RrdEngine` operations; dependency and public-API checks reject physical storage imports. |
-| Broad operational `EstateAuthorityState` hierarchy | Split and reconcile | The instance-topology package classifies every kind and relation into its one owner; security authority, managed instance, job, health, and secret-reference concepts cannot remain duplicated. |
+| Broad operational `EstateAuthorityState` hierarchy | Split and reconcile | The accepted [instance topology](../../architecture/instance-topology.md) classifies every kind and relation into its one owner; security authority, managed instance, job, health, and secret-reference concepts cannot remain duplicated. |
 | Caller-supplied clock, database, policy, key, state root, catalogue, and debug hold paths | Reject | Installed binding, engine clock, canonical credential/policy, typed adapter configuration, and test-only failure ports. |
 | Current read projection and exact resource match | Preserve and extend | One native read stamp and identical HTTP/WebSocket/SDK/MCP/Connectome result/digest/evidence corpus. |
 
@@ -273,7 +273,8 @@ equal-or-stronger evidence at its canonical destination.
 2. Make `rrd-estate` a pure domain/validation boundary. Remove its
    `rrd-store` dependency, `EstateRepository`, and direct-store reconciler
    constructors without a wrapper or alias.
-3. Reconcile `EstateAuthorityState` against the next instance-topology review.
+3. Reconcile `EstateAuthorityState` against the accepted
+   [instance topology](../../architecture/instance-topology.md).
    Assign each useful resource and relationship to exactly one canonical
    record family; remove duplicate managed-instance, job, health, secret, and
    authorization concepts.
@@ -311,8 +312,9 @@ equal-or-stronger evidence at its canonical destination.
 | estate public-contract and HTTP tests | strict empty request, bounded snapshot shape, authentication, exact estate match, and a real 200 response | public mutations, native bounded reads, source stamp, external SDK execution, WebSocket/MCP/Connectome equivalence, or target engine completion |
 
 The current passing tests are characterization evidence. They do not close
-POAM-017, POAM-018, or the estate persistence/authority deficiency recorded by
-the POA&M. The Rust SDK conformance test also returns without execution unless
+POAM-017 through POAM-020, including the estate persistence, duplicate
+topology, and installed-authority deficiencies recorded by the POA&M. The Rust
+SDK conformance test also returns without execution unless
 an external manifest is supplied; its presence is not a normal-run proof.
 
 ## Implementation anchors and focused characterization
