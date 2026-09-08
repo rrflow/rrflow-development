@@ -36,6 +36,16 @@ pub enum Error {
     RecoveryRequired {
         boundary: &'static str,
     },
+    InvalidTransaction(String),
+    TransactionConflict {
+        snapshot_sequence: u64,
+        conflicting_sequence: u64,
+    },
+    TransactionDatabaseMismatch,
+    ActiveTransactions {
+        operation: &'static str,
+    },
+    PoisonedTransactionState,
     PoisonedWriter,
     InjectedFailure {
         mode: &'static str,
@@ -85,6 +95,27 @@ impl fmt::Display for Error {
                 formatter,
                 "RRD LSM writer crossed {boundary} without applying its durable WAL frame; reopen is required"
             ),
+            Self::InvalidTransaction(reason) => {
+                write!(formatter, "invalid RRD LSM transaction: {reason}")
+            }
+            Self::TransactionConflict {
+                snapshot_sequence,
+                conflicting_sequence,
+            } => write!(
+                formatter,
+                "RRD LSM transaction conflict: snapshot sequence {snapshot_sequence}, conflicting write sequence {conflicting_sequence}"
+            ),
+            Self::TransactionDatabaseMismatch => write!(
+                formatter,
+                "RRD LSM transaction belongs to a different database instance"
+            ),
+            Self::ActiveTransactions { operation } => write!(
+                formatter,
+                "RRD LSM cannot perform {operation} while transactions hold read snapshots"
+            ),
+            Self::PoisonedTransactionState => {
+                write!(formatter, "RRD LSM transaction snapshot registry is poisoned")
+            }
             Self::PoisonedWriter => write!(
                 formatter,
                 "WAL writer is poisoned after a failed append and must be reopened"

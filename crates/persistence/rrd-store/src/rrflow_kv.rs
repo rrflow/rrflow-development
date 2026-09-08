@@ -16,6 +16,7 @@ use crate::invocation::{Invocation, InvocationInput};
 use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Durability};
 use crate::outcome::{AppendOutcome, IdempotentAppendOutcome};
+use crate::transaction::{StorageTransaction, TransactionCommit, TransactionRollback};
 use rrd_core::{
     projection_family, AuditEnvelope, Claim, ClaimSource, Millis, ObjectReference, Predicate,
     ProjectionWork, ReadStamp, Reader, RetentionPin, RuntimeChange, RuntimeChangePage,
@@ -38,6 +39,78 @@ const RUNTIME_CHECKPOINT_PREFIX: &str = "runtime-";
 pub struct RrflowKvStore {
     path: PathBuf,
     database: Mutex<Database>,
+}
+
+struct RrflowKvTransaction<'a> {
+    store: &'a RrflowKvStore,
+    transaction: rrd_lsm::Transaction,
+}
+
+impl StorageTransaction for RrflowKvTransaction<'_> {
+    fn snapshot_sequence(&self) -> u64 {
+        self.transaction.snapshot().sequence
+    }
+
+    fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        let database = self.store.lock()?;
+        self.transaction.get(&database, key).map_err(Error::from)
+    }
+
+    fn scan(&self, start: &[u8], end: &[u8], limit: usize) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        let database = self.store.lock()?;
+        self.transaction
+            .scan(&database, start, end, limit)
+            .map_err(Error::from)
+    }
+
+    fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
+        self.transaction.put(key, value).map_err(Error::from)
+    }
+
+    fn delete(&mut self, key: Vec<u8>) -> Result<()> {
+        self.transaction.delete(key).map_err(Error::from)
+    }
+
+    fn commit(self: Box<Self>, durability: Durability) -> Result<TransactionCommit> {
+        let Self { store, transaction } = *self;
+        let mut database = store.lock()?;
+        let outcome = database.commit_transaction(
+            transaction,
+            match durability {
+                Durability::Authoritative => rrd_lsm::Durability::Authoritative,
+                Durability::Buffered => rrd_lsm::Durability::Buffered,
+            },
+        )?;
+        let (first_sequence, last_sequence) = outcome
+            .receipt
+            .as_ref()
+            .map(|receipt| (Some(receipt.first_sequence), Some(receipt.last_sequence)))
+            .unwrap_or((None, None));
+        tracing::debug!(
+            target: "rrd_store::transaction",
+            storage_profile = "rrflow_kv",
+            snapshot_sequence = outcome.snapshot_sequence,
+            mutation_count = outcome.mutation_count,
+            first_sequence,
+            last_sequence,
+            outcome = if outcome.receipt.is_some() { "committed" } else { "read_only" },
+            "storage transaction completed"
+        );
+        Ok(TransactionCommit {
+            snapshot_sequence: outcome.snapshot_sequence,
+            mutation_count: outcome.mutation_count,
+            first_sequence,
+            last_sequence,
+        })
+    }
+
+    fn rollback(self: Box<Self>) -> Result<TransactionRollback> {
+        let outcome = self.transaction.rollback()?;
+        Ok(TransactionRollback {
+            snapshot_sequence: outcome.snapshot_sequence,
+            discarded_mutations: outcome.discarded_mutations,
+        })
+    }
 }
 
 impl RrflowKvStore {
@@ -329,6 +402,24 @@ impl ClaimSource for RrflowKvStore {
 }
 
 impl StorageEngine for RrflowKvStore {
+    fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>> {
+        let transaction = {
+            let database = self.lock()?;
+            database.begin_transaction()?
+        };
+        tracing::debug!(
+            target: "rrd_store::transaction",
+            storage_profile = "rrflow_kv",
+            snapshot_sequence = transaction.snapshot().sequence,
+            outcome = "begun",
+            "storage transaction began"
+        );
+        Ok(Box::new(RrflowKvTransaction {
+            store: self,
+            transaction,
+        }))
+    }
+
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         let database = self.lock()?;
         let manifest = database.manifest();

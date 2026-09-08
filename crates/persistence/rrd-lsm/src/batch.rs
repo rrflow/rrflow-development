@@ -27,21 +27,33 @@ impl Mutation {
         }
     }
 
-    fn validate(&self) -> Result<()> {
-        if self.key().is_empty() || self.key().len() > MAX_KEY_BYTES {
-            return Err(Error::InvalidBatch(format!(
-                "key length must be in 1..={MAX_KEY_BYTES} bytes"
-            )));
-        }
+    /// Validates one physical mutation before it enters a transaction write
+    /// set or atomic batch.
+    pub fn validate(&self) -> Result<()> {
+        validate_key(self.key())?;
         if let Self::Put { value, .. } = self {
-            if value.len() > MAX_VALUE_BYTES {
-                return Err(Error::InvalidBatch(format!(
-                    "value length exceeds {MAX_VALUE_BYTES} bytes"
-                )));
-            }
+            validate_value(value)?;
         }
         Ok(())
     }
+}
+
+pub(crate) fn validate_key(key: &[u8]) -> Result<()> {
+    if key.is_empty() || key.len() > MAX_KEY_BYTES {
+        return Err(Error::InvalidBatch(format!(
+            "key length must be in 1..={MAX_KEY_BYTES} bytes"
+        )));
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_value(value: &[u8]) -> Result<()> {
+    if value.len() > MAX_VALUE_BYTES {
+        return Err(Error::InvalidBatch(format!(
+            "value length exceeds {MAX_VALUE_BYTES} bytes"
+        )));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -70,6 +82,11 @@ impl WriteBatch {
 
     pub fn operations(&self) -> &[Mutation] {
         &self.operations
+    }
+
+    /// Consumes a validated batch and returns its ordered mutations.
+    pub fn into_operations(self) -> Vec<Mutation> {
+        self.operations
     }
 
     pub fn encode(&self) -> Result<Vec<u8>> {

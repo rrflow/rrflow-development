@@ -24,6 +24,7 @@ mod outcome;
 mod projection;
 mod rrflow_kv;
 mod s3;
+mod transaction;
 mod writer;
 
 pub use archive::{
@@ -75,4 +76,5 @@ pub use s3::{
     S3ObjectMetadata, S3TransferPolicy, S3TransportCapabilities, S3UploadedPart,
     DEFAULT_S3_RANGE_BYTES, S3_MAX_PARTS, S3_MAX_PART_BYTES, S3_MIN_PART_BYTES,
 };
+pub use transaction::{StorageTransaction, TransactionCommit, TransactionRollback};
 pub use writer::{ClaimBatchWriter, ClaimBatchWriterConfig, ClaimBatchWriterStats};

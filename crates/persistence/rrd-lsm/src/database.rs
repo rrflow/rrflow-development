@@ -280,6 +280,7 @@ pub struct Database {
     maintenance_stats: MaintenanceStats,
     wal_payload_bytes: usize,
     writer_requires_reopen: Option<&'static str>,
+    transaction_snapshots: Arc<crate::transaction::TransactionSnapshots>,
 }
 
 impl Database {
@@ -353,6 +354,7 @@ impl Database {
             maintenance_stats: MaintenanceStats::default(),
             wal_payload_bytes: 0,
             writer_requires_reopen: None,
+            transaction_snapshots: Arc::new(crate::transaction::TransactionSnapshots::default()),
         })
     }
 
@@ -449,6 +451,7 @@ impl Database {
             maintenance_stats,
             wal_payload_bytes,
             writer_requires_reopen: None,
+            transaction_snapshots: Arc::new(crate::transaction::TransactionSnapshots::default()),
         })
     }
 
@@ -464,6 +467,110 @@ impl Database {
         Snapshot {
             sequence: self.memtable.maximum_sequence(),
         }
+    }
+
+    /// Begins one snapshot-isolated physical transaction and pins its read
+    /// sequence against history-pruning compaction until commit, rollback, or
+    /// drop.
+    pub fn begin_transaction(&self) -> Result<crate::Transaction> {
+        let transaction =
+            crate::Transaction::begin(self.snapshot(), Arc::clone(&self.transaction_snapshots))?;
+        tracing::debug!(
+            target: "rrd_lsm::transaction",
+            snapshot_sequence = transaction.snapshot().sequence,
+            outcome = "begun",
+            "physical transaction began"
+        );
+        Ok(transaction)
+    }
+
+    /// Atomically conflict-checks and publishes one transaction write set.
+    /// Only keys written by the transaction participate in conflict detection.
+    pub fn commit_transaction(
+        &mut self,
+        mut transaction: crate::Transaction,
+        durability: Durability,
+    ) -> Result<crate::TransactionCommit> {
+        self.ensure_writer_ready()?;
+        self.validate_transaction_owner(&transaction)?;
+        for key in transaction.pending().keys() {
+            if let Some(conflicting_sequence) = self.latest_sequence_for_key(key)? {
+                if conflicting_sequence > transaction.snapshot().sequence {
+                    tracing::warn!(
+                        target: "rrd_lsm::transaction",
+                        snapshot_sequence = transaction.snapshot().sequence,
+                        conflicting_sequence,
+                        mutation_count = transaction.write_count(),
+                        outcome = "conflict",
+                        "physical transaction commit denied"
+                    );
+                    return Err(Error::TransactionConflict {
+                        snapshot_sequence: transaction.snapshot().sequence,
+                        conflicting_sequence,
+                    });
+                }
+            }
+        }
+        let mutation_count = transaction.write_count();
+        if mutation_count == 0 {
+            tracing::debug!(
+                target: "rrd_lsm::transaction",
+                snapshot_sequence = transaction.snapshot().sequence,
+                mutation_count,
+                outcome = "read_only",
+                "physical transaction committed without a write"
+            );
+            return Ok(crate::TransactionCommit {
+                snapshot_sequence: transaction.snapshot().sequence,
+                mutation_count,
+                receipt: None,
+            });
+        }
+        let snapshot_sequence = transaction.snapshot().sequence;
+        let batch = WriteBatch::new(transaction.take_mutations())?;
+        let receipt = self.write_owned(batch, durability)?;
+        tracing::debug!(
+            target: "rrd_lsm::transaction",
+            snapshot_sequence,
+            mutation_count,
+            first_sequence = receipt.first_sequence,
+            last_sequence = receipt.last_sequence,
+            durable = receipt.durable,
+            outcome = "committed",
+            "physical transaction committed"
+        );
+        Ok(crate::TransactionCommit {
+            snapshot_sequence,
+            mutation_count,
+            receipt: Some(receipt),
+        })
+    }
+
+    pub(crate) fn validate_transaction_owner(
+        &self,
+        transaction: &crate::Transaction,
+    ) -> Result<()> {
+        if transaction.belongs_to(&self.transaction_snapshots) {
+            Ok(())
+        } else {
+            Err(Error::TransactionDatabaseMismatch)
+        }
+    }
+
+    fn latest_sequence_for_key(&self, key: &[u8]) -> Result<Option<u64>> {
+        let read_sequence = self.snapshot().sequence;
+        let mut latest = self
+            .memtable
+            .get_version(key, read_sequence)
+            .map(|version| version.sequence);
+        for segment in &self.segments {
+            if let Some(version) = segment.get_version(key, read_sequence)? {
+                if latest.is_none_or(|sequence| version.sequence > sequence) {
+                    latest = Some(version.sequence);
+                }
+            }
+        }
+        Ok(latest)
     }
 
     pub fn write(&mut self, batch: &WriteBatch, durability: Durability) -> Result<AppendReceipt> {
@@ -841,6 +948,7 @@ impl Database {
         at: u64,
         failure: Option<(SnapshotInstallBoundary, FailureMode)>,
     ) -> Result<Manifest> {
+        self.ensure_no_active_transactions("snapshot installation")?;
         if bundle.source_manifest.application_format != self.manifest.application_format {
             return Err(Error::InvalidManifest(
                 "snapshot application format differs from the target database".into(),
@@ -930,6 +1038,7 @@ impl Database {
         at: u64,
         failure: Option<(SnapshotInstallBoundary, FailureMode)>,
     ) -> Result<Manifest> {
+        self.ensure_no_active_transactions("snapshot installation")?;
         bundle.validate()?;
         if bundle.source_manifest.application_format != self.manifest.application_format {
             return Err(Error::InvalidManifest(
@@ -1058,6 +1167,7 @@ impl Database {
             .map(|snapshot| snapshot.sequence)
             .filter(|sequence| *sequence <= durable)
             .collect::<BTreeSet<_>>();
+        protected_sequences.extend(self.transaction_snapshots.sequences()?);
         protected_sequences.insert(durable);
         let previous_manifest = self.manifest.digest.clone();
         let input_segments = candidate.indices.len();
@@ -1668,6 +1778,14 @@ impl Database {
 
     pub fn segment_io_stats(&self) -> SegmentIoStats {
         self.segment_io.stats()
+    }
+
+    fn ensure_no_active_transactions(&self, operation: &'static str) -> Result<()> {
+        if self.transaction_snapshots.is_empty()? {
+            Ok(())
+        } else {
+            Err(Error::ActiveTransactions { operation })
+        }
     }
 }
 

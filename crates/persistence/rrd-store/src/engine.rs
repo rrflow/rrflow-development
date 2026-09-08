@@ -19,6 +19,10 @@ use crate::projection::{
     difference, CurrentProjection, GroundedStamp, GroundingReport, ProjectionStatus,
     CURRENT_PROJECTION,
 };
+use crate::transaction::{
+    validate_range, validate_read_key, StorageTransaction, TransactionCommit, TransactionRollback,
+    TransactionWriteSet,
+};
 use rrd_core::reference::MemoryClaims;
 use rrd_core::{
     projection_family, resolve_as_of, AuditEnvelope, Claim, ClaimSource, DataTransaction,
@@ -29,6 +33,7 @@ use rrd_core::{
     RuntimeVector, ScopeId, SnapshotHandle, SnapshotId, Subject,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Bound::{Excluded, Included};
 use std::sync::Mutex;
 
 /// A read-only physical counter snapshot used to attribute bounded storage
@@ -162,6 +167,10 @@ impl PhysicalStoreEvidence {
 
 pub trait StorageEngine: ClaimSource<Error = Error> {
     // ---- primitives every backend supplies ----
+
+    /// Begins the profile-neutral physical transaction used by semantic
+    /// repositories. `RrdEngine` remains the sole public mutation authority.
+    fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>>;
 
     /// Appends claims atomically with authoritative durability, advancing
     /// the sequence watermark in the same transaction.
@@ -722,6 +731,14 @@ struct RrflowMxStoreInner {
     control_records: BTreeMap<String, Vec<u8>>,
     control_journal: Vec<ControlJournalEntry>,
     catalog_revisions: BTreeMap<ScopeId, u64>,
+    transaction_sequence: u64,
+    transaction_values: BTreeMap<Vec<u8>, Vec<RrflowMxTransactionVersion>>,
+}
+
+#[derive(Debug)]
+struct RrflowMxTransactionVersion {
+    sequence: u64,
+    value: Option<Vec<u8>>,
 }
 
 impl RrflowMxStore {
@@ -732,6 +749,189 @@ impl RrflowMxStore {
     /// Observe calls recorded, for tests that assert telemetry flowed.
     pub fn observe_count(&self) -> u64 {
         self.inner.lock().expect("engine mutex").observes
+    }
+}
+
+struct RrflowMxTransaction<'a> {
+    store: &'a RrflowMxStore,
+    snapshot_sequence: u64,
+    writes: TransactionWriteSet,
+}
+
+impl StorageTransaction for RrflowMxTransaction<'_> {
+    fn snapshot_sequence(&self) -> u64 {
+        self.snapshot_sequence
+    }
+
+    fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        validate_read_key(key)?;
+        if let Some(value) = self.writes.get(key) {
+            return Ok(value.map(<[u8]>::to_vec));
+        }
+        let inner = self.store.inner.lock().expect("engine mutex");
+        Ok(inner
+            .transaction_values
+            .get(key)
+            .and_then(|versions| {
+                versions
+                    .iter()
+                    .rev()
+                    .find(|version| version.sequence <= self.snapshot_sequence)
+            })
+            .and_then(|version| version.value.clone()))
+    }
+
+    fn scan(&self, start: &[u8], end: &[u8], limit: usize) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        validate_range(start, end, limit)?;
+        let inner = self.store.inner.lock().expect("engine mutex");
+        let mut visible = inner
+            .transaction_values
+            .range::<[u8], _>((Included(start), Excluded(end)))
+            .filter_map(|(key, versions)| {
+                versions
+                    .iter()
+                    .rev()
+                    .find(|version| version.sequence <= self.snapshot_sequence)
+                    .and_then(|version| {
+                        version
+                            .value
+                            .as_ref()
+                            .map(|value| (key.clone(), value.clone()))
+                    })
+            })
+            .collect::<BTreeMap<_, _>>();
+        drop(inner);
+        for (key, value) in self
+            .writes
+            .mutations()
+            .range::<[u8], _>((Included(start), Excluded(end)))
+        {
+            match value {
+                Some(value) => {
+                    visible.insert(key.clone(), value.clone());
+                }
+                None => {
+                    visible.remove(key.as_slice());
+                }
+            }
+        }
+        Ok(visible.into_iter().take(limit).collect())
+    }
+
+    fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
+        self.writes.put(key, value)
+    }
+
+    fn delete(&mut self, key: Vec<u8>) -> Result<()> {
+        self.writes.delete(key)
+    }
+
+    fn commit(self: Box<Self>, _durability: Durability) -> Result<TransactionCommit> {
+        let Self {
+            store,
+            snapshot_sequence,
+            writes,
+        } = *self;
+        let mutation_count = writes.len();
+        if mutation_count == 0 {
+            tracing::debug!(
+                target: "rrd_store::transaction",
+                storage_profile = "rrflow_mx",
+                snapshot_sequence,
+                mutation_count,
+                outcome = "read_only",
+                "storage transaction committed without a write"
+            );
+            return Ok(TransactionCommit {
+                snapshot_sequence,
+                mutation_count,
+                first_sequence: None,
+                last_sequence: None,
+            });
+        }
+        let batch = writes.into_batch()?;
+        let mut inner = store.inner.lock().expect("engine mutex");
+        for operation in batch.operations() {
+            let key = operation.key();
+            if let Some(conflicting_sequence) = inner
+                .transaction_values
+                .get(key)
+                .and_then(|versions| versions.last())
+                .map(|version| version.sequence)
+                .filter(|sequence| *sequence > snapshot_sequence)
+            {
+                tracing::warn!(
+                    target: "rrd_store::transaction",
+                    storage_profile = "rrflow_mx",
+                    snapshot_sequence,
+                    conflicting_sequence,
+                    mutation_count,
+                    outcome = "conflict",
+                    "storage transaction commit denied"
+                );
+                return Err(Error::TransactionConflict {
+                    snapshot_sequence,
+                    conflicting_sequence,
+                });
+            }
+        }
+        let mutation_count_u64 =
+            u64::try_from(mutation_count).map_err(|_| Error::SequenceOverflow)?;
+        let first_sequence = inner
+            .transaction_sequence
+            .checked_add(1)
+            .ok_or(Error::SequenceOverflow)?;
+        let last_sequence = inner
+            .transaction_sequence
+            .checked_add(mutation_count_u64)
+            .ok_or(Error::SequenceOverflow)?;
+        for (offset, operation) in batch.into_operations().into_iter().enumerate() {
+            let (key, value) = match operation {
+                rrd_lsm::Mutation::Put { key, value } => (key, Some(value)),
+                rrd_lsm::Mutation::Delete { key } => (key, None),
+            };
+            inner
+                .transaction_values
+                .entry(key)
+                .or_default()
+                .push(RrflowMxTransactionVersion {
+                    sequence: first_sequence + offset as u64,
+                    value,
+                });
+        }
+        inner.transaction_sequence = last_sequence;
+        tracing::debug!(
+            target: "rrd_store::transaction",
+            storage_profile = "rrflow_mx",
+            snapshot_sequence,
+            mutation_count,
+            first_sequence,
+            last_sequence,
+            outcome = "committed",
+            "storage transaction committed"
+        );
+        Ok(TransactionCommit {
+            snapshot_sequence,
+            mutation_count,
+            first_sequence: Some(first_sequence),
+            last_sequence: Some(last_sequence),
+        })
+    }
+
+    fn rollback(self: Box<Self>) -> Result<TransactionRollback> {
+        let outcome = TransactionRollback {
+            snapshot_sequence: self.snapshot_sequence,
+            discarded_mutations: self.writes.len(),
+        };
+        tracing::debug!(
+            target: "rrd_store::transaction",
+            storage_profile = "rrflow_mx",
+            snapshot_sequence = outcome.snapshot_sequence,
+            discarded_mutations = outcome.discarded_mutations,
+            outcome = "rolled_back",
+            "storage transaction rolled back"
+        );
+        Ok(outcome)
     }
 }
 
@@ -791,6 +991,26 @@ pub(crate) fn validate_idempotency(key: &str, digest: &str) -> Result<()> {
 }
 
 impl StorageEngine for RrflowMxStore {
+    fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>> {
+        let snapshot_sequence = self
+            .inner
+            .lock()
+            .expect("engine mutex")
+            .transaction_sequence;
+        tracing::debug!(
+            target: "rrd_store::transaction",
+            storage_profile = "rrflow_mx",
+            snapshot_sequence,
+            outcome = "begun",
+            "storage transaction began"
+        );
+        Ok(Box::new(RrflowMxTransaction {
+            store: self,
+            snapshot_sequence,
+            writes: TransactionWriteSet::default(),
+        }))
+    }
+
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         Ok(PhysicalStoreEvidence::logical_only("rrflow_mx"))
     }
@@ -1557,6 +1777,10 @@ impl ClaimSource for StorageProfile {
 }
 
 impl StorageEngine for StorageProfile {
+    fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>> {
+        self.engine().begin_transaction()
+    }
+
     fn append_batch(&self, claims: &[Claim]) -> Result<AppendOutcome> {
         self.engine().append_batch(claims)
     }

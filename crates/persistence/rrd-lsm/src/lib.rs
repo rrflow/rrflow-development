@@ -13,6 +13,7 @@ mod manifest;
 mod memtable;
 mod segment;
 mod snapshot_bundle;
+mod transaction;
 mod wal;
 
 use std::path::Path;
@@ -99,6 +100,7 @@ pub use snapshot_bundle::{
     SnapshotBundle, SnapshotBundleFile, SnapshotExportBoundary, SnapshotSegment,
     SNAPSHOT_BUNDLE_FORMAT_VERSION, SNAPSHOT_BUNDLE_MAX_BYTES,
 };
+pub use transaction::{Transaction, TransactionCommit, TransactionRollback};
 pub use wal::{
     recover, recover_from, repair_torn_tail, AppendReceipt, Durability, RecoveredBatch, Recovery,
     WalBatch, WalWriter, WAL_FORMAT_VERSION, WAL_MAX_PAYLOAD_BYTES,

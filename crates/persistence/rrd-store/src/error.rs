@@ -22,6 +22,12 @@ pub enum Error {
     Quarantined(String),
     /// Optimistic concurrency rejected a writer that observed an older head.
     RuntimeConflict { expected: u64, actual: u64 },
+    /// Snapshot isolation rejected a transaction because a key in its write
+    /// set changed after the transaction began.
+    TransactionConflict {
+        snapshot_sequence: u64,
+        conflicting_sequence: u64,
+    },
     /// One accepted client idempotency key was rebound to different content.
     IdempotencyConflict(String),
     /// A control-plane transition observed different materialized state.
@@ -74,6 +80,13 @@ impl fmt::Display for Error {
             Error::RuntimeConflict { expected, actual } => write!(
                 f,
                 "runtime commit conflict: expected cursor {expected}, actual cursor {actual}"
+            ),
+            Error::TransactionConflict {
+                snapshot_sequence,
+                conflicting_sequence,
+            } => write!(
+                f,
+                "storage transaction conflict: snapshot sequence {snapshot_sequence}, conflicting write sequence {conflicting_sequence}"
             ),
             Error::IdempotencyConflict(key) => {
                 write!(
@@ -134,7 +147,16 @@ impl std::error::Error for Error {}
 
 impl From<rrd_lsm::Error> for Error {
     fn from(value: rrd_lsm::Error) -> Self {
-        Error::Substrate(value.to_string())
+        match value {
+            rrd_lsm::Error::TransactionConflict {
+                snapshot_sequence,
+                conflicting_sequence,
+            } => Error::TransactionConflict {
+                snapshot_sequence,
+                conflicting_sequence,
+            },
+            other => Error::Substrate(other.to_string()),
+        }
     }
 }
 
