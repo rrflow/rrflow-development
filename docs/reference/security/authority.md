@@ -139,13 +139,139 @@ estate mutations without a canonical principal grant or invocation. Its useful
 exact-scope and denial-before-creation properties must be absorbed directly;
 the local file policy receives no permanent or compatibility status.
 
-The final install path must create or bind all required key material through a
-previewed, digest-bound, provider-neutral `rrflow install` plan. The existing
-standalone `rrd-security-bootstrap` helper accepts a database path, manifest,
-and mounted credential files and proves useful bounded/private-file semantics,
-but it is not the D-01 installation surface and receives no compatibility
-status. Secret-provider integration, rotation, revocation, and reload behavior
-must be explicit configured adapters with failure and restart evidence.
+The final install path must create or bind all required key material through
+the installation trust bootstrap below. Secret-provider integration, rotation,
+revocation, and reload behavior are explicit configured adapters with failure
+and restart evidence; they are never inferred from a path or deployment
+environment.
+
+## Installation trust bootstrap
+
+Initial security authority is part of the canonical B-01
+`initialize_instance` installation action. It is not a separate executable,
+manifest dialect, database opener, HTTP endpoint, or Kubernetes lifecycle.
+`rrflow install --preview` resolves the complete action and
+`rrflow install --apply <plan>` submits the exact reviewed digest to
+`RrdEngine`. The server cannot listen for application traffic until that action
+has committed an installed-estate binding and initial security authority.
+
+An existing *application project* can still be a fresh RRFlow installation.
+Cold-start authority is available only while RRFlow can prove, under an
+exclusive create-new installation lease, that the target has no installed
+binding, security authority, or canonical estate state. Once any installed
+binding exists, absence or corruption of policy never re-enables cold start;
+repair and policy replacement require an authenticated `security_admin`
+operation or an explicit recovery procedure. The cold-start path is local and
+privileged by the operator's OS/deployment boundary and is never remotely
+callable.
+
+### Previewed initialization input
+
+The `initialize_instance` action input digest commits to one normalized,
+bounded document containing:
+
+- project, estate, and instance identities plus the selected rrflowMX or
+  rrflowKV storage profile and exact placement descriptor;
+- distribution, template, configuration, specialization, and schema digests;
+- every initial principal, principal kind, role membership, inherited role,
+  closed action, resource prefix, and data/effect constraint;
+- each credential's purpose, verifier scheme and parameters, revision,
+  validity policy, rotation policy, source kind, and opaque source revision or
+  version; and
+- the installation identity, idempotency coordinates, resource limits, and
+  expected subsequent locator and attunement-plan digests.
+
+Preview renders those semantics for human and machine review. It does not open
+rrflowKV, generate or read a credential, create a file, contact a provider, or
+start RRD. Apply may resolve only a bundle-resident input or an explicitly
+configured credential adapter named by that plan. A principal or grant absent
+from the reviewed input cannot appear during apply, and a changed configuration,
+source revision, adapter binding, template, placement, or action digest is a
+conflict requiring a new preview.
+
+### Credential sources and sinks
+
+The provider-neutral engine sees credential-source descriptors and a bounded
+secret-input capability, never an arbitrary host path. The initial alpha must
+support engine-generated high-entropy API-key material; imported local files,
+Kubernetes projected Secrets, hardware devices, and external secret managers
+are optional outward adapters behind the same source contract. Their provider
+names and filesystem conventions do not enter canonical security state.
+
+For a file adapter, the plan names a normalized relative entry beneath an
+explicitly opened capability root. The adapter opens the entry relative to
+that directory handle, rejects traversal and unsupported link/mount behavior,
+then validates type, identity, ownership/ACL policy, and size on the opened
+handle before returning a bounded reader. A `canonicalize`-then-open sequence
+is insufficient because the path can be replaced between those operations.
+Kubernetes projected-volume symlinks and `fsGroup` rules are handled and tested
+only by the Kubernetes adapter; a Windows adapter must validate ACLs rather
+than silently accepting every file.
+
+Generation uses the operating system cryptographic random source. Raw secret
+bytes never enter a plan, command argument, environment variable, locator,
+canonical record, audit event, trace, error, status response, or stdout. Apply
+delivers generated material only to the explicitly previewed create-new secret
+sink or provider handoff, with bounded permissions and durability evidence.
+Buffers holding secret bytes are fixed-capacity where practical, are not
+cloned for logging or serialization, and are zeroized immediately after
+verifier construction and delivery.
+
+Persisted verifier state is typed and versioned by credential kind. A
+high-entropy machine API key may use a constant-time checked keyed cryptographic
+verifier with its key held outside the policy record. A human-memorable secret
+must use a salted, costed password-hashing scheme; plain SHA-256 is never a
+password verifier. The current raw SHA-256 field is therefore retained only as
+characterization for already generated 256-bit API keys and must be replaced
+by the final typed verifier contract before security qualification.
+
+### Commit, replay, and failure boundaries
+
+`RrdEngine` obtains installation time from its injected trusted clock; callers
+do not supply credential-validity or audit time. The accepted
+`initialize_instance` transaction atomically commits the installed-estate
+binding, initial policy/verifier metadata, exact plan/action identity,
+installation checkpoint, security-administration audit, outbox/commit evidence,
+and authoritative cursor. rrflowMX and rrflowKV execute the same semantic
+transaction; only rrflowKV can satisfy the durable installation and reopen
+outcome.
+
+An exact retry returns the committed receipt and never regenerates, rereads, or
+redelivers a credential merely to reconstruct state. Reuse of a plan identity
+with different input, a changed credential-source revision, a pre-existing
+unowned sink, partial authority state, stale lease, or target identity mismatch
+fails closed. External credential generation/delivery follows the same
+prepared-effect-observation-receipt discipline as other non-transactional
+effects; its bounded staging and cleanup are install-job state, never a second
+security database.
+
+D-01/D-02 tests must interrupt before and after plan acceptance, credential
+prepare, secret delivery, engine commit, locator publication, attunement-job
+creation, acknowledgement, and cleanup. For each boundary they must prove one
+credential outcome, one policy and audit outcome, exact replay or explicit
+recoverable failure, no open application listener before authority is ready,
+no plaintext in every persisted/logged/error artifact, and successful rrflowKV
+close/reopen authentication. Separate tests cover path replacement, symlink
+and mount escape, oversized/empty/non-regular inputs, Unix modes, Windows ACLs,
+Kubernetes projected volumes, provider revision drift, cancellation, and
+revocation.
+
+### Current helper disposition
+
+The current `rrd-security-bootstrap` code preserves only useful
+characterization: strict JSON decoding, bounded non-empty regular inputs,
+unique identities, complete `SecurityState` validation, verifier-only
+persistence, atomic policy-plus-audit initialization, exact no-op replay, and
+drift denial. Its successful shape is not retained. It opens a caller-selected
+rrflowKV path before manifest validation, accepts caller-selected time and
+absolute credential paths, performs resolve/metadata/open as separate
+filesystem operations, has a no-op non-Unix privacy check, derives operation
+identity from only the manifest bytes, and lets the CLI supervisor manufacture
+its own principal/grants. The Kubernetes renderer invokes the same helper as a
+second initializer. A-07 and D-01 absorb the listed safeguards into the one
+installation action and delete the engine helper, standalone binary, CLI
+supervisor call, Kubernetes call, manifest/test shape, and every direct-store
+entrypoint without an alias or reader.
 
 ## Policy and data stamp
 
@@ -245,8 +371,11 @@ The complete review found these direct-convergence requirements:
    policy/data stamp are not.
 4. The missing-policy loopback branch grants anonymous application operation;
    it is current characterization, not an accepted pre-release fallback.
-5. Security bootstrap is a standalone database-path command rather than a
-   previewed phase of the generic offline installation and attunement flow.
+5. Security bootstrap is a standalone rrflowKV-only database-path command. It
+   opens storage before validating its input, accepts caller time and arbitrary
+   absolute secret paths, has a resolve-then-open race and no non-Unix privacy
+   enforcement, and is independently driven by CLI and Kubernetes code rather
+   than the digest-bound `initialize_instance` action.
 6. Authorization and completion audit are not atomic with domain mutation;
    audit values also lack the final stamp, plan, effect, and commit evidence.
 7. Current actions cover existing endpoints but not all planned install,
@@ -273,7 +402,7 @@ create a legacy security mode.
 | Server/client real-process tests | Current API-key sessions, denials, redaction, audit read/export, TLS 1.3 mTLS identity, authenticated HTTP/WSS, and selected reopen behavior. They do not qualify every adapter, provider, rotation mode, or deployment. |
 | A-07 | Remove the direct-store/public-repository authority, obsolete RRO language, ambiguous action vocabulary, and dependency-direction conflicts while mapping every retained invariant to its one owner. |
 | C-01 through C-04 | Encode and transact security/audit state through the one accepted rrflowMX/rrflowKV substrate; bind policy and data observations; atomically include audit with accepted writes. |
-| D-01/D-02/D-06 | Integrate secure initialization, secrets, external identity providers, and optional adapters into previewed, persisted, provider-neutral install/attunement without copying credentials. |
+| D-01/D-02/D-06 | Implement the local-only installation trust bootstrap: exact preview/apply, fresh-target proof, engine clock, capability-scoped secret I/O, typed verifiers, atomic binding/policy/audit/checkpoint commit, effect receipts, crash-safe replay, external identity providers, and optional adapters without copying credentials into canonical state. |
 | F-01 through F-05 | Prove native and DataFusion plans see only authorized stamped batches, enforce budgets, and never return stale authorization-scoped cache entries. |
 | H-04/H-05/H-07 | Prove cross-surface authorization equivalence, complete redacted causal evidence, RRD TLS identity, and mesh independence. |
 | J-01 through J-05 | Remove superseded branches and pass denial, crash/reopen, resource, clean-install, secret-accounting, and deployment qualification before release. |
@@ -304,3 +433,16 @@ cargo test -p rrd-client --test real_server remote_transport_requires_mutual_tls
 Those commands characterize present behavior only. Alpha acceptance additionally
 requires the gate-specific semantic, differential, failure, resource,
 cross-surface, and clean-deployment evidence above.
+
+## Engineering sources
+
+The target requirements above are grounded in the
+[OWASP secrets-management lifecycle and least-privilege guidance](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html),
+[NIST SP 800-63B verifier guidance](https://pages.nist.gov/800-63-4/sp800-63b.html),
+[cap-std capability-relative filesystem model](https://docs.rs/cap-std/latest/cap_std/),
+[Linux `openat2` resolution controls](https://man7.org/linux/man-pages/man2/openat2.2.html),
+[RustCrypto zeroization guarantees and limits](https://docs.rs/zeroize/latest/zeroize/),
+and
+[Kubernetes Secret least-privilege guidance](https://kubernetes.io/docs/concepts/security/secrets-good-practices/).
+These sources constrain implementation and tests; none is imported as an
+RRFlow runtime or authority.

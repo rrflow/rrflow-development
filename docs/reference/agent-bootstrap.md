@@ -117,6 +117,29 @@ connect -> inventory -> parse -> normalize -> entity-link
         -> graph -> ground -> verify
 ```
 
+`initialize_instance` is also the only initial-security bootstrap. Its action
+digest binds the project/estate/instance identity, storage profile, initial
+principals/roles/grants, typed credential-verifier policy, opaque credential
+source or generation action, and the configuration/template/specialization
+digests. Preview displays those semantics but does not open storage, read or
+generate a secret, write a locator, contact a provider, or start RRD. Apply
+uses a local privileged fresh-target lease, engine-observed time, and the exact
+plan digest to atomically commit the installed binding, initial security
+authority, action checkpoint, audit, and commit evidence through `RrdEngine`.
+An already installed estate requires ordinary authenticated security
+administration; missing or damaged policy never re-enables cold start.
+
+Credential values are not installation-plan data. The baseline generates a
+high-entropy machine credential and delivers it only through the previewed
+create-new sink. Optional file, Kubernetes, hardware, or secret-manager inputs
+are adapter-resolved capabilities with explicit revisions, bounds, and
+receipts—not absolute paths interpreted by the engine. Failure after any
+non-transactional delivery resumes from persisted prepared/effect state or
+fails closed; it never silently generates a second credential. The complete
+trust, verifier, path-race, replay, crash, and secret-accounting contract is
+owned by the
+[security authority](security/authority.md#installation-trust-bootstrap).
+
 Inventory is a committed data boundary, not an informal directory listing.
 The exact record contract, Git/non-Git ignore behavior, symlink and secret
 safety, deterministic tree digest, incremental change set, and acceptance
@@ -139,16 +162,19 @@ wall-clock target.
 The engine implementation must preserve these rules:
 
 1. Preview resolves exact actions, inputs, estimates, configuration digest,
-   template revision, and specialization revision without mutation.
+   template revision, specialization revision, initial security policy, and
+   credential source/sink descriptors without mutation or secret exposure.
 2. Apply accepts that exact plan digest; it cannot silently re-plan.
-3. Every phase records a durable, digest-chained checkpoint through
+3. Application readiness remains false until the installed binding and initial
+   security authority commit; no unauthenticated network bootstrap exists.
+4. Every phase records a durable, digest-chained checkpoint through
    `RrdEngine`, including an explicit no-work result.
-4. Optional capabilities are selected from verified project signals and estate
+5. Optional capabilities are selected from verified project signals and estate
    policy. Absence of a language, model, database, or provider is ordinary and
    does not fail the whole attunement.
-5. Resume continues the next uncommitted phase. It never infers completion from
+6. Resume continues the next uncommitted phase. It never infers completion from
    a trace, file, hook, or client status.
-6. Verify compares persisted records, indexes, graph state, specialization,
+7. Verify compares persisted records, indexes, graph state, specialization,
    public operations, and restart behavior against the plan.
 
 ## Project-operation preflight
