@@ -63,9 +63,17 @@ sdks/java/
 │   └── generate.py
 └── src/
     ├── main/java/io/rrflow/rrd/
+    │   ├── package-info.java
+    │   ├── ClientConfig.java
+    │   ├── EndpointResolver.java
+    │   ├── HttpTransport.java
+    │   ├── OperationBinding.java
+    │   ├── OperationExecutor.java
     │   ├── OperationId.java
+    │   ├── ProtocolCodec.java
     │   ├── RequestOptions.java
     │   ├── ResourceSegment.java
+    │   ├── RetryPolicy.java
     │   ├── RrdApiException.java
     │   ├── RrdClient.java
     │   ├── RrdClientException.java
@@ -74,6 +82,12 @@ sdks/java/
         ├── RrdClientTest.java
         └── SdkConformanceTest.java
 ```
+
+A-07.1f directly produced this layout from the former 390-line
+`RrdClient.java`. That class is now the 72-line public facade; every extracted
+collaborator is package-private, and every current responsibility has one
+source owner. This is source topology, not qualification of the incomplete
+behaviors below.
 
 `RrdClient` is a synchronous generic HTTP facade. It has helpers for
 capabilities, endpoint catalogue, OpenAPI, and session creation; `call` can
@@ -414,11 +428,12 @@ document/temporal-graph/scalar/BM25/vector access, bounded RRF context
 selection, streamed Arrow/DataFusion analytics, and persisted
 reasoning/feedback. Java proves only faithful access to that engine.
 
-## Direct-convergence file plan
+## Current and gated file plan
 
 Java remains one client artifact and one client namespace; responsibility
-splits do not create another runtime. Its generated subpackage remains
-subordinate to the executable public contract.
+splits do not create another runtime. A-07.1f established this current source
+tree, and the generated enum remains subordinate to the executable public
+contract:
 
 ```text
 sdks/java/
@@ -428,45 +443,43 @@ sdks/java/
 └── src/
     ├── main/java/io/rrflow/rrd/
     │   ├── package-info.java            # public boundary and canonical links
-    │   ├── ClientConfig.java            # immutable construction and limits
-    │   ├── EndpointResolver.java        # installed candidates and identities
-    │   ├── HttpTransport.java           # bounded HTTP carriage port
-    │   ├── OperationBinding.java        # exact generated semantic binding
-    │   ├── OperationExecutor.java       # encode/send/decode orchestration
+    │   ├── ClientConfig.java            # current validated construction
+    │   ├── EndpointResolver.java        # current loopback route resolution
+    │   ├── HttpTransport.java           # current bounded response carriage
+    │   ├── OperationBinding.java        # current common request binding
+    │   ├── OperationExecutor.java       # current synchronous coordination
     │   ├── OperationId.java             # catalogue-derived identifier map
-    │   ├── ProtocolCodec.java            # bounded common envelope codec
+    │   ├── ProtocolCodec.java            # current partial envelope codec
     │   ├── RequestOptions.java          # per-call semantic coordinates
     │   ├── ResourceSegment.java         # typed public resource component
-    │   ├── RetryPolicy.java             # certainty/deadline classification
+    │   ├── RetryPolicy.java             # current broad replay/deadline rule
     │   ├── RrdApiException.java         # typed engine denial
-    │   ├── RrdCall.java                 # async result/cancellation handle
-    │   ├── RrdClient.java               # narrow thread-safe public facade
+    │   ├── RrdClient.java               # narrow synchronous public facade
     │   ├── RrdClientException.java      # closed redacted error root
-    │   ├── Session.java                 # opaque credential-bearing handle
-    │   ├── Subscription.java            # multiplexed protocol facade
-    │   ├── WebSocketTransport.java      # bounded socket carriage port
-    │   └── generated/
-    │       └── OperationModels.java     # concrete generated requests/results
+    │   └── Session.java                 # current plain secret-bearing record
     └── test/java/io/rrflow/rrd/
         ├── RrdClientTest.java
-        ├── SdkConformanceTest.java
-        ├── OperationCoverageTest.java
-        ├── ProtocolValidationTest.java
-        ├── TransportFaultsTest.java
-        ├── SubscriptionTest.java
-        ├── ConcurrencyTest.java
-        └── PackageConsumerTest.java
+        └── SdkConformanceTest.java
 ```
+
+The following files remain deliberately absent until their assigned gate adds
+real behavior: `RrdCall.java`, `Subscription.java`, and
+`WebSocketTransport.java` (B-04); `generated/OperationModels.java` (H-04);
+`OperationCoverageTest.java` and `ProtocolValidationTest.java` (H-04);
+`TransportFaultsTest.java` (B-04/H-04/H-07/J-02);
+`SubscriptionTest.java` and `ConcurrencyTest.java` (B-04/H-04/J-02); and
+`PackageConsumerTest.java` (J-03/J-05).
 
 The dependency order is:
 
-1. **A-07:** mechanically extract current `RrdClient.java` responsibilities
-   into config, endpoint, HTTP transport, binding, executor, codec, and retry
-   files; add package documentation; preserve generation, loopback/redirect
-   denial, envelope construction, mutation idempotency, response byte limit,
-   interrupt preservation, explicit manifest-absent skip, and current unit tests.
-   Retain current public types until every behavior has one destination. Do not
-   claim validation, async, socket, resolver, or artifact success.
+1. **A-07 SDK split (completed by A-07.1f):** the former
+   `RrdClient.java` responsibilities are directly split across config,
+   endpoint, HTTP transport, binding, executor, codec, and retry files, with
+   package documentation added. Generation, loopback/redirect denial,
+   envelope construction, mutation idempotency, response byte limit,
+   interrupt preservation, explicit manifest-absent skip, current public
+   types, and unit tests are preserved. No validation, async, socket, remote
+   resolver, or artifact success was invented.
 2. **B-04:** implement the shared multiplexed state machine, Java carriage,
    call handle, correlated cancellation, subscription API, and bounded
    listener/executor/queue ownership.

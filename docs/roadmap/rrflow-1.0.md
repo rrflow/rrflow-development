@@ -103,7 +103,7 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1f**, the Java SDK responsibility
+The next executable item is **A-07.1g**, the .NET SDK responsibility
 boundary inside the package and type vocabulary work. A-07.0 completed the
 reviewed implementation-requirements mapping. A-07.1a directly converged the
 governed-function catalogue/binding vocabulary and module boundary. A-07.1b
@@ -115,9 +115,11 @@ A-07.1d split the Python client's existing synchronous responsibilities,
 removed its catch-all model module, and added the package typing marker without
 inventing async or socket behavior. A-07.1e split the Go client's existing
 HTTP responsibilities, removed its catch-all model module, and added package
-documentation without inventing socket or generated-model behavior. None of
-these slices qualifies its capability or completes A-07. B-01 and B-02 remain
-completed contract work; no
+documentation without inventing socket or generated-model behavior. A-07.1f
+split the Java client's current HTTP responsibilities behind its unchanged
+public facade and added package documentation without inventing async, socket,
+or generated-model behavior. None of these slices qualifies its capability or
+completes A-07. B-01 and B-02 remain completed contract work; no
 further Gate B work proceeds until A-07 corrects the complete pre-release
 source, package, public, and trace-vocabulary assumptions.
 
@@ -425,6 +427,35 @@ A-07.1e Go SDK responsibility-boundary evidence (2026-09-08):
   HTTPS/mesh resolution, supported toolchain/platform/consumer artifacts, and
   installed MX/KV conformance remain owned by B/D/H/J and POAM-011.
 - A-07 and A-07.1 remain unchecked; A-07.1f is next.
+
+A-07.1f Java SDK responsibility-boundary evidence (2026-09-08):
+
+- The former 390-line `RrdClient.java` responsibility monolith is now a
+  72-line public facade. Current validated construction, loopback endpoint and
+  route resolution, bounded HTTP carriage, common operation binding,
+  synchronous execution, partial protocol codec, and broad retry/deadline
+  behavior live directly in package-private `ClientConfig`,
+  `EndpointResolver`, `HttpTransport`, `OperationBinding`,
+  `OperationExecutor`, `ProtocolCodec`, and `RetryPolicy` classes;
+  `package-info.java` declares the client-only boundary.
+- Both public constructors, all five public `RrdClient` methods, and every
+  existing public record, enum, and exception signature remain. The generated
+  33-operation enum, existing public value classes, tests, generator, and POM
+  are byte-stable; future async, WebSocket, generated-model, and qualification
+  classes remain absent until their B/H/J behavior exists.
+- Maven test passed three current loopback tests and preserved the explicit
+  manifest-absent conformance skip under JDK 21.0.12/Maven 3.9.12. Generation,
+  compilation, package creation, public/package-private bytecode inspection,
+  and the shared six-SDK real-daemon corpus passed at corpus digest
+  `b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2`.
+- This is structural source convergence, not Java SDK, artifact, or engine
+  qualification. Concrete operation models, exact status/media/payload and
+  causal validation, opaque credentials, semantic retry/uncertainty, async and
+  correlated server cancellation, bounded closeable HTTP/WebSocket carriage,
+  W3C propagation, HTTPS/mesh resolution, reproducible/offline signed Maven
+  artifacts, toolchain/platform consumers, and installed MX/KV conformance
+  remain owned by B/D/H/J and POAM-011.
+- A-07 and A-07.1 remain unchecked; A-07.1g is next.
 
 A-02 evidence (2026-09-04):
 
