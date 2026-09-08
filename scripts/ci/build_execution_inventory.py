@@ -510,6 +510,16 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
+    "sdks/java/src/main/java/io/rrflow/rrd/RrdClient.java": (
+        "H-04",
+        "J-02",
+        "J-05",
+    ),
+    "sdks/java/src/test/java/io/rrflow/rrd/RrdClientTest.java": (
+        "H-04",
+        "J-02",
+        "J-05",
+    ),
 }
 
 REMOVE_OR_REWRITE = {
@@ -538,6 +548,7 @@ REMOVE_OR_REWRITE = {
     "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
     "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
     "crates/authority/rrd-engine/src/engine/automation.rs": "directly replace with engine/function catalogue, execution, JavaScript, WebAssembly, and transaction-binding modules; retain bounded behavior while removing automation/trigger authority, private control JSON, split allowed-audit commits, and runtime-unbound replay",
+    "sdks/java/src/main/java/io/rrflow/rrd/RrdClient.java": "split transport, endpoint, operation, protocol, retry, and configuration responsibilities directly into the planned Java classes during A-07; retain RrdClient only as the narrow public operation facade and leave no duplicate implementation or forwarding compatibility class",
 }
 
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {
@@ -677,6 +688,85 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     ),
     "sdks/go/subscription_test.go": ("B-04", "H-04", "J-02"),
     "sdks/go/package_consumer_test.go": ("J-03", "J-05"),
+    "sdks/java/src/main/java/io/rrflow/rrd/package-info.java": (
+        "A-07",
+        "J-03",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/ClientConfig.java": (
+        "A-07",
+        "H-04",
+        "H-07",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/EndpointResolver.java": (
+        "A-07",
+        "H-04",
+        "H-07",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/HttpTransport.java": (
+        "A-07",
+        "B-04",
+        "H-04",
+        "H-07",
+        "J-03",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/OperationBinding.java": (
+        "A-07",
+        "H-04",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/OperationExecutor.java": (
+        "A-07",
+        "H-04",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/ProtocolCodec.java": (
+        "A-07",
+        "H-04",
+        "J-02",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/RetryPolicy.java": (
+        "A-07",
+        "H-04",
+        "J-02",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/RrdCall.java": ("B-04", "H-04"),
+    "sdks/java/src/main/java/io/rrflow/rrd/Subscription.java": (
+        "B-04",
+        "H-04",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/WebSocketTransport.java": (
+        "B-04",
+        "H-04",
+        "H-07",
+        "J-03",
+    ),
+    "sdks/java/src/main/java/io/rrflow/rrd/generated/OperationModels.java": (
+        "H-04",
+        "J-02",
+    ),
+    "sdks/java/src/test/java/io/rrflow/rrd/OperationCoverageTest.java": ("H-04",),
+    "sdks/java/src/test/java/io/rrflow/rrd/ProtocolValidationTest.java": (
+        "H-04",
+        "J-02",
+    ),
+    "sdks/java/src/test/java/io/rrflow/rrd/TransportFaultsTest.java": (
+        "B-04",
+        "H-04",
+        "H-07",
+        "J-02",
+    ),
+    "sdks/java/src/test/java/io/rrflow/rrd/SubscriptionTest.java": (
+        "B-04",
+        "H-04",
+        "J-02",
+    ),
+    "sdks/java/src/test/java/io/rrflow/rrd/ConcurrencyTest.java": (
+        "B-04",
+        "H-04",
+        "J-02",
+    ),
+    "sdks/java/src/test/java/io/rrflow/rrd/PackageConsumerTest.java": (
+        "J-03",
+        "J-05",
+    ),
     "crates/compute/rrd-attunement/Cargo.toml": ("A-07", "D-03"),
     "crates/compute/rrd-attunement/src/lib.rs": ("A-07", "D-03"),
     "crates/compute/rrd-attunement/src/inventory.rs": ("D-03",),
@@ -1245,7 +1335,12 @@ def action(path: str) -> str:
         return "merge any current requirement into its active owner; retain only evidence-required provenance and remove redundant narrative"
     if path.startswith("docs/"):
         return "retain under its declared documentation owner; update only when the owning gate supplies evidence"
-    if "/tests/" in path or path.endswith("/tests.rs") or path.startswith("eval/"):
+    if (
+        "/tests/" in path
+        or "/src/test/" in path
+        or path.endswith("/tests.rs")
+        or path.startswith("eval/")
+    ):
         return "retain as inventory; rewrite or extend only to supply the acceptance evidence assigned to this file"
     if path.startswith("sdks/"):
         return "retain as an outward projection; regenerate and test only after the shared contract changes"
