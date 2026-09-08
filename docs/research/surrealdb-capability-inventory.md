@@ -279,6 +279,32 @@ Unlike semantics, omitted failures, warm-vs-cold comparisons, unpinned inputs,
 or a benchmark that bypasses either product's normal authority cannot support
 a claim.
 
+### Rejected local claim diagnostic and retained corrections
+
+KB-05 removed the 2026-08-23 RRFlow/SurrealDB claim diagnostic, its Python
+driver, its stored ratio artifact, and the Rust test that asserted those
+ratios. They were superseded pre-release residue, not J-04 evidence. The
+review retained the useful failure lessons here instead of moving an
+unqualified result into an evidence archive.
+
+| Defect in the removed diagnostic | Direct evidence | Required J-04 correction |
+|---|---|---|
+| Baseline identity was incomplete and stale. | SurrealDB `3.0.5` and its local binary digest were recorded, but the canonical reference is `3.2.4`; the RRFlow revision, binary digest, build profile, dependency closure, and release manifest were absent. | Pin both source revisions and all executed artifact/image digests. Build or acquire them through the manifest-recorded commands and retain their complete closures. |
+| The purported reproducer no longer executed. | It defaulted to a host-specific Cargo cache and invoked the current benchmark as `--child native --path …`; the current child contract is `--child --path …`. A fresh current build exited before its first trial. | Resolve only manifest-declared repository or release-bundle artifacts, validate the harness/binary handshake before timing, and fail the evidence run when any declared cell executes zero trials. |
+| The semantic corpus and verification were not equal. | SurrealDB and RRFlow used different session values. SurrealDB verification checked every projected field, while the RRFlow verifier checked sequence, cardinality, and `object` only. The run did not inject conflicts or batch failures. | Generate one content-addressed typed corpus, lower it explicitly for each system, verify every field, identity, order, result, transaction outcome, and post-reopen value against an independent oracle, and retain failure cells. |
+| Measurement layers were conflated. | Direct embedded RRFlow calls were compared with SurrealDB HTTP/SQL; SurrealDB server-reported statement time had no equivalent RRFlow phase. “Readiness” compared an authenticated server/namespace/database exchange with opening a storage object. | Report separate like-for-like kernel/storage, public-protocol, and clean-deployment cells. Every timer declares its boundaries, included processes, serialization, authentication, planning, and durability work; unlike cells are never divided into a competitive ratio. |
+| Resource and lifecycle accounting was asymmetric. | Process inclusion differed, fixed CPU/memory/filesystem controls were absent, and the primary disk ratio compared different unmaintained states without an equivalent maintenance boundary. | Run both systems in equivalent constrained process/container envelopes and report logical, apparent, allocated, resident, cache, WAL, segment, snapshot, I/O, and maintenance phases independently before and after clean reopen. |
+| Statistical and workload coverage was diagnostic only. | Three small alternating trials had no recorded warm-up, frequency/governor state, background-load control, concurrency matrix, confidence treatment, long-duration drift, or graph/BM25/vector/DataFusion/context workload. | Predeclare warm-up, order/randomization, repetitions, concurrency, duration, outlier and interval treatment, workload digests, mixed-family interference, recall/quality thresholds, and failure retention before execution. |
+| The test proved stored direction, not reproducibility. | The Rust test parsed the checked-in JSON and asserted that selected ratios were above or below one; it never executed the harness, recomputed results from raw samples, or verified provenance. | Evidence verification validates schema/provenance, recomputes aggregates from immutable raw trials, rejects missing/failed cells, and never requires RRFlow to win. Reproduction is a separate commanded run against the pinned manifest. |
+
+Alternating isolated trials, clean reopen, bounded paged verification, exact
+artifact digests, and separate logical/apparent/allocated-byte accounting
+remain useful inputs. They must be implemented once in the planned
+`scripts/release/compare_deployment.py` and
+`fixtures/release/deployment-baselines-v1.toml` J-04 package after its C
+through J-03 prerequisites pass. No active benchmark implementation or RRFlow
+performance claim survives this review.
+
 ## Claim-to-source ledger
 
 All sources are first-party and were accessed on 2026-09-08.

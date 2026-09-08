@@ -1,8 +1,6 @@
-//! Validation for comparative evidence that still informs rrflowKV design.
+//! Validation for retained storage characterization artifacts.
 //!
-//! Reports for removed pre-release stores are not executable release evidence.
-//! The SurrealDB diagnostic remains a bounded external comparison; it does not
-//! claim general superiority.
+//! Parsing these diagnostic inputs is not current-engine or release evidence.
 
 #[test]
 fn historical_storage_artifacts_remain_parseable_and_retain_failed_runs() {
@@ -57,59 +55,4 @@ fn historical_storage_artifacts_remain_parseable_and_retain_failed_runs() {
         "no retained passing diagnostic exists"
     );
     assert!(failing_verdicts > 0, "retained failures must not be erased");
-}
-
-#[test]
-fn surrealdb_claim_diagnostic_records_bounded_wins_and_the_disk_loss() {
-    let file = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../eval/results/2026-08-23-rrflow-surrealdb-3.0.5-claim-diagnostic-v1.json"
-    );
-    let evidence: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
-    assert_eq!(evidence["schema"], "rrflow.surrealdb-claim-differential.v1");
-    assert_eq!(evidence["config"]["trials"], 3);
-    assert_eq!(evidence["config"]["operations"], 2_048);
-    assert_eq!(
-        evidence["surrealdb"]["version"],
-        "3.0.5 for linux on x86_64"
-    );
-    assert_eq!(
-        evidence["surrealdb"]["binary_sha256"],
-        "a9a5e9e36e4f6fe922e1991a4fb0ea1ee4fe90819c5e3a8dce238a56666e8cec"
-    );
-    assert_eq!(evidence["native"]["correctness_verified"], true);
-    assert_eq!(evidence["surreal"]["correctness_verified"], true);
-    for ratio in [
-        "rrflow_to_surreal_write_throughput",
-        "rrflow_to_surreal_read_throughput",
-        "rrflow_to_surreal_server_write_throughput",
-        "rrflow_to_surreal_server_read_throughput",
-    ] {
-        assert!(evidence["ratios"][ratio].as_f64().unwrap() > 1.0, "{ratio}");
-    }
-    for ratio in [
-        "rrflow_to_surreal_write_p95",
-        "rrflow_to_surreal_read_p95",
-        "rrflow_to_surreal_server_write_p95",
-        "rrflow_to_surreal_server_read_p95",
-        "rrflow_to_surreal_recovery",
-        "rrflow_to_surreal_peak_rss",
-    ] {
-        assert!(evidence["ratios"][ratio].as_f64().unwrap() < 1.0, "{ratio}");
-    }
-    assert!(
-        evidence["ratios"]["rrflow_to_surreal_reopened_allocated"]
-            .as_f64()
-            .unwrap()
-            > 1.0
-    );
-    assert_eq!(
-        evidence["bounded_verdict"]["all_measured_cells_favor_rrflow"],
-        false
-    );
-    assert_eq!(
-        evidence["bounded_verdict"]["general_database_superiority"],
-        false
-    );
 }
