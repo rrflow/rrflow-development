@@ -361,32 +361,201 @@ Synchronous child work retains parentage. Work caused later by a committed
 event, projection delta, retry, or routine activity uses a typed causal link
 rather than false synchronous parentage.
 
-Machine operation names use the bounded low-cardinality form
-`rrflow.<boundary>.<operation>`. The boundary is one of `ingress`, `engine`,
-`kv`, `ql`, `graph`, `lexical`, `vector`, `datafusion`, `inference`,
-`attunement`, `routine`, `adapter`, or `delivery`. Dynamic record, scope,
-query, provider, model, path, and error values never enter the operation name;
-they remain bounded attributes, typed links, or digests. Transport diagnostics
-also retain the applicable OpenTelemetry HTTP or database semantic attributes.
+### Canonical operation catalogue
 
-Every implementation gate adds the evidence for the physical behavior it
-introduces. Storage reports point/range/WAL/commit/flush/compaction work; graph,
-BM25, exact/HNSW/TurboQuant, Arrow providers, DataFusion operators, inference,
-attunement, routines, and delivery report their bounded inputs, outputs,
-resources, decisions, and error/denial outcomes. H-05 is the completeness,
-propagation, redaction, and export gate; it is not the first instrumentation
-gate.
+Machine operation names are closed, low-cardinality values of the form
+`rrflow.<boundary>.<operation>`. `rrd-core::TraceOperation` is the source-level
+catalogue and `TraceBoundary` is the persisted boundary. A canonical event is
+invalid when those two disagree. Dynamic record, scope, project, route, query,
+provider, model, file, index generation, error, or result values never enter
+the name. Adding an operation requires an explicit contract and owning-gate
+change; a caller cannot manufacture one from request data.
 
-The current durable trace contract already supplies bounded W3C-width
-trace/span identities, parentage, start/annotation/finish phases, data classes,
-typed causal links, and structured attributes. Its focused corpus proves equal
-rrflowMX/rrflowKV encoding, atomic schema repair plus event commit, incomplete
-start visibility after rrflowKV reopen, and conflict-safe concurrent writes.
-It does not yet propagate W3C context, instrument the complete engine path,
-authorize every durable trace through `RrdEngine`, use the canonical operation
-names, or prove H-05. The current lifecycle/workflow-named trace residue is
-direct-convergence inventory for A-07 and Gate I, not a second orchestration
-contract.
+| Boundary | Exact operations reserved by `TraceOperation` | Owning implementation gates |
+|---|---|---|
+| `ingress` | `rrflow.ingress.request`, `rrflow.ingress.frame` | B-04, H-04, H-05 |
+| `engine` | `rrflow.engine.operation`, `rrflow.engine.authenticate`, `rrflow.engine.authorize`, `rrflow.engine.validate`, `rrflow.engine.commit`, `rrflow.engine.context_assemble`, `rrflow.engine.function_execute` | C-02/C-03, G-04/G-05, H-01/H-05, I-02 |
+| `kv` | `rrflow.kv.point_read`, `rrflow.kv.range_scan`, `rrflow.kv.write_batch`, `rrflow.kv.wal_append`, `rrflow.kv.snapshot`, `rrflow.kv.page_scan`, `rrflow.kv.flush`, `rrflow.kv.compact`, `rrflow.kv.recover` | C-01 through C-07, F-01/F-04 |
+| `ql` | `rrflow.ql.parse`, `rrflow.ql.bind`, `rrflow.ql.plan`, `rrflow.ql.execute` | B-05, E-05, F-01 through F-04 |
+| `graph` | `rrflow.graph.maintain`, `rrflow.graph.traverse` | C-03, E-01, F-03, H-01 |
+| `lexical` | `rrflow.lexical.maintain`, `rrflow.lexical.search` | C-03, E-03, F-03, H-01 |
+| `vector` | `rrflow.vector.maintain`, `rrflow.vector.search`, `rrflow.vector.rerank`, `rrflow.vector.projection` | C-03, E-04/E-05, F-03, H-01 |
+| `datafusion` | `rrflow.datafusion.plan`, `rrflow.datafusion.scan`, `rrflow.datafusion.execute`, `rrflow.datafusion.spill` | F-01 through F-04 |
+| `inference` | `rrflow.inference.embed`, `rrflow.inference.route` | D-05, G-01 through G-05 |
+| `attunement` | `rrflow.attunement.job`, `rrflow.attunement.phase` | D-01 through D-06 |
+| `routine` | `rrflow.routine.trigger`, `rrflow.routine.activation`, `rrflow.routine.step`, `rrflow.routine.activity`, `rrflow.routine.compensation` | I-01 through I-05 |
+| `adapter` | `rrflow.adapter.resolve`, `rrflow.adapter.invoke`, `rrflow.adapter.synchronize`, `rrflow.adapter.transfer` | D-06, H-04/H-07, I-05/I-06 |
+| `delivery` | `rrflow.delivery.connect`, `rrflow.delivery.publish`, `rrflow.delivery.acknowledge`, `rrflow.delivery.heartbeat`, `rrflow.delivery.resume`, `rrflow.delivery.close` | B-04, H-03 through H-05 |
+
+Functions are engine-governed deterministic compute and therefore use
+`rrflow.engine.function_execute`; they do not create a `function` runtime or
+trace boundary. The exact function identity/revision is a resource or source
+link. Attunement phase names, routine step kinds, adapter names, and delivery
+subscription identities are likewise values, not operation-name suffixes.
+
+### Canonical causal links and attributes
+
+Typed links carry identity, revision, and causation. They are not unstructured
+labels and they cannot grant authority:
+
+| Evidence | Canonical `TraceLink` | Required coordinates |
+|---|---|---|
+| Request correlation | `Request` | request and public operation IDs, optional parent request ID, and only the digest of an idempotency key |
+| Actor and estate scope | `ActorScope` | authenticated/attributed actor identity and exact `ScopeId`; a caller label alone is insufficient |
+| Authorization | `Authorization` | allow/deny decision, policy revision, and authorization-evidence digest |
+| Read snapshot | `Read` | complete validated `ReadStamp`, including schema/catalogue revision, commit cursor, head digest, and manifest identity |
+| Runtime/snapshot position | `RuntimeCursor`, `Snapshot` | examined runtime cursor or immutable snapshot identity plus cursor |
+| Logical/physical plan | `Plan` | canonical plan digest; selected/rejected paths remain bounded attributes |
+| Derived index generation | `Projection` | complete validated `ProjectionStamp` and source cursor |
+| Reasoning position | `ReasoningCursor` | tree/cursor identity, tree revision, node, step, and bound read stamp |
+| Canonical or external input | `Source` | source kind, stable source identity, and exact revision; adapter/provider names stay separate from source authority |
+| Durable result | `Commit` | commit digest and ordered nonzero first/last cursors |
+| Target capability/data | `Resource` | resource kind and stable identity, never executable bytes or a secret-bearing locator |
+| Asynchronous causation | `CausalSpan` | originating trace/span identity plus `follows_from`, `retry_of`, or `resumes`; it never fakes synchronous parentage |
+| Returned evidence | `Output` | canonical output digest, item count, and encoded byte count |
+
+`Workflow`, `Provider`, and `OperatorKnowledge` trace-link variants do not
+survive this vocabulary freeze. Generic routine causation uses `CausalSpan` and
+routine/resource coordinates; model or tool execution uses `Resource` plus
+`Source`; project databases use `Source` through an adapter. There is no
+provider, workflow, or external-database trace authority.
+
+The `attributes` map is for bounded measurements and decisions, not identities
+already represented by links. `rrd-core::TraceAttribute` is the closed
+cross-boundary catalogue. Names are lowercase `snake_case`, fixed at the
+instrumenting call site, and may be extended only with the behavior's owning
+gate and a corresponding contract test. An arbitrary caller-supplied key is
+invalid. The canonical vocabulary is:
+
+| Value class | Canonical attribute names | Required `RuntimeValue` |
+|---|---|---|
+| Low-cardinality stage/decision/status token | `stage`, `phase`, `action`, `skip_reason`, `cache_status`, `failed_stage`, `error_class`, `verification_status`, `propagation_status` | `String` using a bounded lowercase token, never raw content or an error message |
+| Decision flag | `selected`, `exact`, `fallback`, `truncated`, `retryable` | `Bool` |
+| Count, byte, duration, token, rank, and cursor measurement | `attempt`, `input_items`, `input_bytes`, `output_items`, `output_bytes`, `keys_examined`, `pages_examined`, `rows_examined`, `graph_steps`, `candidates_examined`, `mapped_bytes`, `read_bytes`, `decoded_bytes`, `decompressed_bytes`, `borrowed_bytes`, `copied_bytes`, `allocated_bytes`, `elapsed_micros`, `memory_peak_bytes`, `spill_bytes`, `input_tokens`, `output_tokens`, `rank`, `selected_source_count`, `skipped_source_count`, `compacted_bytes`, `compacted_tokens`, `start_cursor` | `Unsigned` |
+| Score/contribution | `score`, `rrf_contribution` | finite numeric `Decimal` string |
+| Protected correlation | `error_digest`, `propagation_digest` | validated SHA-256 `Digest` |
+
+The kernel validates this name-to-value-type map before persistence. Counts use
+unsigned integers, durations use microseconds, byte and token units are
+explicit, booleans are not encoded as strings, and digests are SHA-256 hex.
+Free-form query text, file content/path, prompts, model output, vector values,
+credentials, tokens, headers, stack traces, and raw errors are never durable
+attributes. Stable public IDs may appear only in their typed link; otherwise a
+bounded digest is recorded. `TraceDataClass` controls retention and diagnostic
+projection but never relaxes secret exclusion.
+
+Reviewed current producers also have one private, exact
+`DIRECT_CONVERGENCE_ATTRIBUTE_NAMES` inventory in `rrd-core`. It admits their
+already-emitted physical and subsystem-specific fields while their C-through-I
+behavior is replaced. The list can only shrink: new work uses
+`TraceAttribute`, and an owning package must move stable identities/revisions
+to `TraceLink`, map reusable measurements to the canonical catalogue, or
+remove the field. This is neither an extension namespace nor evidence that the
+current producer has reached its target gate.
+
+### W3C propagation contract
+
+Ingress behavior is fixed before H-05 implements it:
+
+1. Read `traceparent` case-insensitively and combine `tracestate` fields in
+   received order within transport limits. A missing `traceparent` creates a
+   fresh RRFlow root and discards an orphan `tracestate`.
+2. Validate the complete W3C context before using any part of it. Duplicate,
+   malformed, all-zero, unsupported, or oversized context creates a fresh root,
+   discards `tracestate`, and records only `propagation_status=invalid` plus an
+   input digest. It does not echo raw headers or change application
+   authorization; a general header-size violation can still fail at ingress.
+3. A valid incoming parent supplies the trace ID and parent span ID. RRFlow
+   generates a new nonzero span ID for `rrflow.ingress.request` or
+   `rrflow.ingress.frame`; it never reuses the remote parent ID as its own.
+4. Synchronous work retains the trace ID and exact parentage. Work caused after
+   a commit, queue handoff, retry schedule, projection delta, or routine lease
+   starts with no false synchronous parent and records `CausalSpan`.
+5. Outgoing adapters replace the W3C parent ID with the current span ID and
+   propagate only validated, bounded `tracestate`. Sampling flags affect only
+   diagnostic recording/export; they cannot suppress durable evidence or
+   advance state.
+
+RRFlow does not persist raw `tracestate`. When correlation requires it, durable
+control evidence may retain its digest and validation status. H-05 must prove
+valid continuation, missing/invalid context behavior, asynchronous links,
+retry parentage, header bounds, and no cross-request context leakage.
+
+### Durable, Rust, and OpenTelemetry mapping
+
+`RuntimeTraceEvent` is the governed evidence form. Rust `tracing` and optional
+OpenTelemetry are one-way diagnostic projections:
+
+| Durable field/phase | Rust `tracing` projection | OpenTelemetry projection |
+|---|---|---|
+| `trace_id`, `span_id`, `parent_span_id` | correlated span fields/context | W3C-conformant `SpanContext` and parent |
+| `name`, `boundary` | one static catalogue call-site name plus `rrflow.boundary` | same low-cardinality span name; operation boundary attribute |
+| `Start` | create/enter the diagnostic span after the durable start is accepted | start span with available links present at creation |
+| `Annotation` | `tracing` event on the correlated span | timestamped span event; never a completion signal |
+| `Finish` and `duration_micros` | record terminal fields and close the span | end span; measured duration remains evidence |
+| `Ok` | `rrflow.outcome=ok` | status `Ok` |
+| `Error` | error level plus digest/class, never raw protected content | status `Error` plus bounded `error.type`/RRFlow digest fields |
+| `Denied`, `Cancelled` | explicit outcome at non-error level unless a transport failure also occurred | status `Unset` with RRFlow outcome; expected denial/cancellation is not fabricated as a server fault |
+| `CausalSpan` | causal fields/event | OpenTelemetry `Link` created with the span when known |
+| Other typed links | structured `rrflow.link.*` fields/events | namespaced attributes/events; they are not converted to OpenTelemetry links because they are not `SpanContext`s |
+| Bounded attributes | `rrflow.*` fields under the same redaction policy | RRFlow namespaced attributes plus applicable stable HTTP/database semantic conventions |
+
+Durable start evidence is written before the effect it observes. A required
+start that cannot be committed denies the effect. A domain commit remains the
+truth if a later finish write fails; the gap is reconciled as incomplete
+evidence and cannot roll back, duplicate, or relabel the committed effect.
+Durable events are never sampled. Diagnostic spans may be filtered, sampled,
+dropped, or unavailable and therefore cannot establish a commit, job/phase,
+projection, trigger, routine step, delivery acknowledgement, or verification.
+
+### Direct-convergence trace inventory
+
+The current runtime still uses the following exact operation names. Kernel
+validation admits only this finite inventory in addition to `TraceOperation`;
+the list can shrink but cannot grow. Each owning behavior gate must replace
+the operation and its evidence together instead of renaming a weak path and
+claiming the target exists.
+
+| Current exact names | Canonical destination | Owning gate |
+|---|---|---|
+| `rrflow.query.run` | `rrflow.engine.operation` | F-01, H-05 |
+| `rrflow.query.parse_bind` | separate `rrflow.ql.parse` and `rrflow.ql.bind` evidence | F-01 |
+| `rrflow.query.plan` | `rrflow.ql.plan` | E-05, F-01 |
+| `rrflow.query.execute` | `rrflow.ql.execute` | F-01 through F-04 |
+| `rrflow.storage.runtime_read` | `rrflow.kv.page_scan` or the exact selected KV operation | C-04, F-01 |
+| `vector.search`, `vector.execute` | `rrflow.vector.search` | E-04/E-05 |
+| `vector.plan` | `rrflow.ql.plan` with vector selection attributes | E-05 |
+| `vector.projection.publish`, `vector.quantization.build`, `vector.quantization.activate`, `vector.quantization.retire` | `rrflow.vector.projection` with fixed `action` | E-04/E-05 |
+| `embedding.run`, `embedding.infer` | `rrflow.inference.embed` with stage evidence | D-05, G-01 |
+| `embedding.commit` | `rrflow.engine.commit` linked to the embedding source/output | C-03, D-05 |
+| `operator.knowledge.search`, `operator.knowledge.execute` | `rrflow.adapter.invoke` plus the selected native/vector child work | D-06, H-04 |
+| `operator.knowledge.sync`, `operator.knowledge.apply` | `rrflow.adapter.synchronize` | D-06 |
+| `cluster.artifact_transfer`, `cluster.artifact_chunk`, `object.replicate` | `rrflow.adapter.transfer` under an engine-owned job/receipt | D-06, H-07 and the future distributed gate |
+
+The process-local `rrd.http.request` span is also noncanonical inventory; H-04
+and H-05 replace it with `rrflow.ingress.request`, route-template rather than
+raw-path diagnostics, W3C continuation, and the same authorized engine
+operation identity. No current direct-store trace helper, mixed operation
+name, or passing trace component test claims H-05.
+
+### Instrumentation ownership
+
+Every implementation package adds its evidence with the behavior rather than
+waiting for a later observability rewrite:
+
+| Gate wave | Evidence that must arrive in the same package |
+|---|---|
+| C | engine authorization/validation/commit plus KV point/range, WAL, batch, snapshot, flush, compaction, recovery, conflict, and crash coordinates |
+| D | install and attunement job/phase inputs, checkpoint/lease, source-tree work, skip/retry/cancel decision, output digest, and reopen coordinates |
+| E | atomic graph/lexical/vector maintenance; plan selection/rejection; traversal/posting/candidate/rerank work; projection freshness and exact fallback |
+| F | rrflowQL parse/bind/plan/execute, stamped KV page scan, Arrow batch/copy accounting, DataFusion memory/spill/time/output limits, and cancellation |
+| G | model-manifest/resource identity, route input/proposal digests, reasoning cursor, constrained-decode denial, selected path, CAS result, and commit |
+| H | context source selection/skips/RRF contributions, W3C ingress/egress, all public surfaces, live delivery/ACK/resume, diagnostic projection, and redaction |
+| I | committed-event causation, trigger decision, routine activation/step/activity/compensation, skill/function resource identity, retries, and terminal evidence |
+
+H-05 proves the final chain is complete and export-safe. It does not turn
+traces into state or retroactively excuse a C-through-I package that shipped
+without its bounded physical and causal evidence.
 
 ### Context-path evidence and optimization
 
@@ -819,7 +988,7 @@ compile cannot substitute for this proof.
 | Embedding and vectors | Deterministic local embedding, model/provenance binding, exact search, filtered planning, compact dense artifacts, HNSW, quantization, and accelerator differential checks exist. | D-05/E-04/E-05/F-03 must bind canonical vectors and every derived artifact to one committed source cursor, maintain atomic deltas, and preserve exact fallback/reranking. |
 | Graph and BM25 | Semantic graph and lexical foundations exist, but current context execution still reconstructs broad snapshots. | Transactionally maintained adjacency and BM25 access paths with exact fallback, reopen, corruption, and bounded-work proof. |
 | Reasoning and context | Generic reasoning-tree, router, context-plan, evidence, and bounded context contracts exist; current assembly uses snapshot BM25, exact vectors, graph BFS, and RRF. | G/H must persist CAS tree execution and dynamically select native or analytical paths without adding another model, planner, or context authority. |
-| Automation, skills, and MCP | The canonical function-catalogue and transaction-function-binding names now own a split `engine/function/` boundary with a closed golden contract and one selected JavaScript result corpus equal on rrflowMX and rrflowKV plus rrflowKV reopen. It remains private control-JSON state with direct storage access and split audits; it has no typed artifact/schema/prepared-receipt model, full runtime/crash/size/cross-target corpus, installation path, cross-language fixture, or outward operation. MCP exposes one context tool. No canonical engine event, post-commit trigger, durable routine, skill package, project-command candidate/binding, external activity operation, or conforming capability runner exists. The [function reference](../reference/automation/functions.md) and [project command reference](../reference/automation/project-command-capabilities.md) specify target boundaries without claiming implementation completion. | Complete A-07 package/SDK and causal vocabulary; C/D/H/I/J then replace private control JSON with typed engine transactions, retain only bounded runtimes that pass the declared profiles, add installation and public conformance, and add discovery, immutable installed bindings, prepared activities/accepted receipts/triggers/routines/skills through `RrdEngine` while removing all host-lifecycle residue. |
+| Automation, skills, and MCP | The canonical function-catalogue and transaction-function-binding names now own a split `engine/function/` boundary with a closed golden contract and one selected JavaScript result corpus equal on rrflowMX and rrflowKV plus rrflowKV reopen. It remains private control-JSON state with direct storage access and split audits; it has no typed artifact/schema/prepared-receipt model, full runtime/crash/size/cross-target corpus, installation path, cross-language fixture, or outward operation. MCP exposes one context tool. No canonical engine event, post-commit trigger, durable routine, skill package, project-command candidate/binding, external activity operation, or conforming capability runner exists. The [function reference](../reference/automation/functions.md) and [project command reference](../reference/automation/project-command-capabilities.md) specify target boundaries without claiming implementation completion. | Retain A-07's frozen package/SDK and causal vocabulary; C/D/H/I/J then replace private control JSON with typed engine transactions, retain only bounded runtimes that pass the declared profiles, add installation and public conformance, and add discovery, immutable installed bindings, prepared activities/accepted receipts/triggers/routines/skills through `RrdEngine` while removing all host-lifecycle residue. |
 | Edge and outward delivery | The separate `rrflow-edge` adapter has deterministic offline/provenance evidence; HTTP, SDK, MCP, CLI, and subscriptions have partial real-process coverage. | H/J must route every surface through the same public operations and prove correlated identity, authorization, stamp, result, restart, and distribution behavior. |
 
 These differences are tracked by POAM-002 through POAM-010 and their owning

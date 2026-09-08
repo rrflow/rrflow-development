@@ -2,7 +2,7 @@
 
 use super::{DurableTraceSpan, InstanceBinding, TraceIdentity};
 use rrd_core::{
-    digest, Millis, RuntimeProperties, RuntimeValue, TraceDataClass, TraceDomain, TraceLink,
+    digest, Millis, RuntimeProperties, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink,
     TraceOutcome,
 };
 use rrd_operator_knowledge::{
@@ -67,7 +67,7 @@ where
         actor,
         identity,
         None,
-        TraceDomain::Adapter,
+        TraceBoundary::Adapter,
         "operator.knowledge.sync",
         at,
         TraceDataClass::Control,
@@ -114,7 +114,7 @@ where
         actor,
         child_identity,
         Some(root_identity.span_id),
-        TraceDomain::Adapter,
+        TraceBoundary::Adapter,
         "operator.knowledge.apply",
         root.observed_at(),
         TraceDataClass::Control,
@@ -151,9 +151,9 @@ where
         }
     };
     let revision = receipt.revision.digest()?;
-    let result_links = vec![TraceLink::OperatorKnowledge {
-        adapter: knowledge.adapter.clone(),
-        project_id: knowledge.project_id.clone(),
+    let result_links = vec![TraceLink::Source {
+        source_kind: "operator_knowledge".into(),
+        source_id: knowledge.source_identity_digest.clone(),
         source_revision: revision.clone(),
     }];
     let attributes = RuntimeProperties::from([
@@ -247,7 +247,7 @@ where
         actor,
         identity,
         None,
-        TraceDomain::Adapter,
+        TraceBoundary::Adapter,
         "operator.knowledge.search",
         at,
         TraceDataClass::Control,
@@ -307,7 +307,7 @@ where
         actor,
         execution_identity,
         Some(root_identity.span_id),
-        TraceDomain::Adapter,
+        TraceBoundary::Adapter,
         "operator.knowledge.execute",
         root.observed_at(),
         TraceDataClass::Control,
@@ -346,9 +346,9 @@ where
     };
     let source_revision = result.revision.digest()?;
     let result_links = vec![
-        TraceLink::OperatorKnowledge {
-            adapter: knowledge.adapter.clone(),
-            project_id: knowledge.project_id.clone(),
+        TraceLink::Source {
+            source_kind: "operator_knowledge".into(),
+            source_id: knowledge.source_identity_digest.clone(),
             source_revision: source_revision.clone(),
         },
         TraceLink::Projection {

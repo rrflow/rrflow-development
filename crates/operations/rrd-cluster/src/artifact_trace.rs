@@ -3,7 +3,7 @@
 use crate::{ArtifactTransferObservation, ArtifactTransferObservationPhase, ClusterError, Result};
 use rrd_core::{
     digest::sha256_hex, RuntimeProperties, RuntimeTraceEvent, RuntimeValue, SnapshotId, SpanId,
-    TraceDataClass, TraceDomain, TraceId, TraceLink, TraceOutcome,
+    TraceBoundary, TraceDataClass, TraceId, TraceLink, TraceOutcome,
 };
 
 /// Converts one validated transport observation into the portable runtime
@@ -122,7 +122,7 @@ pub fn artifact_transfer_trace_event(
             trace_id,
             span_id,
             None,
-            TraceDomain::Cluster,
+            TraceBoundary::Adapter,
             "cluster.artifact_transfer",
             observation.at,
             TraceDataClass::Control,
@@ -148,7 +148,7 @@ pub fn artifact_transfer_trace_event(
                 trace_id,
                 child,
                 Some(span_id),
-                TraceDomain::Storage,
+                TraceBoundary::Adapter,
                 "cluster.artifact_chunk",
                 observation.at,
                 TraceOutcome::Ok,
@@ -161,7 +161,7 @@ pub fn artifact_transfer_trace_event(
             trace_id,
             span_id,
             None,
-            TraceDomain::Cluster,
+            TraceBoundary::Adapter,
             "cluster.artifact_transfer",
             observation.at,
             observation.duration_micros.unwrap_or_default(),
@@ -174,7 +174,7 @@ pub fn artifact_transfer_trace_event(
             trace_id,
             span_id,
             None,
-            TraceDomain::Cluster,
+            TraceBoundary::Adapter,
             "cluster.artifact_transfer",
             observation.at,
             observation.duration_micros.unwrap_or_default(),

@@ -6,7 +6,7 @@ use rrd_cluster::{
     ArtifactTransferObservation, ArtifactTransferObserver, ArtifactTransferReceipt, ClusterError,
 };
 use rrd_core::{
-    Millis, RuntimeProperties, RuntimeValue, TraceDataClass, TraceDomain, TraceLink, TraceOutcome,
+    Millis, RuntimeProperties, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink, TraceOutcome,
 };
 use rrd_store::{ImmutableObjectStore, StorageEngine};
 use std::sync::Arc;
@@ -102,7 +102,7 @@ where
         actor,
         identity.clone(),
         None,
-        TraceDomain::Cluster,
+        TraceBoundary::Adapter,
         "cluster.artifact_transfer",
         at,
         TraceDataClass::Control,
@@ -115,7 +115,7 @@ where
         actor,
         storage_identity,
         Some(identity.span_id),
-        TraceDomain::Storage,
+        TraceBoundary::Adapter,
         "object.replicate",
         root.observed_at(),
         TraceDataClass::Control,

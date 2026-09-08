@@ -71,7 +71,7 @@ fn fixture<E: StorageEngine>(store: &E) {
 struct TraceView {
     name: String,
     phase: String,
-    domain: String,
+    boundary: String,
     outcome: String,
     trace_id: String,
     span_id: String,
@@ -104,7 +104,7 @@ fn trace_views<E: StorageEngine>(store: &E) -> Vec<TraceView> {
                 Some(TraceView {
                     name: string("name"),
                     phase: string("phase"),
-                    domain: string("domain"),
+                    boundary: string("boundary"),
                     outcome: string("outcome"),
                     trace_id: string("trace_id"),
                     span_id: string("span_id"),
@@ -163,7 +163,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
                 (
                     trace.name.clone(),
                     trace.phase.clone(),
-                    trace.domain.clone(),
+                    trace.boundary.clone(),
                     trace.outcome.clone(),
                     trace.trace_id.clone(),
                     trace.span_id.clone(),

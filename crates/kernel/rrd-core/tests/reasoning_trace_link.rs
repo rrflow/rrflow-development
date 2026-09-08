@@ -1,7 +1,7 @@
 use rrd_core::{
     ReadStamp, ReasoningActiveCursor, RuntimeId, RuntimeProperties, RuntimeTraceEvent,
-    RuntimeValue, ScopeId, SpanId, TraceDataClass, TraceDomain, TraceId, TraceLink,
-    REASONING_TREE_CONTRACT_VERSION,
+    RuntimeValue, ScopeId, SpanId, TraceBoundary, TraceDataClass, TraceId, TraceLink,
+    TraceOperation, REASONING_TREE_CONTRACT_VERSION,
 };
 
 #[test]
@@ -27,8 +27,8 @@ fn trace_link_retains_the_generic_reasoning_cursor_coordinate() {
         TraceId::new("0123456789abcdef0123456789abcdef").unwrap(),
         SpanId::new("0123456789abcdef").unwrap(),
         None,
-        TraceDomain::Reasoning,
-        "reasoning.route",
+        TraceBoundary::Inference,
+        TraceOperation::InferenceRoute,
         1_000,
         TraceDataClass::Control,
         vec![TraceLink::ReasoningCursor {

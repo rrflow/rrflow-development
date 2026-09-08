@@ -7,7 +7,7 @@
 
 use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
-    digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceDataClass, TraceDomain,
+    digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceBoundary, TraceDataClass,
     TraceLink, TraceOutcome,
 };
 use rrd_query::{BoundQuery, PhysicalPlan, QueryExecution, StampedQueryPipeline};
@@ -131,7 +131,7 @@ pub fn execute_traced_query<E: StorageEngine>(
         actor,
         identity,
         None,
-        TraceDomain::Query,
+        TraceBoundary::Ql,
         "rrflow.query.run",
         at,
         TraceDataClass::Control,
@@ -169,7 +169,7 @@ pub fn execute_traced_query<E: StorageEngine>(
         actor,
         prepare_identity,
         Some(root_identity.span_id.clone()),
-        TraceDomain::Query,
+        TraceBoundary::Ql,
         "rrflow.query.parse_bind",
         root.observed_at(),
         TraceDataClass::Control,
@@ -257,7 +257,7 @@ pub fn execute_traced_query<E: StorageEngine>(
         actor,
         planning_identity,
         Some(root_identity.span_id.clone()),
-        TraceDomain::Planning,
+        TraceBoundary::Ql,
         "rrflow.query.plan",
         root.observed_at(),
         TraceDataClass::Control,
@@ -352,7 +352,7 @@ pub fn execute_traced_query<E: StorageEngine>(
         actor,
         execution_identity.clone(),
         Some(root_identity.span_id),
-        TraceDomain::Query,
+        TraceBoundary::Ql,
         "rrflow.query.execute",
         root.observed_at(),
         TraceDataClass::Control,
@@ -378,7 +378,7 @@ pub fn execute_traced_query<E: StorageEngine>(
         actor,
         storage_identity,
         Some(execution_identity.span_id),
-        TraceDomain::Storage,
+        TraceBoundary::Kv,
         "rrflow.storage.runtime_read",
         root.observed_at(),
         TraceDataClass::Control,

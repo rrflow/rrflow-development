@@ -18,8 +18,8 @@ use rrd_cluster::{
 };
 use rrd_core::{
     ObjectReference, RuntimeCommit, RuntimeMutation, RuntimeRecordSchema, RuntimeSchemaRegistry,
-    RuntimeTraceEvent, RuntimeType, ScopeId, SpanId, TraceDataClass, TraceDomain, TraceId,
-    TraceOutcome,
+    RuntimeTraceEvent, RuntimeType, ScopeId, SpanId, TraceBoundary, TraceDataClass, TraceId,
+    TraceOperation, TraceOutcome,
 };
 use rrd_store::LocalObjectStore;
 use rustls::pki_types::{CertificateRevocationListDer, PrivateKeyDer, PrivatePkcs8KeyDer};
@@ -337,8 +337,8 @@ fn mutual_tls_transport_replicates_and_denies_identity_confusion() {
             TraceId::new("1".repeat(32)).unwrap(),
             SpanId::new("2".repeat(16)).unwrap(),
             None,
-            TraceDomain::Cluster,
-            "cluster.consensus_route",
+            TraceBoundary::Adapter,
+            TraceOperation::AdapterInvoke,
             11,
             TraceOutcome::Ok,
             TraceDataClass::Control,

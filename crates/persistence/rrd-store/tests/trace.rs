@@ -1,7 +1,7 @@
 use rrd_core::{
     RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry, RuntimeTraceEvent,
-    RuntimeType, RuntimeValue, ScopeId, SpanId, TraceDataClass, TraceDomain, TraceId, TraceLink,
-    TraceOutcome,
+    RuntimeType, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary, TraceDataClass,
+    TraceId, TraceLink, TraceOperation, TraceOutcome,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
@@ -25,16 +25,19 @@ fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
         trace_id(),
         span_id(),
         None,
-        TraceDomain::Search,
-        "operator.pgvector.search",
+        TraceBoundary::Adapter,
+        TraceOperation::AdapterInvoke,
         1_000,
         TraceDataClass::Operator,
-        vec![TraceLink::OperatorKnowledge {
-            adapter: "pgvector".into(),
-            project_id: "trace-differential".into(),
+        vec![TraceLink::Source {
+            source_kind: "operator_knowledge".into(),
+            source_id: "pgvector:trace-differential".into(),
             source_revision: "postgres-lsn:0/16B6C50".into(),
         }],
-        RuntimeProperties::from([("requested_limit".into(), RuntimeValue::Unsigned(10))]),
+        RuntimeProperties::from([(
+            TraceAttribute::InputItems.into(),
+            RuntimeValue::Unsigned(10),
+        )]),
     )
     .unwrap();
     engine
@@ -56,18 +59,21 @@ fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
         trace_id(),
         span_id(),
         None,
-        TraceDomain::Search,
-        "operator.pgvector.search",
+        TraceBoundary::Adapter,
+        TraceOperation::AdapterInvoke,
         1_001,
         840,
         TraceOutcome::Ok,
         TraceDataClass::Operator,
-        vec![TraceLink::OperatorKnowledge {
-            adapter: "pgvector".into(),
-            project_id: "trace-differential".into(),
+        vec![TraceLink::Source {
+            source_kind: "operator_knowledge".into(),
+            source_id: "pgvector:trace-differential".into(),
             source_revision: "postgres-lsn:0/16B6C50".into(),
         }],
-        RuntimeProperties::from([("result_count".into(), RuntimeValue::Unsigned(7))]),
+        RuntimeProperties::from([(
+            TraceAttribute::OutputItems.into(),
+            RuntimeValue::Unsigned(7),
+        )]),
     )
     .unwrap();
     engine

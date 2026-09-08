@@ -82,6 +82,7 @@ pub use schema::{
 };
 pub use temporal::{changed_since, resolve_as_of, ClaimReader, ClaimSource};
 pub use trace::{
-    RuntimeTraceEvent, SpanId, TraceDataClass, TraceDomain, TraceId, TraceLink, TraceOutcome,
-    TracePhase, RUNTIME_TRACE_CONTRACT_VERSION, RUNTIME_TRACE_EVENT_TYPE,
+    RuntimeTraceEvent, SpanId, TraceAttribute, TraceBoundary, TraceCausalRelation, TraceDataClass,
+    TraceId, TraceLink, TraceOperation, TraceOutcome, TracePhase, RUNTIME_TRACE_CONTRACT_VERSION,
+    RUNTIME_TRACE_EVENT_TYPE,
 };

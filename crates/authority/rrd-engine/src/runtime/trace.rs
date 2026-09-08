@@ -7,8 +7,8 @@
 
 use rrd_core::{
     digest, Millis, RuntimeCommit, RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties,
-    RuntimeSchemaRegistry, RuntimeTraceEvent, RuntimeValue, ScopeId, SpanId, TraceDataClass,
-    TraceDomain, TraceId, TraceLink, TraceOutcome,
+    RuntimeSchemaRegistry, RuntimeTraceEvent, RuntimeValue, ScopeId, SpanId, TraceAttribute,
+    TraceBoundary, TraceDataClass, TraceId, TraceLink, TraceOutcome,
 };
 use rrd_store::{Error, StorageEngine};
 use std::time::Instant;
@@ -57,7 +57,7 @@ impl TraceIdentity {
 pub struct DurableTraceSpan {
     identity: TraceIdentity,
     parent_span_id: Option<SpanId>,
-    domain: TraceDomain,
+    boundary: TraceBoundary,
     name: String,
     started_at: Millis,
     started: Instant,
@@ -77,7 +77,7 @@ impl DurableTraceSpan {
         actor: impl Into<String>,
         identity: TraceIdentity,
         parent_span_id: Option<SpanId>,
-        domain: TraceDomain,
+        boundary: TraceBoundary,
         name: impl Into<String>,
         at: Millis,
         data_class: TraceDataClass,
@@ -91,7 +91,7 @@ impl DurableTraceSpan {
             identity.trace_id.clone(),
             identity.span_id.clone(),
             parent_span_id.clone(),
-            domain,
+            boundary,
             name.clone(),
             at,
             data_class,
@@ -102,7 +102,7 @@ impl DurableTraceSpan {
         Ok(Self {
             identity,
             parent_span_id,
-            domain,
+            boundary,
             name,
             started_at: at,
             started,
@@ -142,7 +142,7 @@ impl DurableTraceSpan {
         });
         insert_attribute(
             &mut self.attributes,
-            "start_cursor",
+            TraceAttribute::StartCursor.as_str(),
             RuntimeValue::Unsigned(self.start_cursor),
         )?;
         for (name, value) in extra_attributes {
@@ -157,7 +157,7 @@ impl DurableTraceSpan {
             self.identity.trace_id,
             self.identity.span_id,
             self.parent_span_id,
-            self.domain,
+            self.boundary,
             self.name,
             finished_at,
             duration_micros,

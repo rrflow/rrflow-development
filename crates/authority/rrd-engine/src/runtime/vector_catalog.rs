@@ -10,7 +10,8 @@ use rrd_core::{
     DataTransaction, Millis, ObjectReference, ProjectionId, ReadStamp, RuntimeChange,
     RuntimeCommit, RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId, TraceDataClass, TraceDomain, TraceLink, TraceOutcome,
+    RuntimeValue, RuntimeValueType, ScopeId, TraceBoundary, TraceDataClass, TraceLink,
+    TraceOutcome,
 };
 use rrd_store::{DataRuntimeAccess, Error as StoreError, ImmutableObjectStore, StorageEngine};
 use rrd_vector::{
@@ -186,7 +187,7 @@ where
         actor,
         identity,
         None,
-        TraceDomain::Projection,
+        TraceBoundary::Vector,
         "vector.projection.publish",
         at,
         TraceDataClass::Control,
@@ -416,7 +417,7 @@ where
         actor,
         identity,
         None,
-        TraceDomain::Projection,
+        TraceBoundary::Vector,
         "vector.quantization.build",
         at,
         TraceDataClass::Control,
@@ -525,7 +526,7 @@ where
         actor,
         identity,
         None,
-        TraceDomain::Projection,
+        TraceBoundary::Vector,
         format!("vector.quantization.{action_name}"),
         at,
         TraceDataClass::Control,

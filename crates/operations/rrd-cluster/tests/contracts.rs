@@ -208,9 +208,11 @@ fn artifact_manifest_binds_project_read_plan_objects_and_receipt() {
     let completed_trace = artifact_transfer_trace_event(&completed).unwrap();
     let failed_trace = artifact_transfer_trace_event(&failed).unwrap();
     assert_eq!(prepared_trace.name, "cluster.artifact_transfer");
+    assert_eq!(prepared_trace.boundary, rrd_core::TraceBoundary::Adapter);
     assert_eq!(prepared_trace.trace_id, completed_trace.trace_id);
     assert_eq!(prepared_trace.span_id, completed_trace.span_id);
     assert_eq!(progress_trace.name, "cluster.artifact_chunk");
+    assert_eq!(progress_trace.boundary, rrd_core::TraceBoundary::Adapter);
     assert_eq!(progress_trace.parent_span_id, Some(prepared_trace.span_id));
     assert_eq!(failed_trace.outcome, rrd_core::TraceOutcome::Error);
     assert!(!serde_json::to_string(&failed_trace)

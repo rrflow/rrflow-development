@@ -92,20 +92,18 @@ and all observed deficiencies are maintained in the
 The canonical checklist and accepted evidence are in the
 [release roadmap](docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist).
 A-06 is complete: the checkout knowledge package is classified,
-content-addressed, reproducible, and ready for later authorized import. A-07.0
-has bound every current package/root and capability family to its existing
-public surface, evidence, canonical destination, and direct-removal obligation.
-All eight A-07.1 packages have now directly converged the governed-function
-vocabulary and boundary, split each SDK's existing responsibilities without
-inventing absent behavior, classified contextual product/language/wire naming,
-and enforced case-insensitive path/package uniqueness plus repository-contained
-Cargo and build/install inputs. The retained characterization and every
-remaining deficiency are recorded in the roadmap and POA&M; these structural
-packages do not qualify an engine capability or complete A-07. The next
-executable package is
-[A-07.2 causal-evidence vocabulary](docs/roadmap/rrflow-1.0-execution-map.md#a-072--freeze-causal-evidence-vocabulary).
-B-01 and B-02 remain completed contract work; later Gate B work stays paused
-until A-07 is complete.
+content-addressed, reproducible, and ready for later authorized import. A-07 is
+also complete: every current package/capability family is mapped to its
+canonical destination; package, type, path, dependency, and repository-source
+boundaries are frozen; and the 13-boundary causal-evidence vocabulary now has
+closed operation, typed-link, type-checked attribute, propagation, and
+diagnostic-export rules. Exact current trace names and attributes that await
+their behavior-owning C-through-I gates are finite shrinking inventories, not
+alternate APIs. This completes structural and evidence vocabulary only; it
+does not qualify persistence, native indexes, DataFusion streaming, reasoning,
+installation, or cross-surface observability. B-01 and B-02 remain complete,
+and the next executable package is
+[B-03 model-manifest handshake](docs/roadmap/rrflow-1.0-execution-map.md#b-03--model-manifest-handshake).
 
 ## Knowledge warp points
 

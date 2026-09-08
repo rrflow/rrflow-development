@@ -31,7 +31,7 @@ Roadmap completion currently stands at:
 
 | Gate | Purpose | Complete |
 |---|---|---:|
-| A | authority, naming, documentation memory, and repository-contained source boundaries | 6 / 7 |
+| A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 2 / 5 |
 | C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
@@ -103,31 +103,16 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.2**, the causal-evidence vocabulary freeze.
-A-07.0 completed the reviewed implementation-requirements mapping. A-07.1a
-directly converged the
-governed-function catalogue/binding vocabulary and module boundary. A-07.1b
-then split the Rust SDK by accepted responsibility and removed its public
-bearer-bearing session field while preserving the characterized transport
-surface. A-07.1c split the TypeScript client's real HTTP responsibilities and
-renamed its conformance entry without inventing an absent WebSocket module.
-A-07.1d split the Python client's existing synchronous responsibilities,
-removed its catch-all model module, and added the package typing marker without
-inventing async or socket behavior. A-07.1e split the Go client's existing
-HTTP responsibilities, removed its catch-all model module, and added package
-documentation without inventing socket or generated-model behavior. A-07.1f
-split the Java client's current HTTP responsibilities behind its unchanged
-public facade and added package documentation without inventing async, socket,
-or generated-model behavior. A-07.1g pinned and centralized the .NET workspace
-inputs, moved its README and generated operation projection to their one direct
-paths, and split its current HTTP implementation without changing the exported
-assembly surface. None of these slices qualifies its capability or completes
-A-07. A-07.1h then classified the remaining contextual naming forms and proved
-case-insensitive path/package uniqueness, repository-contained Cargo inputs,
-locked dependency direction, generated inventory, and all-target compilation
-for the combined A-07.1 candidate. B-01 and B-02 remain completed contract
-work; no further Gate B work proceeds until A-07.2 freezes the complete
-pre-release causal-evidence vocabulary and closes A-07.
+The next executable item is **B-03**, the model-manifest handshake. A-07 is
+complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
+through A-07.1h directly converged package/type/path vocabulary, SDK
+responsibility boundaries, dependency direction, and repository-contained
+source; and A-07.2 froze the 13 trace boundaries, 53 canonical operations, 14
+typed causal-link forms, 46 type-checked canonical attributes, W3C propagation
+rules, diagnostic projection, and exact shrinking current-producer inventories.
+This is vocabulary and traceability completion, not engine-capability
+qualification. B-01 and B-02 remain completed contract work; B-03 now resumes
+the dependency spine.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -139,7 +124,7 @@ pre-release causal-evidence vocabulary and closes A-07.
 | [x] | A-04 | Move all existing crates into one non-duplicated grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
 | [x] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
-| [ ] | A-07 | Audit the actual dependency graph, public vocabulary, implementation-requirements traceability, and causal evidence vocabulary; then freeze industry-aligned directory, crate, module, test, fixture, binary, command, configuration, environment, wire, persisted marker, digest/media domain, low-cardinality operation, typed-link, and trace-attribute names. Directly rename the overloaded function `AutomationCatalogue` and pre-commit `FunctionTrigger*` family to the canonical function-catalogue and transaction-function-binding vocabulary, and split their implementation from later committed-event triggers and routines. Keep every first-party build/install/runtime input inside this repository and converge overlapping pre-release boundaries directly with no forwarding aliases or parallel execution paths. | workspace | The reviewed traceability matrix accounts for every affected current behavior, source module, test, fixture, and planned destination; a frozen trace map assigns ingress, engine, KV, QL, graph, lexical, vector, DataFusion, inference, function, attunement, routine, adapter, and delivery work to one naming/coordinate scheme; the function contract has one golden closed-schema fixture and no old name/field decoder; case-insensitive terminology, `cargo metadata`, dependency-direction, tracked-path, and owning-suite checks prove every package has one responsibility, every dependency points inward, no successful old-shape reader/default/alias remains, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
+| [x] | A-07 | Audit the actual dependency graph, public vocabulary, implementation-requirements traceability, and causal evidence vocabulary; then freeze industry-aligned directory, crate, module, test, fixture, binary, command, configuration, environment, wire, persisted marker, digest/media domain, low-cardinality operation, typed-link, and trace-attribute names. Directly rename the overloaded function `AutomationCatalogue` and pre-commit `FunctionTrigger*` family to the canonical function-catalogue and transaction-function-binding vocabulary, and split their implementation from later committed-event triggers and routines. Keep every first-party build/install/runtime input inside this repository and converge overlapping pre-release boundaries directly with no forwarding aliases or parallel execution paths. | workspace | The reviewed traceability matrix accounts for every affected current behavior, source module, test, fixture, and planned destination; a frozen trace map assigns ingress, engine (including governed function execution), KV, QL, graph, lexical, vector, DataFusion, inference, attunement, routine, adapter, and delivery work to one naming/coordinate scheme; the function contract has one golden closed-schema fixture and no old name/field decoder; case-insensitive terminology, `cargo metadata`, dependency-direction, tracked-path, and owning-suite checks prove every package has one responsibility, every dependency points inward, no successful old-shape reader/default/alias remains, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
 
 #### A-06 knowledge-bootstrap sequence
 
@@ -294,8 +279,8 @@ A-07.0 evidence (2026-09-08):
 - This was documentation-only traceability. It did not rename, move, delete,
   or qualify runtime code; it did not prove rrflowMX/rrflowKV equivalence,
   rrflowKV durability, graph/index atomicity, streamed Arrow/DataFusion
-  execution, or persisted reasoning/recall. A-07 remains unchecked and A-07.1
-  is the next package.
+  execution, or persisted reasoning/recall. At that revision A-07 remained
+  unchecked and A-07.1 was the next package.
 
 A-07.1a governed-function vocabulary evidence (2026-09-08):
 
@@ -529,12 +514,48 @@ A-07.1h repository-closure and vocabulary evidence (2026-09-08):
   supporting execution-map journal. The public contract retains the same 33
   operation descriptors; only its human-facing unavailable-surface reason uses
   canonical rrflowQL spelling.
-- This proves A-07.1 source/package/type/path closure, not an engine
-  capability. A-07 remains unchecked until A-07.2 freezes causal evidence.
+- This proved A-07.1 source/package/type/path closure, not an engine
+  capability. At that revision A-07 remained unchecked pending A-07.2; the
+  following A-07.2 package now closes it.
   rrflowMX/rrflowKV equivalence and durability, native graph/index atomicity,
   streamed stamped Arrow/DataFusion execution, persisted reasoning/recall,
   installation/attunement, SDK/Connectome conformance, and release proof remain
   owned by their open gates.
+
+A-07.2 causal-evidence vocabulary (2026-09-08):
+
+- `rrd-core` now owns 13 exact `TraceBoundary` values and 53 closed
+  `TraceOperation` names. Operation/boundary mismatch, unknown operations, the
+  former `domain` field, extra event/link fields, and the retired provider,
+  workflow, and operator-knowledge link shapes fail closed with no alias.
+- Fourteen generic `TraceLink` forms carry request, actor/scope,
+  authorization, read/snapshot, plan/projection, reasoning, source, commit,
+  resource, asynchronous-causation, and output coordinates. Forty-six
+  `TraceAttribute` names enforce their boolean, unsigned, finite-decimal,
+  digest, or bounded lowercase-token value type before persistence.
+- Every reviewed current trace producer now uses the exact boundary field and
+  generic source link. Its remaining mixed operation and subsystem-specific
+  attribute names are admitted only by private sorted inventories that cannot
+  overlap the canonical catalogues and can only shrink in their assigned
+  C-through-I behavior gates.
+- The engine data-flow owner freezes W3C extraction/invalid-context/child and
+  asynchronous propagation rules, durable-to-Rust-`tracing`/OpenTelemetry
+  mapping, redaction, nonsampling of authoritative evidence, and the physical
+  instrumentation each later gate must add. This package does not implement or
+  claim H-05.
+- The full `rrd-core` suite passed 58 unit tests plus all integration/golden
+  suites; the rrflowMX/rrflowKV trace differential passed; the complete
+  `rrd-engine` suite passed; and the focused cluster artifact contract passed
+  all 10 tests. Strict default-feature Clippy passed for every touched package,
+  and all-feature cluster Clippy passed. The feature-gated OpenRaft transport
+  test still fails before its trace assertion because application index 8
+  reaches the already-recorded unsupported rrflowKV application format; that
+  retained storage/cluster defect is not counted as A-07 evidence.
+- A-07 is complete, but no C-through-J capability checkbox changes. RRFlow
+  still lacks accepted final rrflowKV pages, atomic native graph/BM25/vector
+  paths, bounded stamped Arrow/DataFusion streaming, persisted reasoning and
+  recall feedback, qualified installation/attunement, public-surface parity,
+  Connectome conformance, and clean deployment proof. B-03 is next.
 
 A-02 evidence (2026-09-04):
 
