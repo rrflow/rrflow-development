@@ -132,6 +132,10 @@ The current cluster contracts contain useful placement epochs, quorum,
 snapshot-vector, routing, artifact-transfer, and reshard safety checks. They are
 implementation inventory until the cluster package proves that those checks
 operate on this topology through the canonical engine and storage contracts.
+The [distributed cluster contract](../reference/distributed/cluster-contract.md)
+owns their exact preserve/replace disposition and qualification boundary;
+`clustered_server` remains unavailable and is not a first-alpha exit
+requirement.
 
 ## Installation and binding resolution
 

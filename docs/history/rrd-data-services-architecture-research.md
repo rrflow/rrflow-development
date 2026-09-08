@@ -531,7 +531,8 @@ them as audited, per-node hash chains with reset-aware deltas and alerts.
 Independent-host faults, automatic workload identity, automatic telemetry
 collection/export, retained large-closure soak, and real Multi-AZ operations
 remain open, so M7 is not closed. See
-`rrd-cluster-m7.md`.
+the current [distributed cluster contract](../reference/distributed/cluster-contract.md)
+for the accepted target and disposition of this historical implementation.
 
 Acceptance: deterministic simulation/model checking; partition, delay,
 duplication, reorder, crash, clock-skew, and disk-loss scenarios; linearizable

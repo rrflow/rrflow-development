@@ -13,6 +13,8 @@ The [instance-topology architecture](../../architecture/instance-topology.md)
 owns project, estate, instance, environment, and physical-placement identity.
 The [engine data-flow architecture](../../architecture/engine-data-flow.md)
 owns the common write, read, Arrow/DataFusion, reasoning, and recall paths. The
+[distributed cluster contract](../distributed/cluster-contract.md) owns the
+unavailable clustered target and the disposition of current cluster code. The
 [local-process adapter](local-process-driver.md) owns host process effects, the
 [server reference](../protocol/server.md) owns HTTP/WebSocket behavior, and the
 [roadmap](../../roadmap/rrflow-1.0.md) owns implementation order and completion
@@ -48,7 +50,7 @@ canonical estate state.
 | `embedded` | `rrflow_kv` | `in_process` | Valid durable composition. The embedding process exclusively owns the rrflowKV writer. |
 | `single_node_server` | `rrflow_mx` | loopback or configured network HTTP/WebSocket | Valid volatile server composition. Durability-only operations fail before preparing authoritative state. |
 | `single_node_server` | `rrflow_kv` | loopback or configured network HTTP/WebSocket | First-alpha persistent service target and Connectome bootstrap target. The server exclusively owns the rrflowKV writer. |
-| `clustered_server` | `rrflow_kv` | configured network HTTP/WebSocket | Planned and unavailable until the distributed contract, consensus, independent-host, failure, and placement gates pass. |
+| `clustered_server` | `rrflow_kv` | configured network HTTP/WebSocket | Target only and unavailable. It is not a first-alpha exit requirement; the roadmap owner must add and accept a distributed implementation gate before this value can be installed or advertised. |
 | `clustered_server` | `rrflow_mx` | any | Invalid: process-local volatile state cannot be the canonical replicated cluster substrate. |
 
 The default first-alpha installation is one authenticated single-node RRD
@@ -164,7 +166,9 @@ file, or in-test server object does not qualify it.
 Clustered-server conformance is a separate expansion of this corpus. It must
 add independent-host quorum, replication, leader/follower failure, partition,
 placement, snapshot-vector, reshard, and recovery evidence without weakening
-the single-node semantics.
+the single-node semantics. The current roadmap does not schedule that
+expansion; its exact entry conditions and current-code disposition are in the
+[distributed cluster contract](../distributed/cluster-contract.md).
 
 ### Endpoint-presentation differential
 
