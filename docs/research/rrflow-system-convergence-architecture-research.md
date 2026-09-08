@@ -162,8 +162,9 @@ tests are valuable implementation references for RRFlow's exact-vector source
 plus replaceable HNSW/TurboQuant generations. They do not justify a second
 Qdrant process, a second catalogue, or copying Qdrant compatibility paths into
 RRFlow.
-[Qdrant libraries](https://github.com/qdrant/qdrant/tree/master/lib),
-[Qdrant segment source](https://github.com/qdrant/qdrant/tree/master/lib/segment/src)
+[Qdrant v1.19.1 libraries](https://github.com/qdrant/qdrant/tree/6ab21cac18ebb6f4ae29102c7f8f5cc11affd5de/lib),
+[Qdrant v1.19.1 segment source](https://github.com/qdrant/qdrant/tree/6ab21cac18ebb6f4ae29102c7f8f5cc11affd5de/lib/segment/src),
+[source-pinned RRFlow reference](qdrant-capability-inventory.md)
 
 ### Deterministic project discovery before parsing
 
@@ -445,8 +446,8 @@ machine verification rather than a bare successful local build.
 | MCP as a thin engine adapter | MCP crate | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/mcp | Primary source |
 | Ordered tuples and conflict ranges | Developer Guide | FoundationDB | 7.4.7, accessed 2026-09-05 | https://apple.github.io/foundationdb/developer-guide.html | Official documentation |
 | HNSW design | Efficient and robust approximate nearest neighbor search using HNSW graphs | Malkov and Yashunin | 2016/2018 | https://arxiv.org/abs/1603.09320 | Original paper |
-| Filtered vector planning | Indexing | Qdrant | accessed 2026-09-05 | https://qdrant.tech/documentation/manage-data/indexing/ | Official documentation |
-| Vector segment source boundaries | Libraries and segment source | Qdrant | master, accessed 2026-09-06 | https://github.com/qdrant/qdrant/tree/master/lib/segment/src | Primary source |
+| Filtered vector planning | Indexing | Qdrant | accessed 2026-09-08 | https://qdrant.tech/documentation/manage-data/indexing/ | Official documentation |
+| Vector segment source boundaries | Libraries and segment source | Qdrant | v1.19.1, commit `6ab21cac18ebb6f4ae29102c7f8f5cc11affd5de`, accessed 2026-09-08 | https://github.com/qdrant/qdrant/tree/6ab21cac18ebb6f4ae29102c7f8f5cc11affd5de/lib/segment/src | Primary source |
 | BM25 semantics | The Probabilistic Relevance Framework: BM25 and Beyond | Robertson and Zaragoza | 2009 | https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf | Primary technical review |
 | RRF semantics | Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods | Cormack, Clarke, Buettcher | 2009 | https://research.google/pubs/reciprocal-rank-fusion-outperforms-condorcet-and-individual-rank-learning-methods/ | Publisher record for original paper |
 | Incremental resilient parsing | Tree-sitter Introduction | Tree-sitter project | accessed 2026-09-05 | https://tree-sitter.github.io/ | Official documentation |
@@ -458,8 +459,8 @@ machine verification rather than a bare successful local build.
 | Language-neutral code-index interchange | SCIP specification | Sourcegraph | main, accessed 2026-09-06 | https://github.com/scip-code/scip/blob/main/scip.proto | Primary schema; later-phase reference only |
 | Provider skill and MCP installation | Agent setup | SurrealDB | accessed 2026-09-06 | https://surrealdb.com/docs/agents | Official product guidance; not a project inventory contract |
 | Repository-scoped agent memory and folder ingest | Coding agent with project memory | SurrealDB | accessed 2026-09-06 | https://surrealdb.com/docs/agent-memory/cookbooks/build/coding-agent-with-project-memory | Official cookbook; reviewed boundary is documentation ingest and memory workflow |
-| Vector/payload ingestion ownership | Manage Data | Qdrant | accessed 2026-09-06 | https://qdrant.tech/documentation/manage-data/ | Official documentation; begins at caller-supplied points |
-| External ingestion integration | LlamaIndex | Qdrant | accessed 2026-09-06 | https://qdrant.tech/documentation/frameworks/llama-index/ | Official integration documentation |
+| Vector/payload ingestion ownership | Manage Data | Qdrant | accessed 2026-09-08 | https://qdrant.tech/documentation/manage-data/ | Official documentation; begins at caller-supplied points |
+| External ingestion integration | LlamaIndex | Qdrant | accessed 2026-09-08 | https://qdrant.tech/documentation/frameworks/llama-index/ | Official integration documentation |
 | Sandboxed policy-driven code indexing | Auto-indexing | Sourcegraph | accessed 2026-09-06 | https://sourcegraph.com/docs/code-navigation/auto-indexing | Official documentation; operational comparison only |
 | Codex instruction discovery | Unrolling the Codex agent loop | OpenAI | 2026, accessed 2026-09-05 | https://openai.com/index/unrolling-the-codex-agent-loop/ | First-party engineering article |
 | Claude instruction import | How Claude remembers your project | Anthropic | accessed 2026-09-05 | https://code.claude.com/docs/en/memory | Official documentation |

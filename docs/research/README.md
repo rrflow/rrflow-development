@@ -3,7 +3,7 @@
 **Status:** active platform-industry research index; linked source records remain partially unclassified
 **Coordinate:** `rrflow://rrflow-instance/data/research-index/platform-industry`
 **Owner:** primary-source external-system research discovery; not RRFlow terminology or delivery planning
-**Reviewed:** 2026-08-27
+**Reviewed:** 2026-09-08
 **Scope:** `docs/research/`
 
 This directory is the single entry point for industry research used to shape
@@ -32,7 +32,7 @@ receives a separate full review and link-preserving classification.
 
 | Subject | Terms to inventory | Primary sources | Repository note |
 |---|---|---|---|
-| Qdrant | collection, point, vector, payload, segment, shard, replica, alias, tenant, strict mode | [overview](https://qdrant.tech/documentation/overview/), [collections](https://qdrant.tech/documentation/manage-data/collections/), [distributed deployment](https://qdrant.tech/documentation/scaling/distributed_deployment/), [multitenancy](https://qdrant.tech/documentation/manage-data/multitenancy/) | [`qdrant-capability-inventory.md`](../qdrant-capability-inventory.md) |
+| Qdrant | collection, point, vector, payload, segment, HNSW, quantization, shard, replica, tenant, strict mode | [`v1.19.1` release](https://github.com/qdrant/qdrant/releases/tag/v1.19.1), [pinned source](https://github.com/qdrant/qdrant/tree/6ab21cac18ebb6f4ae29102c7f8f5cc11affd5de), [collections](https://qdrant.tech/documentation/manage-data/collections/), [hybrid queries](https://qdrant.tech/documentation/search/hybrid-queries/) | [`qdrant-capability-inventory.md`](qdrant-capability-inventory.md) |
 | HelixDB | labeled property graph, node, edge, label, property, index, query, workspace, project, cluster | [introduction](https://docs.helix-db.com/database/helix-db/start-here/introduction), [data model](https://docs.helix-db.com/database/helix-db/core-concepts/data-model), [run modes](https://docs.helix-db.com/database/helix-db/start-here/run-modes), [repository](https://github.com/HelixDB/helix-db) | No peer capability inventory exists yet. |
 | SurrealDB | namespace, database, table, record, relation, organization, project, instance, cluster | [architecture](https://surrealdb.com/docs/architecture), [namespace/database hierarchy](https://surrealdb.com/docs/learn/schema-management/multi-tenancy/namespace-and-database-architecture), [repository](https://github.com/surrealdb/surrealdb) | [`surrealdb-capability-inventory.md`](../surrealdb-capability-inventory.md); [`rrflow-surrealdb-differential.md`](../rrflow-surrealdb-differential.md) |
 
