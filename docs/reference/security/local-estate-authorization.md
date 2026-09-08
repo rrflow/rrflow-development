@@ -12,9 +12,9 @@ the current local estate path, exposes where that path bypasses the accepted
 authority, and defines its direct-convergence target.
 
 Estate desired/observed state, reconciliation, backup, and recovery semantics
-belong to the estate-control boundary and are reviewed in the next KB-05
-package. They are summarized here only where authorization must bind a
-specific semantic effect.
+belong to the [estate-control boundary](../operations/estate-control.md). They
+are summarized here only where authorization must bind a specific semantic
+effect.
 
 ## Accepted engine flow
 
