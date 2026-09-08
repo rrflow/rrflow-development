@@ -95,12 +95,15 @@ A-06 is complete: the checkout knowledge package is classified,
 content-addressed, reproducible, and ready for later authorized import. A-07.0
 has bound every current package/root and capability family to its existing
 public surface, evidence, canonical destination, and direct-removal obligation.
-The first bounded A-07.1 slice has directly converged the governed-function
-catalogue and transaction-binding vocabulary, split that implementation from
-automation, frozen a closed golden contract, and added initial
-rrflowMX/rrflowKV/reopen characterization. This does not qualify the function
-capability or complete A-07. The next executable subpackage is the
-[A-07.1b Rust SDK boundary](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
+The first two bounded A-07.1 slices have directly converged the
+governed-function catalogue and transaction-binding vocabulary, isolated that
+implementation under its function boundary, split the Rust SDK by accepted
+responsibility, and made its public session handle credential-private and
+redaction-safe. The retained characterization includes the initial function
+rrflowMX/rrflowKV/reopen corpus and the Rust client's real loopback, mutual-TLS,
+and WebSocket server corpus. These slices do not qualify either capability or
+complete A-07. The next executable subpackage is the
+[A-07.1c TypeScript SDK boundary](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
 B-01 and B-02 remain completed contract work; later Gate B work remains paused
 until all of A-07 is complete.
 

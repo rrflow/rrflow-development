@@ -78,6 +78,9 @@ The complete source and real-server fixtures establish useful foundations:
 - capability discovery checks protocol and expected RRD instance identity;
 - common request, resource, correlation, deadline, and mutation-idempotency
   coordinates are typed;
+- the client-owned `Session` handle keeps its bearer-bearing lease private,
+  exposes only non-secret metadata, and uses a tested redacted `Debug`
+  implementation;
 - HTTP response accumulation is capped at four MiB;
 - API error bodies preserve their current closed error code, message,
   retryability value, and HTTP status;
@@ -190,13 +193,16 @@ deployment.
 
 API keys, bearer tokens, private keys, session identifiers, and other
 credential material must not appear in `Debug`, `Display`, errors, traces,
-metrics, URLs, process arguments, or response excerpts. The current public
-`Session` derives `Debug` and contains a public `SessionLease`; that lease
-contains the bearer token, so formatting the session can disclose it. Direct
-convergence replaces this with an opaque session handle, redacted custom debug
-output, and a secret-bearing token wrapper with deliberately limited exposure
-and copying. Transport errors retain typed sources and classifications without
-including authorization headers or uncontrolled server bodies.
+metrics, URLs, process arguments, or response excerpts. A-07.1b directly
+removed the public bearer-bearing `SessionLease` field from `Session`.
+`Session` now exposes only principal, session identity, lease times, and
+limits; its manual `Debug` prints a redaction marker and a focused test proves
+the token bytes are absent. The bearer is still an ordinary `CorrelationId`
+inside the private handle and is formatted into an authorization header, so
+H-04 still owns a deliberately limited secret wrapper, copy/zeroization policy,
+and adversarial diagnostic/error proof. Transport errors must retain typed
+sources and classifications without including authorization headers or
+uncontrolled server bodies.
 
 ## WebSocket bounds and frame integrity
 
@@ -274,6 +280,8 @@ names.
 
 | Command or inspection | Result | Honest boundary |
 |---|---|---|
+| A-07.1b public-method inventory comparison | Every pre-split public method remains; only non-secret session metadata accessors were added. | Source/API-shape preservation except the intentional removal of public credential fields; not operation conformance. |
+| `session_debug_redacts_the_bearer_credential` | 1 passed | Proves the client-owned session formatter omits the synthetic bearer; not memory zeroization or all-error redaction. |
 | `cargo test -p rrd-client --test real_server --locked` | 3 passed | Real loopback, narrow deployment corpus, and mutual-TLS/WSS behavior; not full operation, storage-profile, or release conformance. |
 | Rust conformance test with no manifest | Cargo reported 1 passed in 0.00 s | The test returned before executing a scenario; this is not conformance evidence. |
 | Rust conformance test against the live example harness with the absolute shared-corpus path | 1 passed; runner reported the expected corpus SHA-256 | Real execution of the present limited rrflowKV corpus; not installation, rrflowMX parity, full labelled behavior, or cross-language proof. |
@@ -283,36 +291,38 @@ names.
 No row proves the persistent multi-model reasoning/recall engine. That proof is
 owned by C through H and then exercised through the SDK in H-04/J.
 
-## Direct-convergence file plan
+## Direct-convergence source boundary
 
-A-07 mechanically splits the current 1,235-line monolith along already
-accepted responsibilities without retaining forwarding modules:
+A-07.1b directly split the former 1,235-line implementation monolith along
+already accepted responsibilities. `lib.rs` is now only the crate contract,
+module declarations, and public exports; there is no forwarding monolith:
 
 ```text
 crates/transport/rrd-client/src/
 ├── lib.rs             # narrow public exports
-├── client.rs          # construction and public typed methods
-├── endpoint.rs        # expected identity and resolved endpoint candidates
-├── error.rs           # closed redacted client errors
-├── operation.rs       # catalogue binding and request/response validation
-├── retry.rs           # semantic retry/deadline/outcome-certainty policy
-├── session.rs         # opaque credential-bearing session handle
-├── subscription.rs    # bounded multiplexed stream state
-└── transport.rs       # loopback and authenticated network carriage
+├── client.rs          # client identity plus capability/schema discovery
+├── endpoint.rs        # explicit loopback or mutual-TLS construction
+├── error.rs           # current closed client error vocabulary
+├── operation.rs       # current typed calls, envelopes, and outcome checks
+├── retry.rs           # current attempt/deadline configuration
+├── session.rs         # private credential-bearing session handle
+├── subscription.rs    # current dedicated durable-subscription socket
+└── transport.rs       # current bounded HTTP carriage
 
 crates/transport/rrd-client/tests/
-├── operation_coverage.rs
-├── protocol_validation.rs
-├── transport_faults.rs
+├── operation_coverage.rs      # planned H-04
+├── protocol_validation.rs     # planned H-04/J-02
+├── transport_faults.rs        # planned B-04/H-04/H-07/J-02
 ├── real_server.rs
 └── sdk_conformance.rs
 ```
 
 The gates then close behavior in dependency order:
 
-1. **A-07:** preserve characterized behavior while freezing the modules,
-   public names, secret boundary, and exact mapping from each current symbol
-   and test; no compatibility module or old export remains.
+1. **A-07.1b (implemented; A-07 remains open):** characterized behavior,
+   direct modules, public names, the redacted session boundary, and the exact
+   current symbol/test map are preserved with no compatibility module or old
+   implementation body.
 2. **B-04:** replace the dedicated socket with the bounded multiplexed protocol
    and correlated cancellation.
 3. **H-04:** bind all 33 operations from the catalogue, validate every request

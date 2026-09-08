@@ -103,13 +103,16 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1b**, the Rust SDK responsibility boundary
-inside the package and type vocabulary work. A-07.0 completed the reviewed
-implementation-requirements mapping. A-07.1a then directly converged the
-governed-function catalogue/binding vocabulary and module boundary, but did
-not qualify that capability or complete A-07. B-01 and B-02 remain completed
-contract work; no further Gate B work proceeds until A-07 corrects the complete
-pre-release source, package, public, and trace-vocabulary assumptions.
+The next executable item is **A-07.1c**, the TypeScript SDK responsibility
+boundary inside the package and type vocabulary work. A-07.0 completed the
+reviewed implementation-requirements mapping. A-07.1a directly converged the
+governed-function catalogue/binding vocabulary and module boundary. A-07.1b
+then split the Rust SDK by accepted responsibility and removed its public
+bearer-bearing session field while preserving the characterized transport
+surface. Neither slice qualifies its capability or completes A-07. B-01 and
+B-02 remain completed contract work; no further Gate B work proceeds until
+A-07 corrects the complete pre-release source, package, public, and
+trace-vocabulary assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -305,7 +308,31 @@ A-07.1a governed-function vocabulary evidence (2026-09-08):
   access, split allowed audits, unbound runtime replay, inline artifacts,
   incomplete runtime profiles, and absent install/public/cross-language proof
   remain owned by C/D/H/I/J and POAM-008. A-07 and A-07.1 remain unchecked;
-  A-07.1b is next.
+  A-07.1b follows as the next bounded subpackage.
+
+A-07.1b Rust SDK responsibility-boundary evidence (2026-09-08):
+
+- The former 1,235-line `rrd-client/src/lib.rs` implementation body is absent.
+  Its existing responsibilities now live directly in `client`, `endpoint`,
+  `error`, `operation`, `retry`, `session`, `subscription`, and `transport`;
+  `lib.rs` contains only crate policy, module declarations, and public exports.
+- Every pre-split public method remains. The intentional pre-release API change
+  removes direct access to the bearer-bearing `SessionLease`: `Session` exposes
+  only non-secret identity, expiry, and limit metadata, keeps the bearer
+  crate-private, and uses a focused, tested redacted `Debug` implementation.
+- The package all-target corpus passed, including the redaction unit test and
+  three real-server tests covering loopback HTTP, mutual TLS, WSS, and current
+  durable subscription ACK/reconnect behavior. Strict package Clippy and the
+  workspace architecture suite also passed.
+- This is a direct responsibility split and public secret-boundary correction,
+  not SDK conformance. The client still implements 28 of 33 HTTP operations;
+  complete request/response/status/media validation, semantic retry and
+  uncertainty, correlated cancellation, bounded multiplexed frames, W3C
+  propagation, endpoint rotation, secret zeroization, installed MX/KV
+  conformance, and fail-closed harness behavior remain owned by B/D/H/J and
+  POAM-011. A manifest-absent conformance invocation still reports a Cargo
+  success without executing a scenario and is explicitly not evidence.
+- A-07 and A-07.1 remain unchecked; A-07.1c is next.
 
 A-02 evidence (2026-09-04):
 
