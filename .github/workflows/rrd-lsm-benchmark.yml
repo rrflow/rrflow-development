@@ -42,9 +42,11 @@ jobs:
             reads: 2048
             read_width: 64
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.98.0
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@f8be11a05b1d4f3fcebe6410cc16743212b999b0 # 1.98.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Run isolated rrflowKV semantic profile
         run: >-
           cargo run --release --locked -p rrd-store --example engine_benchmark --
@@ -54,7 +56,7 @@ jobs:
           --output target/rrflow-kv-${{ matrix.profile }}.json
       - name: Retain raw benchmark evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rrflow-kv-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: target/rrflow-kv-${{ matrix.profile }}.json
@@ -84,9 +86,11 @@ jobs:
           - workload: metadata-fanout
             payload: embedding-f32
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.98.0
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@f8be11a05b1d4f3fcebe6410cc16743212b999b0 # 1.98.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Run isolated AI-read profile
         run: >-
           cargo run --release --locked -p rrd-store --example ai_hotset_benchmark --
@@ -97,7 +101,7 @@ jobs:
           --output target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
       - name: Retain raw AI-read evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json

@@ -76,7 +76,7 @@ definition; this portal does not reproduce those bodies.
 | Engine events, triggers, routines, skills, and host-event adapters | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
 | Current rrflowKV bytes and removable format readers | [rrflowKV current physical format](docs/reference/storage/rrflowkv-current-format.md) |
 | Canonical target source tree and dependency direction | [Frozen target source tree](docs/roadmap/rrflow-1.0-execution-map.md#frozen-target-source-tree) |
-| Repository verification sequence | [Repository-wide run checklist](docs/roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist) and [CI execution contract](docs/operations/ci.md) |
+| Repository verification sequence | [Repository-wide run checklist](docs/roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist) and [RRFlow CI operations](docs/operations/ci.md) |
 | Repository work instructions | [`AGENTS.md`](AGENTS.md) |
 
 ## Current status
@@ -91,11 +91,12 @@ and all observed deficiencies are maintained in the
 
 The canonical checklist and accepted evidence are in the
 [release roadmap](docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist).
-The next executable package is
-[A-06 / KB-05](docs/roadmap/rrflow-1.0.md#a-06-knowledge-bootstrap-sequence):
-resolve the remaining flat supporting records one complete file at a time.
+A-06 is complete: the checkout knowledge package is classified,
+content-addressed, reproducible, and ready for later authorized import. The
+next executable package is
+[A-07.0 implementation traceability](docs/roadmap/rrflow-1.0-execution-map.md#a-070--implementation-traceability-before-structural-edits).
 B-01 and B-02 remain completed contract work; later Gate B work remains paused
-until A-06 and A-07 are complete.
+until A-07 is complete.
 
 ## Knowledge warp points
 
@@ -120,6 +121,7 @@ one repository fallback; the linked record owns the content.
 | Project command capabilities and activities | [`rrflow://rrflow-instance/data/reference/automation/project-command-capabilities`](rrflow://rrflow-instance/data/reference/automation/project-command-capabilities) | [`docs/reference/automation/project-command-capabilities.md`](docs/reference/automation/project-command-capabilities.md) |
 | SDK references | [`rrflow://rrflow-instance/data/reference-index/sdk`](rrflow://rrflow-instance/data/reference-index/sdk) | [`docs/reference/sdk/README.md`](docs/reference/sdk/README.md) |
 | Connectome client contract | [`rrflow://rrflow-instance/data/reference/client/connectome`](rrflow://rrflow-instance/data/reference/client/connectome) | [`docs/reference/client/connectome.md`](docs/reference/client/connectome.md) |
+| CI and runner operations | [`rrflow://rrflow-instance/data/operations/ci`](rrflow://rrflow-instance/data/operations/ci) | [`docs/operations/ci.md`](docs/operations/ci.md) |
 | Product version policy | [`rrflow://rrflow-instance/data/reference/release/version-policy`](rrflow://rrflow-instance/data/reference/release/version-policy) | [`docs/reference/release/version-policy.md`](docs/reference/release/version-policy.md) |
 | Alpha objectives | [`rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha) | [`docs/objectives/rrflow-1.0-alpha.md`](docs/objectives/rrflow-1.0-alpha.md) |
 | Release roadmap | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`docs/roadmap/rrflow-1.0.md`](docs/roadmap/rrflow-1.0.md) |

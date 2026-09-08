@@ -21,7 +21,7 @@ env:
 
 jobs:
   topology-smoke:
-    name: supervised RRD + Connectome topology
+    name: supervised RRD topology
     runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
     timeout-minutes: 15
     steps:

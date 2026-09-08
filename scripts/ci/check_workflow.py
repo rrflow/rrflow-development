@@ -11,6 +11,7 @@ from pathlib import Path
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
+WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 CALLER = ROOT / ".github/workflows/ci.yml"
 REUSABLE = ROOT / ".github/workflows/ci-reusable.yml"
 
@@ -55,17 +56,72 @@ def optional_feature_packages() -> set[str]:
     return packages
 
 
-def verify_action_pins(*workflows: str) -> None:
-    for workflow in workflows:
+def workflow_sources() -> dict[Path, str]:
+    workflows = {
+        path: path.read_text(encoding="utf-8")
+        for pattern in ("*.yml", "*.yaml")
+        for path in sorted(WORKFLOW_DIRECTORY.glob(pattern))
+    }
+    require(CALLER in workflows, "candidate CI caller is absent")
+    require(REUSABLE in workflows, "candidate reusable CI workflow is absent")
+    return workflows
+
+
+def verify_workflow_security(workflows: dict[Path, str]) -> None:
+    for path, workflow in workflows.items():
+        relative = path.relative_to(ROOT)
+        require(
+            "pull_request_target" not in workflow,
+            f"workflow must not execute proposed code with pull_request_target: {relative}",
+        )
+        require(
+            "permissions:\n  contents: read" in workflow,
+            f"workflow must default to read-only contents: {relative}",
+        )
+
+        lines = workflow.splitlines()
+        for index, line in enumerate(lines):
+            if re.match(r"^\s*-\s+uses:\s+actions/checkout@", line) is None:
+                continue
+            indentation = len(line) - len(line.lstrip())
+            body: list[str] = []
+            for following in lines[index + 1 :]:
+                if not following.strip():
+                    continue
+                following_indentation = len(following) - len(following.lstrip())
+                if following_indentation <= indentation:
+                    break
+                body.append(following.strip())
+            require(
+                "persist-credentials: false" in body,
+                f"checkout credentials must not persist: {relative}:{index + 1}",
+            )
+
+
+def verify_action_pins(workflows: dict[Path, str]) -> None:
+    for path, workflow in workflows.items():
+        relative = path.relative_to(ROOT)
         for action in re.findall(r"(?m)^\s*(?:-\s*)?uses:\s+([^\s#]+)", workflow):
             if action.startswith("./"):
                 continue
-            require("@" in action, f"external action is unpinned: {action}")
+            require(
+                "@" in action,
+                f"external action is unpinned in {relative}: {action}",
+            )
             repository, reference = action.rsplit("@", 1)
-            require("/" in repository, f"external action repository is invalid: {action}")
+            require(
+                "/" in repository,
+                f"external action repository is invalid in {relative}: {action}",
+            )
             require(
                 re.fullmatch(r"[0-9a-fA-F]{40}", reference) is not None,
-                f"external action must use a full immutable SHA: {action}",
+                f"external action must use a full immutable SHA in {relative}: {action}",
+            )
+
+        for image in re.findall(r"(?m)^\s+image:\s+([^\s#]+)", workflow):
+            require(
+                re.fullmatch(r"[^@]+@sha256:[0-9a-fA-F]{64}", image) is not None,
+                f"workflow service image must be digest pinned in {relative}: {image}",
             )
 
 
@@ -76,7 +132,9 @@ def verify_arc_policy() -> None:
     heavy = (deployment / "rrflow-heavy.values.yaml").read_text()
     installer = (ROOT / "scripts/ci/install-arc.sh").read_text()
 
-    require("0.14.2@sha256:" in controller, "ARC controller image must be digest pinned")
+    require(
+        "0.14.2@sha256:" in controller, "ARC controller image must be digest pinned"
+    )
     require(
         "repository_visibility" in installer
         and '!= "PRIVATE"' in installer
@@ -100,13 +158,13 @@ def verify_arc_policy() -> None:
             f"{name} ARC runner images must be immutable",
         )
     require(
-        'runnerScaleSetName: rrflow-standard' in standard
+        "runnerScaleSetName: rrflow-standard" in standard
         and 'cpu: "16"' in standard
         and "memory: 20Gi" in standard,
         "standard ARC allocation must fit the documented host capacity",
     )
     require(
-        'runnerScaleSetName: rrflow-heavy' in heavy
+        "runnerScaleSetName: rrflow-heavy" in heavy
         and 'cpu: "46"' in heavy
         and "memory: 60Gi" in heavy
         and 'cpu: "2"' in heavy
@@ -128,7 +186,10 @@ def verify_engine_suites(block: str) -> tuple[int, int]:
         "product-operations",
     }
     observed_suites = {name for name, _ in suites}
-    require(observed_suites == required_suites, "engine suites must follow product boundaries")
+    require(
+        observed_suites == required_suites,
+        "engine suites must follow product boundaries",
+    )
 
     routed: list[str] = []
     for name, selection in suites:
@@ -142,7 +203,10 @@ def verify_engine_suites(block: str) -> tuple[int, int]:
 
     expected = workspace_packages()
     duplicates = sorted({package for package in routed if routed.count(package) > 1})
-    require(not duplicates, f"workspace packages appear in multiple engine suites: {duplicates}")
+    require(
+        not duplicates,
+        f"workspace packages appear in multiple engine suites: {duplicates}",
+    )
     require(
         set(routed) == expected,
         f"engine suite coverage mismatch: missing={sorted(expected - set(routed))} "
@@ -150,7 +214,8 @@ def verify_engine_suites(block: str) -> tuple[int, int]:
     )
     require(
         "cargo test $PACKAGE_SELECTION --all-targets --locked" in block
-        and "cargo clippy $PACKAGE_SELECTION --all-targets --locked -- -D warnings" in block,
+        and "cargo clippy $PACKAGE_SELECTION --all-targets --locked -- -D warnings"
+        in block,
         "every engine suite must run locked all-target tests and strict Clippy",
     )
     require(
@@ -172,7 +237,8 @@ def verify_optional_features(optional: str, pgvector: str) -> int:
         f"optional-feature coverage mismatch: expected={sorted(expected)} routed={sorted(routed)}",
     )
     require(
-        "cargo test -p ${{ matrix.package }} --all-targets --all-features --locked" in optional
+        "cargo test -p ${{ matrix.package }} --all-targets --all-features --locked"
+        in optional
         and "cargo clippy -p ${{ matrix.package }} --all-targets --all-features --locked -- -D warnings"
         in optional,
         "optional-feature packages must run locked all-feature tests and strict Clippy",
@@ -209,7 +275,10 @@ def verify_sdk_conformance(block: str) -> None:
         "sha512sum --check --strict",
     ]
     missing = [fragment for fragment in required if fragment not in block]
-    require(not missing, f"SDK conformance toolchain or runner contract is incomplete: {missing}")
+    require(
+        not missing,
+        f"SDK conformance toolchain or runner contract is incomplete: {missing}",
+    )
     require(
         block.count("python3 scripts/ci/run_sdk_conformance.py") == 1,
         "SDK qualification must execute through one cohesive orchestrator",
@@ -217,8 +286,9 @@ def verify_sdk_conformance(block: str) -> None:
 
 
 def main() -> None:
-    caller = CALLER.read_text()
-    reusable = REUSABLE.read_text()
+    workflows = workflow_sources()
+    caller = workflows[CALLER]
+    reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
 
     for trigger in ["pull_request:", "merge_group:", "workflow_dispatch:"]:
@@ -226,13 +296,21 @@ def main() -> None:
             re.search(rf"(?m)^  {re.escape(trigger)}\s*$", caller) is not None,
             f"candidate CI must include {trigger}",
         )
-    require(re.search(r"(?m)^\s*push:\s*$", caller) is None, "candidate CI must not duplicate PR work on push")
-    require("pull_request_target" not in caller, "candidate CI must not execute proposed code with pull_request_target")
+    require(
+        re.search(r"(?m)^\s*push:\s*$", caller) is None,
+        "candidate CI must not duplicate PR work on push",
+    )
+    require(
+        "pull_request_target" not in caller,
+        "candidate CI must not execute proposed code with pull_request_target",
+    )
     require(
         caller.count("uses: ./.github/workflows/ci-reusable.yml") == 1,
         "candidate CI must invoke exactly one reusable workflow",
     )
-    require("cancel-in-progress: true" in caller, "stale candidate CI must be cancelled")
+    require(
+        "cancel-in-progress: true" in caller, "stale candidate CI must be cancelled"
+    )
     require(
         "github.event.pull_request.head.repo.full_name == github.repository" in caller
         and "vars.CI_SELF_HOSTED_ENABLED == 'true'" in caller,
@@ -262,17 +340,29 @@ def main() -> None:
         "pgvector-feature",
         "ci-gate",
     }
-    require(set(jobs) == expected_jobs, f"candidate CI jobs must have cohesive ownership: {sorted(jobs)}")
+    require(
+        set(jobs) == expected_jobs,
+        f"candidate CI jobs must have cohesive ownership: {sorted(jobs)}",
+    )
     for job, block in jobs.items():
-        require("timeout-minutes:" in block, f"CI job {job} must have an explicit timeout")
+        require(
+            "timeout-minutes:" in block, f"CI job {job} must have an explicit timeout"
+        )
 
     gate = jobs["ci-gate"]
-    needs_match = re.search(r"(?ms)^    needs:\s*$\n((?:^      - [a-z0-9-]+\s*$\n?)+)", gate)
+    needs_match = re.search(
+        r"(?ms)^    needs:\s*$\n((?:^      - [a-z0-9-]+\s*$\n?)+)", gate
+    )
     require(needs_match is not None, "ci-gate must enumerate every substantive job")
     needs = set(re.findall(r"(?m)^      - ([a-z0-9-]+)\s*$", needs_match.group(1)))
-    require(needs == set(jobs) - {"ci-gate"}, "ci-gate must reduce every substantive job exactly once")
+    require(
+        needs == set(jobs) - {"ci-gate"},
+        "ci-gate must reduce every substantive job exactly once",
+    )
     result_dependencies = set(re.findall(r"needs\.([a-z0-9-]+)\.result", gate))
-    require(result_dependencies == needs, "ci-gate must inspect every dependency result")
+    require(
+        result_dependencies == needs, "ci-gate must inspect every dependency result"
+    )
     result_variables = re.findall(
         r"(?m)^\s+([A-Z][A-Z0-9_]+):\s+\$\{\{\s*needs\.[a-z0-9-]+\.result\s*}}\s*$",
         gate,
@@ -297,9 +387,13 @@ def main() -> None:
             and 'RUSTFLAGS: "-C link-arg=-Wl,--threads=1"' in block,
             f"Linux-heavy job {job} must retain the bounded compiler/linker profile",
         )
-        require("cache-on-failure: false" in block, f"Linux-heavy job {job} must not publish failed artifacts")
+        require(
+            "cache-on-failure: false" in block,
+            f"Linux-heavy job {job} must not publish failed artifacts",
+        )
     require(
-        "cargo test --workspace" not in reusable and "cargo clippy --workspace" not in reusable,
+        "cargo test --workspace" not in reusable
+        and "cargo clippy --workspace" not in reusable,
         "hosted fallback must not link the entire workspace in one target graph",
     )
     require(
@@ -314,21 +408,21 @@ def main() -> None:
 
     suite_count, package_count = verify_engine_suites(jobs["engine-suites"])
     verify_sdk_conformance(jobs["sdk-conformance"])
-    feature_count = verify_optional_features(jobs["optional-features"], jobs["pgvector-feature"])
+    feature_count = verify_optional_features(
+        jobs["optional-features"], jobs["pgvector-feature"]
+    )
     require(
-        reusable.count("cargo build -p rrflow-cli --bin rrd-estate-controller --locked") == 2,
+        reusable.count("cargo build -p rrflow-cli --bin rrd-estate-controller --locked")
+        == 2,
         "portability and service-protocol qualification must both declare the controller fixture",
     )
 
-    verify_action_pins(caller, reusable)
-    for image in re.findall(r"(?m)^\s+image:\s+([^\s#]+)", reusable):
-        require(
-            re.fullmatch(r"[^@]+@sha256:[0-9a-fA-F]{64}", image) is not None,
-            f"CI service image must be digest pinned: {image}",
-        )
+    verify_workflow_security(workflows)
+    verify_action_pins(workflows)
     verify_arc_policy()
     print(
-        f"CI policy OK: {len(jobs) - 1} substantive jobs, {suite_count} cohesive engine suites, "
+        f"CI policy OK: {len(workflows)} workflows, {len(jobs) - 1} substantive jobs, "
+        f"{suite_count} cohesive engine suites, "
         f"{package_count} default-feature packages, {feature_count} optional-feature packages"
     )
 

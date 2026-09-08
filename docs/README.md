@@ -95,7 +95,8 @@ tutorial, and reference material, and MADR's one-decision-per-record model:
 | Machine evidence | [`evidence/`](evidence/) |
 | Superseded records | [`history/`](history/) |
 
-The remaining flat `docs/*.md` files are an acknowledged pre-release
-classification backlog. They must move in small, link-preserving batches only
-after their active, historical, or superseded status is verified. Bulk moves
-must not be used to imply that their content is correct.
+KB-05 completed the flat-record classification: this index is now the only
+top-level `docs/*.md` record, and every other documentation record lives under
+one taxonomy owner. New records must enter through that owner and its nearest
+index; a flat staging file, bulk move, or generated package cannot create a
+second authority.

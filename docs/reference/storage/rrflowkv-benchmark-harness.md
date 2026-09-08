@@ -17,7 +17,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 | Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
 | AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
-| Retained comparison provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Validates the retained SurrealDB differential artifact; it does not execute a current performance workload. |
+| Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
 
 These programs cover physical and semantic storage only. They do not exercise
@@ -123,10 +123,10 @@ cargo run --release --locked -p rrd-store --example ai_hotset_benchmark -- \
 Validate current storage behavior separately from retained evidence:
 
 ```bash
-cargo test -p rrd-store --test rrflow_kv_model_soak
-cargo test -p rrd-store --test durability
-cargo test -p rrd-store --test snapshot
-cargo test -p rrd-store --test benchmark_evidence
+cargo test -p rrd-store --test rrflow_kv_model_soak --locked
+cargo test -p rrd-store --test durability --locked
+cargo test -p rrd-store --test snapshot --locked
+cargo test -p rrd-store --test benchmark_evidence --locked
 ```
 
 These checks keep useful workload and provenance coverage alive. None alone

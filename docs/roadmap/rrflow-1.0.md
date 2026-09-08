@@ -31,7 +31,7 @@ Roadmap completion currently stands at:
 
 | Gate | Purpose | Complete |
 |---|---|---:|
-| A | authority, naming, documentation memory, and repository-contained source boundaries | 5 / 7 |
+| A | authority, naming, documentation memory, and repository-contained source boundaries | 6 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 2 / 5 |
 | C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
@@ -103,10 +103,10 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item remains **A-06**, specifically **KB-05**. B-01 and
-B-02 remain completed contract work, but no further Gate B work proceeds until
-A-06 and A-07 correct the pre-release documentation and source-boundary
-assumptions.
+The next executable item is **A-07.0**, the implementation-requirements
+traceability package. B-01 and B-02 remain completed contract work, but no
+further Gate B work proceeds until A-07 corrects the pre-release source,
+package, public, and trace-vocabulary assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -117,7 +117,7 @@ assumptions.
 | [x] | A-03 | Resolve the pending reasoning-ledger removal against A-02 without restoring a hard-coded universal reasoning lifecycle or deleting reusable semantics. | `rrd-core`, `rrd-engine`, CLI | Golden/API diff proves reusable data moved to the generic contract, contains no forced Goal→Plan→Attempt sequence, and focused core, engine, and CLI tests pass. |
 | [x] | A-04 | Move all existing crates into one non-duplicated grouped source tree, remove the empty `rrd-graph` boundary, and remove `connectome-ui` after its public-client behavior is present in the separate Connectome repository. | workspace | `cargo metadata`, dependency-direction check, and repository search show the declared layout and no second graph, memory, routing, lifecycle, UI, or provider authority. |
 | [x] | A-05 | Remove stale documentation claims or mark supporting documents historical where they describe another architecture. | documentation | Repository link/terminology check finds no supporting document presented as current authority. |
-| [ ] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
+| [x] | A-06 | Establish the documentation memory topology: the root and each major source-boundary README are warp maps into one owning `docs/<subject>/` record set; classify every flat document without duplicating content; generate a deterministic content-addressed manifest/JSONL bootstrap package for later authorized rrflowDB ingestion. | documentation | CI proves every active record has status, owner, stable coordinate, one inbound owner link, valid local fallback links, and no duplicate roadmap or architecture body; repeated packaging produces byte-identical ordered records and digests with an explicit inclusion/exclusion ledger and no silently omitted eligible record. |
 | [ ] | A-07 | Audit the actual dependency graph, public vocabulary, implementation-requirements traceability, and causal evidence vocabulary; then freeze industry-aligned directory, crate, module, test, fixture, binary, command, configuration, environment, wire, persisted marker, digest/media domain, low-cardinality operation, typed-link, and trace-attribute names. Directly rename the overloaded function `AutomationCatalogue` and pre-commit `FunctionTrigger*` family to the canonical function-catalogue and transaction-function-binding vocabulary, and split their implementation from later committed-event triggers and routines. Keep every first-party build/install/runtime input inside this repository and converge overlapping pre-release boundaries directly with no forwarding aliases or parallel execution paths. | workspace | The reviewed traceability matrix accounts for every affected current behavior, source module, test, fixture, and planned destination; a frozen trace map assigns ingress, engine, KV, QL, graph, lexical, vector, DataFusion, inference, function, attunement, routine, adapter, and delivery work to one naming/coordinate scheme; the function contract has one golden closed-schema fixture and no old name/field decoder; case-insensitive terminology, `cargo metadata`, dependency-direction, tracked-path, and owning-suite checks prove every package has one responsibility, every dependency points inward, no successful old-shape reader/default/alias remains, every local dependency/target is under the workspace root, and no tracked submodule, escaping symlink, host-specific absolute path, sibling checkout, or Git dependency supplies RRFlow code. |
 
 #### A-06 knowledge-bootstrap sequence
@@ -134,7 +134,7 @@ client behavior.
 | [x] | KB-02 | Freeze the provider-neutral knowledge-record, manifest, exclusion-ledger, and package schemas without implementing import. | Closed-schema golden vectors cover stable coordinates, source paths, content digests, classification, ordering, provenance, exclusions, and package digest calculation. |
 | [x] | KB-03 | Implement the deterministic Markdown-to-package exporter using the KB-02 contract. | Two clean exports are byte-identical; every eligible document is present exactly once; excluded paths carry a reason; no generated package is treated as editable authority. |
 | [x] | KB-04 | Add documentation/package drift and reproducibility enforcement to CI. | CI fails on duplicate coordinates, unindexed active records, unclassified eligible records, changed content without digest change, unstable ordering, missing exclusions, or non-reproducible output. |
-| [ ] | KB-05 | Resolve remaining flat supporting documents one complete file at a time: retain a record only when it owns current knowledge, merge accepted material into its existing owner, and remove the redundant source. Do not create another archive for unresolved or duplicate pre-release material. | Each reviewed file has one current owner or is removed after accepted content is integrated; retained records have one coordinate and index entry, with no copied authority body and passing link/terminology checks. |
+| [x] | KB-05 | Resolve remaining flat supporting documents one complete file at a time: retain a record only when it owns current knowledge, merge accepted material into its existing owner, and remove the redundant source. Do not create another archive for unresolved or duplicate pre-release material. | Each reviewed file has one current owner or is removed after accepted content is integrated; retained records have one coordinate and index entry, with no copied authority body and passing link/terminology checks. |
 
 #### Later knowledge-persistence sequence
 
@@ -217,6 +217,39 @@ KB-04 evidence (2026-09-07):
   80-source exports (27 included and 53 explicitly excluded), the seven Rust
   knowledge-contract tests, strict `rrd-contract` Clippy, version policy,
   formatting, and generated-surface parity.
+
+KB-05/A-06 evidence (2026-09-08):
+
+- Every queued flat supporting record was read and resolved in its own
+  journaled commit. `docs/README.md` is now the only top-level `docs/*.md`
+  record; every other current or historical record is nested under one
+  taxonomy owner and nearest parent index. No compatibility archive or copied
+  authority body was created.
+- The final retained CI record now has the stable
+  `rrflow://rrflow-instance/data/operations/ci` coordinate and a canonical
+  operations index. Source tracing also corrected its unqualified workflow
+  security claims: all three workflows are checked for full-SHA actions,
+  digest-pinned service images, read-only permission, absent
+  `pull_request_target`, and non-persisted checkout credentials. The scheduled
+  storage workflow remains explicitly diagnostic rather than engine or release
+  evidence.
+- Two independent real exports of the final candidate tree were byte-identical
+  and contained 91 manifested Markdown sources partitioned into 89 coordinated
+  records and two explicit exclusions. The manifest, record coordinates,
+  source membership, inclusion/exclusion partition, and package digest were
+  independently checked.
+- Eleven Python exporter/drift tests, seven Rust knowledge-contract tests, all
+  58 `rrd-contract` tests, strict `rrd-contract` Clippy, documentation policy,
+  workflow policy plus three negative workflow-security probes, inventory,
+  version, generated-surface, workspace-architecture, formatting, and complete
+  workspace all-target checks passed. The package journal records exact
+  commands and corrections. The resulting commit binds the final tree and
+  package digests because an included journal cannot contain its own final
+  content digest without changing it; post-commit export verifies that pair.
+- A-06 qualifies the deterministic checkout bootstrap package only. It does
+  not claim knowledge import, persistence, readback, normal public warp
+  resolution, or any rrflowKV/graph/index/Arrow/DataFusion/reasoning capability;
+  KB-06 through KB-08 and the runtime gates remain open.
 
 A-02 evidence (2026-09-04):
 

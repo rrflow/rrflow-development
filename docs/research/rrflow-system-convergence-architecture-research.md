@@ -67,11 +67,12 @@ row-only LSM and not “Arrow everywhere”:
 ### One executable dependency spine
 
 The reviewed alphabetical `A -> B -> C -> D -> E -> F` ordering was not a
-valid implementation dependency graph. A-06 listed database import
-and client warp milestones that require later D/H/J behavior, while blocking B
-until A-06 completes. D-05 also names lexical, vector, and graph attunement
-phases before E/F supply their accepted persistent access paths. Executing that
-order would either deadlock the roadmap or build temporary parallel paths.
+valid implementation dependency graph. A-06 listed database import and client
+warp milestones that require later D/H/J behavior, and had blocked B until the
+knowledge-bootstrap review completed. D-05 also names lexical, vector, and
+graph attunement phases before E/F supply their accepted persistent access
+paths. Executing that order would either deadlock the roadmap or build
+temporary parallel paths.
 
 The researched dependency spine is:
 

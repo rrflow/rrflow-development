@@ -6,8 +6,6 @@ readonly controller_namespace="arc-systems"
 readonly runner_namespace="arc-runners"
 readonly github_secret="rrflow-arc-github"
 
-repository="${GITHUB_REPOSITORY:-EonsofStupid/rrflow}"
-github_config_url="${GITHUB_CONFIG_URL:-https://github.com/${repository}}"
 repository_root="$(git rev-parse --show-toplevel)"
 values_root="${repository_root}/deploy/ci/github-actions/arc"
 
@@ -17,6 +15,16 @@ for required_tool in gh helm kubectl; do
     exit 1
   fi
 done
+
+repository="${GITHUB_REPOSITORY:-}"
+if [[ -z "$repository" ]]; then
+  repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+fi
+if [[ ! "$repository" =~ ^[^/[:space:]]+/[^/[:space:]]+$ ]]; then
+  printf 'repository must be OWNER/REPOSITORY: %s\n' "$repository" >&2
+  exit 1
+fi
+github_config_url="${GITHUB_CONFIG_URL:-https://github.com/${repository}}"
 
 repository_visibility="$(gh repo view "$repository" --json visibility --jq .visibility)"
 if [[ "$repository_visibility" != "PRIVATE" ]]; then
