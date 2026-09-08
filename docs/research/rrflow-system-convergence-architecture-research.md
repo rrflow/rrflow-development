@@ -128,7 +128,7 @@ one core. That supports RRFlow's grouped kernel/persistence/compute/authority
 tree: modular source boundaries are healthy when one transaction coordinator
 connects them. The present RRFlow problem is missing end-to-end semantics and
 duplicate compatibility paths, not the mere existence of crates.
-[SurrealDB core source](https://github.com/surrealdb/surrealdb/tree/main/surrealdb/core/src)
+[SurrealDB core source](https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src)
 
 SurrealDB's current graph-key module documents four adjacency keys for one
 relation. The vertex-side pointer keys embed the opposite endpoint so a
@@ -138,7 +138,7 @@ ordered, direction-specific key families and atomic maintenance—not its exact
 wire bytes or its superseded pre-release decoder. RRFlow is pre-release and must
 freeze its own key codec, write the required directional entries in the same
 semantic transaction, and retain no earlier-format branch.
-[SurrealDB graph-key source](https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs)
+[SurrealDB graph-key source](https://github.com/surrealdb/surrealdb/blob/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src/key/graph/mod.rs)
 
 The SurrealDB transaction source keeps transaction-local caches, changefeed
 and live-event buffers, and pending index-build state around the underlying
@@ -146,13 +146,13 @@ transactor. This demonstrates an important boundary: derived work and
 notifications are coordinated with transaction outcome, rather than being
 declared successful by an external hook. RRFlow's corresponding state belongs
 behind `RrdEngine` and the rrflowKV commit receipt.
-[SurrealDB transaction source](https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/kvs/tx.rs)
+[SurrealDB transaction source](https://github.com/surrealdb/surrealdb/blob/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src/kvs/tx.rs)
 
 SurrealDB's MCP implementation is described as a thin adapter over its
 datastore, using the same authentication and query limits. That is directly
 applicable: RRFlow MCP exposes or invokes bounded public capabilities, but
 cannot become a context, routine, or persistence authority.
-[SurrealDB MCP source](https://github.com/surrealdb/surrealdb/tree/main/surrealdb/mcp)
+[SurrealDB MCP source](https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/mcp)
 
 Qdrant's source separates segment-local ID tracking, payload storage and
 indexes, vector storage, vector indexes, quantization, and segment construction
@@ -440,10 +440,10 @@ machine verification rather than a bare successful local build.
 | Low-cardinality database operation names and bounded query evidence | Semantic conventions for database client spans | OpenTelemetry | stable unless noted, accessed 2026-09-07 | https://opentelemetry.io/docs/specs/semconv/db/database-spans/ | Official specification |
 | Cross-process trace propagation | Trace Context | W3C | Recommendation, accessed 2026-09-07 | https://www.w3.org/TR/trace-context/ | Web standard |
 | Unified transactional data models | Architecture | SurrealDB | accessed 2026-09-05 | https://surrealdb.com/docs/learn/data-models/architecture | Official documentation |
-| One modular database core | Core source tree | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/core/src | Primary source |
-| Directional graph adjacency keys | Graph-key module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/key/graph/mod.rs | Primary source; RRFlow does not adopt upstream historical decoding |
-| Transaction-local cache/event/index coordination | Transaction module | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/kvs/tx.rs | Primary source |
-| MCP as a thin engine adapter | MCP crate | SurrealDB | main, accessed 2026-09-06 | https://github.com/surrealdb/surrealdb/tree/main/surrealdb/mcp | Primary source |
+| One modular database core | Core source tree | SurrealDB | v3.2.4, commit `93ab219d69f09d8f999851b0359c80ebe6726102`, repinned 2026-09-08 | https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src | Primary source |
+| Directional graph adjacency keys | Graph-key module | SurrealDB | v3.2.4, commit `93ab219d69f09d8f999851b0359c80ebe6726102`, repinned 2026-09-08 | https://github.com/surrealdb/surrealdb/blob/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src/key/graph/mod.rs | Primary source; RRFlow does not adopt upstream historical decoding |
+| Transaction-local cache/event/index coordination | Transaction module | SurrealDB | v3.2.4, commit `93ab219d69f09d8f999851b0359c80ebe6726102`, repinned 2026-09-08 | https://github.com/surrealdb/surrealdb/blob/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src/kvs/tx.rs | Primary source |
+| MCP as a thin engine adapter | MCP crate | SurrealDB | v3.2.4, commit `93ab219d69f09d8f999851b0359c80ebe6726102`, repinned 2026-09-08 | https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/mcp | Primary source |
 | Ordered tuples and conflict ranges | Developer Guide | FoundationDB | 7.4.7, accessed 2026-09-05 | https://apple.github.io/foundationdb/developer-guide.html | Official documentation |
 | HNSW design | Efficient and robust approximate nearest neighbor search using HNSW graphs | Malkov and Yashunin | 2016/2018 | https://arxiv.org/abs/1603.09320 | Original paper |
 | Filtered vector planning | Indexing | Qdrant | accessed 2026-09-08 | https://qdrant.tech/documentation/manage-data/indexing/ | Official documentation |

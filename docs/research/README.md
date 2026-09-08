@@ -34,13 +34,12 @@ receives a separate full review and link-preserving classification.
 |---|---|---|---|
 | Qdrant | collection, point, vector, payload, segment, HNSW, quantization, shard, replica, tenant, strict mode | [`v1.19.1` release](https://github.com/qdrant/qdrant/releases/tag/v1.19.1), [pinned source](https://github.com/qdrant/qdrant/tree/6ab21cac18ebb6f4ae29102c7f8f5cc11affd5de), [collections](https://qdrant.tech/documentation/manage-data/collections/), [hybrid queries](https://qdrant.tech/documentation/search/hybrid-queries/) | [`qdrant-capability-inventory.md`](qdrant-capability-inventory.md) |
 | HelixDB | labeled property graph, node, edge, label, property, index, query, workspace, project, cluster | [introduction](https://docs.helix-db.com/database/helix-db/start-here/introduction), [data model](https://docs.helix-db.com/database/helix-db/core-concepts/data-model), [run modes](https://docs.helix-db.com/database/helix-db/start-here/run-modes), [repository](https://github.com/HelixDB/helix-db) | No peer capability inventory exists yet. |
-| SurrealDB | namespace, database, table, record, relation, organization, project, instance, cluster | [architecture](https://surrealdb.com/docs/architecture), [namespace/database hierarchy](https://surrealdb.com/docs/learn/schema-management/multi-tenancy/namespace-and-database-architecture), [repository](https://github.com/surrealdb/surrealdb) | [`surrealdb-capability-inventory.md`](../surrealdb-capability-inventory.md); [`rrflow-surrealdb-differential.md`](../rrflow-surrealdb-differential.md) |
+| SurrealDB | query/document transaction pipeline, ordered keys, temporal graph, indexes, live/changefeed, permissions, RPC/MCP, installation | [`v3.2.4` release](https://surrealdb.com/releases/3.2), [pinned source](https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102), [architecture](https://surrealdb.com/docs/learn/data-models/architecture) | [`surrealdb-capability-inventory.md`](surrealdb-capability-inventory.md); unclassified [`rrflow-surrealdb-differential.md`](../rrflow-surrealdb-differential.md) |
 
-The reviewed SurrealDB material does not establish **estate** as its canonical
-data-isolation term. Its documented logical hierarchy is namespace → database
-→ table/record; its managed and deployment vocabulary is separate. Any RRD use
-of `estate` therefore needs an RRD-owned definition rather than attribution to
-SurrealDB.
+The pinned SurrealDB reference explicitly rejects its namespace → database →
+table/record hierarchy as RRFlow authority. `estate` is an RRFlow-owned term;
+the accepted project ↔ estate ↔ instance topology remains defined only by the
+[RRFlow topology owner](../architecture/instance-topology.md).
 
 ## RRFlow vocabulary reference
 
