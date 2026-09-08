@@ -405,7 +405,7 @@ machine verification rather than a bare successful local build.
 | dynamic context works | engine context/retrieval functions and RRF helpers exist | planner-selected eligible avenues with selected/skipped evidence, pure RRF, versioned feedback | H-01, H-02 |
 | live delivery works | durable subscriptions and WebSocket delivery exist | commit-impact predicate deltas; current semantic live query reruns two snapshots | H-03 |
 | install/attunement works | strict B-01 plan/job/checkpoint contracts and the canonical eleven phases exist | installer, persisted engine executor, deterministic project-tree snapshot/change-set, pure attunement compute crate, and phase-by-phase real fixtures | D-01..D-10 |
-| LFG is pluggable | embedding inference exists and B-02 router wire contract is frozen | manifest handshake, `RouterBackend`, LFG adapter, constrained decode, route execution | B-03, G-01..G-06 |
+| LFG is pluggable | embedding inference, the B-02 router wire contract, and B-03 manifest/handshake/byte admission exist | executable `RouterBackend`, LFG adapter, constrained decode, route execution | G-01..G-06 |
 | automation is governed | bounded synchronous functions and proposed-transaction bindings exist | direct vocabulary convergence, canonical event envelope, persisted post-commit trigger conditions, resumable routine graphs, skill packages, explicit removable host-event adapters, and replacement of the false package-hook lifecycle | A-07, I-01..I-07 |
 
 ## Decisions and exclusions

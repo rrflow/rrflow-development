@@ -106,13 +106,17 @@ impl RouterBackendLimits {
 }
 
 /// Capabilities and hard dispatch limits for one replaceable router backend.
-/// Model artifacts and runtimes are bound separately by the B-03 handshake.
+/// The descriptor binds one exact model manifest; B-03 validates that
+/// manifest's artifacts and runtime separately before any backend is loaded.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RouterBackendDescriptor {
     pub contract_version: u16,
     pub id: CanonicalId,
     pub revision: u64,
+    pub model_manifest_id: CanonicalId,
+    pub model_manifest_revision: u64,
+    pub model_manifest_sha256: String,
     pub decisions: BTreeSet<RouteDecisionKind>,
     pub limits: RouterBackendLimits,
     pub descriptor_sha256: String,
@@ -124,6 +128,13 @@ impl RouterBackendDescriptor {
         if self.revision == 0 {
             return invalid("router backend revision must be greater than zero");
         }
+        if self.model_manifest_revision == 0 {
+            return invalid("router backend model manifest revision must be greater than zero");
+        }
+        validate_sha256(
+            &self.model_manifest_sha256,
+            "router backend model_manifest_sha256",
+        )?;
         if self.decisions.is_empty() {
             return invalid("router backend must support at least one routing decision");
         }
@@ -551,10 +562,29 @@ pub fn router_backend_descriptor_sha256(descriptor: &RouterBackendDescriptor) ->
             descriptor.contract_version,
             &descriptor.id,
             descriptor.revision,
+            &descriptor.model_manifest_id,
+            descriptor.model_manifest_revision,
+            &descriptor.model_manifest_sha256,
             &descriptor.decisions,
             &descriptor.limits,
         ),
     )
+}
+
+/// Digest of the exact closed JSON Schema that constrained router output must
+/// satisfy. Canonical object ordering prevents workspace feature unification
+/// from changing this identity.
+pub fn route_step_decision_schema_sha256() -> Result<String> {
+    let schema =
+        serde_json::to_value(schemars::schema_for!(RouteStepDecision)).map_err(|error| {
+            crate::ContractError(format!("router decision schema encoding failed: {error}"))
+        })?;
+    let encoded = serde_json::to_vec(&crate::canonical_json(schema)).map_err(|error| {
+        crate::ContractError(format!(
+            "router decision schema serialization failed: {error}"
+        ))
+    })?;
+    Ok(sha256_bytes(&encoded))
 }
 
 pub fn route_step_request_sha256(request: &RouteStepRequest) -> Result<String> {

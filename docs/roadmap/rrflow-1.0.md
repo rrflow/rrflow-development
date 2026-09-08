@@ -32,7 +32,7 @@ Roadmap completion currently stands at:
 | Gate | Purpose | Complete |
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
-| B | public, install, routing, model, WebSocket, and GraphQL contracts | 2 / 5 |
+| B | public, install, routing, model, WebSocket, and GraphQL contracts | 3 / 5 |
 | C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
@@ -103,7 +103,7 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **B-03**, the model-manifest handshake. A-07 is
+The next executable item is **B-04**, the multiplex WebSocket protocol. A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
 responsibility boundaries, dependency direction, and repository-contained
@@ -111,8 +111,8 @@ source; and A-07.2 froze the 13 trace boundaries, 53 canonical operations, 14
 typed causal-link forms, 46 type-checked canonical attributes, W3C propagation
 rules, diagnostic projection, and exact shrinking current-producer inventories.
 This is vocabulary and traceability completion, not engine-capability
-qualification. B-01 and B-02 remain completed contract work; B-03 now resumes
-the dependency spine.
+qualification. B-01 through B-03 are completed contract/admission work; B-04
+now resumes the dependency spine.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -555,7 +555,8 @@ A-07.2 causal-evidence vocabulary (2026-09-08):
   still lacks accepted final rrflowKV pages, atomic native graph/BM25/vector
   paths, bounded stamped Arrow/DataFusion streaming, persisted reasoning and
   recall feedback, qualified installation/attunement, public-surface parity,
-  Connectome conformance, and clean deployment proof. B-03 is next.
+  Connectome conformance, and clean deployment proof. B-04 is next after the
+  completed B-03 model-admission contract.
 
 A-02 evidence (2026-09-04):
 
@@ -639,7 +640,7 @@ the generic tree contract, and no obsolete lifecycle implementation.
 |---|---|---|---|---|
 | [x] | B-01 | Define install plan, installation result, attunement plan, job, phase checkpoint, status, resume, cancel, and verification envelopes. | `rrd-contract` | Golden JSON and generated schema tests cover every state transition and reject skipped phases or mismatched digests. |
 | [x] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
-| [ ] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
+| [x] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
 | [ ] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
 | [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and rrflowQL produce the same authorized logical request without a second executor. |
 
@@ -665,9 +666,10 @@ B-01 evidence (2026-09-04):
 
 B-02 evidence (2026-09-04):
 
-- `RouterBackendDescriptor` declares only a canonical identity, revision,
-  supported decision kinds, hard dispatch limits, and a content digest. Model,
-  tokenizer, runtime, and quantization bindings remain owned by B-03.
+- `RouterBackendDescriptor` declares a canonical identity, revision, supported
+  decision kinds, hard dispatch limits, and content digest. B-03 now extends
+  that current descriptor with an exact model-manifest identity, revision, and
+  digest without changing B-02's three proposal semantics.
 - `RouteStepRequest` reuses the A-02 reasoning cursor, recipe, edge, and
   condition types. It supplies bounded scalar signals, candidate-closed
   decisions, an exact deadline, and an optional context allowance whose scope
@@ -686,6 +688,41 @@ B-02 evidence (2026-09-04):
   architecture test, and `cargo check --workspace --all-targets --locked`
   passed. No inference runtime, engine, endpoint, SDK, CLI, or Connectome
   behavior changed in B-02.
+
+B-03 evidence (2026-09-08):
+
+- `RouterModelManifest` is a closed provider-neutral contract for immutable
+  model, tokenizer, runtime, and constrained-decoding grammar artifacts. It
+  binds canonical media/format revisions, exact byte lengths and SHA-256
+  digests, the generated `RouteStepDecision` schema digest, supported decision
+  kinds, backend and model resource limits, runtime ABI/device/configuration,
+  quantization, and grammar source/revision. It contains no provider, path,
+  URL, endpoint, credential, or secret authority.
+- `RouterBackendDescriptor` now binds one manifest identity/revision/digest.
+  `RouterModelHandshake` independently reports the runtime's observed
+  manifest, backend, artifacts, schema, capabilities, limits, ABI/device,
+  quantization, and grammar; its own domain-separated digest cannot repair a
+  stale manifest or backend digest.
+- `rrd-inference::load_router_model_after_handshake` invokes its loader closure
+  only after the manifest and handshake validate and the supplied model,
+  tokenizer, runtime, and grammar byte slices match both declared lengths and
+  digests. The returned admission token is opaque and grants no route,
+  authorization, storage, or mutation capability. No `RouterBackend`, LFG
+  adapter, registry, dispatch, persistence, endpoint, or provider integration
+  was created; those remain G-01 and later work.
+- `model-manifest-v1.json` freezes the complete manifest/backend/handshake
+  chain. Six focused model-contract tests independently reject contract,
+  manifest, backend, model, tokenizer, schema, capability, backend-limit,
+  model-limit, ABI, device, quantization, and grammar drift. Three inference
+  admission cases prove a matching loader runs exactly once while every
+  declaration or byte mismatch leaves its call count at zero. The full
+  `rrd-contract` package passed 66 tests, `rrd-inference` passed 10 integration
+  cases, both packages passed strict all-target Clippy, and all 23 workspace
+  architecture checks passed.
+- The required full-file inference review also corrected the malformed
+  pre-release embedding-job digest domain directly from
+  `rrd-inferenceding-job-v1` to `rrflow-embedding-job-v1`; a byte-level test
+  freezes the corrected identity and no compatibility branch remains.
 
 Gate B exits only when other languages and LFG can implement the contracts from
 golden vectors without importing Rust internals.

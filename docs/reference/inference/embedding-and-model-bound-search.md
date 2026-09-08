@@ -11,10 +11,19 @@ and the engine's vector/index rules remain the admission boundary.
 
 ## Current boundaries
 
-`rrd-inference` defines validated model, backend, trust, network, resource,
-request, batch, job, and prepared-vector types. `RrdEngine` owns one
-process-local `EmbeddingBackendRegistry` and exposes authenticated operations
-to list installed models, generate embeddings, and embed then search.
+For embeddings, `rrd-inference` defines validated model, backend, trust,
+network, resource, request, batch, job, and prepared-vector types. `RrdEngine`
+owns one process-local `EmbeddingBackendRegistry` and exposes authenticated
+operations to list installed models, generate embeddings, and embed then
+search.
+
+Separately, B-03 defines a location-free router-model manifest and independent
+runtime handshake in `rrd-contract`. `rrd-inference` verifies the manifest,
+backend binding, observed schema/capabilities/resources/runtime, and exact
+model, tokenizer, runtime, and grammar bytes before it can call a model loader.
+That opaque admission is not a `RouterBackend`, installed-model catalogue,
+route authorization, or dispatch path; D-05 and G-01 through G-06 own those
+remaining behaviors.
 
 Executable backend code, sessions, accelerator handles, and credentials remain
 process-local. The registry revision is observable but is not durable estate
@@ -105,7 +114,8 @@ embed-and-search requires an exact binding.
 ## Executable evidence and open work
 
 Current evidence includes `rrd-inference/tests/pipeline.rs` for provenance,
-source-race, transaction-CAS, trust, network, batching, and resource behavior;
+source-race, transaction-CAS, trust, network, batching, resource behavior, and
+router-model pre-load rejection before a loader call;
 `rrd-vector/tests/model_binding.rs` for embedding-space isolation; and
 `engine::tests::native_inference` for public batch generation plus same-stamp
 search.

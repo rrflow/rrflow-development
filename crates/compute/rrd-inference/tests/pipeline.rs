@@ -1,17 +1,42 @@
+use rrd_contract::{
+    router_model_handshake_sha256, RouteDecisionKind, RouterBackendDescriptor,
+    RouterModelHandshake, RouterModelManifest,
+};
 use rrd_core::{
     digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeMutation, RuntimeProperties, RuntimeRecord,
     RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, ScopeId,
     VectorValue,
 };
 use rrd_inference::{
-    EmbeddingBackend, EmbeddingBackendRegistry, EmbeddingCoordinator, EmbeddingJob,
-    EmbeddingRequest, EmbeddingSourceReader, EmbeddingSourceSnapshot, ExecutionTarget,
-    FeatureHashBackend, InferenceTrustBoundary, NetworkPolicy, NetworkRequirement,
-    EMBEDDING_CONTRACT_VERSION,
+    load_router_model_after_handshake, EmbeddingBackend, EmbeddingBackendRegistry,
+    EmbeddingCoordinator, EmbeddingJob, EmbeddingRequest, EmbeddingSourceReader,
+    EmbeddingSourceSnapshot, ExecutionTarget, FeatureHashBackend, InferenceTrustBoundary,
+    NetworkPolicy, NetworkRequirement, RouterModelArtifacts, EMBEDDING_CONTRACT_VERSION,
 };
 use rrd_store::{RrflowMxStore, StorageEngine};
+use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+
+const ROUTER_MODEL_BYTES: &[u8] = b"golden router model bytes";
+const ROUTER_TOKENIZER_BYTES: &[u8] = b"golden tokenizer bytes";
+const ROUTER_RUNTIME_BYTES: &[u8] = b"golden runtime bytes";
+const ROUTER_GRAMMAR_BYTES: &[u8] = b"golden deterministic grammar bytes";
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GoldenRouterModel {
+    manifest: RouterModelManifest,
+    backend: RouterBackendDescriptor,
+    handshake: RouterModelHandshake,
+}
+
+fn golden_router_model() -> GoldenRouterModel {
+    serde_json::from_str(include_str!(
+        "../../../transport/rrd-contract/fixtures/model-manifest-v1.json"
+    ))
+    .unwrap()
+}
 
 struct SequenceReader {
     snapshots: Vec<EmbeddingSourceSnapshot>,
@@ -52,6 +77,12 @@ fn offline_generation_is_deterministic_normalized_and_provenance_bound() {
     let bytes = b"RRD makes source-grounded reasoning durable";
     let mut backend = FeatureHashBackend::new(64, 7).unwrap();
     let job = job(bytes, &backend);
+    let mut expected_job_identity = b"rrflow-embedding-job-v1\0".to_vec();
+    expected_job_identity.extend_from_slice(&serde_json::to_vec(&job).unwrap());
+    assert_eq!(
+        job.digest().unwrap(),
+        digest::sha256_hex(&expected_job_identity)
+    );
     let snapshot =
         EmbeddingSourceSnapshot::for_bytes(job.source.clone(), "text/plain", bytes.to_vec())
             .unwrap();
@@ -385,4 +416,172 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
 
     let transaction = prepared.transaction(&job, "agent:embedding", 13).unwrap();
     assert!(engine.commit_data_transaction(&transaction).is_err());
+}
+
+#[test]
+fn router_loader_receives_bytes_only_after_exact_manifest_handshake_admission() {
+    let golden = golden_router_model();
+    let calls = AtomicUsize::new(0);
+    let loaded = load_router_model_after_handshake(
+        &golden.manifest,
+        &golden.backend,
+        &golden.handshake,
+        RouterModelArtifacts::new(
+            ROUTER_MODEL_BYTES,
+            ROUTER_TOKENIZER_BYTES,
+            ROUTER_RUNTIME_BYTES,
+            ROUTER_GRAMMAR_BYTES,
+        ),
+        |admission| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(
+                admission.manifest().manifest_sha256,
+                golden.manifest.manifest_sha256
+            );
+            assert_eq!(
+                admission.backend().descriptor_sha256,
+                golden.backend.descriptor_sha256
+            );
+            assert_eq!(
+                admission.handshake().handshake_sha256,
+                golden.handshake.handshake_sha256
+            );
+            assert_eq!(admission.artifacts().model(), ROUTER_MODEL_BYTES);
+            assert_eq!(admission.artifacts().tokenizer(), ROUTER_TOKENIZER_BYTES);
+            assert_eq!(admission.artifacts().runtime(), ROUTER_RUNTIME_BYTES);
+            assert_eq!(admission.artifacts().grammar(), ROUTER_GRAMMAR_BYTES);
+            Ok("loaded")
+        },
+    )
+    .unwrap();
+    assert_eq!(loaded, "loaded");
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn every_router_artifact_is_verified_before_the_loader_is_called() {
+    let golden = golden_router_model();
+    let calls = AtomicUsize::new(0);
+    let mut corrupt_model = ROUTER_MODEL_BYTES.to_vec();
+    corrupt_model[0] ^= 0xff;
+    let mut corrupt_tokenizer = ROUTER_TOKENIZER_BYTES.to_vec();
+    corrupt_tokenizer[0] ^= 0xff;
+    let mut corrupt_runtime = ROUTER_RUNTIME_BYTES.to_vec();
+    corrupt_runtime[0] ^= 0xff;
+    let mut corrupt_grammar = ROUTER_GRAMMAR_BYTES.to_vec();
+    corrupt_grammar[0] ^= 0xff;
+
+    let cases = [
+        RouterModelArtifacts::new(
+            &ROUTER_MODEL_BYTES[..ROUTER_MODEL_BYTES.len() - 1],
+            ROUTER_TOKENIZER_BYTES,
+            ROUTER_RUNTIME_BYTES,
+            ROUTER_GRAMMAR_BYTES,
+        ),
+        RouterModelArtifacts::new(
+            &corrupt_model,
+            ROUTER_TOKENIZER_BYTES,
+            ROUTER_RUNTIME_BYTES,
+            ROUTER_GRAMMAR_BYTES,
+        ),
+        RouterModelArtifacts::new(
+            ROUTER_MODEL_BYTES,
+            &corrupt_tokenizer,
+            ROUTER_RUNTIME_BYTES,
+            ROUTER_GRAMMAR_BYTES,
+        ),
+        RouterModelArtifacts::new(
+            ROUTER_MODEL_BYTES,
+            ROUTER_TOKENIZER_BYTES,
+            &corrupt_runtime,
+            ROUTER_GRAMMAR_BYTES,
+        ),
+        RouterModelArtifacts::new(
+            ROUTER_MODEL_BYTES,
+            ROUTER_TOKENIZER_BYTES,
+            ROUTER_RUNTIME_BYTES,
+            &corrupt_grammar,
+        ),
+    ];
+    for artifacts in cases {
+        let result = load_router_model_after_handshake(
+            &golden.manifest,
+            &golden.backend,
+            &golden.handshake,
+            artifacts,
+            |_| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            },
+        );
+        assert!(result.is_err());
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn contract_model_tokenizer_schema_resource_and_runtime_drift_precede_loading() {
+    let golden = golden_router_model();
+    let calls = AtomicUsize::new(0);
+    let artifacts = RouterModelArtifacts::new(
+        ROUTER_MODEL_BYTES,
+        ROUTER_TOKENIZER_BYTES,
+        ROUTER_RUNTIME_BYTES,
+        ROUTER_GRAMMAR_BYTES,
+    );
+    let mut cases = Vec::new();
+
+    let mut changed = golden.handshake.clone();
+    changed.contract_version += 1;
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    let mut changed = golden.handshake.clone();
+    changed.model.sha256 = "60".repeat(32);
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    let mut changed = golden.handshake.clone();
+    changed.tokenizer.sha256 = "61".repeat(32);
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    let mut changed = golden.handshake.clone();
+    changed.routing_schema_sha256 = "62".repeat(32);
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    let mut changed = golden.handshake.clone();
+    changed.decisions = BTreeSet::from([RouteDecisionKind::SelectRecipe]);
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    let mut changed = golden.handshake.clone();
+    changed.model_limits.maximum_resident_bytes -= 1;
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    let mut changed = golden.handshake.clone();
+    changed.runtime.abi_revision += 1;
+    seal_router_handshake(&mut changed);
+    cases.push(changed);
+
+    for handshake in &cases {
+        let result = load_router_model_after_handshake(
+            &golden.manifest,
+            &golden.backend,
+            handshake,
+            artifacts,
+            |_| {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            },
+        );
+        assert!(result.is_err());
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+fn seal_router_handshake(handshake: &mut RouterModelHandshake) {
+    handshake.handshake_sha256 = router_model_handshake_sha256(handshake).unwrap();
 }

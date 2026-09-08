@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "Provider-neutral, provenance-bound embedding jobs for RRD."
+description = "Provider-neutral model admission and provenance-bound embedding jobs for RRFlow."
 
 [features]
 default = []
@@ -12,6 +12,7 @@ fastembed-local = ["dep:fastembed"]
 
 [dependencies]
 rrd-core = { path = "../../kernel/rrd-core" }
+rrd-contract = { path = "../../transport/rrd-contract" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 fastembed = { version = "5.17.4", default-features = false, features = ["ort-load-dynamic"], optional = true }

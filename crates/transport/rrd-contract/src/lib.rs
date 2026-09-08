@@ -13,6 +13,7 @@ mod inference;
 mod knowledge;
 mod memory_context;
 mod memory_estate;
+mod model_manifest;
 mod platform;
 mod reasoning_tree;
 mod router;
@@ -85,6 +86,15 @@ pub use memory_estate::{
     ResolveSeatIdentity, ResolvedMemoryWarp, SeatIdentity, MAX_PROVIDER_REPRESENTATIONS,
     MEMORY_PROVIDER_IDENTITY_KIND, MEMORY_REPRESENTS_KIND, MEMORY_SEAT_KIND,
 };
+pub use model_manifest::{
+    router_model_handshake_sha256, router_model_manifest_sha256, RouterArtifactDescriptor,
+    RouterGrammarBinding, RouterModelHandshake, RouterModelLimits, RouterModelManifest,
+    RouterQuantizationBinding, RouterRuntimeBinding, MAX_ROUTER_ARTIFACT_MEDIA_TYPE_BYTES,
+    MAX_ROUTER_CONTEXT_TOKENS, MAX_ROUTER_GRAMMAR_ARTIFACT_BYTES, MAX_ROUTER_MODEL_ARTIFACT_BYTES,
+    MAX_ROUTER_OUTPUT_TOKENS, MAX_ROUTER_RESIDENT_BYTES, MAX_ROUTER_RUNTIME_ARTIFACT_BYTES,
+    MAX_ROUTER_THREADS, MAX_ROUTER_TOKENIZER_ARTIFACT_BYTES,
+    ROUTER_MODEL_MANIFEST_CONTRACT_VERSION,
+};
 pub use platform::{PlatformTermDefinition, PlatformTermRole, PLATFORM_TERMS};
 pub use reasoning_tree::{
     ReasoningActiveCursor, ReasoningCondition, ReasoningConditionEvaluation,
@@ -97,13 +107,14 @@ pub use reasoning_tree::{
     REASONING_TREE_CONTRACT_VERSION,
 };
 pub use router::{
-    route_step_decision_sha256, route_step_request_sha256, router_backend_descriptor_sha256,
-    RouteContextAllowance, RouteContextBudget, RouteDecisionKind, RouteParameterValue, RouteSignal,
-    RouteSignalValue, RouteStepDecision, RouteStepRequest, RouterBackendDescriptor,
-    RouterBackendLimits, MAX_ROUTE_BRANCH_CANDIDATES, MAX_ROUTE_EXECUTION_MS,
-    MAX_ROUTE_INTENT_BYTES, MAX_ROUTE_PARAMETERS, MAX_ROUTE_PARAMETER_DEPTH,
-    MAX_ROUTE_PARAMETER_ITEMS, MAX_ROUTE_RECIPE_CANDIDATES, MAX_ROUTE_REQUEST_BYTES,
-    MAX_ROUTE_RESPONSE_BYTES, MAX_ROUTE_SIGNALS, MAX_ROUTE_SIGNAL_BYTES, ROUTER_CONTRACT_VERSION,
+    route_step_decision_schema_sha256, route_step_decision_sha256, route_step_request_sha256,
+    router_backend_descriptor_sha256, RouteContextAllowance, RouteContextBudget, RouteDecisionKind,
+    RouteParameterValue, RouteSignal, RouteSignalValue, RouteStepDecision, RouteStepRequest,
+    RouterBackendDescriptor, RouterBackendLimits, MAX_ROUTE_BRANCH_CANDIDATES,
+    MAX_ROUTE_EXECUTION_MS, MAX_ROUTE_INTENT_BYTES, MAX_ROUTE_PARAMETERS,
+    MAX_ROUTE_PARAMETER_DEPTH, MAX_ROUTE_PARAMETER_ITEMS, MAX_ROUTE_RECIPE_CANDIDATES,
+    MAX_ROUTE_REQUEST_BYTES, MAX_ROUTE_RESPONSE_BYTES, MAX_ROUTE_SIGNALS, MAX_ROUTE_SIGNAL_BYTES,
+    ROUTER_CONTRACT_VERSION,
 };
 pub use sdk_conformance::{
     SdkConformanceBackup, SdkConformanceChangefeed, SdkConformanceCorpus, SdkConformanceExpected,

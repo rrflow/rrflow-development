@@ -46,6 +46,9 @@ fn backend() -> RouterBackendDescriptor {
         contract_version: ROUTER_CONTRACT_VERSION,
         id: canonical_id("reference-router"),
         revision: 1,
+        model_manifest_id: canonical_id("reference-router-model"),
+        model_manifest_revision: 1,
+        model_manifest_sha256: digest(10),
         decisions: BTreeSet::from([
             RouteDecisionKind::SelectRecipe,
             RouteDecisionKind::AdvanceBranch,

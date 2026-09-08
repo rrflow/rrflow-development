@@ -1,10 +1,13 @@
-//! Provider-neutral embedding jobs with source/model provenance.
+//! Provider-neutral model admission and embedding jobs with exact provenance.
 //!
 //! Inference is never authoritative by itself. A prepared vector is accepted
 //! only when the source bytes match the job's expected digest before and after
 //! inference, the backend exactly matches the requested model contract, and
 //! the returned shape/normalization validates as a canonical `RuntimeVector`.
 
+use rrd_contract::{
+    RouterArtifactDescriptor, RouterBackendDescriptor, RouterModelHandshake, RouterModelManifest,
+};
 use rrd_core::{
     digest, DataTransaction, EmbeddingProvenance, Error, Millis, ReadStamp, Result, RuntimeCommit,
     RuntimeId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
@@ -24,6 +27,124 @@ const MAX_EMBEDDING_INPUT_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_EMBEDDING_BATCH_INPUTS: u32 = 1_024;
 pub const MAX_EMBEDDING_BATCH_BYTES: u64 = 64 * 1024 * 1024;
 pub const MAX_EMBEDDING_OUTPUT_VALUES: u64 = 1_073_741_824;
+
+/// Immutable bytes presented for router-model admission.
+///
+/// `tokenizer` is the canonical tokenizer artifact named by the manifest. A
+/// container format may physically embed it in the model file, but an adapter
+/// must still expose the exact logical tokenizer bytes so its identity can be
+/// verified independently before runtime construction.
+#[derive(Debug, Clone, Copy)]
+pub struct RouterModelArtifacts<'a> {
+    model: &'a [u8],
+    tokenizer: &'a [u8],
+    runtime: &'a [u8],
+    grammar: &'a [u8],
+}
+
+impl<'a> RouterModelArtifacts<'a> {
+    pub const fn new(
+        model: &'a [u8],
+        tokenizer: &'a [u8],
+        runtime: &'a [u8],
+        grammar: &'a [u8],
+    ) -> Self {
+        Self {
+            model,
+            tokenizer,
+            runtime,
+            grammar,
+        }
+    }
+
+    pub const fn model(self) -> &'a [u8] {
+        self.model
+    }
+
+    pub const fn tokenizer(self) -> &'a [u8] {
+        self.tokenizer
+    }
+
+    pub const fn runtime(self) -> &'a [u8] {
+        self.runtime
+    }
+
+    pub const fn grammar(self) -> &'a [u8] {
+        self.grammar
+    }
+}
+
+/// Opaque proof that declarations and all supplied artifact bytes matched.
+///
+/// This is load admission only. It neither authorizes a route request nor
+/// grants a model permission to dispatch work, read an estate, or mutate it.
+#[derive(Debug, Clone, Copy)]
+pub struct VerifiedRouterModelAdmission<'a> {
+    manifest: &'a RouterModelManifest,
+    backend: &'a RouterBackendDescriptor,
+    handshake: &'a RouterModelHandshake,
+    artifacts: RouterModelArtifacts<'a>,
+}
+
+impl<'a> VerifiedRouterModelAdmission<'a> {
+    pub const fn manifest(&self) -> &'a RouterModelManifest {
+        self.manifest
+    }
+
+    pub const fn backend(&self) -> &'a RouterBackendDescriptor {
+        self.backend
+    }
+
+    pub const fn handshake(&self) -> &'a RouterModelHandshake {
+        self.handshake
+    }
+
+    pub const fn artifacts(&self) -> RouterModelArtifacts<'a> {
+        self.artifacts
+    }
+}
+
+/// Validate the installed manifest, the runtime's independent declaration,
+/// and the exact artifact bytes before any model loader or inference backend
+/// receives them.
+pub fn verify_router_model_before_load<'a>(
+    manifest: &'a RouterModelManifest,
+    backend: &'a RouterBackendDescriptor,
+    handshake: &'a RouterModelHandshake,
+    artifacts: RouterModelArtifacts<'a>,
+) -> Result<VerifiedRouterModelAdmission<'a>> {
+    handshake
+        .validate_for(manifest, backend)
+        .map_err(|error| Error::InvalidRuntime {
+            reason: format!("router model handshake rejected: {error}"),
+        })?;
+    validate_router_artifact_bytes("model", artifacts.model, &manifest.model)?;
+    validate_router_artifact_bytes("tokenizer", artifacts.tokenizer, &manifest.tokenizer)?;
+    validate_router_artifact_bytes("runtime", artifacts.runtime, &manifest.runtime.artifact)?;
+    validate_router_artifact_bytes("grammar", artifacts.grammar, &manifest.grammar.artifact)?;
+    Ok(VerifiedRouterModelAdmission {
+        manifest,
+        backend,
+        handshake,
+        artifacts,
+    })
+}
+
+/// Invoke a model loader only after pre-load admission succeeds.
+///
+/// Keeping the loader behind this function gives G-01 one enforceable entry
+/// point when executable router adapters are introduced; B-03 does not create
+/// a router backend, registry, dispatch loop, or LFG authority.
+pub fn load_router_model_after_handshake<'a, T>(
+    manifest: &'a RouterModelManifest,
+    backend: &'a RouterBackendDescriptor,
+    handshake: &'a RouterModelHandshake,
+    artifacts: RouterModelArtifacts<'a>,
+    load: impl FnOnce(VerifiedRouterModelAdmission<'a>) -> Result<T>,
+) -> Result<T> {
+    let admission = verify_router_model_before_load(manifest, backend, handshake, artifacts)?;
+    load(admission)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -257,7 +378,7 @@ impl EmbeddingJob {
 
     pub fn digest(&self) -> Result<String> {
         self.validate()?;
-        let mut bytes = b"rrd-inferenceding-job-v1\0".to_vec();
+        let mut bytes = b"rrflow-embedding-job-v1\0".to_vec();
         bytes.extend_from_slice(&serde_json::to_vec(self).map_err(|error| {
             Error::InvalidRuntime {
                 reason: format!("embedding job cannot be encoded: {error}"),
@@ -829,6 +950,27 @@ fn validate_digest(label: &str, value: &str) -> Result<()> {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     {
         return invalid(format!("{label} digest must be lowercase SHA-256 hex"));
+    }
+    Ok(())
+}
+
+fn validate_router_artifact_bytes(
+    label: &str,
+    bytes: &[u8],
+    descriptor: &RouterArtifactDescriptor,
+) -> Result<()> {
+    let encoded_bytes = u64::try_from(bytes.len()).map_err(|_| Error::InvalidRuntime {
+        reason: format!("router {label} artifact byte length exceeds u64"),
+    })?;
+    if encoded_bytes != descriptor.encoded_bytes {
+        return invalid(format!(
+            "router {label} artifact byte length differs from the manifest"
+        ));
+    }
+    if digest::sha256_hex(bytes) != descriptor.sha256 {
+        return invalid(format!(
+            "router {label} artifact digest differs from the manifest"
+        ));
     }
     Ok(())
 }

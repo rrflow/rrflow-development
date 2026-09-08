@@ -216,6 +216,34 @@ Arrow-to-tensor feature bridge. The model returns a grammar-constrained
 proposal; deterministic predicates, authorization, CAS, and persistence remain
 engine operations.
 
+Before a router model can be loaded, `rrd-inference` applies this admission
+chain:
+
+```text
+closed RouterModelManifest + RouterBackendDescriptor
+                         |
+ independent runtime-observed RouterModelHandshake
+                         |
+ exact model + tokenizer + runtime + grammar bytes
+                         v
+ declaration, length, digest, schema, ABI, device, limit,
+ capability, quantization, and grammar validation
+                         |
+              opaque load admission token
+                         v
+              future G-01 RouterBackend loader
+```
+
+The manifest is location-free: installation/adapters may resolve immutable
+bytes, but cannot put a provider, filesystem path, URL, endpoint, credential,
+or secret into this engine contract. An embedded tokenizer must still be
+exposed as exact logical tokenizer bytes for independent verification. The
+handshake repeats the runtime observation deliberately; copying a manifest is
+not evidence that the currently selected process/runtime still matches it.
+This B-03 boundary validates load admission only. G-01 must make executable
+router loaders consume the opaque admission and enforce the admitted resource
+limits; it must not turn the admission into authorization or persistence.
+
 ## Seat attribution and routing flow
 
 ```text
@@ -263,12 +291,15 @@ stamped semantic rrflowQL/context request available to other public clients;
 access.
 
 The checkout currently persists and reopens seat/provider/representation
-records and resolves record warps through context assembly. It also freezes the
-three router proposal shapes. It does not yet authenticate a provider identity
-into that representation graph, bind seat attribution into the route packet,
-dispatch a `RouterBackend`, or atomically persist routed tree state with the
-attribution and audit evidence. Those are D-01, C-03, G-01 through G-05, H-04,
-and H-05 work, not implemented flow.
+records and resolves record warps through context assembly. It freezes the
+three router proposal shapes plus the exact manifest/runtime/byte admission
+chain above, and proves rejected admission cannot call a model loader. It does
+not yet install/select that manifest, authenticate a provider identity into
+the representation graph, bind seat attribution into the route packet,
+dispatch a `RouterBackend`, enforce runtime resources during execution, or
+atomically persist routed tree state with attribution and audit evidence.
+Those are C-03, D-01, D-05, G-01 through G-05, H-04, and H-05 work, not
+implemented flow.
 
 ## Context assembly contract
 

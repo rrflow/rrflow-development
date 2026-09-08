@@ -4413,6 +4413,7 @@ name = "rrd-inference"
 version = "1.0.0"
 dependencies = [
  "fastembed",
+ "rrd-contract",
  "rrd-core",
  "rrd-store",
  "serde",

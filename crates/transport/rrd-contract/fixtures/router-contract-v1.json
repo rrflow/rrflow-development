@@ -6,7 +6,7 @@
       "advance_branch",
       "request_context"
     ],
-    "descriptor_sha256": "1358355051e5420700c198a0ede14d7c380295b536d68582d1382060d197c19e",
+    "descriptor_sha256": "df7f289150b2346dc563270b47fc08befefb55a6e9db7fd0545651f9bb4eac43",
     "id": "reference-router",
     "limits": {
       "maximum_branch_candidates": 16,
@@ -19,6 +19,9 @@
       "maximum_response_bytes": 32768,
       "maximum_signals": 16
     },
+    "model_manifest_id": "reference-router-model",
+    "model_manifest_revision": 1,
+    "model_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000000a",
     "revision": 1
   },
   "decisions": [
@@ -26,7 +29,7 @@
       "contract_version": 1,
       "decided_at_unix_ms": 1800000100001,
       "decision": "select_recipe",
-      "decision_sha256": "880822573d64d2c3a01f35ed07b2012c40b0b995e2b637c26ebc0ba0d99d844a",
+      "decision_sha256": "13f8f4934ebb3831df709b68ef93ee116e5109f869cb5ffd58a4e01b967f8410",
       "parameters": {
         "query-intent": {
           "type": "string",
@@ -36,16 +39,16 @@
       "recipe_id": "workspace-retrieval",
       "recipe_revision": 3,
       "request_id": "route-01",
-      "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85"
+      "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988"
     },
     {
       "contract_version": 1,
       "decided_at_unix_ms": 1800000100002,
       "decision": "advance_branch",
-      "decision_sha256": "7cf27c237fbaa4bf2db26313f6925c779a57f83b6ddbd55ab2585193248cb18a",
+      "decision_sha256": "52585d96ed0b38502d644f143536945feb5185750996f668ac4c9196c5eabd10",
       "edge_id": "retrieval-satisfied",
       "request_id": "route-01",
-      "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85"
+      "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988"
     },
     {
       "budget": {
@@ -57,10 +60,10 @@
       "contract_version": 1,
       "decided_at_unix_ms": 1800000100003,
       "decision": "request_context",
-      "decision_sha256": "6b00e39e7e43c03fd7dbd2fc01cc95b4b02bd3293b3e534b18673e50333ed40f",
+      "decision_sha256": "4bed75413d4675ba30c6d18bb514c796796e3d1bff92272708172b008f6eb88c",
       "query": "find exported authentication utilities matching the active interface",
       "request_id": "route-01",
-      "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85",
+      "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988",
       "seeds": [
         {
           "id": "src-lib-rs",
@@ -75,7 +78,7 @@
       "advance_branch",
       "request_context"
     ],
-    "backend_descriptor_sha256": "1358355051e5420700c198a0ede14d7c380295b536d68582d1382060d197c19e",
+    "backend_descriptor_sha256": "df7f289150b2346dc563270b47fc08befefb55a6e9db7fd0545651f9bb4eac43",
     "backend_id": "reference-router",
     "backend_revision": 1,
     "branch_candidates": [
@@ -144,7 +147,7 @@
         "revision": 3
       }
     ],
-    "request_sha256": "156ce7a72065d6bcbfe2c7b4624a48d0458e45af3743c4b1c5cf4f1ca06dda85",
+    "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988",
     "requested_at_unix_ms": 1800000100000,
     "signals": [
       {

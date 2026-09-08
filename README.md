@@ -101,9 +101,11 @@ diagnostic-export rules. Exact current trace names and attributes that await
 their behavior-owning C-through-I gates are finite shrinking inventories, not
 alternate APIs. This completes structural and evidence vocabulary only; it
 does not qualify persistence, native indexes, DataFusion streaming, reasoning,
-installation, or cross-surface observability. B-01 and B-02 remain complete,
-and the next executable package is
-[B-03 model-manifest handshake](docs/roadmap/rrflow-1.0-execution-map.md#b-03--model-manifest-handshake).
+installation, or cross-surface observability. B-01 through B-03 are complete:
+router model artifacts, tokenizer, output schema, capabilities, resource
+limits, runtime ABI/device, quantization, and deterministic grammar now fail
+closed before model loading. The next executable package is
+[B-04 multiplex WebSocket protocol](docs/roadmap/rrflow-1.0-execution-map.md#b-04--multiplex-websocket-protocol).
 
 ## Knowledge warp points
 

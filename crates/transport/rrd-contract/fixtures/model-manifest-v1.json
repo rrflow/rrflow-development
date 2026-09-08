@@ -1,0 +1,200 @@
+{
+  "backend": {
+    "contract_version": 1,
+    "decisions": [
+      "select_recipe",
+      "advance_branch",
+      "request_context"
+    ],
+    "descriptor_sha256": "21ce8b59c079de8467cdbd06d4a4d162eb4b93b2768b61fb4dc40f9e75432b73",
+    "id": "reference-router",
+    "limits": {
+      "maximum_branch_candidates": 16,
+      "maximum_context_seeds": 16,
+      "maximum_execution_ms": 5000,
+      "maximum_intent_bytes": 4096,
+      "maximum_parameters": 16,
+      "maximum_recipe_candidates": 16,
+      "maximum_request_bytes": 65536,
+      "maximum_response_bytes": 32768,
+      "maximum_signals": 16
+    },
+    "model_manifest_id": "reference-router-model",
+    "model_manifest_revision": 1,
+    "model_manifest_sha256": "07e19a71bdb3f7d4aa8ed67ffdf72a883f6c2368e739a21ae77a6de3ca5f074c",
+    "revision": 3
+  },
+  "handshake": {
+    "backend_descriptor_sha256": "21ce8b59c079de8467cdbd06d4a4d162eb4b93b2768b61fb4dc40f9e75432b73",
+    "backend_id": "reference-router",
+    "backend_limits": {
+      "maximum_branch_candidates": 16,
+      "maximum_context_seeds": 16,
+      "maximum_execution_ms": 5000,
+      "maximum_intent_bytes": 4096,
+      "maximum_parameters": 16,
+      "maximum_recipe_candidates": 16,
+      "maximum_request_bytes": 65536,
+      "maximum_response_bytes": 32768,
+      "maximum_signals": 16
+    },
+    "backend_revision": 3,
+    "contract_version": 1,
+    "decisions": [
+      "select_recipe",
+      "advance_branch",
+      "request_context"
+    ],
+    "grammar": {
+      "artifact": {
+        "encoded_bytes": 34,
+        "format": "gbnf",
+        "format_revision": 1,
+        "media_type": "application/vnd.rrflow.router-grammar",
+        "sha256": "d0eb34199bd6a856bc7de860c2316b4f4ed74226ed15d3ac79260ce3c310682d"
+      },
+      "revision": 4,
+      "source_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245"
+    },
+    "handshake_sha256": "c9c7713de0d3e6e524407c78cfe66adcee627ed558de2537db80afd788f419e8",
+    "manifest_id": "reference-router-model",
+    "manifest_revision": 1,
+    "manifest_sha256": "07e19a71bdb3f7d4aa8ed67ffdf72a883f6c2368e739a21ae77a6de3ca5f074c",
+    "model": {
+      "encoded_bytes": 25,
+      "format": "gguf",
+      "format_revision": 3,
+      "media_type": "application/vnd.ggml.gguf",
+      "sha256": "b755f07a61c25d9ab2da516e82db59c3fc7a2e6637ee7f2126b6a1aaafec1b63"
+    },
+    "model_limits": {
+      "maximum_context_tokens": 32768,
+      "maximum_grammar_bytes": 1048576,
+      "maximum_input_tokens": 30720,
+      "maximum_model_bytes": 536870912,
+      "maximum_output_tokens": 2048,
+      "maximum_resident_bytes": 1073741824,
+      "maximum_runtime_bytes": 268435456,
+      "maximum_threads": 16,
+      "maximum_tokenizer_bytes": 67108864
+    },
+    "quantization": {
+      "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
+      "kind": "quantized",
+      "revision": 2,
+      "scheme": "grouped-k-quantization"
+    },
+    "routing_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245",
+    "runtime": {
+      "abi": "rrflow-router-abi",
+      "abi_revision": 1,
+      "artifact": {
+        "encoded_bytes": 20,
+        "format": "elf-shared-object",
+        "format_revision": 1,
+        "media_type": "application/vnd.rrflow.router-runtime",
+        "sha256": "d87f7294b3d2e105220d40c7bba0d7cc0a3d3c00eaf2a92a7183cd074d9ee120"
+      },
+      "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000028",
+      "device_class": "cpu",
+      "id": "rrflow-cpu-router-runtime",
+      "model_format": "gguf",
+      "model_format_revision": 3,
+      "revision": 7,
+      "tokenizer_format": "sentencepiece",
+      "tokenizer_format_revision": 1
+    },
+    "tokenizer": {
+      "encoded_bytes": 22,
+      "format": "sentencepiece",
+      "format_revision": 1,
+      "media_type": "application/vnd.rrflow.tokenizer",
+      "sha256": "d14f33ad2c39b0b7c44db8c9ffeaf159468535ea3dfc17faa93cd4331e3b57d7"
+    }
+  },
+  "manifest": {
+    "backend_limits": {
+      "maximum_branch_candidates": 16,
+      "maximum_context_seeds": 16,
+      "maximum_execution_ms": 5000,
+      "maximum_intent_bytes": 4096,
+      "maximum_parameters": 16,
+      "maximum_recipe_candidates": 16,
+      "maximum_request_bytes": 65536,
+      "maximum_response_bytes": 32768,
+      "maximum_signals": 16
+    },
+    "contract_version": 1,
+    "decisions": [
+      "select_recipe",
+      "advance_branch",
+      "request_context"
+    ],
+    "grammar": {
+      "artifact": {
+        "encoded_bytes": 34,
+        "format": "gbnf",
+        "format_revision": 1,
+        "media_type": "application/vnd.rrflow.router-grammar",
+        "sha256": "d0eb34199bd6a856bc7de860c2316b4f4ed74226ed15d3ac79260ce3c310682d"
+      },
+      "revision": 4,
+      "source_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245"
+    },
+    "id": "reference-router-model",
+    "manifest_sha256": "07e19a71bdb3f7d4aa8ed67ffdf72a883f6c2368e739a21ae77a6de3ca5f074c",
+    "model": {
+      "encoded_bytes": 25,
+      "format": "gguf",
+      "format_revision": 3,
+      "media_type": "application/vnd.ggml.gguf",
+      "sha256": "b755f07a61c25d9ab2da516e82db59c3fc7a2e6637ee7f2126b6a1aaafec1b63"
+    },
+    "model_limits": {
+      "maximum_context_tokens": 32768,
+      "maximum_grammar_bytes": 1048576,
+      "maximum_input_tokens": 30720,
+      "maximum_model_bytes": 536870912,
+      "maximum_output_tokens": 2048,
+      "maximum_resident_bytes": 1073741824,
+      "maximum_runtime_bytes": 268435456,
+      "maximum_threads": 16,
+      "maximum_tokenizer_bytes": 67108864
+    },
+    "quantization": {
+      "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
+      "kind": "quantized",
+      "revision": 2,
+      "scheme": "grouped-k-quantization"
+    },
+    "revision": 1,
+    "router_contract_version": 1,
+    "routing_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245",
+    "runtime": {
+      "abi": "rrflow-router-abi",
+      "abi_revision": 1,
+      "artifact": {
+        "encoded_bytes": 20,
+        "format": "elf-shared-object",
+        "format_revision": 1,
+        "media_type": "application/vnd.rrflow.router-runtime",
+        "sha256": "d87f7294b3d2e105220d40c7bba0d7cc0a3d3c00eaf2a92a7183cd074d9ee120"
+      },
+      "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000028",
+      "device_class": "cpu",
+      "id": "rrflow-cpu-router-runtime",
+      "model_format": "gguf",
+      "model_format_revision": 3,
+      "revision": 7,
+      "tokenizer_format": "sentencepiece",
+      "tokenizer_format_revision": 1
+    },
+    "tokenizer": {
+      "encoded_bytes": 22,
+      "format": "sentencepiece",
+      "format_revision": 1,
+      "media_type": "application/vnd.rrflow.tokenizer",
+      "sha256": "d14f33ad2c39b0b7c44db8c9ffeaf159468535ea3dfc17faa93cd4331e3b57d7"
+    }
+  }
+}
