@@ -15,6 +15,7 @@ supported SDK until its real-process conformance rows pass.
 |---|---|---|---|
 | Rust | [`rrflow://rrflow-instance/data/reference/sdk/rust`](rrflow://rrflow-instance/data/reference/sdk/rust) | [`rust.md`](rust.md) | implemented client foundation; operation, validation, retry, cancellation, subscription, resolver, and release conformance remain open |
 | TypeScript | [`rrflow://rrflow-instance/data/reference/sdk/typescript`](rrflow://rrflow-instance/data/reference/sdk/typescript) | [`typescript.md`](typescript.md) | generated 33-operation HTTP foundation; runtime validation, secrets, semantic retry, WebSocket, remote transport, installable package, browser, and release conformance remain open |
+| Python | [`rrflow://rrflow-instance/data/reference/sdk/python`](rrflow://rrflow-instance/data/reference/sdk/python) | [`python.md`](python.md) | generated synchronous 33-operation HTTP foundation; runtime validation, secrets, semantic retry, async/WebSocket, remote transport, typed package, interpreter matrix, and release conformance remain open |
 
 Other language records enter this index only after their complete flat record,
 generated implementation, shared corpus behavior, and toolchain execution have
