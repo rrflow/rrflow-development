@@ -144,6 +144,12 @@ impl From<rrd_core::Error> for Error {
     }
 }
 
+impl From<crate::key_codec::KeyCodecError> for Error {
+    fn from(value: crate::key_codec::KeyCodecError) -> Self {
+        Error::Codec(value.to_string())
+    }
+}
+
 impl From<serde_json::Error> for Error {
     fn from(value: serde_json::Error) -> Self {
         Error::Codec(value.to_string())

@@ -14,8 +14,8 @@ pub trait ClaimSource {
     type Error;
 
     /// Versions of `subject`+`predicate` with `valid_from <= as_of`, **newest
-    /// first**. Implementations do this as one seek from `key::seek_key` to
-    /// `key::prefix_end`.
+    /// first**. Persistent implementations must use one bounded, ordered
+    /// version range rather than scan unrelated claims.
     fn versions_at_or_before(
         &self,
         subject: &Subject,
@@ -31,9 +31,8 @@ pub trait ClaimSource {
     ) -> Result<Vec<Claim>, Self::Error>;
 
     /// Every claim of `subject` across all predicates, ordered by predicate and
-    /// newest first within each predicate. Implementations do this as one seek
-    /// over `key::subject_prefix`. One subject lookup costs one bounded seek,
-    /// never a store scan.
+    /// newest first within each predicate. A persistent subject lookup costs
+    /// one bounded seek, never an estate-wide scan.
     fn subject_versions(&self, subject: &Subject) -> Result<Vec<Claim>, Self::Error>;
 
     /// Every claim for each requested subject, aligned with `subjects`.

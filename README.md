@@ -111,6 +111,12 @@ covers multiplexed durable subscriptions, exact replay coordinates, and
 malicious peers. Generic operation execution remains fail-closed until H-04;
 the next executable package is
 [B-05 GraphQL lowering](docs/roadmap/rrflow-1.0-execution-map.md#b-05--graphql-lowering-only).
+The independent C-01 storage package is also complete: all live rrflowKV
+application keys now use the manifest-authenticated `RRKV0001` typed ordered
+codec, and physical-key authority has left the kernel. This is the key spine,
+not the still-open transaction-parity, native-index, hybrid Arrow-page,
+DataFusion-streaming, or persistent reasoning/recall work. B-05 remains the
+release-spine prerequisite before C-02 begins.
 
 ## Knowledge warp points
 

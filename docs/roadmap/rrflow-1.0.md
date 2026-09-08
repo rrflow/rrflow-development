@@ -33,7 +33,7 @@ Roadmap completion currently stands at:
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 4 / 5 |
-| C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
+| C | sole hybrid persistent rrflowKV substrate | 1 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
 | F | streamed Arrow/DataFusion analytical execution | 0 / 5 |
@@ -104,7 +104,9 @@ correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
 The next executable item is **B-05**, GraphQL lowering into the one RRFlow
-query representation. A-07 is
+query representation. C-01's independent physical-key package is also
+complete, but B-05 remains the release-spine prerequisite before C-02 begins.
+A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
 responsibility boundaries, dependency direction, and repository-contained
@@ -768,13 +770,48 @@ golden vectors without importing Rust internals.
 
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
-| [ ] | C-01 | Freeze one ordered binary key codec for current records, temporal versions, outgoing/incoming edges, scalar values, term postings, vectors, projection deltas, catalogue state, and runtime commits. | `rrd-core`, `rrd-store` | Ordering/golden tests prove prefix boundaries, round trips, tenant separation, and malformed-key rejection. |
+| [x] | C-01 | Freeze one ordered binary key codec for current records, temporal versions, outgoing/incoming edges, scalar values, term postings, vectors, projection deltas, catalogue state, and runtime commits. | `rrd-core`, `rrd-store` | Ordering/golden tests prove prefix boundaries, round trips, tenant separation, and malformed-key rejection. |
 | [ ] | C-02 | Expose the minimal snapshot transaction primitives required by the semantic store: point read, bounded range scan, put, delete, commit, rollback, and conflict. | `rrd-lsm`, `rrd-store` | rrflowKV and rrflowMX conformance suites agree on read-your-writes, repeatable reads, range ordering, and write conflicts. |
 | [ ] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
 | [ ] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [ ] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
 | [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property tests, exact differential reads, selective-scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all read, decoded, decompressed, copied, allocated, and cached bytes are reported. Family-specific page or cache policy is retained only when the declared workload improves without correctness or other-family regression. |
 | [ ] | C-07 | Prove WAL recovery, manifest recovery, bounded maintenance and write backpressure, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, sustained-write/maintenance/RSS runs, and repeated reopen suite pass with no lost acknowledged write, unbounded write-buffer growth, dangling mapped buffer, or exposed partial batch. |
+
+C-01 evidence (2026-09-08):
+
+- `rrd-store` now owns one strict `RRKV0001` application-key grammar with typed
+  `format / tenant / scope / family / tuple` coordinates. It freezes current,
+  temporal, outgoing/incoming edge, scalar, unique, term dictionary/statistic/
+  posting, vector, projection-delta, catalogue, runtime-commit, outbox, audit,
+  engine-event, and system families plus six distinct function-catalogue
+  subfamilies. Variable-width values are delimiter-free memcomparable groups;
+  numeric and descending-version order is explicit.
+- Every existing `RrflowKvStore` read, write, prefix, seek, snapshot inspection,
+  and reopen path now uses the typed codec. The manifest authenticates
+  `RRKV0001`; absent or different application identities fail closed. There is
+  no dual write or earlier application-key reader. Physical-key construction,
+  parsing, and its error variant were removed from `rrd-core`, leaving the
+  kernel storage-independent.
+- The frozen codec fixture covers every C-01 data family and catalogue
+  subfamily; tag and round-trip tests additionally freeze engine-event and
+  system families. Unit properties cover every possible final prefix byte,
+  trailing `0xff` carry,
+  embedded NUL/slash/`0xff`, component and tenant/scope isolation, signed and
+  unsigned ordering, descending versions, malformed tags/types/padding/UTF-8,
+  truncation, and exact round trips. A black-box fixture opens the underlying
+  LSM after a real store commit, compares the exact persisted claim, sequence,
+  and watermark bytes, then reopens through `RrflowKvStore` and reads the same
+  claim.
+- `cargo test -p rrd-core --locked`, `cargo test -p rrd-store --locked`, and
+  strict all-target Clippy for both packages passed. The focused black-box
+  codec test passed, all 23 workspace-architecture checks passed, and
+  `cargo check --workspace --all-targets --locked` passed all 20 packages.
+- This closes only C-01. C-02 transaction parity, C-03 atomic multi-model
+  writes, C-04 direct stamped access, C-05 lower-level pre-1.0 reader removal,
+  C-06 hybrid Arrow-compatible pages, C-07 crash/lifetime proof, native graph/
+  lexical/vector indexes, streamed DataFusion execution, and persistent
+  reasoning/recall remain open. B-05 remains the next release-spine package.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.

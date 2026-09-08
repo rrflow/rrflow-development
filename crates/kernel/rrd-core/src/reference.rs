@@ -2,27 +2,43 @@
 //!
 //! This implementation serves two functions:
 //!
-//! 1. It allows `rrd-core` to verify its key encoding and resolution
-//!    independently of the substrate, satisfying the modularity criterion in
+//! 1. It allows `rrd-core` to verify semantic resolution independently of any
+//!    physical key codec or substrate, satisfying the modularity criterion in
 //!    `SPEC.md` §5.
 //! 2. It is the grounding reference of `SPEC.md` §8.3. A substrate adapter is
 //!    correct if and only if it returns what this implementation returns for the
 //!    same claims. Divergence must halt rather than be repaired.
 //!
-//! `BTreeMap` orders keys byte-lexicographically, which is the property the key
-//! encoding relies on in the substrate.
-
 use crate::claim::{Claim, Millis};
 use crate::error::Result;
 use crate::ident::{Predicate, Subject};
-use crate::key;
 use crate::temporal::ClaimSource;
+use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::convert::Infallible;
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ClaimOrder {
+    subject: Subject,
+    predicate: Predicate,
+    valid_from: Reverse<Millis>,
+    tx_time: Reverse<Millis>,
+}
+
+impl From<&Claim> for ClaimOrder {
+    fn from(claim: &Claim) -> Self {
+        Self {
+            subject: claim.subject.clone(),
+            predicate: claim.predicate.clone(),
+            valid_from: Reverse(claim.valid_from),
+            tx_time: Reverse(claim.tx_time),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct MemoryClaims {
-    rows: BTreeMap<Vec<u8>, Claim>,
+    rows: BTreeMap<ClaimOrder, Claim>,
 }
 
 impl MemoryClaims {
@@ -32,13 +48,7 @@ impl MemoryClaims {
 
     pub fn insert(&mut self, claim: Claim) -> Result<()> {
         claim.validate()?;
-        let k = key::claim_key(
-            &claim.subject,
-            &claim.predicate,
-            claim.valid_from,
-            claim.tx_time,
-        );
-        self.rows.insert(k, claim);
+        self.rows.insert(ClaimOrder::from(&claim), claim);
         Ok(())
     }
 
@@ -55,12 +65,21 @@ impl MemoryClaims {
         self.rows.values()
     }
 
-    fn scan(&self, subject: &Subject, predicate: &Predicate, from: Vec<u8>) -> Vec<Claim> {
-        let prefix = key::version_prefix(subject, predicate);
-        match key::prefix_end(&prefix) {
-            Some(end) => self.rows.range(from..end).map(|(_, c)| c.clone()).collect(),
-            None => self.rows.range(from..).map(|(_, c)| c.clone()).collect(),
-        }
+    fn versions(
+        &self,
+        subject: &Subject,
+        predicate: &Predicate,
+        as_of: Option<Millis>,
+    ) -> Vec<Claim> {
+        self.rows
+            .values()
+            .filter(|claim| {
+                &claim.subject == subject
+                    && &claim.predicate == predicate
+                    && as_of.is_none_or(|at| claim.valid_from <= at)
+            })
+            .cloned()
+            .collect()
     }
 }
 
@@ -73,7 +92,7 @@ impl ClaimSource for MemoryClaims {
         predicate: &Predicate,
         as_of: Millis,
     ) -> std::result::Result<Vec<Claim>, Self::Error> {
-        Ok(self.scan(subject, predicate, key::seek_key(subject, predicate, as_of)))
+        Ok(self.versions(subject, predicate, Some(as_of)))
     }
 
     fn all_versions(
@@ -81,19 +100,16 @@ impl ClaimSource for MemoryClaims {
         subject: &Subject,
         predicate: &Predicate,
     ) -> std::result::Result<Vec<Claim>, Self::Error> {
-        Ok(self.scan(subject, predicate, key::version_prefix(subject, predicate)))
+        Ok(self.versions(subject, predicate, None))
     }
 
     fn subject_versions(&self, subject: &Subject) -> std::result::Result<Vec<Claim>, Self::Error> {
-        let prefix = key::subject_prefix(subject);
-        Ok(match key::prefix_end(&prefix) {
-            Some(end) => self
-                .rows
-                .range(prefix..end)
-                .map(|(_, c)| c.clone())
-                .collect(),
-            None => self.rows.range(prefix..).map(|(_, c)| c.clone()).collect(),
-        })
+        Ok(self
+            .rows
+            .values()
+            .filter(|claim| &claim.subject == subject)
+            .cloned()
+            .collect())
     }
 }
 

@@ -12,11 +12,12 @@ use crate::control::{
 use crate::engine::{validate_idempotency, PhysicalStoreEvidence, StorageEngine};
 use crate::error::{Error, Result};
 use crate::gc::{build_report, RemovalReport, Tally};
-use crate::invocation::{self, Invocation, InvocationInput};
+use crate::invocation::{Invocation, InvocationInput};
+use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Durability};
 use crate::outcome::{AppendOutcome, IdempotentAppendOutcome};
 use rrd_core::{
-    key, projection_family, AuditEnvelope, Claim, ClaimSource, Millis, ObjectReference, Predicate,
+    projection_family, AuditEnvelope, Claim, ClaimSource, Millis, ObjectReference, Predicate,
     ProjectionWork, ReadStamp, Reader, RetentionPin, RuntimeChange, RuntimeChangePage,
     RuntimeCommit, RuntimeCommitOutcome, RuntimeLogAccumulator, RuntimeMerkleNode, RuntimeMutation,
     RuntimeRecord, RuntimeRef, RuntimeRelation, RuntimeSchemaRegistry, ScopeId, SnapshotHandle,
@@ -143,11 +144,8 @@ impl RrflowKvStore {
         let snapshot = database.snapshot();
         let mut tallies = BTreeMap::<(String, String), Tally>::new();
         for (stored_key, _) in scan_space(&database, snapshot, keyspaces::CLAIMS, &[])? {
-            let (subject, predicate) = key::parse_claim_key(strip_space(
-                database_codec(&database)?,
-                keyspaces::CLAIMS,
-                &stored_key,
-            )?)?;
+            let (subject, predicate, _, _) =
+                keyspaces::parse_claim_key(database_codec(&database)?, &stored_key)?;
             tallies
                 .entry((subject.to_string(), predicate.to_string()))
                 .or_default()
@@ -157,13 +155,10 @@ impl RrflowKvStore {
             &database,
             snapshot,
             keyspaces::ACCESS,
-            &key::access_bound(since),
+            &keyspaces::access_bound(since),
         )? {
-            let (at, reader, subject, predicate) = key::parse_access_key(strip_space(
-                database_codec(&database)?,
-                keyspaces::ACCESS,
-                &stored_key,
-            )?)?;
+            let (at, reader, subject, predicate) =
+                keyspaces::parse_access_key(database_codec(&database)?, &stored_key)?;
             if at > evaluated_at {
                 break;
             }
@@ -193,7 +188,7 @@ impl RrflowKvStore {
         let previous = read_sequence(
             &database,
             database.snapshot(),
-            keyspaces::INVOCATION_WATERMARK,
+            &keyspaces::invocation_watermark_key(),
         )?;
         let ordinal = previous.checked_add(1).ok_or(Error::SequenceOverflow)?;
         let record = Invocation {
@@ -210,10 +205,14 @@ impl RrflowKvStore {
         put(
             &mut operations,
             keyspaces::INVOCATIONS,
-            &invocation::invocation_key(input.at, ordinal),
+            &keyspaces::invocation_key(input.at, ordinal),
             serde_json::to_vec(&record)?,
         );
-        put_sequence(&mut operations, keyspaces::INVOCATION_WATERMARK, ordinal);
+        put_sequence(
+            &mut operations,
+            &keyspaces::invocation_watermark_key(),
+            ordinal,
+        );
         write(&mut database, operations, Durability::Authoritative)?;
         tracing::debug!(ordinal, "invocation recorded");
         Ok(record)
@@ -225,7 +224,7 @@ impl RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::INVOCATIONS,
-            &invocation::invocation_bound(since),
+            &keyspaces::invocation_bound(since),
         )?
         .into_iter()
         .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
@@ -237,7 +236,7 @@ impl RrflowKvStore {
         read_sequence(
             &database,
             database.snapshot(),
-            keyspaces::INVOCATION_WATERMARK,
+            &keyspaces::invocation_watermark_key(),
         )
     }
 
@@ -276,20 +275,20 @@ impl ClaimSource for RrflowKvStore {
         let database = self.lock()?;
         scan_claims(
             &database,
-            key::version_prefix(subject, predicate),
-            key::seek_key(subject, predicate, as_of),
+            keyspaces::claim_version_prefix(subject, predicate),
+            keyspaces::claim_seek_key(subject, predicate, as_of),
         )
     }
 
     fn all_versions(&self, subject: &Subject, predicate: &Predicate) -> Result<Vec<Claim>> {
         let database = self.lock()?;
-        let prefix = key::version_prefix(subject, predicate);
+        let prefix = keyspaces::claim_version_prefix(subject, predicate);
         scan_claims(&database, prefix.clone(), prefix)
     }
 
     fn subject_versions(&self, subject: &Subject) -> Result<Vec<Claim>> {
         let database = self.lock()?;
-        let prefix = key::subject_prefix(subject);
+        let prefix = keyspaces::claim_subject_prefix(subject);
         scan_claims(&database, prefix.clone(), prefix)
     }
 
@@ -299,14 +298,14 @@ impl ClaimSource for RrflowKvStore {
         }
         let database = self.lock()?;
         if let [subject] = subjects {
-            let prefix = key::subject_prefix(subject);
+            let prefix = keyspaces::claim_subject_prefix(subject);
             return Ok(vec![scan_claims(&database, prefix.clone(), prefix)?]);
         }
 
         let mut unique_ranges = BTreeMap::new();
         for subject in subjects {
-            let prefix =
-                encoded_storage_key(&database, keyspaces::CLAIMS, &key::subject_prefix(subject))?;
+            let prefix = keyspaces::claim_subject_prefix(subject);
+            encoded_storage_key(&database, keyspaces::CLAIMS, &prefix)?;
             let end = prefix_end(&prefix).ok_or_else(|| {
                 Error::Substrate("rrflowKV claim prefix has no upper bound".into())
             })?;
@@ -409,7 +408,7 @@ impl StorageEngine for RrflowKvStore {
         }
         let mut database = self.lock()?;
         let snapshot = database.snapshot();
-        let start = read_sequence(&database, snapshot, keyspaces::SEQUENCE_WATERMARK)?;
+        let start = read_sequence(&database, snapshot, &keyspaces::sequence_watermark_key())?;
         if claims.is_empty() {
             return Ok(AppendOutcome {
                 first_sequence: start,
@@ -422,7 +421,7 @@ impl StorageEngine for RrflowKvStore {
         let mut sequence_operations = Vec::with_capacity(claims.len());
         for claim in claims {
             sequence = sequence.checked_add(1).ok_or(Error::SequenceOverflow)?;
-            let claim_key = key::claim_key(
+            let claim_key = keyspaces::claim_key(
                 &claim.subject,
                 &claim.predicate,
                 claim.valid_from,
@@ -432,7 +431,7 @@ impl StorageEngine for RrflowKvStore {
             put(
                 &mut sequence_operations,
                 keyspaces::SEQUENCE_INDEX,
-                &key::sequence_key(sequence),
+                &keyspaces::sequence_key(sequence),
                 claim_key.clone(),
             );
             put(
@@ -446,7 +445,11 @@ impl StorageEngine for RrflowKvStore {
         // remains atomic, while the ordered memtable avoids bouncing between
         // distant tree ranges for every claim in the batch.
         operations.extend(sequence_operations);
-        put_sequence(&mut operations, keyspaces::SEQUENCE_WATERMARK, sequence);
+        put_sequence(
+            &mut operations,
+            &keyspaces::sequence_watermark_key(),
+            sequence,
+        );
         write(&mut database, operations, Durability::Authoritative)?;
         tracing::debug!(first = start + 1, last = sequence, "append committed");
         Ok(AppendOutcome {
@@ -482,13 +485,13 @@ impl StorageEngine for RrflowKvStore {
             outcome.idempotent_replay = true;
             return Ok(outcome);
         }
-        let start = read_sequence(&database, snapshot, keyspaces::SEQUENCE_WATERMARK)?;
+        let start = read_sequence(&database, snapshot, &keyspaces::sequence_watermark_key())?;
         let mut sequence = start;
         let mut operations = Vec::with_capacity(claims.len() * 2 + 2);
         let mut sequence_operations = Vec::with_capacity(claims.len());
         for claim in claims {
             sequence = sequence.checked_add(1).ok_or(Error::SequenceOverflow)?;
-            let claim_key = key::claim_key(
+            let claim_key = keyspaces::claim_key(
                 &claim.subject,
                 &claim.predicate,
                 claim.valid_from,
@@ -497,7 +500,7 @@ impl StorageEngine for RrflowKvStore {
             put(
                 &mut sequence_operations,
                 keyspaces::SEQUENCE_INDEX,
-                &key::sequence_key(sequence),
+                &keyspaces::sequence_key(sequence),
                 claim_key.clone(),
             );
             put(
@@ -508,7 +511,11 @@ impl StorageEngine for RrflowKvStore {
             );
         }
         operations.extend(sequence_operations);
-        put_sequence(&mut operations, keyspaces::SEQUENCE_WATERMARK, sequence);
+        put_sequence(
+            &mut operations,
+            &keyspaces::sequence_watermark_key(),
+            sequence,
+        );
         let outcome = IdempotentAppendOutcome {
             operation_sha256: operation_sha256.into(),
             append: AppendOutcome {
@@ -535,7 +542,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::META,
-            key.as_bytes(),
+            &keyspaces::control_record_key(key),
         )
     }
 
@@ -601,8 +608,7 @@ impl StorageEngine for RrflowKvStore {
         .take_while(|(key, _)| {
             database_codec(&database)
                 .ok()
-                .and_then(|codec| codec.strip(keyspaces::META, key))
-                .is_some_and(|logical| logical.starts_with(b"server/journal/entries/"))
+                .is_some_and(|codec| keyspaces::is_control_journal_key(codec, key))
         })
         .take(limit)
         .map(|(_, bytes)| serde_json::from_slice(&bytes).map_err(Error::from))
@@ -616,7 +622,7 @@ impl StorageEngine for RrflowKvStore {
         read_sequence(
             &database,
             database.snapshot(),
-            keyspaces::CONTROL_JOURNAL_SEQUENCE,
+            &keyspaces::control_journal_sequence_key(),
         )
     }
 
@@ -625,7 +631,7 @@ impl StorageEngine for RrflowKvStore {
         read_sequence(
             &database,
             database.snapshot(),
-            keyspaces::SEQUENCE_WATERMARK,
+            &keyspaces::sequence_watermark_key(),
         )
     }
 
@@ -635,7 +641,7 @@ impl StorageEngine for RrflowKvStore {
         }
         let database = self.lock()?;
         let snapshot = database.snapshot();
-        let head = read_sequence(&database, snapshot, keyspaces::SEQUENCE_WATERMARK)?;
+        let head = read_sequence(&database, snapshot, &keyspaces::sequence_watermark_key())?;
         let last = to.min(head);
         if from >= last {
             return Ok(Vec::new());
@@ -643,34 +649,45 @@ impl StorageEngine for RrflowKvStore {
         let start = encoded_storage_key(
             &database,
             keyspaces::SEQUENCE_INDEX,
-            &key::sequence_key(from.saturating_add(1)),
+            &keyspaces::sequence_key(from.saturating_add(1)),
         )?;
         let inclusive_end = encoded_storage_key(
             &database,
             keyspaces::SEQUENCE_INDEX,
-            &key::sequence_key(last),
+            &keyspaces::sequence_key(last),
         )?;
         let end = prefix_end(&inclusive_end)
             .ok_or_else(|| Error::Substrate("rrflowKV sequence range has no upper bound".into()))?;
         let expected = usize::try_from(last - from)
             .map_err(|_| Error::Substrate("rrflowKV sequence range exceeds usize".into()))?;
         let mut claims = Vec::with_capacity(expected);
+        let mut expected_sequence = from.saturating_add(1);
         database.scan_each(
             &start,
             Some(&end),
             snapshot,
-            |_, sequence_value| -> Result<()> {
-                let encoded = database
-                    .get(
-                        &encoded_storage_key(&database, keyspaces::CLAIMS, sequence_value)?,
-                        snapshot,
-                    )?
-                    .ok_or_else(|| {
-                        Error::Substrate(format!(
-                            "rrflowKV sequence index references an absent claim in ({from}, {last}]"
-                        ))
-                    })?;
+            |sequence_key, sequence_value| -> Result<()> {
+                let actual_sequence =
+                    keyspaces::parse_sequence_key(database_codec(&database)?, sequence_key)?;
+                if actual_sequence != expected_sequence {
+                    return Err(Error::Substrate(format!(
+                        "rrflowKV sequence index expected {expected_sequence} but found {actual_sequence}"
+                    )));
+                }
+                keyspaces::validate_space(
+                    database_codec(&database)?,
+                    keyspaces::CLAIMS,
+                    sequence_value,
+                )?;
+                let encoded = database.get(sequence_value, snapshot)?.ok_or_else(|| {
+                    Error::Substrate(format!(
+                        "rrflowKV sequence index references an absent claim in ({from}, {last}]"
+                    ))
+                })?;
                 claims.push(serde_json::from_slice(&encoded)?);
+                expected_sequence = expected_sequence.checked_add(1).ok_or_else(|| {
+                    Error::Substrate("rrflowKV sequence validation overflowed".into())
+                })?;
                 Ok(())
             },
         )?;
@@ -688,9 +705,8 @@ impl StorageEngine for RrflowKvStore {
         let snapshot = database.snapshot();
         let mut subjects = Vec::new();
         for (stored_key, _) in scan_space(&database, snapshot, keyspaces::CLAIMS, &[])? {
-            let claim_key =
-                strip_space(database_codec(&database)?, keyspaces::CLAIMS, &stored_key)?;
-            let (subject, _) = key::parse_claim_key(claim_key)?;
+            let (subject, _, _, _) =
+                keyspaces::parse_claim_key(database_codec(&database)?, &stored_key)?;
             if subjects
                 .last()
                 .is_none_or(|prior: &Subject| prior.as_str() != subject.as_str())
@@ -714,7 +730,7 @@ impl StorageEngine for RrflowKvStore {
             vec![Mutation::Put {
                 key: storage_key(
                     keyspaces::ACCESS,
-                    &key::access_key(at, reader, subject, predicate),
+                    &keyspaces::access_key(at, reader, subject, predicate),
                 ),
                 value: Vec::new(),
             }],
@@ -729,7 +745,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::PROJECTIONS,
-            name.as_bytes(),
+            &keyspaces::projection_key(name),
         )
     }
 
@@ -738,7 +754,7 @@ impl StorageEngine for RrflowKvStore {
         write(
             &mut database,
             vec![Mutation::Put {
-                key: storage_key(keyspaces::PROJECTIONS, name.as_bytes()),
+                key: storage_key(keyspaces::PROJECTIONS, &keyspaces::projection_key(name)),
                 value: bytes.to_vec(),
             }],
             durability,
@@ -748,7 +764,11 @@ impl StorageEngine for RrflowKvStore {
 
     fn runtime_cursor(&self) -> Result<u64> {
         let database = self.lock()?;
-        read_sequence(&database, database.snapshot(), keyspaces::RUNTIME_CURSOR)
+        read_sequence(
+            &database,
+            database.snapshot(),
+            &keyspaces::runtime_cursor_key(),
+        )
     }
 
     fn runtime_schema(&self, scope: &ScopeId) -> Result<Option<RuntimeSchemaRegistry>> {
@@ -757,7 +777,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::RUNTIME_SCHEMAS,
-            scope.as_str().as_bytes(),
+            &keyspaces::runtime_schema_key(scope),
         )
     }
 
@@ -784,7 +804,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::RUNTIME_SNAPSHOTS,
-            handle.id.as_str().as_bytes(),
+            &keyspaces::runtime_snapshot_key(handle.id.as_str()),
         )? {
             if persisted != handle {
                 return Err(Error::SnapshotMismatch(handle.id.to_string()));
@@ -795,7 +815,10 @@ impl StorageEngine for RrflowKvStore {
         write(
             &mut database,
             vec![Mutation::Put {
-                key: storage_key(keyspaces::RUNTIME_SNAPSHOTS, handle.id.as_str().as_bytes()),
+                key: storage_key(
+                    keyspaces::RUNTIME_SNAPSHOTS,
+                    &keyspaces::runtime_snapshot_key(handle.id.as_str()),
+                ),
                 value: serde_json::to_vec(&handle)?,
             }],
             Durability::Authoritative,
@@ -804,7 +827,10 @@ impl StorageEngine for RrflowKvStore {
             write(
                 &mut database,
                 vec![Mutation::Delete {
-                    key: storage_key(keyspaces::RUNTIME_SNAPSHOTS, handle.id.as_str().as_bytes()),
+                    key: storage_key(
+                        keyspaces::RUNTIME_SNAPSHOTS,
+                        &keyspaces::runtime_snapshot_key(handle.id.as_str()),
+                    ),
                 }],
                 Durability::Authoritative,
             )?;
@@ -827,7 +853,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             snapshot,
             keyspaces::RUNTIME_SNAPSHOTS,
-            handle.id.as_str().as_bytes(),
+            &keyspaces::runtime_snapshot_key(handle.id.as_str()),
         )?
         .ok_or_else(|| Error::SnapshotNotFound(handle.id.to_string()))?;
         if &persisted != handle {
@@ -854,7 +880,7 @@ impl StorageEngine for RrflowKvStore {
         let stored_key = encoded_storage_key(
             &database,
             keyspaces::RUNTIME_SNAPSHOTS,
-            id.as_str().as_bytes(),
+            &keyspaces::runtime_snapshot_key(id.as_str()),
         )?;
         if database.get(&stored_key, database.snapshot())?.is_none() {
             return Ok(false);
@@ -862,7 +888,10 @@ impl StorageEngine for RrflowKvStore {
         write(
             &mut database,
             vec![Mutation::Delete {
-                key: storage_key(keyspaces::RUNTIME_SNAPSHOTS, id.as_str().as_bytes()),
+                key: storage_key(
+                    keyspaces::RUNTIME_SNAPSHOTS,
+                    &keyspaces::runtime_snapshot_key(id.as_str()),
+                ),
             }],
             Durability::Authoritative,
         )?;
@@ -948,7 +977,7 @@ impl StorageEngine for RrflowKvStore {
     ) -> Result<RuntimeChangePage> {
         let database = self.lock()?;
         let snapshot = database.snapshot();
-        let head = read_sequence(&database, snapshot, keyspaces::RUNTIME_CURSOR)?;
+        let head = read_sequence(&database, snapshot, &keyspaces::runtime_cursor_key())?;
         rrflow_kv_change_page(&database, snapshot, head, after, limit, scope)
     }
 
@@ -960,10 +989,8 @@ impl StorageEngine for RrflowKvStore {
         }
         let database = self.lock()?;
         let snapshot = database.snapshot();
-        let start = after
-            .checked_add(1)
-            .ok_or(Error::SequenceOverflow)?
-            .to_be_bytes();
+        let start =
+            keyspaces::runtime_outbox_key(after.checked_add(1).ok_or(Error::SequenceOverflow)?);
         scan_space_from(&database, snapshot, keyspaces::RUNTIME_OUTBOX, &start)?
             .into_iter()
             .take(limit)
@@ -981,7 +1008,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::RUNTIME_AUDIT,
-            commit_id.as_bytes(),
+            &keyspaces::runtime_audit_key(commit_id),
         )?;
         if let Some(value) = &audit {
             value.validate()?;
@@ -995,7 +1022,7 @@ impl StorageEngine for RrflowKvStore {
             &database,
             database.snapshot(),
             keyspaces::RUNTIME_COMMITS,
-            commit_id.as_bytes(),
+            &keyspaces::runtime_commit_key(commit_id),
         )
     }
 }
@@ -1028,7 +1055,7 @@ pub fn rrflow_kv_commit_context(
         database,
         snapshot,
         keyspaces::RUNTIME_SCHEMAS,
-        scope.as_str().as_bytes(),
+        &keyspaces::runtime_schema_key(scope),
     )?;
     if schema
         .as_ref()
@@ -1094,7 +1121,7 @@ fn prepare_rrflow_kv_commit_at_read(
         validate_rrflow_kv_read_stamp(database, snapshot, read)?;
     }
     let commit_id = commit.digest();
-    let start = read_sequence(database, snapshot, keyspaces::RUNTIME_CURSOR)?;
+    let start = read_sequence(database, snapshot, &keyspaces::runtime_cursor_key())?;
     if start != commit.expected_cursor {
         return Err(Error::RuntimeConflict {
             expected: commit.expected_cursor,
@@ -1108,7 +1135,7 @@ fn prepare_rrflow_kv_commit_at_read(
         database,
         snapshot,
         keyspaces::RUNTIME_SCHEMAS,
-        commit.scope.as_str().as_bytes(),
+        &keyspaces::runtime_schema_key(&commit.scope),
     )?;
     let proposed_schema = commit.mutations.iter().find_map(|mutation| match mutation {
         RuntimeMutation::Schema { registry } => Some(registry),
@@ -1205,7 +1232,11 @@ fn prepare_rrflow_kv_commit_at_read(
                     database,
                     snapshot,
                     keyspaces::RUNTIME_RECORDS,
-                    &runtime_identity_key(&commit.scope, reference),
+                    &keyspaces::runtime_identity_key(
+                        keyspaces::RUNTIME_RECORDS,
+                        &commit.scope,
+                        reference,
+                    ),
                 )?
                 .is_none()
             {
@@ -1222,14 +1253,14 @@ fn prepare_rrflow_kv_commit_at_read(
         .iter()
         .filter(|mutation| matches!(mutation, RuntimeMutation::Claim { .. }))
         .count();
-    let claim_start = read_sequence(database, snapshot, keyspaces::SEQUENCE_WATERMARK)?;
+    let claim_start = read_sequence(database, snapshot, &keyspaces::sequence_watermark_key())?;
     let mut claim_sequence = claim_start;
     let mut cursor = start;
     let mut previous_digest = get(
         database,
         snapshot,
         keyspaces::META,
-        keyspaces::RUNTIME_LAST_DIGEST,
+        &keyspaces::runtime_last_digest_key(),
     )?
     .map(String::from_utf8)
     .transpose()
@@ -1239,7 +1270,7 @@ fn prepare_rrflow_kv_commit_at_read(
         database,
         snapshot,
         keyspaces::META,
-        keyspaces::RUNTIME_LAST_AUDIT_DIGEST,
+        &keyspaces::runtime_last_audit_digest_key(),
     )?
     .map(String::from_utf8)
     .transpose()
@@ -1262,7 +1293,7 @@ fn prepare_rrflow_kv_commit_at_read(
             claim_sequence = claim_sequence
                 .checked_add(1)
                 .ok_or(Error::SequenceOverflow)?;
-            let claim_key = key::claim_key(
+            let claim_key = keyspaces::claim_key(
                 &claim.subject,
                 &claim.predicate,
                 claim.valid_from,
@@ -1271,7 +1302,7 @@ fn prepare_rrflow_kv_commit_at_read(
             put(
                 &mut operations,
                 keyspaces::SEQUENCE_INDEX,
-                &key::sequence_key(claim_sequence),
+                &keyspaces::sequence_key(claim_sequence),
                 claim_key.clone(),
             );
             put(
@@ -1294,7 +1325,7 @@ fn prepare_rrflow_kv_commit_at_read(
         put(
             &mut operations,
             keyspaces::RUNTIME_CHANGES,
-            &cursor.to_be_bytes(),
+            &keyspaces::runtime_change_key(cursor),
             serde_json::to_vec(&change)?,
         );
         for node in accumulator.append_change(&change)? {
@@ -1316,7 +1347,7 @@ fn prepare_rrflow_kv_commit_at_read(
             put(
                 &mut operations,
                 keyspaces::RUNTIME_OUTBOX,
-                &cursor.to_be_bytes(),
+                &keyspaces::runtime_outbox_key(cursor),
                 serde_json::to_vec(&work)?,
             );
             outbox_count += 1;
@@ -1325,47 +1356,70 @@ fn prepare_rrflow_kv_commit_at_read(
             RuntimeMutation::Schema { registry } => put(
                 &mut operations,
                 keyspaces::RUNTIME_SCHEMAS,
-                commit.scope.as_str().as_bytes(),
+                &keyspaces::runtime_schema_key(&commit.scope),
                 serde_json::to_vec(&registry)?,
             ),
             RuntimeMutation::Record { record } => put(
                 &mut operations,
                 keyspaces::RUNTIME_RECORDS,
-                &runtime_identity_key(&commit.scope, &record.reference),
+                &keyspaces::runtime_identity_key(
+                    keyspaces::RUNTIME_RECORDS,
+                    &commit.scope,
+                    &record.reference,
+                ),
                 serde_json::to_vec(&record)?,
             ),
             RuntimeMutation::Relation { relation } => put(
                 &mut operations,
                 keyspaces::RUNTIME_RELATIONS,
-                &runtime_identity_key(&commit.scope, &relation.reference),
+                &keyspaces::runtime_identity_key(
+                    keyspaces::RUNTIME_RELATIONS,
+                    &commit.scope,
+                    &relation.reference,
+                ),
                 serde_json::to_vec(&relation)?,
             ),
             RuntimeMutation::Vector { vector } => put(
                 &mut operations,
                 keyspaces::RUNTIME_VECTORS,
-                &runtime_identity_key(&commit.scope, &vector.reference),
+                &keyspaces::runtime_identity_key(
+                    keyspaces::RUNTIME_VECTORS,
+                    &commit.scope,
+                    &vector.reference,
+                ),
                 serde_json::to_vec(&vector)?,
             ),
             RuntimeMutation::SeriesSample { sample } => put(
                 &mut operations,
                 keyspaces::RUNTIME_SERIES,
-                &runtime_identity_key(&commit.scope, &sample.reference),
+                &keyspaces::runtime_identity_key(
+                    keyspaces::RUNTIME_SERIES,
+                    &commit.scope,
+                    &sample.reference,
+                ),
                 serde_json::to_vec(&sample)?,
             ),
             RuntimeMutation::Geo { geo } => put(
                 &mut operations,
                 keyspaces::RUNTIME_GEO,
-                &runtime_identity_key(&commit.scope, &geo.reference),
+                &keyspaces::runtime_identity_key(
+                    keyspaces::RUNTIME_GEO,
+                    &commit.scope,
+                    &geo.reference,
+                ),
                 serde_json::to_vec(&geo)?,
             ),
             RuntimeMutation::Object { object } => put(
                 &mut operations,
                 keyspaces::RUNTIME_OBJECTS,
-                &runtime_identity_key(&commit.scope, &object.reference),
+                &keyspaces::runtime_identity_key(
+                    keyspaces::RUNTIME_OBJECTS,
+                    &commit.scope,
+                    &object.reference,
+                ),
                 serde_json::to_vec(&object)?,
             ),
             RuntimeMutation::Retire { retirement } => {
-                let key = runtime_identity_key(&commit.scope, &retirement.reference);
                 let space = if retirement.model.is_record_like() {
                     Some(keyspaces::RUNTIME_RECORDS)
                 } else {
@@ -1392,6 +1446,11 @@ fn prepare_rrflow_kv_commit_at_read(
                     }
                 };
                 if let Some(space) = space {
+                    let key = keyspaces::runtime_identity_key(
+                        space,
+                        &commit.scope,
+                        &retirement.reference,
+                    );
                     delete(&mut operations, space, &key);
                 }
             }
@@ -1402,21 +1461,21 @@ fn prepare_rrflow_kv_commit_at_read(
     if claim_count > 0 {
         put_sequence(
             &mut operations,
-            keyspaces::SEQUENCE_WATERMARK,
+            &keyspaces::sequence_watermark_key(),
             claim_sequence,
         );
     }
-    put_sequence(&mut operations, keyspaces::RUNTIME_CURSOR, cursor);
+    put_sequence(&mut operations, &keyspaces::runtime_cursor_key(), cursor);
     put(
         &mut operations,
         keyspaces::META,
-        keyspaces::RUNTIME_LAST_DIGEST,
+        &keyspaces::runtime_last_digest_key(),
         previous_digest.as_deref().unwrap_or("").as_bytes().to_vec(),
     );
     put(
         &mut operations,
         keyspaces::META,
-        keyspaces::RUNTIME_ACCUMULATOR_STATE,
+        &keyspaces::runtime_accumulator_state_key(),
         serde_json::to_vec(&accumulator)?,
     );
     let audit_read = archived_audit
@@ -1437,13 +1496,13 @@ fn prepare_rrflow_kv_commit_at_read(
     put(
         &mut operations,
         keyspaces::RUNTIME_AUDIT,
-        commit_id.as_bytes(),
+        &keyspaces::runtime_audit_key(&commit_id),
         serde_json::to_vec(&audit)?,
     );
     put(
         &mut operations,
         keyspaces::META,
-        keyspaces::RUNTIME_LAST_AUDIT_DIGEST,
+        &keyspaces::runtime_last_audit_digest_key(),
         audit.digest.as_bytes().to_vec(),
     );
     let outcome = RuntimeCommitOutcome {
@@ -1458,7 +1517,7 @@ fn prepare_rrflow_kv_commit_at_read(
     put(
         &mut operations,
         keyspaces::RUNTIME_COMMITS,
-        outcome.commit_id.as_bytes(),
+        &keyspaces::runtime_commit_key(&outcome.commit_id),
         serde_json::to_vec(&outcome)?,
     );
     Ok(RrflowKvCommitPlan {
@@ -1478,7 +1537,7 @@ pub fn rrflow_kv_commit_outcome(
         database,
         database.snapshot(),
         keyspaces::RUNTIME_COMMITS,
-        commit_id.as_bytes(),
+        &keyspaces::runtime_commit_key(commit_id),
     )?;
     if outcome
         .as_ref()
@@ -1577,18 +1636,22 @@ fn commit_rrflow_kv_control_transition(
         &database,
         snapshot,
         keyspaces::META,
-        transition.key.as_bytes(),
+        &keyspaces::control_record_key(&transition.key),
     )?;
     if current.as_deref() != transition.expected.as_deref() {
         return Err(Error::ControlConflict(transition.key.clone()));
     }
 
-    let current_sequence = read_sequence(&database, snapshot, keyspaces::CONTROL_JOURNAL_SEQUENCE)?;
+    let current_sequence = read_sequence(
+        &database,
+        snapshot,
+        &keyspaces::control_journal_sequence_key(),
+    )?;
     let previous_digest = get(
         &database,
         snapshot,
         keyspaces::META,
-        keyspaces::CONTROL_JOURNAL_LAST_DIGEST,
+        &keyspaces::control_journal_last_digest_key(),
     )?
     .map(String::from_utf8)
     .transpose()
@@ -1615,13 +1678,9 @@ fn commit_rrflow_kv_control_transition(
         .ok_or(Error::SequenceOverflow)?;
     let catalog_revision = catalog_scope
         .map(|scope| {
-            read_sequence(
-                &database,
-                snapshot,
-                &keyspaces::catalog_revision_key(scope.as_str()),
-            )?
-            .checked_add(1)
-            .ok_or(Error::SequenceOverflow)
+            read_sequence(&database, snapshot, &keyspaces::catalog_revision_key(scope))?
+                .checked_add(1)
+                .ok_or(Error::SequenceOverflow)
         })
         .transpose()?;
     let entry = ControlJournalEntry::committed(sequence, transition, previous_digest);
@@ -1630,11 +1689,15 @@ fn commit_rrflow_kv_control_transition(
         Some(value) => put(
             &mut operations,
             keyspaces::META,
-            transition.key.as_bytes(),
+            &keyspaces::control_record_key(&transition.key),
             value.clone(),
         ),
         None => operations.push(Mutation::Delete {
-            key: encoded_storage_key(&database, keyspaces::META, transition.key.as_bytes())?,
+            key: encoded_storage_key(
+                &database,
+                keyspaces::META,
+                &keyspaces::control_record_key(&transition.key),
+            )?,
         }),
     }
     put(
@@ -1645,19 +1708,19 @@ fn commit_rrflow_kv_control_transition(
     );
     put_sequence(
         &mut operations,
-        keyspaces::CONTROL_JOURNAL_SEQUENCE,
+        &keyspaces::control_journal_sequence_key(),
         sequence,
     );
     put(
         &mut operations,
         keyspaces::META,
-        keyspaces::CONTROL_JOURNAL_LAST_DIGEST,
+        &keyspaces::control_journal_last_digest_key(),
         entry.digest.as_bytes().to_vec(),
     );
     if let (Some(scope), Some(revision)) = (catalog_scope, catalog_revision) {
         put_sequence(
             &mut operations,
-            &keyspaces::catalog_revision_key(scope.as_str()),
+            &keyspaces::catalog_revision_key(scope),
             revision,
         );
     }
@@ -1677,18 +1740,22 @@ fn commit_rrflow_kv_control_batch(
             &database,
             snapshot,
             keyspaces::META,
-            transition.key.as_bytes(),
+            &keyspaces::control_record_key(&transition.key),
         )?;
         if current.as_deref() != transition.expected.as_deref() {
             return Err(Error::ControlConflict(transition.key.clone()));
         }
     }
-    let current_sequence = read_sequence(&database, snapshot, keyspaces::CONTROL_JOURNAL_SEQUENCE)?;
+    let current_sequence = read_sequence(
+        &database,
+        snapshot,
+        &keyspaces::control_journal_sequence_key(),
+    )?;
     let mut previous_digest = get(
         &database,
         snapshot,
         keyspaces::META,
-        keyspaces::CONTROL_JOURNAL_LAST_DIGEST,
+        &keyspaces::control_journal_last_digest_key(),
     )?
     .map(String::from_utf8)
     .transpose()
@@ -1725,11 +1792,15 @@ fn commit_rrflow_kv_control_batch(
             Some(value) => put(
                 &mut operations,
                 keyspaces::META,
-                transition.key.as_bytes(),
+                &keyspaces::control_record_key(&transition.key),
                 value.clone(),
             ),
             None => operations.push(Mutation::Delete {
-                key: encoded_storage_key(&database, keyspaces::META, transition.key.as_bytes())?,
+                key: encoded_storage_key(
+                    &database,
+                    keyspaces::META,
+                    &keyspaces::control_record_key(&transition.key),
+                )?,
             }),
         }
         put(
@@ -1742,13 +1813,13 @@ fn commit_rrflow_kv_control_batch(
     let last = entries.last().expect("validated non-empty control batch");
     put_sequence(
         &mut operations,
-        keyspaces::CONTROL_JOURNAL_SEQUENCE,
+        &keyspaces::control_journal_sequence_key(),
         last.sequence,
     );
     put(
         &mut operations,
         keyspaces::META,
-        keyspaces::CONTROL_JOURNAL_LAST_DIGEST,
+        &keyspaces::control_journal_last_digest_key(),
         last.digest.as_bytes().to_vec(),
     );
     write(&mut database, operations, Durability::Authoritative)?;
@@ -1760,24 +1831,21 @@ fn rrflow_kv_read_stamp(
     snapshot: Snapshot,
     scope: &ScopeId,
 ) -> Result<ReadStamp> {
-    let commit_cursor = read_sequence(database, snapshot, keyspaces::RUNTIME_CURSOR)?;
+    let commit_cursor = read_sequence(database, snapshot, &keyspaces::runtime_cursor_key())?;
     let schema_revision = get_json::<RuntimeSchemaRegistry>(
         database,
         snapshot,
         keyspaces::RUNTIME_SCHEMAS,
-        scope.as_str().as_bytes(),
+        &keyspaces::runtime_schema_key(scope),
     )?
     .map(|schema| schema.revision);
-    let catalog_revision = read_sequence(
-        database,
-        snapshot,
-        &keyspaces::catalog_revision_key(scope.as_str()),
-    )?;
+    let catalog_revision =
+        read_sequence(database, snapshot, &keyspaces::catalog_revision_key(scope))?;
     let head_digest = get(
         database,
         snapshot,
         keyspaces::META,
-        keyspaces::RUNTIME_LAST_DIGEST,
+        &keyspaces::runtime_last_digest_key(),
     )?
     .map(String::from_utf8)
     .transpose()
@@ -1809,7 +1877,7 @@ fn validate_rrflow_kv_read_stamp(
     read: &ReadStamp,
 ) -> Result<rrd_core::RuntimeReadValidation> {
     read.validate()?;
-    let current = read_sequence(database, snapshot, keyspaces::RUNTIME_CURSOR)?;
+    let current = read_sequence(database, snapshot, &keyspaces::runtime_cursor_key())?;
     if read.commit_cursor > current {
         return Err(Error::ReadStampUnavailable(read.manifest_id.clone()));
     }
@@ -1820,7 +1888,7 @@ fn validate_rrflow_kv_read_stamp(
             database,
             snapshot,
             keyspaces::META,
-            keyspaces::RUNTIME_LAST_DIGEST,
+            &keyspaces::runtime_last_digest_key(),
         )?
         .map(String::from_utf8)
         .transpose()
@@ -1830,13 +1898,13 @@ fn validate_rrflow_kv_read_stamp(
             database,
             snapshot,
             keyspaces::RUNTIME_SCHEMAS,
-            read.scope.as_str().as_bytes(),
+            &keyspaces::runtime_schema_key(&read.scope),
         )?
         .map(|schema| schema.revision);
         let catalog_revision = read_sequence(
             database,
             snapshot,
-            &keyspaces::catalog_revision_key(read.scope.as_str()),
+            &keyspaces::catalog_revision_key(&read.scope),
         )?;
         if read.catalog_revision != catalog_revision
             || read.head_digest != head_digest
@@ -1858,7 +1926,7 @@ fn validate_rrflow_kv_read_stamp(
             database,
             snapshot,
             keyspaces::RUNTIME_CHANGES,
-            &read.commit_cursor.to_be_bytes(),
+            &keyspaces::runtime_change_key(read.commit_cursor),
         )?
         .ok_or_else(|| Error::ReadStampUnavailable(read.manifest_id.clone()))?;
         if !change.verify_digest() {
@@ -1888,7 +1956,7 @@ fn validate_rrflow_kv_read_stamp(
     let catalog_revision = read_sequence(
         database,
         snapshot,
-        &keyspaces::catalog_revision_key(read.scope.as_str()),
+        &keyspaces::catalog_revision_key(&read.scope),
     )?;
     if let Some(root) = read.accumulator_root.as_deref() {
         RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
@@ -1917,7 +1985,7 @@ fn load_rrflow_kv_runtime_accumulator(
         database,
         snapshot,
         keyspaces::META,
-        keyspaces::RUNTIME_ACCUMULATOR_STATE,
+        &keyspaces::runtime_accumulator_state_key(),
     )?;
     match stored {
         Some(accumulator) => {
@@ -1982,7 +2050,7 @@ fn rrflow_kv_authenticated_point_page(
         database,
         snapshot,
         keyspaces::RUNTIME_CHANGES,
-        &cursor.to_be_bytes(),
+        &keyspaces::runtime_change_key(cursor),
     )?
     .ok_or_else(|| Error::ReadStampUnavailable(read.manifest_id.clone()))?;
     let proof = accumulator.inclusion_proof(cursor - 1, |level, index| {
@@ -2051,7 +2119,7 @@ fn rrflow_kv_change_page(
             database,
             snapshot,
             keyspaces::RUNTIME_CHANGES,
-            &after.to_be_bytes(),
+            &keyspaces::runtime_change_key(after),
         )?
         .ok_or_else(|| Error::Substrate(format!("runtime log is missing cursor {after}")))?;
         if !prior.verify_digest() {
@@ -2071,7 +2139,7 @@ fn rrflow_kv_change_page(
             database,
             snapshot,
             keyspaces::RUNTIME_CHANGES,
-            &expected.to_be_bytes(),
+            &keyspaces::runtime_change_key(expected),
         )?
         .ok_or_else(|| Error::Substrate(format!("runtime log is missing cursor {expected}")))?;
         if change.cursor != expected
@@ -2104,11 +2172,10 @@ fn rrflow_kv_change_page(
 fn rrflow_kv_values_for_scope<T: DeserializeOwned>(
     database: &Database,
     snapshot: Snapshot,
-    space: &str,
+    space: keyspaces::Space,
     scope: &ScopeId,
 ) -> Result<Vec<T>> {
-    let mut prefix = scope.as_str().as_bytes().to_vec();
-    prefix.push(0);
+    let prefix = keyspaces::runtime_scope_prefix(space, scope);
     scan_space(database, snapshot, space, &prefix)?
         .into_iter()
         .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
@@ -2130,19 +2197,11 @@ pub fn rrflow_kv_snapshot_artifact_view(
     bundle: &SnapshotBundleFile,
     scope: &ScopeId,
 ) -> Result<(ReadStamp, Vec<ObjectReference>)> {
-    let codec = snapshot_codec(bundle)?;
-    let cursor_key = codec
-        .encode(keyspaces::META, keyspaces::RUNTIME_CURSOR)
-        .expect("canonical keyspace");
-    let digest_key = codec
-        .encode(keyspaces::META, keyspaces::RUNTIME_LAST_DIGEST)
-        .expect("canonical keyspace");
-    let accumulator_key = codec
-        .encode(keyspaces::META, keyspaces::RUNTIME_ACCUMULATOR_STATE)
-        .expect("canonical keyspace");
-    let schema_key = codec
-        .encode(keyspaces::RUNTIME_SCHEMAS, scope.as_str().as_bytes())
-        .expect("canonical keyspace");
+    snapshot_codec(bundle)?;
+    let cursor_key = keyspaces::runtime_cursor_key();
+    let digest_key = keyspaces::runtime_last_digest_key();
+    let accumulator_key = keyspaces::runtime_accumulator_state_key();
+    let schema_key = keyspaces::runtime_schema_key(scope);
     let values = bundle
         .get_many(&[&cursor_key, &digest_key, &accumulator_key, &schema_key])
         .map_err(Error::from)?;
@@ -2231,9 +2290,7 @@ fn rrflow_kv_snapshot_objects(
     required_scope: Option<&ScopeId>,
 ) -> Result<Vec<ObjectReference>> {
     let codec = snapshot_codec(bundle)?;
-    let start = codec
-        .encode(keyspaces::RUNTIME_OBJECTS, &[])
-        .expect("canonical keyspace");
+    let start = keyspaces::space_prefix(keyspaces::RUNTIME_OBJECTS);
     let end = prefix_end(&start);
     let values = bundle.scan(&start, end.as_deref()).map_err(Error::from)?;
     decode_snapshot_objects(codec, values, required_scope)
@@ -2254,25 +2311,22 @@ fn decode_snapshot_objects(
         .map(|(stored_key, value)| {
             let object: ObjectReference = serde_json::from_slice(&value)?;
             object.validate()?;
-            let logical = strip_space(codec, keyspaces::RUNTIME_OBJECTS, &stored_key)?;
-            let split = logical.iter().position(|byte| *byte == 0).ok_or_else(|| {
-                Error::Substrate("rrflowKV snapshot object key has no scope boundary".into())
-            })?;
-            let encoded_scope = std::str::from_utf8(&logical[..split])
-                .map_err(|error| Error::Substrate(error.to_string()))?;
-            let encoded_scope = ScopeId::new(encoded_scope)?;
+            let (encoded_scope, encoded_reference) = keyspaces::parse_runtime_identity_key(
+                codec,
+                keyspaces::RUNTIME_OBJECTS,
+                &stored_key,
+            )?;
             if required_scope.is_some_and(|scope| scope != &encoded_scope) {
                 return Err(Error::Substrate(
                     "rrflowKV snapshot object project scope differs from the transfer".into(),
                 ));
             }
-            let expected = codec
-                .encode(
-                    keyspaces::RUNTIME_OBJECTS,
-                    &runtime_identity_key(&encoded_scope, &object.reference),
-                )
-                .expect("canonical keyspace");
-            if stored_key != expected {
+            let expected = keyspaces::runtime_identity_key(
+                keyspaces::RUNTIME_OBJECTS,
+                &encoded_scope,
+                &object.reference,
+            );
+            if stored_key != expected || encoded_reference != object.reference {
                 return Err(Error::Substrate(
                     "rrflowKV snapshot object key/value identity differs from its canonical reference"
                         .into(),
@@ -2294,18 +2348,6 @@ fn decode_snapshot_objects(
     Ok(objects)
 }
 
-fn runtime_identity_key(scope: &ScopeId, reference: &RuntimeRef) -> Vec<u8> {
-    let mut key = Vec::with_capacity(
-        scope.as_str().len() + reference.kind.as_str().len() + reference.id.as_str().len() + 2,
-    );
-    key.extend_from_slice(scope.as_str().as_bytes());
-    key.push(0);
-    key.extend_from_slice(reference.kind.as_str().as_bytes());
-    key.push(0);
-    key.extend_from_slice(reference.id.as_str().as_bytes());
-    key
-}
-
 fn write(database: &mut Database, operations: Vec<Mutation>, durability: Durability) -> Result<()> {
     database_codec(database)?;
     database.write_owned(
@@ -2318,14 +2360,14 @@ fn write(database: &mut Database, operations: Vec<Mutation>, durability: Durabil
     Ok(())
 }
 
-fn put(operations: &mut Vec<Mutation>, space: &str, key: &[u8], value: Vec<u8>) {
+fn put(operations: &mut Vec<Mutation>, space: keyspaces::Space, key: &[u8], value: Vec<u8>) {
     operations.push(Mutation::Put {
         key: storage_key(space, key),
         value,
     });
 }
 
-fn delete(operations: &mut Vec<Mutation>, space: &str, key: &[u8]) {
+fn delete(operations: &mut Vec<Mutation>, space: keyspaces::Space, key: &[u8]) {
     operations.push(Mutation::Delete {
         key: storage_key(space, key),
     });
@@ -2358,7 +2400,7 @@ fn decode_sequence(value: &[u8]) -> Result<u64> {
 fn get(
     database: &Database,
     snapshot: Snapshot,
-    space: &str,
+    space: keyspaces::Space,
     key: &[u8],
 ) -> Result<Option<Vec<u8>>> {
     database
@@ -2369,7 +2411,7 @@ fn get(
 fn get_json<T: DeserializeOwned>(
     database: &Database,
     snapshot: Snapshot,
-    space: &str,
+    space: keyspaces::Space,
     key: &[u8],
 ) -> Result<Option<T>> {
     get(database, snapshot, space, key)?
@@ -2380,10 +2422,15 @@ fn get_json<T: DeserializeOwned>(
 fn scan_space(
     database: &Database,
     snapshot: Snapshot,
-    space: &str,
+    space: keyspaces::Space,
     prefix: &[u8],
 ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-    let start = encoded_storage_key(database, space, prefix)?;
+    let start = if prefix.is_empty() {
+        database_codec(database)?;
+        keyspaces::space_prefix(space)
+    } else {
+        encoded_storage_key(database, space, prefix)?
+    };
     let end = prefix_end(&start);
     database
         .scan(&start, end.as_deref(), snapshot)
@@ -2393,20 +2440,21 @@ fn scan_space(
 fn scan_space_from(
     database: &Database,
     snapshot: Snapshot,
-    space: &str,
+    space: keyspaces::Space,
     from: &[u8],
 ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
     let start = encoded_storage_key(database, space, from)?;
-    let end = prefix_end(&encoded_storage_key(database, space, &[])?);
+    database_codec(database)?;
+    let end = prefix_end(&keyspaces::space_prefix(space));
     database
         .scan(&start, end.as_deref(), snapshot)
         .map_err(Error::from)
 }
 
-fn storage_key(space: &str, key: &[u8]) -> Vec<u8> {
-    keyspaces::RrflowKvKeyCodec
-        .encode(space, key)
-        .expect("rrflowKV mutations use a canonical keyspace")
+fn storage_key(space: keyspaces::Space, key: &[u8]) -> Vec<u8> {
+    keyspaces::validate_space(KeyCodec, space, key)
+        .expect("rrflowKV mutations use a canonical typed key");
+    key.to_vec()
 }
 
 fn database_codec(database: &Database) -> Result<keyspaces::RrflowKvKeyCodec> {
@@ -2429,32 +2477,14 @@ fn snapshot_codec(bundle: &SnapshotBundleFile) -> Result<keyspaces::RrflowKvKeyC
         })
 }
 
-fn encoded_storage_key(database: &Database, space: &str, key: &[u8]) -> Result<Vec<u8>> {
-    database_codec(database)?
-        .encode(space, key)
-        .ok_or_else(|| Error::Substrate(format!("unknown rrflowKV keyspace {space:?}")))
-}
-
-fn strip_space<'a>(
-    codec: keyspaces::RrflowKvKeyCodec,
-    space: &str,
-    stored: &'a [u8],
-) -> Result<&'a [u8]> {
-    codec
-        .strip(space, stored)
-        .ok_or_else(|| Error::Substrate(format!("key escaped rrflowKV keyspace {space}")))
-}
-
-fn prefix_end(prefix: &[u8]) -> Option<Vec<u8>> {
-    let mut end = prefix.to_vec();
-    for index in (0..end.len()).rev() {
-        if end[index] != u8::MAX {
-            end[index] += 1;
-            end.truncate(index + 1);
-            return Some(end);
-        }
-    }
-    None
+fn encoded_storage_key(
+    database: &Database,
+    space: keyspaces::Space,
+    key: &[u8],
+) -> Result<Vec<u8>> {
+    let codec = database_codec(database)?;
+    keyspaces::validate_space(codec, space, key)?;
+    Ok(key.to_vec())
 }
 
 #[cfg(test)]
@@ -2582,12 +2612,13 @@ mod tests {
                 let expected_runtime_cursor = if published { 4 } else { 0 };
                 let expected_claim_sequence = if published { 1 } else { 0 };
                 assert_eq!(
-                    read_sequence(&recovered, snapshot, keyspaces::RUNTIME_CURSOR).unwrap(),
+                    read_sequence(&recovered, snapshot, &keyspaces::runtime_cursor_key(),).unwrap(),
                     expected_runtime_cursor,
                     "mode={mode:?} boundary={boundary:?}"
                 );
                 assert_eq!(
-                    read_sequence(&recovered, snapshot, keyspaces::SEQUENCE_WATERMARK).unwrap(),
+                    read_sequence(&recovered, snapshot, &keyspaces::sequence_watermark_key(),)
+                        .unwrap(),
                     expected_claim_sequence,
                     "mode={mode:?} boundary={boundary:?}"
                 );
@@ -2614,7 +2645,7 @@ mod tests {
                     &recovered,
                     snapshot,
                     keyspaces::RUNTIME_COMMITS,
-                    expected.commit_id.as_bytes(),
+                    &keyspaces::runtime_commit_key(&expected.commit_id),
                 )
                 .unwrap();
                 assert_eq!(outcome.as_ref(), published.then_some(&expected));
@@ -2622,7 +2653,7 @@ mod tests {
                     &recovered,
                     snapshot,
                     keyspaces::RUNTIME_AUDIT,
-                    expected.commit_id.as_bytes(),
+                    &keyspaces::runtime_audit_key(&expected.commit_id),
                 )
                 .unwrap();
                 assert_eq!(
@@ -2637,7 +2668,7 @@ mod tests {
                     &recovered,
                     snapshot,
                     keyspaces::RUNTIME_SCHEMAS,
-                    transaction.commit.scope.as_str().as_bytes(),
+                    &keyspaces::runtime_schema_key(&transaction.commit.scope),
                 )
                 .unwrap();
                 assert_eq!(schema.is_some(), published);
@@ -2645,7 +2676,8 @@ mod tests {
                     &recovered,
                     snapshot,
                     keyspaces::RUNTIME_RECORDS,
-                    &runtime_identity_key(
+                    &keyspaces::runtime_identity_key(
+                        keyspaces::RUNTIME_RECORDS,
                         &transaction.commit.scope,
                         &RuntimeRef::new("item", "one").unwrap(),
                     ),
@@ -2656,7 +2688,7 @@ mod tests {
                 recovered
                     .write_owned(
                         WriteBatch::new(vec![Mutation::Put {
-                            key: b"post-reopen".to_vec(),
+                            key: keyspaces::control_record_key("post-reopen"),
                             value: b"accepted".to_vec(),
                         }])
                         .unwrap(),
@@ -2668,7 +2700,7 @@ mod tests {
     }
 
     #[test]
-    fn new_rrflow_kv_database_authenticates_and_reopens_compact_keyspace_tags() {
+    fn new_rrflow_kv_database_authenticates_and_reopens_typed_key_format() {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path().join("compact-rrflow-kv");
         let expected = claim();
@@ -2680,11 +2712,13 @@ mod tests {
         StorageEngine::append_batch(&engine, std::slice::from_ref(&expected)).unwrap();
         {
             let database = engine.lock().unwrap();
+            let start = keyspaces::space_prefix(keyspaces::CLAIMS);
+            let end = prefix_end(&start).unwrap();
             let rows = database
-                .scan(&[1], Some(&[2]), database.snapshot())
+                .scan(&start, Some(&end), database.snapshot())
                 .unwrap();
             assert_eq!(rows.len(), 1);
-            assert_eq!(rows[0].0.first(), Some(&1));
+            keyspaces::parse_claim_key(KeyCodec, &rows[0].0).unwrap();
         }
         engine.flush(12).unwrap();
         drop(engine);
@@ -2749,14 +2783,22 @@ mod tests {
                     Mutation::Put {
                         key: storage_key(
                             keyspaces::RUNTIME_OBJECTS,
-                            &runtime_identity_key(&first_scope, &first.reference),
+                            &keyspaces::runtime_identity_key(
+                                keyspaces::RUNTIME_OBJECTS,
+                                &first_scope,
+                                &first.reference,
+                            ),
                         ),
                         value: serde_json::to_vec(&first).unwrap(),
                     },
                     Mutation::Put {
                         key: storage_key(
                             keyspaces::RUNTIME_OBJECTS,
-                            &runtime_identity_key(&second_scope, &second.reference),
+                            &keyspaces::runtime_identity_key(
+                                keyspaces::RUNTIME_OBJECTS,
+                                &second_scope,
+                                &second.reference,
+                            ),
                         ),
                         value: serde_json::to_vec(&second).unwrap(),
                     },

@@ -1,15 +1,13 @@
 //! Validated identifiers.
 //!
-//! The key encoding uses `\x00` as a field separator, so subjects and predicates
-//! must not contain it. That is the single encoding invariant, and it is enforced
-//! at construction so an invalid identifier cannot reach the key builder.
+//! Identifiers are non-empty and exclude the NUL control byte. This is a
+//! semantic text invariant, independent of any physical storage encoding.
 
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Byte that separates key fields. No identifier may contain it.
-pub const SEP: u8 = 0x00;
+const FORBIDDEN_NUL: u8 = 0x00;
 
 macro_rules! ident_type {
     ($name:ident, $label:literal) => {
@@ -23,7 +21,7 @@ macro_rules! ident_type {
                 if value.is_empty() {
                     return Err(Error::EmptyIdentifier { kind: $label });
                 }
-                if value.as_bytes().contains(&SEP) {
+                if value.as_bytes().contains(&FORBIDDEN_NUL) {
                     return Err(Error::SeparatorInIdentifier {
                         kind: $label,
                         value,

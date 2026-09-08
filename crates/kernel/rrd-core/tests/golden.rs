@@ -1,26 +1,19 @@
-//! Golden vectors for the current RRFlow storage contract.
+//! Golden vectors for the current RRFlow semantic contract.
 //!
-//! These vectors characterize current key encodings (including the
-//! inverted-timestamp ordering that makes newest-first a forward scan),
-//! prefixes and their exclusive ends, plus stamped runtime envelopes. The
-//! fixture is checked in; this test regenerates every vector from the kernel
-//! and fails on any drift. It does not define another storage engine or a
-//! compatibility promise; C-01 owns the final RRFlow 1.0 codec.
+//! These vectors characterize stamped runtime envelopes. Physical rrflowKV key
+//! vectors belong to `rrd-store`, not the kernel. The fixture is checked in;
+//! this test regenerates every semantic vector and fails on drift.
 //!
 //! Regenerate deliberately with `GOLDEN_WRITE=1 cargo test -p rrd-core
 //! --test golden` — and treat a diff in the fixture as what it is: a wire
 //! format change that the canonical RRFlow storage boundary must review.
 
 use rrd_core::{
-    key, AuditDecision, AuditEnvelope, Claim, DataTransaction, Predicate, Producer, ProjectionId,
-    ProjectionStamp, ProjectionState, ReadStamp, Reader, RetentionPin, RuntimeCommit, RuntimeEvent,
+    AuditDecision, AuditEnvelope, Claim, DataTransaction, Predicate, Producer, ProjectionId,
+    ProjectionStamp, ProjectionState, ReadStamp, RetentionPin, RuntimeCommit, RuntimeEvent,
     RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeType, ScopeId, SnapshotHandle,
     Subject, DATA_RUNTIME_CONTRACT_VERSION,
 };
-
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
 
 fn subject(s: &str) -> Subject {
     Subject::new(s).unwrap()
@@ -53,9 +46,6 @@ fn canonical_json(value: serde_json::Value) -> serde_json::Value {
 fn vectors() -> serde_json::Value {
     let wp3 = subject("wp3");
     let status = predicate("status");
-
-    let older = key::claim_key(&wp3, &status, 1_000, 2_000);
-    let newer = key::claim_key(&wp3, &status, 1_001, 2_000);
 
     let second = Claim::new(
         wp3.clone(),
@@ -132,28 +122,6 @@ fn vectors() -> serde_json::Value {
     audit.validate().unwrap();
     serde_json::json!({
         "comment": "regenerate with GOLDEN_WRITE=1; a diff here is a wire-format break",
-        "claim_key": {
-            "wp3/status valid_from=1000 tx=2000": hex(&older),
-            "wp3/status valid_from=1001 tx=2000": hex(&newer),
-            "newer_sorts_before_older": newer < older,
-        },
-        "prefixes": {
-            "subject_prefix wp3": hex(&key::subject_prefix(&wp3)),
-            "version_prefix wp3/status": hex(&key::version_prefix(&wp3, &status)),
-            "seek_key wp3/status as_of=1500": hex(&key::seek_key(&wp3, &status, 1_500)),
-            "prefix_end(subject_prefix wp3)": hex(&key::prefix_end(&key::subject_prefix(&wp3)).unwrap()),
-        },
-        "sequence_key 42": hex(&key::sequence_key(42)),
-        "access_key at=1234 reader=agent:x wp3/status": hex(&key::access_key(
-            1_234,
-            &Reader::new("agent:x").unwrap(),
-            &wp3,
-            &status,
-        )),
-        "invert": {
-            "0": key::invert(0),
-            "1000": key::invert(1_000),
-        },
         "claim_json": serde_json::to_value(&second).unwrap(),
         "data_runtime_v1": {
             "read_stamp": read_stamp,

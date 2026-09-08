@@ -69,22 +69,6 @@ impl Invocation {
     }
 }
 
-/// Key for one invocation record: `{at:020}\x00{ordinal:020}`.
-///
-/// Time leads so the log scans in chronological order. The ordinal disambiguates
-/// invocations recorded within the same millisecond.
-pub(crate) fn invocation_key(at: Millis, ordinal: u64) -> Vec<u8> {
-    let mut key = format!("{at:020}").into_bytes();
-    key.push(0x00);
-    key.extend_from_slice(format!("{ordinal:020}").as_bytes());
-    key
-}
-
-/// Lower bound for an invocation scan starting at `at`.
-pub(crate) fn invocation_bound(at: Millis) -> Vec<u8> {
-    format!("{at:020}").into_bytes()
-}
-
 /// Fields supplied when recording an invocation.
 ///
 /// Grouped rather than passed positionally: the ordinal is allocated by the

@@ -1,8 +1,8 @@
 # rrflowKV current physical format
 
-**Status:** active implementation reference for the pre-alpha row-segment format; not the accepted RRFlow 1.0 target
+**Status:** active implementation reference for the typed application-key and pre-alpha row-segment formats; the row format is not the accepted RRFlow 1.0 target
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`
-**Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-lsm`
+**Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-store` and `rrd-lsm`
 
 This record describes the bytes the current checkout can create or read. It is
 not the [accepted rrflowKV architecture](../../architecture/engine-data-flow.md),
@@ -15,10 +15,13 @@ layout and alternate-reader deficiencies open.
 
 ## Current and target boundary
 
-The current immutable format is a checksummed, block-indexed, LZ4-compressed
-row-record segment. It is not an Arrow-native segment and cannot be described
-as zero-copy input to DataFusion. Current query adapters may materialize rows
-and allocate Arrow arrays.
+The current application-key format is the C-01 `RRKV0001` typed ordered tuple
+grammar. All live `RrflowKvStore` key construction and decoding uses it, and a
+store whose manifest does not authenticate that application identity is
+rejected. The current immutable format below those keys remains a checksummed,
+block-indexed, LZ4-compressed row-record segment. It is not an Arrow-native
+segment and cannot be described as zero-copy input to DataFusion. Current query
+adapters may materialize rows and allocate Arrow arrays.
 
 The accepted target is one hybrid rrflowKV persistence authority with a
 write-optimized WAL and MVCC memtable plus immutable ordered key/version state
@@ -41,6 +44,7 @@ otherwise.
 
 | Object | New-write format | Current role | Implementation |
 |---|---:|---|---|
+| Application keys | `RRKV0001` | Typed ordered family/address/tuple spine for every `RrflowKvStore` key | [`key_codec.rs`](../../../crates/persistence/rrd-store/src/key_codec.rs) and [`keyspaces.rs`](../../../crates/persistence/rrd-store/src/keyspaces.rs) |
 | WAL | 1 | Ordered atomic-batch frames and durability boundary | [`wal.rs`](../../../crates/persistence/rrd-lsm/src/wal.rs) |
 | Mutation batch | 2 | Canonical put/delete payload inside one WAL frame | [`batch.rs`](../../../crates/persistence/rrd-lsm/src/batch.rs) |
 | Manifest | 2 | Immutable reachable-state inventory and sequence boundary | [`manifest.rs`](../../../crates/persistence/rrd-lsm/src/manifest.rs) |
@@ -66,6 +70,53 @@ Before a new batch crosses either mutable threshold, the single writer runs
 the ordinary crash-ordered flush path. It never splits one accepted atomic
 batch. An individually oversized batch remains one frame and is reported in
 maintenance evidence.
+
+## Typed application keys (`RRKV0001`)
+
+Every application key is one self-describing tuple:
+
+```text
+format-tag / RRKV0001 / optional tenant / optional scope / family-tag / family / typed fields
+```
+
+The format and family tags are `0xf0` and `0xf1`. An absent address component
+is `0x00`; present tenant, scope, and other text values use the text tag
+`0x21`. Variable-width byte and text fields are split into eight-byte groups
+with a canonical padding marker, so embedded NUL, slash, `0xff`, and every
+other byte are data rather than delimiters. Fixed numeric fields are
+big-endian; signed values flip the sign bit; descending version fields invert
+the encoded `u64`, making newer versions sort first. The decoder rejects
+unknown types, invalid UTF-8 text, non-canonical Boolean values or padding,
+truncation, and trailing partial fields.
+
+The frozen top-level family bytes are:
+
+| Byte | Family | Byte | Family |
+|---:|---|---:|---|
+| `0x10` | current | `0x19` | vector |
+| `0x11` | temporal | `0x1a` | projection delta |
+| `0x12` | outgoing edge | `0x1b` | catalogue |
+| `0x13` | incoming edge | `0x1c` | runtime commit |
+| `0x14` | scalar | `0x1d` | outbox |
+| `0x15` | unique | `0x1e` | audit |
+| `0x16` | term dictionary | `0x1f` | engine event |
+| `0x17` | term statistic | `0x20` | system |
+| `0x18` | term posting |  |  |
+
+Catalogue subfamilies separately address function artifacts, definitions,
+transaction bindings, membership revisions, the compare-and-swap head, and
+invocation receipts. Artifact bytes remain values addressed by digest; they
+are never copied into a key or repeated in a head record. Current per-project
+semantic constructors use the global optional address and encode any existing
+scope identity as a typed tuple field. The grammar nevertheless freezes and
+tests distinct tenant and scope address components; changing their use is a
+reviewed direct format convergence, not string concatenation or a compatibility
+reader.
+
+`prefix_end` computes the exact exclusive upper bound by carrying through
+trailing `0xff` bytes. Range construction therefore uses a complete typed
+component prefix and never a conceptual `*`, `~`, `+`, slash, or NUL delimiter.
+The conceptual family symbols remain documentation shorthand only.
 
 ## WAL and acknowledgment
 
@@ -131,8 +182,8 @@ sequence ranges, entry count, and byte count. L0 may overlap; higher levels
 must contain ordered, non-overlapping key ranges.
 
 Manifest v2 may carry one non-zero opaque `application_format`. `rrd-store`
-currently binds `RRDSK002` and uses one stable non-zero tag for each logical
-keyspace. Unknown application identities fail closed, and physical snapshot
+binds the eight ASCII bytes `RRKV0001` as a big-endian `u64`. Unknown, absent,
+or superseded application identities fail closed, and physical snapshot
 installation requires an identical source and target identity. Cross-format
 movement is not an alpha requirement; the final 1.0 tests create the accepted
 format directly.
@@ -145,8 +196,9 @@ pointers that pin a manifest generation; rebinding a name fails, release is
 explicit, and garbage collection uses the checkpoint inventory rather than
 filename inference.
 
-The manifest-v1 and textual-key readers are current removal debt. They do not
-define the 1.0 format.
+The manifest-v1 reader is current removal debt. No superseded application-key
+reader remains after C-01; neither condition defines the complete 1.0 physical
+format.
 
 ## Immutable row segment v3
 
@@ -222,6 +274,8 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 
 ## Frozen vectors
 
+- [`rrflow-kv-key-codec-v1.hex`](../../../crates/persistence/rrd-store/fixtures/rrflow-kv-key-codec-v1.hex)
+- [`rrflow-kv-store-layout-v1.hex`](../../../crates/persistence/rrd-store/fixtures/rrflow-kv-store-layout-v1.hex)
 - [`wal-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/wal-v1.hex)
 - [`batch-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v1.hex)
 - [`batch-v2.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v2.hex)
@@ -238,6 +292,8 @@ updating the relevant vector through the test-controlled
 Run focused contract evidence before the package suite:
 
 ```bash
+cargo test -p rrd-store --test key_codec --locked
+cargo test -p rrd-store --locked
 cargo test -p rrd-lsm --test mvcc batch_codec_is_canonical_strict_and_frozen -- --exact
 cargo test -p rrd-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_truncates_it -- --exact
 cargo test -p rrd-lsm --test manifest current_publication_is_ordered_content_addressed_and_compare_and_swap -- --exact
@@ -246,9 +302,12 @@ cargo test -p rrd-lsm --test snapshot_bundle physical_snapshot_bundle_round_trip
 cargo test -p rrd-lsm
 ```
 
-Those tests prove the present physical contract only. C-05 requires removal
-evidence for every pre-1.0 reader and continued absence of alternate stores.
-C-06 requires new
+The key-codec tests prove C-01's ordered application-key contract, frozen bytes,
+strict malformed-key rejection, real-store persistence, and close/reopen
+readback. They do not prove C-02 transaction parity, C-03 multi-model atomicity,
+or native index access. The lower-level tests prove the present object format
+only. C-05 requires removal evidence for every pre-1.0 batch, manifest, and
+segment reader and continued absence of alternate stores. C-06 requires new
 vectors, property and crash tests, and fixed-hardware comparison for the hybrid
 Arrow-compatible target. Gate F requires streamed
 projection/predicate/budget counters through DataFusion. Passing this suite

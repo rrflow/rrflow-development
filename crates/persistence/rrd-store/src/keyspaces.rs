@@ -1,197 +1,428 @@
-//! Canonical rrflowKV keyspaces, physical tags, and durability classes.
+//! Canonical semantic key shapes layered on the rrflowKV tuple codec.
+//!
+//! Callers name a semantic shape; they never concatenate physical delimiters.
+//! The codec places every shape below the manifest-authenticated
+//! `format / tenant / scope / family` prefix and this module freezes the first
+//! component that subdivides a family.
 
-/// Authoritative claims.
-pub const CLAIMS: &str = "claims";
-/// Sequence index: append sequence to canonical claim key.
-pub const SEQUENCE_INDEX: &str = "sequence_index";
-/// Read telemetry. Loss on crash is acceptable.
-pub const ACCESS: &str = "access";
-/// Watermarks and idempotency keys.
-pub const META: &str = "meta";
-/// Recorded operator invocations (`SPEC.md` §13).
-pub const INVOCATIONS: &str = "invocations";
-/// Derived projections (the routing index among them). Derivable from their
-/// sources by construction, so loss on crash costs a rebuild, not truth.
-pub const PROJECTIONS: &str = "projections";
-/// Authoritative append-only runtime change log, keyed by global cursor.
-pub const RUNTIME_CHANGES: &str = "runtime_changes";
-/// Latest persisted version of each typed runtime record. Updated atomically
-/// with the authoritative change log and used for reference-integrity checks.
-pub const RUNTIME_RECORDS: &str = "runtime_records";
-/// Latest persisted version of each typed runtime relation.
-pub const RUNTIME_RELATIONS: &str = "runtime_relations";
-/// Latest canonical vector values. Vector indexes remain projections.
-pub const RUNTIME_VECTORS: &str = "runtime_vectors";
-/// Latest canonical time-series samples. Time indexes remain projections.
-pub const RUNTIME_SERIES: &str = "runtime_series";
-/// Latest canonical WGS84 values. Spatial indexes remain projections.
-pub const RUNTIME_GEO: &str = "runtime_geo";
-/// Canonical visibility records for verified immutable object bytes.
-pub const RUNTIME_OBJECTS: &str = "runtime_objects";
-/// Transactional projection work keyed by the source runtime cursor.
-pub const RUNTIME_OUTBOX: &str = "runtime_outbox";
-/// Accepted-operation audit envelopes keyed by commit identity.
-pub const RUNTIME_AUDIT: &str = "runtime_audit";
-/// Accepted transaction outcomes keyed by content identity for idempotent retry.
-pub const RUNTIME_COMMITS: &str = "runtime_commits";
-/// Latest authoritative schema registry for each runtime scope. Every update
-/// is also present in the hash-chained runtime change log.
-pub const RUNTIME_SCHEMAS: &str = "runtime_schemas";
-/// Persisted leased read stamps. rrflowKV uses the same catalogue to pin
-/// physical manifests.
-pub const RUNTIME_SNAPSHOTS: &str = "runtime_snapshots";
+use crate::error::{Error, Result};
+use crate::key_codec::{
+    CatalogueSubfamily, DecodedKeyPart, KeyAddress, KeyCodec, KeyFamily, KeyPart,
+};
+use rrd_core::{Millis, Predicate, Reader, RuntimeRef, ScopeId, Subject};
 
-#[cfg(test)]
-const ALL: [&str; 18] = [
-    CLAIMS,
-    SEQUENCE_INDEX,
-    ACCESS,
-    META,
-    INVOCATIONS,
-    PROJECTIONS,
-    RUNTIME_CHANGES,
-    RUNTIME_RECORDS,
-    RUNTIME_RELATIONS,
-    RUNTIME_VECTORS,
-    RUNTIME_SERIES,
-    RUNTIME_GEO,
-    RUNTIME_OBJECTS,
-    RUNTIME_OUTBOX,
-    RUNTIME_AUDIT,
-    RUNTIME_COMMITS,
-    RUNTIME_SCHEMAS,
-    RUNTIME_SNAPSHOTS,
-];
-
-/// Manifest-authenticated rrflowKV application format (`RRDSK002`).
-pub(crate) const RRFLOW_KV_FORMAT: u64 = 0x5252_4453_4b30_3032;
+pub(crate) use crate::key_codec::APPLICATION_FORMAT as RRFLOW_KV_FORMAT;
+pub(crate) type RrflowKvKeyCodec = KeyCodec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct RrflowKvKeyCodec;
+pub(crate) enum Space {
+    Claims,
+    SequenceIndex,
+    Access,
+    System,
+    Invocations,
+    Projections,
+    RuntimeChanges,
+    RuntimeRecords,
+    RuntimeRelations,
+    RuntimeVectors,
+    RuntimeSeries,
+    RuntimeGeo,
+    RuntimeObjects,
+    RuntimeOutbox,
+    RuntimeAudit,
+    RuntimeCommits,
+    RuntimeSchemas,
+    RuntimeSnapshots,
+}
 
-impl RrflowKvKeyCodec {
-    pub(crate) fn from_application_format(format: Option<u64>) -> Option<Self> {
-        (format == Some(RRFLOW_KV_FORMAT)).then_some(Self)
+pub(crate) const CLAIMS: Space = Space::Claims;
+pub(crate) const SEQUENCE_INDEX: Space = Space::SequenceIndex;
+pub(crate) const ACCESS: Space = Space::Access;
+pub(crate) const META: Space = Space::System;
+pub(crate) const INVOCATIONS: Space = Space::Invocations;
+pub(crate) const PROJECTIONS: Space = Space::Projections;
+pub(crate) const RUNTIME_CHANGES: Space = Space::RuntimeChanges;
+pub(crate) const RUNTIME_RECORDS: Space = Space::RuntimeRecords;
+pub(crate) const RUNTIME_RELATIONS: Space = Space::RuntimeRelations;
+pub(crate) const RUNTIME_VECTORS: Space = Space::RuntimeVectors;
+pub(crate) const RUNTIME_SERIES: Space = Space::RuntimeSeries;
+pub(crate) const RUNTIME_GEO: Space = Space::RuntimeGeo;
+pub(crate) const RUNTIME_OBJECTS: Space = Space::RuntimeObjects;
+pub(crate) const RUNTIME_OUTBOX: Space = Space::RuntimeOutbox;
+pub(crate) const RUNTIME_AUDIT: Space = Space::RuntimeAudit;
+pub(crate) const RUNTIME_COMMITS: Space = Space::RuntimeCommits;
+pub(crate) const RUNTIME_SCHEMAS: Space = Space::RuntimeSchemas;
+pub(crate) const RUNTIME_SNAPSHOTS: Space = Space::RuntimeSnapshots;
+
+impl Space {
+    const fn family(self) -> KeyFamily {
+        match self {
+            Self::Claims | Self::SequenceIndex => KeyFamily::Temporal,
+            Self::Access | Self::RuntimeAudit => KeyFamily::Audit,
+            Self::System => KeyFamily::System,
+            Self::Invocations | Self::RuntimeSchemas | Self::RuntimeSnapshots => {
+                KeyFamily::Catalogue
+            }
+            Self::Projections => KeyFamily::ProjectionDelta,
+            Self::RuntimeChanges => KeyFamily::EngineEvent,
+            Self::RuntimeRecords
+            | Self::RuntimeRelations
+            | Self::RuntimeSeries
+            | Self::RuntimeGeo
+            | Self::RuntimeObjects => KeyFamily::Current,
+            Self::RuntimeVectors => KeyFamily::Vector,
+            Self::RuntimeOutbox => KeyFamily::Outbox,
+            Self::RuntimeCommits => KeyFamily::RuntimeCommit,
+        }
     }
 
-    pub(crate) fn encode(self, space: &str, key: &[u8]) -> Option<Vec<u8>> {
-        let mut stored = Vec::with_capacity(1 + key.len());
-        stored.push(rrflow_kv_keyspace_tag(space)?);
-        stored.extend_from_slice(key);
-        Some(stored)
-    }
-
-    pub(crate) fn strip<'a>(self, space: &str, stored: &'a [u8]) -> Option<&'a [u8]> {
-        stored.strip_prefix(&[rrflow_kv_keyspace_tag(space)?])
+    const fn subspace(self) -> u8 {
+        match self {
+            Self::Claims => 0x01,
+            Self::SequenceIndex => 0x02,
+            Self::Access => 0x01,
+            Self::System => 0x01,
+            // This is the canonical catalogue receipt subfamily, not a second
+            // invocation namespace.
+            Self::Invocations => CatalogueSubfamily::InvocationReceipt as u8,
+            Self::RuntimeSchemas => 0x20,
+            Self::RuntimeSnapshots => 0x21,
+            Self::Projections => 0x01,
+            Self::RuntimeChanges => 0x01,
+            Self::RuntimeRecords => 0x01,
+            Self::RuntimeRelations => 0x02,
+            Self::RuntimeSeries => 0x03,
+            Self::RuntimeGeo => 0x04,
+            Self::RuntimeObjects => 0x05,
+            Self::RuntimeVectors => 0x01,
+            Self::RuntimeOutbox => 0x01,
+            Self::RuntimeAudit => 0x02,
+            Self::RuntimeCommits => 0x01,
+        }
     }
 }
 
-pub(crate) fn rrflow_kv_keyspace_tag(space: &str) -> Option<u8> {
-    match space {
-        CLAIMS => Some(1),
-        SEQUENCE_INDEX => Some(2),
-        ACCESS => Some(3),
-        META => Some(4),
-        INVOCATIONS => Some(5),
-        PROJECTIONS => Some(6),
-        RUNTIME_CHANGES => Some(7),
-        RUNTIME_RECORDS => Some(8),
-        RUNTIME_RELATIONS => Some(9),
-        RUNTIME_VECTORS => Some(10),
-        RUNTIME_SERIES => Some(11),
-        RUNTIME_GEO => Some(12),
-        RUNTIME_OBJECTS => Some(13),
-        RUNTIME_OUTBOX => Some(14),
-        RUNTIME_AUDIT => Some(15),
-        RUNTIME_COMMITS => Some(16),
-        RUNTIME_SCHEMAS => Some(17),
-        RUNTIME_SNAPSHOTS => Some(18),
-        _ => None,
-    }
+fn encode(space: Space, parts: &[KeyPart<'_>]) -> Vec<u8> {
+    let mut tuple = Vec::with_capacity(parts.len() + 1);
+    tuple.push(KeyPart::U8(space.subspace()));
+    tuple.extend_from_slice(parts);
+    KeyCodec.encode(KeyAddress::GLOBAL, space.family(), &tuple)
 }
 
-#[cfg(test)]
-mod rrflow_kv_key_codec_tests {
-    use super::*;
-
-    #[test]
-    fn rrflow_kv_keyspace_tags_are_frozen_unique_and_canonical() {
-        let tags = ALL
-            .iter()
-            .map(|space| rrflow_kv_keyspace_tag(space).unwrap())
-            .collect::<Vec<_>>();
-        assert_eq!(tags, (1_u8..=18).collect::<Vec<_>>());
-        assert_eq!(RrflowKvKeyCodec::from_application_format(None), None);
-        assert_eq!(
-            RrflowKvKeyCodec::from_application_format(Some(RRFLOW_KV_FORMAT)),
-            Some(RrflowKvKeyCodec)
-        );
-        assert_eq!(RrflowKvKeyCodec::from_application_format(Some(7)), None);
-        assert_eq!(rrflow_kv_keyspace_tag("unknown"), None);
-    }
-
-    #[test]
-    fn rrflow_kv_key_codec_round_trips_frozen_wire_bytes() {
-        let logical = b"subject/predicate";
-        let compact = RrflowKvKeyCodec.encode(CLAIMS, logical).unwrap();
-        assert_eq!(compact, b"\x01subject/predicate");
-        assert_eq!(
-            RrflowKvKeyCodec.strip(CLAIMS, &compact),
-            Some(logical.as_slice())
-        );
-
-        assert_eq!(RrflowKvKeyCodec.encode("unknown", logical), None);
-        assert_eq!(RrflowKvKeyCodec.strip(SEQUENCE_INDEX, &compact), None);
-    }
+pub(crate) fn space_prefix(space: Space) -> Vec<u8> {
+    encode(space, &[])
 }
 
-/// Key under which the claim sequence watermark is recorded.
-pub const SEQUENCE_WATERMARK: &[u8] = b"watermark/claims/sequence";
+fn decode_space(codec: KeyCodec, space: Space, stored: &[u8]) -> Result<Vec<DecodedKeyPart>> {
+    let decoded = codec.decode(stored)?;
+    if decoded.tenant.is_some()
+        || decoded.scope.is_some()
+        || decoded.family != space.family()
+        || decoded.parts.first() != Some(&DecodedKeyPart::U8(space.subspace()))
+    {
+        return Err(Error::Codec(format!(
+            "key escaped canonical rrflowKV space {space:?}"
+        )));
+    }
+    Ok(decoded.parts.into_iter().skip(1).collect())
+}
+
+pub(crate) fn validate_space(codec: KeyCodec, space: Space, stored: &[u8]) -> Result<()> {
+    decode_space(codec, space, stored).map(|_| ())
+}
+
+fn expect_parts<const N: usize>(
+    codec: KeyCodec,
+    space: Space,
+    stored: &[u8],
+) -> Result<[DecodedKeyPart; N]> {
+    decode_space(codec, space, stored)?
+        .try_into()
+        .map_err(|_| Error::Codec(format!("{space:?} key has the wrong field count")))
+}
+
+pub(crate) fn claim_key(
+    subject: &Subject,
+    predicate: &Predicate,
+    valid_from: Millis,
+    tx_time: Millis,
+) -> Vec<u8> {
+    encode(
+        CLAIMS,
+        &[
+            KeyPart::Text(subject.as_str()),
+            KeyPart::Text(predicate.as_str()),
+            KeyPart::DescU64(valid_from),
+            KeyPart::DescU64(tx_time),
+        ],
+    )
+}
+
+pub(crate) fn claim_subject_prefix(subject: &Subject) -> Vec<u8> {
+    encode(CLAIMS, &[KeyPart::Text(subject.as_str())])
+}
+
+pub(crate) fn claim_version_prefix(subject: &Subject, predicate: &Predicate) -> Vec<u8> {
+    encode(
+        CLAIMS,
+        &[
+            KeyPart::Text(subject.as_str()),
+            KeyPart::Text(predicate.as_str()),
+        ],
+    )
+}
+
+pub(crate) fn claim_seek_key(subject: &Subject, predicate: &Predicate, as_of: Millis) -> Vec<u8> {
+    encode(
+        CLAIMS,
+        &[
+            KeyPart::Text(subject.as_str()),
+            KeyPart::Text(predicate.as_str()),
+            KeyPart::DescU64(as_of),
+        ],
+    )
+}
+
+pub(crate) fn parse_claim_key(
+    codec: KeyCodec,
+    stored: &[u8],
+) -> Result<(Subject, Predicate, Millis, Millis)> {
+    let [DecodedKeyPart::Text(subject), DecodedKeyPart::Text(predicate), DecodedKeyPart::DescU64(valid_from), DecodedKeyPart::DescU64(tx_time)] =
+        expect_parts(codec, CLAIMS, stored)?
+    else {
+        return Err(Error::Codec("claim key has invalid field types".into()));
+    };
+    Ok((
+        Subject::new(subject)?,
+        Predicate::new(predicate)?,
+        valid_from,
+        tx_time,
+    ))
+}
+
+pub(crate) fn sequence_key(sequence: u64) -> Vec<u8> {
+    encode(SEQUENCE_INDEX, &[KeyPart::U64(sequence)])
+}
+
+pub(crate) fn parse_sequence_key(codec: KeyCodec, stored: &[u8]) -> Result<u64> {
+    let [DecodedKeyPart::U64(sequence)] = expect_parts(codec, SEQUENCE_INDEX, stored)? else {
+        return Err(Error::Codec(
+            "claim sequence key has invalid field types".into(),
+        ));
+    };
+    Ok(sequence)
+}
+
+pub(crate) fn access_key(
+    at: Millis,
+    reader: &Reader,
+    subject: &Subject,
+    predicate: &Predicate,
+) -> Vec<u8> {
+    encode(
+        ACCESS,
+        &[
+            KeyPart::U64(at),
+            KeyPart::Text(reader.as_str()),
+            KeyPart::Text(subject.as_str()),
+            KeyPart::Text(predicate.as_str()),
+        ],
+    )
+}
+
+pub(crate) fn access_bound(at: Millis) -> Vec<u8> {
+    encode(ACCESS, &[KeyPart::U64(at)])
+}
+
+pub(crate) fn parse_access_key(
+    codec: KeyCodec,
+    stored: &[u8],
+) -> Result<(Millis, Reader, Subject, Predicate)> {
+    let [DecodedKeyPart::U64(at), DecodedKeyPart::Text(reader), DecodedKeyPart::Text(subject), DecodedKeyPart::Text(predicate)] =
+        expect_parts(codec, ACCESS, stored)?
+    else {
+        return Err(Error::Codec("access key has invalid field types".into()));
+    };
+    Ok((
+        at,
+        Reader::new(reader)?,
+        Subject::new(subject)?,
+        Predicate::new(predicate)?,
+    ))
+}
+
+pub(crate) fn invocation_key(at: Millis, ordinal: u64) -> Vec<u8> {
+    encode(INVOCATIONS, &[KeyPart::U64(at), KeyPart::U64(ordinal)])
+}
+
+pub(crate) fn invocation_bound(at: Millis) -> Vec<u8> {
+    encode(INVOCATIONS, &[KeyPart::U64(at)])
+}
+
+pub(crate) fn projection_key(name: &str) -> Vec<u8> {
+    encode(PROJECTIONS, &[KeyPart::Text(name)])
+}
+
+pub(crate) fn runtime_change_key(cursor: u64) -> Vec<u8> {
+    encode(RUNTIME_CHANGES, &[KeyPart::U64(cursor)])
+}
+
+pub(crate) fn runtime_identity_key(
+    space: Space,
+    scope: &ScopeId,
+    reference: &RuntimeRef,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeRecords
+            | Space::RuntimeRelations
+            | Space::RuntimeVectors
+            | Space::RuntimeSeries
+            | Space::RuntimeGeo
+            | Space::RuntimeObjects
+    ));
+    encode(
+        space,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(reference.kind.as_str()),
+            KeyPart::Text(reference.id.as_str()),
+        ],
+    )
+}
+
+pub(crate) fn runtime_scope_prefix(space: Space, scope: &ScopeId) -> Vec<u8> {
+    encode(space, &[KeyPart::Text(scope.as_str())])
+}
+
+pub(crate) fn parse_runtime_identity_key(
+    codec: KeyCodec,
+    space: Space,
+    stored: &[u8],
+) -> Result<(ScopeId, RuntimeRef)> {
+    let [DecodedKeyPart::Text(scope), DecodedKeyPart::Text(kind), DecodedKeyPart::Text(id)] =
+        expect_parts(codec, space, stored)?
+    else {
+        return Err(Error::Codec(
+            "runtime identity key has invalid field types".into(),
+        ));
+    };
+    Ok((ScopeId::new(scope)?, RuntimeRef::new(kind, id)?))
+}
+
+pub(crate) fn runtime_outbox_key(cursor: u64) -> Vec<u8> {
+    encode(RUNTIME_OUTBOX, &[KeyPart::U64(cursor)])
+}
+
+pub(crate) fn runtime_audit_key(commit_id: &str) -> Vec<u8> {
+    encode(RUNTIME_AUDIT, &[KeyPart::Text(commit_id)])
+}
+
+pub(crate) fn runtime_commit_key(commit_id: &str) -> Vec<u8> {
+    encode(RUNTIME_COMMITS, &[KeyPart::Text(commit_id)])
+}
+
+pub(crate) fn runtime_schema_key(scope: &ScopeId) -> Vec<u8> {
+    encode(RUNTIME_SCHEMAS, &[KeyPart::Text(scope.as_str())])
+}
+
+pub(crate) fn runtime_snapshot_key(id: &str) -> Vec<u8> {
+    encode(RUNTIME_SNAPSHOTS, &[KeyPart::Text(id)])
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum SystemEntry {
+    ClaimSequence = 0x01,
+    AcceptedClaimAppend = 0x02,
+    ControlValue = 0x03,
+    ControlJournalSequence = 0x04,
+    ControlJournalLastDigest = 0x05,
+    ControlJournalEntry = 0x06,
+    CatalogueRevision = 0x07,
+    InvocationOrdinal = 0x08,
+    RuntimeCursor = 0x09,
+    RuntimeLastDigest = 0x0a,
+    RuntimeLastAuditDigest = 0x0b,
+    RuntimeAccumulatorState = 0x0c,
+    RuntimeAccumulatorNode = 0x0d,
+}
+
+fn system_key(entry: SystemEntry, parts: &[KeyPart<'_>]) -> Vec<u8> {
+    let mut tuple = Vec::with_capacity(parts.len() + 1);
+    tuple.push(KeyPart::U8(entry as u8));
+    tuple.extend_from_slice(parts);
+    encode(META, &tuple)
+}
+
+pub(crate) fn sequence_watermark_key() -> Vec<u8> {
+    system_key(SystemEntry::ClaimSequence, &[])
+}
 
 pub(crate) fn accepted_append_key(idempotency_key: &str) -> Vec<u8> {
-    let mut key = b"accepted/claim-append/".to_vec();
-    key.extend_from_slice(idempotency_key.as_bytes());
-    key
+    system_key(
+        SystemEntry::AcceptedClaimAppend,
+        &[KeyPart::Text(idempotency_key)],
+    )
 }
 
-pub(crate) const CONTROL_JOURNAL_SEQUENCE: &[u8] = b"server/journal/sequence";
-pub(crate) const CONTROL_JOURNAL_LAST_DIGEST: &[u8] = b"server/journal/last-digest";
+pub(crate) fn control_record_key(key: &str) -> Vec<u8> {
+    system_key(SystemEntry::ControlValue, &[KeyPart::Text(key)])
+}
 
-const CATALOG_REVISION_PREFIX: &[u8] = b"watermark/catalogue/revision/";
+pub(crate) fn control_journal_sequence_key() -> Vec<u8> {
+    system_key(SystemEntry::ControlJournalSequence, &[])
+}
 
-/// Per-scope monotonic revision for catalogue state that is stored outside the
-/// typed runtime log. The scope suffix keeps unrelated project/instance
-/// catalogues from invalidating one another's read stamps.
-pub(crate) fn catalog_revision_key(scope: &str) -> Vec<u8> {
-    let mut key = Vec::with_capacity(CATALOG_REVISION_PREFIX.len() + scope.len());
-    key.extend_from_slice(CATALOG_REVISION_PREFIX);
-    key.extend_from_slice(scope.as_bytes());
-    key
+pub(crate) fn control_journal_last_digest_key() -> Vec<u8> {
+    system_key(SystemEntry::ControlJournalLastDigest, &[])
 }
 
 pub(crate) fn control_journal_key(sequence: u64) -> Vec<u8> {
-    format!("server/journal/entries/{sequence:020}").into_bytes()
+    system_key(SystemEntry::ControlJournalEntry, &[KeyPart::U64(sequence)])
 }
 
-/// Key under which the invocation ordinal watermark is recorded.
-pub const INVOCATION_WATERMARK: &[u8] = b"watermark/invocations/ordinal";
+pub(crate) fn is_control_journal_key(codec: KeyCodec, stored: &[u8]) -> bool {
+    matches!(
+        decode_space(codec, META, stored).as_deref(),
+        Ok([DecodedKeyPart::U8(tag), DecodedKeyPart::U64(_)])
+            if *tag == SystemEntry::ControlJournalEntry as u8
+    )
+}
 
-/// Global cursor and hash-chain head for typed runtime changes.
-pub const RUNTIME_CURSOR: &[u8] = b"watermark/runtime/cursor";
-pub const RUNTIME_LAST_DIGEST: &[u8] = b"watermark/runtime/last-digest";
-pub const RUNTIME_LAST_AUDIT_DIGEST: &[u8] = b"watermark/runtime/last-audit-digest";
-/// Versioned RFC 9162 compact frontier for the global runtime log. Complete
-/// subtree nodes share this META keyspace so snapshots cannot accidentally
-/// omit proof state.
-pub const RUNTIME_ACCUMULATOR_STATE: &[u8] = b"runtime/merkle/v1/state";
-const RUNTIME_ACCUMULATOR_NODE_PREFIX: &[u8] = b"runtime/merkle/v1/node/";
+pub(crate) fn catalog_revision_key(scope: &ScopeId) -> Vec<u8> {
+    system_key(
+        SystemEntry::CatalogueRevision,
+        &[KeyPart::Text(scope.as_str())],
+    )
+}
 
-pub fn runtime_accumulator_node_key(level: u8, index: u64) -> Vec<u8> {
-    let mut key = Vec::with_capacity(RUNTIME_ACCUMULATOR_NODE_PREFIX.len() + 9);
-    key.extend_from_slice(RUNTIME_ACCUMULATOR_NODE_PREFIX);
-    key.push(level);
-    key.extend_from_slice(&index.to_be_bytes());
-    key
+pub(crate) fn invocation_watermark_key() -> Vec<u8> {
+    system_key(SystemEntry::InvocationOrdinal, &[])
+}
+
+pub(crate) fn runtime_cursor_key() -> Vec<u8> {
+    system_key(SystemEntry::RuntimeCursor, &[])
+}
+
+pub(crate) fn runtime_last_digest_key() -> Vec<u8> {
+    system_key(SystemEntry::RuntimeLastDigest, &[])
+}
+
+pub(crate) fn runtime_last_audit_digest_key() -> Vec<u8> {
+    system_key(SystemEntry::RuntimeLastAuditDigest, &[])
+}
+
+pub(crate) fn runtime_accumulator_state_key() -> Vec<u8> {
+    system_key(SystemEntry::RuntimeAccumulatorState, &[])
+}
+
+pub(crate) fn runtime_accumulator_node_key(level: u8, index: u64) -> Vec<u8> {
+    system_key(
+        SystemEntry::RuntimeAccumulatorNode,
+        &[KeyPart::U8(level), KeyPart::U64(index)],
+    )
 }
 
 /// Persistence policy for a write transaction.
@@ -202,4 +433,117 @@ pub enum Durability {
     /// Telemetry writes. Buffered; a periodic flush or a later authoritative
     /// write carries them to disk.
     Buffered,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::key_codec::prefix_end;
+
+    fn sp(subject: &str, predicate: &str) -> (Subject, Predicate) {
+        (
+            Subject::new(subject).unwrap(),
+            Predicate::new(predicate).unwrap(),
+        )
+    }
+
+    #[test]
+    fn spaces_have_frozen_unique_family_subspace_coordinates() {
+        let spaces = [
+            CLAIMS,
+            SEQUENCE_INDEX,
+            ACCESS,
+            META,
+            INVOCATIONS,
+            PROJECTIONS,
+            RUNTIME_CHANGES,
+            RUNTIME_RECORDS,
+            RUNTIME_RELATIONS,
+            RUNTIME_VECTORS,
+            RUNTIME_SERIES,
+            RUNTIME_GEO,
+            RUNTIME_OBJECTS,
+            RUNTIME_OUTBOX,
+            RUNTIME_AUDIT,
+            RUNTIME_COMMITS,
+            RUNTIME_SCHEMAS,
+            RUNTIME_SNAPSHOTS,
+        ];
+        let mut coordinates = spaces
+            .map(|space| (space.family() as u8, space.subspace()))
+            .to_vec();
+        coordinates.sort_unstable();
+        coordinates.dedup();
+        assert_eq!(coordinates.len(), spaces.len());
+    }
+
+    #[test]
+    fn claim_keys_are_bitemporal_newest_first_and_isolated() {
+        let codec = KeyCodec;
+        let (subject, predicate) = sp("wp3", "status");
+        let original = claim_key(&subject, &predicate, 100, 100);
+        let correction = claim_key(&subject, &predicate, 100, 200);
+        let newer = claim_key(&subject, &predicate, 300, 300);
+        assert!(newer < correction && correction < original);
+        assert_eq!(
+            parse_claim_key(codec, &correction).unwrap(),
+            (subject.clone(), predicate.clone(), 100, 200)
+        );
+
+        let prefix = claim_version_prefix(&subject, &predicate);
+        let end = prefix_end(&prefix).unwrap();
+        assert!(correction >= prefix && correction < end);
+        for (other_subject, other_predicate) in
+            [("wp3x", "status"), ("wp3", "statusx"), ("wp", "status")]
+        {
+            let (other_subject, other_predicate) = sp(other_subject, other_predicate);
+            let neighbour = claim_key(&other_subject, &other_predicate, 100, 100);
+            assert!(neighbour < prefix || neighbour >= end);
+        }
+    }
+
+    #[test]
+    fn seek_ordering_matches_as_of_semantics() {
+        let (subject, predicate) = sp("wp3", "status");
+        let v1 = claim_key(&subject, &predicate, 100, 100);
+        let v2 = claim_key(&subject, &predicate, 200, 200);
+        let seek = claim_seek_key(&subject, &predicate, 150);
+        assert!(v2 < seek);
+        assert!(seek <= v1);
+    }
+
+    #[test]
+    fn access_and_sequence_keys_round_trip_in_order() {
+        let codec = KeyCodec;
+        let reader = Reader::new("agent:clyffy/worker").unwrap();
+        let (subject, predicate) = sp("a/b", "c");
+        let access = access_key(500, &reader, &subject, &predicate);
+        assert_eq!(
+            parse_access_key(codec, &access).unwrap(),
+            (500, reader, subject, predicate)
+        );
+        assert!(
+            access_key(
+                9,
+                &Reader::new("r").unwrap(),
+                &Subject::new("s").unwrap(),
+                &Predicate::new("p").unwrap()
+            ) < access_bound(10)
+        );
+        assert!(sequence_key(9) < sequence_key(10));
+        assert_eq!(parse_sequence_key(codec, &sequence_key(42)).unwrap(), 42);
+    }
+
+    #[test]
+    fn malformed_semantic_shapes_are_rejected() {
+        let codec = KeyCodec;
+        assert!(parse_claim_key(codec, &space_prefix(CLAIMS)).is_err());
+        assert!(parse_access_key(codec, &sequence_key(1)).is_err());
+        let malformed = KeyCodec.encode(
+            KeyAddress::GLOBAL,
+            KeyFamily::Temporal,
+            &[KeyPart::U8(Space::Claims.subspace()), KeyPart::U64(1)],
+        );
+        assert!(parse_claim_key(codec, &malformed).is_err());
+    }
 }

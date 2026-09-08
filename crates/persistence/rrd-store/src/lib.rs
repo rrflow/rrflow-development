@@ -17,6 +17,7 @@ mod error;
 mod footprint;
 mod gc;
 mod invocation;
+mod key_codec;
 mod keyspaces;
 mod object;
 mod outcome;

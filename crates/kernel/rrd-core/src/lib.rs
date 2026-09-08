@@ -1,6 +1,6 @@
 //! # rrd-core
 //!
-//! The rrflow kernel: bi-temporal claims, key encoding, and supersession.
+//! The rrflow kernel: semantic identities, bi-temporal claims, and supersession.
 //!
 //! ## Boundary
 //!
@@ -36,7 +36,6 @@ pub mod data;
 pub mod digest;
 pub mod error;
 pub mod ident;
-pub mod key;
 pub mod reasoning_tree;
 pub mod reference;
 pub mod runtime;
