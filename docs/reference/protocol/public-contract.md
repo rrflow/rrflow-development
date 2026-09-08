@@ -52,7 +52,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715`.
+`3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface. Neither the protocol number nor the product
 version may be changed merely to describe implementation progress.
@@ -117,7 +117,7 @@ acceptance evidence remain the only authority for completion.
 ## Current operation exposure
 
 `endpoint_catalogue()` currently contains 33 sorted HTTP operations and one
-authenticated subscription WebSocket descriptor. The server router and
+authenticated generic `/v1/ws` descriptor. The server router and
 generated OpenAPI document are derived from that catalogue. The
 [server reference](server.md#public-operation-families) groups the current
 inspection, identity, transaction, query, context, recall, delivery, and
@@ -128,8 +128,8 @@ The boundary is intentionally explicit:
 | Surface | Current contract state | Still required |
 |---|---|---|
 | HTTP | 33 catalogued operations with method, path, authentication mode, mutation flag, security action, and request/response type names. | H-04 cross-surface semantic equivalence and Gate J release qualification. |
-| WebSocket | One subscription-specific descriptor and typed client/server frames. | B-04 one multiplexed request, response, cancellation, subscription, ACK, backpressure, and resume protocol. |
-| Rust client | Uses `rrd-contract` as its only normal RRFlow dependency, implements 28 of 33 catalogued HTTP operations, and implements the dedicated subscription WebSocket over loopback HTTP or explicit mutual TLS. | The [Rust SDK reference](../sdk/rust.md) records the five missing operations and the exact A-07/B-04/H-04/H-07/J convergence boundary. |
+| WebSocket | One generic authenticated descriptor and one closed frame envelope for request/response, cancellation, subscription/delivery, ACK, heartbeat, unsubscribe, error, backpressure, and exact reconnect resume. The server intentionally rejects generic operation execution until H-04. | H-03 commit-impact delivery, H-04 shared operation dispatch and cancellation, generated-SDK carriage, and Gate J qualification. |
+| Rust client | Uses `rrd-contract` as its only normal RRFlow dependency, implements 28 of 33 catalogued HTTP operations, and implements the bounded multiplexed WebSocket over loopback HTTP or explicit mutual TLS. | The [Rust SDK reference](../sdk/rust.md) records the five missing HTTP operations and the exact H-03/H-04/H-07/J convergence boundary. |
 | TypeScript client | Generates compile-time types and a generic call over all 33 HTTP descriptors, but has no complete runtime payload validation, WebSocket, remote transport, or installable JavaScript/declaration artifact. | The [TypeScript SDK reference](../sdk/typescript.md) records the exact request/response, credential, retry/cancellation, Node/browser, packaging, and conformance boundary. |
 | Python client | Generates an operation literal and generic synchronous call over all 33 HTTP descriptors, but has no complete runtime payload validation, async/WebSocket client, remote transport, opaque credential, or typed-package/interpreter qualification. | The [Python SDK reference](../sdk/python.md) records the exact request/response, credential, retry/cancellation, sync/async, packaging, and conformance boundary. |
 | Go client | Generates constants and a generic context-aware synchronous call over all 33 HTTP descriptors, but has no concrete operation payload validation, WebSocket, remote transport, opaque credential, or module/toolchain qualification. | The [Go SDK reference](../sdk/go.md) records the exact request/response, credential, retry/cancellation, concurrency, transport, module, and conformance boundary. |
@@ -159,7 +159,7 @@ prove that engine by itself:
 | Graph, BM25, vector, and retrieval | Typed graph mutations, scalar/BM25 catalogue kinds, named dense/sparse/multi-dense vectors, HNSW/TurboQuant configuration, filters, exact/approximate search, recursive retrieval, and RRF evidence can be represented. | E-01 through E-05 and F-03 must prove transactional native access paths, exact fallbacks, deterministic fusion, recall, update/delete, and reopen behavior. |
 | Context and reasoning | Bounded context packets, reasoning trees, route requests/decisions, and B-03 model-manifest pre-load admission have provider-neutral contracts. | G/H must prove executable routing, persisted CAS tree execution, engine-selected fast or analytical paths, authorized same-stamp context, feedback, and replay. |
 | Installation and knowledge | Provider-neutral installation/attunement jobs and content-addressed knowledge packages have contracts. | D and KB-06 through KB-08 must prove preview/apply, persisted resume, project inventory, authorized import, close/reopen, readback, and warp resolution. |
-| Delivery and clients | Changefeeds, durable subscriptions, endpoint discovery, OpenAPI, and SDK corpus types exist. | B-04/B-05, H-03/H-04, and J must prove one delivery model, cross-surface equivalence, cancellation, correlated traces, and a clean self-contained deployment. |
+| Delivery and clients | Changefeeds, durable subscriptions, endpoint discovery, OpenAPI, the B-04 closed multiplexed WebSocket protocol, its Rust client/server implementation, and SDK corpus types exist. | B-05, H-03/H-04, and J must prove commit-impact delivery, operation execution/cancellation, cross-surface equivalence, correlated traces, and a clean self-contained deployment. |
 
 Passing a row's serialization test cannot satisfy the behavioral proof in the
 last column. The proof must exercise `RrdEngine`, the selected rrflowMX or
@@ -190,7 +190,8 @@ silently repaired during this KB-05 documentation-classification package.
 
 | Evidence | What it establishes | What it does not establish |
 |---|---|---|
-| `cargo test -p rrd-contract --test public_contract --locked` | Strict selected wire shapes, bounds, 33-operation catalogue, one WebSocket descriptor, OpenAPI digest, deployment/SDK corpus validation, and selected cross-language digest vectors. | Server dispatch, storage semantics, DataFusion streaming, native indexes, reasoning execution, or all-language SDK conformance. |
+| `cargo test -p rrd-contract --test public_contract --locked` | Strict selected wire shapes, bounds, 33-operation catalogue, one generic WebSocket descriptor, OpenAPI digest, deployment/SDK corpus validation, and selected cross-language digest vectors. | Server dispatch, storage semantics, DataFusion streaming, native indexes, reasoning execution, or all-language SDK conformance. |
+| `cargo test -p rrd-contract --test websocket_contract --locked` | The B-04 golden frame contract, sender directions, sequence and connection integrity, exact correlations/resume coordinates, negotiated/hard resource limits, and malformed/unknown representation rejection. | H-04 operation execution, generated-language carriage, or release qualification. |
 | Normal-dependency inspection | `rrd-contract` has no RRFlow implementation crate in its normal dependency graph; `rrd-core` is test-only. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
 | Generated-surface parity check | Checked-in generated OpenAPI/SDK artifacts match the current OpenAPI projection. | Real-process semantic equivalence or complete SDK operation coverage. |
 | Server and client suites | Separately documented real-process HTTP, mutual-TLS, WebSocket, and durable-subscription behavior. | The complete target engine or released deployment. |
@@ -199,6 +200,10 @@ silently repaired during this KB-05 documentation-classification package.
 
 - Shared wire types, validation, catalogue, and OpenAPI projection:
   `crates/transport/rrd-contract/src/lib.rs`
+- Multiplexed WebSocket frame contract:
+  `crates/transport/rrd-contract/src/websocket.rs`
+- Frozen WebSocket protocol sample:
+  `crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json`
 - Cross-surface capability schema:
   `crates/transport/rrd-contract/src/capability_surface.rs`
 - Shared SDK corpus schema:
@@ -217,6 +222,7 @@ Focused verification starts with:
 
 ```text
 cargo test -p rrd-contract --test public_contract --locked
+cargo test -p rrd-contract --test websocket_contract --locked
 cargo test -p rrd-contract --all-targets --locked
 python3 scripts/ci/check_generated_surfaces.py
 ```

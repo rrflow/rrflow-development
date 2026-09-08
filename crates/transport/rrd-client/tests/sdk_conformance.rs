@@ -66,6 +66,7 @@ async fn rust_sdk_passes_shared_real_daemon_conformance() {
         ClientConfig {
             request_timeout: Duration::from_secs(5),
             max_attempts: corpus.expected.retry_attempts,
+            websocket_limits: Default::default(),
         },
     )
     .unwrap();
@@ -95,6 +96,7 @@ async fn rust_sdk_passes_shared_real_daemon_conformance() {
         ClientConfig {
             request_timeout: Duration::from_secs(10),
             max_attempts: 2,
+            websocket_limits: Default::default(),
         },
     )
     .unwrap();

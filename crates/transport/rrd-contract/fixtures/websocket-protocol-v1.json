@@ -1,0 +1,456 @@
+{
+  "contract_version": 1,
+  "limits": {
+    "max_message_bytes": 1048576,
+    "max_frame_bytes": 1048576,
+    "read_buffer_bytes": 65536,
+    "write_buffer_bytes": 65536,
+    "max_write_buffer_bytes": 2097152,
+    "max_in_flight_requests": 64,
+    "max_subscriptions": 32,
+    "send_timeout_ms": 5000,
+    "receive_timeout_ms": 30000,
+    "heartbeat_interval_ms": 5000
+  },
+  "frames": [
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 1,
+        "payload": {
+          "type": "connected",
+          "body": {
+            "contract_version": 1,
+            "session_id": "session-alpha",
+            "limits": {
+              "max_message_bytes": 1048576,
+              "max_frame_bytes": 1048576,
+              "read_buffer_bytes": 65536,
+              "write_buffer_bytes": 65536,
+              "max_write_buffer_bytes": 2097152,
+              "max_in_flight_requests": 64,
+              "max_subscriptions": 32,
+              "send_timeout_ms": 5000,
+              "receive_timeout_ms": 30000,
+              "heartbeat_interval_ms": 5000
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "client",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 1,
+        "payload": {
+          "type": "request",
+          "body": {
+            "operation": "query-execute",
+            "request": {
+              "protocol": "rrd",
+              "protocol_version": 1,
+              "context": {
+                "request_id": "request-query-01",
+                "operation_id": "operation-query-01",
+                "deadline_unix_ms": 2000000000000
+              },
+              "resource": {
+                "segments": [
+                  {
+                    "kind": "instance",
+                    "id": "project-alpha"
+                  }
+                ]
+              },
+              "payload": {
+                "budget": {
+                  "max_batch_rows": 256,
+                  "max_elapsed_ms": 30000,
+                  "max_memory_bytes": 67108864,
+                  "max_output_bytes": 524288,
+                  "max_rows": 10000,
+                  "max_scanned_changes": 100000,
+                  "max_spill_bytes": 268435456
+                },
+                "parameters": {},
+                "query": "FROM record:document AT VALID 42 KNOWN HEAD PROJECT title",
+                "scope": "instance:project-alpha"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 2,
+        "payload": {
+          "type": "response",
+          "body": {
+            "operation": "query-execute",
+            "response": {
+              "protocol": "rrd",
+              "protocol_version": 1,
+              "request_id": "request-query-01",
+              "operation_id": "operation-query-01",
+              "outcome": {
+                "status": "ok",
+                "payload": {
+                  "known_at_cursor": 9,
+                  "rows": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "client",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 2,
+        "payload": {
+          "type": "cancel",
+          "body": {
+            "cancellation_id": "cancellation-query-01",
+            "target": {
+              "operation": "query-execute",
+              "request_id": "request-query-01",
+              "operation_id": "operation-query-01"
+            },
+            "reason": "caller deadline elapsed"
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 3,
+        "payload": {
+          "type": "cancellation",
+          "body": {
+            "cancellation_id": "cancellation-query-01",
+            "target": {
+              "operation": "query-execute",
+              "request_id": "request-query-01",
+              "operation_id": "operation-query-01"
+            },
+            "disposition": "already_completed"
+          }
+        }
+      }
+    },
+    {
+      "sender": "client",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 3,
+        "payload": {
+          "type": "subscribe",
+          "body": {
+            "resume": {
+              "subscription_id": "subscription-alpha",
+              "stream_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "connection_generation": 3,
+              "acknowledged_cursor": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 4,
+        "payload": {
+          "type": "subscribed",
+          "body": {
+            "subscription": {
+              "subscription_id": "subscription-alpha",
+              "stream_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acknowledged_cursor": 7,
+              "retention_floor_cursor": 2,
+              "head_cursor": 9,
+              "batch_size": 16,
+              "max_in_flight": 4,
+              "connection_generation": 4,
+              "lease_expires_at_unix_ms": 2000000010000,
+              "heartbeat_interval_ms": 500,
+              "status": "open"
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 5,
+        "payload": {
+          "type": "delivery",
+          "body": {
+            "subscription_id": "subscription-alpha",
+            "connection_generation": 4,
+            "delivery_sequence": 11,
+            "from_cursor": 7,
+            "through_cursor": 8,
+            "delivery": {
+              "stream": "changefeed",
+              "page": {
+                "requested_after_cursor": 7,
+                "through_cursor": 8,
+                "head_cursor": 9,
+                "has_more": true,
+                "validation": {
+                  "method": "full_hash_chain_replay",
+                  "change_reads": 1,
+                  "proof_nodes": 0
+                },
+                "changes": [
+                  {
+                    "cursor": 8,
+                    "commit_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "commit_ordinal": 0,
+                    "scope": "instance:project-alpha",
+                    "at_unix_ms": 1900000000000,
+                    "actor": "session:session-alpha",
+                    "mutation": {
+                      "family": "claim",
+                      "claim": {
+                        "subject": "document-alpha",
+                        "predicate": "status",
+                        "object": "indexed",
+                        "valid_from": 42,
+                        "tx_time": 43,
+                        "producer": "agent-alpha",
+                        "session": "session-alpha",
+                        "tier": "local",
+                        "promotion": "unpromoted"
+                      }
+                    },
+                    "previous_change_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    "change_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "client",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 4,
+        "payload": {
+          "type": "ack",
+          "body": {
+            "subscription_id": "subscription-alpha",
+            "connection_generation": 4,
+            "delivery_sequence": 11,
+            "through_cursor": 8
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 6,
+        "payload": {
+          "type": "acknowledged",
+          "body": {
+            "acknowledgement": {
+              "subscription_id": "subscription-alpha",
+              "connection_generation": 4,
+              "delivery_sequence": 11,
+              "through_cursor": 8
+            },
+            "subscription": {
+              "subscription_id": "subscription-alpha",
+              "stream_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acknowledged_cursor": 8,
+              "retention_floor_cursor": 2,
+              "head_cursor": 9,
+              "batch_size": 16,
+              "max_in_flight": 4,
+              "connection_generation": 4,
+              "lease_expires_at_unix_ms": 2000000010000,
+              "heartbeat_interval_ms": 500,
+              "status": "open"
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "client",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 5,
+        "payload": {
+          "type": "heartbeat",
+          "body": {
+            "heartbeat_id": "heartbeat-client-01",
+            "observed_sequence": 6,
+            "subscriptions": [
+              {
+                "subscription_id": "subscription-alpha",
+                "connection_generation": 4,
+                "acknowledged_cursor": 8
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 7,
+        "payload": {
+          "type": "heartbeat",
+          "body": {
+            "heartbeat_id": "heartbeat-server-01",
+            "observed_sequence": 5,
+            "subscriptions": [
+              {
+                "subscription_id": "subscription-alpha",
+                "connection_generation": 4,
+                "acknowledged_cursor": 8
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 8,
+        "payload": {
+          "type": "backpressure",
+          "body": {
+            "target": {
+              "kind": "subscription",
+              "subscription_id": "subscription-alpha",
+              "connection_generation": 4
+            },
+            "in_flight": 4,
+            "limit": 4,
+            "retry_after_ms": 100
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 9,
+        "payload": {
+          "type": "error",
+          "body": {
+            "target": {
+              "kind": "request",
+              "target": {
+                "operation": "query-execute",
+                "request_id": "request-query-01",
+                "operation_id": "operation-query-01"
+              }
+            },
+            "error": {
+              "code": "failed_precondition",
+              "message": "request execution is not enabled on this endpoint",
+              "retryable": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "sender": "client",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 6,
+        "payload": {
+          "type": "unsubscribe",
+          "body": {
+            "subscription_id": "subscription-alpha",
+            "connection_generation": 4
+          }
+        }
+      }
+    },
+    {
+      "sender": "server",
+      "frame": {
+        "protocol": "rrd",
+        "protocol_version": 1,
+        "connection_id": "connection-alpha",
+        "sequence": 10,
+        "payload": {
+          "type": "unsubscribed",
+          "body": {
+            "subscription": {
+              "subscription_id": "subscription-alpha",
+              "stream_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acknowledged_cursor": 8,
+              "retention_floor_cursor": 2,
+              "head_cursor": 9,
+              "batch_size": 16,
+              "max_in_flight": 4,
+              "connection_generation": 4,
+              "lease_expires_at_unix_ms": 2000000010000,
+              "heartbeat_interval_ms": 500,
+              "status": "open"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -132,11 +132,14 @@ impl RrdEngine {
         &self,
         session_id: &CorrelationId,
         token: &CorrelationId,
-        subscription_id: &CorrelationId,
+        resume: &SubscriptionResume,
         now: u64,
         request_id: &str,
         operation_id: &str,
     ) -> Result<SubscriptionSnapshot> {
+        resume
+            .validate()
+            .map_err(|error| ServiceError::Subscription(error.to_string()))?;
         let (_, session) = self.authorize(
             session_id,
             token,
@@ -145,7 +148,7 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        let key = subscription_key(&self.instance, subscription_id);
+        let key = subscription_key(&self.instance, &resume.subscription_id);
         let bytes = self
             .storage
             .control_record(&key)?
@@ -153,6 +156,14 @@ impl RrdEngine {
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
+        if state.stream_sha256 != resume.stream_sha256
+            || state.connection_generation != resume.connection_generation
+            || state.acknowledged_cursor != resume.acknowledged_cursor
+        {
+            return Err(ServiceError::Subscription(
+                "subscription resume coordinates do not match durable state".into(),
+            ));
+        }
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
         let head = self.storage.runtime_cursor()?;
         validate_resume_cursor(
@@ -183,7 +194,7 @@ impl RrdEngine {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn next_subscription_frame(
+    pub fn next_subscription_delivery(
         &self,
         session_id: &CorrelationId,
         token: &CorrelationId,
@@ -192,7 +203,7 @@ impl RrdEngine {
         now: u64,
         request_id: &str,
         operation_id: &str,
-    ) -> Result<SubscriptionServerFrame> {
+    ) -> Result<SubscriptionPoll> {
         let (_, session) = self.authorize(
             session_id,
             token,
@@ -226,11 +237,8 @@ impl RrdEngine {
             .map(|delivery| delivery.through_cursor)
             .unwrap_or(state.acknowledged_cursor);
         if after_cursor >= head {
-            return Ok(SubscriptionServerFrame::Heartbeat {
-                connection_generation,
-                acknowledged_cursor: state.acknowledged_cursor,
-                head_cursor: head,
-                lease_expires_at_unix_ms: state.lease_expires_at_unix_ms,
+            return Ok(SubscriptionPoll::Idle {
+                subscription: subscription_snapshot(&state, head),
             });
         }
 
@@ -239,7 +247,7 @@ impl RrdEngine {
             .next_delivery_sequence
             .checked_add(1)
             .ok_or_else(|| ServiceError::Subscription("delivery sequence overflow".into()))?;
-        let (through_cursor, frame) = match &state.stream {
+        let (through_cursor, delivery) = match &state.stream {
             SubscriptionStream::Changefeed { scope } => {
                 let page = self.read_changefeed_page(&ReadChangefeed {
                     scope: scope.clone(),
@@ -247,14 +255,7 @@ impl RrdEngine {
                     limit: state.batch_size,
                 })?;
                 let through = page.through_cursor;
-                (
-                    through,
-                    SubscriptionServerFrame::Changefeed {
-                        connection_generation,
-                        delivery_sequence,
-                        page,
-                    },
-                )
+                (through, SubscriptionDelivery::Changefeed { page })
             }
             SubscriptionStream::LiveQuery {
                 scope,
@@ -273,22 +274,12 @@ impl RrdEngine {
                     wait_timeout_ms: 0,
                 })?;
                 let through = delta.through_cursor;
-                (
-                    through,
-                    SubscriptionServerFrame::LiveQuery {
-                        connection_generation,
-                        delivery_sequence,
-                        delta,
-                    },
-                )
+                (through, SubscriptionDelivery::LiveQuery { delta })
             }
         };
         if through_cursor <= after_cursor {
-            return Ok(SubscriptionServerFrame::Heartbeat {
-                connection_generation,
-                acknowledged_cursor: state.acknowledged_cursor,
-                head_cursor: head,
-                lease_expires_at_unix_ms: state.lease_expires_at_unix_ms,
+            return Ok(SubscriptionPoll::Idle {
+                subscription: subscription_snapshot(&state, head),
             });
         }
         state.pending.push(PendingDelivery {
@@ -308,34 +299,40 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        Ok(frame)
+        Ok(SubscriptionPoll::Delivery {
+            batch: SubscriptionDeliveryBatch {
+                subscription_id: state.subscription_id,
+                connection_generation,
+                delivery_sequence,
+                from_cursor: after_cursor,
+                through_cursor,
+                delivery,
+            },
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn apply_subscription_frame(
+    pub fn acknowledge_subscription(
         &self,
         session_id: &CorrelationId,
         token: &CorrelationId,
-        subscription_id: &CorrelationId,
-        frame: &SubscriptionClientFrame,
+        acknowledgement: &SubscriptionAcknowledgement,
         now: u64,
         request_id: &str,
         operation_id: &str,
     ) -> Result<SubscriptionSnapshot> {
+        acknowledgement
+            .validate()
+            .map_err(|error| ServiceError::Subscription(error.to_string()))?;
         let (_, session) = self.authorize(
             session_id,
             token,
-            match frame {
-                SubscriptionClientFrame::Close { .. } => SecurityAction::SubscriptionClose,
-                SubscriptionClientFrame::Ack { .. } | SubscriptionClientFrame::Heartbeat { .. } => {
-                    SecurityAction::SubscriptionAck
-                }
-            },
+            SecurityAction::SubscriptionAck,
             now,
             request_id,
             operation_id,
         )?;
-        let key = subscription_key(&self.instance, subscription_id);
+        let key = subscription_key(&self.instance, &acknowledgement.subscription_id);
         let bytes = self
             .storage
             .control_record(&key)?
@@ -344,50 +341,20 @@ impl RrdEngine {
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
-        let generation = match frame {
-            SubscriptionClientFrame::Ack {
-                connection_generation,
-                ..
-            }
-            | SubscriptionClientFrame::Heartbeat {
-                connection_generation,
-            }
-            | SubscriptionClientFrame::Close {
-                connection_generation,
-            } => *connection_generation,
-        };
-        ensure_generation(&state, generation)?;
-        let action = match frame {
-            SubscriptionClientFrame::Ack {
-                delivery_sequence,
-                through_cursor,
-                ..
-            } => {
-                let position = state.pending.iter().position(|delivery| {
-                    delivery.connection_generation == generation
-                        && delivery.delivery_sequence == *delivery_sequence
-                        && delivery.through_cursor == *through_cursor
-                });
-                let position = position.ok_or_else(|| {
-                    ServiceError::Subscription(
-                        "ACK does not identify an outstanding delivery in this connection".into(),
-                    )
-                })?;
-                state.acknowledged_cursor = *through_cursor;
-                state.pending.drain(..=position);
-                state.lease_expires_at_unix_ms = now.saturating_add(state.lease_ms);
-                "subscription.acknowledged"
-            }
-            SubscriptionClientFrame::Heartbeat { .. } => {
-                state.lease_expires_at_unix_ms = now.saturating_add(state.lease_ms);
-                "subscription.heartbeat-acknowledged"
-            }
-            SubscriptionClientFrame::Close { .. } => {
-                state.status = SubscriptionStatus::Closed;
-                state.pending.clear();
-                "subscription.closed-by-stream"
-            }
-        };
+        ensure_generation(&state, acknowledgement.connection_generation)?;
+        let position = state.pending.iter().position(|delivery| {
+            delivery.connection_generation == acknowledgement.connection_generation
+                && delivery.delivery_sequence == acknowledgement.delivery_sequence
+                && delivery.through_cursor == acknowledgement.through_cursor
+        });
+        let position = position.ok_or_else(|| {
+            ServiceError::Subscription(
+                "ACK does not identify an outstanding delivery in this connection".into(),
+            )
+        })?;
+        state.acknowledged_cursor = acknowledgement.through_cursor;
+        state.pending.drain(..=position);
+        state.lease_expires_at_unix_ms = now.saturating_add(state.lease_ms);
         let head = self.storage.runtime_cursor()?;
         replace_subscription(
             self,
@@ -396,7 +363,59 @@ impl RrdEngine {
             &state,
             now,
             session_id,
-            action,
+            "subscription.acknowledged",
+            request_id,
+            operation_id,
+        )?;
+        Ok(subscription_snapshot(&state, head))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn renew_subscription_lease(
+        &self,
+        session_id: &CorrelationId,
+        token: &CorrelationId,
+        coordinate: &SubscriptionLeaseCoordinate,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<SubscriptionSnapshot> {
+        coordinate
+            .validate()
+            .map_err(|error| ServiceError::Subscription(error.to_string()))?;
+        let (_, session) = self.authorize(
+            session_id,
+            token,
+            SecurityAction::SubscriptionAck,
+            now,
+            request_id,
+            operation_id,
+        )?;
+        let key = subscription_key(&self.instance, &coordinate.subscription_id);
+        let bytes = self
+            .storage
+            .control_record(&key)?
+            .ok_or(ServiceError::SubscriptionNotFound)?;
+        let mut state = decode_subscription(&bytes)?;
+        ensure_owner(&state, session_id)?;
+        ensure_subscription_open(&state, now)?;
+        self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
+        ensure_generation(&state, coordinate.connection_generation)?;
+        if state.acknowledged_cursor != coordinate.acknowledged_cursor {
+            return Err(ServiceError::Subscription(
+                "subscription heartbeat cursor does not match durable ACK".into(),
+            ));
+        }
+        state.lease_expires_at_unix_ms = now.saturating_add(state.lease_ms);
+        let head = self.storage.runtime_cursor()?;
+        replace_subscription(
+            self,
+            key,
+            Some(bytes),
+            &state,
+            now,
+            session_id,
+            "subscription.lease-renewed",
             request_id,
             operation_id,
         )?;

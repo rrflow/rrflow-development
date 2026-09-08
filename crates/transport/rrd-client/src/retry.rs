@@ -1,12 +1,14 @@
 //! Current bounded attempt/deadline configuration pending semantic certainty.
 
 use crate::{Error, Result};
+use rrd_contract::WebSocketLimits;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
     pub request_timeout: Duration,
     pub max_attempts: u8,
+    pub websocket_limits: WebSocketLimits,
 }
 
 impl Default for ClientConfig {
@@ -14,6 +16,7 @@ impl Default for ClientConfig {
         Self {
             request_timeout: Duration::from_secs(5),
             max_attempts: 2,
+            websocket_limits: WebSocketLimits::default(),
         }
     }
 }
@@ -42,5 +45,9 @@ pub(crate) fn validate_client_config(config: &ClientConfig) -> Result<()> {
             "request timeout must be nonzero and max_attempts must be in 1..=8".into(),
         ));
     }
+    config
+        .websocket_limits
+        .validate()
+        .map_err(|error| Error::Contract(error.to_string()))?;
     Ok(())
 }

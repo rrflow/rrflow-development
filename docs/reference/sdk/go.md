@@ -110,7 +110,7 @@ The current `endpoints_gen.go` contains:
 - method, route template, first authentication scheme, and mutation flag for
   each operation; and
 - OpenAPI SHA-256
-  `e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715`.
+  `3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
 
 It does not generate request/result/error types, path-parameter sets, security
 actions, exact success statuses, media types, causal identity rules,
@@ -251,10 +251,10 @@ observation or outcome requiring explicit reconciliation.
 and deadlines through the call. The client preserves `context.Canceled`,
 `context.DeadlineExceeded`, and safe cancellation causes as distinct local
 facts. A canceled context stops local waiting; it does not prove the server
-stopped compute or that a mutation did not commit. B-04 supplies a correlated
-server cancellation operation and terminal evidence. Per-phase HTTP waits,
-the semantic deadline, caller cancellation, server cancellation, and engine
-outcome remain separate.
+stopped compute or that a mutation did not commit. B-04 supplies the
+correlated server-cancellation operation and terminal evidence shape; H-04
+implements its Go carriage. Per-phase HTTP waits, the semantic deadline,
+caller cancellation, server cancellation, and engine outcome remain separate.
 
 ## Credentials, errors, and causal evidence
 
@@ -295,8 +295,9 @@ durable state, or hidden model reasoning.
 ## Multiplexed WebSocket delivery
 
 The current Go module has no WebSocket dependency, implementation, or test.
-B-04 defines one language-neutral multiplexed protocol state machine. The Go
-SDK selects and locks a maintained carriage only after its dependency,
+B-04 defines the closed language-neutral multiplexed protocol and proves its
+Rust reference implementation. H-04 must implement Go state and carriage,
+selecting and locking a maintained library only after its dependency,
 context, deadline, concurrent-reader/writer, TLS, proxy, frame, compression,
 and memory behavior is measured. Preserving a dependency-free claim is not a
 reason to hand-write an unsafe WebSocket stack or omit the required surface.
@@ -409,10 +410,10 @@ sdks/go/
 ```
 
 The following files remain deliberately absent until their assigned gate adds
-real behavior: `subscription.go` (B-04), `models_gen.go` (H-04),
+real behavior: `subscription.go` (H-04), `models_gen.go` (H-04),
 `operation_coverage_test.go` and `protocol_validation_test.go` (H-04),
-`transport_faults_test.go` (B-04/H-04/H-07/J-02),
-`subscription_test.go` (B-04/H-04/J-02), and
+`transport_faults_test.go` (H-04/H-07/J-02),
+`subscription_test.go` (H-04/J-02), and
 `package_consumer_test.go` (J-03/J-05).
 
 The dependency order is:
@@ -425,11 +426,12 @@ The dependency order is:
    race behavior, and `client_test.go` characterization are preserved.
    `models.go` is absent and `client.go` is only the narrow facade. No
    validation, socket, resolver, or package-release success was invented.
-2. **B-04:** implement the shared multiplexed state machine, Go carriage,
-   correlated cancellation, and bounded goroutine/queue ownership.
+2. **B-04 (contract implemented):** consume the closed multiplexed golden
+   protocol; no Go behavior is claimed by the Rust reference carriage.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap and
    endpoint identity.
-4. **H-04:** generate concrete operation models/bindings; enforce exact
+4. **H-04:** implement bounded multiplexed Go carriage and goroutine/queue
+   ownership; generate concrete operation models/bindings; enforce exact
    request/result/error/status/media/identity contracts, semantic certainty,
    opaque credentials, W3C propagation, and structural cross-surface cases.
 5. **H-07:** add authenticated HTTPS/mTLS/mesh endpoint resolution and
@@ -468,7 +470,7 @@ The dependency order is:
   mutation receipts impose stricter RRFlow semantics.
 - [RFC 6455 implementation limits](https://www.rfc-editor.org/rfc/rfc6455.html#section-10.4)
   require protection against oversized frames and reassembled messages; B-04
-  adds RRFlow queue, identity, cursor, generation, and backpressure bounds.
+  defines RRFlow queue, identity, cursor, generation, and backpressure bounds.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
   `traceparent` and `tracestate`; RRFlow owns validation, causal links,
   redaction, and evidence meaning.

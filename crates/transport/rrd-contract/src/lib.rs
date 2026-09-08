@@ -18,6 +18,7 @@ mod platform;
 mod reasoning_tree;
 mod router;
 mod sdk_conformance;
+mod websocket;
 
 pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
@@ -121,6 +122,23 @@ pub use sdk_conformance::{
     SdkConformanceIdentity, SdkConformanceSession, SdkConformanceTransaction, SdkConformanceVector,
     SDK_CONFORMANCE_FORMAT_VERSION,
 };
+pub use websocket::{
+    decode_websocket_frame, encode_websocket_frame, validate_subscription_snapshot,
+    validate_websocket_cancellation_correlation, validate_websocket_response_correlation,
+    validate_websocket_subscription_correlation, SubscriptionAcknowledgement, SubscriptionDelivery,
+    SubscriptionDeliveryBatch, SubscriptionLeaseCoordinate, SubscriptionPoll, SubscriptionResume,
+    WebSocketAcknowledged, WebSocketBackpressure, WebSocketBackpressureTarget, WebSocketCancel,
+    WebSocketCancellation, WebSocketCancellationDisposition, WebSocketConnected, WebSocketDelivery,
+    WebSocketError, WebSocketErrorTarget, WebSocketFrame, WebSocketHeartbeat, WebSocketLimits,
+    WebSocketPayload, WebSocketPeer, WebSocketReceiveState, WebSocketRequest,
+    WebSocketRequestTarget, WebSocketResponse, WebSocketSendState, WebSocketSubscribe,
+    WebSocketSubscribed, WebSocketUnsubscribe, WebSocketUnsubscribed, MAX_WEBSOCKET_BUFFER_BYTES,
+    MAX_WEBSOCKET_CANCEL_REASON_BYTES, MAX_WEBSOCKET_ERROR_BYTES, MAX_WEBSOCKET_ERROR_DETAILS,
+    MAX_WEBSOCKET_FRAME_BYTES, MAX_WEBSOCKET_IN_FLIGHT_REQUESTS, MAX_WEBSOCKET_JSON_DEPTH,
+    MAX_WEBSOCKET_JSON_ITEMS, MAX_WEBSOCKET_MESSAGE_BYTES, MAX_WEBSOCKET_RETRY_AFTER_MS,
+    MAX_WEBSOCKET_SUBSCRIPTIONS, MAX_WEBSOCKET_TIMEOUT_MS, MAX_WEBSOCKET_WRITE_BUFFER_BYTES,
+    MIN_WEBSOCKET_HEARTBEAT_MS, WEBSOCKET_CONTRACT_VERSION,
+};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -131,7 +149,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715";
+    "3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -2733,57 +2751,6 @@ pub struct CloseSubscriptionResult {
     pub idempotent_replay: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub enum SubscriptionClientFrame {
-    Ack {
-        connection_generation: u64,
-        delivery_sequence: u64,
-        through_cursor: u64,
-    },
-    Heartbeat {
-        connection_generation: u64,
-    },
-    Close {
-        connection_generation: u64,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub enum SubscriptionServerFrame {
-    Opened {
-        subscription: SubscriptionSnapshot,
-    },
-    Changefeed {
-        connection_generation: u64,
-        delivery_sequence: u64,
-        page: ChangefeedPage,
-    },
-    LiveQuery {
-        connection_generation: u64,
-        delivery_sequence: u64,
-        delta: LiveQueryDeltaResult,
-    },
-    Heartbeat {
-        connection_generation: u64,
-        acknowledged_cursor: u64,
-        head_cursor: u64,
-        lease_expires_at_unix_ms: u64,
-    },
-    Acknowledged {
-        subscription: SubscriptionSnapshot,
-    },
-    Error {
-        error: ErrorBody,
-        acknowledged_cursor: u64,
-    },
-    Closed {
-        acknowledged_cursor: u64,
-        reason: String,
-    },
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BackupCoverageSnapshot {
@@ -2929,6 +2896,7 @@ pub enum SecurityAction {
     TransactionAbort,
     ChangefeedRead,
     ChangefeedFollow,
+    WebSocketConnect,
     SubscriptionOpen,
     SubscriptionConnect,
     SubscriptionAck,
@@ -3243,8 +3211,7 @@ pub struct WebSocketEndpointDescriptor {
     pub path: String,
     pub authentication: EndpointAuthentication,
     pub connect_action: SecurityAction,
-    pub client_frame_type: String,
-    pub server_frame_type: String,
+    pub frame_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -3313,12 +3280,9 @@ impl EndpointCatalogue {
                 || endpoint.path.len() > 256
                 || !endpoint.path.starts_with("/v1/")
                 || !endpoint.path.is_ascii()
-                || endpoint.client_frame_type.is_empty()
-                || endpoint.client_frame_type.len() > 128
-                || endpoint.server_frame_type.is_empty()
-                || endpoint.server_frame_type.len() > 128
-                || !endpoint.client_frame_type.is_ascii()
-                || !endpoint.server_frame_type.is_ascii()
+                || endpoint.frame_type.is_empty()
+                || endpoint.frame_type.len() > 128
+                || !endpoint.frame_type.is_ascii()
                 || endpoint.authentication != EndpointAuthentication::SessionBearer
             {
                 return invalid("WebSocket endpoint descriptor is invalid");
@@ -3696,13 +3660,12 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
         protocol_version: PROTOCOL_VERSION,
         endpoints,
         websocket_endpoints: vec![WebSocketEndpointDescriptor {
-            operation: CanonicalId::new("subscription-stream")
+            operation: CanonicalId::new("websocket-connect")
                 .expect("static WebSocket operation is canonical"),
-            path: "/v1/subscriptions/{subscription}/stream".into(),
+            path: "/v1/ws".into(),
             authentication: EndpointAuthentication::SessionBearer,
-            connect_action: SecurityAction::SubscriptionConnect,
-            client_frame_type: "SubscriptionClientFrame".into(),
-            server_frame_type: "SubscriptionServerFrame".into(),
+            connect_action: SecurityAction::WebSocketConnect,
+            frame_type: "WebSocketFrame".into(),
         }],
     };
     debug_assert!(catalogue.validate().is_ok());
@@ -3719,15 +3682,10 @@ pub fn openapi_document() -> Result<serde_json::Value> {
     catalogue.validate()?;
     let query_value_schema = openapi_query_value_schema()?;
     let vector_payload_filter_schema = openapi_vector_payload_filter_schema()?;
-    let mut subscription_client_frame_schema = schema_json::<SubscriptionClientFrame>();
+    let mut websocket_frame_schema = schema_json::<WebSocketFrame>();
     rebase_local_schema_refs(
-        &mut subscription_client_frame_schema,
-        "#/components/schemas/SubscriptionClientFrame",
-    );
-    let mut subscription_server_frame_schema = schema_json::<SubscriptionServerFrame>();
-    rebase_local_schema_refs(
-        &mut subscription_server_frame_schema,
-        "#/components/schemas/SubscriptionServerFrame",
+        &mut websocket_frame_schema,
+        "#/components/schemas/WebSocketFrame",
     );
     let mut paths = serde_json::Map::new();
     for descriptor in &catalogue.endpoints {
@@ -3841,8 +3799,7 @@ pub fn openapi_document() -> Result<serde_json::Value> {
         "components": {
             "schemas": {
                 "QueryValue": query_value_schema,
-                "SubscriptionClientFrame": subscription_client_frame_schema,
-                "SubscriptionServerFrame": subscription_server_frame_schema,
+                "WebSocketFrame": websocket_frame_schema,
                 "VectorPayloadFilter": vector_payload_filter_schema
             },
             "securitySchemes": {

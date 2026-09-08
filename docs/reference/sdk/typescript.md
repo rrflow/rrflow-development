@@ -75,7 +75,9 @@ HTTP operation identifiers because `OperationId` is the key set of the
 generated endpoint object. That is compile-time and routing coverage, not
 behavioral coverage. There is no `subscription.ts`, WebSocket implementation,
 or socket test to move: subscription open/close and changefeed follow remain
-ordinary HTTP operations until B-04 implements the real multiplexed boundary.
+ordinary HTTP operations. B-04 has frozen the real multiplexed boundary and
+proved its Rust reference carriage; TypeScript carriage remains explicit
+H-04 cross-surface work.
 
 ## Generated authority and operation coverage
 
@@ -92,7 +94,7 @@ The audited projection contains:
 - only `200` success envelopes plus the default error envelope;
 - `application/json` as the only declared response media type; and
 - OpenAPI SHA-256
-  `e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715`.
+  `3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
 
 The generated `rrd-openapi.ts` is 24,523 lines and 1,490,538 bytes. Its
 `paths`, `components`, and `operations` types are valuable compile-time
@@ -186,8 +188,9 @@ TLS mechanics:
   browser session acquisition requires an explicitly installed, scoped,
   short-lived authorization or trusted mediator; and
 - browser WebSocket authentication cannot depend on arbitrary HTTP headers or
-  put bearer material in a URL. B-04 must define a typed, bounded
-  connection-authentication exchange.
+  put bearer material in a URL. H-04 must add a typed, bounded browser
+  connection-authentication exchange without weakening or forking the B-04
+  application-frame protocol.
 
 Connectome may consume the browser profile only after those constraints pass
 real browser tests. It cannot add its own endpoint, session, retry,
@@ -214,8 +217,9 @@ The target follows the operation-certainty matrix in the
 particular, a read may replay only when the engine preserves the same accepted
 read coordinate, and a mutation may replay only as identical bytes bound to an
 engine-durable operation/idempotency receipt. Timeout and caller abort end
-local waiting; they do not prove server cancellation or non-commit. B-04 adds
-a correlated server cancellation operation and terminal outcome. Errors retain
+local waiting; they do not prove server cancellation or non-commit. B-04
+defines a correlated server cancellation operation and terminal outcome;
+H-04 implements that carriage here. Errors retain
 the abort reason and safe cause without turning it into retry truth.
 
 ## Credentials, errors, and causal evidence
@@ -246,8 +250,9 @@ reasoning state.
 ## Multiplexed WebSocket delivery
 
 The current TypeScript package has no WebSocket code or tests. B-04 supplies
-one environment-neutral protocol state machine and thin Node/browser carriage
-adapters. It must:
+the closed environment-neutral protocol and Rust reference implementation;
+H-04 must add thin TypeScript Node/browser state and carriage adapters. They
+must:
 
 - route request/response, cancellation, subscription, delivery, ACK,
   heartbeat, backpressure, error, and terminal frames over one negotiated
@@ -338,7 +343,7 @@ sdks/typescript/src/
 ├── retry.ts                 # current broad attempt/deadline calculation
 ├── session.ts               # current plain enumerable credential object
 ├── transport.ts             # current bounded Fetch/envelope handling
-├── subscription.ts          # planned B-04; absent until behavior exists
+├── subscription.ts          # planned H-04; absent until behavior exists
 └── generated/
     ├── endpoints.ts
     ├── rrd-openapi.ts
@@ -347,7 +352,7 @@ sdks/typescript/src/
 sdks/typescript/tests/
 ├── operation-coverage.test.ts    # planned H-04
 ├── protocol-validation.test.ts   # planned H-04/J-02
-├── transport-faults.test.ts      # planned B-04/H-04/H-07/J-02
+├── transport-faults.test.ts      # planned H-04/H-07/J-02
 ├── package-consumer.test.ts      # planned J-03/J-05
 ├── browser-conformance.test.ts   # planned H-04/H-07/J-03
 └── sdk-conformance.ts
@@ -355,16 +360,17 @@ sdks/typescript/tests/
 
 The execution order is:
 
-1. **A-07.1c (implemented; A-07 remains open):** split every current
+1. **A-07.1c/A-07 (implemented):** split every current
    responsibility directly, rename the conformance file, preserve the public
    surface plus generator/mock/live characterization, and leave no old
    implementation or forwarding module.
-2. **B-04:** implement the common multiplexed state machine and bounded
-   browser/Node WebSocket carriage.
+2. **B-04 (contract implemented):** consume the closed multiplexed golden
+   protocol; no TypeScript behavior is claimed by the Rust reference carriage.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap.
-4. **H-04:** generate and enforce complete runtime contracts, semantic retry/
-   certainty/cancellation, opaque credentials, W3C propagation, and the
-   structural cross-surface corpus.
+4. **H-04:** implement bounded browser/Node WebSocket carriage, then generate
+   and enforce complete runtime contracts, semantic retry/certainty/
+   cancellation, opaque credentials, W3C propagation, and the structural
+   cross-surface corpus.
 5. **H-07:** add installed endpoint resolution, HTTPS transport identity, and
    authenticated rotation without making mesh reachability authority.
 6. **J-02/J-03/J-05:** pass adversarial resource/failure tests, deterministic

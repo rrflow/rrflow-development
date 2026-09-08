@@ -2,14 +2,19 @@ use rcgen::{
     BasicConstraints, Certificate, CertificateParams, ExtendedKeyUsagePurpose, IsCa, Issuer,
     KeyPair, KeyUsagePurpose,
 };
-use rrd_client::{is_unauthenticated, ClientConfig, Error, RequestOptions, RrdClient, Session};
+use rrd_client::{
+    is_unauthenticated, ClientConfig, Error, RequestOptions, RrdClient, RrdWebSocket, Session,
+};
 use rrd_contract::{
     transaction_operation_sha256, AbortTransaction, AssembleContext, BeginTransaction, CanonicalId,
     CloseSubscription, CommitTransaction, ContextEvidenceKind, CreateSession,
-    DeploymentConformanceCorpus, DeploymentMode, ExecuteQuery, ExportAudit, OpenSubscription,
-    PreviewTransaction, QueryBudget, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, ResourceId,
-    ResourceKind, ResourcePath, SessionLimits, SubscriptionServerFrame, SubscriptionStream,
-    TransactionMutation,
+    DeploymentConformanceCorpus, DeploymentMode, ErrorCode, ExecuteQuery, ExportAudit,
+    OpenSubscription, PreviewTransaction, QueryBudget, ReadAudit, ReadChangefeed,
+    ReadDiagnosticSnapshot, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
+    ResourcePath, SessionLimits, SubscriptionAcknowledgement, SubscriptionDelivery,
+    SubscriptionResume, SubscriptionStream, TransactionMutation, WebSocketCancel,
+    WebSocketCancellationDisposition, WebSocketErrorTarget, WebSocketFrame, WebSocketPayload,
+    WebSocketRequest, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_core::{
     digest, RuntimeCommit, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
@@ -31,6 +36,18 @@ use std::collections::BTreeMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const INTEGRATION_IO_TIMEOUT: Duration = Duration::from_secs(10);
+
+async fn receive_application_frame(socket: &mut RrdWebSocket) -> WebSocketFrame {
+    loop {
+        let frame = socket
+            .receive_until(tokio::time::Instant::now() + INTEGRATION_IO_TIMEOUT)
+            .await
+            .unwrap();
+        if !matches!(frame.payload, WebSocketPayload::Heartbeat(_)) {
+            return frame;
+        }
+    }
+}
 
 fn test_ca() -> (Certificate, Issuer<'static, KeyPair>) {
     let mut params = CertificateParams::new(Vec::<String>::new()).unwrap();
@@ -279,6 +296,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             Action::TransactionAbort,
             Action::ChangefeedRead,
             Action::ChangefeedFollow,
+            Action::WebSocketConnect,
             Action::SubscriptionOpen,
             Action::SubscriptionConnect,
             Action::SubscriptionAck,
@@ -295,12 +313,42 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         })
         .collect(),
     };
+    let websocket_limited_principal = Principal {
+        id: CanonicalId::new("websocket-limited").unwrap(),
+        kind: PrincipalKind::Service,
+        credential_sha256: digest::sha256_hex(b"websocket-limited-key"),
+        credential_revision: 1,
+        not_before_unix_ms: 1,
+        expires_at_unix_ms: u64::MAX,
+        disabled: false,
+        role_ids: Default::default(),
+        grants: [
+            Action::SessionCreate,
+            Action::WebSocketConnect,
+            Action::SubscriptionOpen,
+            Action::SubscriptionClose,
+            Action::ChangefeedFollow,
+        ]
+        .into_iter()
+        .map(|action| ResourceGrant {
+            action,
+            resource_prefix: resource.clone(),
+            data_policy: None,
+        })
+        .collect(),
+    };
     SecurityRepository::new(&storage, instance.clone())
         .initialize(
             SecurityState {
                 format_version: SECURITY_FORMAT,
                 revision: 1,
-                principals: BTreeMap::from([(principal.id.clone(), principal)]),
+                principals: BTreeMap::from([
+                    (principal.id.clone(), principal),
+                    (
+                        websocket_limited_principal.id.clone(),
+                        websocket_limited_principal,
+                    ),
+                ]),
                 roles: BTreeMap::new(),
                 identity_bindings: BTreeMap::new(),
                 jwt_issuers: BTreeMap::new(),
@@ -363,6 +411,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         ClientConfig {
             request_timeout: INTEGRATION_IO_TIMEOUT,
             max_attempts: 2,
+            websocket_limits: Default::default(),
         },
     )
     .unwrap();
@@ -408,7 +457,94 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         )
         .await
         .unwrap();
+    let websocket_limited_session = client
+        .create_session(
+            CanonicalId::new("websocket-limited").unwrap(),
+            "websocket-limited-key",
+            CreateSession {
+                limits: SessionLimits {
+                    idle_timeout_ms: 60_000,
+                    absolute_timeout_ms: 300_000,
+                    max_open_transactions: 1,
+                },
+            },
+            RequestOptions::mutation(
+                "request-websocket-limited-session",
+                "operation-websocket-limited-session",
+                "websocket-limited-session-key",
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    let limited_subscription_id =
+        rrd_contract::CorrelationId::new("websocket-limited-subscription").unwrap();
+    let limited_opened = client
+        .open_subscription(
+            &websocket_limited_session,
+            OpenSubscription {
+                subscription_id: limited_subscription_id.clone(),
+                stream: SubscriptionStream::Changefeed {
+                    scope: "instance:sdk-test".into(),
+                },
+                after_cursor: 0,
+                batch_size: 1,
+                max_in_flight: 1,
+                retention_cursor_window: 128,
+                lease_ms: 60_000,
+                heartbeat_interval_ms: 100,
+            },
+            RequestOptions::mutation(
+                "request-websocket-limited-open",
+                "operation-websocket-limited-open",
+                "websocket-limited-open-key",
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    let mut limited_socket = client
+        .connect_websocket(&websocket_limited_session)
+        .await
+        .unwrap();
+    limited_socket
+        .subscribe(SubscriptionResume::from_snapshot(
+            &limited_opened.subscription,
+        ))
+        .await
+        .unwrap();
+    match limited_socket.receive().await.unwrap_err() {
+        Error::WebSocket(error) => {
+            assert_eq!(error.error.code, ErrorCode::PermissionDenied);
+            assert!(matches!(
+                error.target,
+                WebSocketErrorTarget::Subscription {
+                    ref subscription_id,
+                    connection_generation: 1,
+                } if subscription_id == &limited_subscription_id
+            ));
+        }
+        error => panic!("expected subscription authorization denial, got {error:?}"),
+    }
+    limited_socket.close().await.unwrap();
+    client
+        .close_subscription(
+            &websocket_limited_session,
+            CloseSubscription {
+                subscription_id: limited_subscription_id,
+            },
+            RequestOptions::mutation(
+                "request-websocket-limited-close",
+                "operation-websocket-limited-close",
+                "websocket-limited-close-key",
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
     let subscription_id = rrd_contract::CorrelationId::new("rust-sdk-subscription").unwrap();
+    let second_subscription_id =
+        rrd_contract::CorrelationId::new("rust-sdk-subscription-two").unwrap();
     let opened = client
         .open_subscription(
             &session,
@@ -433,93 +569,236 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         )
         .await
         .unwrap();
+    let second_opened = client
+        .open_subscription(
+            &session,
+            OpenSubscription {
+                subscription_id: second_subscription_id.clone(),
+                stream: SubscriptionStream::Changefeed {
+                    scope: "instance:sdk-test".into(),
+                },
+                after_cursor: 0,
+                batch_size: 1,
+                max_in_flight: 1,
+                retention_cursor_window: 128,
+                lease_ms: 60_000,
+                heartbeat_interval_ms: 100,
+            },
+            RequestOptions::mutation(
+                "request-subscription-open-two",
+                "operation-subscription-open-two",
+                "subscription-open-key-two",
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
     assert_eq!(opened.subscription.acknowledged_cursor, 0);
-    let (mut subscription, first_connection) = client
-        .connect_subscription(&session, subscription_id.clone())
-        .await
-        .unwrap();
-    assert_eq!(first_connection.connection_generation, 1);
-    let first = tokio::time::timeout(INTEGRATION_IO_TIMEOUT, subscription.receive())
-        .await
-        .unwrap()
-        .unwrap();
-    let (first_delivery, first_cursor) = match first {
-        SubscriptionServerFrame::Changefeed {
-            delivery_sequence,
-            page,
-            ..
-        } => {
-            assert_eq!(page.requested_after_cursor, 0);
-            assert_eq!(page.through_cursor, 1);
-            (delivery_sequence, page.through_cursor)
-        }
-        frame => panic!("expected pushed changefeed frame, got {frame:?}"),
-    };
-    subscription
-        .acknowledge(first_delivery, first_cursor)
-        .await
-        .unwrap();
-    loop {
-        let frame = tokio::time::timeout(INTEGRATION_IO_TIMEOUT, subscription.receive())
-            .await
-            .unwrap()
-            .unwrap();
-        if matches!(
-            frame,
-            SubscriptionServerFrame::Acknowledged {
-                ref subscription
-            } if subscription.acknowledged_cursor == 1
-        ) {
-            break;
-        }
-    }
-    let unacknowledged = tokio::time::timeout(INTEGRATION_IO_TIMEOUT, subscription.receive())
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(matches!(
-        unacknowledged,
-        SubscriptionServerFrame::Changefeed { ref page, .. }
-            if page.requested_after_cursor == 1 && page.through_cursor == 2
-    ));
-    drop(subscription);
+    assert_eq!(second_opened.subscription.acknowledged_cursor, 0);
 
-    let (mut subscription, reconnected) = client
-        .connect_subscription(&session, subscription_id.clone())
-        .await
-        .unwrap();
-    assert_eq!(reconnected.connection_generation, 2);
-    assert_eq!(reconnected.acknowledged_cursor, 1);
-    let replay = tokio::time::timeout(INTEGRATION_IO_TIMEOUT, subscription.receive())
-        .await
-        .unwrap()
-        .unwrap();
-    let (replay_delivery, replay_cursor) = match replay {
-        SubscriptionServerFrame::Changefeed {
-            delivery_sequence,
-            page,
-            ..
-        } => {
-            assert_eq!(page.requested_after_cursor, 1);
-            assert_eq!(page.through_cursor, 2);
-            (delivery_sequence, page.through_cursor)
-        }
-        frame => panic!("expected replayed changefeed frame, got {frame:?}"),
+    let mut socket = client.connect_websocket(&session).await.unwrap();
+    let websocket_request = WebSocketRequest {
+        operation: CanonicalId::new("query-execute").unwrap(),
+        request: RequestEnvelope {
+            protocol: PROTOCOL.into(),
+            protocol_version: PROTOCOL_VERSION,
+            context: RequestContext {
+                request_id: rrd_contract::CorrelationId::new("websocket-query-request").unwrap(),
+                operation_id: rrd_contract::CorrelationId::new("websocket-query-operation")
+                    .unwrap(),
+                idempotency_key: None,
+                deadline_unix_ms: None,
+            },
+            resource: instance_resource(),
+            payload: serde_json::to_value(ExecuteQuery {
+                scope: "instance:sdk-test".into(),
+                query: "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title".into(),
+                parameters: BTreeMap::new(),
+                budget: QueryBudget::default(),
+            })
+            .unwrap(),
+        },
     };
-    subscription
-        .acknowledge(replay_delivery, replay_cursor)
+    let request_target = socket.send_request(websocket_request).await.unwrap();
+    let cancellation_id = rrd_contract::CorrelationId::new("websocket-query-cancellation").unwrap();
+    socket
+        .cancel(WebSocketCancel {
+            cancellation_id: cancellation_id.clone(),
+            target: request_target.clone(),
+            reason: "exercise terminal cancellation correlation".into(),
+        })
         .await
         .unwrap();
-    subscription.close().await.unwrap();
     loop {
-        let frame = tokio::time::timeout(INTEGRATION_IO_TIMEOUT, subscription.receive())
-            .await
-            .unwrap()
-            .unwrap();
-        if matches!(frame, SubscriptionServerFrame::Closed { .. }) {
-            break;
+        match socket.receive().await {
+            Err(Error::WebSocket(error)) => {
+                assert_eq!(error.error.code, ErrorCode::FailedPrecondition);
+                assert!(matches!(
+                    error.target,
+                    WebSocketErrorTarget::Request { ref target }
+                        if target == &request_target
+                ));
+                break;
+            }
+            Ok(frame) if matches!(frame.payload, WebSocketPayload::Heartbeat(_)) => {}
+            result => panic!("unexpected WebSocket request result: {result:?}"),
         }
     }
+    match receive_application_frame(&mut socket).await.payload {
+        WebSocketPayload::Cancellation(result) => {
+            assert_eq!(result.cancellation_id, cancellation_id);
+            assert_eq!(result.target, request_target);
+            assert_eq!(
+                result.disposition,
+                WebSocketCancellationDisposition::NotFound
+            );
+        }
+        payload => panic!("unexpected cancellation result: {payload:?}"),
+    }
+    socket
+        .subscribe(SubscriptionResume::from_snapshot(&opened.subscription))
+        .await
+        .unwrap();
+    socket
+        .subscribe(SubscriptionResume::from_snapshot(
+            &second_opened.subscription,
+        ))
+        .await
+        .unwrap();
+
+    let mut subscribed = BTreeMap::new();
+    let mut first_deliveries = BTreeMap::new();
+    while subscribed.len() < 2 || first_deliveries.len() < 2 {
+        match receive_application_frame(&mut socket).await.payload {
+            WebSocketPayload::Subscribed(result) => {
+                assert_eq!(result.subscription.connection_generation, 1);
+                subscribed.insert(
+                    result.subscription.subscription_id.clone(),
+                    result.subscription,
+                );
+            }
+            WebSocketPayload::Delivery(delivery) => {
+                let SubscriptionDelivery::Changefeed { page } = delivery.delivery else {
+                    panic!("expected a changefeed delivery");
+                };
+                assert_eq!(page.requested_after_cursor, 0);
+                assert_eq!(page.through_cursor, 1);
+                first_deliveries.insert(
+                    delivery.subscription_id,
+                    (delivery.delivery_sequence, page.through_cursor),
+                );
+            }
+            WebSocketPayload::Backpressure(_) => {}
+            payload => panic!("unexpected multiplex setup payload: {payload:?}"),
+        }
+    }
+    assert!(subscribed.contains_key(&subscription_id));
+    assert!(subscribed.contains_key(&second_subscription_id));
+
+    for (id, (delivery_sequence, through_cursor)) in &first_deliveries {
+        let generation = socket
+            .subscription(id)
+            .expect("multiplexed subscription is active")
+            .connection_generation;
+        socket
+            .acknowledge(SubscriptionAcknowledgement {
+                subscription_id: id.clone(),
+                connection_generation: generation,
+                delivery_sequence: *delivery_sequence,
+                through_cursor: *through_cursor,
+            })
+            .await
+            .unwrap();
+    }
+    let mut acknowledged = BTreeMap::new();
+    let mut second_deliveries = BTreeMap::new();
+    while acknowledged.len() < 2 {
+        match receive_application_frame(&mut socket).await.payload {
+            WebSocketPayload::Acknowledged(result) => {
+                assert_eq!(result.subscription.acknowledged_cursor, 1);
+                acknowledged.insert(
+                    result.subscription.subscription_id.clone(),
+                    result.subscription,
+                );
+            }
+            WebSocketPayload::Delivery(delivery) => {
+                second_deliveries.insert(delivery.subscription_id.clone(), delivery);
+            }
+            WebSocketPayload::Backpressure(_) => {}
+            payload => panic!("unexpected multiplex ACK payload: {payload:?}"),
+        }
+    }
+    let resume = SubscriptionResume::from_snapshot(
+        socket
+            .subscription(&subscription_id)
+            .expect("primary subscription remains active"),
+    );
+    while !second_deliveries.contains_key(&subscription_id) {
+        match receive_application_frame(&mut socket).await.payload {
+            WebSocketPayload::Delivery(delivery) => {
+                second_deliveries.insert(delivery.subscription_id.clone(), delivery);
+            }
+            WebSocketPayload::Backpressure(_) => {}
+            payload => panic!("unexpected unacknowledged payload: {payload:?}"),
+        }
+    }
+    let unacknowledged = &second_deliveries[&subscription_id];
+    assert_eq!(unacknowledged.from_cursor, 1);
+    assert_eq!(unacknowledged.through_cursor, 2);
+    drop(socket);
+
+    let mut socket = client.connect_websocket(&session).await.unwrap();
+    socket.subscribe(resume).await.unwrap();
+    match receive_application_frame(&mut socket).await.payload {
+        WebSocketPayload::Subscribed(result) => {
+            assert_eq!(result.subscription.subscription_id, subscription_id);
+            assert_eq!(result.subscription.connection_generation, 2);
+            assert_eq!(result.subscription.acknowledged_cursor, 1);
+        }
+        payload => panic!("unexpected reconnect payload: {payload:?}"),
+    }
+    let replay = loop {
+        match receive_application_frame(&mut socket).await.payload {
+            WebSocketPayload::Delivery(delivery) => break delivery,
+            WebSocketPayload::Backpressure(_) => {}
+            payload => panic!("unexpected replay payload: {payload:?}"),
+        }
+    };
+    let SubscriptionDelivery::Changefeed { ref page } = replay.delivery else {
+        panic!("expected replayed changefeed delivery");
+    };
+    assert_eq!(page.requested_after_cursor, 1);
+    assert_eq!(page.through_cursor, 2);
+    socket
+        .acknowledge(SubscriptionAcknowledgement {
+            subscription_id: subscription_id.clone(),
+            connection_generation: replay.connection_generation,
+            delivery_sequence: replay.delivery_sequence,
+            through_cursor: replay.through_cursor,
+        })
+        .await
+        .unwrap();
+    loop {
+        match receive_application_frame(&mut socket).await.payload {
+            WebSocketPayload::Acknowledged(result)
+                if result.subscription.subscription_id == subscription_id =>
+            {
+                assert_eq!(result.subscription.acknowledged_cursor, 2);
+                break;
+            }
+            WebSocketPayload::Backpressure(_) => {}
+            payload => panic!("unexpected replay ACK payload: {payload:?}"),
+        }
+    }
+    socket.unsubscribe(&subscription_id).await.unwrap();
+    match receive_application_frame(&mut socket).await.payload {
+        WebSocketPayload::Unsubscribed(result) => {
+            assert_eq!(result.subscription.subscription_id, subscription_id);
+        }
+        payload => panic!("unexpected unsubscribe payload: {payload:?}"),
+    }
+    socket.close().await.unwrap();
+
     let closed = client
         .close_subscription(
             &session,
@@ -537,6 +816,25 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .unwrap();
     assert_eq!(
         closed.subscription.status,
+        rrd_contract::SubscriptionStatus::Closed
+    );
+    let second_closed = client
+        .close_subscription(
+            &session,
+            CloseSubscription {
+                subscription_id: second_subscription_id,
+            },
+            RequestOptions::mutation(
+                "request-subscription-close-two",
+                "operation-subscription-close-two",
+                "subscription-close-key-two",
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        second_closed.subscription.status,
         rrd_contract::SubscriptionStatus::Closed
     );
     let context = client
@@ -803,6 +1101,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             ClientConfig {
                 request_timeout: INTEGRATION_IO_TIMEOUT,
                 max_attempts: 2,
+                websocket_limits: Default::default(),
             },
         )
         .unwrap();
@@ -929,6 +1228,7 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
             Action::TransactionCommit,
             Action::QueryExecute,
             Action::ChangefeedFollow,
+            Action::WebSocketConnect,
             Action::SubscriptionOpen,
             Action::SubscriptionConnect,
             Action::SubscriptionAck,
@@ -1059,7 +1359,7 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
     commit_client_deployment_corpus(&client, &session, "remote-conformance").await;
     assert_client_deployment_corpus(&client, &session, DeploymentMode::Remote).await;
     let subscription_id = rrd_contract::CorrelationId::new("mtls-subscription").unwrap();
-    client
+    let opened = client
         .open_subscription(
             &session,
             OpenSubscription {
@@ -1083,19 +1383,26 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
         )
         .await
         .unwrap();
-    let (mut socket, connected) = client
-        .connect_subscription(&session, subscription_id)
+    let mut socket = client.connect_websocket(&session).await.unwrap();
+    socket
+        .subscribe(SubscriptionResume::from_snapshot(&opened.subscription))
         .await
         .unwrap();
-    assert_eq!(connected.connection_generation, 1);
-    let pushed = tokio::time::timeout(INTEGRATION_IO_TIMEOUT, socket.receive())
-        .await
-        .unwrap()
-        .unwrap();
+    match receive_application_frame(&mut socket).await.payload {
+        WebSocketPayload::Subscribed(result) => {
+            assert_eq!(result.subscription.connection_generation, 1);
+        }
+        payload => panic!("unexpected mTLS connect payload: {payload:?}"),
+    }
+    let pushed = receive_application_frame(&mut socket).await;
     assert!(matches!(
-        pushed,
-        SubscriptionServerFrame::Changefeed { ref page, .. }
-            if page.requested_after_cursor == 0 && page.through_cursor == 3
+        pushed.payload,
+        WebSocketPayload::Delivery(ref delivery)
+            if matches!(
+                &delivery.delivery,
+                SubscriptionDelivery::Changefeed { page }
+                    if page.requested_after_cursor == 0 && page.through_cursor == 3
+            )
     ));
     socket.close().await.unwrap();
 

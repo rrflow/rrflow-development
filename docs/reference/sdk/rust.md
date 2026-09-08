@@ -40,9 +40,9 @@ merely compare JSON shapes.
 ## Audited current surface
 
 The executable `endpoint_catalogue()` contains 33 HTTP operations and one
-subscription WebSocket descriptor. `RrdClient` currently supplies typed HTTP
-methods for 28 of those 33 operations and implements the dedicated
-subscription socket. The current boundary is:
+generic authenticated `/v1/ws` descriptor. `RrdClient` currently supplies
+typed HTTP methods for 28 of those 33 operations, while `RrdWebSocket`
+implements the bounded B-04 multiplexed protocol. The current boundary is:
 
 | Family | Catalogued HTTP operations | Rust methods now | Missing now |
 |---|---:|---:|---|
@@ -62,11 +62,13 @@ subscription socket. The current boundary is:
 | Context | 1 | 1 | none |
 | **Total** | **33** | **28** | **5** |
 
-The WebSocket method connects, receives an opening snapshot, reads server
-frames, sends cumulative ACKs and heartbeats, and requests closure. This is
-real current behavior, but it is the single-subscription protocol documented
-in [durable subscriptions](../protocol/subscriptions.md), not the B-04
-multiplexed target.
+The WebSocket method authenticates one generic connection, validates the
+server's opening identity and negotiated limits, and carries request,
+cancellation, multiple subscription, delivery, cumulative ACK, heartbeat,
+unsubscribe, error, and backpressure frames. It tracks exact in-flight
+coordinates and durable resume state without owning engine lifecycle. Generic
+requests remain deliberately fail-closed at the server until H-04 binds the
+shared operation dispatcher.
 
 ## Behavior worth retaining
 
@@ -84,15 +86,20 @@ The complete source and real-server fixtures establish useful foundations:
 - HTTP response accumulation is capped at four MiB;
 - API error bodies preserve their current closed error code, message,
   retryability value, and HTTP status;
-- loopback tests exercise a real secured server and durable subscription
-  reconnect/ACK behavior rather than a mocked client; and
+- loopback tests exercise a real secured server, independent generic-connect
+  and subscription permissions, correlated request/cancellation results, two
+  multiplexed durable streams, and reconnect/ACK behavior rather than a
+  mocked client;
+- malicious-server tests reject foreign connection IDs, sequence gaps,
+  unknown payload fields, binary application messages, oversized messages,
+  and mismatched response IDs; and
 - a separate HTTPS/WSS fixture proves a configured mutual-TLS success path,
   missing-client-certificate denial, and wrong-server-name denial.
 
 Those facts characterize the present client. They do not prove complete
 operation coverage, full request/response validation, stable retry semantics,
-server-side cancellation, bounded WebSocket allocation, endpoint rotation,
-installed deployment, or cross-language equivalence.
+H-04 operation execution/cancellation, endpoint rotation, installed
+deployment, or cross-language equivalence.
 
 ## Catalogue-driven operation binding
 
@@ -172,9 +179,10 @@ each attempt while an optional absolute deadline bounds the remaining time.
 
 Dropping a Tokio future or reaching the local timeout ends local waiting; it
 does not prove that the server stopped compute or a mutation did not commit.
-B-04 must add a correlated cancellation request and terminal outcome for
-multiplexed work. Mutation certainty remains governed by the durable engine
-receipt even when the caller disconnects.
+B-04 now provides the correlated cancellation request and terminal outcome
+shape. The current server returns `not_found` because H-04 has not bound
+generic operations to cancellable engine work. Mutation certainty remains
+governed by the durable engine receipt even when the caller disconnects.
 
 ## Authentication, secrets, and transport identity
 
@@ -206,26 +214,28 @@ uncontrolled server bodies.
 
 ## WebSocket bounds and frame integrity
 
-The current client gives `tokio-tungstenite` no `WebSocketConfig`, so its
-locked dependency defaults permit substantially larger messages and buffers
-than the RRD server's 64-KiB contract. That is not a client resource bound.
-B-04 must configure limits before reading frames and prove them with malicious
-peer tests.
+`ClientConfig` now requires validated `WebSocketLimits`. The client passes
+message, frame, read-buffer, write-buffer, and maximum-write-buffer bounds to
+`tokio-tungstenite` before connecting, then admits only a server `connected`
+frame whose negotiated limits are no greater than the local profile. The
+default maximum frame and reassembled application message are one MiB;
+in-flight requests and attached subscriptions are bounded and checked before
+send.
 
-The multiplexed client must:
+The direction-specific codec rejects a wrong protocol/version, foreign
+connection, repeated or missing first `connected` frame, non-contiguous
+sequence, client-only server payload, binary application data, unknown JSON
+fields, excessive JSON depth/items, unbounded errors/reasons, and responses
+without exact pending coordinates. Subscription delivery must match the
+active identity, generation, contiguous delivery sequence, and cursor. ACK,
+unsubscribe, heartbeat, error, and backpressure targets are checked against
+exact pending or active state. `receive_until` exposes an absolute receive
+deadline, and all sends use the negotiated timeout.
 
-- cap frame/message/read/write buffering at the negotiated RRD limits before
-  allocation and reject binary or unknown frame shapes;
-- validate every frame's protocol, request or subscription identity,
-  connection generation, sequence/cursor monotonicity, and bounded error;
-- expose a receive deadline and correlated cancellation;
-- enforce bounded in-flight requests and subscription deliveries with explicit
-  backpressure;
-- resume only from a durably acknowledged cursor and reject stale generations;
-  and
-- route request/response, cancellation, subscription, ACK, heartbeat, and
-  terminal frames over the one B-04 connection without creating client-owned
-  lifecycle state.
+This proves B-04 carriage and protocol integrity for the Rust reference
+client. It does not prove H-04 generic operation execution, server-side
+cancellation of active compute, operation-semantic retry certainty, or
+generated-language parity.
 
 ## Errors and causal evidence
 
@@ -255,10 +265,10 @@ The current corpus overstates several rows:
 | `crud` | one document create and read | create, read, update, retire/delete, conflict, and reopen semantics |
 | `backup` | create and list | restore, interrupted restore, identity, and reopen |
 | `vectors` | ensure and search | list, scroll, retrieve, update/delete, filters, exact comparison, and reopen |
-| `live_feeds` | HTTP changefeed read/follow | multiplexed WebSocket delta, ACK, reconnect, backpressure, and cancellation |
+| `live_feeds` | HTTP changefeed read/follow; separate B-04 Rust tests now prove multiplexed delivery, ACK, detach, and reconnect replay | H-03 commit-impact deltas and the same structural scenario in every surface |
 | `typed_errors` | one unauthenticated denial | the closed error/denial matrix with bounded details and redaction |
 | `retries` | one connection dropped before a capability request | before-send, after-send, after-commit, lost-response, bounded replay, and uncertain-outcome cases |
-| `cancellation` | caller wraps one follow future in a local timeout | correlated server cancellation and terminal evidence, including disconnect races |
+| `cancellation` | caller wraps one follow future in a local timeout; separate B-04 Rust proof covers a correlated fail-closed request and terminal `not_found` cancellation | H-04 cancellation of actual shared-dispatch work, including disconnect and commit races |
 | `versions` | one incompatible capability response | protocol, catalogue/schema digest, package, and supported-release matrix |
 
 The harness currently seeds schema, estate, and security by directly opening
@@ -282,7 +292,8 @@ names.
 |---|---|---|
 | A-07.1b public-method inventory comparison | Every pre-split public method remains; only non-secret session metadata accessors were added. | Source/API-shape preservation except the intentional removal of public credential fields; not operation conformance. |
 | `session_debug_redacts_the_bearer_credential` | 1 passed | Proves the client-owned session formatter omits the synthetic bearer; not memory zeroization or all-error redaction. |
-| `cargo test -p rrd-client --test real_server --locked` | 3 passed | Real loopback, narrow deployment corpus, and mutual-TLS/WSS behavior; not full operation, storage-profile, or release conformance. |
+| `cargo test -p rrd-client --test real_server --locked` | 3 passed | Real loopback, generic WSS, independent attach permission, two-stream multiplexing, exact replay/ACK, and narrow deployment behavior; not H-04 operation execution, storage-profile, or release conformance. |
+| `cargo test -p rrd-client --test transport_faults --locked` | 3 tests covering 6 malicious-server scenarios passed | B-04 connection, sequence, shape, binary, size, and response-correlation rejection; not every transport/TLS/failure race. |
 | Rust conformance test with no manifest | Cargo reported 1 passed in 0.00 s | The test returned before executing a scenario; this is not conformance evidence. |
 | Rust conformance test against the live example harness with the absolute shared-corpus path | 1 passed; runner reported the expected corpus SHA-256 | Real execution of the present limited rrflowKV corpus; not installation, rrflowMX parity, full labelled behavior, or cross-language proof. |
 | Generated-surface parity check | 33 HTTP operations matched OpenAPI | Checks generated TypeScript/Python/Go/Java/.NET endpoint maps; it does not inspect Rust method coverage. |
@@ -306,25 +317,26 @@ crates/transport/rrd-client/src/
 ├── operation.rs       # current typed calls, envelopes, and outcome checks
 ├── retry.rs           # current attempt/deadline configuration
 ├── session.rs         # private credential-bearing session handle
-├── subscription.rs    # current dedicated durable-subscription socket
+├── subscription.rs    # bounded generic multiplexed WebSocket client
 └── transport.rs       # current bounded HTTP carriage
 
 crates/transport/rrd-client/tests/
 ├── operation_coverage.rs      # planned H-04
 ├── protocol_validation.rs     # planned H-04/J-02
-├── transport_faults.rs        # planned B-04/H-04/H-07/J-02
+├── transport_faults.rs        # B-04 faults; extended by H-04/H-07/J-02
 ├── real_server.rs
 └── sdk_conformance.rs
 ```
 
 The gates then close behavior in dependency order:
 
-1. **A-07.1b (implemented; A-07 remains open):** characterized behavior,
+1. **A-07.1b/A-07 (implemented):** characterized behavior,
    direct modules, public names, the redacted session boundary, and the exact
    current symbol/test map are preserved with no compatibility module or old
    implementation body.
-2. **B-04:** replace the dedicated socket with the bounded multiplexed protocol
-   and correlated cancellation.
+2. **B-04 (implemented):** the dedicated socket is absent; one bounded
+   multiplexed protocol and Rust carriage now own request/cancel/subscription
+   correlation, exact resume state, and adversarial frame rejection.
 3. **H-04:** bind all 33 operations from the catalogue, validate every request
    and response, and compare Rust with every supported surface against one
    real `RrdEngine` corpus.
@@ -350,6 +362,6 @@ The gates then close behavior in dependency order:
 - [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude)
   identifies access tokens, authentication secrets, and session identifiers as
   data that should not be recorded directly.
-- The locked `tungstenite` 0.29.0 `WebSocketConfig` source is the executable
-  authority for current client defaults; release limits come from explicit RRD
-  configuration and adversarial tests, never from an assumed library default.
+- The locked `tungstenite` 0.29.0 `WebSocketConfig` source defines the carriage
+  controls used by the client; RRFlow supplies validated explicit limits and
+  proves them with adversarial tests rather than inheriting library defaults.

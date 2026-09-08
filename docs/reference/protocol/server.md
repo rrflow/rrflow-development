@@ -64,9 +64,10 @@ Liveness proves only that the process answers. Readiness opens the configured
 instance and checks its current format and operational state. Capabilities
 characterize the installed profile and supported operations; they are not
 release evidence. The current response incorrectly derives `local_daemon`
-versus `remote` solely from whether TLS is configured. A-07/B-04/H-04 must
-replace that scalar with independently installed deployment-form,
-storage-profile, endpoint-presentation, and security facts. Connectome and SDKs
+versus `remote` solely from whether TLS is configured. A-07 froze the direct
+replacement; C-02, D-01, and H-04 must implement independently installed
+deployment-form, storage-profile, endpoint-presentation, and security facts.
+Connectome and SDKs
 must reject an unexpected protocol version or instance resource rather than
 inferring compatibility.
 
@@ -84,7 +85,7 @@ the exact target launch, authenticated readiness, and shutdown boundary.
 |---|---|---|
 | Loopback HTTP/WebSocket | Clear HTTP may bind only to an explicit loopback address. Library and binary startup reject non-loopback cleartext before opening a listener. | Released installation, service supervision, and client conformance remain Gate D/J work. |
 | Configured network HTTP/WebSocket | A non-loopback listener requires TLS 1.3, a server certificate and key, a client CA, mandatory client-certificate validation, and initialized RRFlow security state. | Certificate reload, revocation handling, external identity-provider/JWK adapters, and deployment-secret integration are not complete. |
-| WebSocket | The authenticated subscription stream limits messages and frames to 64 KiB and uses durable subscription state, cumulative acknowledgements, generation fencing, leases, and bounded in-flight delivery. | One multiplexed connection carrying query, mutation, subscription, cancellation, and trace streams is Gate B-04 work. |
+| WebSocket | The authenticated generic `/v1/ws` endpoint configures validated message/frame/buffer/write limits before upgrade and carries the closed B-04 protocol. One connection multiplexes bounded requests, cancellations, durable subscriptions, ACKs, heartbeats, errors, and backpressure with exact connection/sequence/generation/cursor correlation. | H-03 must make delivery commit-impact driven; H-04 must bind generic operations and real cancellation to the shared dispatcher; other SDKs and release deployment remain unqualified. |
 
 The current explicit configured-network invocation supplies all TLS inputs
 together:
@@ -142,6 +143,17 @@ files are read under bounded file rules. Persisted session and audit records
 store digests and credential revisions, not raw API keys, JWTs, signing keys,
 or bearer lease tokens.
 
+The WebSocket upgrade separately authorizes `websocket_connect`, sends one
+`connected` frame containing the session identity and negotiated limits, and
+then applies a direction-specific contiguous frame state machine. Attaching a
+durable subscription separately authorizes `subscription_connect` and its
+underlying changefeed or live-query action. The socket can detach a stream but
+cannot close its durable record; administrative close remains the catalogued
+HTTP mutation. B-04 freezes generic request and cancellation correlation, but
+the server truthfully returns `failed_precondition` for operation execution
+and terminal `not_found` for cancellation until H-04 binds the shared
+dispatcher. No transport frame or connection sequence enters `RrdEngine`.
+
 ## Public operation families
 
 The generated catalogue currently covers these capability families:
@@ -153,7 +165,7 @@ The generated catalogue currently covers these capability families:
 | Transactions | Begin, preview, commit, and abort typed mutation work. | `RrdEngine`; rrflowKV owns durable physical commit. |
 | Query and context | rrflowQL reads, live-query poll, index administration, and context assembly. | `RrdEngine`, rrflowQL, and the selected storage profile. |
 | Recall | Vector collection, point, and search operations. | RRFlow's vector subsystem under `RrdEngine`; never a separate database authority. |
-| Delivery | Changefeed read/follow and durable WebSocket subscriptions. | Committed engine state and durable subscription coordinates. |
+| Delivery | Changefeed read/follow and durable subscriptions over the generic multiplexed WebSocket. | Committed engine state and durable subscription coordinates; WebSocket connection/sequence state remains transport-local. |
 | Recovery | Logical backup catalogue, backup creation, and restore into a generated inactive root. | Engine-authorized logical recovery; no active-root switch. |
 
 Existence in this surface proves only that a typed path is callable. Native
@@ -208,22 +220,23 @@ authority.
 
 `changes/follow` is a bounded waiting read over the durable cursor contract.
 It is neither the canonical multiplexed stream nor a promise to retain two
-delivery designs. The WebSocket subscription route currently provides push,
-ACK, backpressure, lease, retention-floor, and restart replay behavior for one
-subscription. Gate B-04/H-03 decides the single completed delivery surface.
+delivery designs. The generic WebSocket provides push, cumulative ACK,
+backpressure, lease, retention-floor, exact reconnect replay, and independent
+generation fencing for multiple subscriptions. H-03 owns direct
+commit-impact delivery and the final convergence of the polling surfaces.
 
 The server records a process-local request span today, but it does not yet
 accept and propagate the canonical W3C trace context or emit the complete
-low-cardinality `rrflow.<boundary>.<operation>` causal graph. A-07 and H-05 own
-that direct trace convergence.
+low-cardinality `rrflow.<boundary>.<operation>` causal graph. A-07 froze the
+vocabulary; H-05 owns complete propagation, persistence, and export proof.
 
 ## Current evidence and remaining qualification
 
 | Evidence boundary | What current tests establish | What they do not establish |
 |---|---|---|
 | Contract/router parity | Every catalogued HTTP operation has exactly one dispatch; generated OpenAPI is derived from the same catalogue. | Released SDK or GraphQL conformance. |
-| Real socket process | Loopback enforcement, liveness/readiness, authentication and scope denial, bounded envelopes, session/transaction replay, concurrent idempotency, multi-model commit/reopen, query, vector, changefeed, backup/restore, and secret exclusion. | Native target storage/index execution, generalized cancellation, or full resource/trace export. |
-| Mutual-TLS transport | The CLI requires the certificate, key, and client CA together; a real-process Rust client test rejects a missing client certificate and wrong server name, accepts the configured identities, and carries HTTPS plus WSS subscription traffic. | Untrusted-client-chain coverage, certificate rotation and revocation, external identity, and production deployment integration remain open. |
+| Real socket process | Loopback enforcement, liveness/readiness, authentication and scope denial, bounded envelopes, session/transaction replay, concurrent idempotency, multi-model commit/reopen, query, vector, changefeed, backup/restore, secret exclusion, and B-04 generic WebSocket request/cancel plus two-subscription/replay behavior. | Native target storage/index execution, H-04 operation cancellation, or full resource/trace export. |
+| Mutual-TLS transport | The CLI requires the certificate, key, and client CA together; a real-process Rust client test rejects a missing client certificate and wrong server name, accepts the configured identities, and carries HTTPS plus generic multiplexed WSS subscription traffic. | Untrusted-client-chain coverage, certificate rotation and revocation, external identity, and production deployment integration remain open. |
 | Local process implementation | Root containment, restart/reopen, identity-safe process control, bounded stop escalation, and controller kill-gap convergence. | Sole installed authority, artifact-to-exec binding, authenticated readiness, rrflowMX parity, or a released service manager; the canonical target and disposition are in the local-process adapter reference. |
 
 The focused characterization commands are:
@@ -231,6 +244,8 @@ The focused characterization commands are:
 ```text
 cargo test -p rrd-server every_catalogued_http_operation_resolves_to_one_executable_dispatch --locked
 cargo test -p rrd-server --all-targets --locked
+cargo test -p rrd-client --test real_server --locked
+cargo test -p rrd-client --test transport_faults --locked
 python3 scripts/ci/check_generated_surfaces.py
 ```
 

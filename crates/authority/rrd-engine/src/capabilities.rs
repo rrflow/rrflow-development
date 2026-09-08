@@ -67,8 +67,8 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
             label: title(&id),
             category: category(&id).to_owned(),
             summary: format!(
-                "RRD WebSocket {}: {} to {}.",
-                endpoint.path, endpoint.client_frame_type, endpoint.server_frame_type
+                "RRD multiplexed WebSocket {} carries {} in both directions.",
+                endpoint.path, endpoint.frame_type
             ),
             id,
             bindings: surface_bindings(
@@ -87,7 +87,7 @@ pub fn product_capability_catalogue() -> ProductCapabilityCatalogue {
                     ),
                     (
                         ProductSurface::Sdk,
-                        available("rrd-client:RrdClient::connect_subscription"),
+                        available("rrd-client:RrdClient::connect_websocket"),
                     ),
                     (
                         ProductSurface::Connectome,

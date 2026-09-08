@@ -16,8 +16,8 @@ use rrd_contract::{
     Liveness, OpenSubscription, PollLiveQuery, PreviewTransaction, ReadAudit, ReadChangefeed,
     ReadDiagnosticSnapshot, ReadEstate, Readiness, RenewSession, RequestContext, RequestEnvelope,
     ResourceId, ResourceKind, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
-    RetrieveVectorPoints, ScrollVectorPoints, SearchVectors, ServiceCapabilities,
-    SubscriptionClientFrame, SubscriptionServerFrame, PROTOCOL, PROTOCOL_VERSION,
+    RetrieveVectorPoints, ScrollVectorPoints, SearchVectors, ServiceCapabilities, PROTOCOL,
+    PROTOCOL_VERSION,
 };
 use rrd_engine::{
     product_capability_catalogue, AuthorizedInvocation, Invocation, InvocationCompletion,
@@ -62,7 +62,7 @@ use response::{
 };
 use router::dispatch;
 use server::AppState;
-use websocket::subscription_websocket_upgrade;
+use websocket::websocket_upgrade;
 
 pub use server::{RrdHttpServer, RrdJwtVerificationKey, RrdMutualTlsServerConfig};
 

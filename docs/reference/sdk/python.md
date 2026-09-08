@@ -114,7 +114,7 @@ The current generated projection contains:
 - method, route template, first authentication scheme, and mutation flag for
   each operation; and
 - OpenAPI SHA-256
-  `e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715`.
+  `3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
 
 It does not generate request models, response models, error-code constraints,
 path-parameter sets, security actions, exact success statuses, media types,
@@ -247,8 +247,9 @@ operation/idempotency receipt. Otherwise a lost response returns a typed
 uncertain observation or outcome for explicit reconciliation.
 
 HTTPX connect/read/write/pool timeouts, the overall RRFlow deadline, caller or
-task cancellation, a B-04 server cancellation request, and a terminal engine
-outcome are separate facts. Backoff, jitter, maximum attempts, endpoint
+task cancellation, the B-04 server-cancellation request, and a terminal engine
+outcome are separate facts. H-04 implements that carriage in Python. Backoff,
+jitter, maximum attempts, endpoint
 rotation, and total elapsed time are bounded inputs and observable evidence,
 not process-global policy. An error's server `retryable` field or Python
 exception message never overrides operation semantics.
@@ -284,9 +285,10 @@ reasoning.
 ## Multiplexed WebSocket delivery
 
 The Python package currently has no WebSocket dependency, source, or test.
-B-04 defines one language-neutral multiplexed protocol state machine. The
-Python SDK then selects and locks a maintained asyncio-compatible carriage only
-after measuring its dependency, platform, frame, memory, cancellation, and TLS
+B-04 defines the closed language-neutral multiplexed protocol and proves the
+Rust reference implementation. H-04 must implement Python state and carriage,
+selecting and locking a maintained asyncio-compatible library only after
+measuring its dependency, platform, frame, memory, cancellation, and TLS
 behavior; this record does not choose a library by assertion.
 
 The resulting client must:
@@ -406,14 +408,14 @@ The dependency order is:
    `test_client.py` remains the honest characterization corpus until later
    gates implement the direct negative-test seams; no async, socket, resolver,
    or validation success was invented.
-2. **B-04:** implement the shared multiplexed state machine, Python async
-   carriage, and correlated cancellation contract.
+2. **B-04 (contract implemented):** consume the closed multiplexed golden
+   protocol; no Python behavior is claimed by the Rust reference carriage.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap and
    endpoint identity.
 4. **H-04:** generate complete models/bindings, implement the native async
-   client, enforce request/result/error/status/media/identity contracts,
-   semantic certainty, opaque credentials, W3C propagation, and structural
-   cross-surface scenarios.
+   client and bounded multiplexed WebSocket carriage, enforce request/result/
+   error/status/media/identity contracts, semantic certainty, opaque
+   credentials, W3C propagation, and structural cross-surface scenarios.
 5. **H-07:** add authenticated HTTPS/mTLS/mesh endpoint resolution and rotation
    without making reachability authority.
 6. **J-02/J-03/J-05:** pass adversarial resource/failure tests, supported
@@ -439,7 +441,7 @@ The dependency order is:
   stamped read and durable receipt rules are stricter application semantics.
 - [RFC 6455 implementation limits](https://www.rfc-editor.org/rfc/rfc6455.html#section-10.4)
   require protection against oversized frames and reassembled messages; B-04
-  adds RRFlow message, queue, identity, cursor, and backpressure bounds.
+  defines RRFlow message, queue, identity, cursor, and backpressure bounds.
 - [PEP 561](https://peps.python.org/pep-0561/#packaging-type-information)
   requires an inline-typed package to include `py.typed` for downstream type
   checkers.

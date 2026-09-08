@@ -32,7 +32,7 @@ Roadmap completion currently stands at:
 | Gate | Purpose | Complete |
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
-| B | public, install, routing, model, WebSocket, and GraphQL contracts | 3 / 5 |
+| B | public, install, routing, model, WebSocket, and GraphQL contracts | 4 / 5 |
 | C | sole hybrid persistent rrflowKV substrate | 0 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
@@ -103,7 +103,8 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **B-04**, the multiplex WebSocket protocol. A-07 is
+The next executable item is **B-05**, GraphQL lowering into the one RRFlow
+query representation. A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
 responsibility boundaries, dependency direction, and repository-contained
@@ -111,8 +112,9 @@ source; and A-07.2 froze the 13 trace boundaries, 53 canonical operations, 14
 typed causal-link forms, 46 type-checked canonical attributes, W3C propagation
 rules, diagnostic projection, and exact shrinking current-producer inventories.
 This is vocabulary and traceability completion, not engine-capability
-qualification. B-01 through B-03 are completed contract/admission work; B-04
-now resumes the dependency spine.
+qualification. B-01 through B-04 are completed contract/admission work; B-05
+now resumes the dependency spine. B-04 does not claim H-04 generic operation
+dispatch or generated-SDK parity.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -641,7 +643,7 @@ the generic tree contract, and no obsolete lifecycle implementation.
 | [x] | B-01 | Define install plan, installation result, attunement plan, job, phase checkpoint, status, resume, cancel, and verification envelopes. | `rrd-contract` | Golden JSON and generated schema tests cover every state transition and reject skipped phases or mismatched digests. |
 | [x] | B-02 | Define `RouterBackendDescriptor`, `RouteStepRequest`, and the `select_recipe`, `advance_branch`, and `request_context` decision variants. | `rrd-contract` | Golden vectors prove model/provider neutrality, strict fields, bounded inputs, and stable digests. |
 | [x] | B-03 | Define the LFG model-manifest handshake: model/tokenizer digests, routing schema digest, capabilities, limits, runtime, and quantization. | `rrd-contract`, `rrd-inference` | Mismatched contract, model, tokenizer, or resource declarations fail before inference. |
-| [ ] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
+| [x] | B-04 | Define one multiplexed WebSocket frame protocol for authenticated request/response, cancellation, subscription, ACK, and backpressure. | `rrd-contract` | Codec golden tests prove correlation, ordering, limits, unknown-frame rejection, and reconnect resume coordinates. |
 | [ ] | B-05 | Define GraphQL as a schema-derived ingress adapter that lowers into the same bound RRFlow query representation. | `rrd-contract`, `rrd-query` | Equivalence fixtures show GraphQL and rrflowQL produce the same authorized logical request without a second executor. |
 
 B-01 evidence (2026-09-04):
@@ -723,6 +725,41 @@ B-03 evidence (2026-09-08):
   pre-release embedding-job digest domain directly from
   `rrd-inferenceding-job-v1` to `rrflow-embedding-job-v1`; a byte-level test
   freezes the corrected identity and no compatibility branch remains.
+
+B-04 evidence (2026-09-08):
+
+- `rrd-contract` now owns one closed `WebSocketFrame` protocol with exact
+  protocol/version, connection, direction-local sequence, request,
+  cancellation, subscription, cumulative ACK, heartbeat, error, and
+  backpressure coordinates. Validated negotiated limits bound message, frame,
+  buffer, request, subscription, timeout, heartbeat, JSON, error, and retry
+  inputs before application allocation; unknown members, wrong-direction
+  frames, sequence gaps, identity substitution, and oversized inputs fail
+  closed.
+- The authenticated generic `GET /v1/ws` adapter and Rust `RrdWebSocket`
+  reference carriage use that contract. One connection multiplexes durable
+  changefeed and live-query subscriptions while `RrdEngine` alone owns resume
+  cursor, connection generation, lease, outstanding delivery window, ACK, and
+  close semantics. Reconnect clears only the interrupted delivery window and
+  replays from the last durable ACK. Cursor-only progress is deliverable and
+  ACK-able, so an unchanged live-query result cannot loop forever at an older
+  read stamp.
+- Generic request, response, and correlated cancellation shapes are frozen,
+  but the server deliberately returns `failed_precondition` until H-04 binds
+  them to the shared operation dispatcher. TypeScript, Python, Go, Java, and
+  .NET document the same dependency and do not claim a WebSocket
+  implementation. No transport connection state was added to `RrdEngine` and
+  no second lifecycle authority was created.
+- The golden protocol suite passed 8 cases; the focused engine subscription
+  suite passed 6; the Rust real-server suite passed 3 loopback/mTLS/WSS cases;
+  and 3 transport-fault tests covered six malicious-peer scenarios. The full
+  four-package run passed 74 contract, 117 engine, 29 server, and 8 Rust-client
+  cases. Strict all-target Clippy, locked workspace all-target compilation,
+  all 23 architecture checks, documentation/inventory/generated-surface/
+  knowledge/workflow/version policies, Cargo formatting, and diff integrity
+  passed. This evidence does not qualify persistence, native indexes,
+  Arrow/DataFusion execution, reasoning, installation, generated-SDK parity,
+  Connectome, or release.
 
 Gate B exits only when other languages and LFG can implement the contracts from
 golden vectors without importing Rust internals.

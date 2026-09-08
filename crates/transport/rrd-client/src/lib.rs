@@ -18,5 +18,5 @@ pub use error::{is_unauthenticated, Error, Result};
 pub use operation::RequestOptions;
 pub use retry::ClientConfig;
 pub use session::Session;
-pub use subscription::SubscriptionSocket;
+pub use subscription::RrdWebSocket;
 pub use transport::MAX_RESPONSE_BYTES;

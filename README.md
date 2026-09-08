@@ -101,11 +101,16 @@ diagnostic-export rules. Exact current trace names and attributes that await
 their behavior-owning C-through-I gates are finite shrinking inventories, not
 alternate APIs. This completes structural and evidence vocabulary only; it
 does not qualify persistence, native indexes, DataFusion streaming, reasoning,
-installation, or cross-surface observability. B-01 through B-03 are complete:
+installation, or cross-surface observability. B-01 through B-04 are complete:
 router model artifacts, tokenizer, output schema, capabilities, resource
 limits, runtime ABI/device, quantization, and deterministic grammar now fail
-closed before model loading. The next executable package is
-[B-04 multiplex WebSocket protocol](docs/roadmap/rrflow-1.0-execution-map.md#b-04--multiplex-websocket-protocol).
+closed before model loading. One authenticated `/v1/ws` connection now carries
+the closed, bounded request, cancellation, subscription, delivery, ACK,
+heartbeat, error, and backpressure vocabulary; the Rust client/server proof
+covers multiplexed durable subscriptions, exact replay coordinates, and
+malicious peers. Generic operation execution remains fail-closed until H-04;
+the next executable package is
+[B-05 GraphQL lowering](docs/roadmap/rrflow-1.0-execution-map.md#b-05--graphql-lowering-only).
 
 ## Knowledge warp points
 

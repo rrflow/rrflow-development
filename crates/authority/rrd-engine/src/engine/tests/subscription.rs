@@ -1,7 +1,8 @@
 use super::*;
 use rrd_contract::{
-    CloseSubscription, OpenSubscription, SubscriptionClientFrame, SubscriptionServerFrame,
-    SubscriptionStatus, SubscriptionStream,
+    CloseSubscription, OpenSubscription, SubscriptionAcknowledgement, SubscriptionDelivery,
+    SubscriptionLeaseCoordinate, SubscriptionPoll, SubscriptionResume, SubscriptionStatus,
+    SubscriptionStream,
 };
 use rrd_core::{
     RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
@@ -101,7 +102,7 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         .connect_subscription(
             &lease.session_id,
             &lease.token,
-            &request.subscription_id,
+            &SubscriptionResume::from_snapshot(&opened.subscription),
             1_050,
             "request-connect-subscription-durable",
             "operation-connect-subscription-durable",
@@ -109,7 +110,7 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         .unwrap();
     assert_eq!(connected.connection_generation, 1);
     let first = engine
-        .next_subscription_frame(
+        .next_subscription_delivery(
             &lease.session_id,
             &lease.token,
             &request.subscription_id,
@@ -120,7 +121,7 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         )
         .unwrap();
     let second = engine
-        .next_subscription_frame(
+        .next_subscription_delivery(
             &lease.session_id,
             &lease.token,
             &request.subscription_id,
@@ -132,23 +133,25 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         .unwrap();
     let (second_sequence, second_cursor) = match (&first, &second) {
         (
-            SubscriptionServerFrame::Changefeed { page: first, .. },
-            SubscriptionServerFrame::Changefeed {
-                delivery_sequence,
-                page: second,
-                ..
-            },
+            SubscriptionPoll::Delivery { batch: first },
+            SubscriptionPoll::Delivery { batch: second },
         ) => {
-            assert_eq!(first.changes[0].cursor, 1);
-            assert_eq!(second.changes[0].cursor, 2);
-            assert_eq!(first.changes[0].commit_ordinal, 0);
-            assert_eq!(second.changes[0].commit_ordinal, 0);
-            (*delivery_sequence, second.through_cursor)
+            let SubscriptionDelivery::Changefeed { page: first_page } = &first.delivery else {
+                panic!("expected first changefeed delivery")
+            };
+            let SubscriptionDelivery::Changefeed { page: second_page } = &second.delivery else {
+                panic!("expected second changefeed delivery")
+            };
+            assert_eq!(first_page.changes[0].cursor, 1);
+            assert_eq!(second_page.changes[0].cursor, 2);
+            assert_eq!(first_page.changes[0].commit_ordinal, 0);
+            assert_eq!(second_page.changes[0].commit_ordinal, 0);
+            (second.delivery_sequence, second.through_cursor)
         }
         other => panic!("unexpected subscription frames: {other:?}"),
     };
     assert!(matches!(
-        engine.next_subscription_frame(
+        engine.next_subscription_delivery(
             &lease.session_id,
             &lease.token,
             &request.subscription_id,
@@ -160,11 +163,11 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         Err(ServiceError::SubscriptionBackpressure)
     ));
     let acknowledged = engine
-        .apply_subscription_frame(
+        .acknowledge_subscription(
             &lease.session_id,
             &lease.token,
-            &request.subscription_id,
-            &SubscriptionClientFrame::Ack {
+            &SubscriptionAcknowledgement {
+                subscription_id: request.subscription_id.clone(),
                 connection_generation: 1,
                 delivery_sequence: second_sequence,
                 through_cursor: second_cursor,
@@ -182,7 +185,7 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         .connect_subscription(
             &lease.session_id,
             &lease.token,
-            &request.subscription_id,
+            &SubscriptionResume::from_snapshot(&acknowledged),
             1_060,
             "request-reconnect-subscription",
             "operation-reconnect-subscription",
@@ -191,7 +194,7 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
     assert_eq!(reconnected.connection_generation, 2);
     assert_eq!(reconnected.acknowledged_cursor, 2);
     assert!(matches!(
-        reopened.next_subscription_frame(
+        reopened.next_subscription_delivery(
             &lease.session_id,
             &lease.token,
             &request.subscription_id,
@@ -203,7 +206,7 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         Err(ServiceError::SubscriptionConnectionReplaced)
     ));
     let third = reopened
-        .next_subscription_frame(
+        .next_subscription_delivery(
             &lease.session_id,
             &lease.token,
             &request.subscription_id,
@@ -215,8 +218,9 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         .unwrap();
     assert!(matches!(
         third,
-        SubscriptionServerFrame::Changefeed { ref page, .. }
-            if page.requested_after_cursor == 2 && page.through_cursor == 3
+        SubscriptionPoll::Delivery { ref batch }
+            if batch.from_cursor == 2 && batch.through_cursor == 3
+                && matches!(batch.delivery, SubscriptionDelivery::Changefeed { .. })
     ));
 
     let closed = reopened
@@ -237,13 +241,119 @@ fn durable_subscription_fences_connections_bounds_delivery_and_replays_after_reo
         reopened.connect_subscription(
             &lease.session_id,
             &lease.token,
-            &request.subscription_id,
+            &SubscriptionResume::from_snapshot(&closed.subscription),
             1_071,
             "request-connect-closed-subscription",
             "operation-connect-closed-subscription",
         ),
         Err(ServiceError::SubscriptionClosed)
     ));
+}
+
+#[test]
+fn resume_and_lease_coordinates_reject_stale_or_drifted_state() {
+    let (_root, engine) = isolated_engine();
+    let lease = engine
+        .create_session(
+            &session_request(8_000, 4),
+            &id("subscription-coordinate-session"),
+            1_000,
+            "request-subscription-coordinate-session",
+            "operation-subscription-coordinate-session",
+        )
+        .unwrap();
+    commit_claim(&engine, &lease, "coordinate", 1_010);
+    let request = changefeed_subscription("subscription-coordinate", 0, 100);
+    let opened = engine
+        .open_subscription(
+            &lease.session_id,
+            &lease.token,
+            &id("open-subscription-coordinate"),
+            &request,
+            1_020,
+            "request-open-subscription-coordinate",
+            "operation-open-subscription-coordinate",
+        )
+        .unwrap();
+    let connected = engine
+        .connect_subscription(
+            &lease.session_id,
+            &lease.token,
+            &SubscriptionResume::from_snapshot(&opened.subscription),
+            1_030,
+            "request-connect-subscription-coordinate",
+            "operation-connect-subscription-coordinate",
+        )
+        .unwrap();
+
+    assert!(matches!(
+        engine.connect_subscription(
+            &lease.session_id,
+            &lease.token,
+            &SubscriptionResume::from_snapshot(&opened.subscription),
+            1_031,
+            "request-stale-resume",
+            "operation-stale-resume",
+        ),
+        Err(ServiceError::Subscription(_))
+    ));
+    let mut drifted_resume = SubscriptionResume::from_snapshot(&connected);
+    drifted_resume.stream_sha256 = "f".repeat(64);
+    assert!(matches!(
+        engine.connect_subscription(
+            &lease.session_id,
+            &lease.token,
+            &drifted_resume,
+            1_032,
+            "request-drifted-resume",
+            "operation-drifted-resume",
+        ),
+        Err(ServiceError::Subscription(_))
+    ));
+
+    let coordinate = SubscriptionLeaseCoordinate::from_snapshot(&connected);
+    let mut wrong_generation = coordinate.clone();
+    wrong_generation.connection_generation += 1;
+    assert!(matches!(
+        engine.renew_subscription_lease(
+            &lease.session_id,
+            &lease.token,
+            &wrong_generation,
+            1_033,
+            "request-wrong-generation-heartbeat",
+            "operation-wrong-generation-heartbeat",
+        ),
+        Err(ServiceError::SubscriptionConnectionReplaced)
+    ));
+    let mut wrong_cursor = coordinate.clone();
+    wrong_cursor.acknowledged_cursor += 1;
+    assert!(matches!(
+        engine.renew_subscription_lease(
+            &lease.session_id,
+            &lease.token,
+            &wrong_cursor,
+            1_034,
+            "request-wrong-cursor-heartbeat",
+            "operation-wrong-cursor-heartbeat",
+        ),
+        Err(ServiceError::Subscription(_))
+    ));
+    let renewed = engine
+        .renew_subscription_lease(
+            &lease.session_id,
+            &lease.token,
+            &coordinate,
+            1_035,
+            "request-valid-heartbeat",
+            "operation-valid-heartbeat",
+        )
+        .unwrap();
+    assert_eq!(
+        renewed.connection_generation,
+        connected.connection_generation
+    );
+    assert_eq!(renewed.acknowledged_cursor, connected.acknowledged_cursor);
+    assert!(renewed.lease_expires_at_unix_ms > connected.lease_expires_at_unix_ms);
 }
 
 #[test]
@@ -289,7 +399,7 @@ fn subscription_retention_floor_and_owner_are_fail_closed() {
     ));
 
     let request = changefeed_subscription("subscription-owned", 2, 1);
-    engine
+    let opened = engine
         .open_subscription(
             &owner.session_id,
             &owner.token,
@@ -304,7 +414,7 @@ fn subscription_retention_floor_and_owner_are_fail_closed() {
         engine.connect_subscription(
             &stranger.session_id,
             &stranger.token,
-            &request.subscription_id,
+            &SubscriptionResume::from_snapshot(&opened.subscription),
             1_042,
             "request-steal-subscription",
             "operation-steal-subscription",
@@ -340,7 +450,7 @@ fn global_commit_cursor_orders_interleaved_writers_for_one_distributed_feed() {
 
     let mut request = changefeed_subscription("distributed-feed", 0, 128);
     request.batch_size = 3;
-    engine
+    let opened = engine
         .open_subscription(
             &first_writer.session_id,
             &first_writer.token,
@@ -355,14 +465,14 @@ fn global_commit_cursor_orders_interleaved_writers_for_one_distributed_feed() {
         .connect_subscription(
             &first_writer.session_id,
             &first_writer.token,
-            &request.subscription_id,
+            &SubscriptionResume::from_snapshot(&opened.subscription),
             1_041,
             "request-connect-distributed-feed",
             "operation-connect-distributed-feed",
         )
         .unwrap();
     let frame = engine
-        .next_subscription_frame(
+        .next_subscription_delivery(
             &first_writer.session_id,
             &first_writer.token,
             &request.subscription_id,
@@ -373,7 +483,10 @@ fn global_commit_cursor_orders_interleaved_writers_for_one_distributed_feed() {
         )
         .unwrap();
     let page = match frame {
-        SubscriptionServerFrame::Changefeed { page, .. } => page,
+        SubscriptionPoll::Delivery { batch } => match batch.delivery {
+            SubscriptionDelivery::Changefeed { page } => page,
+            delivery => panic!("expected distributed changefeed delivery, got {delivery:?}"),
+        },
         frame => panic!("expected distributed changefeed frame, got {frame:?}"),
     };
     assert_eq!(
@@ -512,7 +625,9 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
             actor: "node-one".into(),
             expected_cursor: 0,
             mutations: vec![
-                RuntimeMutation::Schema { registry },
+                RuntimeMutation::Schema {
+                    registry: registry.clone(),
+                },
                 RuntimeMutation::Record {
                     record: record("open"),
                 },
@@ -522,7 +637,7 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
     engine
         .storage
         .commit_runtime(&RuntimeCommit {
-            scope,
+            scope: scope.clone(),
             at: 20,
             actor: "node-two".into(),
             expected_cursor: 2,
@@ -556,7 +671,7 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
         lease_ms: 5_000,
         heartbeat_interval_ms: 100,
     };
-    engine
+    let opened = engine
         .open_subscription(
             &lease.session_id,
             &lease.token,
@@ -571,14 +686,14 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
         .connect_subscription(
             &lease.session_id,
             &lease.token,
-            &request.subscription_id,
+            &SubscriptionResume::from_snapshot(&opened.subscription),
             1_011,
             "request-connect-live-subscription",
             "operation-connect-live-subscription",
         )
         .unwrap();
     let frame = engine
-        .next_subscription_frame(
+        .next_subscription_delivery(
             &lease.session_id,
             &lease.token,
             &request.subscription_id,
@@ -588,8 +703,13 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
             "operation-next-live-subscription",
         )
         .unwrap();
-    match frame {
-        SubscriptionServerFrame::LiveQuery { delta, .. } => {
+    let (delivery_sequence, through_cursor) = match frame {
+        SubscriptionPoll::Delivery { batch } => {
+            let delivery_sequence = batch.delivery_sequence;
+            let through_cursor = batch.through_cursor;
+            let SubscriptionDelivery::LiveQuery { delta } = batch.delivery else {
+                panic!("expected live query delivery")
+            };
             assert_eq!(delta.from_cursor, 2);
             assert_eq!(delta.through_cursor, 3);
             assert_eq!(delta.updated.len(), 1);
@@ -601,7 +721,78 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
                 delta.updated[0].after.values["status"],
                 rrd_contract::QueryValue::String("closed".into())
             );
+            (delivery_sequence, through_cursor)
         }
         frame => panic!("expected live query frame, got {frame:?}"),
-    }
+    };
+    engine
+        .acknowledge_subscription(
+            &lease.session_id,
+            &lease.token,
+            &SubscriptionAcknowledgement {
+                subscription_id: request.subscription_id.clone(),
+                connection_generation: connected.connection_generation,
+                delivery_sequence,
+                through_cursor,
+            },
+            1_013,
+            "request-ack-live-subscription",
+            "operation-ack-live-subscription",
+        )
+        .unwrap();
+
+    // A commit can advance the read stamp without changing the query result.
+    // That cursor-only interval must still be delivered and acknowledged so a
+    // resumed subscription never replays it forever.
+    registry.revision = 2;
+    registry.migration = "subscription cursor-only schema revision".into();
+    engine
+        .storage
+        .commit_runtime(&RuntimeCommit {
+            scope,
+            at: 30,
+            actor: "node-three".into(),
+            expected_cursor: 3,
+            mutations: vec![RuntimeMutation::Schema { registry }],
+        })
+        .unwrap();
+    let cursor_only = engine
+        .next_subscription_delivery(
+            &lease.session_id,
+            &lease.token,
+            &request.subscription_id,
+            connected.connection_generation,
+            1_014,
+            "request-next-cursor-only-subscription",
+            "operation-next-cursor-only-subscription",
+        )
+        .unwrap();
+    let SubscriptionPoll::Delivery { batch } = cursor_only else {
+        panic!("expected cursor-only live-query delivery")
+    };
+    batch.validate().unwrap();
+    assert_eq!(batch.from_cursor, 3);
+    assert_eq!(batch.through_cursor, 4);
+    let SubscriptionDelivery::LiveQuery { delta } = &batch.delivery else {
+        panic!("expected cursor-only live-query delivery")
+    };
+    assert!(delta.added.is_empty());
+    assert!(delta.updated.is_empty());
+    assert!(delta.removed.is_empty());
+    let acknowledged = engine
+        .acknowledge_subscription(
+            &lease.session_id,
+            &lease.token,
+            &SubscriptionAcknowledgement {
+                subscription_id: request.subscription_id,
+                connection_generation: connected.connection_generation,
+                delivery_sequence: batch.delivery_sequence,
+                through_cursor: batch.through_cursor,
+            },
+            1_015,
+            "request-ack-cursor-only-subscription",
+            "operation-ack-cursor-only-subscription",
+        )
+        .unwrap();
+    assert_eq!(acknowledged.acknowledged_cursor, 4);
 }

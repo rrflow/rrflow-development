@@ -129,7 +129,7 @@ checked-in `OperationId.java` contains:
 - wire operation name, HTTP method, route template, first authentication
   scheme, and mutation flag for each constant; and
 - OpenAPI SHA-256
-  `e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715`.
+  `3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
 
 The removed flat record incorrectly said 34 routes even though the generator,
 enum, unit assertion, public catalogue, and OpenAPI projection contain 33.
@@ -278,10 +278,11 @@ Async work uses an RRFlow call handle that binds request identity, local
 future, semantic deadline, and server-cancellation state. Raw
 `CompletableFuture.cancel` is insufficient authority: Java documents
 cancellation as exceptional completion because a `CompletableFuture` does not
-control the underlying computation. B-04 supplies a correlated server cancel
-message and terminal evidence. Blocking helpers wait on the same async
-semantic operation and preserve typed interruption, deadline, local
-cancellation, server cancellation, and uncertain-outcome distinctions.
+control the underlying computation. B-04 supplies the correlated server cancel
+message and terminal evidence shape; H-04 implements its Java carriage.
+Blocking helpers wait on the same async semantic operation and preserve typed
+interruption, deadline, local cancellation, server cancellation, and
+uncertain-outcome distinctions.
 
 ## Credentials, errors, and causal evidence
 
@@ -321,8 +322,8 @@ durable lifecycle state, or hidden model reasoning.
 ## Multiplexed WebSocket delivery
 
 The current Java artifact has no WebSocket implementation or test. B-04 owns
-one language-neutral multiplexed protocol state machine; Java supplies only a
-qualified carriage and idiomatic API.
+the closed language-neutral multiplexed protocol and Rust reference
+implementation; H-04 must supply Java's qualified carriage and idiomatic API.
 
 Java 21's JDK WebSocket API provides explicit receive demand through
 `request(n)`, sequential listener callbacks per socket, asynchronous sends,
@@ -464,10 +465,10 @@ sdks/java/
 
 The following files remain deliberately absent until their assigned gate adds
 real behavior: `RrdCall.java`, `Subscription.java`, and
-`WebSocketTransport.java` (B-04); `generated/OperationModels.java` (H-04);
+`WebSocketTransport.java` (H-04); `generated/OperationModels.java` (H-04);
 `OperationCoverageTest.java` and `ProtocolValidationTest.java` (H-04);
-`TransportFaultsTest.java` (B-04/H-04/H-07/J-02);
-`SubscriptionTest.java` and `ConcurrencyTest.java` (B-04/H-04/J-02); and
+`TransportFaultsTest.java` (H-04/H-07/J-02);
+`SubscriptionTest.java` and `ConcurrencyTest.java` (H-04/J-02); and
 `PackageConsumerTest.java` (J-03/J-05).
 
 The dependency order is:
@@ -480,14 +481,15 @@ The dependency order is:
    interrupt preservation, explicit manifest-absent skip, current public
    types, and unit tests are preserved. No validation, async, socket, remote
    resolver, or artifact success was invented.
-2. **B-04:** implement the shared multiplexed state machine, Java carriage,
-   call handle, correlated cancellation, subscription API, and bounded
-   listener/executor/queue ownership.
+2. **B-04 (contract implemented):** consume the closed multiplexed golden
+   protocol; no Java behavior is claimed by the Rust reference carriage.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap and
    endpoint identity.
-4. **H-04:** generate concrete operation models/bindings; enforce exact
-   request/result/error/status/media/identity contracts, semantic certainty,
-   opaque credentials, W3C propagation, and structural cross-surface cases.
+4. **H-04:** implement bounded multiplexed Java carriage, call/subscription
+   APIs, and listener/executor/queue ownership; generate concrete operation
+   models/bindings; enforce exact request/result/error/status/media/identity
+   contracts, semantic certainty, opaque credentials, W3C propagation, and
+   structural cross-surface cases.
 5. **H-07:** add authenticated HTTPS/mTLS/mesh endpoint resolution and
    rotation without making reachability authority.
 6. **J-02/J-03/J-05:** pass fault/resource, minimum/current JDK and Maven,
@@ -513,8 +515,8 @@ The dependency order is:
 - [Java 21 WebSocket](https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/WebSocket.html)
   defines receive demand, pending sends, close, and abort, while
   [its listener contract](https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/WebSocket.Listener.html)
-  defines sequential callbacks; B-04 supplies the missing RRFlow protocol,
-  identity, queue, ACK, resume, and resource semantics.
+  defines sequential callbacks; B-04 supplies the RRFlow protocol, identity,
+  queue, ACK, resume, and resource semantics that H-04 must carry in Java.
 - [Maven repository and offline behavior](https://maven.apache.org/guides/introduction/introduction-to-repositories)
   distinguishes a local cache from remote/file repositories and offline mode;
   J-05 proves an empty-cache file-backed closure rather than a warm-cache run.
@@ -532,7 +534,7 @@ The dependency order is:
   receipts impose stricter RRFlow semantics.
 - [RFC 6455 implementation limits](https://www.rfc-editor.org/rfc/rfc6455.html#section-10.4)
   require protection against oversized frames and reassembled messages; B-04
-  adds RRFlow queue, identity, cursor, generation, and backpressure bounds.
+  defines RRFlow queue, identity, cursor, generation, and backpressure bounds.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
   `traceparent` and `tracestate`; RRFlow owns validation, causal links,
   redaction, and evidence meaning.

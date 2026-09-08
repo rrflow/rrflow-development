@@ -139,7 +139,7 @@ checked-in `Generated/OperationId.g.cs` contains:
 - wire operation name, HTTP method, route template, first authentication
   scheme, and mutation flag for each member; and
 - OpenAPI SHA-256
-  `e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715`.
+  `3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
 
 The removed flat record incorrectly said 34 routes even though the generator,
 enum, unit assertion, public catalogue, and OpenAPI projection contain 33.
@@ -297,9 +297,10 @@ observation or mutation outcome requiring explicit reconciliation. Server
 `retryable` metadata never overrides operation semantics.
 
 An `RrdCall<TResult>` binds request identity, completion task, semantic
-deadline, caller token, and server-cancellation state. B-04 supplies a
-correlated cancel frame/operation and terminal evidence; canceling a local
-`Task` or token alone never manufactures server completion. The client uses an
+deadline, caller token, and server-cancellation state. B-04 supplies the
+correlated cancel frame/operation and terminal evidence shape; H-04 implements
+its .NET carriage. Canceling a local `Task` or token alone never manufactures
+server completion. The client uses an
 injected `TimeProvider` for deterministic local deadline/backoff behavior.
 Errors distinguish caller cancellation, semantic deadline, transport timeout,
 server cancellation, and uncertain outcome without relying on exception text.
@@ -342,8 +343,9 @@ become completion truth, durable lifecycle state, or hidden model reasoning.
 ## Multiplexed WebSocket delivery
 
 The current .NET package has no WebSocket implementation or test. B-04 owns
-one language-neutral multiplexed protocol state machine; .NET supplies only a
-qualified carriage and idiomatic asynchronous API.
+the closed language-neutral multiplexed protocol and Rust reference
+implementation; H-04 must supply .NET's qualified carriage and idiomatic
+asynchronous API.
 
 `ClientWebSocket` permits one send and one receive in parallel but requires
 same-direction operations to be serialized. Its options expose proxy,
@@ -528,15 +530,15 @@ The dependency order is:
    idempotency, identical retry bytes, absolute deadline, response limit,
    disposal, manifest-absent behavior, and unit characterization remain. This
    checks only the A-07.1g supporting slice, not canonical A-07 or H/J behavior.
-2. **B-04:** implement the shared multiplexed state machine, .NET carriage,
-   call handle, correlated cancellation, subscription API, and bounded
-   pump/channel ownership.
+2. **B-04 (contract implemented):** consume the closed multiplexed golden
+   protocol; no .NET behavior is claimed by the Rust reference carriage.
 3. **D-01:** replace direct fixture seeding with installed public bootstrap and
    endpoint identity.
-4. **H-04:** generate concrete operation models/bindings/JSON metadata; enforce
-   exact request/result/error/status/media/identity contracts, semantic
-   certainty, opaque credentials, W3C propagation, and structural
-   cross-surface cases.
+4. **H-04:** implement bounded multiplexed .NET carriage, call/subscription
+   APIs, and pump/channel ownership; generate concrete operation models/
+   bindings/JSON metadata; enforce exact request/result/error/status/media/
+   identity contracts, semantic certainty, opaque credentials, W3C
+   propagation, and structural cross-surface cases.
 5. **H-07:** add authenticated HTTPS/mTLS/mesh endpoint resolution and rotation
    without making reachability authority.
 6. **J-02/J-03/J-05:** pass fault/resource, exact SDK and supported runtime,
@@ -556,7 +558,8 @@ The dependency order is:
   exposes handshake/TLS/proxy/buffer/keepalive/compression policy, while
   [`ReceiveAsync`](https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets.clientwebsocket.receiveasync?view=net-10.0)
   permits only one parallel receive; B-04 supplies RRFlow identity, queue,
-  framing, cancellation, ACK, and resume semantics.
+  framing, cancellation, ACK, and resume semantics that H-04 must carry in
+  .NET.
 - [`System.Text.Json` source generation](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation)
   provides compile-time metadata, and Microsoft's
   [reflection/source-generation guidance](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/reflection-vs-source-generation)
@@ -590,7 +593,7 @@ The dependency order is:
   receipts impose stricter RRFlow semantics.
 - [RFC 6455 implementation limits](https://www.rfc-editor.org/rfc/rfc6455.html#section-10.4)
   require protection against oversized frames and reassembled messages; B-04
-  adds RRFlow queue, identity, cursor, generation, and backpressure bounds.
+  defines RRFlow queue, identity, cursor, generation, and backpressure bounds.
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/) defines
   `traceparent` and `tracestate`; RRFlow owns validation, causal links,
   redaction, and evidence meaning.

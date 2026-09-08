@@ -1,7 +1,7 @@
 //! Current closed public client error vocabulary and classifications.
 
 use hyper::StatusCode;
-use rrd_contract::{ErrorBody, ErrorCode};
+use rrd_contract::{ErrorBody, ErrorCode, WebSocketError};
 use std::fmt;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -13,10 +13,8 @@ pub enum Error {
     Timeout,
     ResponseTooLarge,
     Decode(String),
-    Subscription {
-        error: ErrorBody,
-        acknowledged_cursor: u64,
-    },
+    WebSocket(Box<WebSocketError>),
+    WebSocketProtocol(String),
     Api {
         status: StatusCode,
         error: ErrorBody,
@@ -36,15 +34,15 @@ impl fmt::Display for Error {
             Self::Timeout => formatter.write_str("RRD request timed out"),
             Self::ResponseTooLarge => formatter.write_str("RRD response exceeded four MiB"),
             Self::Decode(message) => write!(formatter, "RRD response decode failed: {message}"),
-            Self::Subscription {
-                error,
-                acknowledged_cursor,
-            } => {
+            Self::WebSocket(error) => {
                 write!(
                     formatter,
-                    "RRD subscription {:?} after cursor {acknowledged_cursor}: {}",
-                    error.code, error.message,
+                    "RRD WebSocket {:?}: {:?}: {}",
+                    error.target, error.error.code, error.error.message
                 )
+            }
+            Self::WebSocketProtocol(message) => {
+                write!(formatter, "RRD WebSocket protocol error: {message}")
             }
             Self::Api { status, error } => {
                 write!(
@@ -91,21 +89,29 @@ pub(crate) fn websocket_connect_error(error: tokio_tungstenite::tungstenite::Err
     }
 }
 
+pub(crate) fn websocket_stream_error(error: tokio_tungstenite::tungstenite::Error) -> Error {
+    use tokio_tungstenite::tungstenite::Error as WebSocketError;
+
+    match error {
+        WebSocketError::Capacity(_)
+        | WebSocketError::Protocol(_)
+        | WebSocketError::Utf8(_)
+        | WebSocketError::AttackAttempt => Error::WebSocketProtocol(error.to_string()),
+        error => Error::Transport(error.to_string()),
+    }
+}
+
 pub fn is_unauthenticated(error: &Error) -> bool {
-    matches!(
-        error,
+    match error {
         Error::Api {
-            error: ErrorBody {
-                code: ErrorCode::Unauthenticated,
-                ..
-            },
+            error:
+                ErrorBody {
+                    code: ErrorCode::Unauthenticated,
+                    ..
+                },
             ..
-        } | Error::Subscription {
-            error: ErrorBody {
-                code: ErrorCode::Unauthenticated,
-                ..
-            },
-            ..
-        }
-    )
+        } => true,
+        Error::WebSocket(error) => error.error.code == ErrorCode::Unauthenticated,
+        _ => false,
+    }
 }

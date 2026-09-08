@@ -1172,8 +1172,7 @@ fn openapi_is_derived_from_every_catalogue_operation_and_wire_type() {
         document["x-rrd-websocket-endpoints"],
         serde_json::to_value(&catalogue.websocket_endpoints).unwrap()
     );
-    assert!(document["components"]["schemas"]["SubscriptionClientFrame"].is_object());
-    assert!(document["components"]["schemas"]["SubscriptionServerFrame"].is_object());
+    assert!(document["components"]["schemas"]["WebSocketFrame"].is_object());
     for endpoint in catalogue.endpoints {
         let method = match endpoint.method {
             rrd_contract::HttpMethod::Get => "get",
@@ -1243,27 +1242,27 @@ fn durable_subscription_contract_bounds_retention_backpressure_and_stream_shape(
     };
     live.validate().unwrap();
 
-    let frame = rrd_contract::SubscriptionClientFrame::Ack {
+    let acknowledgement = rrd_contract::SubscriptionAcknowledgement {
+        subscription_id: CorrelationId::new("subscription-contract").unwrap(),
         connection_generation: 3,
         delivery_sequence: 9,
         through_cursor: 42,
     };
-    assert_eq!(
-        serde_json::from_value::<rrd_contract::SubscriptionClientFrame>(
-            serde_json::to_value(&frame).unwrap()
-        )
-        .unwrap(),
-        frame
-    );
+    acknowledgement.validate().unwrap();
     let catalogue = rrd_contract::endpoint_catalogue();
     assert_eq!(catalogue.websocket_endpoints.len(), 1);
+    assert_eq!(catalogue.websocket_endpoints[0].path, "/v1/ws");
     assert_eq!(
-        catalogue.websocket_endpoints[0].path,
-        "/v1/subscriptions/{subscription}/stream"
+        catalogue.websocket_endpoints[0].operation.as_str(),
+        "websocket-connect"
+    );
+    assert_eq!(
+        catalogue.websocket_endpoints[0].frame_type,
+        "WebSocketFrame"
     );
     assert_eq!(
         catalogue.websocket_endpoints[0].connect_action,
-        rrd_contract::SecurityAction::SubscriptionConnect
+        rrd_contract::SecurityAction::WebSocketConnect
     );
     assert_eq!(
         catalogue
