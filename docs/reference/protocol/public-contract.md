@@ -16,9 +16,10 @@ authority boundaries. The
 [engine data-flow record](../../architecture/engine-data-flow.md) owns target
 write, persistence, read, Arrow/DataFusion, reasoning, and context flow. The
 [server reference](server.md) owns the current HTTP/WebSocket process boundary,
-and the [roadmap](../../roadmap/rrflow-1.0.md) owns implementation order and
-acceptance. This record describes what the public contract can represent now;
-it does not convert a type, route, schema, or passing serialization test into
+the [SDK reference](../sdk/README.md) owns language-client behavior, and the
+[roadmap](../../roadmap/rrflow-1.0.md) owns implementation order and acceptance.
+This record describes what the public contract can represent now; it does not
+convert a type, route, schema, or passing serialization test into
 engine-capability evidence.
 
 ## Executable authority and precedence
@@ -128,7 +129,7 @@ The boundary is intentionally explicit:
 |---|---|---|
 | HTTP | 33 catalogued operations with method, path, authentication mode, mutation flag, security action, and request/response type names. | H-04 cross-surface semantic equivalence and Gate J release qualification. |
 | WebSocket | One subscription-specific descriptor and typed client/server frames. | B-04 one multiplexed request, response, cancellation, subscription, ACK, backpressure, and resume protocol. |
-| Rust client | Uses `rrd-contract` as its only RRFlow release dependency and implements a subset of the catalogued operations over loopback HTTP or explicit mutual TLS. | Complete operation coverage and the H-04/J conformance corpus. |
+| Rust client | Uses `rrd-contract` as its only normal RRFlow dependency, implements 28 of 33 catalogued HTTP operations, and implements the dedicated subscription WebSocket over loopback HTTP or explicit mutual TLS. | The [Rust SDK reference](../sdk/rust.md) records the five missing operations and the exact A-07/B-04/H-04/H-07/J convergence boundary. |
 | Generated SDKs | OpenAPI and one shared semantic corpus exist as generation/conformance inputs. | Each supported language must run the same real-daemon corpus; schema generation alone is not qualification. |
 | GraphQL | No public GraphQL operation or executor is established. | B-05 schema-derived lowering into the same bound RRFlow request, with no second executor. |
 | MCP, CLI, Connectome, and model adapters | May consume public contracts but cannot infer engine state or implement missing semantics. | H-04 through H-07 and the relevant D/G/I gates. |
