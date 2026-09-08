@@ -229,6 +229,8 @@ mesh never owns database state.
 Connectome invokes installation, attunement, context, query, trace, and live
 delivery through public RRD capabilities. It does not reproduce phase state,
 retrieval, authorization, or persistence in the client. The
+[Connectome client contract](../reference/client/connectome.md) owns connection,
+projection, interaction, local-state, and client-conformance requirements. The
 [agent-bootstrap reference](../reference/agent-bootstrap.md#installation-and-attunement)
 owns the project-installation and attunement contract; roadmap
 [H-06](../roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome)
