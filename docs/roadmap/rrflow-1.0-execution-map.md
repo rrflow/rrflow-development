@@ -264,7 +264,7 @@ committed project change set -> determine affected phases only
 
 ## Implementation-requirements traceability
 
-This is the initial current-tree accounting required by A-07 and POAM-014. It
+This is the reviewed current-tree accounting required by A-07 and POAM-014. It
 is updated in a documentation-only change before a listed implementation file
 moves or a newly discovered behavior expands a gate. A row identifies work
 that must be carried into the one target system; it does not mark that work
@@ -277,7 +277,74 @@ adaptation protocols require an exact upstream symbol, rejected assumptions,
 an RRFlow-owned destination, and independent semantic/fault/resource/reopen
 proof; neither reference can change this map's status.
 
-| Capability family | Current implementation that must be read in full | Characterization inventory that must be preserved or strengthened | Canonical convergence | Gates |
+### A-07.0 reviewed starting revision
+
+The traceability baseline is Git commit
+`b5ec39162771ced38a83dd512dda5b0720aef714`, tree
+`3c8d11fe697cd88645179f15441a7485d934f240`. It is an implementation
+inventory, not engine-conformance evidence. At that revision:
+
+- the generated execution inventory contains 896 records and passes its
+  deterministic check;
+- all 21 workspace/root Rust manifests, the locked dependency graph, and all
+  32 library or binary module roots were read completely;
+- the ordered per-file SHA-256 ledger for the 21 Rust manifests has digest
+  `0f0a3fea21ad278fed66472a97c89d24490b7625625f6fd3ea85f62f2ee29b86`,
+  and the corresponding 32-root ledger has digest
+  `bd6b041ce9ac9a4da64883937670b44b3e0645ad8be8d770fa286bcdaa094a88`;
+- the 11 non-workspace package/solution/fixture manifests have ordered-ledger
+  digest
+  `2e2b04c1cffab3516869c1738a3562d4553567b70eed3900ea9d46cc44a098f0`;
+  these include the Rust and TypeScript evaluation fixtures and each generated
+  SDK package boundary; and
+- `Cargo.lock` has SHA-256
+  `bafc36ae835b2b7af47fd560140f721f7282a9d1bee0d18c28c802025538cd7b`.
+
+The two tables below are one trace, not competing inventories. The package
+table freezes the actual dependency and public-root baseline. The capability
+table binds those roots to all known implementation modules,
+tests/fixtures/examples/benchmarks, accepted invariants, destination gates,
+and equal-or-stronger replacement proof. The
+[mandatory direct-convergence table](#mandatory-direct-convergence) then names
+the conflicting files, types, fields, formats, commands, and authorities that
+must disappear. A capability is not accounted for unless all three views agree.
+
+| Current package and fully read module root(s) | Normal first-party dependencies | Current public/root surface | Required direct disposition |
+|---|---|---|---|
+| `rrd-core` — `crates/kernel/rrd-core/src/lib.rs` | none | `authenticated_log`, `claim`, `data`, `digest`, `error`, `ident`, `key`, `reasoning_tree`, `reference`, `runtime`, `schema`, `temporal`, and `trace`; re-exported claim, data, reasoning, transaction/read-stamp, schema, temporal, and trace types | Keep storage-independent semantic vocabulary in the kernel. Move physical `key` encoding to the rrflowKV boundary in C-01; preserve only explicit semantic identities and causal evidence. |
+| `rrd-lsm` — `crates/persistence/rrd-lsm/src/lib.rs` | `rrd-core` | `Database`, `Snapshot`, `WriteBatch`, WAL/recovery receipts, MVCC memtable values, manifest/CURRENT, row-block `Segment`, cache/I/O statistics, compaction, and snapshot bundles | Become the sole rrflowKV physical implementation below the narrowed port; reject all pre-1.0 readers in C-05 and replace row-only segments with the C-06 ordered key spine plus Arrow-compatible pages. |
+| `rrd-store` — `crates/persistence/rrd-store/src/lib.rs`; `src/bin/durability-child.rs` | `rrd-core`, `rrd-lsm` | `StorageEngine`, `StorageProfile`, `RrflowMxStore`, `RrflowKvStore`, runtime access/commit helpers, projection/control/invocation records, archives/backups, object tiers, S3 adapter, physical counters, and the conflicting public `Trigger` | Retain one MX/KV semantic port and the direct profile names; narrow it in C-02 and make C-03 mutations/index/event/audit effects atomic. Remove or rename storage-level vocabulary that claims later engine trigger authority; keep backup/object mechanics below engine-owned plans. |
+| `rrd-query` — `crates/compute/rrd-query/src/lib.rs` | `rrd-core`, `rrd-store` | RRFlowQL syntax/binding/plans, `QueryExecution`, eager `QueryRow`/`QueryBatch`, `ArrowSnapshot` and row conversion, `execute_snapshot` DataFusion execution, BM25, index catalogue, live polling, and `StampedQueryPipeline` | Keep one rrflowQL compute subsystem. Replace eager snapshot/materialization and polling paths with C-04/F-01 stamped streaming, native pushdown/operators, bounded DataFusion execution, and one resource ledger; indexes converge through Gate E. |
+| `rrd-vector` — `crates/compute/rrd-vector/src/lib.rs` | `rrd-core`, `rrd-store` | exact scoring/oracles, collection/catalogue and payload indexes, immutable/compact/quantized/TurboQuant segments, HNSW, filter/planner/runtime, accelerator admission, quantization lifecycle, and alternate catalogue paths | Keep one RRFlow vector index subsystem under engine transactions. Preserve exact-oracle, filtering, HNSW, quantization, and measured accelerator behavior; remove competing catalogue/artifact paths after E-04/E-05 evidence. |
+| `rrd-inference` — `crates/compute/rrd-inference/src/lib.rs` | `rrd-core` | provider-neutral `EmbeddingModelSpec`, backend descriptor/registry/trait, source reader, jobs, resource/trust/network controls, coordinator, prepared embedding, feature-hash reference backend, and optional local FastEmbed backend | Retain deterministic embedding as non-authoritative compute accepted through `RrdEngine`; add the separate model-neutral `RouterBackend` contract/implementation at B-03/G-02 rather than overloading embedding. |
+| `rrd-contract` — `crates/transport/rrd-contract/src/lib.rs`; `src/bin/rrd-contract-export.rs` | none | transport-neutral attunement, capability, diagnostic, function, inference, knowledge, context, seat/provider representation, platform, reasoning-tree, router, SDK-conformance, transaction/data/query/index/vector/retrieval/subscription/backup/audit/estate, endpoint/OpenAPI, identity, deployment, session, and error envelopes | Remain implementation-free public vocabulary. A-07 directly resolves `AutomationCatalogue`/`FunctionTrigger*`, `MemoryEstate*`, `DeploymentMode`, the `rrd` wire name, topology/resource grammar, and alternate successful fields; generated surfaces change from this one contract. |
+| `rrd-client` — `crates/transport/rrd-client/src/lib.rs` | `rrd-contract` | `RrdClient`, `ClientConfig`, `RequestOptions`, opaque-in-intent but currently exposed `Session`, `SubscriptionSocket`, typed operation methods, HTTP/mTLS carriage, WebSocket ACK/reconnect, and client errors | Remain a pure public Rust SDK. H-04 splits responsibility, binds all 33 operations plus the socket, and closes validation, secret, retry/certainty, cancellation, resource, trace, resolver, and package-conformance gaps. |
+| `rrd-server` — `crates/transport/rrd-server/src/lib.rs`; `src/main.rs` | `rrd-contract`, `rrd-engine` | `RrdHttpServer`, HTTP errors, JWT and mutual-TLS configuration; the binary additionally owns the conflicting `initialize` command, instance discovery, physical paths, caller clock, readiness files, and shutdown files | Keep only HTTP/WebSocket hosting over an installed `RrdEngine`. Move cold start to D-01, engine time to the composition boundary, and readiness/control to authenticated receipts; remove path/marker/lifecycle authority. |
+| `rrd-security` — `crates/authority/rrd-security/src/lib.rs` | `rrd-contract`, `rrd-core`, `rrd-store` | principal/role/grant/data-policy/JWT/identity types, authorization decisions, audit records, `SecurityState`, and the direct-store `SecurityRepository` | Preserve pure validation, deny-by-default decisions, verifier-only credentials, and audit semantics; C-03/D-01 move all state and effects through one stamped `RrdEngine` transaction and remove `SecurityRepository` storage authority. |
+| `rrd-estate` — `crates/authority/rrd-estate/src/lib.rs`; `src/commands/rrd-deployment-catalog.rs` | `rrd-contract`, `rrd-core`, `rrd-store` | monolithic `EstateDocument`/`EstateRepository`, desired/observed operations, leases/receipts, authority hierarchy, local authorization, local process catalogue/driver, backup/recovery jobs, and reconcilers | Preserve domain validation, fencing, prepared-effect receipts, backup, and recovery invariants. Make estate types pure, persist native records/relations through `RrdEngine`, merge duplicate topology/security concepts, and move host process effects to one outward adapter with no forwarding crate. |
+| `rrd-engine` — `crates/authority/rrd-engine/src/lib.rs` | `rrd-cluster`, `rrd-contract`, `rrd-core`, `rrd-estate`, `rrd-inference`, `rrd-operator-knowledge`, `rrd-query`, `rrd-security`, `rrd-store`, `rrd-vector` | `RrdEngine`, `RrdOperation`, authorized invocation/session/security/query/data/vector/context/retrieval/function/estate/distributed operations, capability catalogue, offline edge types, operator facade, and runtime exports | Remain the only composition, authorization, transaction, routing, and persistence authority. Absorb every direct-store authority through narrow injected ports; do not import transports or let compute/adapters commit independently. |
+| `rrflow-cli` — `crates/adapters/rrflow-cli/src/main.rs` plus `src/bin/{rrd-backup-controller,rrd-estate-admin,rrd-estate-controller,rrd-recovery-controller,rrd-security-bootstrap}.rs` | `rrd-client`, `rrd-contract`, `rrd-engine` | binary-only `rrflow` command tree, development supervisor, direct embedded opener, operator invocation recording, and five standalone controller/bootstrap binaries | Retain one installed operator adapter over public/engine operations. D-01 adds preview/apply install; remove standalone bootstrap/controllers, default `.rrflow/rrd`, caller-authored identity/time, and supervisor lifecycle state after canonical evidence exists. |
+| `rrflow-mcp` — `crates/adapters/rrflow-mcp/src/main.rs` | `rrd-client`, `rrd-contract`, `rrd-engine` | binary-only MCP discovery/initialize/ping/tools surface and `rrflow_context`; private embedded-or-daemon `RuntimeAuthority` | Remain a provider-neutral outward adapter. It may translate MCP to the same installed operations but cannot own storage, reasoning lifecycle, attunement, identity, or completion truth; H-04/H-07 prove remote and embedded parity. |
+| `rrflow-edge` — `crates/adapters/rrflow-edge/src/main.rs` | `rrd-engine` | binary-only offline `build` and `query` commands over `OfflineEdgeIndex` | Retain only a deterministic derived/offline artifact profile with provenance and resource evidence. It never becomes another authoritative database or deployment mode. |
+| `rrd-cluster` — `crates/operations/rrd-cluster/src/lib.rs`; `src/bin/rrd-cluster-node.rs` | `rrd-core`, `rrd-lsm`, `rrd-store` | placement/consistency/transfer/authority/telemetry/simulation contracts plus optional OpenRaft storage/transport and a process node; currently also direct storage, topology, mutation, transfer-state, and trace authority | Preserve safety contracts behind an injected engine proposal/apply port; remove direct opens, raw commits, private state/formats, and duplicate identities. Distributed availability is outside the first alpha until a later gate qualifies the full engine on independent hosts. |
+| `rrd-kubernetes` — `crates/operations/rrd-kubernetes/src/lib.rs`; `src/main.rs`; `src/bin/rrd-kubernetes-crd.rs` | `rrd-contract`, `rrd-core` | `RrdInstance` CRD/spec/status, resource renderer, `controller` module, finalizer/status/apply mechanics, operator and CRD binaries | Preserve Kubernetes mechanics in the outward `rrflow-kubernetes` adapter. Consume sealed install/effect plans and return observations/receipts; remove bootstrap, caller-time/path, desired-state, TCP-readiness, force-apply, and eager-deletion authority. |
+| `rrd-maintenance` — `crates/operations/rrd-maintenance/src/lib.rs` | `rrd-contract`, `rrd-core`, `rrd-store` | `MaintenanceRun`, inventory/decision/protection/validation/observation/projection/event types, fixed stages/classes/reduction policy, defaults, and direct-store `MaintenanceRepository` | Generalize only the useful safety semantics into canonical event-triggered I-03 routines with focused evidence. Remove the fixed lifecycle, policies, private scope/events/JSON repository, cursor-zero replay, direct-store path, and then the package itself with no wrapper. |
+| `rrd-operator-knowledge` — `crates/operations/rrd-operator-knowledge/src/lib.rs` | `rrd-core`, `rrd-vector` | external binding/source-revision/search/sync contracts, bounded controls/evidence, adapter/writer traits, reference adapters, and optional pgvector implementation | Retain as an optional external operator-data adapter. External Postgres/Turso/Dragonfly/etc. remain non-authoritative sources selected at installation; `RrdEngine` owns acceptance, stamps, policy, context use, and all canonical RRFlow persistence. |
+| `rrflow-eval` — `crates/evaluation/rrflow-eval/src/main.rs` | none | binary-only paired `run`/`summarize`/`verify` runner that invokes configured Codex, Claude, or Gemini CLIs and records provider output | Keep provider execution and comparative trials in evaluation only. It supplies evidence and never becomes an engine router, host hook, install authority, or required runtime dependency. |
+
+The five generated SDK roots are independently reviewed because Cargo metadata
+cannot account for them:
+
+| Package boundary and public source root | Current public surface | Characterization and canonical destination |
+|---|---|---|
+| TypeScript — `sdks/typescript/{package.json,pnpm-workspace.yaml,tsconfig.json}`; `src/index.ts` | `RrdClient`, `ClientConfig`, `Session`, `RequestOptions`, resource types, errors, generated `OperationId`, and one generic all-33-operation call | Unit/live conformance, generator, lockfile, browser/package behavior, and all H-04/J requirements are accounted in the TypeScript capability row below. |
+| Python — `sdks/python/pyproject.toml`; `src/rrd_client/{__init__,client,models}.py` | synchronous `RrdClient`, `Session`, `RequestOptions`, resource/envelope models, errors, generated operation literals, and one generic call | Unit/live conformance, generator, lockfile, wheel/sdist behavior, and required sync/async/socket/package matrices are accounted in the Python row. |
+| Go — `sdks/go/go.mod`; `client.go`, `models.go`, `endpoints_gen.go` | context-aware `Client`, `Config`, `Session`, `RequestOptions`, credentials/error/resource types, generated `OperationID`, typed discovery/session helpers, and one generic call | Unit/race/live conformance, generators, module packaging, explicit transport ownership, and required platform/socket matrices are accounted in the Go row. |
+| Java — `sdks/java/pom.xml`; all seven `src/main/java/io/rrflow/rrd/*.java` roots | `RrdClient`, `OperationId`, `RequestOptions`, `Session`, `ResourceSegment`, and client/API exceptions | Unit/live conformance, generation, Maven/JAR/offline behavior, async/blocking/socket carriage, and platform matrices are accounted in the Java row. |
+| .NET — solution plus both project manifests; four `src/Rrflow.Rrd.Client/*.cs` roots | asynchronous `RrdClient`, `RrdClientOptions`, `RequestOptions`, sessions/credentials/resources, generated `OperationId`/endpoint catalogue, and client/API exceptions | Unit/live conformance, generation, NuGet/offline behavior, explicit HTTP/WebSocket carriage, trimming/AOT, and platform matrices are accounted in the .NET row. |
+| Evaluation fixtures — `eval/fixtures/{rust-service/Cargo.toml,ts-service/package.json}` and shared `fixtures/*.json` | no runtime public API; controlled consumer and golden/conformance inputs | Remain characterization inputs only. A fixture never establishes authority or completion; its owning capability row names the implementation and stronger real-process evidence it must exercise. |
+
+| Capability family | Current implementation modules and public surface that must be read in full | Characterization inventory that must be preserved or strengthened | Canonical convergence and equal-or-stronger replacement evidence | Gates |
 |---|---|---|---|---|
 | rrflowKV WAL, MVCC, manifests, recovery, compaction, hot reads, block filtering, and decoded-block caching | `rrd-lsm/src/{wal,memtable,database,manifest,segment}.rs`; `rrd-store/examples/ai_hotset_benchmark.rs` | `rrd-lsm/tests/{wal,mvcc,manifest,failure_matrix,compaction,segment,snapshot_memory}.rs`; `rrd-store/tests/{durability,snapshot,benchmark_evidence}.rs` | Keep the useful durability, snapshot, bounded-cache, filter, and physical-counter behavior while replacing the port and row-only segment format; prove the final key spine, Arrow pages, buffer lifetime, and measured cache decision. | C-02, C-04, C-06, C-07, F-05, J-04 |
 | rrflowMX/rrflowKV semantic equivalence | `rrd-store/src/{engine,rrflow_kv,ds}.rs` | `rrd-store/tests/{engine,snapshot,runtime,unified_data,rrflow_kv_operator,rrflow_kv_model_soak}.rs`; vector engine differential tests | Narrow the one `StorageEngine` port, then run the same transaction, point/range, snapshot, graph, index, and query corpus against `RrflowMxStore` and `RrflowKvStore`; durability assertions apply only to rrflowKV. | A-07, C-02, C-03, C-04 |
@@ -507,9 +574,10 @@ one package journal; `docs/README.md` is the only top-level `docs/*.md` record.
 The complete KB-05/A-06 acceptance corpus passed in the `ci-operations`
 package, so the canonical roadmap records A-06 and KB-05 complete.
 
-Execute A-07.0 traceability, A-07.1 package/type vocabulary, and A-07.2 causal
-evidence vocabulary as separate journaled packages. B-03 is the next
-implementation package only after A-07 is complete.
+A-07.0 traceability is complete in its journal below. Execute A-07.1
+package/type vocabulary and A-07.2 causal evidence vocabulary as separate
+journaled packages. B-03 is the next implementation package only after A-07
+is complete.
 
 Resolved full-file reviews:
 
@@ -1077,6 +1145,24 @@ against the exact starting revision. For each capability family, record:
 This is a documentation-only work package. It changes no runtime behavior and
 does not mark A-07 complete. A-07.1 cannot begin with an unaccounted source,
 test, fixture, or behavior.
+
+#### A-07.0 evidence journal
+
+```text
+gate/package: A-07 / A-07.0 / implementation-requirements traceability
+revision: parent b5ec39162771ced38a83dd512dda5b0720aef714; result is the commit containing this entry
+baseline files/digests: starting tree=3c8d11fe697cd88645179f15441a7485d934f240; Cargo.lock=bafc36ae835b2b7af47fd560140f721f7282a9d1bee0d18c28c802025538cd7b; root README=a86b158bf16abd21ec9a2e867442ed601c1038fa9d2de288063e48a211a8e9bc; canonical roadmap=df4fe77a7ae0f88bd054e6a0a376df7b35f14102fc2ddc860eff3b0f9576727b; execution map=677b3a1cf67be55666e899c72b2812a4b352e3ea66c781bab05e16d802cedcbc; POA&M=8ad40fdfe5878c6dc0fabd2dd8b9bb29ccacce13ab8a0c96df2484c2ebc23b6d; generated file plan=cd6dfa2b0f45bac85f58ccfdf1b8cef5d0184c430fd16d4e098c3e09a028b269; ordered Rust-manifest hash ledger=0f0a3fea21ad278fed66472a97c89d24490b7625625f6fd3ea85f62f2ee29b86; ordered module-root hash ledger=bd6b041ce9ac9a4da64883937670b44b3e0645ad8be8d770fa286bcdaa094a88; ordered non-workspace-manifest hash ledger=2e2b04c1cffab3516869c1738a3562d4553567b70eed3900ea9d46cc44a098f0
+files read in full: AGENTS.md; root README; canonical roadmap; complete 60-physical-line POA&M; A-07.0 authority, complete implementation-requirements traceability and direct-convergence tables, package-journal requirements, and relevant A-07.1/A-07.2 execution-map sections; root Cargo.toml, all 20 workspace Cargo.toml files, Cargo.lock, and the non-workspace Rust fixture manifest; every one of the 32 Cargo library/binary module roots; all five generated SDK package/solution/project manifests and their TypeScript, Python, Go, Java, and .NET public source roots; both evaluation fixture manifests; workspace architecture test; and all 1,684 lines of the deterministic inventory generator. Every changed documentation body/section was reread after authoring; the regenerated inventory was parsed and independently checked in full
+files changed/created/deleted/moved: update root README, canonical roadmap, POA&M-014, this execution map, and the generated file plan; no file is created, deleted, or moved; no Rust, SDK, fixture, protocol, persisted format, endpoint, configuration, install template, or runtime source changes
+contract or behavior changed: documentation traceability and the current next-package pointer changed; product/runtime behavior did not. The exact 20-package dependency/public-root map and five generated-SDK roots now join the existing capability and direct-convergence maps. Existing code remains rough-draft inventory: RrdEngine is the target sole authority, while direct-store security, estate, maintenance, and cluster paths, eager query/Arrow materialization, competing vector catalogues, startup installation, markers, SDK gaps, and other named conflicts remain scheduled for direct removal only after equal-or-stronger canonical evidence
+smallest test command and result: python3 scripts/ci/build_execution_inventory.py --check — 896 records passed after deterministic regeneration; python3 scripts/ci/check_documentation.py — 90 document statuses, 88 classified coordinates, parent indexes, and local links passed
+owning package command and result: cargo metadata --format-version=1 --locked --no-deps — resolved the same 20 workspace packages and repository-local first-party paths; cargo test -p rrd-engine --test workspace_architecture --locked — all 16 dependency, source, boundary, terminology, and tracked-file tests passed
+cross-boundary command and result: python3 scripts/knowledge/test_export.py — 11 passed; generated-surface parity remained 33 HTTP operations at OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715; frozen version policy remained 1.0.0; cargo fmt --all -- --check, git diff --check, and cargo check --workspace --all-targets --locked all passed
+failure/crash/differential evidence: no new engine failure, crash, semantic differential, recall, or performance evidence was created. Full-source review proved direct StorageEngine dependencies in rrd-security, rrd-estate, and rrd-maintenance; direct rrd-lsm/rrd-store authority in rrd-cluster; eager row-to-Arrow/DataFusion paths; alternate vector catalogues; startup-created instance/security/process state; and incomplete SDK/runtime boundaries. Several malformed read-only launcher paths, including one post-review continuation and one parallel verification launcher, were rejected before process creation and changed no state; every intended read or check was rerun from the verified repository working directory
+not run and reason: full workspace tests, optional-feature suites, SDK language/package/live conformance, Connectome, rrflowMX/rrflowKV semantic differential, rrflowKV crash/reopen and final-format rejection, native graph/scalar/BM25/vector atomicity, streamed Arrow/DataFusion resource/fault execution, persisted reasoning/context/evidence/feedback, installation/attunement, offline clean deployment, and competitive benchmarks were not run because this package changes documentation traceability only and none can qualify A-07.0
+remaining known errors: A-07.1 and A-07.2 remain before A-07 can close; all C-through-J engine acceptance gaps and POAM-001 through POAM-024 remain open or sequenced as recorded. In particular, RRFlow does not yet have accepted one-port MX/KV semantics, final Arrow-compatible rrflowKV pages, atomic native graph/scalar/BM25/vector projections, bounded read-stamped DataFusion streaming, persisted reasoning/recall feedback, qualified install/attunement, complete SDK/Connectome parity, or clean-release proof
+roadmap checkbox changed: no
+```
 
 ### A-07.1 — freeze package and type vocabulary
 

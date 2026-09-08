@@ -92,11 +92,13 @@ and all observed deficiencies are maintained in the
 The canonical checklist and accepted evidence are in the
 [release roadmap](docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist).
 A-06 is complete: the checkout knowledge package is classified,
-content-addressed, reproducible, and ready for later authorized import. The
-next executable package is
-[A-07.0 implementation traceability](docs/roadmap/rrflow-1.0-execution-map.md#a-070--implementation-traceability-before-structural-edits).
+content-addressed, reproducible, and ready for later authorized import. A-07.0
+has now bound every current package/root and capability family to its existing
+public surface, evidence, canonical destination, and direct-removal obligation;
+it did not change or qualify engine behavior. The next executable package is
+[A-07.1 package and type vocabulary](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
 B-01 and B-02 remain completed contract work; later Gate B work remains paused
-until A-07 is complete.
+until all of A-07 is complete.
 
 ## Knowledge warp points
 

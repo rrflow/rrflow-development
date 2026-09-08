@@ -103,10 +103,11 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.0**, the implementation-requirements
-traceability package. B-01 and B-02 remain completed contract work, but no
-further Gate B work proceeds until A-07 corrects the pre-release source,
-package, public, and trace-vocabulary assumptions.
+The next executable item is **A-07.1**, the package and type vocabulary
+package. A-07.0 completed the reviewed implementation-requirements mapping but
+did not change runtime behavior or complete A-07. B-01 and B-02 remain
+completed contract work; no further Gate B work proceeds until A-07 corrects
+the pre-release source, package, public, and trace-vocabulary assumptions.
 
 ### Gate A — freeze authority, names, and boundaries
 
@@ -250,6 +251,31 @@ KB-05/A-06 evidence (2026-09-08):
   not claim knowledge import, persistence, readback, normal public warp
   resolution, or any rrflowKV/graph/index/Arrow/DataFusion/reasoning capability;
   KB-06 through KB-08 and the runtime gates remain open.
+
+A-07.0 evidence (2026-09-08):
+
+- The reviewed starting point is commit
+  `b5ec39162771ced38a83dd512dda5b0720aef714`, tree
+  `3c8d11fe697cd88645179f15441a7485d934f240`. The deterministic execution
+  inventory contains 896 current, generated, and planned records.
+- Every root/workspace Rust manifest, locked dependency edge, and all 32
+  library/binary module roots were read completely, as were all generated-SDK
+  package boundaries and public source roots. The execution map now records the
+  20-package dependency/public-surface baseline and the five SDK boundaries.
+- The package map, capability-family matrix, and mandatory direct-convergence
+  table jointly bind current modules and public symbols to characterization
+  tests/fixtures/examples/benchmarks, accepted invariants, one canonical
+  destination, owning gates, equal-or-stronger proof, and each conflicting
+  authority or successful old surface that must later be removed.
+- Deterministic inventory and documentation checks, all 11 knowledge-exporter
+  tests, locked Cargo metadata, all 16 workspace-architecture tests, generated
+  parity for 33 HTTP operations, frozen-version policy, Cargo formatting,
+  diff integrity, and the complete workspace all-target check passed.
+- This was documentation-only traceability. It did not rename, move, delete,
+  or qualify runtime code; it did not prove rrflowMX/rrflowKV equivalence,
+  rrflowKV durability, graph/index atomicity, streamed Arrow/DataFusion
+  execution, or persisted reasoning/recall. A-07 remains unchecked and A-07.1
+  is the next package.
 
 A-02 evidence (2026-09-04):
 
