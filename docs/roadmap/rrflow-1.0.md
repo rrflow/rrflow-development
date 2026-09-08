@@ -103,8 +103,9 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **A-07.1g**, the .NET SDK responsibility
-boundary inside the package and type vocabulary work. A-07.0 completed the
+The next executable item is **A-07.1h**, the repository-wide case-insensitive
+vocabulary, closure, dependency-direction, generated-inventory, and all-target
+acceptance pass for the complete A-07.1 candidate. A-07.0 completed the
 reviewed implementation-requirements mapping. A-07.1a directly converged the
 governed-function catalogue/binding vocabulary and module boundary. A-07.1b
 then split the Rust SDK by accepted responsibility and removed its public
@@ -118,8 +119,11 @@ HTTP responsibilities, removed its catch-all model module, and added package
 documentation without inventing socket or generated-model behavior. A-07.1f
 split the Java client's current HTTP responsibilities behind its unchanged
 public facade and added package documentation without inventing async, socket,
-or generated-model behavior. None of these slices qualifies its capability or
-completes A-07. B-01 and B-02 remain completed contract work; no
+or generated-model behavior. A-07.1g pinned and centralized the .NET workspace
+inputs, moved its README and generated operation projection to their one direct
+paths, and split its current HTTP implementation without changing the exported
+assembly surface. None of these slices qualifies its capability or completes
+A-07. B-01 and B-02 remain completed contract work; no
 further Gate B work proceeds until A-07 corrects the complete pre-release
 source, package, public, and trace-vocabulary assumptions.
 
@@ -456,6 +460,45 @@ A-07.1f Java SDK responsibility-boundary evidence (2026-09-08):
   artifacts, toolchain/platform consumers, and installed MX/KV conformance
   remain owned by B/D/H/J and POAM-011.
 - A-07 and A-07.1 remain unchecked; A-07.1g is next.
+
+A-07.1g .NET SDK responsibility-boundary evidence (2026-09-08):
+
+- SDK `10.0.111` is selected exactly with roll-forward disabled. Common
+  target/compiler/analysis/deterministic-compilation/lock-generation policy
+  and the xUnit 3.2.2 version now have one workspace-level owner. The package
+  README lives at the .NET root, the byte-identical 33-operation projection
+  lives only under `Generated`, and the generator writes only that path.
+- The former 455-line `RrdClient.cs` responsibility monolith is an 89-line
+  public facade over package-internal validated options, endpoint resolution,
+  bounded HTTP carriage, operation binding/execution, partial protocol coding,
+  and broad retry/deadline seams. `Models.cs` is absent; each existing public
+  option, resource, and session record has one responsibility file. No future
+  call, subscription, WebSocket, generated-model, or package-builder surface
+  was fabricated.
+- A temporary isolated reflection audit compared the committed and candidate
+  Release assemblies: all 140 exported type/member signatures matched, with
+  zero additions or removals. Locked restore, warning-clean build, all three
+  current mock-focused tests, generator drift, and formatting passed under
+  .NET SDK 10.0.111/runtime 10.0.11 on Linux x64. The fourth locally reported
+  xUnit result remains the documented manifest-absent false pass and is not
+  counted as engine conformance.
+- Release pack observations produced 24,983-byte and 24,982-byte six-entry
+  NuGet packages with the relocated root README, preserving a concrete
+  byte-reproducibility failure. The shared six-SDK real-daemon corpus passed at
+  corpus digest
+  `b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2`.
+  These establish package topology plus direct-seeded rrflowKV client
+  characterization, not deterministic/offline/signed artifact or installed
+  engine evidence.
+- Concrete operation models, exact status/media/payload/causal validation,
+  opaque credentials, semantic retry/uncertainty, correlated server
+  cancellation, bounded production HTTP/WebSocket carriage, W3C propagation,
+  authenticated HTTPS/mesh resolution, external consumers, supported
+  toolchain/platform matrices, D-01 installation, rrflowMX/rrflowKV parity,
+  crash/reopen, native graph/index atomicity, stamped Arrow/DataFusion,
+  persistent reasoning/context/feedback, and Connectome remain owned by their
+  B through J gates and POAM-011.
+- A-07 and A-07.1 remain unchecked; A-07.1h is next.
 
 A-02 evidence (2026-09-04):
 

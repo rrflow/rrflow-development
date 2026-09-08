@@ -17,7 +17,8 @@ GENERATED = {
     "python endpoints": ROOT / "sdks/python/src/rrd_client/generated/endpoints.py",
     "go endpoints": ROOT / "sdks/go/endpoints_gen.go",
     "java endpoints": ROOT / "sdks/java/src/main/java/io/rrflow/rrd/OperationId.java",
-    "dotnet endpoints": ROOT / "sdks/dotnet/src/Rrflow.Rrd.Client/OperationId.g.cs",
+    "dotnet endpoints": ROOT
+    / "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/OperationId.g.cs",
 }
 
 
@@ -55,7 +56,11 @@ def canonical_endpoints(document: dict[str, object]) -> dict[str, dict[str, obje
                 continue
             security = operation.get("security", [])
             scheme = None
-            if isinstance(security, list) and security and isinstance(security[0], dict):
+            if (
+                isinstance(security, list)
+                and security
+                and isinstance(security[0], dict)
+            ):
                 scheme = next(iter(security[0]), None)
             authentication = {
                 "rrdApiKey": "api_key",
@@ -92,7 +97,9 @@ def parse_python(source: str) -> dict[str, dict[str, object]]:
 
 def parse_go(source: str) -> dict[str, dict[str, object]]:
     names = dict(
-        re.findall(r'^\s*(Operation\w+)\s+OperationID\s+=\s+"([^"]+)"$', source, re.MULTILINE)
+        re.findall(
+            r'^\s*(Operation\w+)\s+OperationID\s+=\s+"([^"]+)"$', source, re.MULTILINE
+        )
     )
     pattern = re.compile(
         r'^\s*(Operation\w+):\s+\{Method: "([^"]+)", Path: "([^"]+)", '
@@ -113,7 +120,7 @@ def parse_go(source: str) -> dict[str, dict[str, object]]:
 def parse_java(source: str) -> dict[str, dict[str, object]]:
     pattern = re.compile(
         r'^\s*[A-Z0-9_]+\("([^"]+)", "([^"]+)", "([^"]+)", '
-        r'Authentication\.([A-Z_]+), (true|false)\)[,;]$',
+        r"Authentication\.([A-Z_]+), (true|false)\)[,;]$",
         re.MULTILINE,
     )
     authentication_names = {
@@ -135,7 +142,7 @@ def parse_java(source: str) -> dict[str, dict[str, object]]:
 def parse_dotnet(source: str) -> dict[str, dict[str, object]]:
     pattern = re.compile(
         r'^\s*OperationId\.\w+ => new\("([^"]+)", "([^"]+)", "([^"]+)", '
-        r'Authentication\.(\w+), (true|false)\),$',
+        r"Authentication\.(\w+), (true|false)\),$",
         re.MULTILINE,
     )
     authentication_names = {
@@ -183,7 +190,9 @@ def main() -> None:
                 f"{name} drifted from rrd-contract: "
                 f"missing={missing} extra={extra} mismatched={mismatched}"
             )
-    print(f"generated surface parity: {len(expected)} HTTP operations at OpenAPI {digest}")
+    print(
+        f"generated surface parity: {len(expected)} HTTP operations at OpenAPI {digest}"
+    )
 
 
 if __name__ == "__main__":

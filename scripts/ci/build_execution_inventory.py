@@ -502,17 +502,6 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "sdks/dotnet/Rrflow.Rrd.slnx": ("J-02", "J-03", "J-05"),
     "sdks/dotnet/scripts/generate.py": ("H-04", "J-02", "J-05"),
     "sdks/dotnet/src/Rrflow.Rrd.Client/Errors.cs": ("H-04", "J-02"),
-    "sdks/dotnet/src/Rrflow.Rrd.Client/Models.cs": (
-        "H-04",
-        "J-02",
-        "J-05",
-    ),
-    "sdks/dotnet/src/Rrflow.Rrd.Client/OperationId.g.cs": (
-        "H-04",
-        "J-02",
-        "J-05",
-    ),
-    "sdks/dotnet/src/Rrflow.Rrd.Client/README.md": ("J-03", "J-05"),
     "sdks/dotnet/src/Rrflow.Rrd.Client/RrdClient.cs": (
         "B-04",
         "H-04",
@@ -586,11 +575,6 @@ REMOVE_OR_REWRITE = {
     "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
     "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
     "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
-    "sdks/dotnet/src/Rrflow.Rrd.Client/Models.cs": "split the catch-all records directly into ClientOptions, RequestOptions, ResourcePath, and Session during A-07; leave no forwarding model file or duplicate public shape",
-    "sdks/dotnet/src/Rrflow.Rrd.Client/OperationId.g.cs": "move the generated operation projection under Generated and update the sole generator in the same A-07 package; leave no second enum or old-path generated file",
-    "sdks/dotnet/src/Rrflow.Rrd.Client/README.md": "move the narrow package entrance to the .NET workspace root during A-07; leave no nested duplicate README",
-    "sdks/dotnet/src/Rrflow.Rrd.Client/RrdClient.cs": "split endpoint, HTTP carriage, operation binding/execution, protocol, retry, and session responsibilities directly into the planned .NET files during A-07; retain RrdClient only as the narrow thread-safe public facade and leave no forwarding compatibility implementation",
-    "sdks/java/src/main/java/io/rrflow/rrd/RrdClient.java": "split transport, endpoint, operation, protocol, retry, and configuration responsibilities directly into the planned Java classes during A-07; retain RrdClient only as the narrow public operation facade and leave no duplicate implementation or forwarding compatibility class",
 }
 
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {

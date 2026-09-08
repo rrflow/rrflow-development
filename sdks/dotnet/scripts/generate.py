@@ -8,7 +8,7 @@ from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PACKAGE_ROOT.parents[1]
-OUTPUT = PACKAGE_ROOT / "src/Rrflow.Rrd.Client/OperationId.g.cs"
+OUTPUT = PACKAGE_ROOT / "src/Rrflow.Rrd.Client/Generated/OperationId.g.cs"
 
 
 def member_name(operation: str) -> str:

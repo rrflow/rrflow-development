@@ -95,22 +95,26 @@ A-06 is complete: the checkout knowledge package is classified,
 content-addressed, reproducible, and ready for later authorized import. A-07.0
 has bound every current package/root and capability family to its existing
 public surface, evidence, canonical destination, and direct-removal obligation.
-The first six bounded A-07.1 slices have directly converged the
+The first seven bounded A-07.1 slices have directly converged the
 governed-function catalogue and transaction-binding vocabulary, isolated that
 implementation under its function boundary, split the Rust SDK by accepted
 responsibility, made its public session handle credential-private and
-redaction-safe, and split the TypeScript, Python, Go, and Java SDKs' existing
-HTTP behavior without inventing absent asynchronous or WebSocket surfaces.
+redaction-safe, and split the TypeScript, Python, Go, Java, and .NET SDKs'
+existing HTTP behavior without inventing absent asynchronous or WebSocket
+surfaces.
 Python's catch-all model module is gone and its package now carries the PEP 561
 typing marker; Go's catch-all model module is gone and its package now has an
 idiomatic documented responsibility layout; Java's former client monolith is
-now a narrow facade over package-private responsibility classes. The retained
-characterization includes the initial function rrflowMX/rrflowKV/reopen corpus,
-the Rust client's real
-loopback/mutual-TLS/WebSocket server corpus, and all four generated HTTP SDKs'
-mock, fail-closed, and shared real-daemon corpora. These slices do not qualify
-their capabilities or complete A-07. The next executable subpackage is the
-[A-07.1g .NET SDK boundary](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
+now a narrow facade over package-private responsibility classes; and .NET now
+has a pinned workspace policy, one generated-operation path, one root package
+README, responsibility-specific files, and the same 140 exported signatures.
+The retained characterization includes the initial function
+rrflowMX/rrflowKV/reopen corpus, the Rust client's real
+loopback/mutual-TLS/WebSocket server corpus, and all five generated HTTP SDKs'
+current mock and shared real-daemon characterization. Their documented
+fail-closed gaps remain. These slices do not qualify their capabilities or
+complete A-07. The next executable subpackage is
+[A-07.1h repository-wide vocabulary and closure](docs/roadmap/rrflow-1.0-execution-map.md#a-071--freeze-package-and-type-vocabulary).
 B-01 and B-02 remain completed contract work; later Gate B work remains paused
 until all of A-07 is complete.
 

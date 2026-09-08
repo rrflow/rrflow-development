@@ -50,26 +50,41 @@ objects or reconstruct engine planning in this SDK.
 The current package ID is `Rrflow.Rrd.Client`, the assembly namespace is
 `Rrflow.Rrd`, and the package version is the repository's frozen `1.0.0`.
 That version does not imply alpha readiness or authorize publication. The
-project targets only `net10.0`, uses nullable analysis, warnings-as-errors,
-and the latest installed analysis level, and has no third-party runtime
-dependency. Tests use xUnit v3 3.2.2. There is no tracked `global.json`,
-`Directory.Build.props`, or `Directory.Packages.props`, so the checkout does
-not yet freeze one .NET SDK/build/package-policy input.
+workspace pins SDK `10.0.111` with roll-forward disabled, targets only
+`net10.0`, and centralizes nullable analysis, warnings-as-errors, the latest
+analysis level under that pinned SDK, deterministic compilation, and lock-file
+generation in `Directory.Build.props`. `Directory.Packages.props` is the sole
+source for the xUnit v3 3.2.2 test version. The client has no third-party
+runtime dependency. These source/build-policy facts do not qualify a release
+toolchain or offline dependency closure.
 
 The complete reviewed source layout is:
 
 ```text
 sdks/dotnet/
+├── Directory.Build.props
+├── Directory.Packages.props
+├── README.md
 ├── Rrflow.Rrd.slnx
+├── global.json
 ├── scripts/
 │   └── generate.py
 ├── src/Rrflow.Rrd.Client/
+│   ├── ClientOptions.cs
+│   ├── EndpointResolver.cs
 │   ├── Errors.cs
-│   ├── Models.cs
-│   ├── OperationId.g.cs
-│   ├── README.md
+│   ├── Generated/
+│   │   └── OperationId.g.cs
+│   ├── HttpTransport.cs
+│   ├── OperationBinding.cs
+│   ├── OperationExecutor.cs
+│   ├── ProtocolCodec.cs
+│   ├── RequestOptions.cs
+│   ├── ResourcePath.cs
+│   ├── RetryPolicy.cs
 │   ├── RrdClient.cs
 │   ├── Rrflow.Rrd.Client.csproj
+│   ├── Session.cs
 │   └── packages.lock.json
 └── tests/Rrflow.Rrd.Client.Tests/
     ├── RrdClientTests.cs
@@ -78,12 +93,17 @@ sdks/dotnet/
     └── packages.lock.json
 ```
 
-`RrdClient` is an asynchronous generic HTTP facade implementing `IDisposable`.
-It has helpers for capabilities, endpoint catalogue, OpenAPI, and session
+`RrdClient` is now the narrow asynchronous generic HTTP facade implementing
+`IDisposable`. Package-internal classes own validated construction, loopback
+endpoint/route resolution, HTTP carriage, common operation binding/execution,
+partial protocol coding, and broad retry/deadline behavior. Public value types
+have one responsibility file, and the generated operation projection has one
+path. Helpers cover capabilities, endpoint catalogue, OpenAPI, and session
 creation; `CallAsync` can address all 33 current HTTP operation identifiers.
-That is route reachability, not complete operation semantics. There is no .NET
-WebSocket, installed endpoint resolver, remote-TLS profile, server-cancellation
-path, source-generated operation model set, or release-qualified package.
+That is structural source convergence and route reachability, not complete
+operation semantics. There is no .NET WebSocket, D-01-installed endpoint
+binding, authenticated remote resolver/TLS profile, server-cancellation path,
+source-generated operation model set, or release-qualified package.
 
 The current client usefully:
 
@@ -113,7 +133,7 @@ packaging, or complete-engine conformance.
 `scripts/generate.py` invokes the repository-local `rrd-contract-export`
 binary as an argument vector without a shell, reads the complete OpenAPI 3.1
 document, sorts operations, and supports a byte-for-byte drift check. The
-checked-in `OperationId.g.cs` contains:
+checked-in `Generated/OperationId.g.cs` contains:
 
 - 33 enum members;
 - wire operation name, HTTP method, route template, first authentication
@@ -353,21 +373,25 @@ The resulting .NET subscription client must:
 
 ## .NET build, NuGet, and offline distribution boundary
 
-The current solution and two SDK-style projects build under whichever
-compatible SDK is selected from the environment because no `global.json` is
-tracked. The client project repeats policy locally, the test dependency
-version lives in its project, and the lock files are enforced only when the
-caller supplies `--locked-mode`. The runtime lock has no package dependencies;
-the test lock records xUnit and fifteen transitive packages. A library lock
-does not control the graph selected by a consuming application, so it is not a
-substitute for the signed release closure.
+The solution and two SDK-style projects now select SDK `10.0.111` through
+tracked `global.json` with roll-forward disabled. Common compiler, analysis,
+deterministic-compilation, target-framework, and lock-file-generation policy
+lives in `Directory.Build.props`; the xUnit version lives once in
+`Directory.Packages.props`. Exact locked restore still requires
+`--locked-mode`. The runtime lock has no package dependencies; the test lock
+records xUnit and fifteen transitive packages. A library lock does not control
+the graph selected by a consuming application, so neither the pin nor either
+lock substitutes for the signed release closure.
 
-Current `dotnet pack` emits a six-entry package containing the assembly and a
-seven-line README. It omits XML API documentation, symbol/source package,
-consumer fixtures, SBOM, signature, and complete provenance. Its manifest uses
-default author/description metadata and has no repository URL, project URL,
-license, tags, or release notes. `dotnet nuget verify --all` fails with
-`NU3004` because the package is unsigned.
+The A-07.1g package probes emitted 24,983-byte and 24,982-byte six-entry
+packages containing the assembly and the README from the workspace root. The
+moved package input therefore resolves, while the differing bytes preserve a
+concrete reproducibility failure. The
+package still omits XML API documentation, symbol/source package, consumer
+fixtures, SBOM, signature, and complete provenance. Its manifest uses default
+author/description metadata and has no repository URL, project URL, license,
+tags, or release notes. The existing `dotnet nuget verify --all` probe fails
+with `NU3004` because the package is unsigned.
 
 Two consecutive Release builds produced byte-identical DLL and PDB bytes, but
 two consecutive `.nupkg` files did not. Inspection localized the difference to
@@ -381,13 +405,11 @@ but failed the solution before tests because xUnit was absent. A warm global
 package cache can make locked restore pass; it is not an independently
 reproducible source/test closure.
 
-The target .NET workspace:
+The remaining qualification target:
 
-- pins the exact accepted .NET SDK through tracked `global.json` and requires
-  an explicit reviewed update rather than silent toolchain roll-forward;
-- centralizes compiler, analyzer, deterministic-build, locked-restore, package,
-  and test dependency policy once in `Directory.Build.props` and
-  `Directory.Packages.props`;
+- treats the tracked SDK pin and shared build/dependency files as reviewed
+  inputs, then qualifies their exact bytes rather than assuming the pin makes
+  the toolchain or dependency closure reproducible;
 - targets only supported modern TFMs that pass the full matrix—initially
   `net10.0`; it adds no older compatibility target or conditional shim merely
   to increase a badge count;
@@ -420,9 +442,11 @@ Current evidence is deliberately bounded:
 
 | Command or probe | Observed result | Honest boundary |
 |---|---|---|
-| `dotnet restore ... --locked-mode` plus `dotnet build ... --no-restore` | The solution restored and built with zero warnings under SDK 10.0.111 on Linux x64. | One installed SDK/cache; no toolchain/platform/offline closure. |
+| `dotnet restore ... --locked-mode` plus `dotnet build ... --no-restore` | Before and after the split, the solution restored and built with zero warnings under pinned SDK 10.0.111 on Linux x64. | One installed SDK/cache; no toolchain/platform/offline closure. |
 | `dotnet run --project ...Tests.csproj --no-restore` | xUnit reported four tests passed, but the manifest-absent conformance method returned before executing a scenario and was not reported skipped. | Three mock-focused tests plus one false pass; no configured engine corpus. |
-| `python3 sdks/dotnet/scripts/generate.py --check` | Checked-in enum matched 33 operations and the OpenAPI digest. | Method/path/auth/mutation projection only. |
+| temporary baseline/candidate assembly reflection audit | All 140 exported type/member signatures matched: zero removed and zero added. | Public assembly shape only; it does not prove behavior or packaging compatibility. |
+| `python3 sdks/dotnet/scripts/generate.py --check` | The sole enum at `Generated/OperationId.g.cs` matched 33 operations and the OpenAPI digest. | Method/path/auth/mutation projection only. |
+| `dotnet format ... --verify-no-changes` and Release `dotnet pack` | Formatting passed; both package observations resolved the moved root README and emitted six entries, but their sizes were 24,983 and 24,982 bytes. | Source style and package topology pass; byte reproducibility, signature, and consumer proof fail or remain absent. |
 | full shared conformance runner | The configured .NET entry passed with corpus SHA-256 `b3977c57c8d268f861e9d5158e5609bf3e7d2e1db01f914a12911b95c3404cb2`. | Real HTTP against one direct-seeded rrflowKV daemon fixture; not installation, rrflowMX parity, or complete labelled behavior. |
 | temporary adversarial test | Replayed an unpinned invalid query, accepted `201 text/plain` plus invalid payload, and exposed the bearer through record formatting and JSON. | Reproducible open H-04 correctness/security defects. |
 | two clean Release builds and packages | DLL/PDB pairs were byte-identical; `.nupkg` SHA-256 values differed. | Compiler determinism exists locally; package determinism does not. |
@@ -448,7 +472,7 @@ document/temporal-graph/scalar/BM25/vector access, bounded RRF context
 selection, streamed Arrow/DataFusion analytics, and persisted
 reasoning/feedback. .NET proves only faithful access to that engine.
 
-## Direct-convergence file plan
+## Current and gated file plan
 
 .NET remains one client package and one `Rrflow.Rrd` client namespace;
 responsibility splits do not create another runtime. Generated files remain
@@ -456,59 +480,54 @@ subordinate to the executable public contract.
 
 ```text
 sdks/dotnet/
-├── global.json                         # exact accepted SDK selection
 ├── Directory.Build.props               # one compiler/build/package policy
 ├── Directory.Packages.props            # one dependency-version authority
 ├── README.md                            # narrow SDK workspace/package entrance
 ├── Rrflow.Rrd.slnx
+├── global.json                         # exact accepted SDK selection
 ├── scripts/
-│   ├── generate.py
-│   └── build_package.py                # deterministic build/feed verifier
+│   └── generate.py                     # sole catalogue projection generator
 ├── src/Rrflow.Rrd.Client/
-│   ├── ClientOptions.cs                # immutable construction and limits
-│   ├── EndpointResolver.cs             # installed candidates and identities
-│   ├── Errors.cs                       # closed redacted error hierarchy
-│   ├── HttpTransport.cs                # bounded HTTP carriage port
-│   ├── OperationBinding.cs             # exact generated semantic binding
-│   ├── OperationExecutor.cs            # encode/send/decode orchestration
-│   ├── ProtocolCodec.cs                # bounded common envelope codec
-│   ├── RequestOptions.cs               # per-call semantic coordinates
-│   ├── ResourcePath.cs                 # typed public resource components
-│   ├── RetryPolicy.cs                  # certainty/deadline classification
-│   ├── RrdCall.cs                      # result/server-cancellation handle
-│   ├── RrdClient.cs                    # narrow thread-safe public facade
-│   ├── Session.cs                      # opaque credential-bearing handles
-│   ├── Subscription.cs                 # multiplexed async-enumerable facade
-│   ├── WebSocketTransport.cs           # bounded socket carriage port
+│   ├── ClientOptions.cs                # public options + validated internal copy
+│   ├── EndpointResolver.cs             # current loopback URI/path validation
+│   ├── Errors.cs                       # current public client/API errors
+│   ├── Generated/
+│   │   └── OperationId.g.cs            # sole catalogue-derived projection
+│   ├── HttpTransport.cs                # current response-bounded HTTP carriage
+│   ├── OperationBinding.cs             # current envelope/resource/auth binding
+│   ├── OperationExecutor.cs            # current encode/send/decode coordination
+│   ├── ProtocolCodec.cs                # current partial envelope codec
+│   ├── RequestOptions.cs               # current public per-call values
+│   ├── ResourcePath.cs                 # current public resource component
+│   ├── RetryPolicy.cs                  # current broad retry/deadline behavior
+│   ├── RrdClient.cs                    # narrow public facade
 │   ├── Rrflow.Rrd.Client.csproj
-│   ├── packages.lock.json
-│   └── Generated/
-│       ├── OperationId.g.cs            # catalogue-derived identifier map
-│       ├── OperationModels.g.cs        # concrete generated requests/results
-│       └── RrdJsonContext.g.cs         # source-generated JSON metadata root
+│   ├── Session.cs                      # current public credential records
+│   └── packages.lock.json
 └── tests/Rrflow.Rrd.Client.Tests/
-    ├── ConcurrencyTests.cs
-    ├── OperationCoverageTests.cs
-    ├── PackageConsumerTests.cs
-    ├── ProtocolValidationTests.cs
     ├── RrdClientTests.cs
     ├── SdkConformanceTests.cs
-    ├── SubscriptionTests.cs
-    ├── TransportFaultsTests.cs
     ├── Rrflow.Rrd.Client.Tests.csproj
     └── packages.lock.json
 ```
 
+`scripts/build_package.py`, `RrdCall`, `Subscription`,
+`WebSocketTransport`, generated operation models/JSON metadata, and the
+focused operation, protocol, transport, subscription, concurrency, and
+package-consumer tests remain absent. Their B/H/J gates create them only with
+real behavior and evidence; the current similarly named internal seams do not
+claim those future semantics.
+
 The dependency order is:
 
-1. **A-07:** add the standard .NET workspace policy files; move the narrow
-   README to the workspace root and generated enum under `Generated`; split
-   `Models.cs` and `RrdClient.cs` responsibilities directly into the listed
-   files. Preserve generation, loopback/redirect denial, envelope/resource
-   construction, mutation idempotency, identical retry bytes, response byte
-   limit, disposal, explicit manifest-absent behavior, and current unit tests.
-   Leave no old-path file, catch-all model/client duplicate, forwarding type,
-   namespace alias, or second operation registry. Do not claim H/J behavior.
+1. **A-07.1g .NET structural slice:** complete. The exact SDK pin and shared
+   policy inputs exist; the README and generated enum have one direct path;
+   `Models.cs` is gone; and `RrdClient.cs` is the narrow facade over the named
+   internal responsibilities. All 140 exported signatures, current generation,
+   loopback/redirect denial, envelope/resource construction, mutation
+   idempotency, identical retry bytes, absolute deadline, response limit,
+   disposal, manifest-absent behavior, and unit characterization remain. This
+   checks only the A-07.1g supporting slice, not canonical A-07 or H/J behavior.
 2. **B-04:** implement the shared multiplexed state machine, .NET carriage,
    call handle, correlated cancellation, subscription API, and bounded
    pump/channel ownership.
