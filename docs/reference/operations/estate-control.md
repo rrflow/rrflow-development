@@ -7,6 +7,9 @@
 An RRFlow estate is one per-project AI governance, reasoning, recall, and
 context boundary. Estate control manages that estate's installed RRFlow
 instances and explicitly configured deployment, backup, and recovery effects.
+The [local-process adapter](../deployment/local-process-driver.md) defines the
+host boundary for one installed RRD process; its observations and receipts do
+not become estate state until accepted by `RrdEngine`.
 It is not the reasoning-tree lifecycle, the routine executor, an application
 database, or a second database control plane.
 

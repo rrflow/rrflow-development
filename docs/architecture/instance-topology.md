@@ -9,7 +9,9 @@ The repository root [README](../../README.md) owns product identity and current
 status. The [system overview](system-overview.md) owns component meaning, the
 [engine data-flow record](engine-data-flow.md) owns execution sequence, the
 [estate-control reference](../reference/operations/estate-control.md) owns
-desired/observed operational semantics, and the
+desired/observed operational semantics, the
+[local-process adapter](../reference/deployment/local-process-driver.md) owns
+host-local launch/readiness/shutdown effects, and the
 [roadmap](../roadmap/rrflow-1.0.md) owns implementation order and evidence. This
 record owns only the topology that those components inhabit.
 

@@ -62,6 +62,7 @@ definition; this portal does not reproduce those bodies.
 | Deterministic project-tree snapshot and incremental refresh | [Project-tree inventory flow](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) and [roadmap D-03/D-04](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
 | Durable provider-neutral self and `rrflow://` record resolution | [Seat identity and memory warps](docs/reference/seat-identity.md) |
 | Estate desired/observed state and fenced external effects | [RRFlow estate control](docs/reference/operations/estate-control.md) |
+| Local RRD launch, authenticated readiness, and bounded shutdown | [RRFlow local process adapter](docs/reference/deployment/local-process-driver.md) |
 | Connectome HTTP bootstrap and mesh boundary | [Client bootstrap boundary](docs/architecture/system-overview.md#client-bootstrap-boundary) and [roadmap H-06/H-07](docs/roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome) |
 | Engine events, triggers, routines, skills, and host-event adapters | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
 | Current rrflowKV bytes and removable format readers | [rrflowKV current physical format](docs/reference/storage/rrflowkv-current-format.md) |
