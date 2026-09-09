@@ -1,11 +1,10 @@
 use rrd_core::{
-    ReadStamp, RuntimeEventSchema, RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+    RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeMutation, RuntimeProperties,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 use rrd_query::parse;
-use rrd_query::{
-    bind, plan, Catalog, IndexCatalogueRepository, Parameters, SchemaVersion, SourceWatermarks,
-};
-use rrd_store::RrflowMxStore;
+use rrd_query::{bind, plan, Catalog, ExecutionBudget, Parameters, Source};
+use rrd_store::{RrflowMxStore, RuntimeReadBudget, StorageEngine};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -18,7 +17,6 @@ struct Vector {
 #[test]
 fn physical_plan_matches_golden_vector() {
     let scope = ScopeId::new("instance:golden").unwrap();
-    let read = ReadStamp::new(scope, Some(1), 1, 4, Some("11".repeat(32))).unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "golden query contract");
     schema.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -33,20 +31,55 @@ fn physical_plan_matches_golden_vector() {
         RuntimeEventSchema::default(),
     );
     let engine = RrflowMxStore::new();
-    let catalog = Catalog {
-        read,
-        schemas: vec![SchemaVersion {
-            cursor: 1,
-            registry: schema,
-        }],
-        indexes: IndexCatalogueRepository::new(&engine, ScopeId::new("instance:golden").unwrap())
-            .load()
-            .unwrap(),
-        source_watermarks: SourceWatermarks {
-            schema: 1,
-            ..SourceWatermarks::default()
-        },
-    };
+    engine
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 100,
+            actor: "test:golden".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry: schema },
+                RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        reference: RuntimeRef::new("document", "a").unwrap(),
+                        valid_from: 1,
+                        valid_to: None,
+                        properties: RuntimeProperties::new(),
+                    },
+                },
+                RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        reference: RuntimeRef::new("document", "b").unwrap(),
+                        valid_from: 1,
+                        valid_to: None,
+                        properties: RuntimeProperties::new(),
+                    },
+                },
+                RuntimeMutation::Event {
+                    event: RuntimeEvent {
+                        kind: RuntimeType::new("tool_result").unwrap(),
+                        subject: None,
+                        properties: RuntimeProperties::new(),
+                    },
+                },
+            ],
+        })
+        .unwrap();
+    let catalog = Catalog::capture_for_sources(
+        &engine,
+        &scope,
+        &[
+            Source::Record {
+                kind: RuntimeType::new("document").unwrap(),
+            },
+            Source::Event {
+                kind: RuntimeType::new("tool_result").unwrap(),
+            },
+        ],
+        RuntimeReadBudget::new(ExecutionBudget::default().max_storage_keys).unwrap(),
+    )
+    .unwrap();
     let vectors = [
         "FROM record:document AT VALID 100 KNOWN 4 PROJECT id LIMIT 5 EXPLAIN CONTRACT",
         "FROM event:tool_result AT VALID 100 KNOWN 4 WHERE cursor = 4 PROJECT cursor EXPLAIN CONTRACT",

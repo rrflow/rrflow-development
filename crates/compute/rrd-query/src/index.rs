@@ -9,7 +9,7 @@ use rrd_core::{
 };
 use rrd_store::{
     ControlTransition, Durability, IndexCommitBindingDefinition, IndexCommitBindingKind,
-    StorageEngine,
+    RuntimeReadBudget, StorageEngine,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -576,7 +576,6 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
         }
         let generation = entry.stamp.generation;
         let definition = entry.definition.clone();
-        let query_catalogue = Catalog::capture(self.engine, &self.scope)?;
         let mut query = Query::new(
             definition.source.clone(),
             TemporalSelector {
@@ -586,6 +585,12 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
         );
         query.filters = definition.filters.clone();
         query.projection = Projection::All;
+        let query_catalogue = Catalog::capture_for_query(
+            self.engine,
+            &self.scope,
+            &query,
+            RuntimeReadBudget::new(budget.max_storage_keys)?,
+        )?;
         let bound = bind(&query, &Parameters::new(), &query_catalogue)?;
         let physical = plan(&bound)?;
         let execution = execute(self.engine, &physical, budget)?;

@@ -6,16 +6,17 @@ use crate::{
 };
 use crate::{Join, Projection, Source, TraversalDirection};
 use rrd_core::{
-    resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeGraphSnapshot,
-    RuntimeMutation, RuntimeReadValidation, RuntimeValue, SeriesValue,
+    resolve_as_of, Claim, GeoValue, RuntimeChange, RuntimeGeo, RuntimeMutation, RuntimeRecord,
+    RuntimeRelation, RuntimeValue, SeriesValue,
 };
-use rrd_store::StorageEngine;
+use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExecutionBudget {
-    pub max_scanned_changes: usize,
+    pub max_storage_keys: u64,
+    pub max_input_rows: usize,
     pub max_rows: usize,
     pub max_output_bytes: usize,
     pub max_batch_rows: usize,
@@ -27,7 +28,8 @@ pub struct ExecutionBudget {
 impl Default for ExecutionBudget {
     fn default() -> Self {
         Self {
-            max_scanned_changes: 100_000,
+            max_storage_keys: 100_000,
+            max_input_rows: 100_000,
             max_rows: 10_000,
             max_output_bytes: 8 * 1024 * 1024,
             max_batch_rows: 256,
@@ -40,7 +42,8 @@ impl Default for ExecutionBudget {
 
 impl ExecutionBudget {
     fn validate(&self) -> Result<()> {
-        if self.max_scanned_changes == 0
+        if self.max_storage_keys == 0
+            || self.max_input_rows == 0
             || self.max_rows == 0
             || self.max_output_bytes == 0
             || self.max_batch_rows == 0
@@ -75,12 +78,11 @@ pub struct QueryExecution {
     pub read_manifest: String,
     pub valid_at: u64,
     pub known_at_cursor: u64,
-    /// Cursor positions requested by the selected result access path. This
-    /// excludes the hash-chain replay currently used to validate `ReadStamp`.
-    pub scanned_changes: usize,
-    pub stamp_validation: String,
-    pub stamp_validation_max_changes: usize,
-    pub stamp_validation_proof_nodes: u16,
+    /// Number of authenticated semantic versions selected before temporal
+    /// reduction. Index-backed paths report zero because their source rows are
+    /// carried by the separately verified immutable artifact.
+    pub selected_versions: usize,
+    pub read_evidence: RuntimeReadEvidence,
     pub returned_rows: usize,
     pub output_bytes: usize,
     pub truncated: bool,
@@ -104,20 +106,22 @@ pub fn execute<E: StorageEngine>(
     }
     let shape = PlanShape::read(plan)?;
     let access = ReadPath::from_plan(plan, &shape)?;
-    let requested = access.scanned_positions()?;
-    if requested > budget.max_scanned_changes {
+    let mut loaded = access.load(
+        engine,
+        &plan.logical.read,
+        &shape,
+        RuntimeReadBudget::new(budget.max_storage_keys)?,
+    )?;
+    let input_rows = loaded
+        .rows
+        .len()
+        .saturating_add(loaded.right_rows.as_ref().map_or(0, std::vec::Vec::len));
+    if input_rows > budget.max_input_rows {
         return Err(Error::Budget(format!(
-            "query requires scanning {requested} changes, budget allows {}",
-            budget.max_scanned_changes
+            "query selected {input_rows} input rows, budget allows {}",
+            budget.max_input_rows
         )));
     }
-    let mut loaded = access.load(engine, &plan.logical.read, &shape)?;
-    let stamp_validation_max_changes =
-        usize::try_from(loaded.validation.change_reads).map_err(|_| {
-            Error::Budget("stamp-validation evidence exceeds this platform's address space".into())
-        })?;
-    let stamp_validation = loaded.validation.method.clone();
-    let stamp_validation_proof_nodes = loaded.validation.proof_nodes;
     if let Some(join) = &shape.join {
         let right = loaded.right_rows.take().ok_or_else(|| {
             Error::Integrity("join plan did not load its right-hand source".into())
@@ -236,10 +240,8 @@ pub fn execute<E: StorageEngine>(
         read_manifest: plan.logical.read.manifest_id.clone(),
         valid_at: contract.valid_at,
         known_at_cursor: contract.known_at_cursor,
-        scanned_changes: requested,
-        stamp_validation,
-        stamp_validation_max_changes,
-        stamp_validation_proof_nodes,
+        selected_versions: loaded.selected_versions,
+        read_evidence: loaded.read_evidence,
         returned_rows,
         output_bytes,
         truncated,
@@ -249,12 +251,8 @@ pub fn execute<E: StorageEngine>(
 }
 
 enum ReadPath {
-    LogScan {
-        through_cursor: u64,
-    },
-    EventCursorLookup {
-        cursor: u64,
-        through_cursor: u64,
+    Versioned {
+        sources: Vec<RuntimeVersionedSource>,
     },
     Index {
         id: rrd_core::ProjectionId,
@@ -273,7 +271,8 @@ struct LoadedAccess {
     rows: Vec<QueryRow>,
     right_rows: Option<Vec<QueryRow>>,
     bm25: Option<Bm25Artifact>,
-    validation: RuntimeReadValidation,
+    selected_versions: usize,
+    read_evidence: RuntimeReadEvidence,
 }
 
 impl ReadPath {
@@ -286,13 +285,8 @@ impl ReadPath {
             || contract.source_cursor != plan.logical.source_cursor
             || contract.schema_revision != plan.logical.schema_revision
             || contract.authorization_boundary != format!("scope:{}", plan.logical.read.scope)
-            || contract.stamp_validation
-                != if plan.logical.read.accumulator_root.is_some() {
-                    "rfc9162_inclusion_or_hash_chain_fallback"
-                } else {
-                    "full_hash_chain_replay"
-                }
-            || contract.stamp_validation_max_changes != plan.logical.read.commit_cursor
+            || contract.read_authentication != "rfc9162_authenticated_semantic_versions"
+            || contract.read_budget_unit != "physical_keys_examined"
         {
             return Err(Error::Integrity(
                 "logical plan, read stamp, and execution contract disagree".into(),
@@ -315,38 +309,26 @@ impl ReadPath {
                     .into(),
             ));
         };
-        let known_at_cursor = plan.explanation.contract.known_at_cursor;
         match access {
-            PhysicalOperator::AuthoritativeLogScan {
-                through_cursor,
+            PhysicalOperator::VersionedRead {
+                sources,
                 exact,
                 stable_order,
-            } if *through_cursor == known_at_cursor
-                && *exact
+            } if *exact
                 && stable_order == "global_cursor"
-                && selected[0].name == "authoritative_log_scan" =>
+                && sources == &plan.logical.version_sources
+                && selected[0].name
+                    == if matches!(
+                        sources.as_slice(),
+                        [RuntimeVersionedSource::Identity { .. }]
+                    ) {
+                        "versioned_identity_read"
+                    } else {
+                        "versioned_source_read"
+                    } =>
             {
-                Ok(Self::LogScan {
-                    through_cursor: *through_cursor,
-                })
-            }
-            PhysicalOperator::AuthoritativeEventCursorLookup {
-                cursor,
-                through_cursor,
-                exact,
-                stable_order,
-            } if *through_cursor == known_at_cursor
-                && *exact
-                && stable_order == "global_cursor"
-                && selected[0].name == "authoritative_event_cursor_lookup"
-                && matches!(&shape.source, Source::Event { .. })
-                && shape.filters.iter().any(|filter| {
-                    filter.field == "cursor" && filter.value == RuntimeValue::Unsigned(*cursor)
-                }) =>
-            {
-                Ok(Self::EventCursorLookup {
-                    cursor: *cursor,
-                    through_cursor: *through_cursor,
+                Ok(Self::Versioned {
+                    sources: sources.clone(),
                 })
             }
             PhysicalOperator::MaterializedIndex {
@@ -391,25 +373,12 @@ impl ReadPath {
         }
     }
 
-    fn scanned_positions(&self) -> Result<usize> {
-        match self {
-            Self::LogScan { through_cursor } => usize::try_from(*through_cursor).map_err(|_| {
-                Error::Budget("known cursor exceeds this platform's address space".into())
-            }),
-            Self::EventCursorLookup {
-                cursor,
-                through_cursor,
-            } => Ok(usize::from(*cursor > 0 && *cursor <= *through_cursor)),
-            Self::Index { artifact_rows, .. } => usize::try_from(*artifact_rows)
-                .map_err(|_| Error::Budget("index artifact rows exceed usize".into())),
-        }
-    }
-
     fn load<E: StorageEngine>(
         &self,
         engine: &E,
         stamp: &rrd_core::ReadStamp,
         shape: &PlanShape,
+        budget: RuntimeReadBudget,
     ) -> Result<LoadedAccess> {
         if let Self::Index {
             id,
@@ -423,17 +392,11 @@ impl ReadPath {
             artifact_rows,
         } = self
         {
-            let validation = engine
-                .runtime()
-                .read_changes(stamp, stamp.commit_cursor, 1)?;
-            if validation.through_cursor != stamp.commit_cursor
-                || validation.head_cursor != stamp.commit_cursor
-                || !validation.changes.is_empty()
-            {
-                return Err(Error::Integrity(
-                    "index stamp validation did not preserve the captured head".into(),
-                ));
-            }
+            let validation = engine.runtime().read_versioned(
+                stamp,
+                &[RuntimeVersionedSource::Schema],
+                budget,
+            )?;
             let name = index_artifact_name(&stamp.scope, id, *generation, artifact_digest);
             let bytes = engine
                 .projections()
@@ -467,41 +430,18 @@ impl ReadPath {
                 rows: artifact.rows,
                 right_rows: None,
                 bm25: artifact.bm25,
-                validation: validation.validation,
+                selected_versions: 0,
+                read_evidence: validation.evidence,
             });
         }
-        let (after, limit, expected_through) = match self {
-            Self::LogScan { through_cursor } if *through_cursor == 0 => {
-                (stamp.commit_cursor, 1, stamp.commit_cursor)
-            }
-            Self::LogScan { through_cursor } => (0, self.scanned_positions()?, *through_cursor),
-            Self::EventCursorLookup {
-                cursor,
-                through_cursor,
-            } if *cursor == 0 || *cursor > *through_cursor => {
-                (stamp.commit_cursor, 1, stamp.commit_cursor)
-            }
-            Self::EventCursorLookup { cursor, .. } => (cursor - 1, 1, *cursor),
+        let sources = match self {
+            Self::Versioned { sources } => sources,
             Self::Index { .. } => unreachable!("indexes return above"),
         };
-        let page = engine.runtime().read_changes(stamp, after, limit)?;
-        if page.through_cursor != expected_through || page.head_cursor != stamp.commit_cursor {
-            return Err(Error::Integrity(format!(
-                "stamped access ended at {}/{}, expected {}/{}",
-                page.through_cursor, page.head_cursor, expected_through, stamp.commit_cursor
-            )));
-        }
-        if page
-            .changes
-            .iter()
-            .any(|change| change.cursor <= after || change.cursor > expected_through)
-        {
-            return Err(Error::Integrity(
-                "stamped access returned a change outside its cursor interval".into(),
-            ));
-        }
+        let selected = engine.runtime().read_versioned(stamp, sources, budget)?;
+        let selected_versions = selected.changes.len();
         let rows = rows_for_source(
-            &page.changes,
+            &selected.changes,
             &stamp.scope,
             &shape.source,
             shape.valid_at,
@@ -509,7 +449,7 @@ impl ReadPath {
         );
         let right_rows = shape.join.as_ref().map(|join| {
             rows_for_source(
-                &page.changes,
+                &selected.changes,
                 &stamp.scope,
                 &join.source,
                 shape.valid_at,
@@ -520,7 +460,8 @@ impl ReadPath {
             rows,
             right_rows,
             bm25: None,
-            validation: page.validation,
+            selected_versions,
+            read_evidence: selected.evidence,
         })
     }
 }
@@ -689,64 +630,47 @@ fn rows_for_source(
     known_at_cursor: u64,
 ) -> Vec<QueryRow> {
     match source {
-        Source::Record { kind } => {
-            let snapshot = RuntimeGraphSnapshot::from_changes(
-                changes,
-                scope.clone(),
-                valid_at,
-                known_at_cursor,
-            );
-            snapshot
-                .records
-                .into_iter()
-                .filter(|record| &record.reference.kind == kind)
-                .map(|record| {
-                    let identity =
-                        format!("record:{}:{}", record.reference.kind, record.reference.id);
-                    let mut values = record.properties;
-                    values.insert("id".into(), string(record.reference.id.to_string()));
-                    values.insert("kind".into(), string(record.reference.kind.to_string()));
-                    values.insert(
-                        "valid_from".into(),
-                        RuntimeValue::Unsigned(record.valid_from),
-                    );
-                    values.insert("valid_to".into(), optional_u64(record.valid_to));
-                    QueryRow { identity, values }
-                })
-                .collect()
-        }
-        Source::Relation { kind } => {
-            let snapshot = RuntimeGraphSnapshot::from_changes(
-                changes,
-                scope.clone(),
-                valid_at,
-                known_at_cursor,
-            );
-            snapshot
-                .relations
-                .into_iter()
-                .filter(|relation| &relation.reference.kind == kind)
-                .map(|relation| {
-                    let identity = format!(
-                        "relation:{}:{}",
-                        relation.reference.kind, relation.reference.id
-                    );
-                    let mut values = relation.properties;
-                    values.insert("id".into(), string(relation.reference.id.to_string()));
-                    values.insert("kind".into(), string(relation.reference.kind.to_string()));
-                    values.insert("from_kind".into(), string(relation.from.kind.to_string()));
-                    values.insert("from_id".into(), string(relation.from.id.to_string()));
-                    values.insert("to_kind".into(), string(relation.to.kind.to_string()));
-                    values.insert("to_id".into(), string(relation.to.id.to_string()));
-                    values.insert(
-                        "valid_from".into(),
-                        RuntimeValue::Unsigned(relation.valid_from),
-                    );
-                    values.insert("valid_to".into(), optional_u64(relation.valid_to));
-                    QueryRow { identity, values }
-                })
-                .collect()
-        }
+        Source::Record { kind } => active_graph_values(changes, scope, valid_at, known_at_cursor)
+            .0
+            .into_values()
+            .filter(|record| &record.reference.kind == kind)
+            .map(|record| {
+                let identity = format!("record:{}:{}", record.reference.kind, record.reference.id);
+                let mut values = record.properties;
+                values.insert("id".into(), string(record.reference.id.to_string()));
+                values.insert("kind".into(), string(record.reference.kind.to_string()));
+                values.insert(
+                    "valid_from".into(),
+                    RuntimeValue::Unsigned(record.valid_from),
+                );
+                values.insert("valid_to".into(), optional_u64(record.valid_to));
+                QueryRow { identity, values }
+            })
+            .collect(),
+        Source::Relation { kind } => active_graph_values(changes, scope, valid_at, known_at_cursor)
+            .1
+            .into_values()
+            .filter(|relation| &relation.reference.kind == kind)
+            .map(|relation| {
+                let identity = format!(
+                    "relation:{}:{}",
+                    relation.reference.kind, relation.reference.id
+                );
+                let mut values = relation.properties;
+                values.insert("id".into(), string(relation.reference.id.to_string()));
+                values.insert("kind".into(), string(relation.reference.kind.to_string()));
+                values.insert("from_kind".into(), string(relation.from.kind.to_string()));
+                values.insert("from_id".into(), string(relation.from.id.to_string()));
+                values.insert("to_kind".into(), string(relation.to.kind.to_string()));
+                values.insert("to_id".into(), string(relation.to.id.to_string()));
+                values.insert(
+                    "valid_from".into(),
+                    RuntimeValue::Unsigned(relation.valid_from),
+                );
+                values.insert("valid_to".into(), optional_u64(relation.valid_to));
+                QueryRow { identity, values }
+            })
+            .collect(),
         Source::Event { kind } => {
             let mut active = BTreeMap::new();
             for change in changes
@@ -889,18 +813,12 @@ fn traversal_rows(
     valid_at: u64,
     known_at_cursor: u64,
 ) -> Vec<QueryRow> {
-    let snapshot =
-        RuntimeGraphSnapshot::from_changes(changes, scope.clone(), valid_at, known_at_cursor);
-    if !snapshot
-        .records
-        .iter()
-        .any(|record| &record.reference == start)
-    {
+    let (records, relations) = active_graph_values(changes, scope, valid_at, known_at_cursor);
+    if !records.contains_key(start) {
         return Vec::new();
     }
-    let mut relations = snapshot
-        .relations
-        .into_iter()
+    let mut relations = relations
+        .into_values()
         .filter(|relation| &relation.reference.kind == relation_kind)
         .collect::<Vec<_>>();
     relations.sort_by(|left, right| left.reference.cmp(&right.reference));
@@ -967,6 +885,47 @@ fn traversal_rows(
         }
     }
     rows
+}
+
+fn active_graph_values(
+    changes: &[RuntimeChange],
+    scope: &rrd_core::ScopeId,
+    valid_at: u64,
+    known_at_cursor: u64,
+) -> (
+    BTreeMap<rrd_core::RuntimeRef, RuntimeRecord>,
+    BTreeMap<rrd_core::RuntimeRef, RuntimeRelation>,
+) {
+    let mut records = BTreeMap::new();
+    let mut relations = BTreeMap::new();
+    for change in changes
+        .iter()
+        .filter(|change| change.cursor <= known_at_cursor && &change.scope == scope)
+    {
+        match &change.mutation {
+            RuntimeMutation::Record { record } if record.valid_from <= valid_at => {
+                records.insert(record.reference.clone(), record.clone());
+            }
+            RuntimeMutation::Relation { relation } if relation.valid_from <= valid_at => {
+                relations.insert(relation.reference.clone(), relation.clone());
+            }
+            RuntimeMutation::Retire { retirement } if retirement.effective_at <= valid_at => {
+                if retirement.model.is_record_like() {
+                    records.remove(&retirement.reference);
+                } else if retirement.model == rrd_core::RuntimeLogicalModel::GraphRelation {
+                    relations.remove(&retirement.reference);
+                }
+            }
+            _ => {}
+        }
+    }
+    records.retain(|_, record| {
+        record.valid_from <= valid_at && record.valid_to.is_none_or(|end| valid_at < end)
+    });
+    relations.retain(|_, relation| {
+        relation.valid_from <= valid_at && relation.valid_to.is_none_or(|end| valid_at < end)
+    });
+    (records, relations)
 }
 
 fn geo_rows(

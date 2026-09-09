@@ -30,7 +30,11 @@ impl std::error::Error for Error {}
 
 impl From<rrd_store::Error> for Error {
     fn from(value: rrd_store::Error) -> Self {
-        Self::Execution(value.to_string())
+        if matches!(value, rrd_store::Error::RuntimeReadBudgetExceeded { .. }) {
+            Self::Budget(value.to_string())
+        } else {
+            Self::Execution(value.to_string())
+        }
     }
 }
 

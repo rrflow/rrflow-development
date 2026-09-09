@@ -3,7 +3,7 @@ use crate::{
     Query, QueryExecution, Result,
 };
 use rrd_core::ReadStamp;
-use rrd_store::StorageEngine;
+use rrd_store::{RuntimeReadBudget, StorageEngine};
 
 /// One provider-neutral rrflowQL pipeline bound to a caller-owned read stamp.
 ///
@@ -33,8 +33,18 @@ impl<'a, E: StorageEngine> StampedQueryPipeline<'a, E> {
         &self.read
     }
 
-    pub fn bind(&self, query: &Query, parameters: &Parameters) -> Result<BoundQuery> {
-        let catalog = Catalog::capture_at(self.engine, self.read.clone())?;
+    pub fn bind(
+        &self,
+        query: &Query,
+        parameters: &Parameters,
+        budget: &ExecutionBudget,
+    ) -> Result<BoundQuery> {
+        let catalog = Catalog::capture_for_query_at(
+            self.engine,
+            self.read.clone(),
+            query,
+            RuntimeReadBudget::new(budget.max_storage_keys)?,
+        )?;
         let bound = bind(query, parameters, &catalog)?;
         self.require_bound_read(&bound)?;
         Ok(bound)
@@ -73,7 +83,7 @@ impl<'a, E: StorageEngine> StampedQueryPipeline<'a, E> {
         parameters: &Parameters,
         budget: &ExecutionBudget,
     ) -> Result<StampedQueryExecution> {
-        let bound = self.bind(query, parameters)?;
+        let bound = self.bind(query, parameters, budget)?;
         let plan = self.plan(&bound)?;
         let execution = self.execute(&plan, budget)?;
         Ok(StampedQueryExecution {

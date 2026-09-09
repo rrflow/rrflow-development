@@ -1,13 +1,14 @@
 use rrd_core::{
-    digest, ReadStamp, RuntimeEventSchema, RuntimePropertySchema, RuntimeRecordSchema,
-    RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType,
-    ScopeId,
+    digest, Predicate, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
+    RuntimeValueType, ScopeId,
 };
 use rrd_query::{
-    bind, bind_graphql, derive_graphql_schema, lower_graphql, parse, Catalog, GraphqlRequest,
-    IndexCatalogueRepository, Parameters, SchemaVersion, SourceWatermarks,
+    bind, bind_graphql, derive_graphql_schema, lower_graphql, parse, Catalog, ExecutionBudget,
+    GraphqlRequest, Parameters, Source, TraversalDirection,
 };
-use rrd_store::RrflowMxStore;
+use rrd_store::{RrflowMxStore, RuntimeReadBudget, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -46,7 +47,6 @@ fn fixture_path() -> String {
 
 fn catalog() -> Catalog {
     let scope = ScopeId::new("instance:graphql-equivalence").unwrap();
-    let read = ReadStamp::new(scope.clone(), Some(1), 1, 4, Some("31".repeat(32))).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "GraphQL equivalence schema");
     registry.records.insert(
         RuntimeType::new("document").unwrap(),
@@ -88,29 +88,79 @@ fn catalog() -> Catalog {
         },
     );
     let engine = RrflowMxStore::new();
-    Catalog {
-        read,
-        schemas: vec![SchemaVersion {
-            cursor: 1,
-            registry,
-        }],
-        indexes: IndexCatalogueRepository::new(&engine, scope)
-            .load()
-            .unwrap(),
-        source_watermarks: SourceWatermarks {
-            schema: 1,
-            any_record: 2,
-            records: BTreeMap::from([(RuntimeType::new("document").unwrap(), 2)]),
-            relations: BTreeMap::from([(RuntimeType::new("depends_on").unwrap(), 3)]),
-            events: BTreeMap::from([(RuntimeType::new("tool_result").unwrap(), 4)]),
-            schema_history: vec![1],
-            any_record_history: vec![2],
-            record_history: BTreeMap::from([(RuntimeType::new("document").unwrap(), vec![2])]),
-            relation_history: BTreeMap::from([(RuntimeType::new("depends_on").unwrap(), vec![3])]),
-            event_history: BTreeMap::from([(RuntimeType::new("tool_result").unwrap(), vec![4])]),
-            ..SourceWatermarks::default()
-        },
-    }
+    let document = RuntimeRef::new("document", "a").unwrap();
+    engine
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 100,
+            actor: "test:graphql-equivalence".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry },
+                RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        reference: document.clone(),
+                        valid_from: 1,
+                        valid_to: None,
+                        properties: RuntimeProperties::from([
+                            ("status".into(), RuntimeValue::String("open".into())),
+                            ("title".into(), RuntimeValue::String("Alpha".into())),
+                        ]),
+                    },
+                },
+                RuntimeMutation::Relation {
+                    relation: RuntimeRelation {
+                        reference: RuntimeRef::new("depends_on", "a-a").unwrap(),
+                        from: document.clone(),
+                        to: document.clone(),
+                        valid_from: 1,
+                        valid_to: None,
+                        properties: RuntimeProperties::from([(
+                            "strength".into(),
+                            RuntimeValue::String("hard".into()),
+                        )]),
+                    },
+                },
+                RuntimeMutation::Event {
+                    event: RuntimeEvent {
+                        kind: RuntimeType::new("tool_result").unwrap(),
+                        subject: Some(document),
+                        properties: RuntimeProperties::from([(
+                            "ok".into(),
+                            RuntimeValue::Bool(true),
+                        )]),
+                    },
+                },
+            ],
+        })
+        .unwrap();
+    Catalog::capture_for_sources(
+        &engine,
+        &scope,
+        &[
+            Source::Record {
+                kind: RuntimeType::new("document").unwrap(),
+            },
+            Source::Relation {
+                kind: RuntimeType::new("depends_on").unwrap(),
+            },
+            Source::Event {
+                kind: RuntimeType::new("tool_result").unwrap(),
+            },
+            Source::Traversal {
+                relation: RuntimeType::new("depends_on").unwrap(),
+                start: RuntimeRef::new("document", "a").unwrap(),
+                direction: TraversalDirection::Outgoing,
+                max_depth: 4,
+            },
+            Source::Claim {
+                predicate: Some(Predicate::new("status").unwrap()),
+            },
+        ],
+        RuntimeReadBudget::new(ExecutionBudget::default().max_storage_keys).unwrap(),
+    )
+    .unwrap()
 }
 
 fn fixture() -> EquivalenceFixture {

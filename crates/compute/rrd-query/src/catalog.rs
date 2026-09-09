@@ -1,8 +1,9 @@
-use crate::{Error, IndexCatalogue, IndexCatalogueRepository, Result, Source};
+use crate::{Error, IndexCatalogue, IndexCatalogueRepository, Query, Result, Source};
 use rrd_core::{
-    Predicate, ReadStamp, RuntimeMutation, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+    Predicate, ReadStamp, RuntimeLogicalModel, RuntimeMutation, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeType, ScopeId,
 };
-use rrd_store::StorageEngine;
+use rrd_store::{RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedSource, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -19,6 +20,10 @@ pub struct Catalog {
     pub schemas: Vec<SchemaVersion>,
     pub indexes: IndexCatalogue,
     pub source_watermarks: SourceWatermarks,
+    /// Exact typed semantic ranges used to construct this catalogue.
+    pub version_sources: Vec<RuntimeVersionedSource>,
+    /// Logical storage evidence for the stamped catalogue read.
+    pub read_evidence: RuntimeReadEvidence,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -260,36 +265,62 @@ fn latest(history: &[u64], known_at_cursor: u64) -> u64 {
 }
 
 impl Catalog {
-    pub fn capture<E: StorageEngine>(engine: &E, scope: &ScopeId) -> Result<Self> {
+    /// Captures the schema and only the semantic families required by `query`.
+    pub fn capture_for_query<E: StorageEngine>(
+        engine: &E,
+        scope: &ScopeId,
+        query: &Query,
+        budget: RuntimeReadBudget,
+    ) -> Result<Self> {
         let read = engine.runtime().read_stamp(scope)?;
-        Self::capture_at(engine, read)
+        Self::capture_for_query_at(engine, read, query, budget)
     }
 
-    /// Captures schema history against a caller-owned immutable read stamp.
-    /// This is the observer-safe path for instrumented execution: telemetry
-    /// may advance the live head after `read` is captured without changing
-    /// what `KNOWN HEAD` meant to the query.
-    pub fn capture_at<E: StorageEngine>(engine: &E, read: ReadStamp) -> Result<Self> {
+    /// Captures a query catalogue against a caller-owned immutable read stamp.
+    pub fn capture_for_query_at<E: StorageEngine>(
+        engine: &E,
+        read: ReadStamp,
+        query: &Query,
+        budget: RuntimeReadBudget,
+    ) -> Result<Self> {
+        let mut sources = vec![query.source.clone()];
+        if let Some(join) = &query.join {
+            sources.push(join.source.clone());
+        }
+        Self::capture_for_sources_at(engine, read, &sources, budget)
+    }
+
+    /// Captures schema history and the explicitly selected source families.
+    /// An empty `sources` slice is a schema-only catalogue, not an implicit
+    /// whole-estate scan.
+    pub fn capture_for_sources<E: StorageEngine>(
+        engine: &E,
+        scope: &ScopeId,
+        sources: &[Source],
+        budget: RuntimeReadBudget,
+    ) -> Result<Self> {
+        let read = engine.runtime().read_stamp(scope)?;
+        Self::capture_for_sources_at(engine, read, sources, budget)
+    }
+
+    /// Observer-safe source capture at one immutable transaction coordinate.
+    pub fn capture_for_sources_at<E: StorageEngine>(
+        engine: &E,
+        read: ReadStamp,
+        sources: &[Source],
+        budget: RuntimeReadBudget,
+    ) -> Result<Self> {
         read.validate()
             .map_err(|error| Error::Catalog(error.to_string()))?;
-        let limit = usize::try_from(read.commit_cursor).map_err(|_| {
-            Error::Catalog("read cursor exceeds this platform's address space".into())
-        })?;
-        let changes = if limit == 0 {
-            Vec::new()
-        } else {
-            let page = engine.runtime().read_changes(&read, 0, limit)?;
-            if page.through_cursor != read.commit_cursor {
-                return Err(Error::Catalog(format!(
-                    "schema replay stopped at cursor {}, expected {}",
-                    page.through_cursor, read.commit_cursor
-                )));
-            }
-            page.changes
-        };
+        let mut version_sources = vec![RuntimeVersionedSource::Schema];
+        version_sources.extend(version_sources_for_sources(sources));
+        let version_sources = normalize_version_sources(version_sources);
+        let versioned = engine
+            .runtime()
+            .read_versioned(&read, &version_sources, budget)?;
         let mut source_watermarks = SourceWatermarks::default();
         let mut schemas = Vec::new();
-        for change in changes {
+        for change in versioned.changes {
             source_watermarks.observe(change.cursor, &change.mutation);
             if let RuntimeMutation::Schema { registry } = change.mutation {
                 schemas.push(SchemaVersion {
@@ -299,18 +330,31 @@ impl Catalog {
             }
         }
         let indexes = IndexCatalogueRepository::new(engine, read.scope.clone()).load()?;
-        // The catalogue is materialized outside the append-only runtime log.
-        // Revalidate the same stamp after loading it so a concurrent index or
-        // vector catalogue transition cannot produce a torn planning view.
-        engine
-            .runtime()
-            .read_changes(&read, read.commit_cursor, 1)?;
         Ok(Self {
             read,
             schemas,
             indexes,
             source_watermarks,
+            version_sources,
+            read_evidence: versioned.evidence,
         })
+    }
+
+    pub(crate) fn require_version_sources(
+        &self,
+        required: &[RuntimeVersionedSource],
+    ) -> Result<()> {
+        if let Some(missing) = required.iter().find(|required| {
+            !self
+                .version_sources
+                .iter()
+                .any(|available| version_source_covers(available, required))
+        }) {
+            return Err(Error::Catalog(format!(
+                "catalogue did not capture required semantic source {missing:?}"
+            )));
+        }
+        Ok(())
     }
 
     pub fn schema_at(&self, cursor: u64) -> Option<&RuntimeSchemaRegistry> {
@@ -323,5 +367,134 @@ impl Catalog {
 
     pub fn source_cursor(&self, source: &Source) -> u64 {
         self.source_watermarks.for_source(source)
+    }
+}
+
+pub(crate) fn version_sources_for_sources(sources: &[Source]) -> Vec<RuntimeVersionedSource> {
+    normalize_version_sources(
+        sources
+            .iter()
+            .flat_map(version_sources_for_source)
+            .collect(),
+    )
+}
+
+fn version_sources_for_source(source: &Source) -> Vec<RuntimeVersionedSource> {
+    match source {
+        Source::Record { kind } => vec![RuntimeVersionedSource::Records {
+            kind: Some(kind.clone()),
+        }],
+        Source::Relation { kind } => vec![RuntimeVersionedSource::Relations {
+            kind: Some(kind.clone()),
+        }],
+        Source::Event { kind } => vec![RuntimeVersionedSource::Events {
+            kind: Some(kind.clone()),
+        }],
+        // A sample is physically addressed by its own type while rrflowQL
+        // selects the referenced series type. Until Gate E adds the native
+        // series-target index, the complete scoped series family is exact.
+        Source::Series { .. } => vec![RuntimeVersionedSource::Series { kind: None }],
+        Source::Geo { kind } => vec![RuntimeVersionedSource::Geo {
+            kind: Some(kind.clone()),
+        }],
+        Source::Traversal { relation, .. } => vec![
+            RuntimeVersionedSource::Relations {
+                kind: Some(relation.clone()),
+            },
+            RuntimeVersionedSource::Records { kind: None },
+        ],
+        Source::Claim { predicate } => vec![RuntimeVersionedSource::Claims {
+            predicate: predicate.clone(),
+        }],
+    }
+}
+
+pub(crate) fn normalize_version_sources(
+    sources: Vec<RuntimeVersionedSource>,
+) -> Vec<RuntimeVersionedSource> {
+    let mut normalized = Vec::<RuntimeVersionedSource>::new();
+    for source in sources {
+        if normalized
+            .iter()
+            .any(|available| version_source_covers(available, &source))
+        {
+            continue;
+        }
+        normalized.retain(|available| !version_source_covers(&source, available));
+        normalized.push(source);
+    }
+    normalized
+}
+
+fn version_source_covers(
+    available: &RuntimeVersionedSource,
+    required: &RuntimeVersionedSource,
+) -> bool {
+    use RuntimeVersionedSource as Version;
+    match (available, required) {
+        (Version::Schema, Version::Schema) => true,
+        (
+            Version::Claims {
+                predicate: available,
+            },
+            Version::Claims {
+                predicate: required,
+            },
+        ) => available.is_none() || available == required,
+        (Version::Records { kind: available }, Version::Records { kind: required })
+        | (Version::Relations { kind: available }, Version::Relations { kind: required })
+        | (Version::Events { kind: available }, Version::Events { kind: required })
+        | (Version::Vectors { kind: available }, Version::Vectors { kind: required })
+        | (Version::Series { kind: available }, Version::Series { kind: required })
+        | (Version::Geo { kind: available }, Version::Geo { kind: required })
+        | (Version::Objects { kind: available }, Version::Objects { kind: required }) => {
+            available.is_none() || available == required
+        }
+        (
+            Version::Identity {
+                model: available_model,
+                reference: available_reference,
+            },
+            Version::Identity {
+                model: required_model,
+                reference: required_reference,
+            },
+        ) => available_model == required_model && available_reference == required_reference,
+        (Version::Records { kind }, Version::Identity { model, reference })
+            if model.is_record_like() =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        (Version::Relations { kind }, Version::Identity { model, reference })
+            if *model == RuntimeLogicalModel::GraphRelation =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        (Version::Events { kind }, Version::Identity { model, reference })
+            if model.is_event_like() =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        (Version::Vectors { kind }, Version::Identity { model, reference })
+            if *model == RuntimeLogicalModel::Vector =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        (Version::Series { kind }, Version::Identity { model, reference })
+            if *model == RuntimeLogicalModel::TimeSeries =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        (Version::Geo { kind }, Version::Identity { model, reference })
+            if *model == RuntimeLogicalModel::Geo =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        (Version::Objects { kind }, Version::Identity { model, reference })
+            if *model == RuntimeLogicalModel::Object =>
+        {
+            kind.as_ref().is_none_or(|kind| kind == &reference.kind)
+        }
+        _ => false,
     }
 }

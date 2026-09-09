@@ -13,7 +13,10 @@ use rrd_query::{
 use rrd_query::{
     parse, ComparisonOperator, CursorExpr, Projection, Query, Source, TemporalSelector, TimeExpr,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{
+    RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeVersionedSource,
+    StorageEngine,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn value(value: &str) -> RuntimeValue {
@@ -180,9 +183,55 @@ fn fixture_commit() -> RuntimeCommit {
     }
 }
 
+fn read_budget() -> RuntimeReadBudget {
+    RuntimeReadBudget::new(ExecutionBudget::default().max_storage_keys).unwrap()
+}
+
+fn fixture_sources() -> Vec<Source> {
+    vec![
+        Source::Record {
+            kind: RuntimeType::new("document").unwrap(),
+        },
+        Source::Record {
+            kind: RuntimeType::new("metric").unwrap(),
+        },
+        Source::Relation {
+            kind: RuntimeType::new("depends_on").unwrap(),
+        },
+        Source::Traversal {
+            relation: RuntimeType::new("depends_on").unwrap(),
+            start: RuntimeRef::new("document", "a").unwrap(),
+            direction: rrd_query::TraversalDirection::Outgoing,
+            max_depth: 3,
+        },
+        Source::Event {
+            kind: RuntimeType::new("tool_result").unwrap(),
+        },
+        Source::Series {
+            kind: RuntimeType::new("metric").unwrap(),
+        },
+        Source::Geo {
+            kind: RuntimeType::new("location").unwrap(),
+        },
+        Source::Claim {
+            predicate: Some(Predicate::new("status").unwrap()),
+        },
+    ]
+}
+
+fn fixture_catalog<E: StorageEngine>(engine: &E) -> Catalog {
+    Catalog::capture_for_sources(
+        engine,
+        &ScopeId::new("instance:test").unwrap(),
+        &fixture_sources(),
+        read_budget(),
+    )
+    .unwrap()
+}
+
 fn execute_fixture<E: StorageEngine>(engine: &E, text: &str) -> rrd_query::QueryExecution {
     engine.runtime().commit(&fixture_commit()).unwrap();
-    let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(engine);
     let query = parse(text).unwrap();
     execute(
         engine,
@@ -196,7 +245,7 @@ fn execute_text<E: StorageEngine>(
     engine: &E,
     text: &str,
 ) -> (rrd_query::PhysicalPlan, rrd_query::QueryExecution) {
-    let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(engine);
     let query = parse(text).unwrap();
     let physical = plan(&bind(&query, &Parameters::new(), &catalog).unwrap()).unwrap();
     let execution = execute(engine, &physical, &ExecutionBudget::default()).unwrap();
@@ -286,14 +335,38 @@ fn historical_outcome<E: StorageEngine>(engine: &E) -> (String, String, String, 
 fn rrflow_mx_and_rrflow_kv_return_identical_exact_rows() {
     let memory = RrflowMxStore::new();
     let dir = tempfile::tempdir().unwrap();
-    let rrflow_kv = RrflowKvStore::open(dir.path()).unwrap();
+    let path = dir.path().join("rrflow-kv");
     let text = "FROM record:document AT VALID 100 KNOWN HEAD WHERE status = \"open\" PROJECT id, title EXPLAIN CONTRACT";
     let left = execute_fixture(&memory, text);
-    let right = execute_fixture(&rrflow_kv, text);
+    let right = {
+        let rrflow_kv = RrflowKvStore::open(&path).unwrap();
+        let execution = execute_fixture(&rrflow_kv, text);
+        rrflow_kv.flush(200).unwrap();
+        execution
+    };
     assert_eq!(left, right);
     assert_eq!(left.returned_rows, 1);
     assert_eq!(left.batches[0].rows[0].values["id"], value("a"));
     assert_eq!(left.batches[0].rows[0].values["title"], value("Alpha"));
+
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    let before = reopened.physical_store_evidence().unwrap();
+    let (_, reopened_execution) = execute_text(&reopened, text);
+    let after = reopened.physical_store_evidence().unwrap();
+    assert_eq!(reopened_execution, left);
+    assert!(after.block_loads.unwrap() > before.block_loads.unwrap());
+    assert!(after.block_bytes_loaded.unwrap() > before.block_bytes_loaded.unwrap());
+    assert!(after.filter_checks.unwrap() > before.filter_checks.unwrap());
+    assert_eq!(
+        reopened_execution
+            .read_evidence
+            .paths
+            .iter()
+            .find(|path| path.path == RuntimeReadAccessPath::RecordVersions)
+            .unwrap()
+            .range_scans,
+        1
+    );
 
     let read = memory
         .runtime()
@@ -341,7 +414,8 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
     let parameters = Parameters::new();
     let budget = ExecutionBudget::default();
 
-    let catalog = Catalog::capture_at(&engine, read.clone()).unwrap();
+    let catalog =
+        Catalog::capture_for_query_at(&engine, read.clone(), &query, read_budget()).unwrap();
     let manual_bound = bind(&query, &parameters, &catalog).unwrap();
     let manual_plan = plan(&manual_bound).unwrap();
     let manual_execution = execute(&engine, &manual_plan, &budget).unwrap();
@@ -358,7 +432,7 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
     assert!(matches!(
         stamped.plan.operators.as_slice(),
         [
-            PhysicalOperator::AuthoritativeLogScan { .. },
+            PhysicalOperator::VersionedRead { .. },
             PhysicalOperator::DataFusionEvaluate
         ]
     ));
@@ -396,11 +470,12 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
     );
     assert_eq!(replay.execution.batches, stamped.execution.batches);
     assert_eq!(
-        replay.execution.stamp_validation, "full_hash_chain_replay",
-        "validation evidence must truthfully reflect replay after the live head advances"
+        replay.execution.read_evidence.stamp_validation.method,
+        "rfc9162_direct_versions",
+        "retained-stamp evidence must authenticate direct semantic versions after the head advances"
     );
 
-    let current_catalog = Catalog::capture(&engine, &scope).unwrap();
+    let current_catalog = fixture_catalog(&engine);
     let current_bound = bind(&query, &parameters, &current_catalog).unwrap();
     assert!(matches!(
         pipeline.plan(&current_bound),
@@ -412,7 +487,7 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
 fn explain_analyze_reports_governed_streaming_plane_and_preserves_reference_rows() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
-    let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&engine);
     let query = parse(
         "FROM record:document AT VALID 100 KNOWN HEAD WHERE status != \"closed\" PROJECT title LIMIT 1 EXPLAIN ANALYZE",
     )
@@ -502,7 +577,7 @@ fn equi_join_uses_one_stamp_matches_the_reference_oracle_and_is_strictly_bounded
     assert_eq!(flattened_rows(&reopened_execution), persisted_rows);
     assert_eq!(persisted_rows, flattened_rows(&memory_execution));
 
-    let catalog = Catalog::capture(&memory, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&memory);
     let unfiltered = parse(
         "FROM record:document JOIN relation:depends_on ON id = from_id AT VALID 100 KNOWN HEAD PROJECT left.id, right.to_id",
     )
@@ -639,7 +714,7 @@ fn typed_comparisons_match_every_persistent_engine_and_reject_unsupported_orderi
     let parsed = parse(text).unwrap();
     assert_eq!(parsed.filters[1].comparison, ComparisonOperator::NotEqual);
 
-    let catalog = Catalog::capture(&memory, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&memory);
     let decimal_ordering =
         parse("FROM series:metric AT VALID 100 KNOWN HEAD WHERE value > $minimum PROJECT value")
             .unwrap();
@@ -683,7 +758,7 @@ fn bounded_graph_traversal_is_deterministic_across_every_engine() {
 fn all_source_families_execute_at_explicit_time() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
-    let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&engine);
     for (text, identity) in [
         (
             "FROM relation:depends_on AT VALID 100 KNOWN HEAD WHERE id = \"a-b\" PROJECT id",
@@ -719,26 +794,28 @@ fn all_source_families_execute_at_explicit_time() {
 }
 
 #[test]
-fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
+fn bound_event_cursor_uses_one_typed_identity_range_on_every_engine() {
     fn exercise<E: StorageEngine>(engine: &E) -> rrd_query::QueryExecution {
         engine.runtime().commit(&fixture_commit()).unwrap();
-        let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+        let catalog = fixture_catalog(engine);
         let query = parse(
             "FROM event:tool_result AT VALID 100 KNOWN HEAD WHERE cursor = 5 AND ok = true PROJECT cursor",
         )
         .unwrap();
         let physical = plan(&bind(&query, &Parameters::new(), &catalog).unwrap()).unwrap();
+        let [PhysicalOperator::VersionedRead {
+            sources,
+            exact: true,
+            ..
+        }, PhysicalOperator::DataFusionEvaluate] = physical.operators.as_slice()
+        else {
+            panic!("event cursor did not select a versioned identity read")
+        };
         assert!(matches!(
-            physical.operators.as_slice(),
-            [
-                PhysicalOperator::AuthoritativeEventCursorLookup {
-                    cursor: 5,
-                    through_cursor: 10,
-                    exact: true,
-                    ..
-                },
-                PhysicalOperator::DataFusionEvaluate
-            ]
+            sources.as_slice(),
+            [RuntimeVersionedSource::Identity { model, reference }]
+                if model.is_event_like()
+                    && reference == &RuntimeRef::new("tool_result", "cursor:5").unwrap()
         ));
         assert_eq!(
             physical
@@ -748,13 +825,13 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
                 .find(|candidate| candidate.selected)
                 .unwrap()
                 .name,
-            "authoritative_event_cursor_lookup"
+            "versioned_identity_read"
         );
         execute(
             engine,
             &physical,
             &ExecutionBudget {
-                max_scanned_changes: 1,
+                max_storage_keys: 64,
                 ..ExecutionBudget::default()
             },
         )
@@ -766,10 +843,21 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
     let rrflow_kv = RrflowKvStore::open(rrflow_kv_root.path()).unwrap();
     let expected = exercise(&memory);
     assert_eq!(expected, exercise(&rrflow_kv));
-    assert_eq!(expected.scanned_changes, 1);
-    assert_eq!(expected.stamp_validation, "rfc9162_inclusion_proof");
-    assert_eq!(expected.stamp_validation_max_changes, 1);
-    assert!(expected.stamp_validation_proof_nodes > 0);
+    assert_eq!(expected.selected_versions, 1);
+    assert_eq!(
+        expected.read_evidence.stamp_validation.method,
+        "authenticated_current_head"
+    );
+    assert_eq!(
+        expected
+            .read_evidence
+            .paths
+            .iter()
+            .find(|path| path.path == RuntimeReadAccessPath::EventVersions)
+            .unwrap()
+            .range_scans,
+        1
+    );
     assert_eq!(expected.returned_rows, 1);
     assert_eq!(expected.batches[0].rows[0].identity, "event:tool_result:5");
 }
@@ -778,7 +866,7 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
 fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
-    let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&engine);
     let query =
         parse("FROM event:tool_result AT VALID 100 KNOWN HEAD WHERE cursor = 99 PROJECT cursor")
             .unwrap();
@@ -787,12 +875,12 @@ fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
         &engine,
         &physical,
         &ExecutionBudget {
-            max_scanned_changes: 1,
+            max_storage_keys: 64,
             ..ExecutionBudget::default()
         },
     )
     .unwrap();
-    assert_eq!(result.scanned_changes, 0);
+    assert_eq!(result.selected_versions, 0);
     assert_eq!(result.returned_rows, 0);
 }
 
@@ -824,7 +912,7 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
                 .collect(),
         })
         .unwrap();
-    let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&engine);
     let head = fixture_head + EVENTS;
 
     let point = parse(&format!(
@@ -836,16 +924,20 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
         &engine,
         &point_plan,
         &ExecutionBudget {
-            max_scanned_changes: 1,
+            max_storage_keys: 64,
             ..ExecutionBudget::default()
         },
     )
     .unwrap();
-    assert_eq!(point_result.scanned_changes, 1);
-    assert_eq!(point_result.stamp_validation, "rfc9162_inclusion_proof");
-    assert_eq!(point_result.stamp_validation_max_changes, 1);
-    assert!(point_result.stamp_validation_proof_nodes > 0);
-    assert!(point_result.stamp_validation_proof_nodes <= 13);
+    assert_eq!(point_result.selected_versions, 1);
+    let proof = point_result
+        .read_evidence
+        .paths
+        .iter()
+        .find(|path| path.path == RuntimeReadAccessPath::AccumulatorProof)
+        .unwrap();
+    assert!(proof.keys_examined > 0);
+    assert!(proof.keys_examined <= 13);
     assert_eq!(point_result.returned_rows, 1);
 
     let unbound =
@@ -857,7 +949,7 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
             &engine,
             &unbound_plan,
             &ExecutionBudget {
-                max_scanned_changes: 1,
+                max_storage_keys: 64,
                 ..ExecutionBudget::default()
             }
         ),
@@ -869,7 +961,7 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
 fn text_and_typed_sdk_produce_the_same_plan() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
-    let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&engine);
     let parsed = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
     let mut typed = Query::new(
         Source::Record {
@@ -890,7 +982,7 @@ fn text_and_typed_sdk_produce_the_same_plan() {
 fn binding_and_budget_fail_closed() {
     let engine = RrflowMxStore::new();
     engine.runtime().commit(&fixture_commit()).unwrap();
-    let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
+    let catalog = fixture_catalog(&engine);
     let unknown = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT missing").unwrap();
     assert!(matches!(
         bind(&unknown, &Parameters::new(), &catalog),
@@ -911,7 +1003,7 @@ fn binding_and_budget_fail_closed() {
             &engine,
             &physical,
             &ExecutionBudget {
-                max_scanned_changes: 5,
+                max_storage_keys: 5,
                 ..ExecutionBudget::default()
             }
         ),
@@ -936,6 +1028,28 @@ fn binding_and_budget_fail_closed() {
         !result.truncated,
         "a semantic LIMIT is not budget truncation"
     );
+
+    let record_only = Catalog::capture_for_query(
+        &engine,
+        &ScopeId::new("instance:test").unwrap(),
+        &query,
+        read_budget(),
+    )
+    .unwrap();
+    let relation = parse("FROM relation:depends_on AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
+    assert!(matches!(
+        bind(&relation, &Parameters::new(), &record_only),
+        Err(Error::Catalog(reason)) if reason.contains("did not capture required semantic source")
+    ));
+    assert!(matches!(
+        Catalog::capture_for_query(
+            &engine,
+            &ScopeId::new("instance:test").unwrap(),
+            &query,
+            RuntimeReadBudget::new(1).unwrap(),
+        ),
+        Err(Error::Budget(_))
+    ));
 }
 
 #[test]

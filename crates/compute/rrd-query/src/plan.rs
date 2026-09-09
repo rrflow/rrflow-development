@@ -1,3 +1,4 @@
+use crate::catalog::{normalize_version_sources, version_sources_for_sources};
 use crate::{Catalog, Error, IndexKind, Result};
 use crate::{
     ComparisonOperator, CursorExpr, Join, Projection, Query, Source, TimeExpr, ValueExpr,
@@ -7,6 +8,7 @@ use rrd_core::{
     digest, ProjectionId, ProjectionState, ReadStamp, RuntimeSchemaRegistry, RuntimeValue,
     RuntimeValueType,
 };
+use rrd_store::RuntimeVersionedSource;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -34,6 +36,7 @@ pub struct BoundQuery {
     pub valid_at: u64,
     pub known_at_cursor: u64,
     pub source_cursor: u64,
+    pub version_sources: Vec<RuntimeVersionedSource>,
     pub field_types: QueryFieldTypes,
     pub filters: Vec<BoundFilter>,
     pub projection: Projection,
@@ -95,6 +98,7 @@ pub struct LogicalPlan {
     pub read: ReadStamp,
     pub schema_revision: u64,
     pub source_cursor: u64,
+    pub version_sources: Vec<RuntimeVersionedSource>,
     pub field_types: QueryFieldTypes,
     pub operators: Vec<LogicalOperator>,
     #[serde(default, skip_serializing_if = "is_false")]
@@ -104,14 +108,8 @@ pub struct LogicalPlan {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "operator", rename_all = "snake_case")]
 pub enum PhysicalOperator {
-    AuthoritativeLogScan {
-        through_cursor: u64,
-        exact: bool,
-        stable_order: String,
-    },
-    AuthoritativeEventCursorLookup {
-        cursor: u64,
-        through_cursor: u64,
+    VersionedRead {
+        sources: Vec<RuntimeVersionedSource>,
         exact: bool,
         stable_order: String,
     },
@@ -149,8 +147,8 @@ pub struct ExecutionContract {
     pub schema_revision: u64,
     pub exact: bool,
     pub deterministic_order: String,
-    pub stamp_validation: String,
-    pub stamp_validation_max_changes: u64,
+    pub read_authentication: String,
+    pub read_budget_unit: String,
     pub network_required: bool,
     pub gpu_required: bool,
     pub authorization_boundary: String,
@@ -316,6 +314,13 @@ pub fn bind(query: &Query, parameters: &Parameters, catalog: &Catalog) -> Result
                 .for_source_at(&join.source, known_at_cursor),
         )
     });
+    let mut queried_sources = vec![query.source.clone()];
+    if let Some(join) = &query.join {
+        queried_sources.push(join.source.clone());
+    }
+    let required_catalogue_sources = version_sources_for_sources(&queried_sources);
+    catalog.require_version_sources(&required_catalogue_sources)?;
+    let version_sources = bound_version_sources(query, &filters, schema)?;
     Ok(BoundQuery {
         contract_version: QUERY_CONTRACT_VERSION,
         read: catalog.read.clone(),
@@ -324,6 +329,7 @@ pub fn bind(query: &Query, parameters: &Parameters, catalog: &Catalog) -> Result
         valid_at,
         known_at_cursor,
         source_cursor,
+        version_sources,
         field_types: fields,
         filters,
         projection: query.projection.clone(),
@@ -368,6 +374,7 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
         read: bound.read.clone(),
         schema_revision: bound.schema_revision,
         source_cursor: bound.source_cursor,
+        version_sources: bound.version_sources.clone(),
         field_types: bound.field_types.clone(),
         operators,
         explain_analyze: bound.explain_analyze,
@@ -413,18 +420,18 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
     let mut candidates = if let Some(cursor) = event_cursor {
         vec![
             CandidatePath {
-                name: "authoritative_event_cursor_lookup".into(),
+                name: "versioned_identity_read".into(),
                 selected: selected_index.is_none(),
                 exact: true,
                 reason: format!(
-                    "uses bound global cursor {cursor} after the captured stamp is validated"
+                    "selects the typed event identity for bound global cursor {cursor} at the captured read stamp"
                 ),
             },
             CandidatePath {
-                name: "authoritative_log_scan".into(),
+                name: "versioned_source_read".into(),
                 selected: false,
                 exact: true,
-                reason: "rejected: exact cursor lookup requests fewer result positions after shared stamp validation".into(),
+                reason: "rejected: the typed identity range is narrower than the event-family range".into(),
             },
             CandidatePath {
                 name: "derived_projection".into(),
@@ -436,11 +443,12 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
     } else {
         vec![
             CandidatePath {
-                name: "authoritative_log_scan".into(),
+                name: "versioned_source_read".into(),
                 selected: selected_index.is_none(),
                 exact: true,
                 reason: if selected_index.is_none() {
-                    "replays the immutable log at the captured read stamp".into()
+                    "selects only the typed semantic version ranges required by the bound sources"
+                        .into()
                 } else {
                     "rejected: a verified exact scalar index requests fewer materialized rows"
                         .into()
@@ -505,26 +513,15 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
             } else {
                 "identity_ascending".into()
             },
-            stamp_validation: if bound.read.accumulator_root.is_some() {
-                "rfc9162_inclusion_or_hash_chain_fallback".into()
-            } else {
-                "full_hash_chain_replay".into()
-            },
-            stamp_validation_max_changes: bound.read.commit_cursor,
+            read_authentication: "rfc9162_authenticated_semantic_versions".into(),
+            read_budget_unit: "physical_keys_examined".into(),
             network_required: false,
             gpu_required: false,
             authorization_boundary: format!("scope:{}", bound.read.scope),
         },
         candidates,
     };
-    let access = if let Some(cursor) = event_cursor {
-        PhysicalOperator::AuthoritativeEventCursorLookup {
-            cursor,
-            through_cursor: bound.known_at_cursor,
-            exact: true,
-            stable_order: "global_cursor".into(),
-        }
-    } else if let Some(index) = selected_index {
+    let access = if let Some(index) = selected_index {
         PhysicalOperator::MaterializedIndex {
             id: index.id.clone(),
             kind: index.kind.clone(),
@@ -545,8 +542,8 @@ pub fn plan(bound: &BoundQuery) -> Result<PhysicalPlan> {
             },
         }
     } else {
-        PhysicalOperator::AuthoritativeLogScan {
-            through_cursor: bound.known_at_cursor,
+        PhysicalOperator::VersionedRead {
+            sources: bound.version_sources.clone(),
             exact: true,
             stable_order: "global_cursor".into(),
         }
@@ -577,6 +574,49 @@ fn event_cursor_filter(bound: &BoundQuery) -> Option<u64> {
                 _ => None,
             })
     })
+}
+
+fn bound_version_sources(
+    query: &Query,
+    filters: &[BoundFilter],
+    schema: &RuntimeSchemaRegistry,
+) -> Result<Vec<RuntimeVersionedSource>> {
+    if query.join.is_none() {
+        if let Source::Event { kind } = &query.source {
+            if let Some(cursor) = filters.iter().find_map(|filter| {
+                (filter.field == "cursor" && filter.comparison == ComparisonOperator::Equal)
+                    .then_some(&filter.value)
+                    .and_then(|value| match value {
+                        RuntimeValue::Unsigned(cursor) => Some(*cursor),
+                        _ => None,
+                    })
+            }) {
+                let model = schema
+                    .logical_model(kind)
+                    .map_err(|error| Error::Binding(error.to_string()))?;
+                if !model.is_event_like() {
+                    return Err(Error::Binding(format!(
+                        "event source {kind} resolves to non-event model {model:?}"
+                    )));
+                }
+                return Ok(vec![RuntimeVersionedSource::Identity {
+                    model,
+                    reference: rrd_core::RuntimeRef::new(
+                        kind.to_string(),
+                        format!("cursor:{cursor}"),
+                    )
+                    .map_err(|error| Error::Binding(error.to_string()))?,
+                }]);
+            }
+        }
+    }
+    let mut sources = vec![query.source.clone()];
+    if let Some(join) = &query.join {
+        sources.push(join.source.clone());
+    }
+    Ok(normalize_version_sources(version_sources_for_sources(
+        &sources,
+    )))
 }
 
 impl PhysicalPlan {

@@ -8,13 +8,20 @@
           "contract_version": 1,
           "scope": "instance:golden",
           "schema_revision": 1,
-          "catalog_revision": 1,
+          "catalog_revision": 0,
           "commit_cursor": 4,
-          "head_digest": "1111111111111111111111111111111111111111111111111111111111111111",
-          "manifest_id": "7a4e130833c8072001cf39b7bd3cd3d1a072b62634bc92c1894c9f18a22d13d0"
+          "head_digest": "11a8e3a37737153050683c082c6ef98908ce55bf88b74778ef50c1de7d928569",
+          "accumulator_root": "da7da2c5abdb8acc4950c048d73f58ef28820664401ddb1c041f05902a6aaf4f",
+          "manifest_id": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e"
         },
         "schema_revision": 1,
-        "source_cursor": 1,
+        "source_cursor": 3,
+        "version_sources": [
+          {
+            "family": "records",
+            "kind": "document"
+          }
+        ],
         "field_types": {
           "id": [
             "string"
@@ -60,8 +67,13 @@
       },
       "operators": [
         {
-          "operator": "authoritative_log_scan",
-          "through_cursor": 4,
+          "operator": "versioned_read",
+          "sources": [
+            {
+              "family": "records",
+              "kind": "document"
+            }
+          ],
           "exact": true,
           "stable_order": "global_cursor"
         },
@@ -71,26 +83,26 @@
       ],
       "explanation": {
         "contract": {
-          "read_manifest": "7a4e130833c8072001cf39b7bd3cd3d1a072b62634bc92c1894c9f18a22d13d0",
+          "read_manifest": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e",
           "scope": "instance:golden",
           "valid_at": 100,
           "known_at_cursor": 4,
-          "source_cursor": 1,
+          "source_cursor": 3,
           "schema_revision": 1,
           "exact": true,
           "deterministic_order": "identity_ascending",
-          "stamp_validation": "full_hash_chain_replay",
-          "stamp_validation_max_changes": 4,
+          "read_authentication": "rfc9162_authenticated_semantic_versions",
+          "read_budget_unit": "physical_keys_examined",
           "network_required": false,
           "gpu_required": false,
           "authorization_boundary": "scope:instance:golden"
         },
         "candidates": [
           {
-            "name": "authoritative_log_scan",
+            "name": "versioned_source_read",
             "selected": true,
             "exact": true,
-            "reason": "replays the immutable log at the captured read stamp"
+            "reason": "selects only the typed semantic version ranges required by the bound sources"
           },
           {
             "name": "derived_projection",
@@ -100,7 +112,7 @@
           }
         ]
       },
-      "digest": "1b2be8ca2ae14834deb477d90f63fccddbfa861c4a31d3302c0f5706468d950c"
+      "digest": "48f6c6a89041c30ba63ebf741fef0cc8a8f101708b2c65dc69887705afc75995"
     }
   },
   {
@@ -112,13 +124,24 @@
           "contract_version": 1,
           "scope": "instance:golden",
           "schema_revision": 1,
-          "catalog_revision": 1,
+          "catalog_revision": 0,
           "commit_cursor": 4,
-          "head_digest": "1111111111111111111111111111111111111111111111111111111111111111",
-          "manifest_id": "7a4e130833c8072001cf39b7bd3cd3d1a072b62634bc92c1894c9f18a22d13d0"
+          "head_digest": "11a8e3a37737153050683c082c6ef98908ce55bf88b74778ef50c1de7d928569",
+          "accumulator_root": "da7da2c5abdb8acc4950c048d73f58ef28820664401ddb1c041f05902a6aaf4f",
+          "manifest_id": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e"
         },
         "schema_revision": 1,
-        "source_cursor": 1,
+        "source_cursor": 4,
+        "version_sources": [
+          {
+            "family": "identity",
+            "model": "event",
+            "reference": {
+              "kind": "tool_result",
+              "id": "cursor:4"
+            }
+          }
+        ],
         "field_types": {
           "actor": [
             "string"
@@ -179,9 +202,17 @@
       },
       "operators": [
         {
-          "operator": "authoritative_event_cursor_lookup",
-          "cursor": 4,
-          "through_cursor": 4,
+          "operator": "versioned_read",
+          "sources": [
+            {
+              "family": "identity",
+              "model": "event",
+              "reference": {
+                "kind": "tool_result",
+                "id": "cursor:4"
+              }
+            }
+          ],
           "exact": true,
           "stable_order": "global_cursor"
         },
@@ -191,32 +222,32 @@
       ],
       "explanation": {
         "contract": {
-          "read_manifest": "7a4e130833c8072001cf39b7bd3cd3d1a072b62634bc92c1894c9f18a22d13d0",
+          "read_manifest": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e",
           "scope": "instance:golden",
           "valid_at": 100,
           "known_at_cursor": 4,
-          "source_cursor": 1,
+          "source_cursor": 4,
           "schema_revision": 1,
           "exact": true,
           "deterministic_order": "identity_ascending",
-          "stamp_validation": "full_hash_chain_replay",
-          "stamp_validation_max_changes": 4,
+          "read_authentication": "rfc9162_authenticated_semantic_versions",
+          "read_budget_unit": "physical_keys_examined",
           "network_required": false,
           "gpu_required": false,
           "authorization_boundary": "scope:instance:golden"
         },
         "candidates": [
           {
-            "name": "authoritative_event_cursor_lookup",
+            "name": "versioned_identity_read",
             "selected": true,
             "exact": true,
-            "reason": "uses bound global cursor 4 after the captured stamp is validated"
+            "reason": "selects the typed event identity for bound global cursor 4 at the captured read stamp"
           },
           {
-            "name": "authoritative_log_scan",
+            "name": "versioned_source_read",
             "selected": false,
             "exact": true,
-            "reason": "rejected: exact cursor lookup requests fewer result positions after shared stamp validation"
+            "reason": "rejected: the typed identity range is narrower than the event-family range"
           },
           {
             "name": "derived_projection",
@@ -226,7 +257,7 @@
           }
         ]
       },
-      "digest": "2a8aa383be1af84bba2657c49d16be35545daea647fd6ebc5246c1f351273f60"
+      "digest": "0f5d8f386079db5a66a3c8027136526fd329de49da286d723a6a23bca3edb7de"
     }
   }
 ]

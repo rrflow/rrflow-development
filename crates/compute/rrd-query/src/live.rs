@@ -1,7 +1,7 @@
 use crate::{bind, execute, plan, Catalog, Error, ExecutionBudget, Parameters, QueryRow, Result};
 use crate::{CursorExpr, Query};
 use rrd_core::{digest, ScopeId};
-use rrd_store::StorageEngine;
+use rrd_store::{RuntimeReadBudget, StorageEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -65,7 +65,12 @@ pub fn poll_live_query<E: StorageEngine>(
             "live query delta budget must be greater than zero".into(),
         ));
     }
-    let catalogue = Catalog::capture(engine, scope)?;
+    let catalogue = Catalog::capture_for_query(
+        engine,
+        scope,
+        query,
+        RuntimeReadBudget::new(budget.execution.max_storage_keys)?,
+    )?;
     let head_cursor = catalogue.read.commit_cursor;
     if after_cursor > head_cursor {
         return Err(Error::Binding(format!(

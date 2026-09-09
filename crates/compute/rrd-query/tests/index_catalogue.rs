@@ -10,11 +10,30 @@ use rrd_query::{
     IndexMutationContext, Parameters, ValueExpr,
 };
 use rrd_query::{parse, Source};
-use rrd_store::{Durability, RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{
+    Durability, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
+    StorageEngine,
+};
 use std::collections::BTreeMap;
 
 fn scope() -> ScopeId {
     ScopeId::new("instance:index-test").unwrap()
+}
+
+fn read_budget() -> RuntimeReadBudget {
+    RuntimeReadBudget::new(ExecutionBudget::default().max_storage_keys).unwrap()
+}
+
+fn record_catalog<E: StorageEngine>(engine: &E) -> Catalog {
+    Catalog::capture_for_sources(
+        engine,
+        &scope(),
+        &[Source::Record {
+            kind: RuntimeType::new("document").unwrap(),
+        }],
+        read_budget(),
+    )
+    .unwrap()
 }
 
 fn seed<E: StorageEngine>(engine: &E) -> Catalog {
@@ -69,7 +88,7 @@ fn seed<E: StorageEngine>(engine: &E) -> Catalog {
             ],
         })
         .unwrap();
-    Catalog::capture(engine, &scope()).unwrap()
+    record_catalog(engine)
 }
 
 fn context(at: u64, action: &str) -> IndexMutationContext {
@@ -117,7 +136,7 @@ fn exercise<E: StorageEngine>(engine: &E) {
     assert!(ready.entries[&entry.definition.id].is_usable_at(3, 10));
     assert!(!ready.entries[&entry.definition.id].is_usable_at(2, 10));
     assert!(!ready.entries[&entry.definition.id].is_usable_at(3, 11));
-    let captured = Catalog::capture(engine, &scope()).unwrap();
+    let captured = record_catalog(engine);
     let query = parse(
         "FROM record:document AT VALID 10 KNOWN HEAD WHERE status = \"open\" PROJECT title EXPLAIN CONTRACT",
     )
@@ -134,7 +153,17 @@ fn exercise<E: StorageEngine>(engine: &E) {
     assert!(candidate.reason.contains("ready and exact at cursor 3"));
     assert!(candidate.reason.contains("matched prefix 1/2"));
     let execution = execute(engine, &physical, &ExecutionBudget::default()).unwrap();
-    assert_eq!(execution.scanned_changes, 2);
+    assert_eq!(execution.selected_versions, 0);
+    assert_eq!(
+        execution
+            .read_evidence
+            .paths
+            .iter()
+            .find(|path| path.path == RuntimeReadAccessPath::SchemaVersions)
+            .unwrap()
+            .range_scans,
+        1
+    );
     assert_eq!(execution.returned_rows, 1);
     assert_eq!(
         execution.batches[0].rows[0].identity,
@@ -161,7 +190,7 @@ fn exercise<E: StorageEngine>(engine: &E) {
             }],
         })
         .unwrap();
-    let stale_catalogue = Catalog::capture(engine, &scope()).unwrap();
+    let stale_catalogue = record_catalog(engine);
     let stale_query = parse(
         "FROM record:document AT VALID 20 KNOWN HEAD WHERE status = \"open\" PROJECT title EXPLAIN CONTRACT",
     )
@@ -176,7 +205,7 @@ fn exercise<E: StorageEngine>(engine: &E) {
             .find(|candidate| candidate.selected)
             .unwrap()
             .name,
-        "authoritative_log_scan"
+        "versioned_source_read"
     );
     assert_eq!(
         execute(engine, &stale_plan, &ExecutionBudget::default())
@@ -232,7 +261,7 @@ fn exercise<E: StorageEngine>(engine: &E) {
     assert_eq!(maintenance.inserted_rows, 1);
     assert_eq!(maintenance.updated_rows, 0);
     assert_eq!(maintenance.removed_rows, 0);
-    let historical_catalogue = Catalog::capture(engine, &scope()).unwrap();
+    let historical_catalogue = record_catalog(engine);
     let historical_query = parse(
         "FROM record:document AT VALID 10 KNOWN 3 WHERE status = \"open\" PROJECT title EXPLAIN CONTRACT",
     )
@@ -248,7 +277,7 @@ fn exercise<E: StorageEngine>(engine: &E) {
             .find(|candidate| candidate.selected)
             .unwrap()
             .name,
-        "authoritative_log_scan"
+        "versioned_source_read"
     );
     let newer_index = historical_plan
         .explanation
@@ -330,7 +359,7 @@ fn rrflow_kv_catalogue_reopens_and_invalid_fields_fail_before_control_state_chan
         .unwrap();
     assert_eq!(catalogue.revision, 2);
     assert!(catalogue.entries[&index_id].is_usable_at(3, 10));
-    let captured = Catalog::capture(&reopened, &scope()).unwrap();
+    let captured = record_catalog(&reopened);
     let query = parse(
         "FROM record:document AT VALID 10 KNOWN HEAD WHERE status = \"open\" PROJECT title EXPLAIN CONTRACT",
     )
@@ -376,7 +405,7 @@ fn selected_index_fails_closed_when_artifact_bytes_are_corrupted() {
         "FROM record:document AT VALID 10 KNOWN HEAD WHERE status = \"open\" PROJECT title EXPLAIN CONTRACT",
     )
     .unwrap();
-    let captured = Catalog::capture(&engine, &scope()).unwrap();
+    let captured = record_catalog(&engine);
     let physical = plan(&bind(&query, &Parameters::new(), &captured).unwrap()).unwrap();
     assert_eq!(
         physical
@@ -540,7 +569,7 @@ fn count_grouped_count_materialized_view_and_bm25_are_durable_artifacts() {
         }
     }
 
-    let captured = Catalog::capture(&engine, &scope()).unwrap();
+    let captured = record_catalog(&engine);
     let view_query = parse(
         "FROM record:document AT VALID 10 KNOWN HEAD WHERE status = \"open\" PROJECT status, title EXPLAIN CONTRACT",
     )
@@ -687,7 +716,16 @@ fn geo_index_builds_from_the_same_catalogue_and_read_stamp() {
             ],
         })
         .unwrap();
-    let catalogue = Catalog::capture(&engine, &geo_scope).unwrap();
+    let geo_source = Source::Geo {
+        kind: RuntimeType::new("location").unwrap(),
+    };
+    let catalogue = Catalog::capture_for_sources(
+        &engine,
+        &geo_scope,
+        std::slice::from_ref(&geo_source),
+        read_budget(),
+    )
+    .unwrap();
     let repository = IndexCatalogueRepository::new(&engine, geo_scope.clone());
     let id = ProjectionId::new("location-point").unwrap();
     repository
@@ -696,9 +734,7 @@ fn geo_index_builds_from_the_same_catalogue_and_read_stamp() {
             &catalogue,
             IndexDefinition {
                 id: id.clone(),
-                source: Source::Geo {
-                    kind: RuntimeType::new("location").unwrap(),
-                },
+                source: geo_source.clone(),
                 fields: vec![
                     "geometry_kind".into(),
                     "longitude".into(),
@@ -720,7 +756,13 @@ fn geo_index_builds_from_the_same_catalogue_and_read_stamp() {
         .unwrap();
     assert!(ready.entries[&id].is_usable_at(3, 10));
     assert_eq!(ready.entries[&id].artifact_rows, Some(1));
-    let captured = Catalog::capture(&engine, &geo_scope).unwrap();
+    let captured = Catalog::capture_for_sources(
+        &engine,
+        &geo_scope,
+        std::slice::from_ref(&geo_source),
+        read_budget(),
+    )
+    .unwrap();
     let query = parse(
         "FROM geo:location AT VALID 10 KNOWN HEAD WHERE geometry_kind = \"point\" PROJECT longitude, latitude EXPLAIN CONTRACT",
     )

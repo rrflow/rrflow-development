@@ -1,9 +1,9 @@
 //! rrflowQL syntax, deterministic binding, planning, and execution.
 //!
-//! The implementation begins from an exact stamped authoritative-log scan and
-//! admits narrower authoritative paths only when the bound query proves them
-//! equivalent. Faster projections may compete later, but must publish
-//! freshness evidence and pass differential verification first.
+//! The implementation begins from exact, typed semantic version ranges at one
+//! authenticated read stamp. Immutable projections may compete only when the
+//! bound query proves their source/schema coordinates and artifact digest;
+//! DataFusion evaluates the resulting rows but never owns transactional state.
 
 mod arrow;
 mod bm25;
