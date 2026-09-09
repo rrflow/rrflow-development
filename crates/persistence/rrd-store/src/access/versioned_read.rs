@@ -9,14 +9,14 @@
 
 use super::runtime_state::{read_accumulator_node, scan_space, validate_read_stamp, AccessRead};
 use crate::keyspaces::{self, Space};
-use crate::{Error, Result, StorageTransaction};
+use crate::{Error, Result};
 use rrd_core::{
     Predicate, ReadStamp, RuntimeChange, RuntimeLogAccumulator, RuntimeLogicalModel,
     RuntimeMutation, RuntimeReadValidation, RuntimeRef, RuntimeType,
 };
 use serde::{Deserialize, Serialize};
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 pub const RUNTIME_VERSIONED_READ_CONTRACT_VERSION: u16 = 1;
 
@@ -42,12 +42,31 @@ impl RuntimeReadBudget {
         }
         Ok(())
     }
+
+    /// Mathematical upper bound for authenticating all non-overlapping
+    /// semantic versions visible at one current commit head. This is used by
+    /// write-path integrity checks that cannot accept an operator workload
+    /// policy. Request/query paths must continue to supply their own budget.
+    pub(crate) fn current_head_integrity(commit_cursor: u64) -> Result<Self> {
+        // Cursor, accumulator state, head digest, scope schema, and scope
+        // catalogue revision are the current-stamp point reads.
+        const CURRENT_STAMP_POINT_READS: u64 = 5;
+        let proof_height = u64::from(u64::BITS);
+        let version_and_proof = commit_cursor
+            .checked_mul(proof_height.saturating_add(1))
+            .ok_or(Error::SequenceOverflow)?;
+        let max_keys = version_and_proof
+            .checked_add(proof_height)
+            .and_then(|value| value.checked_add(CURRENT_STAMP_POINT_READS))
+            .ok_or(Error::SequenceOverflow)?;
+        Self::new(max_keys)
+    }
 }
 
 /// One typed semantic version range. An absent discriminator selects the
 /// complete family within the stamped scope; a present discriminator narrows
 /// the physical prefix before any value is decoded.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "family", rename_all = "snake_case", deny_unknown_fields)]
 pub enum RuntimeVersionedSource {
     Schema,
@@ -83,6 +102,13 @@ pub enum RuntimeVersionedSource {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         kind: Option<RuntimeType>,
     },
+    /// Exact temporal history for one non-claim semantic identity. `model`
+    /// selects its physical family; the stamped schema remains authoritative
+    /// for record-like and event-like logical-model resolution.
+    Identity {
+        model: RuntimeLogicalModel,
+        reference: RuntimeRef,
+    },
 }
 
 impl RuntimeVersionedSource {
@@ -100,31 +126,18 @@ impl RuntimeVersionedSource {
         ]
     }
 
-    fn path(&self) -> RuntimeReadAccessPath {
+    fn path(&self) -> Result<RuntimeReadAccessPath> {
         match self {
-            Self::Schema => RuntimeReadAccessPath::SchemaVersions,
-            Self::Claims { .. } => RuntimeReadAccessPath::ClaimVersions,
-            Self::Records { .. } => RuntimeReadAccessPath::RecordVersions,
-            Self::Relations { .. } => RuntimeReadAccessPath::RelationVersions,
-            Self::Events { .. } => RuntimeReadAccessPath::EventVersions,
-            Self::Vectors { .. } => RuntimeReadAccessPath::VectorVersions,
-            Self::Series { .. } => RuntimeReadAccessPath::SeriesVersions,
-            Self::Geo { .. } => RuntimeReadAccessPath::GeoVersions,
-            Self::Objects { .. } => RuntimeReadAccessPath::ObjectVersions,
-        }
-    }
-
-    fn is_unbounded_family(&self) -> bool {
-        match self {
-            Self::Schema => true,
-            Self::Claims { predicate } => predicate.is_none(),
-            Self::Records { kind }
-            | Self::Relations { kind }
-            | Self::Events { kind }
-            | Self::Vectors { kind }
-            | Self::Series { kind }
-            | Self::Geo { kind }
-            | Self::Objects { kind } => kind.is_none(),
+            Self::Schema => Ok(RuntimeReadAccessPath::SchemaVersions),
+            Self::Claims { .. } => Ok(RuntimeReadAccessPath::ClaimVersions),
+            Self::Records { .. } => Ok(RuntimeReadAccessPath::RecordVersions),
+            Self::Relations { .. } => Ok(RuntimeReadAccessPath::RelationVersions),
+            Self::Events { .. } => Ok(RuntimeReadAccessPath::EventVersions),
+            Self::Vectors { .. } => Ok(RuntimeReadAccessPath::VectorVersions),
+            Self::Series { .. } => Ok(RuntimeReadAccessPath::SeriesVersions),
+            Self::Geo { .. } => Ok(RuntimeReadAccessPath::GeoVersions),
+            Self::Objects { .. } => Ok(RuntimeReadAccessPath::ObjectVersions),
+            Self::Identity { model, .. } => access_path_for_model(*model),
         }
     }
 }
@@ -228,13 +241,13 @@ pub struct RuntimeVersionedRead {
 }
 
 pub(crate) fn read_versioned(
-    transaction: &dyn StorageTransaction,
+    transaction: &(impl AccessRead + ?Sized),
     read: &ReadStamp,
     sources: &[RuntimeVersionedSource],
     budget: RuntimeReadBudget,
 ) -> Result<RuntimeVersionedRead> {
     budget.validate()?;
-    let sources = validate_sources(sources)?;
+    let sources = validate_sources(sources, &read.scope)?;
     if read.accumulator_root.is_none() {
         return Err(Error::ReadStampMismatch(read.manifest_id.clone()));
     }
@@ -242,10 +255,12 @@ pub(crate) fn read_versioned(
     let reader = MeteredRead::new(transaction, budget);
     let stamp_validation = reader.with_path(RuntimeReadAccessPath::ReadStamp, || {
         validate_read_stamp(&reader, read)
-    })?;
+    });
+    let stamp_validation = reader.preserve_budget_error(stamp_validation)?;
     let mut changes = BTreeMap::<u64, RuntimeChange>::new();
     for source in sources {
-        let encoded = reader.with_path(source.path(), || scan_source(&reader, read, &source))?;
+        let path = source.path()?;
+        let encoded = reader.with_path(path, || scan_source(&reader, read, &source))?;
         for (stored_key, bytes) in encoded {
             let change: RuntimeChange = serde_json::from_slice(&bytes)?;
             if change.cursor > read.commit_cursor {
@@ -262,9 +277,10 @@ pub(crate) fn read_versioned(
             }
         }
     }
-    reader.with_path(RuntimeReadAccessPath::AccumulatorProof, || {
+    let authentication = reader.with_path(RuntimeReadAccessPath::AccumulatorProof, || {
         authenticate_changes(&reader, read, changes.values())
-    })?;
+    });
+    reader.preserve_budget_error(authentication)?;
     let evidence = reader.finish(stamp_validation)?;
     let result = RuntimeVersionedRead {
         read: read.clone(),
@@ -275,24 +291,58 @@ pub(crate) fn read_versioned(
     Ok(result)
 }
 
+pub(crate) fn schema_at_read(
+    read: &ReadStamp,
+    changes: &[RuntimeChange],
+) -> Result<rrd_core::RuntimeSchemaRegistry> {
+    let expected_revision = read
+        .schema_revision
+        .ok_or_else(|| Error::RuntimeSchemaMissing(read.scope.to_string()))?;
+    let schema = changes
+        .iter()
+        .filter(|change| change.scope == read.scope && change.cursor <= read.commit_cursor)
+        .filter_map(|change| match &change.mutation {
+            RuntimeMutation::Schema { registry } => Some(registry),
+            _ => None,
+        })
+        .next_back()
+        .cloned()
+        .ok_or_else(|| Error::RuntimeSchemaMissing(read.scope.to_string()))?;
+    if schema.revision != expected_revision {
+        return Err(Error::ReadStampUnavailable(format!(
+            "schema revision {} for scope {} at cursor {}",
+            expected_revision, read.scope, read.commit_cursor
+        )));
+    }
+    Ok(schema)
+}
+
 fn validate_sources(
     sources: &[RuntimeVersionedSource],
-) -> Result<BTreeSet<RuntimeVersionedSource>> {
+    scope: &rrd_core::ScopeId,
+) -> Result<Vec<RuntimeVersionedSource>> {
     if sources.is_empty() {
         return Err(Error::Substrate(
             "runtime versioned read requires at least one typed source".into(),
         ));
     }
-    let unique = sources.iter().cloned().collect::<BTreeSet<_>>();
-    for left in &unique {
-        for right in &unique {
-            if left < right
-                && left.path() == right.path()
-                && (left.is_unbounded_family() || right.is_unbounded_family())
+    let mut unique = Vec::with_capacity(sources.len());
+    for source in sources {
+        if !unique.contains(source) {
+            unique.push(source.clone());
+        }
+    }
+    for (left_index, left) in unique.iter().enumerate() {
+        for right in unique.iter().skip(left_index + 1) {
+            let (left_space, left_prefix) = source_range(left, scope)?;
+            let (right_space, right_prefix) = source_range(right, scope)?;
+            if left_space == right_space
+                && (left_prefix.starts_with(&right_prefix)
+                    || right_prefix.starts_with(&left_prefix))
             {
                 return Err(Error::Substrate(format!(
                     "runtime versioned read contains overlapping {:?} ranges",
-                    left.path()
+                    left.path()?
                 )));
             }
         }
@@ -305,53 +355,55 @@ fn scan_source(
     read: &ReadStamp,
     source: &RuntimeVersionedSource,
 ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-    let (space, prefix) = match source {
+    let (space, prefix) = source_range(source, &read.scope)?;
+    scan_space(reader, space, &prefix)
+}
+
+fn source_range(
+    source: &RuntimeVersionedSource,
+    scope: &rrd_core::ScopeId,
+) -> Result<(Space, Vec<u8>)> {
+    Ok(match source {
         RuntimeVersionedSource::Schema => (
             keyspaces::RUNTIME_SCHEMA_VERSIONS,
-            keyspaces::runtime_scope_prefix(keyspaces::RUNTIME_SCHEMA_VERSIONS, &read.scope),
+            keyspaces::runtime_scope_prefix(keyspaces::RUNTIME_SCHEMA_VERSIONS, scope),
         ),
         RuntimeVersionedSource::Claims { predicate } => (
             keyspaces::RUNTIME_CLAIM_VERSIONS,
             predicate.as_ref().map_or_else(
-                || keyspaces::runtime_scope_prefix(keyspaces::RUNTIME_CLAIM_VERSIONS, &read.scope),
-                |predicate| keyspaces::runtime_claim_predicate_prefix(&read.scope, predicate),
+                || keyspaces::runtime_scope_prefix(keyspaces::RUNTIME_CLAIM_VERSIONS, scope),
+                |predicate| keyspaces::runtime_claim_predicate_prefix(scope, predicate),
             ),
         ),
-        RuntimeVersionedSource::Records { kind } => version_range(
-            keyspaces::RUNTIME_RECORD_VERSIONS,
-            &read.scope,
-            kind.as_ref(),
-        ),
-        RuntimeVersionedSource::Relations { kind } => version_range(
-            keyspaces::RUNTIME_RELATION_VERSIONS,
-            &read.scope,
-            kind.as_ref(),
-        ),
-        RuntimeVersionedSource::Events { kind } => version_range(
-            keyspaces::RUNTIME_EVENT_VERSIONS,
-            &read.scope,
-            kind.as_ref(),
-        ),
-        RuntimeVersionedSource::Vectors { kind } => version_range(
-            keyspaces::RUNTIME_VECTOR_VERSIONS,
-            &read.scope,
-            kind.as_ref(),
-        ),
-        RuntimeVersionedSource::Series { kind } => version_range(
-            keyspaces::RUNTIME_SERIES_VERSIONS,
-            &read.scope,
-            kind.as_ref(),
-        ),
-        RuntimeVersionedSource::Geo { kind } => {
-            version_range(keyspaces::RUNTIME_GEO_VERSIONS, &read.scope, kind.as_ref())
+        RuntimeVersionedSource::Records { kind } => {
+            version_range(keyspaces::RUNTIME_RECORD_VERSIONS, scope, kind.as_ref())
         }
-        RuntimeVersionedSource::Objects { kind } => version_range(
-            keyspaces::RUNTIME_OBJECT_VERSIONS,
-            &read.scope,
-            kind.as_ref(),
-        ),
-    };
-    scan_space(reader, space, &prefix)
+        RuntimeVersionedSource::Relations { kind } => {
+            version_range(keyspaces::RUNTIME_RELATION_VERSIONS, scope, kind.as_ref())
+        }
+        RuntimeVersionedSource::Events { kind } => {
+            version_range(keyspaces::RUNTIME_EVENT_VERSIONS, scope, kind.as_ref())
+        }
+        RuntimeVersionedSource::Vectors { kind } => {
+            version_range(keyspaces::RUNTIME_VECTOR_VERSIONS, scope, kind.as_ref())
+        }
+        RuntimeVersionedSource::Series { kind } => {
+            version_range(keyspaces::RUNTIME_SERIES_VERSIONS, scope, kind.as_ref())
+        }
+        RuntimeVersionedSource::Geo { kind } => {
+            version_range(keyspaces::RUNTIME_GEO_VERSIONS, scope, kind.as_ref())
+        }
+        RuntimeVersionedSource::Objects { kind } => {
+            version_range(keyspaces::RUNTIME_OBJECT_VERSIONS, scope, kind.as_ref())
+        }
+        RuntimeVersionedSource::Identity { model, reference } => {
+            let space = version_space_for_model(*model)?;
+            (
+                space,
+                keyspaces::runtime_reference_prefix(space, scope, reference),
+            )
+        }
+    })
 }
 
 fn version_range(
@@ -399,176 +451,194 @@ fn expected_version_key(
     let cursor = change.cursor;
     match (source, &change.mutation) {
         (RuntimeVersionedSource::Schema, RuntimeMutation::Schema { .. }) => {
-            Ok(keyspaces::runtime_schema_version_key(scope, cursor))
+            return Ok(keyspaces::runtime_schema_version_key(scope, cursor));
         }
         (RuntimeVersionedSource::Claims { predicate }, RuntimeMutation::Claim { claim })
             if predicate
                 .as_ref()
                 .is_none_or(|value| value == &claim.predicate) =>
         {
-            Ok(keyspaces::runtime_claim_version_key(scope, claim, cursor))
+            return Ok(keyspaces::runtime_claim_version_key(scope, claim, cursor));
         }
-        (RuntimeVersionedSource::Records { kind }, RuntimeMutation::Record { record })
-            if kind
-                .as_ref()
-                .is_none_or(|value| value == &record.reference.kind) =>
-        {
-            Ok(keyspaces::runtime_version_key(
-                keyspaces::RUNTIME_RECORD_VERSIONS,
-                scope,
-                &record.reference,
-                record.valid_from,
-                cursor,
-            ))
-        }
-        (RuntimeVersionedSource::Relations { kind }, RuntimeMutation::Relation { relation })
-            if kind
-                .as_ref()
-                .is_none_or(|value| value == &relation.reference.kind) =>
-        {
-            Ok(keyspaces::runtime_version_key(
-                keyspaces::RUNTIME_RELATION_VERSIONS,
-                scope,
-                &relation.reference,
-                relation.valid_from,
-                cursor,
-            ))
-        }
-        (RuntimeVersionedSource::Events { kind }, RuntimeMutation::Event { event })
-            if kind.as_ref().is_none_or(|value| value == &event.kind) =>
-        {
-            let reference = keyspaces::runtime_event_reference(event, cursor)?;
-            Ok(keyspaces::runtime_version_key(
-                keyspaces::RUNTIME_EVENT_VERSIONS,
-                scope,
-                &reference,
-                change.at,
-                cursor,
-            ))
-        }
-        (RuntimeVersionedSource::Vectors { kind }, RuntimeMutation::Vector { vector })
-            if kind
-                .as_ref()
-                .is_none_or(|value| value == &vector.reference.kind) =>
-        {
-            Ok(keyspaces::runtime_vector_version_key(
-                scope,
-                &vector.reference,
-                vector.valid_from,
-                cursor,
-            ))
-        }
-        (RuntimeVersionedSource::Series { kind }, RuntimeMutation::SeriesSample { sample })
-            if kind
-                .as_ref()
-                .is_none_or(|value| value == &sample.reference.kind) =>
-        {
-            Ok(keyspaces::runtime_version_key(
-                keyspaces::RUNTIME_SERIES_VERSIONS,
-                scope,
-                &sample.reference,
-                sample.observed_at,
-                cursor,
-            ))
-        }
-        (RuntimeVersionedSource::Geo { kind }, RuntimeMutation::Geo { geo })
-            if kind
-                .as_ref()
-                .is_none_or(|value| value == &geo.reference.kind) =>
-        {
-            Ok(keyspaces::runtime_version_key(
-                keyspaces::RUNTIME_GEO_VERSIONS,
-                scope,
-                &geo.reference,
-                geo.valid_from,
-                cursor,
-            ))
-        }
-        (RuntimeVersionedSource::Objects { kind }, RuntimeMutation::Object { object })
-            if kind
-                .as_ref()
-                .is_none_or(|value| value == &object.reference.kind) =>
-        {
-            Ok(keyspaces::runtime_version_key(
-                keyspaces::RUNTIME_OBJECT_VERSIONS,
-                scope,
-                &object.reference,
-                change.at,
-                cursor,
-            ))
-        }
-        (source, RuntimeMutation::Retire { retirement })
-            if retirement_matches(source, retirement.model, &retirement.reference) =>
-        {
-            let space = version_space(source)?;
-            if space == keyspaces::RUNTIME_VECTOR_VERSIONS {
-                Ok(keyspaces::runtime_vector_version_key(
-                    scope,
-                    &retirement.reference,
-                    retirement.effective_at,
-                    cursor,
-                ))
-            } else {
-                Ok(keyspaces::runtime_version_key(
-                    space,
-                    scope,
-                    &retirement.reference,
-                    retirement.effective_at,
-                    cursor,
-                ))
-            }
-        }
-        _ => Err(Error::Codec(format!(
+        _ => {}
+    }
+
+    let address = version_address(change)?;
+    if !source_accepts_address(source, &address)? {
+        let path = source.path()?;
+        return Err(Error::Codec(format!(
             "runtime semantic version {} escaped its selected {:?} family",
+            cursor, path
+        )));
+    }
+    if address.space == keyspaces::RUNTIME_VECTOR_VERSIONS {
+        Ok(keyspaces::runtime_vector_version_key(
+            scope,
+            &address.reference,
+            address.effective_at,
             cursor,
-            source.path()
-        ))),
+        ))
+    } else {
+        Ok(keyspaces::runtime_version_key(
+            address.space,
+            scope,
+            &address.reference,
+            address.effective_at,
+            cursor,
+        ))
     }
 }
 
-fn retirement_matches(
-    source: &RuntimeVersionedSource,
-    model: RuntimeLogicalModel,
-    reference: &RuntimeRef,
-) -> bool {
-    let discriminator_matches = match source {
-        RuntimeVersionedSource::Records { kind }
-        | RuntimeVersionedSource::Relations { kind }
-        | RuntimeVersionedSource::Events { kind }
-        | RuntimeVersionedSource::Vectors { kind }
-        | RuntimeVersionedSource::Series { kind }
-        | RuntimeVersionedSource::Geo { kind }
-        | RuntimeVersionedSource::Objects { kind } => {
-            kind.as_ref().is_none_or(|value| value == &reference.kind)
-        }
-        RuntimeVersionedSource::Schema | RuntimeVersionedSource::Claims { .. } => false,
-    };
-    discriminator_matches
-        && match source {
-            RuntimeVersionedSource::Records { .. } => model.is_record_like(),
-            RuntimeVersionedSource::Relations { .. } => model == RuntimeLogicalModel::GraphRelation,
-            RuntimeVersionedSource::Events { .. } => model.is_event_like(),
-            RuntimeVersionedSource::Vectors { .. } => model == RuntimeLogicalModel::Vector,
-            RuntimeVersionedSource::Series { .. } => model == RuntimeLogicalModel::TimeSeries,
-            RuntimeVersionedSource::Geo { .. } => model == RuntimeLogicalModel::Geo,
-            RuntimeVersionedSource::Objects { .. } => model == RuntimeLogicalModel::Object,
-            RuntimeVersionedSource::Schema | RuntimeVersionedSource::Claims { .. } => false,
-        }
+struct VersionAddress {
+    space: Space,
+    reference: RuntimeRef,
+    effective_at: u64,
+    retirement_model: Option<RuntimeLogicalModel>,
 }
 
-fn version_space(source: &RuntimeVersionedSource) -> Result<Space> {
-    match source {
-        RuntimeVersionedSource::Schema | RuntimeVersionedSource::Claims { .. } => Err(
-            Error::Codec("schema and claim values cannot carry typed retirements".into()),
+fn version_address(change: &RuntimeChange) -> Result<VersionAddress> {
+    let (space, reference, effective_at, retirement_model) = match &change.mutation {
+        RuntimeMutation::Record { record } => (
+            keyspaces::RUNTIME_RECORD_VERSIONS,
+            record.reference.clone(),
+            record.valid_from,
+            None,
         ),
-        RuntimeVersionedSource::Records { .. } => Ok(keyspaces::RUNTIME_RECORD_VERSIONS),
-        RuntimeVersionedSource::Relations { .. } => Ok(keyspaces::RUNTIME_RELATION_VERSIONS),
-        RuntimeVersionedSource::Events { .. } => Ok(keyspaces::RUNTIME_EVENT_VERSIONS),
-        RuntimeVersionedSource::Vectors { .. } => Ok(keyspaces::RUNTIME_VECTOR_VERSIONS),
-        RuntimeVersionedSource::Series { .. } => Ok(keyspaces::RUNTIME_SERIES_VERSIONS),
-        RuntimeVersionedSource::Geo { .. } => Ok(keyspaces::RUNTIME_GEO_VERSIONS),
-        RuntimeVersionedSource::Objects { .. } => Ok(keyspaces::RUNTIME_OBJECT_VERSIONS),
-    }
+        RuntimeMutation::Relation { relation } => (
+            keyspaces::RUNTIME_RELATION_VERSIONS,
+            relation.reference.clone(),
+            relation.valid_from,
+            None,
+        ),
+        RuntimeMutation::Event { event } => (
+            keyspaces::RUNTIME_EVENT_VERSIONS,
+            keyspaces::runtime_event_reference(event, change.cursor)?,
+            change.at,
+            None,
+        ),
+        RuntimeMutation::Vector { vector } => (
+            keyspaces::RUNTIME_VECTOR_VERSIONS,
+            vector.reference.clone(),
+            vector.valid_from,
+            None,
+        ),
+        RuntimeMutation::SeriesSample { sample } => (
+            keyspaces::RUNTIME_SERIES_VERSIONS,
+            sample.reference.clone(),
+            sample.observed_at,
+            None,
+        ),
+        RuntimeMutation::Geo { geo } => (
+            keyspaces::RUNTIME_GEO_VERSIONS,
+            geo.reference.clone(),
+            geo.valid_from,
+            None,
+        ),
+        RuntimeMutation::Object { object } => (
+            keyspaces::RUNTIME_OBJECT_VERSIONS,
+            object.reference.clone(),
+            change.at,
+            None,
+        ),
+        RuntimeMutation::Retire { retirement } => (
+            version_space_for_model(retirement.model)?,
+            retirement.reference.clone(),
+            retirement.effective_at,
+            Some(retirement.model),
+        ),
+        RuntimeMutation::Schema { .. } | RuntimeMutation::Claim { .. } => {
+            return Err(Error::Codec(format!(
+                "runtime semantic version {} escaped its selected family",
+                change.cursor
+            )));
+        }
+    };
+    Ok(VersionAddress {
+        space,
+        reference,
+        effective_at,
+        retirement_model,
+    })
+}
+
+fn source_accepts_address(
+    source: &RuntimeVersionedSource,
+    address: &VersionAddress,
+) -> Result<bool> {
+    let (space, kind) = match source {
+        RuntimeVersionedSource::Records { kind } => {
+            (keyspaces::RUNTIME_RECORD_VERSIONS, kind.as_ref())
+        }
+        RuntimeVersionedSource::Relations { kind } => {
+            (keyspaces::RUNTIME_RELATION_VERSIONS, kind.as_ref())
+        }
+        RuntimeVersionedSource::Events { kind } => {
+            (keyspaces::RUNTIME_EVENT_VERSIONS, kind.as_ref())
+        }
+        RuntimeVersionedSource::Vectors { kind } => {
+            (keyspaces::RUNTIME_VECTOR_VERSIONS, kind.as_ref())
+        }
+        RuntimeVersionedSource::Series { kind } => {
+            (keyspaces::RUNTIME_SERIES_VERSIONS, kind.as_ref())
+        }
+        RuntimeVersionedSource::Geo { kind } => (keyspaces::RUNTIME_GEO_VERSIONS, kind.as_ref()),
+        RuntimeVersionedSource::Objects { kind } => {
+            (keyspaces::RUNTIME_OBJECT_VERSIONS, kind.as_ref())
+        }
+        RuntimeVersionedSource::Identity { model, reference } => {
+            return Ok(version_space_for_model(*model)? == address.space
+                && reference == &address.reference
+                && address
+                    .retirement_model
+                    .is_none_or(|actual| actual == *model));
+        }
+        RuntimeVersionedSource::Schema | RuntimeVersionedSource::Claims { .. } => return Ok(false),
+    };
+    Ok(space == address.space && kind.is_none_or(|expected| expected == &address.reference.kind))
+}
+
+fn access_path_for_model(model: RuntimeLogicalModel) -> Result<RuntimeReadAccessPath> {
+    Ok(match model {
+        RuntimeLogicalModel::Document
+        | RuntimeLogicalModel::Relational
+        | RuntimeLogicalModel::GraphNode
+        | RuntimeLogicalModel::KeyValue
+        | RuntimeLogicalModel::ReasoningRecord
+        | RuntimeLogicalModel::LifecycleRecord => RuntimeReadAccessPath::RecordVersions,
+        RuntimeLogicalModel::GraphRelation => RuntimeReadAccessPath::RelationVersions,
+        RuntimeLogicalModel::Event
+        | RuntimeLogicalModel::ReasoningEvent
+        | RuntimeLogicalModel::LifecycleEvent => RuntimeReadAccessPath::EventVersions,
+        RuntimeLogicalModel::Vector => RuntimeReadAccessPath::VectorVersions,
+        RuntimeLogicalModel::TimeSeries => RuntimeReadAccessPath::SeriesVersions,
+        RuntimeLogicalModel::Geo => RuntimeReadAccessPath::GeoVersions,
+        RuntimeLogicalModel::Object => RuntimeReadAccessPath::ObjectVersions,
+        RuntimeLogicalModel::ReasoningClaim => {
+            return Err(Error::Substrate(
+                "claim identities require subject/predicate selection".into(),
+            ));
+        }
+    })
+}
+
+fn version_space_for_model(model: RuntimeLogicalModel) -> Result<Space> {
+    Ok(match access_path_for_model(model)? {
+        RuntimeReadAccessPath::RecordVersions => keyspaces::RUNTIME_RECORD_VERSIONS,
+        RuntimeReadAccessPath::RelationVersions => keyspaces::RUNTIME_RELATION_VERSIONS,
+        RuntimeReadAccessPath::EventVersions => keyspaces::RUNTIME_EVENT_VERSIONS,
+        RuntimeReadAccessPath::VectorVersions => keyspaces::RUNTIME_VECTOR_VERSIONS,
+        RuntimeReadAccessPath::SeriesVersions => keyspaces::RUNTIME_SERIES_VERSIONS,
+        RuntimeReadAccessPath::GeoVersions => keyspaces::RUNTIME_GEO_VERSIONS,
+        RuntimeReadAccessPath::ObjectVersions => keyspaces::RUNTIME_OBJECT_VERSIONS,
+        RuntimeReadAccessPath::ReadStamp
+        | RuntimeReadAccessPath::SchemaVersions
+        | RuntimeReadAccessPath::ClaimVersions
+        | RuntimeReadAccessPath::AccumulatorProof => {
+            return Err(Error::Substrate(
+                "logical model has no identity-version space".into(),
+            ));
+        }
+    })
 }
 
 fn authenticate_changes<'a>(
@@ -620,19 +690,21 @@ impl PathCounters {
     }
 }
 
-struct MeteredRead<'a> {
-    inner: &'a dyn StorageTransaction,
+struct MeteredRead<'a, R: AccessRead + ?Sized> {
+    inner: &'a R,
     budget: RuntimeReadBudget,
+    budget_observed: Cell<Option<u64>>,
     path: Cell<RuntimeReadAccessPath>,
     totals: RefCell<PathCounters>,
     paths: RefCell<BTreeMap<RuntimeReadAccessPath, PathCounters>>,
 }
 
-impl<'a> MeteredRead<'a> {
-    fn new(inner: &'a dyn StorageTransaction, budget: RuntimeReadBudget) -> Self {
+impl<'a, R: AccessRead + ?Sized> MeteredRead<'a, R> {
+    fn new(inner: &'a R, budget: RuntimeReadBudget) -> Self {
         Self {
             inner,
             budget,
+            budget_observed: Cell::new(None),
             path: Cell::new(RuntimeReadAccessPath::ReadStamp),
             totals: RefCell::new(PathCounters::default()),
             paths: RefCell::new(BTreeMap::new()),
@@ -643,6 +715,16 @@ impl<'a> MeteredRead<'a> {
         let prior = self.path.replace(path);
         let result = operation();
         self.path.set(prior);
+        result
+    }
+
+    fn preserve_budget_error<T>(&self, result: Result<T>) -> Result<T> {
+        if let Some(observed) = self.budget_observed.get() {
+            return Err(Error::RuntimeReadBudgetExceeded {
+                limit: self.budget.max_keys,
+                observed,
+            });
+        }
         result
     }
 
@@ -703,16 +785,17 @@ impl<'a> MeteredRead<'a> {
     }
 }
 
-impl AccessRead for MeteredRead<'_> {
+impl<R: AccessRead + ?Sized> AccessRead for MeteredRead<'_, R> {
     fn read_key(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         let observed = checked_add(self.totals.borrow().keys_examined, 1)?;
         if observed > self.budget.max_keys {
+            self.budget_observed.set(Some(observed));
             return Err(Error::RuntimeReadBudgetExceeded {
                 limit: self.budget.max_keys,
                 observed,
             });
         }
-        let value = self.inner.get(key)?;
+        let value = self.inner.read_key(key)?;
         let (decoded, bytes) = value.as_ref().map_or((0, 0), |value| {
             (1, u64::try_from(value.len()).unwrap_or(u64::MAX))
         });
@@ -731,10 +814,11 @@ impl AccessRead for MeteredRead<'_> {
         let probe_limit = usize::try_from(remaining.saturating_add(1))
             .unwrap_or(usize::MAX)
             .min(limit);
-        let rows = self.inner.scan(start, end, probe_limit)?;
+        let rows = self.inner.scan_range(start, end, probe_limit)?;
         let row_count = u64::try_from(rows.len()).unwrap_or(u64::MAX);
         let observed = checked_add(examined, row_count)?;
         if observed > self.budget.max_keys {
+            self.budget_observed.set(Some(observed));
             return Err(Error::RuntimeReadBudgetExceeded {
                 limit: self.budget.max_keys,
                 observed,
@@ -812,12 +896,29 @@ mod tests {
 
     #[test]
     fn overlapping_family_ranges_are_rejected_before_storage_access() {
-        assert!(validate_sources(&[
-            RuntimeVersionedSource::Records { kind: None },
-            RuntimeVersionedSource::Records {
-                kind: Some(RuntimeType::new("document").unwrap()),
-            },
-        ])
+        let scope = ScopeId::new("project:overlap-validation").unwrap();
+        assert!(validate_sources(
+            &[
+                RuntimeVersionedSource::Records { kind: None },
+                RuntimeVersionedSource::Records {
+                    kind: Some(RuntimeType::new("document").unwrap()),
+                },
+            ],
+            &scope,
+        )
+        .is_err());
+        assert!(validate_sources(
+            &[
+                RuntimeVersionedSource::Records {
+                    kind: Some(RuntimeType::new("document").unwrap()),
+                },
+                RuntimeVersionedSource::Identity {
+                    model: RuntimeLogicalModel::Document,
+                    reference: RuntimeRef::new("document", "readme").unwrap(),
+                },
+            ],
+            &scope,
+        )
         .is_err());
     }
 }

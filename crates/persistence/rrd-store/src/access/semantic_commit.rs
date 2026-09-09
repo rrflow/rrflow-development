@@ -9,9 +9,10 @@
 //! authoritative.
 
 use super::runtime_state::{
-    accumulator_with, checked_key, get, get_json, read_sequence, validate_read_stamp,
-    values_for_scope, AccessRead,
+    accumulator_with, checked_key, get, get_json, read_sequence, read_stamp_with,
+    validate_read_stamp, values_for_scope, AccessRead,
 };
+use super::{read_versioned, schema_at_read, RuntimeReadBudget, RuntimeVersionedSource};
 use crate::keyspaces::{self, Space};
 use crate::{Error, FunctionInvocationReceiptRecord, Result, StorageTransaction};
 use rrd_core::{
@@ -450,40 +451,36 @@ fn validate_retirement_targets(
     if retirements.is_empty() {
         return Ok(());
     }
-    let page = super::runtime_state::change_page(reader, head, 0, usize::MAX, Some(&commit.scope))?;
-    if page.through_cursor != head || page.has_more() {
+    let read = read_stamp_with(reader, &commit.scope)?;
+    if read.commit_cursor != head {
         return Err(Error::ReadStampUnavailable(format!(
-            "retirement validation for {}",
-            commit.scope
+            "retirement validation for {} moved from cursor {head} to {}",
+            commit.scope, read.commit_cursor
         )));
     }
-    let schema: RuntimeSchemaRegistry = get_json(
+    let mut sources = vec![RuntimeVersionedSource::Schema];
+    sources.extend(
+        retirements
+            .iter()
+            .map(|retirement| RuntimeVersionedSource::Identity {
+                model: retirement.model,
+                reference: retirement.reference.clone(),
+            }),
+    );
+    let direct = read_versioned(
         reader,
-        keyspaces::RUNTIME_SCHEMAS,
-        &keyspaces::runtime_schema_key(&commit.scope),
-    )?
-    .ok_or_else(|| Error::RuntimeSchemaMissing(commit.scope.to_string()))?;
-    let replayed_revision = page
-        .changes
-        .iter()
-        .filter_map(|change| match &change.mutation {
-            RuntimeMutation::Schema { registry } => Some(registry.revision),
-            _ => None,
-        })
-        .next_back();
-    if replayed_revision != Some(schema.revision) {
-        return Err(Error::ReadStampUnavailable(format!(
-            "schema revision {} for scope {} at cursor {head}",
-            schema.revision, commit.scope
-        )));
-    }
+        &read,
+        &sources,
+        RuntimeReadBudget::current_head_integrity(head)?,
+    )?;
+    let schema = schema_at_read(&read, &direct.changes)?;
     let mut snapshots = BTreeMap::new();
     for retirement in retirements {
         let snapshot = match snapshots.entry(retirement.effective_at) {
             std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
             std::collections::btree_map::Entry::Vacant(entry) => entry.insert(
                 RuntimeDataSnapshot::from_changes(
-                    &page.changes,
+                    &direct.changes,
                     &schema,
                     commit.scope.clone(),
                     retirement.effective_at,

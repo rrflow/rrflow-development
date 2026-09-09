@@ -4,7 +4,7 @@ use crate::access::runtime_state::{
 };
 use crate::access::{
     index_source_deltas, prepare_semantic_commit, read_versioned as read_versioned_access,
-    vector_source_deltas,
+    schema_at_read, vector_source_deltas,
 };
 use crate::keyspaces::{self, Durability};
 use crate::{
@@ -194,24 +194,21 @@ impl<'a> RuntimeRepository<'a> {
         &self,
         scope: &ScopeId,
         valid_at: Millis,
-        replay_limit: usize,
+        max_keys: usize,
     ) -> Result<(ReadStamp, RuntimeDataSnapshot)> {
-        if replay_limit == 0 {
-            return Err(Error::Substrate(
-                "runtime data snapshot replay limit must be greater than zero".into(),
-            ));
-        }
-        let read = self.read_stamp(scope)?;
-        let page = self.read_changes(&read, 0, replay_limit)?;
-        if page.through_cursor != read.commit_cursor || page.has_more() {
-            return Err(Error::Substrate(format!(
-                "runtime data snapshot requires more than {replay_limit} retained changes"
-            )));
-        }
+        let transaction = self.storage.begin_transaction()?;
+        let read = read_stamp_with(&*transaction, scope)?;
+        let sources = RuntimeVersionedSource::all();
+        let direct = read_versioned_access(
+            &*transaction,
+            &read,
+            &sources,
+            read_budget(max_keys, "runtime data snapshot")?,
+        )?;
         let snapshot = if read.schema_revision.is_some() {
-            let schema = schema_at_read(&read, &page)?;
+            let schema = schema_at_read(&read, &direct.changes)?;
             RuntimeDataSnapshot::from_changes(
-                &page.changes,
+                &direct.changes,
                 &schema,
                 scope.clone(),
                 valid_at,
@@ -219,7 +216,7 @@ impl<'a> RuntimeRepository<'a> {
             )?
         } else {
             RuntimeDataSnapshot::from_claim_changes(
-                &page.changes,
+                &direct.changes,
                 scope.clone(),
                 valid_at,
                 read.commit_cursor,
@@ -405,17 +402,19 @@ impl<'a> RuntimeRepository<'a> {
         &self,
         transaction: &DataTransaction,
         valid_at: Millis,
+        max_keys: usize,
     ) -> Result<DataTransactionView> {
         transaction.validate()?;
-        let page = self.read_changes(&transaction.read, 0, usize::MAX)?;
-        if page.through_cursor != transaction.read.commit_cursor {
-            return Err(Error::Substrate(format!(
-                "stamped runtime replay ended at {}, expected {}",
-                page.through_cursor, transaction.read.commit_cursor
-            )));
-        }
+        let storage = self.storage.begin_transaction()?;
+        let sources = RuntimeVersionedSource::all();
+        let direct = read_versioned_access(
+            &*storage,
+            &transaction.read,
+            &sources,
+            read_budget(max_keys, "transaction graph preview")?,
+        )?;
         let base = RuntimeGraphSnapshot::from_changes(
-            &page.changes,
+            &direct.changes,
             transaction.read.scope.clone(),
             valid_at,
             transaction.read.commit_cursor,
@@ -427,20 +426,22 @@ impl<'a> RuntimeRepository<'a> {
         &self,
         transaction: &DataTransaction,
         valid_at: Millis,
-        replay_limit: usize,
+        max_keys: usize,
     ) -> Result<RuntimeDataSnapshot> {
         transaction.validate()?;
-        if valid_at == 0 || replay_limit == 0 {
+        if valid_at == 0 {
             return Err(Error::Substrate(
-                "transaction data preview requires non-zero valid time and replay limit".into(),
+                "transaction data preview requires non-zero valid time".into(),
             ));
         }
-        let page = self.read_changes(&transaction.read, 0, replay_limit)?;
-        if page.through_cursor != transaction.read.commit_cursor || page.has_more() {
-            return Err(Error::Substrate(format!(
-                "transaction data preview requires more than {replay_limit} retained changes"
-            )));
-        }
+        let storage = self.storage.begin_transaction()?;
+        let sources = RuntimeVersionedSource::all();
+        let direct = read_versioned_access(
+            &*storage,
+            &transaction.read,
+            &sources,
+            read_budget(max_keys, "transaction data preview")?,
+        )?;
         let schema = transaction
             .commit
             .mutations
@@ -451,7 +452,7 @@ impl<'a> RuntimeRepository<'a> {
             })
             .next_back()
             .map(Ok)
-            .unwrap_or_else(|| schema_at_read(&transaction.read, &page))?;
+            .unwrap_or_else(|| schema_at_read(&transaction.read, &direct.changes))?;
         schema.validate()?;
         let prospective_cursor = transaction
             .read
@@ -459,8 +460,8 @@ impl<'a> RuntimeRepository<'a> {
             .checked_add(transaction.commit.mutations.len() as u64)
             .ok_or_else(|| Error::Substrate("transaction preview cursor overflowed".into()))?;
         let commit_id = transaction.commit.digest();
-        let mut changes = page.changes;
-        let mut previous_digest = changes.last().map(|change| change.digest.clone());
+        let mut changes = direct.changes;
+        let mut previous_digest = transaction.read.head_digest.clone();
         for (ordinal, mutation) in transaction.commit.mutations.iter().cloned().enumerate() {
             let cursor = transaction.read.commit_cursor + ordinal as u64 + 1;
             let change = RuntimeChange::committed(
@@ -485,26 +486,8 @@ impl<'a> RuntimeRepository<'a> {
     }
 }
 
-fn schema_at_read(read: &ReadStamp, page: &RuntimeChangePage) -> Result<RuntimeSchemaRegistry> {
-    let expected_revision = read
-        .schema_revision
-        .ok_or_else(|| Error::RuntimeSchemaMissing(read.scope.to_string()))?;
-    let schema = page
-        .changes
-        .iter()
-        .filter(|change| change.scope == read.scope && change.cursor <= read.commit_cursor)
-        .filter_map(|change| match &change.mutation {
-            RuntimeMutation::Schema { registry } => Some(registry),
-            _ => None,
-        })
-        .next_back()
-        .cloned()
-        .ok_or_else(|| Error::RuntimeSchemaMissing(read.scope.to_string()))?;
-    if schema.revision != expected_revision {
-        return Err(Error::ReadStampUnavailable(format!(
-            "schema revision {} for scope {} at cursor {}",
-            expected_revision, read.scope, read.commit_cursor
-        )));
-    }
-    Ok(schema)
+fn read_budget(max_keys: usize, operation: &str) -> Result<RuntimeReadBudget> {
+    let max_keys = u64::try_from(max_keys)
+        .map_err(|_| Error::Substrate(format!("{operation} key budget exceeds u64")))?;
+    RuntimeReadBudget::new(max_keys)
 }

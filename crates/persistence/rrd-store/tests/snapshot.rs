@@ -152,6 +152,30 @@ fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
     );
     assert_eq!(point.validation.change_reads, 3);
 
+    let pending = DataTransaction::new(retained.clone(), item(&scope, 2, "preview-only")).unwrap();
+    let graph_preview = engine
+        .runtime()
+        .preview_transaction(&pending, 102, 512)
+        .unwrap();
+    assert!(graph_preview
+        .record(&RuntimeRef::new("item", "preview-only").unwrap())
+        .is_some());
+    assert!(graph_preview
+        .record(&RuntimeRef::new("item", "later").unwrap())
+        .is_none());
+    let data_preview = engine
+        .runtime()
+        .preview_data_snapshot(&pending, 102, 512)
+        .unwrap();
+    assert!(data_preview.contains(
+        rrd_core::RuntimeLogicalModel::Relational,
+        &RuntimeRef::new("item", "preview-only").unwrap(),
+    ));
+    assert!(!data_preview.contains(
+        rrd_core::RuntimeLogicalModel::Relational,
+        &RuntimeRef::new("item", "later").unwrap(),
+    ));
+
     let forged = ReadStamp::authenticated(
         retained.scope.clone(),
         retained.schema_revision,
@@ -290,12 +314,42 @@ fn assert_data_transaction_contract(engine: &dyn StorageEngine) {
 
     let read = engine.runtime().read_stamp(&scope).unwrap();
     let pending = DataTransaction::new(read.clone(), pulse(&scope, 1)).unwrap();
-    let view = engine.runtime().preview_transaction(&pending, 101).unwrap();
+    assert!(matches!(
+        engine.runtime().data_snapshot(&scope, 101, 1),
+        Err(Error::RuntimeReadBudgetExceeded {
+            limit: 1,
+            observed: 2
+        })
+    ));
+    assert!(matches!(
+        engine.runtime().preview_transaction(&pending, 101, 1),
+        Err(Error::RuntimeReadBudgetExceeded {
+            limit: 1,
+            observed: 2
+        })
+    ));
+    assert!(matches!(
+        engine.runtime().preview_data_snapshot(&pending, 101, 1),
+        Err(Error::RuntimeReadBudgetExceeded {
+            limit: 1,
+            observed: 2
+        })
+    ));
+    let view = engine
+        .runtime()
+        .preview_transaction(&pending, 101, 256)
+        .unwrap();
+    let data_view = engine
+        .runtime()
+        .preview_data_snapshot(&pending, 101, 256)
+        .unwrap();
     assert_eq!(view.read, read);
     assert_eq!(view.prospective_cursor, 2);
     assert_eq!(view.records.len(), 1);
     assert_eq!(view.records[0].reference.kind.as_str(), "pulse");
     assert_eq!(view.events().count(), 1);
+    assert_eq!(data_view.events.len(), 1);
+    assert_eq!(data_view.known_at_cursor, 2);
     assert_eq!(engine.runtime().cursor().unwrap(), 1);
 
     let outcome = engine.runtime().commit_data_transaction(&pending).unwrap();

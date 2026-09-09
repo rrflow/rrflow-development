@@ -336,6 +336,36 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
         snapshot(&corpus.current, &current.changes, 250),
         corpus.current_snapshot
     );
+    let (snapshot_read, repository_snapshot) = engine
+        .runtime()
+        .data_snapshot(
+            &corpus.current.scope,
+            250,
+            usize::try_from(READ_BUDGET).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(snapshot_read, corpus.current);
+    assert_eq!(repository_snapshot, corpus.current_snapshot);
+    assert_eq!(
+        (
+            retained.evidence.point_reads,
+            retained.evidence.range_scans,
+            retained.evidence.keys_examined,
+            retained.evidence.values_decoded,
+            retained.evidence.decoded_bytes,
+        ),
+        (49, 10, 68, 68, 15_371),
+    );
+    assert_eq!(
+        (
+            current.evidence.point_reads,
+            current.evidence.range_scans,
+            current.evidence.keys_examined,
+            current.evidence.values_decoded,
+            current.evidence.decoded_bytes,
+        ),
+        (89, 9, 107, 107, 17_109),
+    );
     for evidence in [&retained.evidence, &current.evidence] {
         evidence.validate().unwrap();
         assert!(evidence.keys_examined <= evidence.key_budget);
@@ -382,6 +412,29 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
         RuntimeMutation::Record { .. } | RuntimeMutation::Retire { .. }
     )));
 
+    let identity = engine
+        .runtime()
+        .read_versioned(
+            &corpus.current,
+            &[RuntimeVersionedSource::Identity {
+                model: RuntimeLogicalModel::Relational,
+                reference: reference("entity", "a"),
+            }],
+            RuntimeReadBudget::new(READ_BUDGET).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(identity.changes.len(), 2);
+    assert!(identity
+        .changes
+        .iter()
+        .all(|change| match &change.mutation {
+            RuntimeMutation::Record { record } => record.reference == reference("entity", "a"),
+            RuntimeMutation::Retire { retirement } => {
+                retirement.reference == reference("entity", "a")
+            }
+            _ => false,
+        }));
+
     assert!(matches!(
         engine.runtime().read_versioned(
             &corpus.current,
@@ -391,6 +444,17 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
         Err(Error::RuntimeReadBudgetExceeded {
             limit: 1,
             observed: 2
+        })
+    ));
+    assert!(matches!(
+        engine.runtime().read_versioned(
+            &corpus.current,
+            &sources,
+            RuntimeReadBudget::new(23).unwrap(),
+        ),
+        Err(Error::RuntimeReadBudgetExceeded {
+            limit: 23,
+            observed: 24
         })
     ));
     vec![retained.evidence, current.evidence]

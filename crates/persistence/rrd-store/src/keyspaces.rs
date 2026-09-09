@@ -533,6 +533,31 @@ pub(crate) fn runtime_kind_prefix(
     )
 }
 
+pub(crate) fn runtime_reference_prefix(
+    space: Space,
+    scope: &ScopeId,
+    reference: &RuntimeRef,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeRecordVersions
+            | Space::RuntimeRelationVersions
+            | Space::RuntimeEventVersions
+            | Space::RuntimeVectorVersions
+            | Space::RuntimeSeriesVersions
+            | Space::RuntimeGeoVersions
+            | Space::RuntimeObjectVersions
+    ));
+    encode(
+        space,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(reference.kind.as_str()),
+            KeyPart::Text(reference.id.as_str()),
+        ],
+    )
+}
+
 pub(crate) fn runtime_claim_version_key(
     scope: &ScopeId,
     claim: &rrd_core::Claim,

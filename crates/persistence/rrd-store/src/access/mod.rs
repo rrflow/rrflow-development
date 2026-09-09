@@ -37,7 +37,7 @@ pub use vector::{
     VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
     VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
 };
-pub(crate) use versioned_read::read_versioned;
+pub(crate) use versioned_read::{read_versioned, schema_at_read};
 pub use versioned_read::{
     RuntimeReadAccessPath, RuntimeReadBudget, RuntimeReadEvidence, RuntimeReadPathEvidence,
     RuntimeVersionedRead, RuntimeVersionedSource, RUNTIME_VERSIONED_READ_CONTRACT_VERSION,
