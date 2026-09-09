@@ -1,4 +1,4 @@
-use super::common::{checked_key, get};
+use crate::access::runtime_state::{checked_key, get};
 use crate::keyspaces::{self, Durability};
 use crate::projection::{
     difference, CurrentProjection, GroundedStamp, GroundingReport, ProjectionStatus,

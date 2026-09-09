@@ -9,7 +9,10 @@ use crate::error::{Error, Result};
 use crate::key_codec::{
     CatalogueSubfamily, DecodedKeyPart, KeyAddress, KeyCodec, KeyFamily, KeyPart,
 };
-use rrd_core::{Millis, Predicate, Reader, RuntimeRef, ScopeId, Subject};
+use rrd_core::{
+    Millis, Predicate, ProjectionFamily, ProjectionWork, Reader, RuntimeRef, RuntimeRelation,
+    ScopeId, Subject,
+};
 
 pub(crate) use crate::key_codec::APPLICATION_FORMAT as RRFLOW_KV_FORMAT;
 pub(crate) type RrflowKvKeyCodec = KeyCodec;
@@ -24,11 +27,18 @@ pub(crate) enum Space {
     Projections,
     RuntimeChanges,
     RuntimeRecords,
+    RuntimeRecordVersions,
     RuntimeRelations,
+    RuntimeRelationVersions,
+    RuntimeOutgoingEdges,
+    RuntimeOutgoingEdgeVersions,
+    RuntimeIncomingEdges,
+    RuntimeIncomingEdgeVersions,
     RuntimeVectors,
     RuntimeSeries,
     RuntimeGeo,
     RuntimeObjects,
+    RuntimeProjectionDeltas,
     RuntimeOutbox,
     RuntimeAudit,
     RuntimeCommits,
@@ -44,11 +54,18 @@ pub(crate) const INVOCATIONS: Space = Space::Invocations;
 pub(crate) const PROJECTIONS: Space = Space::Projections;
 pub(crate) const RUNTIME_CHANGES: Space = Space::RuntimeChanges;
 pub(crate) const RUNTIME_RECORDS: Space = Space::RuntimeRecords;
+pub(crate) const RUNTIME_RECORD_VERSIONS: Space = Space::RuntimeRecordVersions;
 pub(crate) const RUNTIME_RELATIONS: Space = Space::RuntimeRelations;
+pub(crate) const RUNTIME_RELATION_VERSIONS: Space = Space::RuntimeRelationVersions;
+pub(crate) const RUNTIME_OUTGOING_EDGES: Space = Space::RuntimeOutgoingEdges;
+pub(crate) const RUNTIME_OUTGOING_EDGE_VERSIONS: Space = Space::RuntimeOutgoingEdgeVersions;
+pub(crate) const RUNTIME_INCOMING_EDGES: Space = Space::RuntimeIncomingEdges;
+pub(crate) const RUNTIME_INCOMING_EDGE_VERSIONS: Space = Space::RuntimeIncomingEdgeVersions;
 pub(crate) const RUNTIME_VECTORS: Space = Space::RuntimeVectors;
 pub(crate) const RUNTIME_SERIES: Space = Space::RuntimeSeries;
 pub(crate) const RUNTIME_GEO: Space = Space::RuntimeGeo;
 pub(crate) const RUNTIME_OBJECTS: Space = Space::RuntimeObjects;
+pub(crate) const RUNTIME_PROJECTION_DELTAS: Space = Space::RuntimeProjectionDeltas;
 pub(crate) const RUNTIME_OUTBOX: Space = Space::RuntimeOutbox;
 pub(crate) const RUNTIME_AUDIT: Space = Space::RuntimeAudit;
 pub(crate) const RUNTIME_COMMITS: Space = Space::RuntimeCommits;
@@ -58,13 +75,17 @@ pub(crate) const RUNTIME_SNAPSHOTS: Space = Space::RuntimeSnapshots;
 impl Space {
     const fn family(self) -> KeyFamily {
         match self {
-            Self::Claims | Self::SequenceIndex => KeyFamily::Temporal,
+            Self::Claims
+            | Self::SequenceIndex
+            | Self::RuntimeRecordVersions
+            | Self::RuntimeRelationVersions => KeyFamily::Temporal,
             Self::Access | Self::RuntimeAudit => KeyFamily::Audit,
             Self::System => KeyFamily::System,
             Self::Invocations | Self::RuntimeSchemas | Self::RuntimeSnapshots => {
                 KeyFamily::Catalogue
             }
             Self::Projections => KeyFamily::ProjectionDelta,
+            Self::RuntimeProjectionDeltas => KeyFamily::ProjectionDelta,
             Self::RuntimeChanges => KeyFamily::EngineEvent,
             Self::RuntimeRecords
             | Self::RuntimeRelations
@@ -72,6 +93,12 @@ impl Space {
             | Self::RuntimeGeo
             | Self::RuntimeObjects => KeyFamily::Current,
             Self::RuntimeVectors => KeyFamily::Vector,
+            Self::RuntimeOutgoingEdges | Self::RuntimeOutgoingEdgeVersions => {
+                KeyFamily::OutgoingEdge
+            }
+            Self::RuntimeIncomingEdges | Self::RuntimeIncomingEdgeVersions => {
+                KeyFamily::IncomingEdge
+            }
             Self::RuntimeOutbox => KeyFamily::Outbox,
             Self::RuntimeCommits => KeyFamily::RuntimeCommit,
         }
@@ -81,6 +108,8 @@ impl Space {
         match self {
             Self::Claims => 0x01,
             Self::SequenceIndex => 0x02,
+            Self::RuntimeRecordVersions => 0x03,
+            Self::RuntimeRelationVersions => 0x04,
             Self::Access => 0x01,
             Self::System => 0x01,
             // This is the canonical catalogue receipt subfamily, not a second
@@ -89,6 +118,7 @@ impl Space {
             Self::RuntimeSchemas => 0x20,
             Self::RuntimeSnapshots => 0x21,
             Self::Projections => 0x01,
+            Self::RuntimeProjectionDeltas => 0x02,
             Self::RuntimeChanges => 0x01,
             Self::RuntimeRecords => 0x01,
             Self::RuntimeRelations => 0x02,
@@ -96,6 +126,8 @@ impl Space {
             Self::RuntimeGeo => 0x04,
             Self::RuntimeObjects => 0x05,
             Self::RuntimeVectors => 0x01,
+            Self::RuntimeOutgoingEdges | Self::RuntimeIncomingEdges => 0x01,
+            Self::RuntimeOutgoingEdgeVersions | Self::RuntimeIncomingEdgeVersions => 0x02,
             Self::RuntimeOutbox => 0x01,
             Self::RuntimeAudit => 0x02,
             Self::RuntimeCommits => 0x01,
@@ -292,6 +324,121 @@ pub(crate) fn runtime_identity_key(
     )
 }
 
+pub(crate) fn runtime_version_key(
+    space: Space,
+    scope: &ScopeId,
+    reference: &RuntimeRef,
+    effective_at: Millis,
+    cursor: u64,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeRecordVersions | Space::RuntimeRelationVersions
+    ));
+    encode(
+        space,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(reference.kind.as_str()),
+            KeyPart::Text(reference.id.as_str()),
+            KeyPart::DescU64(effective_at),
+            KeyPart::DescU64(cursor),
+        ],
+    )
+}
+
+pub(crate) fn runtime_adjacency_key(
+    space: Space,
+    scope: &ScopeId,
+    relation: &RuntimeRelation,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeOutgoingEdges | Space::RuntimeIncomingEdges
+    ));
+    let (source, target) = adjacency_endpoints(space, relation);
+    encode(
+        space,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(source.kind.as_str()),
+            KeyPart::Text(source.id.as_str()),
+            KeyPart::Text(relation.reference.kind.as_str()),
+            KeyPart::Text(target.kind.as_str()),
+            KeyPart::Text(target.id.as_str()),
+            KeyPart::Text(relation.reference.id.as_str()),
+        ],
+    )
+}
+
+pub(crate) fn runtime_adjacency_version_key(
+    space: Space,
+    scope: &ScopeId,
+    relation: &RuntimeRelation,
+    effective_at: Millis,
+    cursor: u64,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeOutgoingEdgeVersions | Space::RuntimeIncomingEdgeVersions
+    ));
+    let (source, target) = adjacency_endpoints(space, relation);
+    encode(
+        space,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(source.kind.as_str()),
+            KeyPart::Text(source.id.as_str()),
+            KeyPart::Text(relation.reference.kind.as_str()),
+            KeyPart::Text(target.kind.as_str()),
+            KeyPart::Text(target.id.as_str()),
+            KeyPart::Text(relation.reference.id.as_str()),
+            KeyPart::DescU64(effective_at),
+            KeyPart::DescU64(cursor),
+        ],
+    )
+}
+
+fn adjacency_endpoints(space: Space, relation: &RuntimeRelation) -> (&RuntimeRef, &RuntimeRef) {
+    match space {
+        Space::RuntimeOutgoingEdges | Space::RuntimeOutgoingEdgeVersions => {
+            (&relation.from, &relation.to)
+        }
+        Space::RuntimeIncomingEdges | Space::RuntimeIncomingEdgeVersions => {
+            (&relation.to, &relation.from)
+        }
+        _ => panic!("adjacency key requires an outgoing or incoming edge space"),
+    }
+}
+
+pub(crate) fn runtime_projection_delta_key(work: &ProjectionWork) -> Vec<u8> {
+    encode(
+        RUNTIME_PROJECTION_DELTAS,
+        &[
+            KeyPart::U64(work.source_cursor),
+            KeyPart::U64(work.commit_ordinal),
+            KeyPart::U8(projection_family_tag(work.family)),
+            KeyPart::Text(work.scope.as_str()),
+        ],
+    )
+}
+
+pub(crate) fn runtime_projection_delta_start(cursor: u64) -> Vec<u8> {
+    encode(RUNTIME_PROJECTION_DELTAS, &[KeyPart::U64(cursor)])
+}
+
+fn projection_family_tag(family: ProjectionFamily) -> u8 {
+    match family {
+        ProjectionFamily::Scalar => 0,
+        ProjectionFamily::Graph => 1,
+        ProjectionFamily::Text => 2,
+        ProjectionFamily::Vector => 3,
+        ProjectionFamily::TimeSeries => 4,
+        ProjectionFamily::Geo => 5,
+        ProjectionFamily::Object => 6,
+    }
+}
+
 pub(crate) fn runtime_scope_prefix(space: Space, scope: &ScopeId) -> Vec<u8> {
     encode(space, &[KeyPart::Text(scope.as_str())])
 }
@@ -458,11 +605,18 @@ mod tests {
             PROJECTIONS,
             RUNTIME_CHANGES,
             RUNTIME_RECORDS,
+            RUNTIME_RECORD_VERSIONS,
             RUNTIME_RELATIONS,
+            RUNTIME_RELATION_VERSIONS,
+            RUNTIME_OUTGOING_EDGES,
+            RUNTIME_OUTGOING_EDGE_VERSIONS,
+            RUNTIME_INCOMING_EDGES,
+            RUNTIME_INCOMING_EDGE_VERSIONS,
             RUNTIME_VECTORS,
             RUNTIME_SERIES,
             RUNTIME_GEO,
             RUNTIME_OBJECTS,
+            RUNTIME_PROJECTION_DELTAS,
             RUNTIME_OUTBOX,
             RUNTIME_AUDIT,
             RUNTIME_COMMITS,
@@ -545,5 +699,55 @@ mod tests {
             &[KeyPart::U8(Space::Claims.subspace()), KeyPart::U64(1)],
         );
         assert!(parse_claim_key(codec, &malformed).is_err());
+    }
+
+    #[test]
+    fn temporal_and_adjacency_shapes_preserve_direction_and_newest_first_order() {
+        let scope = ScopeId::new("project:graph-order").unwrap();
+        let relation = RuntimeRelation {
+            reference: RuntimeRef::new("imports", "a-b").unwrap(),
+            from: RuntimeRef::new("file", "src/a.rs").unwrap(),
+            to: RuntimeRef::new("file", "src/b.rs").unwrap(),
+            valid_from: 100,
+            valid_to: None,
+            properties: Default::default(),
+        };
+        let outgoing = runtime_adjacency_key(RUNTIME_OUTGOING_EDGES, &scope, &relation);
+        let incoming = runtime_adjacency_key(RUNTIME_INCOMING_EDGES, &scope, &relation);
+        assert_ne!(outgoing, incoming);
+        let outgoing_history = space_prefix(RUNTIME_OUTGOING_EDGE_VERSIONS);
+        let incoming_history = space_prefix(RUNTIME_INCOMING_EDGE_VERSIONS);
+        assert_ne!(space_prefix(RUNTIME_OUTGOING_EDGES), outgoing_history);
+        assert_ne!(space_prefix(RUNTIME_INCOMING_EDGES), incoming_history);
+        assert!(
+            runtime_adjacency_version_key(
+                RUNTIME_OUTGOING_EDGE_VERSIONS,
+                &scope,
+                &relation,
+                200,
+                9,
+            ) < runtime_adjacency_version_key(
+                RUNTIME_OUTGOING_EDGE_VERSIONS,
+                &scope,
+                &relation,
+                100,
+                8,
+            )
+        );
+        assert!(
+            runtime_version_key(
+                RUNTIME_RELATION_VERSIONS,
+                &scope,
+                &relation.reference,
+                200,
+                9,
+            ) < runtime_version_key(
+                RUNTIME_RELATION_VERSIONS,
+                &scope,
+                &relation.reference,
+                100,
+                8,
+            )
+        );
     }
 }

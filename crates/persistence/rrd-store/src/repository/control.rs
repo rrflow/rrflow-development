@@ -1,4 +1,6 @@
-use super::common::{checked_key, get, read_sequence, scan_space_from};
+use crate::access::runtime_state::{
+    checked_key, get, put_sequence, read_sequence, scan_space_from,
+};
 use crate::control::{
     validate_control_batch, validate_control_key, verify_control_page, verify_control_tail,
     ControlJournalEntry, ControlTransition,
@@ -122,7 +124,7 @@ impl<'a> ControlRepository<'a> {
             checked_key(keyspaces::META, &keyspaces::control_journal_key(sequence))?,
             serde_json::to_vec(&entry)?,
         )?;
-        super::common::put_sequence(
+        put_sequence(
             &mut *transaction,
             &keyspaces::control_journal_sequence_key(),
             sequence,
@@ -135,7 +137,7 @@ impl<'a> ControlRepository<'a> {
             entry.digest.as_bytes().to_vec(),
         )?;
         if let (Some(scope), Some(revision)) = (catalog_scope, catalog_revision) {
-            super::common::put_sequence(
+            put_sequence(
                 &mut *transaction,
                 &keyspaces::catalog_revision_key(scope),
                 revision,
@@ -229,7 +231,7 @@ impl<'a> ControlRepository<'a> {
             )?;
         }
         let last = entries.last().expect("validated non-empty control batch");
-        super::common::put_sequence(
+        put_sequence(
             &mut *transaction,
             &keyspaces::control_journal_sequence_key(),
             last.sequence,

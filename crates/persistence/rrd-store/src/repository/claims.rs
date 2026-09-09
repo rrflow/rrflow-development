@@ -1,4 +1,6 @@
-use super::common::{checked_key, get, read_sequence, scan_space, scan_space_from};
+use crate::access::runtime_state::{
+    checked_key, get, put_sequence, read_sequence, scan_space, scan_space_from,
+};
 use crate::gc::{build_report, RemovalReport, Tally};
 use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Durability};
@@ -51,7 +53,7 @@ impl<'a> ClaimRepository<'a> {
                 claim_key,
             )?;
         }
-        super::common::put_sequence(
+        put_sequence(
             &mut *transaction,
             &keyspaces::sequence_watermark_key(),
             sequence,
@@ -111,7 +113,7 @@ impl<'a> ClaimRepository<'a> {
                 claim_key,
             )?;
         }
-        super::common::put_sequence(
+        put_sequence(
             &mut *transaction,
             &keyspaces::sequence_watermark_key(),
             sequence,

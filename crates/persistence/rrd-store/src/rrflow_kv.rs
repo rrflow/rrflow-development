@@ -5,16 +5,17 @@
 //! MVCC sequence is deliberately independent of claim and runtime cursors
 //! stored in those transactions.
 
+use crate::access::{prepare_semantic_commit, SemanticCommitPlan};
 use crate::engine::{PhysicalStoreEvidence, StorageEngine};
 use crate::error::{Error, Result};
-use crate::key_codec::{prefix_end, KeyCodec};
+use crate::key_codec::prefix_end;
+#[cfg(test)]
+use crate::key_codec::KeyCodec;
 use crate::keyspaces::{self, Durability};
 use crate::transaction::{StorageTransaction, TransactionCommit, TransactionRollback};
 use rrd_core::{
-    projection_family, AuditEnvelope, Millis, ObjectReference, ProjectionWork, ReadStamp,
-    RuntimeChange, RuntimeChangePage, RuntimeCommit, RuntimeCommitOutcome, RuntimeLogAccumulator,
-    RuntimeMerkleNode, RuntimeMutation, RuntimeRecord, RuntimeRef, RuntimeRelation,
-    RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
+    AuditEnvelope, Millis, ObjectReference, ReadStamp, RuntimeCommit, RuntimeCommitOutcome,
+    RuntimeLogAccumulator, RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
 };
 use rrd_lsm::{
     CompactionOutcome, Database, DatabaseOptions, GarbageCollectionReport, Manifest, Mutation,
@@ -380,33 +381,69 @@ impl StorageEngine for RrflowKvStore {
     }
 }
 
-/// A validated rrflowKV runtime transaction that has not yet crossed the WAL
-/// durability boundary. The caller may append metadata operations and publish
-/// the combined vector as one rrflowKV [`WriteBatch`].
+/// Converts the one profile-neutral encoded semantic plan into the complete
+/// rrflowKV mutation vector used by the temporary Raft application bridge.
 ///
-/// Planning reads the supplied database's current snapshot. Correct callers
-/// therefore hold the database's exclusive writer guard from planning through
-/// publication; `RrflowKvStore` does this internally and the Raft adapter uses
-/// the same discipline.
-#[derive(Debug)]
-pub struct RrflowKvCommitPlan {
-    outcome: RuntimeCommitOutcome,
-    operations: Vec<Mutation>,
+/// The bridge appends coordinator metadata to this complete vector. Its raw
+/// access remains an inventoried distributed-authority gap; centralizing the
+/// semantic plan here removes the second planner but does not close that gap.
+impl SemanticCommitPlan {
+    pub fn into_parts_for(
+        self,
+        database: &Database,
+    ) -> Result<(RuntimeCommitOutcome, Vec<Mutation>)> {
+        database_codec(database)?;
+        let (outcome, writes) = self.into_encoded_writes();
+        let operations = writes
+            .into_iter()
+            .map(|(key, value)| match value {
+                Some(value) => Mutation::Put { key, value },
+                None => Mutation::Delete { key },
+            })
+            .collect();
+        Ok((outcome, operations))
+    }
 }
 
-/// Reads the exact rrflowKV cursor/schema pair needed to prepare a runtime
-/// transaction outside `RrflowKvStore` while retaining one database snapshot.
-/// Coordinators use this before submitting the resulting commit through their
-/// own durability boundary (for example, a Raft log).
+struct RrflowKvSnapshotRead<'a> {
+    database: &'a Database,
+    snapshot: Snapshot,
+}
+
+impl crate::access::runtime_state::AccessRead for RrflowKvSnapshotRead<'_> {
+    fn read_key(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        self.database.get(key, self.snapshot).map_err(Error::from)
+    }
+
+    fn scan_range(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        Ok(self
+            .database
+            .scan(start, Some(end), self.snapshot)
+            .map_err(Error::from)?
+            .into_iter()
+            .take(limit)
+            .collect())
+    }
+}
+
+/// Reads the exact rrflowKV cursor/schema pair used by the temporary Raft
+/// application bridge before it submits the complete semantic plan.
 pub fn rrflow_kv_commit_context(
     database: &Database,
     scope: &ScopeId,
 ) -> Result<(ReadStamp, Option<RuntimeSchemaRegistry>)> {
-    let snapshot = database.snapshot();
-    let read = rrflow_kv_read_stamp(database, snapshot, scope)?;
-    let schema = get_json(
+    let reader = RrflowKvSnapshotRead {
         database,
-        snapshot,
+        snapshot: database.snapshot(),
+    };
+    let read = crate::access::runtime_state::read_stamp_with(&reader, scope)?;
+    let schema = crate::access::runtime_state::get_json(
+        &reader,
         keyspaces::RUNTIME_SCHEMAS,
         &keyspaces::runtime_schema_key(scope),
     )?;
@@ -422,29 +459,13 @@ pub fn rrflow_kv_commit_context(
     Ok((read, schema))
 }
 
-impl RrflowKvCommitPlan {
-    pub fn outcome(&self) -> &RuntimeCommitOutcome {
-        &self.outcome
-    }
-
-    /// Verifies the target database format before an external coordinator
-    /// combines these canonical mutations with its metadata in one batch.
-    pub fn into_parts_for(
-        self,
-        database: &Database,
-    ) -> Result<(RuntimeCommitOutcome, Vec<Mutation>)> {
-        database_codec(database)?;
-        Ok((self.outcome, self.operations))
-    }
-}
-
-/// Validates and lowers one canonical [`RuntimeCommit`] into rrflowKV
-/// mutations without writing them. This is the composition boundary used when
-/// a coordinator must atomically include its own durable metadata.
+/// Validates and lowers one canonical [`RuntimeCommit`] into the same encoded
+/// semantic plan used by rrflowMX and ordinary rrflowKV repositories. This
+/// remains public only for the already-inventoried Raft application path.
 pub fn prepare_rrflow_kv_commit(
     database: &Database,
     commit: &RuntimeCommit,
-) -> Result<RrflowKvCommitPlan> {
+) -> Result<SemanticCommitPlan> {
     prepare_rrflow_kv_commit_at_read(database, commit, None, None)
 }
 
@@ -453,426 +474,12 @@ fn prepare_rrflow_kv_commit_at_read(
     commit: &RuntimeCommit,
     read: Option<&ReadStamp>,
     archived_audit: Option<&AuditEnvelope>,
-) -> Result<RrflowKvCommitPlan> {
-    commit.validate()?;
-    let snapshot = database.snapshot();
-    if read.is_some() && archived_audit.is_some() {
-        return Err(Error::Archive(
-            "archive replay cannot also supply a live read stamp".into(),
-        ));
-    }
-    if let Some(audit) = archived_audit {
-        audit.validate()?;
-        if let Some(read) = &audit.read {
-            read.validate()?;
-        }
-    } else if let Some(read) = read {
-        validate_rrflow_kv_read_stamp(database, snapshot, read)?;
-    }
-    let commit_id = commit.digest();
-    let start = read_sequence(database, snapshot, &keyspaces::runtime_cursor_key())?;
-    if start != commit.expected_cursor {
-        return Err(Error::RuntimeConflict {
-            expected: commit.expected_cursor,
-            actual: start,
-        });
-    }
-    let (mut accumulator, bootstrap_nodes) =
-        rrflow_kv_runtime_accumulator_with(database, snapshot, start)?;
-
-    let previous_schema: Option<RuntimeSchemaRegistry> = get_json(
+) -> Result<SemanticCommitPlan> {
+    let reader = RrflowKvSnapshotRead {
         database,
-        snapshot,
-        keyspaces::RUNTIME_SCHEMAS,
-        &keyspaces::runtime_schema_key(&commit.scope),
-    )?;
-    let proposed_schema = commit.mutations.iter().find_map(|mutation| match mutation {
-        RuntimeMutation::Schema { registry } => Some(registry),
-        _ => None,
-    });
-    let schema_free_claims = previous_schema.is_none()
-        && proposed_schema.is_none()
-        && commit
-            .mutations
-            .iter()
-            .all(|mutation| matches!(mutation, RuntimeMutation::Claim { .. }));
-    if !schema_free_claims {
-        let effective_schema = match (previous_schema.as_ref(), proposed_schema) {
-            (None, Some(registry)) if registry.revision == 1 => registry,
-            (None, Some(registry)) => {
-                return Err(Error::RuntimeSchemaConflict {
-                    expected: 1,
-                    actual: registry.revision,
-                });
-            }
-            (Some(previous), Some(registry))
-                if registry.revision == previous.revision.saturating_add(1) =>
-            {
-                registry
-            }
-            (Some(previous), Some(registry)) => {
-                return Err(Error::RuntimeSchemaConflict {
-                    expected: previous.revision.saturating_add(1),
-                    actual: registry.revision,
-                });
-            }
-            (Some(previous), None) => previous,
-            (None, None) => {
-                return Err(Error::RuntimeSchemaMissing(commit.scope.to_string()));
-            }
-        };
-        let existing_records = if effective_schema
-            .records
-            .values()
-            .any(|schema| !schema.unique_properties.is_empty())
-        {
-            rrflow_kv_values_for_scope::<RuntimeRecord>(
-                database,
-                snapshot,
-                keyspaces::RUNTIME_RECORDS,
-                &commit.scope,
-            )?
-        } else {
-            Vec::new()
-        };
-        let existing_relations = if effective_schema.relations.values().any(|schema| {
-            schema.unique_pair || schema.max_outgoing.is_some() || schema.max_incoming.is_some()
-        }) {
-            rrflow_kv_values_for_scope::<RuntimeRelation>(
-                database,
-                snapshot,
-                keyspaces::RUNTIME_RELATIONS,
-                &commit.scope,
-            )?
-        } else {
-            Vec::new()
-        };
-        effective_schema.validate_objects(
-            &commit.mutations,
-            &existing_records,
-            &existing_relations,
-        )?;
-    }
-
-    let new_records = commit
-        .mutations
-        .iter()
-        .filter_map(|mutation| match mutation {
-            RuntimeMutation::Record { record } => Some(record.reference.clone()),
-            _ => None,
-        })
-        .collect::<BTreeSet<_>>();
-    for mutation in &commit.mutations {
-        let references: Vec<&RuntimeRef> = match mutation {
-            RuntimeMutation::Relation { relation } => vec![&relation.from, &relation.to],
-            RuntimeMutation::Event { event } => event.subject.iter().collect(),
-            RuntimeMutation::Vector { vector } => vec![&vector.subject],
-            RuntimeMutation::SeriesSample { sample } => vec![&sample.series],
-            RuntimeMutation::Geo { geo } => vec![&geo.subject],
-            RuntimeMutation::Object { object } => object.subject.iter().collect(),
-            RuntimeMutation::Claim { .. }
-            | RuntimeMutation::Schema { .. }
-            | RuntimeMutation::Record { .. }
-            | RuntimeMutation::Retire { .. } => Vec::new(),
-        };
-        for reference in references {
-            if !new_records.contains(reference)
-                && get(
-                    database,
-                    snapshot,
-                    keyspaces::RUNTIME_RECORDS,
-                    &keyspaces::runtime_identity_key(
-                        keyspaces::RUNTIME_RECORDS,
-                        &commit.scope,
-                        reference,
-                    ),
-                )?
-                .is_none()
-            {
-                return Err(Error::DanglingRuntimeReference(format!(
-                    "{}/{} in scope {}",
-                    reference.kind, reference.id, commit.scope
-                )));
-            }
-        }
-    }
-
-    let claim_count = commit
-        .mutations
-        .iter()
-        .filter(|mutation| matches!(mutation, RuntimeMutation::Claim { .. }))
-        .count();
-    let claim_start = read_sequence(database, snapshot, &keyspaces::sequence_watermark_key())?;
-    let mut claim_sequence = claim_start;
-    let mut cursor = start;
-    let mut previous_digest = get(
-        database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::runtime_last_digest_key(),
-    )?
-    .map(String::from_utf8)
-    .transpose()
-    .map_err(|error| Error::CorruptWatermark(error.to_string()))?
-    .filter(|digest| !digest.is_empty());
-    let previous_audit_digest = get(
-        database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::runtime_last_audit_digest_key(),
-    )?
-    .map(String::from_utf8)
-    .transpose()
-    .map_err(|error| Error::CorruptWatermark(error.to_string()))?
-    .filter(|digest| !digest.is_empty());
-    let mut operations = Vec::new();
-    for node in bootstrap_nodes {
-        put(
-            &mut operations,
-            keyspaces::META,
-            &keyspaces::runtime_accumulator_node_key(node.level, node.index),
-            node.digest.into_bytes(),
-        );
-    }
-    let mut outbox_count = 0;
-
-    for (ordinal, mutation) in commit.mutations.iter().cloned().enumerate() {
-        if let RuntimeMutation::Claim { claim } = &mutation {
-            claim.validate()?;
-            claim_sequence = claim_sequence
-                .checked_add(1)
-                .ok_or(Error::SequenceOverflow)?;
-            let claim_key = keyspaces::claim_key(
-                &claim.subject,
-                &claim.predicate,
-                claim.valid_from,
-                claim.tx_time,
-            );
-            put(
-                &mut operations,
-                keyspaces::SEQUENCE_INDEX,
-                &keyspaces::sequence_key(claim_sequence),
-                claim_key.clone(),
-            );
-            put(
-                &mut operations,
-                keyspaces::CLAIMS,
-                &claim_key,
-                serde_json::to_vec(claim)?,
-            );
-        }
-
-        cursor = cursor.checked_add(1).ok_or(Error::SequenceOverflow)?;
-        let change = RuntimeChange::committed(
-            cursor,
-            commit,
-            &commit_id,
-            ordinal as u64,
-            mutation.clone(),
-            previous_digest.clone(),
-        );
-        put(
-            &mut operations,
-            keyspaces::RUNTIME_CHANGES,
-            &keyspaces::runtime_change_key(cursor),
-            serde_json::to_vec(&change)?,
-        );
-        for node in accumulator.append_change(&change)? {
-            put(
-                &mut operations,
-                keyspaces::META,
-                &keyspaces::runtime_accumulator_node_key(node.level, node.index),
-                node.digest.into_bytes(),
-            );
-        }
-        if let Some(family) = projection_family(&mutation) {
-            let work = ProjectionWork::for_change(
-                commit.scope.clone(),
-                cursor,
-                commit_id.clone(),
-                ordinal as u64,
-                family,
-            )?;
-            put(
-                &mut operations,
-                keyspaces::RUNTIME_OUTBOX,
-                &keyspaces::runtime_outbox_key(cursor),
-                serde_json::to_vec(&work)?,
-            );
-            outbox_count += 1;
-        }
-        match mutation {
-            RuntimeMutation::Schema { registry } => put(
-                &mut operations,
-                keyspaces::RUNTIME_SCHEMAS,
-                &keyspaces::runtime_schema_key(&commit.scope),
-                serde_json::to_vec(&registry)?,
-            ),
-            RuntimeMutation::Record { record } => put(
-                &mut operations,
-                keyspaces::RUNTIME_RECORDS,
-                &keyspaces::runtime_identity_key(
-                    keyspaces::RUNTIME_RECORDS,
-                    &commit.scope,
-                    &record.reference,
-                ),
-                serde_json::to_vec(&record)?,
-            ),
-            RuntimeMutation::Relation { relation } => put(
-                &mut operations,
-                keyspaces::RUNTIME_RELATIONS,
-                &keyspaces::runtime_identity_key(
-                    keyspaces::RUNTIME_RELATIONS,
-                    &commit.scope,
-                    &relation.reference,
-                ),
-                serde_json::to_vec(&relation)?,
-            ),
-            RuntimeMutation::Vector { vector } => put(
-                &mut operations,
-                keyspaces::RUNTIME_VECTORS,
-                &keyspaces::runtime_identity_key(
-                    keyspaces::RUNTIME_VECTORS,
-                    &commit.scope,
-                    &vector.reference,
-                ),
-                serde_json::to_vec(&vector)?,
-            ),
-            RuntimeMutation::SeriesSample { sample } => put(
-                &mut operations,
-                keyspaces::RUNTIME_SERIES,
-                &keyspaces::runtime_identity_key(
-                    keyspaces::RUNTIME_SERIES,
-                    &commit.scope,
-                    &sample.reference,
-                ),
-                serde_json::to_vec(&sample)?,
-            ),
-            RuntimeMutation::Geo { geo } => put(
-                &mut operations,
-                keyspaces::RUNTIME_GEO,
-                &keyspaces::runtime_identity_key(
-                    keyspaces::RUNTIME_GEO,
-                    &commit.scope,
-                    &geo.reference,
-                ),
-                serde_json::to_vec(&geo)?,
-            ),
-            RuntimeMutation::Object { object } => put(
-                &mut operations,
-                keyspaces::RUNTIME_OBJECTS,
-                &keyspaces::runtime_identity_key(
-                    keyspaces::RUNTIME_OBJECTS,
-                    &commit.scope,
-                    &object.reference,
-                ),
-                serde_json::to_vec(&object)?,
-            ),
-            RuntimeMutation::Retire { retirement } => {
-                let space = if retirement.model.is_record_like() {
-                    Some(keyspaces::RUNTIME_RECORDS)
-                } else {
-                    match retirement.model {
-                        rrd_core::RuntimeLogicalModel::GraphRelation => {
-                            Some(keyspaces::RUNTIME_RELATIONS)
-                        }
-                        rrd_core::RuntimeLogicalModel::Vector => Some(keyspaces::RUNTIME_VECTORS),
-                        rrd_core::RuntimeLogicalModel::TimeSeries => {
-                            Some(keyspaces::RUNTIME_SERIES)
-                        }
-                        rrd_core::RuntimeLogicalModel::Geo => Some(keyspaces::RUNTIME_GEO),
-                        rrd_core::RuntimeLogicalModel::Object => Some(keyspaces::RUNTIME_OBJECTS),
-                        rrd_core::RuntimeLogicalModel::ReasoningClaim
-                        | rrd_core::RuntimeLogicalModel::Document
-                        | rrd_core::RuntimeLogicalModel::Relational
-                        | rrd_core::RuntimeLogicalModel::GraphNode
-                        | rrd_core::RuntimeLogicalModel::KeyValue
-                        | rrd_core::RuntimeLogicalModel::Event
-                        | rrd_core::RuntimeLogicalModel::ReasoningRecord
-                        | rrd_core::RuntimeLogicalModel::ReasoningEvent
-                        | rrd_core::RuntimeLogicalModel::LifecycleRecord
-                        | rrd_core::RuntimeLogicalModel::LifecycleEvent => None,
-                    }
-                };
-                if let Some(space) = space {
-                    let key = keyspaces::runtime_identity_key(
-                        space,
-                        &commit.scope,
-                        &retirement.reference,
-                    );
-                    delete(&mut operations, space, &key);
-                }
-            }
-            RuntimeMutation::Claim { .. } | RuntimeMutation::Event { .. } => {}
-        }
-        previous_digest = Some(change.digest);
-    }
-    if claim_count > 0 {
-        put_sequence(
-            &mut operations,
-            &keyspaces::sequence_watermark_key(),
-            claim_sequence,
-        );
-    }
-    put_sequence(&mut operations, &keyspaces::runtime_cursor_key(), cursor);
-    put(
-        &mut operations,
-        keyspaces::META,
-        &keyspaces::runtime_last_digest_key(),
-        previous_digest.as_deref().unwrap_or("").as_bytes().to_vec(),
-    );
-    put(
-        &mut operations,
-        keyspaces::META,
-        &keyspaces::runtime_accumulator_state_key(),
-        serde_json::to_vec(&accumulator)?,
-    );
-    let audit_read = archived_audit
-        .and_then(|audit| audit.read.as_ref())
-        .or(read);
-    let audit = AuditEnvelope::accepted_commit_at_read(
-        commit,
-        audit_read,
-        &commit_id,
-        cursor,
-        previous_audit_digest,
-    )?;
-    if archived_audit.is_some_and(|expected| expected != &audit) {
-        return Err(Error::Archive(format!(
-            "runtime commit {commit_id} audit envelope differs from its archive"
-        )));
-    }
-    put(
-        &mut operations,
-        keyspaces::RUNTIME_AUDIT,
-        &keyspaces::runtime_audit_key(&commit_id),
-        serde_json::to_vec(&audit)?,
-    );
-    put(
-        &mut operations,
-        keyspaces::META,
-        &keyspaces::runtime_last_audit_digest_key(),
-        audit.digest.as_bytes().to_vec(),
-    );
-    let outcome = RuntimeCommitOutcome {
-        commit_id,
-        first_cursor: start + 1,
-        last_cursor: cursor,
-        count: commit.mutations.len(),
-        first_claim_sequence: (claim_count > 0).then_some(claim_start + 1),
-        last_claim_sequence: (claim_count > 0).then_some(claim_sequence),
-        outbox_count,
+        snapshot: database.snapshot(),
     };
-    put(
-        &mut operations,
-        keyspaces::RUNTIME_COMMITS,
-        &keyspaces::runtime_commit_key(&outcome.commit_id),
-        serde_json::to_vec(&outcome)?,
-    );
-    Ok(RrflowKvCommitPlan {
-        outcome,
-        operations,
-    })
+    prepare_semantic_commit(&reader, commit, read, archived_audit)
 }
 
 /// Reads a previously accepted rrflowKV runtime outcome from a caller-held
@@ -968,314 +575,10 @@ fn rrflow_kv_read_stamp(
     snapshot: Snapshot,
     scope: &ScopeId,
 ) -> Result<ReadStamp> {
-    let commit_cursor = read_sequence(database, snapshot, &keyspaces::runtime_cursor_key())?;
-    let schema_revision = get_json::<RuntimeSchemaRegistry>(
-        database,
-        snapshot,
-        keyspaces::RUNTIME_SCHEMAS,
-        &keyspaces::runtime_schema_key(scope),
-    )?
-    .map(|schema| schema.revision);
-    let catalog_revision =
-        read_sequence(database, snapshot, &keyspaces::catalog_revision_key(scope))?;
-    let head_digest = get(
-        database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::runtime_last_digest_key(),
-    )?
-    .map(String::from_utf8)
-    .transpose()
-    .map_err(|error| Error::CorruptWatermark(error.to_string()))?
-    .filter(|digest| !digest.is_empty());
-    match load_rrflow_kv_runtime_accumulator(database, snapshot, commit_cursor)? {
-        Some(accumulator) => ReadStamp::authenticated(
-            scope.clone(),
-            schema_revision,
-            catalog_revision,
-            commit_cursor,
-            head_digest,
-            accumulator.root,
-        ),
-        None => ReadStamp::new(
-            scope.clone(),
-            schema_revision,
-            catalog_revision,
-            commit_cursor,
-            head_digest,
-        ),
-    }
-    .map_err(Error::from)
-}
-
-fn validate_rrflow_kv_read_stamp(
-    database: &Database,
-    snapshot: Snapshot,
-    read: &ReadStamp,
-) -> Result<rrd_core::RuntimeReadValidation> {
-    read.validate()?;
-    let current = read_sequence(database, snapshot, &keyspaces::runtime_cursor_key())?;
-    if read.commit_cursor > current {
-        return Err(Error::ReadStampUnavailable(read.manifest_id.clone()));
-    }
-    if read.commit_cursor == current && read.accumulator_root.is_some() {
-        let accumulator = load_rrflow_kv_runtime_accumulator(database, snapshot, current)?
-            .ok_or_else(|| Error::ReadStampMismatch(read.manifest_id.clone()))?;
-        let head_digest = get(
-            database,
-            snapshot,
-            keyspaces::META,
-            &keyspaces::runtime_last_digest_key(),
-        )?
-        .map(String::from_utf8)
-        .transpose()
-        .map_err(|error| Error::CorruptWatermark(error.to_string()))?
-        .filter(|digest| !digest.is_empty());
-        let schema_revision = get_json::<RuntimeSchemaRegistry>(
-            database,
-            snapshot,
-            keyspaces::RUNTIME_SCHEMAS,
-            &keyspaces::runtime_schema_key(&read.scope),
-        )?
-        .map(|schema| schema.revision);
-        let catalog_revision = read_sequence(
-            database,
-            snapshot,
-            &keyspaces::catalog_revision_key(&read.scope),
-        )?;
-        if read.catalog_revision != catalog_revision
-            || read.head_digest != head_digest
-            || read.schema_revision != schema_revision
-            || read.accumulator_root.as_deref() != Some(accumulator.root.as_str())
-        {
-            return Err(Error::ReadStampMismatch(read.manifest_id.clone()));
-        }
-        return Ok(rrd_core::RuntimeReadValidation::new(
-            "authenticated_current_head",
-            0,
-            0,
-        ));
-    }
-    let retained_head = if read.commit_cursor == 0 {
-        None
-    } else {
-        let change: RuntimeChange = get_json(
-            database,
-            snapshot,
-            keyspaces::RUNTIME_CHANGES,
-            &keyspaces::runtime_change_key(read.commit_cursor),
-        )?
-        .ok_or_else(|| Error::ReadStampUnavailable(read.manifest_id.clone()))?;
-        if !change.verify_digest() {
-            return Err(Error::Substrate(format!(
-                "runtime change {} failed digest verification",
-                read.commit_cursor
-            )));
-        }
-        Some(change.digest)
-    };
-    let page = rrflow_kv_change_page(
-        database,
-        snapshot,
-        read.commit_cursor,
-        0,
-        usize::MAX,
-        Some(&read.scope),
-    )?;
-    let schema_revision = page
-        .changes
-        .iter()
-        .filter_map(|change| match &change.mutation {
-            RuntimeMutation::Schema { registry } => Some(registry.revision),
-            _ => None,
-        })
-        .next_back();
-    let catalog_revision = read_sequence(
-        database,
-        snapshot,
-        &keyspaces::catalog_revision_key(&read.scope),
-    )?;
-    if let Some(root) = read.accumulator_root.as_deref() {
-        RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
-            read_rrflow_kv_accumulator_node(database, snapshot, level, index)
-        })?;
-    }
-    if read.catalog_revision != catalog_revision
-        || read.head_digest != retained_head
-        || read.schema_revision != schema_revision
-    {
-        return Err(Error::ReadStampMismatch(read.manifest_id.clone()));
-    }
-    Ok(rrd_core::RuntimeReadValidation::new(
-        "full_hash_chain_replay",
-        read.commit_cursor,
-        0,
-    ))
-}
-
-fn load_rrflow_kv_runtime_accumulator(
-    database: &Database,
-    snapshot: Snapshot,
-    expected_size: u64,
-) -> Result<Option<RuntimeLogAccumulator>> {
-    let stored: Option<RuntimeLogAccumulator> = get_json(
-        database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::runtime_accumulator_state_key(),
-    )?;
-    match stored {
-        Some(accumulator) => {
-            accumulator.validate()?;
-            if accumulator.tree_size != expected_size {
-                return Err(Error::Substrate(format!(
-                    "runtime accumulator size {} differs from cursor {expected_size}",
-                    accumulator.tree_size
-                )));
-            }
-            Ok(Some(accumulator))
-        }
-        None if expected_size == 0 => Ok(Some(RuntimeLogAccumulator::new())),
-        None => Ok(None),
-    }
-}
-
-fn rrflow_kv_runtime_accumulator_with(
-    database: &Database,
-    snapshot: Snapshot,
-    expected_size: u64,
-) -> Result<(RuntimeLogAccumulator, Vec<RuntimeMerkleNode>)> {
-    if let Some(accumulator) =
-        load_rrflow_kv_runtime_accumulator(database, snapshot, expected_size)?
-    {
-        return Ok((accumulator, Vec::new()));
-    }
-    let page = rrflow_kv_change_page(database, snapshot, expected_size, 0, usize::MAX, None)?;
-    let mut accumulator = RuntimeLogAccumulator::new();
-    let mut nodes = Vec::new();
-    for change in &page.changes {
-        nodes.extend(accumulator.append_change(change)?);
-    }
-    if accumulator.tree_size != expected_size {
-        return Err(Error::Substrate(
-            "runtime accumulator bootstrap did not cover the full log".into(),
-        ));
-    }
-    Ok((accumulator, nodes))
-}
-
-fn read_rrflow_kv_accumulator_node(
-    database: &Database,
-    snapshot: Snapshot,
-    level: u8,
-    index: u64,
-) -> rrd_core::Result<Option<String>> {
-    get(
-        database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::runtime_accumulator_node_key(level, index),
+    crate::access::runtime_state::read_stamp_with(
+        &RrflowKvSnapshotRead { database, snapshot },
+        scope,
     )
-    .map_err(|error| rrd_core::Error::InvalidRuntime {
-        reason: format!("cannot read runtime accumulator node: {error}"),
-    })?
-    .map(String::from_utf8)
-    .transpose()
-    .map_err(|error| rrd_core::Error::InvalidRuntime {
-        reason: format!("runtime accumulator node is not UTF-8: {error}"),
-    })
-}
-
-fn rrflow_kv_change_page(
-    database: &Database,
-    snapshot: Snapshot,
-    head: u64,
-    after: u64,
-    limit: usize,
-    scope: Option<&ScopeId>,
-) -> Result<RuntimeChangePage> {
-    if limit == 0 {
-        return Err(Error::Substrate(
-            "runtime change page limit must be greater than zero".into(),
-        ));
-    }
-    if after == u64::MAX || after >= head {
-        return Ok(RuntimeChangePage {
-            requested_after: after,
-            through_cursor: after,
-            head_cursor: head,
-            validation: rrd_core::RuntimeReadValidation::new("bounded_hash_chain_page", 0, 0),
-            changes: Vec::new(),
-        });
-    }
-    let mut previous_digest = if after == 0 {
-        None
-    } else {
-        let prior: RuntimeChange = get_json(
-            database,
-            snapshot,
-            keyspaces::RUNTIME_CHANGES,
-            &keyspaces::runtime_change_key(after),
-        )?
-        .ok_or_else(|| Error::Substrate(format!("runtime log is missing cursor {after}")))?;
-        if !prior.verify_digest() {
-            return Err(Error::Substrate(format!(
-                "runtime change {after} failed digest verification"
-            )));
-        }
-        Some(prior.digest)
-    };
-    let mut through = after;
-    let mut selected = Vec::new();
-    for expected in after + 1..=head {
-        if through.saturating_sub(after) as usize >= limit {
-            break;
-        }
-        let change: RuntimeChange = get_json(
-            database,
-            snapshot,
-            keyspaces::RUNTIME_CHANGES,
-            &keyspaces::runtime_change_key(expected),
-        )?
-        .ok_or_else(|| Error::Substrate(format!("runtime log is missing cursor {expected}")))?;
-        if change.cursor != expected
-            || change.previous_digest != previous_digest
-            || !change.verify_digest()
-        {
-            return Err(Error::Substrate(format!(
-                "runtime change {expected} failed cursor/hash-chain verification"
-            )));
-        }
-        through = expected;
-        previous_digest = Some(change.digest.clone());
-        if scope.is_none_or(|scope| scope == &change.scope) {
-            selected.push(change);
-        }
-    }
-    Ok(RuntimeChangePage {
-        requested_after: after,
-        through_cursor: through,
-        head_cursor: head,
-        validation: rrd_core::RuntimeReadValidation::new(
-            "bounded_hash_chain_page",
-            through.saturating_sub(after),
-            0,
-        ),
-        changes: selected,
-    })
-}
-
-fn rrflow_kv_values_for_scope<T: DeserializeOwned>(
-    database: &Database,
-    snapshot: Snapshot,
-    space: keyspaces::Space,
-    scope: &ScopeId,
-) -> Result<Vec<T>> {
-    let prefix = keyspaces::runtime_scope_prefix(space, scope);
-    scan_space(database, snapshot, space, &prefix)?
-        .into_iter()
-        .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
-        .collect()
 }
 
 /// Reads the exact immutable-object closure for one scope from an authenticated
@@ -1444,28 +747,7 @@ fn decode_snapshot_objects(
     Ok(objects)
 }
 
-fn put(operations: &mut Vec<Mutation>, space: keyspaces::Space, key: &[u8], value: Vec<u8>) {
-    operations.push(Mutation::Put {
-        key: storage_key(space, key),
-        value,
-    });
-}
-
-fn delete(operations: &mut Vec<Mutation>, space: keyspaces::Space, key: &[u8]) {
-    operations.push(Mutation::Delete {
-        key: storage_key(space, key),
-    });
-}
-
-fn put_sequence(operations: &mut Vec<Mutation>, key: &[u8], sequence: u64) {
-    put(
-        operations,
-        keyspaces::META,
-        key,
-        sequence.to_string().into_bytes(),
-    );
-}
-
+#[cfg(test)]
 fn read_sequence(database: &Database, snapshot: Snapshot, key: &[u8]) -> Result<u64> {
     get(database, snapshot, keyspaces::META, key)?
         .as_deref()
@@ -1521,6 +803,7 @@ fn scan_space(
         .map_err(Error::from)
 }
 
+#[cfg(test)]
 fn storage_key(space: keyspaces::Space, key: &[u8]) -> Vec<u8> {
     keyspaces::validate_space(KeyCodec, space, key)
         .expect("rrflowKV mutations use a canonical typed key");
@@ -1562,7 +845,8 @@ mod tests {
     use super::*;
     use rrd_core::{
         Claim, DataTransaction, ObjectReceipt, Predicate, Producer, RuntimeEvent,
-        RuntimeEventSchema, RuntimeProperties, RuntimeRecordSchema, RuntimeType, Subject,
+        RuntimeEventSchema, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
+        RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeType, Subject,
     };
     use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
     use std::collections::BTreeMap;
@@ -1600,6 +884,14 @@ mod tests {
                 allow_additional_properties: false,
             },
         );
+        registry.relations.insert(
+            RuntimeType::new("links").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([RuntimeType::new("item").unwrap()]),
+                to: BTreeSet::from([RuntimeType::new("item").unwrap()]),
+                ..RuntimeRelationSchema::default()
+            },
+        );
         DataTransaction::new(
             read,
             RuntimeCommit {
@@ -1612,6 +904,16 @@ mod tests {
                     RuntimeMutation::Record {
                         record: RuntimeRecord {
                             reference: item.clone(),
+                            valid_from: 100,
+                            valid_to: None,
+                            properties: RuntimeProperties::new(),
+                        },
+                    },
+                    RuntimeMutation::Relation {
+                        relation: RuntimeRelation {
+                            reference: RuntimeRef::new("links", "one-self").unwrap(),
+                            from: RuntimeRef::new("item", "one").unwrap(),
+                            to: RuntimeRef::new("item", "one").unwrap(),
                             valid_from: 100,
                             valid_to: None,
                             properties: RuntimeProperties::new(),
@@ -1680,7 +982,7 @@ mod tests {
                 let mut recovered = Database::open(&root).unwrap();
                 let snapshot = recovered.snapshot();
                 let published = boundary == WriteBoundary::WalSynced;
-                let expected_runtime_cursor = if published { 4 } else { 0 };
+                let expected_runtime_cursor = if published { 5 } else { 0 };
                 let expected_claim_sequence = if published { 1 } else { 0 };
                 assert_eq!(
                     read_sequence(&recovered, snapshot, &keyspaces::runtime_cursor_key(),).unwrap(),
@@ -1703,8 +1005,63 @@ mod tests {
                     scan_space(&recovered, snapshot, keyspaces::RUNTIME_OUTBOX, &[])
                         .unwrap()
                         .len(),
-                    if published { 2 } else { 0 }
+                    if published { 3 } else { 0 }
                 );
+                assert_eq!(
+                    scan_space(
+                        &recovered,
+                        snapshot,
+                        keyspaces::RUNTIME_PROJECTION_DELTAS,
+                        &[],
+                    )
+                    .unwrap()
+                    .len(),
+                    if published { 3 } else { 0 }
+                );
+                assert_eq!(
+                    scan_space(
+                        &recovered,
+                        snapshot,
+                        keyspaces::RUNTIME_RECORD_VERSIONS,
+                        &[],
+                    )
+                    .unwrap()
+                    .len(),
+                    usize::from(published)
+                );
+                assert_eq!(
+                    scan_space(
+                        &recovered,
+                        snapshot,
+                        keyspaces::RUNTIME_RELATION_VERSIONS,
+                        &[],
+                    )
+                    .unwrap()
+                    .len(),
+                    usize::from(published)
+                );
+                for adjacency in [
+                    keyspaces::RUNTIME_OUTGOING_EDGES,
+                    keyspaces::RUNTIME_INCOMING_EDGES,
+                ] {
+                    assert_eq!(
+                        scan_space(&recovered, snapshot, adjacency, &[])
+                            .unwrap()
+                            .len(),
+                        usize::from(published)
+                    );
+                }
+                for adjacency_history in [
+                    keyspaces::RUNTIME_OUTGOING_EDGE_VERSIONS,
+                    keyspaces::RUNTIME_INCOMING_EDGE_VERSIONS,
+                ] {
+                    assert_eq!(
+                        scan_space(&recovered, snapshot, adjacency_history, &[])
+                            .unwrap()
+                            .len(),
+                        usize::from(published)
+                    );
+                }
                 assert_eq!(
                     scan_space(&recovered, snapshot, keyspaces::CLAIMS, &[])
                         .unwrap()
@@ -1733,7 +1090,7 @@ mod tests {
                 );
                 assert_eq!(
                     audit.as_ref().and_then(|value| value.outcome_cursor),
-                    published.then_some(4)
+                    published.then_some(5)
                 );
                 let schema: Option<RuntimeSchemaRegistry> = get_json(
                     &recovered,
@@ -1755,6 +1112,18 @@ mod tests {
                 )
                 .unwrap();
                 assert_eq!(record.is_some(), published);
+                let relation: Option<RuntimeRelation> = get_json(
+                    &recovered,
+                    snapshot,
+                    keyspaces::RUNTIME_RELATIONS,
+                    &keyspaces::runtime_identity_key(
+                        keyspaces::RUNTIME_RELATIONS,
+                        &transaction.commit.scope,
+                        &RuntimeRef::new("links", "one-self").unwrap(),
+                    ),
+                )
+                .unwrap();
+                assert_eq!(relation.is_some(), published);
 
                 recovered
                     .write_owned(

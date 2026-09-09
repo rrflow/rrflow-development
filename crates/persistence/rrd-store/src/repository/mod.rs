@@ -7,7 +7,6 @@
 //! volatility and physical durability.
 
 mod claims;
-mod common;
 mod control;
 mod invocation;
 mod projection;

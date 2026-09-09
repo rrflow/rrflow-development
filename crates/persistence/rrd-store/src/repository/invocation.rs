@@ -1,4 +1,4 @@
-use super::common::{checked_key, read_sequence, scan_space_from};
+use crate::access::runtime_state::{checked_key, put_sequence, read_sequence, scan_space_from};
 use crate::invocation::{Invocation, InvocationInput};
 use crate::keyspaces::{self, Durability};
 use crate::{Error, Result, StorageEngine};
@@ -36,7 +36,7 @@ impl<'a> InvocationRepository<'a> {
             )?,
             serde_json::to_vec(&record)?,
         )?;
-        super::common::put_sequence(
+        put_sequence(
             &mut *transaction,
             &keyspaces::invocation_watermark_key(),
             ordinal,
