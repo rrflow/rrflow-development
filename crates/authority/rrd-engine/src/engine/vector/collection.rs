@@ -393,14 +393,13 @@ impl RrdEngine {
     ) -> Result<()> {
         let mut latest = BTreeMap::new();
         for candidate in rrd_vector::candidates_from_changes(changes, scope) {
-            let addressed = candidate.vector.collection.as_ref().is_some_and(|address| {
-                address.collection_id == request.collection_id.as_str()
-                    && collection
-                        .definition
-                        .vectors
-                        .keys()
-                        .any(|name| name.as_str() == address.vector_name)
-            });
+            let address = &candidate.vector.collection;
+            let addressed = address.collection_id == request.collection_id.as_str()
+                && collection
+                    .definition
+                    .vectors
+                    .keys()
+                    .any(|name| name.as_str() == address.vector_name);
             if !addressed {
                 continue;
             }
@@ -434,16 +433,11 @@ impl RrdEngine {
         &self,
         request: &CommitTransaction,
     ) -> Result<()> {
-        let addressed = request.mutations.iter().any(|mutation| {
-            matches!(
-                mutation,
-                TransactionMutation::PutVector {
-                    collection_id: Some(_),
-                    ..
-                }
-            )
-        });
-        if !addressed {
+        if !request
+            .mutations
+            .iter()
+            .any(|mutation| matches!(mutation, TransactionMutation::PutVector { .. }))
+        {
             return Ok(());
         }
         let scope = ScopeId::new(format!("instance:{}", self.instance)).map_err(core_vector)?;
@@ -452,8 +446,8 @@ impl RrdEngine {
             .map_err(vector_collection_error)?;
         for mutation in &request.mutations {
             let TransactionMutation::PutVector {
-                collection_id: Some(collection_id),
-                vector_name: Some(vector_name),
+                collection_id,
+                vector_name,
                 field,
                 value,
                 provenance,
@@ -856,8 +850,6 @@ pub(in crate::engine) fn vector_matches_collection(
     collection_id: &CanonicalId,
     vector_name: &CanonicalId,
 ) -> bool {
-    vector.collection.as_ref().is_some_and(|address| {
-        address.collection_id == collection_id.as_str()
-            && address.vector_name == vector_name.as_str()
-    })
+    vector.collection.collection_id == collection_id.as_str()
+        && vector.collection.vector_name == vector_name.as_str()
 }

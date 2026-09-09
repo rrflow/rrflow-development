@@ -1,6 +1,6 @@
 use rrd_core::{
     EmbeddingProvenance, ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector,
-    ScopeId, VectorNormalization, VectorValue,
+    ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
 };
 use rrd_vector::{
     search_exact, CompactDenseSegment, EmbeddingModelBinding, ScoreMetric, SearchMode,
@@ -15,7 +15,10 @@ fn candidate(scope: &ScopeId, id: &str, model: &EmbeddingModelBinding) -> Vector
         vector: RuntimeVector {
             reference: RuntimeRef::new("embedding", id).unwrap(),
             subject: RuntimeRef::new("document", id).unwrap(),
-            collection: None,
+            collection: VectorCollectionAddress {
+                collection_id: "documents".into(),
+                vector_name: "body".into(),
+            },
             field: "body".into(),
             valid_from: 1,
             valid_to: None,

@@ -1,7 +1,7 @@
 use rrd_core::{
     ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema,
-    RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorValue,
+    RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorCollectionAddress, VectorValue,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{search_changes_exact, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
@@ -43,7 +43,10 @@ fn commit(engine: &dyn StorageEngine, scope: &ScopeId) -> ReadStamp {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

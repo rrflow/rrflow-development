@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 048d49d611cdf0b21e919fbc3e17e0c5c07b47fe578e12cac05597246754ec94
+// OpenAPI SHA-256: 1d18655aa6e670abd7319c3984dfc36b8ed50c280ce8afb62322a5e062b14cc6
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -1288,7 +1288,7 @@ export interface components {
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
-                                        collection_id?: string | null;
+                                        collection_id: string;
                                         /**
                                          * @description A canonical public identifier component.
                                          *
@@ -1453,7 +1453,7 @@ export interface components {
                                          *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                          *     labels are separate data and may use arbitrary Unicode.
                                          */
-                                        vector_name?: string | null;
+                                        vector_name: string;
                                     } | {
                                         /** @constant */
                                         mutation: "append_series_sample";
@@ -3707,7 +3707,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                collection_id?: string | null;
+                                                collection_id: string;
                                                 /**
                                                  * @description A canonical public identifier component.
                                                  *
@@ -3872,7 +3872,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                vector_name?: string | null;
+                                                vector_name: string;
                                             } | {
                                                 /** @constant */
                                                 mutation: "append_series_sample";
@@ -4699,7 +4699,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                collection_id?: string | null;
+                                                collection_id: string;
                                                 /**
                                                  * @description A canonical public identifier component.
                                                  *
@@ -4864,7 +4864,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                vector_name?: string | null;
+                                                vector_name: string;
                                             } | {
                                                 /** @constant */
                                                 mutation: "append_series_sample";
@@ -5742,7 +5742,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            collection_id?: string | null;
+                                            collection_id: string;
                                             /**
                                              * @description A canonical public identifier component.
                                              *
@@ -5907,7 +5907,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            vector_name?: string | null;
+                                            vector_name: string;
                                         } | {
                                             /** @constant */
                                             mutation: "append_series_sample";
@@ -6729,7 +6729,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            collection_id?: string | null;
+                                            collection_id: string;
                                             /**
                                              * @description A canonical public identifier component.
                                              *
@@ -6894,7 +6894,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            vector_name?: string | null;
+                                            vector_name: string;
                                         } | {
                                             /** @constant */
                                             mutation: "append_series_sample";
@@ -8355,7 +8355,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                collection_id?: string | null;
+                                                collection_id: string;
                                                 /**
                                                  * @description A canonical public identifier component.
                                                  *
@@ -8520,7 +8520,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                vector_name?: string | null;
+                                                vector_name: string;
                                             } | {
                                                 /** @constant */
                                                 mutation: "append_series_sample";
@@ -10736,7 +10736,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                collection_id?: string | null;
+                                                collection_id: string;
                                                 /**
                                                  * @description A canonical public identifier component.
                                                  *
@@ -10901,7 +10901,7 @@ export interface operations {
                                                  *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                                  *     labels are separate data and may use arbitrary Unicode.
                                                  */
-                                                vector_name?: string | null;
+                                                vector_name: string;
                                             } | {
                                                 /** @constant */
                                                 mutation: "append_series_sample";
@@ -17183,7 +17183,7 @@ export interface operations {
                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                              *     labels are separate data and may use arbitrary Unicode.
                              */
-                            collection_id?: string | null;
+                            collection_id: string;
                             /**
                              * @description A canonical public identifier component.
                              *
@@ -17348,7 +17348,7 @@ export interface operations {
                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                              *     labels are separate data and may use arbitrary Unicode.
                              */
-                            vector_name?: string | null;
+                            vector_name: string;
                         } | {
                             /** @constant */
                             mutation: "append_series_sample";
@@ -18230,7 +18230,7 @@ export interface operations {
                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                              *     labels are separate data and may use arbitrary Unicode.
                              */
-                            collection_id?: string | null;
+                            collection_id: string;
                             /**
                              * @description A canonical public identifier component.
                              *
@@ -18395,7 +18395,7 @@ export interface operations {
                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                              *     labels are separate data and may use arbitrary Unicode.
                              */
-                            vector_name?: string | null;
+                            vector_name: string;
                         } | {
                             /** @constant */
                             mutation: "append_series_sample";
@@ -19166,7 +19166,7 @@ export interface operations {
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
-                                    collection_id?: string | null;
+                                    collection_id: string;
                                     /**
                                      * @description A canonical public identifier component.
                                      *
@@ -19331,7 +19331,7 @@ export interface operations {
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
-                                    vector_name?: string | null;
+                                    vector_name: string;
                                 } | {
                                     /** @constant */
                                     mutation: "append_series_sample";
@@ -20106,7 +20106,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            collection_id?: string | null;
+                                            collection_id: string;
                                             /**
                                              * @description A canonical public identifier component.
                                              *
@@ -20271,7 +20271,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            vector_name?: string | null;
+                                            vector_name: string;
                                         } | {
                                             /** @constant */
                                             mutation: "append_series_sample";
@@ -21098,7 +21098,7 @@ export interface operations {
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
-                                    collection_id?: string | null;
+                                    collection_id: string;
                                     /**
                                      * @description A canonical public identifier component.
                                      *
@@ -21263,7 +21263,7 @@ export interface operations {
                                      *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                      *     labels are separate data and may use arbitrary Unicode.
                                      */
-                                    vector_name?: string | null;
+                                    vector_name: string;
                                 } | {
                                     /** @constant */
                                     mutation: "append_series_sample";
@@ -22038,7 +22038,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            collection_id?: string | null;
+                                            collection_id: string;
                                             /**
                                              * @description A canonical public identifier component.
                                              *
@@ -22203,7 +22203,7 @@ export interface operations {
                                              *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
                                              *     labels are separate data and may use arbitrary Unicode.
                                              */
-                                            vector_name?: string | null;
+                                            vector_name: string;
                                         } | {
                                             /** @constant */
                                             mutation: "append_series_sample";

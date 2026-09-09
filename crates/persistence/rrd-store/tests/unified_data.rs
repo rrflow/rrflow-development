@@ -6,7 +6,7 @@ use rrd_core::{
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeSeriesSample,
     RuntimeTableSchema, RuntimeType, RuntimeVector, ScopeId, SeriesValue, Subject,
-    VectorNormalization, VectorValue,
+    VectorCollectionAddress, VectorNormalization, VectorValue,
 };
 use rrd_store::{
     DataRuntime, DataRuntimeStep, Error, LocalObjectStore, RrflowKvStore, RrflowMxStore,
@@ -132,7 +132,10 @@ fn unified_mutations(object: rrd_core::ObjectReference) -> Vec<RuntimeMutation> 
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", "a-title").unwrap(),
                 subject: subject.clone(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "title".into(),
+                },
                 field: "title".into(),
                 valid_from: 101,
                 valid_to: None,
@@ -261,7 +264,10 @@ fn dangling_late_family_rolls_back_every_earlier_family() {
                 vector: RuntimeVector {
                     reference: RuntimeRef::new("embedding", "dangling").unwrap(),
                     subject: RuntimeRef::new("entity", "missing").unwrap(),
-                    collection: None,
+                    collection: VectorCollectionAddress {
+                        collection_id: "documents".into(),
+                        vector_name: "body".into(),
+                    },
                     field: "body".into(),
                     valid_from: 101,
                     valid_to: None,

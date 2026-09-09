@@ -186,7 +186,10 @@ fn rrflow_kv_mixed_family_mutations() -> Vec<RuntimeMutation> {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", "a-title").unwrap(),
                 subject: a.clone(),
-                collection: None,
+                collection: rrd_core::VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "title".into(),
+                },
                 field: "title".into(),
                 valid_from: 100,
                 valid_to: None,

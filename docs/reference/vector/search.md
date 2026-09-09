@@ -99,8 +99,10 @@ It is not a cross-system or production performance claim.
 
 Gate C-04 has replaced normal whole-log candidate reconstruction with direct
 versioned reads. Gate C-05e has removed the older artifact-catalogue reader and
-its separate digest branch; C-05 remains open for the other successful
-pre-release shapes recorded in its whole-executable audit. Gate E-04
+its separate digest branch; C-05g requires the canonical collection plus
+named-vector address on every persisted candidate, commit identity, source
+delta, and derived artifact. C-05 remains open for the second vector/TurboQuant
+catalogue recorded in its whole-executable audit. Gate E-04
 must atomically maintain canonical vectors and index deltas, prove immutable
 HNSW plus exact overlay after crash/reopen, and satisfy fixed recall and
 filtering gates. Gate F-03 must make vector candidate generation and RRF native

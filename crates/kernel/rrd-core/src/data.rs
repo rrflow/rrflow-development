@@ -152,8 +152,7 @@ pub struct RuntimeVector {
     #[serde(flatten)]
     pub reference: RuntimeRef,
     pub subject: RuntimeRef,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub collection: Option<VectorCollectionAddress>,
+    pub collection: VectorCollectionAddress,
     pub field: String,
     pub valid_from: Millis,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -167,9 +166,7 @@ pub struct RuntimeVector {
 
 impl RuntimeVector {
     pub fn validate(&self) -> Result<()> {
-        if let Some(collection) = &self.collection {
-            collection.validate()?;
-        }
+        self.collection.validate()?;
         validate_text("vector field", &self.field)?;
         validate_window(self.valid_from, self.valid_to)?;
         self.value.validate()?;
@@ -462,25 +459,23 @@ mod tests {
     }
 
     #[test]
-    fn vector_collection_address_is_validated_and_legacy_rows_remain_readable() {
+    fn vector_collection_address_is_required_and_validated() {
         let invalid = VectorCollectionAddress {
             collection_id: String::new(),
             vector_name: "title".into(),
         };
         assert!(invalid.validate().is_err());
 
-        let legacy = serde_json::json!({
+        let collectionless = serde_json::json!({
             "kind":"embedding",
-            "id":"legacy-title",
+            "id":"collectionless-title",
             "subject":{"kind":"document","id":"alpha"},
             "field":"title-embedding",
             "valid_from":1,
             "value":{"kind":"dense","values":[1.0,0.0]},
             "properties":{}
         });
-        let vector: RuntimeVector = serde_json::from_value(legacy).unwrap();
-        assert_eq!(vector.collection, None);
-        assert!(vector.validate().is_ok());
+        assert!(serde_json::from_value::<RuntimeVector>(collectionless).is_err());
     }
 
     #[test]
@@ -509,7 +504,10 @@ mod tests {
         let vector = RuntimeVector {
             reference: RuntimeRef::new("embedding", "not-normalized").unwrap(),
             subject: RuntimeRef::new("entity", "one").unwrap(),
-            collection: None,
+            collection: VectorCollectionAddress {
+                collection_id: "entities".into(),
+                vector_name: "body".into(),
+            },
             field: "body".into(),
             valid_from: 1,
             valid_to: None,

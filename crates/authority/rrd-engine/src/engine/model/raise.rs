@@ -82,16 +82,8 @@ pub(in crate::engine) fn public_data_mutation(
         RuntimeMutation::Vector { vector } => TransactionMutation::PutVector {
             reference: public_change_ref(&vector.reference)?,
             subject: public_change_ref(&vector.subject)?,
-            collection_id: vector
-                .collection
-                .as_ref()
-                .map(|collection| public_change_id(&collection.collection_id))
-                .transpose()?,
-            vector_name: vector
-                .collection
-                .as_ref()
-                .map(|collection| public_change_id(&collection.vector_name))
-                .transpose()?,
+            collection_id: public_change_id(&vector.collection.collection_id)?,
+            vector_name: public_change_id(&vector.collection.vector_name)?,
             field: public_change_id(&vector.field)?,
             valid_from: vector.valid_from,
             valid_to: vector.valid_to,

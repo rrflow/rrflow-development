@@ -1,5 +1,6 @@
 use rrd_core::{
-    ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId, VectorValue,
+    ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
+    VectorCollectionAddress, VectorValue,
 };
 use rrd_vector::{
     search_exact, FilterCondition, FilterExpression, FilterOperator, ScoreMetric, SearchMode,
@@ -33,7 +34,10 @@ fn deterministic_dense_trace_matches_independent_scalar_oracle() {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", format!("v-{index:03}")).unwrap(),
                 subject: RuntimeRef::new("document", format!("d-{index:03}")).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

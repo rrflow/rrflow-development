@@ -492,9 +492,7 @@ impl RrdEngine {
 
         let mut vectors = BTreeMap::<(String, String), Vec<&RuntimeVector>>::new();
         for entry in &snapshot.vectors {
-            let Some(address) = &entry.value.collection else {
-                continue;
-            };
+            let address = &entry.value.collection;
             vectors
                 .entry((address.collection_id.clone(), address.vector_name.clone()))
                 .or_default()

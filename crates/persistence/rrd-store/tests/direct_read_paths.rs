@@ -6,7 +6,7 @@ use rrd_core::{
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry,
     RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeVector, ScopeId, SeriesValue,
-    Subject, VectorValue,
+    Subject, VectorCollectionAddress, VectorValue,
 };
 use rrd_store::{
     Error, RrflowKvStore, RrflowMxStore, RuntimeReadAccessPath, RuntimeReadBudget,
@@ -137,7 +137,10 @@ fn initial_mutations() -> Vec<RuntimeMutation> {
             vector: RuntimeVector {
                 reference: reference("embedding", "a-title"),
                 subject: entity.clone(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "title".into(),
+                },
                 field: "title".into(),
                 valid_from: 100,
                 valid_to: None,
@@ -383,7 +386,7 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
             retained.evidence.values_decoded,
             retained.evidence.decoded_bytes,
         ),
-        (49, 10, 68, 68, 16_271),
+        (49, 10, 68, 68, 16_336),
     );
     assert_eq!(
         (
@@ -393,7 +396,7 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
             current.evidence.values_decoded,
             current.evidence.decoded_bytes,
         ),
-        (89, 9, 107, 107, 18_009),
+        (89, 9, 107, 107, 18_074),
     );
     for evidence in [&retained.evidence, &current.evidence] {
         evidence.validate().unwrap();

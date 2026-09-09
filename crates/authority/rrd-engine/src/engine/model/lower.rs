@@ -135,12 +135,10 @@ pub(in crate::engine) fn public_runtime_mutation(
             vector: RuntimeVector {
                 reference: runtime_ref(reference)?,
                 subject: runtime_ref(subject)?,
-                collection: collection_id.as_ref().zip(vector_name.as_ref()).map(
-                    |(collection_id, vector_name)| rrd_core::VectorCollectionAddress {
-                        collection_id: collection_id.as_str().into(),
-                        vector_name: vector_name.as_str().into(),
-                    },
-                ),
+                collection: rrd_core::VectorCollectionAddress {
+                    collection_id: collection_id.as_str().into(),
+                    vector_name: vector_name.as_str().into(),
+                },
                 field: field.as_str().into(),
                 valid_from: *valid_from,
                 valid_to: *valid_to,

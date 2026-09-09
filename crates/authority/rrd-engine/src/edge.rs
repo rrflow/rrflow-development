@@ -7,7 +7,7 @@
 
 use rrd_core::{
     digest, ProjectionId, ReadStamp, Result, RuntimeId, RuntimeProperties, RuntimeRef, ScopeId,
-    VectorValue,
+    VectorCollectionAddress, VectorValue,
 };
 use rrd_inference::{
     EmbeddingBackend, EmbeddingCoordinator, EmbeddingJob, EmbeddingSourceReader,
@@ -26,6 +26,7 @@ use std::path::Path;
 pub struct OfflineEdgeConfig {
     pub scope: ScopeId,
     pub projection: ProjectionId,
+    pub collection: VectorCollectionAddress,
     pub field: String,
     pub dimensions: u32,
     pub seed: u64,
@@ -36,6 +37,10 @@ impl OfflineEdgeConfig {
         Ok(Self {
             scope: ScopeId::new("instance:edge")?,
             projection: ProjectionId::new("vector:edge:body")?,
+            collection: VectorCollectionAddress {
+                collection_id: "edge-documents".into(),
+                vector_name: "body".into(),
+            },
             field: "body".into(),
             dimensions,
             seed,
@@ -43,6 +48,7 @@ impl OfflineEdgeConfig {
     }
 
     pub fn validate(&self) -> Result<()> {
+        self.collection.validate()?;
         if self.field.trim().is_empty() || self.field.as_bytes().contains(&0) {
             return invalid("offline edge field must be non-empty and contain no NUL bytes");
         }
@@ -128,6 +134,7 @@ impl OfflineEdgeIndex {
                 expected_source_digest: snapshot.digest.clone(),
                 target: RuntimeRef::new("embedding", document.id.clone())?,
                 subject: source,
+                collection: config.collection.clone(),
                 field: config.field.clone(),
                 valid_from: 1,
                 valid_to: None,
@@ -219,6 +226,7 @@ impl OfflineEdgeIndex {
             expected_source_digest: snapshot.digest.clone(),
             target: RuntimeRef::new("query_embedding", "current")?,
             subject: source,
+            collection: self.config.collection.clone(),
             field: self.config.field.clone(),
             valid_from: valid_at,
             valid_to: None,

@@ -21,8 +21,7 @@ pub const VECTOR_SOURCE_DELTA_CONTRACT_VERSION: u16 = 1;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VectorSourceAddress {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub collection: Option<VectorCollectionAddress>,
+    pub collection: VectorCollectionAddress,
     pub field: String,
 }
 
@@ -33,9 +32,7 @@ impl VectorSourceAddress {
                 "vector source field must not be empty".into(),
             ));
         }
-        if let Some(collection) = &self.collection {
-            collection.validate()?;
-        }
+        self.collection.validate()?;
         Ok(())
     }
 
@@ -279,20 +276,19 @@ pub(crate) fn vector_source_deltas(
             "vector source-delta page limit must be greater than zero".into(),
         ));
     }
-    let (collection_id, vector_name) = collection_parts(source);
     let start = keyspaces::runtime_vector_source_delta_start(
         scope,
-        collection_id,
-        vector_name,
+        &source.collection.collection_id,
+        &source.collection.vector_name,
         &source.field,
         after.checked_add(1).ok_or(Error::SequenceOverflow)?,
-    );
+    )?;
     let prefix = keyspaces::runtime_vector_source_delta_prefix(
         scope,
-        collection_id,
-        vector_name,
+        &source.collection.collection_id,
+        &source.collection.vector_name,
         &source.field,
-    );
+    )?;
     let mut deltas = scan_space_bounded_from(
         reader,
         keyspaces::RUNTIME_VECTOR_SOURCE_DELTAS,
@@ -392,31 +388,18 @@ fn put_delta(
         after,
     };
     delta.validate()?;
-    let (collection_id, vector_name) = collection_parts(&delta.source);
     plan.put_json(
         keyspaces::RUNTIME_VECTOR_SOURCE_DELTAS,
         &keyspaces::runtime_vector_source_delta_key(
             &commit.scope,
-            collection_id,
-            vector_name,
+            &delta.source.collection.collection_id,
+            &delta.source.collection.vector_name,
             &delta.source.field,
             source_cursor,
             commit_ordinal,
-        ),
+        )?,
         &delta,
     )
-}
-
-fn collection_parts(source: &VectorSourceAddress) -> (Option<&str>, Option<&str>) {
-    source
-        .collection
-        .as_ref()
-        .map_or((None, None), |collection| {
-            (
-                Some(collection.collection_id.as_str()),
-                Some(collection.vector_name.as_str()),
-            )
-        })
 }
 
 fn is_sha256(value: &str) -> bool {

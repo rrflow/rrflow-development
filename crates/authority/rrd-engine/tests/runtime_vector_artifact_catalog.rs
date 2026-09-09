@@ -1,6 +1,6 @@
 use rrd_core::{
     ProjectionId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
-    VectorValue,
+    VectorCollectionAddress, VectorValue,
 };
 use rrd_engine::{
     publish_traced_vector_artifact, reopen_vector_runtime, reopen_vector_runtime_metadata,
@@ -27,7 +27,10 @@ fn candidates() -> Vec<VectorCandidate> {
             scope: scope.clone(),
             source_cursor: index as u64 + 1,
             vector: RuntimeVector {
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 reference: RuntimeRef::new("embedding", format!("body-{index}")).unwrap(),
                 subject: RuntimeRef::new("document", format!("doc-{index}")).unwrap(),
                 field: "body".into(),

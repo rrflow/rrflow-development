@@ -677,7 +677,10 @@ mod tests {
         HnswConfig, ScoreMetric, SearchMode, TurboQuantBits, TurboQuantSegmentConfig, VectorQuery,
         VectorSegmentConfig,
     };
-    use rrd_core::{ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorValue};
+    use rrd_core::{
+        ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorCollectionAddress,
+        VectorValue,
+    };
 
     fn candidate(scope: &ScopeId, cursor: u64, id: &str, values: Vec<f32>) -> VectorCandidate {
         VectorCandidate {
@@ -686,7 +689,10 @@ mod tests {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

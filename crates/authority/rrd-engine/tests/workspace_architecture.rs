@@ -507,6 +507,107 @@ fn schema_catalogue_has_one_explicit_logical_model_authority() {
 }
 
 #[test]
+fn vector_writes_require_one_canonical_collection_address() {
+    let metadata = workspace_metadata();
+    let required_address_sources = [
+        (
+            "kernel runtime vector",
+            "crates/kernel/rrd-core/src/data.rs",
+            "pub collection: VectorCollectionAddress,",
+        ),
+        (
+            "inference embedding job",
+            "crates/compute/rrd-inference/src/lib.rs",
+            "pub collection: VectorCollectionAddress,",
+        ),
+        (
+            "persistent vector source",
+            "crates/persistence/rrd-store/src/access/vector.rs",
+            "pub collection: VectorCollectionAddress,",
+        ),
+        (
+            "dense vector artifact",
+            "crates/compute/rrd-vector/src/compact.rs",
+            "collection: VectorCollectionAddress,",
+        ),
+        (
+            "quantized vector artifact",
+            "crates/compute/rrd-vector/src/quantized_segment.rs",
+            "collection: VectorCollectionAddress,",
+        ),
+        (
+            "TurboQuant vector artifact",
+            "crates/compute/rrd-vector/src/turbo_segment.rs",
+            "collection: VectorCollectionAddress,",
+        ),
+        (
+            "offline edge embedding",
+            "crates/authority/rrd-engine/src/edge.rs",
+            "pub collection: VectorCollectionAddress,",
+        ),
+    ];
+    for (boundary, relative, required) in required_address_sources {
+        let source = fs::read_to_string(metadata.root.join(relative))
+            .unwrap_or_else(|error| panic!("cannot read {relative}: {error}"));
+        assert!(
+            source.contains(required),
+            "{boundary} lost its mandatory canonical vector address"
+        );
+        assert!(
+            !source.contains("collection: Option<VectorCollectionAddress>"),
+            "{boundary} regained an optional vector address"
+        );
+    }
+
+    let contract = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/transport/rrd-contract/src/lib.rs"),
+    )
+    .expect("public contract source must be readable");
+    let put_vector = contract
+        .split_once("    PutVector {")
+        .expect("public PutVector mutation must exist")
+        .1
+        .split_once("    AppendSeriesSample {")
+        .expect("public PutVector mutation must precede AppendSeriesSample")
+        .0;
+    for required in ["collection_id: CanonicalId,", "vector_name: CanonicalId,"] {
+        assert!(
+            put_vector.contains(required),
+            "public PutVector lost required address component {required}"
+        );
+    }
+    assert!(
+        !put_vector.contains("Option<CanonicalId>"),
+        "public PutVector regained an optional address component"
+    );
+
+    let runtime = fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/runtime.rs"))
+        .expect("runtime commit source must be readable");
+    for required in [
+        "text(out, &vector.collection.collection_id);",
+        "text(out, &vector.collection.vector_name);",
+    ] {
+        assert!(
+            runtime.contains(required),
+            "runtime commit identity omitted {required}"
+        );
+    }
+
+    let keyspaces = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/persistence/rrd-store/src/keyspaces.rs"),
+    )
+    .expect("rrflowKV keyspace source must be readable");
+    assert!(
+        keyspaces.contains("validate_vector_source_key_parts(collection_id, vector_name, field)?;"),
+        "vector source keys must fail closed before encoding an address"
+    );
+}
+
+#[test]
 fn storage_semantics_use_repositories_over_one_transaction_port() {
     let metadata = workspace_metadata();
     let store_source = metadata.root.join("crates/persistence/rrd-store/src");

@@ -26,22 +26,28 @@ when loaded; corruption fails closed.
 
 This is engine-owned persistent control state, but it is not yet the final
 ordered rrflowKV key layout or an atomic physical projection of the logical
-schema catalogue. Gates C-01 and C-03 own that convergence.
+schema catalogue. C-03 already commits each canonical vector and its source
+delta atomically. C-05h must remove the remaining second vector catalogue;
+Gates E and F own native indexed and analytical consumption of the surviving
+authority.
 
 ## Point mutation and reads
 
 `CommitTransaction` accepts collection-addressed `put_vector` mutations beside
-the other logical models. Before commit, `RrdEngine` resolves the collection
-and vector name and validates field, shape, dimensions, optional model
-provenance, and indexed payload types. Any invalid mutation rejects the whole
-transaction. `retire_data` records vector retirement at an explicit valid time
-without erasing prior versions.
+the other logical models. The collection and named-vector identifiers are
+required in the public mutation, kernel value, inference job, persistent source
+delta, commit identity, and derived artifact metadata. Before commit,
+`RrdEngine` resolves that exact address and validates field, shape, dimensions,
+optional model provenance, and indexed payload types. Any invalid mutation
+rejects the whole transaction. `retire_data` records vector retirement at an
+explicit valid time without erasing prior versions.
 
-Retrieve and scroll currently capture one read stamp, scan retained runtime
-changes from cursor zero, select collection-addressed candidates, reduce
-visible temporal versions, and then filter or paginate them. They are bounded
-and restart-safe, but they are not native point lookups or payload-index scans.
-Gate C-04 must replace the broad replay path.
+Retrieve and scroll capture one read stamp, select collection-addressed
+candidates through authenticated direct semantic-version reads, reduce visible
+temporal versions, and then filter or paginate them. They are bounded and
+restart-safe, but they are not native point lookups or payload-index scans.
+Gate E must replace candidate materialization with planner-selected native
+point, payload, exact-vector, or approximate access paths.
 
 ## Payload-index definitions and safe deletion
 
@@ -70,8 +76,10 @@ and rrflowKV reopen. Engine tests prove dense, sparse, and multi-dense point
 commit/retrieve, payload-type rejection, live-point deletion denial, retirement,
 and restart-safe administration.
 
-Those tests do not prove E-04's atomic vector index delta, immutable HNSW plus
+Those tests do not prove E-04's immutable HNSW plus
 exact delta overlay, exact reranking, or recall threshold. They also do not
-prove F-03's stamped Arrow operator path. Until C-03/C-04, E-04, and F-03 pass,
-RRFlow has persistent vector semantics and administrative scaffolding, not the
-finished persistent multimodal recall engine.
+prove F-03's stamped Arrow operator path. C-03/C-04 and C-05g establish atomic
+source deltas, direct stamped versions, and mandatory vector addresses; E-04
+and F-03 still must establish the native indexed and Arrow/DataFusion paths.
+RRFlow therefore has persistent vector semantics and administrative
+scaffolding, not the finished persistent multimodal recall engine.

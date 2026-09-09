@@ -1,7 +1,8 @@
 use rrd_core::{
     digest, ProjectionFamily, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorValue,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorCollectionAddress,
+    VectorValue,
 };
 use rrd_engine::{
     execute_traced_embedding, execute_traced_vector_search, publish_traced_vector_artifact,
@@ -54,7 +55,10 @@ fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
     .into_iter()
     .enumerate()
     .map(|(index, values)| RuntimeVector {
-        collection: None,
+        collection: VectorCollectionAddress {
+            collection_id: "documents".into(),
+            vector_name: "body".into(),
+        },
         reference: RuntimeRef::new("embedding", format!("doc-{index}-body")).unwrap(),
         subject: records[index].reference.clone(),
         field: "body".into(),
@@ -386,6 +390,10 @@ fn embedding_job<E: StorageEngine>(store: &E, backend: &FeatureHashBackend) -> E
         expected_source_digest: digest::sha256_hex(EMBEDDING_BYTES),
         target: RuntimeRef::new("embedding", "embedding-source-body").unwrap(),
         subject: RuntimeRef::new("document", "embedding-source").unwrap(),
+        collection: VectorCollectionAddress {
+            collection_id: "documents".into(),
+            vector_name: "body".into(),
+        },
         field: "body".into(),
         valid_from: 10,
         valid_to: None,

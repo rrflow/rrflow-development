@@ -157,8 +157,8 @@ fn native_inference_batches_with_provenance_and_searches_at_one_read_stamp() {
         mutations.push(TransactionMutation::PutVector {
             reference: data_reference("embedding", &document_id),
             subject: data_reference("document", &document_id),
-            collection_id: Some(CanonicalId::new("documents").unwrap()),
-            vector_name: Some(CanonicalId::new("body").unwrap()),
+            collection_id: CanonicalId::new("documents").unwrap(),
+            vector_name: CanonicalId::new("body").unwrap(),
             field: CanonicalId::new("body-embedding").unwrap(),
             valid_from: 1,
             valid_to: None,

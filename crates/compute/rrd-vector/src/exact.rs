@@ -363,7 +363,7 @@ mod tests {
     use crate::SearchMode;
     use rrd_core::{
         RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRetirement,
-        RuntimeValue, ScopeId,
+        RuntimeValue, ScopeId, VectorCollectionAddress,
     };
 
     fn stamp(scope: &ScopeId, cursor: u64) -> rrd_core::ReadStamp {
@@ -385,7 +385,10 @@ mod tests {
             vector: rrd_core::RuntimeVector {
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

@@ -1,6 +1,6 @@
 use rrd_core::{
     ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
-    VectorValue,
+    VectorCollectionAddress, VectorValue,
 };
 use rrd_vector::{
     search_exact_ref, FilterCondition, FilterExpression, FilterOperator, HnswConfig, HnswIndex,
@@ -123,7 +123,10 @@ fn candidate(scope: &ScopeId, id: usize, values: Vec<f32>) -> VectorCandidate {
         vector: RuntimeVector {
             reference: RuntimeRef::new("embedding", format!("v-{id:04}")).unwrap(),
             subject: RuntimeRef::new("document", format!("d-{id:04}")).unwrap(),
-            collection: None,
+            collection: VectorCollectionAddress {
+                collection_id: "documents".into(),
+                vector_name: "body".into(),
+            },
             field: "body".into(),
             valid_from: 1,
             valid_to: None,

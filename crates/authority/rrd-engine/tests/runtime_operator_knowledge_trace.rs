@@ -2,7 +2,8 @@ use rrd_core::{
     digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
     RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
     RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
-    RuntimeVector, ScopeId, VectorNormalization, VectorValue, DATA_RUNTIME_CONTRACT_VERSION,
+    RuntimeVector, ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
+    DATA_RUNTIME_CONTRACT_VERSION,
 };
 use rrd_engine::{execute_traced_operator_search, InstanceBinding, InstanceManifest};
 use rrd_operator_knowledge::{
@@ -60,7 +61,10 @@ fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
     .into_iter()
     .enumerate()
     .map(|(index, values)| RuntimeVector {
-        collection: None,
+        collection: VectorCollectionAddress {
+            collection_id: "documents".into(),
+            vector_name: "body".into(),
+        },
         reference: RuntimeRef::new("embedding", format!("doc-{index}-body")).unwrap(),
         subject: records[index].reference.clone(),
         field: "body".into(),

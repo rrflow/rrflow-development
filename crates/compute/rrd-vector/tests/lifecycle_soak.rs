@@ -1,6 +1,6 @@
 use rrd_core::{
     ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector, ScopeId,
-    VectorValue,
+    VectorCollectionAddress, VectorValue,
 };
 use rrd_vector::{
     search_exact_ref, HnswConfig, HnswIndex, ImmutableVectorSegment, ScoreMetric, SearchMode,
@@ -169,7 +169,10 @@ fn candidate(
         vector: RuntimeVector {
             reference: RuntimeRef::new("embedding", format!("v-{identity:03}")).unwrap(),
             subject: RuntimeRef::new("document", format!("d-{identity:03}")).unwrap(),
-            collection: None,
+            collection: VectorCollectionAddress {
+                collection_id: "documents".into(),
+                vector_name: "body".into(),
+            },
             field: "body".into(),
             valid_from: 1,
             valid_to: deleted.then_some(100),

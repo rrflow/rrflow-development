@@ -1,6 +1,9 @@
 #![cfg(feature = "accelerator")]
 
-use rrd_core::{ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorValue};
+use rrd_core::{
+    ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorCollectionAddress,
+    VectorValue,
+};
 use rrd_vector::{
     build_dense_artifact, AcceleratedBuildPolicy, AcceleratorTarget, BuildDifferentialStatus,
     CompactDenseSegment, DenseArtifactBuilder, DenseBuildBackend, HnswAcceleratorRegistry,
@@ -93,7 +96,10 @@ fn fixture() -> (VectorSegmentConfig, Vec<VectorCandidate>) {
             scope: scope.clone(),
             source_cursor: index as u64 + 1,
             vector: RuntimeVector {
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
                 field: "body".into(),

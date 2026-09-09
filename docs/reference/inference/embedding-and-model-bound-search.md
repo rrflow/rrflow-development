@@ -88,10 +88,12 @@ inference.
 backend to match the named vector's exact model name, revision digest,
 dimensions, and dense shape, generates one query vector, and invokes
 `search_vectors_at` at that stamp. It commits no temporary query vector.
-Current search still reconstructs candidates from the runtime change log;
-C-04 and E-04 must replace that path with native persistent reads and vector
-access. DataFusion does not participate in this operation today; a later
-rrflowQL path must preserve the same model and read-stamp identity.
+The embedding job and prepared vector carry that required collection plus
+named-vector address through persistence. Current search reads canonical
+versions through C-04's direct stamped path; E-04 must replace process-local
+candidate materialization with native persistent vector access. DataFusion does
+not participate in this operation today; a later rrflowQL path must preserve
+the same address, model, and read-stamp identity.
 
 ## Admission invariants
 
@@ -107,9 +109,10 @@ Before backend dispatch, the coordinator enforces:
 
 Equal dimensions never imply that two embedding spaces are compatible.
 Model-bound exact search and projection construction reject vectors whose
-provenance differs from the requested binding. Unbound vector collections are
-still supported by the general vector contract, but engine-owned
-embed-and-search requires an exact binding.
+provenance differs from the requested binding. A named-vector definition may
+omit an embedding-model binding under the general vector contract, but it may
+never omit its collection address; engine-owned embed-and-search requires both
+the address and an exact model binding.
 
 ## Executable evidence and open work
 

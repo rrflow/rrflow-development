@@ -4,7 +4,7 @@ use rrd_core::{
     RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeSeriesSample,
     RuntimeTableSchema, RuntimeType, RuntimeVector, ScopeId, SeriesValue, Subject,
-    VectorNormalization, VectorValue,
+    VectorCollectionAddress, VectorNormalization, VectorValue,
 };
 use rrd_store::{
     export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,
@@ -559,7 +559,10 @@ fn all_family_mutations(object: rrd_core::ObjectReference) -> Vec<RuntimeMutatio
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", "a-title").unwrap(),
                 subject: subject.clone(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "title".into(),
+                },
                 field: "title".into(),
                 valid_from: 20,
                 valid_to: None,

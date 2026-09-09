@@ -87,15 +87,12 @@ impl RrdEngine {
             }
         }
         let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
-        let vectors =
-            rrd_vector::candidates_from_changes(&direct.changes, &scope)
-                .into_iter()
-                .filter(|candidate| {
-                    candidate.vector.collection.as_ref().is_some_and(|address| {
-                        address.collection_id == request.collection_id.as_str()
-                    })
-                })
-                .collect();
+        let vectors = rrd_vector::candidates_from_changes(&direct.changes, &scope)
+            .into_iter()
+            .filter(|candidate| {
+                candidate.vector.collection.collection_id == request.collection_id.as_str()
+            })
+            .collect();
         let mut context = RetrievalExecutionContext {
             engine: self,
             request,

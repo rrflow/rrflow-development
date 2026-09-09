@@ -133,8 +133,7 @@ impl TurboQuantDescriptor {
 struct StoredCandidate {
     reference: RuntimeRef,
     subject: RuntimeRef,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    collection: Option<VectorCollectionAddress>,
+    collection: VectorCollectionAddress,
     source_cursor: u64,
     valid_from: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -590,7 +589,10 @@ mod tests {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,
@@ -604,6 +606,33 @@ mod tests {
                 )]),
             },
         }
+    }
+
+    #[test]
+    fn artifact_reader_rejects_candidate_without_collection_address() {
+        let scope = ScopeId::new("instance:turbo-required-address").unwrap();
+        let segment =
+            TurboQuantSegment::build(config(&scope), 1, 1, [candidate(&scope, 1, "a", "a")])
+                .unwrap();
+        let header_len = u32::from_le_bytes(
+            segment.as_bytes()[10..14]
+                .try_into()
+                .expect("fixed header length"),
+        ) as usize;
+        let header_end = HEADER_PREFIX_BYTES + header_len;
+        let mut header: serde_json::Value =
+            serde_json::from_slice(&segment.as_bytes()[HEADER_PREFIX_BYTES..header_end]).unwrap();
+        header["candidates"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("collection");
+        let header = serde_json::to_vec(&header).unwrap();
+        let payload = &segment.as_bytes()[header_end..];
+        let checksum = artifact_digest(&header, payload);
+        let bytes = encode_artifact(&header, payload, &checksum).unwrap();
+
+        let error = TurboQuantSegment::from_bytes(&bytes).unwrap_err();
+        assert!(error.to_string().contains("missing field `collection`"));
     }
 
     #[test]

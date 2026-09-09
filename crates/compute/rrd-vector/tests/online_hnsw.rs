@@ -244,10 +244,10 @@ fn candidate(
         vector: RuntimeVector {
             reference: RuntimeRef::new("embedding", format!("v-{id:03}")).unwrap(),
             subject: RuntimeRef::new("document", format!("d-{id:03}")).unwrap(),
-            collection: Some(VectorCollectionAddress {
+            collection: VectorCollectionAddress {
                 collection_id: "documents".into(),
                 vector_name: "body".into(),
-            }),
+            },
             field: "body-embedding".into(),
             valid_from: 1,
             valid_to,

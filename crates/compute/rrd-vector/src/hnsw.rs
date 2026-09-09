@@ -1095,7 +1095,10 @@ fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::{FilterCondition, FilterExpression, FilterOperator};
-    use rrd_core::{ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector};
+    use rrd_core::{
+        ReadStamp, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
+        VectorCollectionAddress,
+    };
 
     fn candidate(scope: &ScopeId, cursor: u64, id: usize, values: Vec<f32>) -> VectorCandidate {
         VectorCandidate {
@@ -1104,7 +1107,10 @@ mod tests {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", format!("v-{id:03}")).unwrap(),
                 subject: RuntimeRef::new("document", format!("d-{id:03}")).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

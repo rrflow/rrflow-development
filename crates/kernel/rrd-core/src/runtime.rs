@@ -2188,6 +2188,8 @@ fn encode_mutation(out: &mut Vec<u8>, mutation: &RuntimeMutation) {
             out.push(5);
             encode_ref(out, &vector.reference);
             encode_ref(out, &vector.subject);
+            text(out, &vector.collection.collection_id);
+            text(out, &vector.collection.vector_name);
             text(out, &vector.field);
             encode_window(out, vector.valid_from, vector.valid_to);
             encode_vector_value(out, &vector.value);
@@ -2508,6 +2510,38 @@ mod tests {
             record: record("outcome", "o1", 10),
         });
         assert_ne!(base.digest(), changed.digest());
+    }
+
+    #[test]
+    fn vector_commit_identity_covers_collection_and_named_vector() {
+        let vector = |collection_id: &str, vector_name: &str| RuntimeCommit {
+            scope: ScopeId::new("instance:vector-digest").unwrap(),
+            at: 10,
+            actor: "agent:test".into(),
+            expected_cursor: 0,
+            mutations: vec![RuntimeMutation::Vector {
+                vector: RuntimeVector {
+                    reference: RuntimeRef::new("embedding", "document-a-body").unwrap(),
+                    subject: RuntimeRef::new("document", "a").unwrap(),
+                    collection: crate::VectorCollectionAddress {
+                        collection_id: collection_id.into(),
+                        vector_name: vector_name.into(),
+                    },
+                    field: "body".into(),
+                    valid_from: 10,
+                    valid_to: None,
+                    value: VectorValue::Dense {
+                        values: vec![1.0, 0.0],
+                    },
+                    provenance: None,
+                    properties: RuntimeProperties::new(),
+                },
+            }],
+        };
+
+        let body = vector("documents", "body");
+        assert_ne!(body.digest(), vector("archive", "body").digest());
+        assert_ne!(body.digest(), vector("documents", "summary").digest());
     }
 
     #[test]

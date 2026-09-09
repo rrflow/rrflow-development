@@ -826,50 +826,65 @@ pub(crate) fn runtime_vector_version_key(
 
 pub(crate) fn runtime_vector_source_delta_key(
     scope: &ScopeId,
-    collection_id: Option<&str>,
-    vector_name: Option<&str>,
+    collection_id: &str,
+    vector_name: &str,
     field: &str,
     cursor: u64,
     ordinal: u64,
-) -> Vec<u8> {
-    encode(
+) -> Result<Vec<u8>> {
+    validate_vector_source_key_parts(collection_id, vector_name, field)?;
+    Ok(encode(
         RUNTIME_VECTOR_SOURCE_DELTAS,
         &[
             KeyPart::Text(scope.as_str()),
-            KeyPart::Text(collection_id.unwrap_or("")),
-            KeyPart::Text(vector_name.unwrap_or("")),
+            KeyPart::Text(collection_id),
+            KeyPart::Text(vector_name),
             KeyPart::Text(field),
             KeyPart::U64(cursor),
             KeyPart::U64(ordinal),
         ],
-    )
+    ))
 }
 
 pub(crate) fn runtime_vector_source_delta_start(
     scope: &ScopeId,
-    collection_id: Option<&str>,
-    vector_name: Option<&str>,
+    collection_id: &str,
+    vector_name: &str,
     field: &str,
     cursor: u64,
-) -> Vec<u8> {
+) -> Result<Vec<u8>> {
     runtime_vector_source_delta_key(scope, collection_id, vector_name, field, cursor, 0)
 }
 
 pub(crate) fn runtime_vector_source_delta_prefix(
     scope: &ScopeId,
-    collection_id: Option<&str>,
-    vector_name: Option<&str>,
+    collection_id: &str,
+    vector_name: &str,
     field: &str,
-) -> Vec<u8> {
-    encode(
+) -> Result<Vec<u8>> {
+    validate_vector_source_key_parts(collection_id, vector_name, field)?;
+    Ok(encode(
         RUNTIME_VECTOR_SOURCE_DELTAS,
         &[
             KeyPart::Text(scope.as_str()),
-            KeyPart::Text(collection_id.unwrap_or("")),
-            KeyPart::Text(vector_name.unwrap_or("")),
+            KeyPart::Text(collection_id),
+            KeyPart::Text(vector_name),
             KeyPart::Text(field),
         ],
-    )
+    ))
+}
+
+fn validate_vector_source_key_parts(
+    collection_id: &str,
+    vector_name: &str,
+    field: &str,
+) -> Result<()> {
+    if collection_id.trim().is_empty() || vector_name.trim().is_empty() || field.trim().is_empty() {
+        return Err(Error::IndexConstraint(
+            "vector source key identity must not contain an empty part".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn projection_family_tag(family: ProjectionFamily) -> u8 {
@@ -1378,14 +1393,17 @@ mod tests {
             runtime_vector_version_key(&scope, &reference, 20, 9)
                 < runtime_vector_version_key(&scope, &reference, 10, 8)
         );
+        let documents =
+            runtime_vector_source_delta_prefix(&scope, "documents", "semantic", "title").unwrap();
         assert_ne!(
-            runtime_vector_source_delta_prefix(
-                &scope,
-                Some("documents"),
-                Some("semantic"),
-                "title",
-            ),
-            runtime_vector_source_delta_prefix(&scope, Some("archive"), Some("semantic"), "title",)
+            documents,
+            runtime_vector_source_delta_prefix(&scope, "archive", "semantic", "title").unwrap()
         );
+        assert_ne!(
+            documents,
+            runtime_vector_source_delta_prefix(&scope, "documents", "summary", "title").unwrap()
+        );
+        assert!(runtime_vector_source_delta_prefix(&scope, "", "semantic", "title").is_err());
+        assert!(runtime_vector_source_delta_prefix(&scope, "documents", "", "title").is_err());
     }
 }

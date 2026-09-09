@@ -432,8 +432,8 @@ fn context_discovers_matching_local_vector_retrieval_without_caller_wiring() {
     let vector_mutations = vec![TransactionMutation::PutVector {
         reference: embedding,
         subject: note,
-        collection_id: Some(collection_id),
-        vector_name: Some(vector_name),
+        collection_id,
+        vector_name,
         field: CanonicalId::new("embedding").unwrap(),
         valid_from: 1_120,
         valid_to: None,

@@ -8,6 +8,10 @@
       {
         "mutation": "vector",
         "vector": {
+          "collection": {
+            "collection_id": "documents",
+            "vector_name": "title"
+          },
           "field": "title",
           "id": "doc-1-title",
           "kind": "embedding",
@@ -93,13 +97,13 @@
     ],
     "scope": "instance:golden"
   },
-  "commit_digest": "561682f2a29fbfa9a6cf436ea38a29e89d62c0963aeaaf4fa19d650c58fed4ab",
+  "commit_digest": "0b245911e2a7947ee7fc6a09ddd4ac5e3c5b2d26f2f404b0456b1369d909eddc",
   "first_projection_work": {
-    "commit_id": "561682f2a29fbfa9a6cf436ea38a29e89d62c0963aeaaf4fa19d650c58fed4ab",
+    "commit_id": "0b245911e2a7947ee7fc6a09ddd4ac5e3c5b2d26f2f404b0456b1369d909eddc",
     "commit_ordinal": 0,
     "contract_version": 1,
     "family": "vector",
-    "id": "b7cb05e465201b2f101f3cd165b9b75ab61c9f439c7cf6c266e62eea6f2e0ad5",
+    "id": "f6f2bb81adcd5b71c07c27208092722cec73524882fc987ff7563b019310a197",
     "scope": "instance:golden",
     "source_cursor": 8
   },

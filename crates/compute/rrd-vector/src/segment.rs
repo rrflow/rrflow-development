@@ -303,7 +303,10 @@ fn encode_json<T: Serialize>(value: &T) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::{SearchMode, VectorQuery};
-    use rrd_core::{ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, VectorValue};
+    use rrd_core::{
+        ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, VectorCollectionAddress,
+        VectorValue,
+    };
 
     fn config(scope: &ScopeId) -> VectorSegmentConfig {
         VectorSegmentConfig {
@@ -324,7 +327,10 @@ mod tests {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", id).unwrap(),
                 subject: RuntimeRef::new("document", id).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

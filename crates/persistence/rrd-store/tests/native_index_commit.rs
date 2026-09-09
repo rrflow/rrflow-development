@@ -157,10 +157,10 @@ fn vector(collection: &str, value: [f32; 2], valid_from: u64) -> RuntimeVector {
     RuntimeVector {
         reference: reference("embedding", "alpha-title"),
         subject: reference("document", "alpha"),
-        collection: Some(VectorCollectionAddress {
+        collection: VectorCollectionAddress {
             collection_id: collection.into(),
             vector_name: "semantic".into(),
-        }),
+        },
         field: "title".into(),
         valid_from,
         valid_to: None,
@@ -285,17 +285,17 @@ fn exercise(engine: &dyn StorageEngine) -> ExerciseResult {
     .unwrap();
 
     let original_source = VectorSourceAddress {
-        collection: Some(VectorCollectionAddress {
+        collection: VectorCollectionAddress {
             collection_id: "documents".into(),
             vector_name: "semantic".into(),
-        }),
+        },
         field: "title".into(),
     };
     let moved_source = VectorSourceAddress {
-        collection: Some(VectorCollectionAddress {
+        collection: VectorCollectionAddress {
             collection_id: "archive".into(),
             vector_name: "semantic".into(),
-        }),
+        },
         field: "title".into(),
     };
     ExerciseResult {

@@ -6,7 +6,7 @@ use rrd_core::{
     RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
     RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaMode,
     RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue,
-    RuntimeValueType, RuntimeVector, ScopeId, SeriesValue, VectorValue,
+    RuntimeValueType, RuntimeVector, ScopeId, SeriesValue, VectorCollectionAddress, VectorValue,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
@@ -176,7 +176,10 @@ fn vector(quality: Option<u64>) -> RuntimeVector {
     RuntimeVector {
         reference: reference("embedding", "entity-a-title"),
         subject: reference("entity", "a"),
-        collection: None,
+        collection: VectorCollectionAddress {
+            collection_id: "entities".into(),
+            vector_name: "title".into(),
+        },
         field: "title".into(),
         valid_from: 100,
         valid_to: None,

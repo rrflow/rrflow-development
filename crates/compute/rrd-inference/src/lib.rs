@@ -11,7 +11,7 @@ use rrd_contract::{
 use rrd_core::{
     digest, DataTransaction, EmbeddingProvenance, Error, Millis, ReadStamp, Result, RuntimeCommit,
     RuntimeId, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeValue, RuntimeVector,
-    ScopeId, VectorNormalization, VectorValue,
+    ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -345,6 +345,7 @@ pub struct EmbeddingJob {
     pub expected_source_digest: String,
     pub target: RuntimeRef,
     pub subject: RuntimeRef,
+    pub collection: VectorCollectionAddress,
     pub field: String,
     pub valid_from: Millis,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -366,6 +367,7 @@ impl EmbeddingJob {
             return invalid("embedding job scope differs from its read stamp");
         }
         validate_digest("embedding source", &self.expected_source_digest)?;
+        self.collection.validate()?;
         validate_text("embedding field", &self.field)?;
         if self
             .valid_to
@@ -685,6 +687,7 @@ impl PreparedEmbedding {
             || self.scope != job.scope
             || self.vector.reference != job.target
             || self.vector.subject != job.subject
+            || self.vector.collection != job.collection
             || self.vector.field != job.field
         {
             return invalid("prepared embedding differs from its source job");
@@ -777,7 +780,7 @@ impl EmbeddingCoordinator {
         let vector = RuntimeVector {
             reference: job.target.clone(),
             subject: job.subject.clone(),
-            collection: None,
+            collection: job.collection.clone(),
             field: job.field.clone(),
             valid_from: job.valid_from,
             valid_to: job.valid_to,

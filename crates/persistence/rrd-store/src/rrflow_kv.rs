@@ -1046,10 +1046,10 @@ mod tests {
                         vector: RuntimeVector {
                             reference: RuntimeRef::new("embedding", "one-title").unwrap(),
                             subject: item.clone(),
-                            collection: Some(VectorCollectionAddress {
+                            collection: VectorCollectionAddress {
                                 collection_id: "items".into(),
                                 vector_name: "semantic".into(),
-                            }),
+                            },
                             field: "title".into(),
                             valid_from: 100,
                             valid_to: None,

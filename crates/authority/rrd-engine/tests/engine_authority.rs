@@ -293,8 +293,8 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
         TransactionMutation::PutVector {
             reference: reference("embedding", "document-a-body"),
             subject: document,
-            collection_id: Some(canonical("documents")),
-            vector_name: Some(canonical("body")),
+            collection_id: canonical("documents"),
+            vector_name: canonical("body"),
             field: canonical("body-embedding"),
             valid_from: 1_250,
             valid_to: None,

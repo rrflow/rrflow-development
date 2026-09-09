@@ -1,5 +1,6 @@
 use rrd_core::{
-    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId, VectorValue,
+    ProjectionId, ReadStamp, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
+    VectorCollectionAddress, VectorValue,
 };
 use rrd_vector::{
     search_exact_ref, ProductCompression, QuantizationMethod, QuantizedKernel, QuantizedSegment,
@@ -390,7 +391,10 @@ fn candidate(scope: &ScopeId, row: usize) -> VectorCandidate {
         vector: RuntimeVector {
             reference: RuntimeRef::new("embedding", format!("v{row:04}")).unwrap(),
             subject: RuntimeRef::new("document", format!("v{row:04}")).unwrap(),
-            collection: None,
+            collection: VectorCollectionAddress {
+                collection_id: "documents".into(),
+                vector_name: "body".into(),
+            },
             field: "body".into(),
             valid_from: 1,
             valid_to: None,

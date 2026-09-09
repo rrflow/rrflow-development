@@ -3,7 +3,7 @@
 use rrd_core::{
     projection_family, GeoPoint, GeoValue, ObjectReceipt, ObjectReference, ProjectionWork,
     RuntimeCommit, RuntimeGeo, RuntimeMutation, RuntimeProperties, RuntimeRef, RuntimeSeriesSample,
-    RuntimeVector, ScopeId, SeriesValue, VectorValue,
+    RuntimeVector, ScopeId, SeriesValue, VectorCollectionAddress, VectorValue,
 };
 
 fn contract() -> serde_json::Value {
@@ -27,7 +27,10 @@ fn contract() -> serde_json::Value {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", "doc-1-title").unwrap(),
                 subject: subject.clone(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "title".into(),
+                },
                 field: "title".into(),
                 valid_from: 1_000,
                 valid_to: None,

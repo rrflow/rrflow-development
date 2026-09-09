@@ -65,8 +65,9 @@ cross-family collision. Persisted or public JSON with an omitted table map,
 an empty table map, a specialized schema without its matching strict table, or
 a runtime value whose kind is absent from the map is rejected.
 
-This closes the schema-authority portion of C-05; C-05 remains open for the
-separately inventoried vector collection and second-catalogue branches. Gate
+This closes the schema-authority portion of C-05. C-05g separately closes the
+collectionless vector representation; C-05 remains open for the inventoried
+second vector/TurboQuant catalogue and suppression branch. Gate
 C-03 already commits records, both graph adjacency directions,
 synchronous index changes, the runtime entry, and durable projection deltas as
 one physical batch. Gate C-04 already replaced normal whole-log snapshot

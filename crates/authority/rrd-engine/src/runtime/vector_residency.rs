@@ -441,7 +441,7 @@ mod tests {
     use super::*;
     use rrd_core::{
         ObjectReference, ProjectionId, RuntimeProperties, RuntimeRef, RuntimeVector, ScopeId,
-        VectorValue,
+        VectorCollectionAddress, VectorValue,
     };
     use rrd_store::LocalObjectStore;
     use rrd_vector::{
@@ -462,7 +462,10 @@ mod tests {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", candidate_id).unwrap(),
                 subject: RuntimeRef::new("document", candidate_id).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,

@@ -5,7 +5,7 @@ use rrd_contract::{
 use rrd_core::{
     digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId, VectorValue,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId, VectorCollectionAddress, VectorValue,
 };
 use rrd_inference::{
     load_router_model_after_handshake, EmbeddingBackend, EmbeddingBackendRegistry,
@@ -62,6 +62,10 @@ fn job(bytes: &[u8], backend: &FeatureHashBackend) -> EmbeddingJob {
         expected_source_digest: digest::sha256_hex(bytes),
         target: RuntimeRef::new("embedding", "source-1-body").unwrap(),
         subject: RuntimeRef::new("document", "source-1").unwrap(),
+        collection: VectorCollectionAddress {
+            collection_id: "documents".into(),
+            vector_name: "body".into(),
+        },
         field: "body".into(),
         valid_from: 10,
         valid_to: None,

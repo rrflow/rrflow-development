@@ -949,10 +949,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
     point.validate().unwrap();
     let mut incomplete = serde_json::to_value(point).unwrap();
     incomplete.as_object_mut().unwrap().remove("vector_name");
-    assert!(serde_json::from_value::<TransactionMutation>(incomplete)
-        .unwrap()
-        .validate()
-        .is_err());
+    assert!(serde_json::from_value::<TransactionMutation>(incomplete).is_err());
 }
 
 #[test]
@@ -1448,6 +1445,20 @@ fn session_and_claim_transaction_contracts_are_bounded() {
     };
     *confidence = Some(f32::NAN);
     assert!(invalid_commit.validate().is_err());
+}
+
+#[test]
+fn vector_mutation_requires_collection_and_named_vector_identity() {
+    let collectionless = serde_json::json!({
+        "mutation": "put_vector",
+        "reference": {"kind": "embedding", "id": "document-a-body"},
+        "subject": {"kind": "document", "id": "document-a"},
+        "field": "body-embedding",
+        "valid_from": 1,
+        "value": {"kind": "dense", "values": [1.0, 0.0]},
+        "properties": {}
+    });
+    assert!(serde_json::from_value::<TransactionMutation>(collectionless).is_err());
 }
 
 #[test]

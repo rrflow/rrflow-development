@@ -30,6 +30,10 @@
       "scope": "instance:vector-golden",
       "source_cursor": 1,
       "vector": {
+        "collection": {
+          "collection_id": "documents",
+          "vector_name": "body"
+        },
         "field": "body",
         "id": "a",
         "kind": "embedding",
@@ -57,6 +61,10 @@
       "scope": "instance:vector-golden",
       "source_cursor": 2,
       "vector": {
+        "collection": {
+          "collection_id": "documents",
+          "vector_name": "body"
+        },
         "field": "body",
         "id": "b",
         "kind": "embedding",
@@ -84,6 +92,10 @@
       "scope": "instance:vector-golden",
       "source_cursor": 3,
       "vector": {
+        "collection": {
+          "collection_id": "documents",
+          "vector_name": "body"
+        },
         "field": "body",
         "id": "c",
         "kind": "embedding",
@@ -111,6 +123,10 @@
       "scope": "instance:vector-golden",
       "source_cursor": 4,
       "vector": {
+        "collection": {
+          "collection_id": "documents",
+          "vector_name": "body"
+        },
         "field": "body",
         "id": "a",
         "kind": "embedding",
@@ -176,7 +192,7 @@
     "nodes": 4,
     "scope": "instance:vector-golden",
     "stamp": {
-      "artifact_digest": "16554c28c48458cd8263402f1fc53df6efa3f0195f5acbe0033287e78ab16d27",
+      "artifact_digest": "ca292103f9cfc9efb3e57989fc4c87dcc3d5a9b9f2ba06df209dda0d8c1a6dd3",
       "config_digest": "229d146576a37ed2a6268dc9a523d1d49fc69f1380d70624ee353a3a3deabf96",
       "contract_version": 1,
       "generation": 1,
@@ -232,7 +248,7 @@
     "minimum_cursor": 0,
     "scope": "instance:vector-golden",
     "stamp": {
-      "artifact_digest": "c1ac9fb9e5451aa7a080226d94dc8327b67427622aca5f7be603f6e35f75f034",
+      "artifact_digest": "5e710c26bdd941ad94d918a4e6783e9c5a6ac9bc0aece4e4eccb11d29ca29300",
       "config_digest": "fb9ba3b9a0879da2ba42f3ed3076e2cd80e19c6d803e5586fdfdf48c579f44c3",
       "contract_version": 1,
       "generation": 1,

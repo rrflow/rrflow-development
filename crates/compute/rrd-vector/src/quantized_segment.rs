@@ -214,8 +214,7 @@ impl QuantizedDescriptor {
 struct StoredCandidate {
     reference: RuntimeRef,
     subject: RuntimeRef,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    collection: Option<VectorCollectionAddress>,
+    collection: VectorCollectionAddress,
     source_cursor: u64,
     valid_from: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1055,7 +1054,10 @@ mod tests {
             vector: RuntimeVector {
                 reference: RuntimeRef::new("embedding", format!("v{id}")).unwrap(),
                 subject: RuntimeRef::new("document", format!("v{id}")).unwrap(),
-                collection: None,
+                collection: VectorCollectionAddress {
+                    collection_id: "documents".into(),
+                    vector_name: "body".into(),
+                },
                 field: "body".into(),
                 valid_from: 1,
                 valid_to: None,
@@ -1095,6 +1097,41 @@ mod tests {
             candidates,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn artifact_reader_rejects_candidate_without_collection_address() {
+        let segment = segment(QuantizationMethod::Scalar);
+        let old_header = read_header(segment.as_bytes()).unwrap();
+        let mut metadata: serde_json::Value = serde_json::from_slice(
+            &segment.as_bytes()[HEADER_BYTES..HEADER_BYTES + old_header.metadata_len],
+        )
+        .unwrap();
+        metadata["candidates"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("collection");
+        let metadata = serde_json::to_vec(&metadata).unwrap();
+        let payload = &segment.as_bytes()[old_header.payload_offset..];
+        let payload_offset = align_up(HEADER_BYTES + metadata.len(), ALIGNMENT).unwrap();
+        let mut bytes = vec![0_u8; payload_offset + payload.len()];
+        write_header(
+            &mut bytes,
+            metadata.len(),
+            payload_offset,
+            payload.len(),
+            old_header.row_bytes,
+            old_header.rows,
+            old_header.dimensions,
+        )
+        .unwrap();
+        bytes[HEADER_BYTES..HEADER_BYTES + metadata.len()].copy_from_slice(&metadata);
+        bytes[payload_offset..].copy_from_slice(payload);
+        let checksum = artifact_digest(&bytes).unwrap();
+        bytes[DIGEST_OFFSET..DIGEST_OFFSET + DIGEST_BYTES].copy_from_slice(&checksum);
+
+        let error = QuantizedSegment::from_bytes(&bytes).unwrap_err();
+        assert!(error.to_string().contains("missing field `collection`"));
     }
 
     #[test]
