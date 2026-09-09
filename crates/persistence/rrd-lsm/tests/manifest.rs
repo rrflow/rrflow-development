@@ -69,20 +69,20 @@ fn manifest_identity_is_stable_and_segment_order_is_canonical() {
 }
 
 #[test]
-fn format_v1_manifest_fixture_remains_digest_compatible() {
+fn pre_1_0_manifest_fixture_is_rejected() {
     let fixture = include_bytes!("../fixtures/manifest-v1.json");
     let manifest: Manifest = serde_json::from_slice(fixture).unwrap();
-    assert_eq!(manifest.format_version, 1);
-    assert_eq!(manifest.application_format, None);
-    manifest.validate().unwrap();
-    assert_eq!(
-        manifest.digest,
-        "d3386887b9d8b15a4667c62f6f3301b10e77b58cd9ca794c3c540aa3740ed88a"
-    );
+    assert!(matches!(
+        manifest.validate(),
+        Err(Error::UnsupportedVersion {
+            object: "manifest",
+            version: 1
+        })
+    ));
 }
 
 #[test]
-fn application_format_is_authenticated_and_v1_cannot_claim_one() {
+fn application_format_is_authenticated() {
     let mut manifest = Manifest::new_with_application_format(
         1,
         None,
@@ -103,15 +103,6 @@ fn application_format_is_authenticated_and_v1_cannot_claim_one() {
         Err(Error::InvalidManifest(reason)) if reason.contains("digest")
     ));
     assert!(Manifest::new_with_application_format(1, None, 100, 0, 1, Vec::new(), 0).is_err());
-
-    let mut format_v1: serde_json::Value =
-        serde_json::from_slice(include_bytes!("../fixtures/manifest-v1.json")).unwrap();
-    format_v1["application_format"] = serde_json::json!(7);
-    let format_v1: Manifest = serde_json::from_value(format_v1).unwrap();
-    assert!(matches!(
-        format_v1.validate(),
-        Err(Error::InvalidManifest(reason)) if reason.contains("v1")
-    ));
 }
 
 #[test]

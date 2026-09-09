@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 pub const MANIFEST_FORMAT_VERSION: u16 = 2;
-const LEGACY_MANIFEST_FORMAT_VERSION: u16 = 1;
 const MANIFEST_CONTROL_FORMAT_VERSION: u16 = 1;
 const CURRENT_FILE: &str = "CURRENT";
 const MANIFEST_DIRECTORY: &str = "manifests";
@@ -150,21 +149,11 @@ impl Manifest {
     }
 
     pub fn validate(&self) -> Result<()> {
-        if !matches!(
-            self.format_version,
-            LEGACY_MANIFEST_FORMAT_VERSION | MANIFEST_FORMAT_VERSION
-        ) {
+        if self.format_version != MANIFEST_FORMAT_VERSION {
             return Err(Error::UnsupportedVersion {
                 object: "manifest",
                 version: self.format_version,
             });
-        }
-        if self.format_version == LEGACY_MANIFEST_FORMAT_VERSION
-            && self.application_format.is_some()
-        {
-            return Err(Error::InvalidManifest(
-                "manifest v1 cannot declare an application format".into(),
-            ));
         }
         if self.application_format == Some(0) {
             return Err(Error::InvalidManifest(
@@ -244,27 +233,6 @@ impl Manifest {
     }
 
     fn bytes_without_digest(&self) -> Result<Vec<u8>> {
-        if self.format_version == LEGACY_MANIFEST_FORMAT_VERSION {
-            #[derive(Serialize)]
-            struct LegacyContent<'a> {
-                format_version: u16,
-                generation: u64,
-                parent: &'a Option<String>,
-                created_at: u64,
-                durable_sequence: u64,
-                wal_start_sequence: u64,
-                segments: &'a [SegmentDescriptor],
-            }
-            return Ok(serde_json::to_vec(&LegacyContent {
-                format_version: self.format_version,
-                generation: self.generation,
-                parent: &self.parent,
-                created_at: self.created_at,
-                durable_sequence: self.durable_sequence,
-                wal_start_sequence: self.wal_start_sequence,
-                segments: &self.segments,
-            })?);
-        }
         #[derive(Serialize)]
         struct Content<'a> {
             format_version: u16,

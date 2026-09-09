@@ -15,13 +15,9 @@ use std::time::Instant;
 pub const SEGMENT_FORMAT_VERSION: u16 = 3;
 pub const DEFAULT_BLOCK_CACHE_BYTES: usize = 4 * 1024 * 1024;
 pub const SEGMENT_BLOCK_TARGET_BYTES: usize = 4 * 1024;
-const SEGMENT_V1_MAGIC: &[u8; 8] = b"RRDSEG01";
-const SEGMENT_V2_MAGIC: &[u8; 8] = b"RRDSEG02";
-const SEGMENT_V3_MAGIC: &[u8; 8] = b"RRDSEG03";
-const INDEX_V3_MAGIC: &[u8; 8] = b"RRDIX003";
-const V1_HEADER_BYTES: usize = 40;
-const V2_HEADER_BYTES: usize = 48;
-const V3_HEADER_BYTES: usize = 64;
+const SEGMENT_MAGIC: &[u8; 8] = b"RRDSEG03";
+const INDEX_MAGIC: &[u8; 8] = b"RRDIX003";
+const SEGMENT_HEADER_BYTES: usize = 64;
 const INDEX_HEADER_BYTES: usize = 16;
 const INDEX_ENTRY_BYTES: usize = 104;
 const RECORD_HEADER_BYTES: usize = 20;
@@ -31,7 +27,6 @@ const MAX_INDEX_BYTES: usize = 64 * 1024 * 1024;
 const MAX_KEY_BYTES: usize = 1024 * 1024;
 const MAX_VALUE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_DECODED_BLOCK_BYTES: usize = RECORD_HEADER_BYTES + MAX_KEY_BYTES + MAX_VALUE_BYTES;
-const SPARSE_INDEX_STRIDE: usize = 4;
 const COPY_BUFFER_BYTES: usize = 64 * 1024;
 static TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
 static CACHE_ID: AtomicU64 = AtomicU64::new(1);
@@ -273,24 +268,13 @@ impl DecodedBlock {
     }
 }
 
-#[derive(Debug)]
-enum SegmentStorage {
-    Legacy {
-        records: Vec<u8>,
-        sparse_index: Vec<SparseEntry>,
-    },
-    Blocked {
-        source: BlockSource,
-        blocks: Vec<BlockDescriptor>,
-        filters: Vec<BlockFilter>,
-        cache: SharedBlockCache,
-        cache_id: u64,
-    },
-}
-
 pub struct Segment {
     pub descriptor: SegmentDescriptor,
-    storage: SegmentStorage,
+    source: BlockSource,
+    blocks: Vec<BlockDescriptor>,
+    filters: Vec<BlockFilter>,
+    cache: SharedBlockCache,
+    cache_id: u64,
 }
 
 impl fmt::Debug for Segment {
@@ -301,12 +285,6 @@ impl fmt::Debug for Segment {
             .field("block_count", &self.block_count())
             .finish()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct SparseEntry {
-    offset: usize,
-    key: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -323,12 +301,11 @@ pub(crate) struct SegmentRecord {
 
 /// Forward-only cursor over one segment's canonical `(key, sequence)` order.
 ///
-/// V3 segments retain at most one decoded block in the cursor. This is the
+/// Segments retain at most one decoded block in the cursor. This is the
 /// primitive used by compaction to merge immutable segments without first
 /// materializing every key and version in the database.
 pub(crate) struct SegmentRecordCursor<'a> {
     segment: &'a Segment,
-    legacy_offset: usize,
     block_index: usize,
     record_index: usize,
     loaded_block: Option<Arc<DecodedBlock>>,
@@ -405,18 +382,15 @@ impl Segment {
         if metadata.len() > MAX_SEGMENT_BYTES {
             return invalid("segment exceeds the 1 GiB physical safety limit");
         }
-        if metadata.len() < (V1_HEADER_BYTES + FOOTER_BYTES) as u64 {
-            return invalid("segment is shorter than its header and footer");
-        }
         let mut file = File::open(path)?;
         let mut prefix = [0u8; 10];
-        file.read_exact(&mut prefix)?;
-        let version = u16::from_be_bytes(prefix[8..10].try_into().expect("fixed version"));
-        if version == SEGMENT_FORMAT_VERSION && &prefix[..8] == SEGMENT_V3_MAGIC {
-            decode_v3_file(path, metadata.len(), cache, io)
-        } else {
-            decode_legacy(std::fs::read(path)?)
+        file.read_exact(&mut prefix)
+            .map_err(|_| Error::InvalidSegment("segment has no complete format header".into()))?;
+        require_current_format(&prefix)?;
+        if metadata.len() < (SEGMENT_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES) as u64 {
+            return invalid("segment is shorter than its framing");
         }
+        decode_v3_file(path, metadata.len(), cache, io)
     }
 
     /// Reopens a manifest-addressed immutable segment without reconstructing
@@ -431,29 +405,21 @@ impl Segment {
         io: SharedIoContext,
     ) -> Result<Self> {
         let metadata = std::fs::metadata(path)?;
-        if metadata.len() != expected.bytes {
-            return invalid("segment physical size differs from its manifest descriptor");
-        }
         if metadata.len() > MAX_SEGMENT_BYTES {
             return invalid("segment exceeds the 1 GiB physical safety limit");
         }
-        if metadata.len() < (V1_HEADER_BYTES + FOOTER_BYTES) as u64 {
-            return invalid("segment is shorter than its header and footer");
-        }
         let mut file = File::open(path)?;
         let mut prefix = [0u8; 10];
-        file.read_exact(&mut prefix)?;
-        let version = u16::from_be_bytes(prefix[8..10].try_into().expect("fixed version"));
-        if version == SEGMENT_FORMAT_VERSION && &prefix[..8] == SEGMENT_V3_MAGIC {
-            decode_v3_expected_file(path, metadata.len(), expected, cache, io)
-        } else {
-            let mut segment = decode_legacy(std::fs::read(path)?)?;
-            segment.descriptor.level = expected.level;
-            if &segment.descriptor != expected {
-                return invalid("legacy segment differs from its manifest descriptor");
-            }
-            Ok(segment)
+        file.read_exact(&mut prefix)
+            .map_err(|_| Error::InvalidSegment("segment has no complete format header".into()))?;
+        require_current_format(&prefix)?;
+        if metadata.len() != expected.bytes {
+            return invalid("segment physical size differs from its manifest descriptor");
         }
+        if metadata.len() < (SEGMENT_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES) as u64 {
+            return invalid("segment is shorter than its framing");
+        }
+        decode_v3_expected_file(path, metadata.len(), expected, cache, io)
     }
 
     pub(crate) fn validate_snapshot_bytes(
@@ -470,11 +436,8 @@ impl Segment {
         if bytes.len() as u64 > MAX_SEGMENT_BYTES {
             return invalid("snapshot segment exceeds the 1 GiB physical safety limit");
         }
-        let mut segment = if bytes.starts_with(SEGMENT_V3_MAGIC) {
-            decode_v3_bytes(bytes, new_block_cache(DEFAULT_BLOCK_CACHE_BYTES))?
-        } else {
-            decode_legacy(bytes)?
-        };
+        require_current_format(&bytes)?;
+        let mut segment = decode_v3_bytes(bytes, new_block_cache(DEFAULT_BLOCK_CACHE_BYTES))?;
         segment.descriptor.level = expected.level;
         if &segment.descriptor != expected {
             return Err(Error::InvalidSegment(format!(
@@ -489,11 +452,8 @@ impl Segment {
         if bytes.len() as u64 > MAX_SEGMENT_BYTES {
             return invalid("snapshot segment exceeds the 1 GiB physical safety limit");
         }
-        let mut descriptor = if bytes.starts_with(SEGMENT_V3_MAGIC) {
-            validate_v3_slice(bytes)?
-        } else {
-            decode_legacy(bytes.to_vec())?.descriptor
-        };
+        require_current_format(bytes)?;
+        let mut descriptor = validate_v3_slice(bytes)?;
         descriptor.level = expected.level;
         if &descriptor != expected {
             return Err(Error::InvalidSegment(format!(
@@ -565,50 +525,35 @@ impl Segment {
         {
             return Ok(None);
         }
-        match &self.storage {
-            SegmentStorage::Legacy {
-                records,
-                sparse_index,
-            } => {
-                let cursor = legacy_seek(records, sparse_index, key);
-                select_version(records, cursor, records.len(), key, read_sequence)
-            }
-            SegmentStorage::Blocked {
-                blocks,
-                filters,
-                cache,
-                ..
-            } => {
-                let mut block_index =
-                    blocks.partition_point(|block| block.last_key.as_slice() < key);
-                let mut selected = None;
-                while block_index < blocks.len() {
-                    let negative = !filters[block_index].may_contain(key);
-                    record_filter_probe(cache, negative)?;
-                    if negative {
-                        if blocks[block_index].last_key.as_slice() > key {
-                            break;
-                        }
-                        block_index += 1;
-                        continue;
-                    }
-                    let block = self.load_block(block_index)?;
-                    if let Some(version) = select_version_block(&block, key, read_sequence)? {
-                        if selected
-                            .as_ref()
-                            .is_none_or(|prior: &SegmentVersion| version.sequence > prior.sequence)
-                        {
-                            selected = Some(version);
-                        }
-                    }
-                    if blocks[block_index].last_key.as_slice() > key {
-                        break;
-                    }
-                    block_index += 1;
+        let mut block_index = self
+            .blocks
+            .partition_point(|block| block.last_key.as_slice() < key);
+        let mut selected = None;
+        while block_index < self.blocks.len() {
+            let negative = !self.filters[block_index].may_contain(key);
+            record_filter_probe(&self.cache, negative)?;
+            if negative {
+                if self.blocks[block_index].last_key.as_slice() > key {
+                    break;
                 }
-                Ok(selected)
+                block_index += 1;
+                continue;
             }
+            let block = self.load_block(block_index)?;
+            if let Some(version) = select_version_block(&block, key, read_sequence)? {
+                if selected
+                    .as_ref()
+                    .is_none_or(|prior: &SegmentVersion| version.sequence > prior.sequence)
+                {
+                    selected = Some(version);
+                }
+            }
+            if self.blocks[block_index].last_key.as_slice() > key {
+                break;
+            }
+            block_index += 1;
         }
+        Ok(selected)
     }
 
     pub(crate) fn get_versions(
@@ -619,65 +564,53 @@ impl Segment {
         let mut output = vec![None; keys.len()];
         let mut order = (0..keys.len()).collect::<Vec<_>>();
         order.sort_by(|left, right| keys[*left].cmp(keys[*right]).then(left.cmp(right)));
-        match &self.storage {
-            SegmentStorage::Legacy { .. } => {
-                for index in order {
-                    output[index] = self.get_version(keys[index], read_sequence)?;
-                }
+        let mut loaded: Option<(usize, Arc<DecodedBlock>)> = None;
+        for index in order {
+            let key = keys[index];
+            if key < self.descriptor.first_key.as_slice()
+                || key > self.descriptor.last_key.as_slice()
+                || read_sequence < self.descriptor.minimum_sequence
+            {
+                continue;
             }
-            SegmentStorage::Blocked {
-                blocks,
-                filters,
-                cache,
-                ..
-            } => {
-                let mut loaded: Option<(usize, Arc<DecodedBlock>)> = None;
-                for index in order {
-                    let key = keys[index];
-                    if key < self.descriptor.first_key.as_slice()
-                        || key > self.descriptor.last_key.as_slice()
-                        || read_sequence < self.descriptor.minimum_sequence
+            let mut block_index = self
+                .blocks
+                .partition_point(|block| block.last_key.as_slice() < key);
+            let mut selected = None;
+            while block_index < self.blocks.len() {
+                let negative = !self.filters[block_index].may_contain(key);
+                record_filter_probe(&self.cache, negative)?;
+                if negative {
+                    if self.blocks[block_index].last_key.as_slice() > key {
+                        break;
+                    }
+                    block_index += 1;
+                    continue;
+                }
+                let block = match &loaded {
+                    Some((loaded_index, block)) if *loaded_index == block_index => {
+                        Arc::clone(block)
+                    }
+                    _ => {
+                        let block = self.load_block(block_index)?;
+                        loaded = Some((block_index, Arc::clone(&block)));
+                        block
+                    }
+                };
+                if let Some(version) = select_version_block(&block, key, read_sequence)? {
+                    if selected
+                        .as_ref()
+                        .is_none_or(|prior: &SegmentVersion| version.sequence > prior.sequence)
                     {
-                        continue;
+                        selected = Some(version);
                     }
-                    let mut block_index =
-                        blocks.partition_point(|block| block.last_key.as_slice() < key);
-                    let mut selected = None;
-                    while block_index < blocks.len() {
-                        let negative = !filters[block_index].may_contain(key);
-                        record_filter_probe(cache, negative)?;
-                        if negative {
-                            if blocks[block_index].last_key.as_slice() > key {
-                                break;
-                            }
-                            block_index += 1;
-                            continue;
-                        }
-                        let block = match &loaded {
-                            Some((loaded_index, block)) if *loaded_index == block_index => {
-                                Arc::clone(block)
-                            }
-                            _ => {
-                                let block = self.load_block(block_index)?;
-                                loaded = Some((block_index, Arc::clone(&block)));
-                                block
-                            }
-                        };
-                        if let Some(version) = select_version_block(&block, key, read_sequence)? {
-                            if selected.as_ref().is_none_or(|prior: &SegmentVersion| {
-                                version.sequence > prior.sequence
-                            }) {
-                                selected = Some(version);
-                            }
-                        }
-                        if blocks[block_index].last_key.as_slice() > key {
-                            break;
-                        }
-                        block_index += 1;
-                    }
-                    output[index] = selected;
                 }
+                if self.blocks[block_index].last_key.as_slice() > key {
+                    break;
+                }
+                block_index += 1;
             }
+            output[index] = selected;
         }
         Ok(output)
     }
@@ -688,13 +621,6 @@ impl Segment {
         end: Option<&[u8]>,
         read_sequence: u64,
     ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-        let SegmentStorage::Blocked { blocks, .. } = &self.storage else {
-            return Ok(self
-                .visible_from(start, end, read_sequence)?
-                .into_iter()
-                .filter_map(|(key, version)| version.value.map(|value| (key, value.into_vec())))
-                .collect());
-        };
         let mut output = Vec::new();
         let mut current_key = Vec::new();
         let mut selected = None::<SegmentVersion>;
@@ -722,8 +648,10 @@ impl Segment {
             }
             Ok(())
         };
-        let first = blocks.partition_point(|block| block.last_key.as_slice() < start);
-        for (index, descriptor) in blocks.iter().enumerate().skip(first) {
+        let first = self
+            .blocks
+            .partition_point(|block| block.last_key.as_slice() < start);
+        for (index, descriptor) in self.blocks.iter().enumerate().skip(first) {
             let block = self.load_block(index)?;
             let first_record = if index == first {
                 block.lower_bound(start)?
@@ -748,25 +676,14 @@ impl Segment {
     pub(crate) fn record_cursor(&self) -> SegmentRecordCursor<'_> {
         SegmentRecordCursor {
             segment: self,
-            legacy_offset: 0,
             block_index: 0,
             record_index: 0,
             loaded_block: None,
         }
     }
 
-    pub fn sparse_index_entries(&self) -> usize {
-        match &self.storage {
-            SegmentStorage::Legacy { sparse_index, .. } => sparse_index.len(),
-            SegmentStorage::Blocked { blocks, .. } => blocks.len(),
-        }
-    }
-
     pub fn block_count(&self) -> usize {
-        match &self.storage {
-            SegmentStorage::Legacy { .. } => 1,
-            SegmentStorage::Blocked { blocks, .. } => blocks.len(),
-        }
+        self.blocks.len()
     }
 
     pub(crate) fn visible_from(
@@ -794,22 +711,19 @@ impl Segment {
             }
             Ok(())
         };
-        match &self.storage {
-            SegmentStorage::Legacy { records, .. } => visit_records(records, &mut collect)?,
-            SegmentStorage::Blocked { blocks, .. } => {
-                let first = blocks.partition_point(|block| block.last_key.as_slice() < start);
-                for (index, descriptor) in blocks.iter().enumerate().skip(first) {
-                    let block = self.load_block(index)?;
-                    let first_record = if index == first {
-                        block.lower_bound(start)?
-                    } else {
-                        0
-                    };
-                    visit_decoded_records(&block, first_record, &mut collect)?;
-                    if end.is_some_and(|end| descriptor.last_key.as_slice() >= end) {
-                        break;
-                    }
-                }
+        let first = self
+            .blocks
+            .partition_point(|block| block.last_key.as_slice() < start);
+        for (index, descriptor) in self.blocks.iter().enumerate().skip(first) {
+            let block = self.load_block(index)?;
+            let first_record = if index == first {
+                block.lower_bound(start)?
+            } else {
+                0
+            };
+            visit_decoded_records(&block, first_record, &mut collect)?;
+            if end.is_some_and(|end| descriptor.last_key.as_slice() >= end) {
+                break;
             }
         }
         Ok(grouped
@@ -859,30 +773,26 @@ impl Segment {
             }
             Ok(())
         };
-        match &self.storage {
-            SegmentStorage::Legacy { records, .. } => visit_records(records, &mut collect)?,
-            SegmentStorage::Blocked { blocks, .. } => {
-                let mut selected_blocks = BTreeSet::new();
-                for (start, end) in ranges {
-                    if end.as_slice() <= self.descriptor.first_key.as_slice()
-                        || start.as_slice() > self.descriptor.last_key.as_slice()
-                    {
-                        continue;
-                    }
-                    let first = blocks
-                        .partition_point(|block| block.last_key.as_slice() < start.as_slice());
-                    for (index, descriptor) in blocks.iter().enumerate().skip(first) {
-                        selected_blocks.insert(index);
-                        if descriptor.last_key.as_slice() >= end.as_slice() {
-                            break;
-                        }
-                    }
-                }
-                for index in selected_blocks {
-                    let block = self.load_block(index)?;
-                    visit_decoded_records(&block, 0, &mut collect)?;
+        let mut selected_blocks = BTreeSet::new();
+        for (start, end) in ranges {
+            if end.as_slice() <= self.descriptor.first_key.as_slice()
+                || start.as_slice() > self.descriptor.last_key.as_slice()
+            {
+                continue;
+            }
+            let first = self
+                .blocks
+                .partition_point(|block| block.last_key.as_slice() < start.as_slice());
+            for (index, descriptor) in self.blocks.iter().enumerate().skip(first) {
+                selected_blocks.insert(index);
+                if descriptor.last_key.as_slice() >= end.as_slice() {
+                    break;
                 }
             }
+        }
+        for index in selected_blocks {
+            let block = self.load_block(index)?;
+            visit_decoded_records(&block, 0, &mut collect)?;
         }
         Ok(grouped
             .into_iter()
@@ -899,19 +809,10 @@ impl Segment {
     }
 
     fn load_block(&self, block_index: usize) -> Result<Arc<DecodedBlock>> {
-        let SegmentStorage::Blocked {
-            source,
-            blocks,
-            cache,
-            cache_id,
-            ..
-        } = &self.storage
-        else {
-            return invalid("legacy segment has no block table");
-        };
-        let key = (*cache_id, block_index);
+        let key = (self.cache_id, block_index);
         {
-            let mut cache = cache
+            let mut cache = self
+                .cache
                 .lock()
                 .map_err(|_| Error::InvalidSegment("block cache lock poisoned".into()))?;
             if cache.values.contains_key(&key) {
@@ -923,14 +824,21 @@ impl Segment {
             }
             cache.misses = cache.misses.saturating_add(1);
         }
-        let block = &blocks[block_index];
-        let decoded = Arc::new(DecodedBlock::parse(read_and_decode_block(source, block)?)?);
+        let block = self
+            .blocks
+            .get(block_index)
+            .ok_or_else(|| Error::InvalidSegment("block index is outside the segment".into()))?;
+        let decoded = Arc::new(DecodedBlock::parse(read_and_decode_block(
+            &self.source,
+            block,
+        )?)?);
         let encoded_bytes = u64::try_from(block.physical_bytes)
             .map_err(|_| Error::InvalidSegment("encoded block size exceeds u64".into()))?;
         let decoded_bytes = decoded.resident_bytes();
         let decoded_bytes_counter = u64::try_from(decoded_bytes)
             .map_err(|_| Error::InvalidSegment("decoded block size exceeds u64".into()))?;
-        let mut cache = cache
+        let mut cache = self
+            .cache
             .lock()
             .map_err(|_| Error::InvalidSegment("block cache lock poisoned".into()))?;
         cache.loads = cache.loads.saturating_add(1);
@@ -979,44 +887,28 @@ impl Segment {
 
 impl SegmentRecordCursor<'_> {
     pub(crate) fn next_record(&mut self) -> Result<Option<SegmentRecord>> {
-        match &self.segment.storage {
-            SegmentStorage::Legacy { records, .. } => {
-                if self.legacy_offset >= records.len() {
-                    return Ok(None);
-                }
+        loop {
+            if self.block_index >= self.segment.blocks.len() {
+                return Ok(None);
+            }
+            if self.loaded_block.is_none() {
+                self.loaded_block = Some(self.segment.load_block(self.block_index)?);
+                self.record_index = 0;
+            }
+            let block = self.loaded_block.as_ref().expect("block was loaded");
+            if let Some(offset) = block.record_offsets.get(self.record_index) {
                 let record = parse_record(
-                    records,
-                    self.legacy_offset,
-                    records.len(),
+                    &block.bytes,
+                    *offset as usize,
+                    block.bytes.len(),
                     self.segment.descriptor.minimum_sequence,
                     self.segment.descriptor.maximum_sequence,
                 )?;
-                self.legacy_offset = record.next;
-                Ok(Some(owned_record(record)))
+                self.record_index += 1;
+                return Ok(Some(owned_record(record)));
             }
-            SegmentStorage::Blocked { blocks, .. } => loop {
-                if self.block_index >= blocks.len() {
-                    return Ok(None);
-                }
-                if self.loaded_block.is_none() {
-                    self.loaded_block = Some(self.segment.load_block(self.block_index)?);
-                    self.record_index = 0;
-                }
-                let block = self.loaded_block.as_ref().expect("block was loaded");
-                if let Some(offset) = block.record_offsets.get(self.record_index) {
-                    let record = parse_record(
-                        &block.bytes,
-                        *offset as usize,
-                        block.bytes.len(),
-                        self.segment.descriptor.minimum_sequence,
-                        self.segment.descriptor.maximum_sequence,
-                    )?;
-                    self.record_index += 1;
-                    return Ok(Some(owned_record(record)));
-                }
-                self.block_index += 1;
-                self.loaded_block = None;
-            },
+            self.block_index += 1;
+            self.loaded_block = None;
         }
     }
 }
@@ -1128,7 +1020,7 @@ fn encode_v3(table: &Memtable) -> Result<(Vec<u8>, String)> {
     if total_record_bytes > MAX_SEGMENT_BYTES {
         return invalid("uncompressed records exceed the 1 GiB safety limit");
     }
-    let mut output = vec![0u8; V3_HEADER_BYTES];
+    let mut output = vec![0u8; SEGMENT_HEADER_BYTES];
     let mut descriptors = Vec::with_capacity(blocks.len());
     for (records, block_entries, last_key) in blocks {
         let compressed = compress_prepend_size(&records);
@@ -1145,7 +1037,7 @@ fn encode_v3(table: &Memtable) -> Result<(Vec<u8>, String)> {
         });
     }
     let index_offset = output.len() as u64;
-    output.extend_from_slice(INDEX_V3_MAGIC);
+    output.extend_from_slice(INDEX_MAGIC);
     output.extend_from_slice(&(descriptors.len() as u32).to_be_bytes());
     output.extend_from_slice(&0u32.to_be_bytes());
     for block in &descriptors {
@@ -1158,9 +1050,9 @@ fn encode_v3(table: &Memtable) -> Result<(Vec<u8>, String)> {
         output.extend_from_slice(&encode_sha256_hex(block.digest));
         output.extend_from_slice(&block.last_key);
     }
-    output[..8].copy_from_slice(SEGMENT_V3_MAGIC);
+    output[..8].copy_from_slice(SEGMENT_MAGIC);
     output[8..10].copy_from_slice(&SEGMENT_FORMAT_VERSION.to_be_bytes());
-    output[10..12].copy_from_slice(&(V3_HEADER_BYTES as u16).to_be_bytes());
+    output[10..12].copy_from_slice(&(SEGMENT_HEADER_BYTES as u16).to_be_bytes());
     output[12..16].copy_from_slice(&1u32.to_be_bytes());
     output[16..24].copy_from_slice(&entries.to_be_bytes());
     output[24..32].copy_from_slice(&minimum_sequence.to_be_bytes());
@@ -1202,6 +1094,23 @@ fn append_record(output: &mut Vec<u8>, key: &[u8], version: &VersionedValue) {
     output.extend_from_slice(&version.sequence.to_be_bytes());
     output.extend_from_slice(key);
     output.extend_from_slice(value);
+}
+
+fn require_current_format(bytes: &[u8]) -> Result<()> {
+    let version = bytes
+        .get(8..10)
+        .map(|field| u16::from_be_bytes(field.try_into().expect("fixed version field")))
+        .ok_or_else(|| Error::InvalidSegment("segment has no complete format header".into()))?;
+    if version != SEGMENT_FORMAT_VERSION {
+        return Err(Error::UnsupportedVersion {
+            object: "segment",
+            version,
+        });
+    }
+    if bytes.get(..8) != Some(SEGMENT_MAGIC.as_slice()) {
+        return invalid("segment magic does not match its format version");
+    }
+    Ok(())
 }
 
 fn decode_v3_file(
@@ -1277,8 +1186,8 @@ fn decode_v3_expected_file(
 }
 
 fn decode_v3_bytes(bytes: Vec<u8>, cache: SharedBlockCache) -> Result<Segment> {
-    if bytes.len() < V3_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES {
-        return invalid("v3 segment is shorter than its framing");
+    if bytes.len() < SEGMENT_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES {
+        return invalid("segment is shorter than its framing");
     }
     let content_end = bytes.len() - FOOTER_BYTES;
     let expected = std::str::from_utf8(&bytes[content_end..])
@@ -1299,8 +1208,8 @@ fn decode_v3_bytes(bytes: Vec<u8>, cache: SharedBlockCache) -> Result<Segment> {
 }
 
 fn validate_v3_slice(bytes: &[u8]) -> Result<SegmentDescriptor> {
-    if bytes.len() < V3_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES {
-        return invalid("v3 segment is shorter than its framing");
+    if bytes.len() < SEGMENT_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES {
+        return invalid("segment is shorter than its framing");
     }
     let content_end = bytes.len() - FOOTER_BYTES;
     let expected = std::str::from_utf8(&bytes[content_end..])
@@ -1408,15 +1317,15 @@ fn read_v3_index(
     physical_bytes: u64,
     actual: String,
 ) -> Result<(SegmentDescriptor, Vec<BlockDescriptor>, u64)> {
-    let mut header = [0u8; V3_HEADER_BYTES];
+    let mut header = [0u8; SEGMENT_HEADER_BYTES];
     reader.seek(SeekFrom::Start(0))?;
     reader.read_exact(&mut header)?;
-    if &header[..8] != SEGMENT_V3_MAGIC
+    if &header[..8] != SEGMENT_MAGIC
         || u16::from_be_bytes(header[8..10].try_into().unwrap()) != SEGMENT_FORMAT_VERSION
     {
         return invalid("v3 segment magic or version does not match");
     }
-    if u16::from_be_bytes(header[10..12].try_into().unwrap()) as usize != V3_HEADER_BYTES
+    if u16::from_be_bytes(header[10..12].try_into().unwrap()) as usize != SEGMENT_HEADER_BYTES
         || u32::from_be_bytes(header[12..16].try_into().unwrap()) != 1
     {
         return invalid("unknown v3 header length or compression flags");
@@ -1436,7 +1345,7 @@ fn read_v3_index(
         || minimum_sequence > maximum_sequence
         || block_count == 0
         || target != SEGMENT_BLOCK_TARGET_BYTES
-        || index_offset < V3_HEADER_BYTES as u64
+        || index_offset < SEGMENT_HEADER_BYTES as u64
         || index_offset >= content_end
         || declared_record_bytes > MAX_SEGMENT_BYTES
     {
@@ -1453,7 +1362,7 @@ fn read_v3_index(
     reader.seek(SeekFrom::Start(index_offset))?;
     let mut index = vec![0u8; index_bytes];
     reader.read_exact(&mut index)?;
-    if &index[..8] != INDEX_V3_MAGIC
+    if &index[..8] != INDEX_MAGIC
         || u32::from_be_bytes(index[8..12].try_into().unwrap()) as usize != block_count
         || index[12..16] != [0, 0, 0, 0]
     {
@@ -1461,7 +1370,7 @@ fn read_v3_index(
     }
     let mut cursor = INDEX_HEADER_BYTES;
     let mut blocks = Vec::with_capacity(block_count);
-    let mut prior_end = V3_HEADER_BYTES as u64;
+    let mut prior_end = SEGMENT_HEADER_BYTES as u64;
     let mut prior_last_key: Option<Vec<u8>> = None;
     for _ in 0..block_count {
         let fixed_end = cursor
@@ -1603,13 +1512,11 @@ fn build_blocked_segment(
 ) -> Result<Segment> {
     Ok(Segment {
         descriptor,
-        storage: SegmentStorage::Blocked {
-            source,
-            blocks,
-            filters,
-            cache,
-            cache_id: CACHE_ID.fetch_add(1, Ordering::Relaxed),
-        },
+        source,
+        blocks,
+        filters,
+        cache,
+        cache_id: CACHE_ID.fetch_add(1, Ordering::Relaxed),
     })
 }
 
@@ -1745,133 +1652,6 @@ fn decode_hex_nibble(byte: u8) -> Result<u8> {
     }
 }
 
-fn decode_legacy(bytes: Vec<u8>) -> Result<Segment> {
-    if bytes.len() < V1_HEADER_BYTES + FOOTER_BYTES {
-        return invalid("segment is shorter than its header and footer");
-    }
-    let version = u16::from_be_bytes(bytes[8..10].try_into().unwrap());
-    let (header_bytes, compressed) = match (&bytes[0..8], version) {
-        (magic, 1) if magic == SEGMENT_V1_MAGIC => {
-            let header_len = u16::from_be_bytes(bytes[10..12].try_into().unwrap());
-            if header_len as usize != V1_HEADER_BYTES || bytes[12..16] != [0, 0, 0, 0] {
-                return invalid("unknown v1 segment header length or flags");
-            }
-            (V1_HEADER_BYTES, false)
-        }
-        (magic, 2) if magic == SEGMENT_V2_MAGIC => {
-            if bytes.len() < V2_HEADER_BYTES + FOOTER_BYTES {
-                return invalid("v2 segment is shorter than its header and footer");
-            }
-            let header_len = u16::from_be_bytes(bytes[10..12].try_into().unwrap());
-            if header_len as usize != V2_HEADER_BYTES || bytes[12..16] != [0, 0, 0, 1] {
-                return invalid("unknown v2 segment header length or compression flags");
-            }
-            (V2_HEADER_BYTES, true)
-        }
-        (_, 1 | 2) => return invalid("segment magic does not match version"),
-        _ => {
-            return Err(Error::UnsupportedVersion {
-                object: "segment",
-                version,
-            })
-        }
-    };
-    let entries = u64::from_be_bytes(bytes[16..24].try_into().unwrap());
-    let minimum_sequence = u64::from_be_bytes(bytes[24..32].try_into().unwrap());
-    let maximum_sequence = u64::from_be_bytes(bytes[32..40].try_into().unwrap());
-    if entries == 0 || minimum_sequence == 0 || minimum_sequence > maximum_sequence {
-        return invalid("invalid segment count or sequence range");
-    }
-    let physical_content_end = bytes.len() - FOOTER_BYTES;
-    let expected = std::str::from_utf8(&bytes[physical_content_end..])
-        .map_err(|_| Error::InvalidSegment("segment footer is not ASCII".into()))?;
-    let actual = sha256_hex(&bytes[..physical_content_end]);
-    if expected != actual {
-        return invalid("segment content checksum does not match");
-    }
-    let records = if compressed {
-        let declared = u64::from_be_bytes(bytes[40..48].try_into().unwrap());
-        if declared > MAX_SEGMENT_BYTES {
-            return invalid("v2 uncompressed records exceed the 1 GiB safety limit");
-        }
-        let compressed = &bytes[header_bytes..physical_content_end];
-        let prefixed = compressed
-            .get(..4)
-            .ok_or_else(|| Error::InvalidSegment("v2 compressed body has no size prefix".into()))?;
-        if u64::from(u32::from_le_bytes(prefixed.try_into().unwrap())) != declared {
-            return invalid("v2 declared and compressed record lengths differ");
-        }
-        decompress_size_prepended(compressed)
-            .map_err(|error| Error::InvalidSegment(format!("v2 LZ4 decode failed: {error}")))?
-    } else {
-        bytes[header_bytes..physical_content_end].to_vec()
-    };
-    let (first_key, last_key, sparse_index) =
-        validate_legacy_records(&records, entries, minimum_sequence, maximum_sequence)?;
-    Ok(Segment {
-        descriptor: SegmentDescriptor {
-            id: actual.clone(),
-            level: 0,
-            first_key,
-            last_key,
-            minimum_sequence,
-            maximum_sequence,
-            entries,
-            bytes: bytes.len() as u64,
-            checksum: actual,
-        },
-        storage: SegmentStorage::Legacy {
-            records,
-            sparse_index,
-        },
-    })
-}
-
-fn validate_legacy_records(
-    records: &[u8],
-    entries: u64,
-    minimum_sequence: u64,
-    maximum_sequence: u64,
-) -> Result<(Vec<u8>, Vec<u8>, Vec<SparseEntry>)> {
-    let mut cursor = 0;
-    let mut previous = None;
-    let mut sparse_index = Vec::new();
-    let mut keys_since_index = SPARSE_INDEX_STRIDE;
-    let mut first_key = None;
-    let mut last_key = None;
-    for _ in 0..entries {
-        let offset = cursor;
-        let record = parse_record(
-            records,
-            cursor,
-            records.len(),
-            minimum_sequence,
-            maximum_sequence,
-        )?;
-        let new_key = previous
-            .as_ref()
-            .is_none_or(|(key, _): &(Vec<u8>, u64)| key.as_slice() != record.key);
-        validate_order(&mut previous, &record)?;
-        if new_key {
-            first_key.get_or_insert_with(|| record.key.to_vec());
-            last_key = Some(record.key.to_vec());
-            if keys_since_index >= SPARSE_INDEX_STRIDE {
-                sparse_index.push(SparseEntry {
-                    offset,
-                    key: record.key.to_vec(),
-                });
-                keys_since_index = 0;
-            }
-            keys_since_index += 1;
-        }
-        cursor = record.next;
-    }
-    if cursor != records.len() {
-        return invalid("segment contains trailing bytes before its footer");
-    }
-    Ok((first_key.unwrap(), last_key.unwrap(), sparse_index))
-}
-
 fn validate_order(previous: &mut Option<(Vec<u8>, u64)>, record: &Record<'_>) -> Result<()> {
     if previous.as_ref().is_some_and(|(key, sequence)| {
         record.key < key.as_slice()
@@ -1881,39 +1661,6 @@ fn validate_order(previous: &mut Option<(Vec<u8>, u64)>, record: &Record<'_>) ->
     }
     *previous = Some((record.key.to_vec(), record.sequence));
     Ok(())
-}
-
-fn legacy_seek(records: &[u8], sparse: &[SparseEntry], key: &[u8]) -> usize {
-    let position = sparse.partition_point(|entry| entry.key.as_slice() <= key);
-    sparse
-        .get(position.saturating_sub(1))
-        .map_or(0, |entry| entry.offset.min(records.len()))
-}
-
-fn select_version(
-    bytes: &[u8],
-    mut cursor: usize,
-    end: usize,
-    key: &[u8],
-    read_sequence: u64,
-) -> Result<Option<SegmentVersion>> {
-    let mut selected = None;
-    while cursor < end {
-        let record = parse_record(bytes, cursor, end, 1, u64::MAX)?;
-        match record.key.cmp(key) {
-            std::cmp::Ordering::Less => {}
-            std::cmp::Ordering::Equal if record.sequence <= read_sequence => {
-                selected = Some(SegmentVersion {
-                    sequence: record.sequence,
-                    value: record.value.map(Box::<[u8]>::from),
-                })
-            }
-            std::cmp::Ordering::Equal => {}
-            std::cmp::Ordering::Greater => break,
-        }
-        cursor = record.next;
-    }
-    Ok(selected)
 }
 
 fn select_version_block(
@@ -1942,16 +1689,6 @@ fn select_version_block(
         }
     }
     Ok(selected)
-}
-
-fn visit_records(bytes: &[u8], visit: &mut impl FnMut(Record<'_>) -> Result<()>) -> Result<()> {
-    let mut cursor = 0;
-    while cursor < bytes.len() {
-        let record = parse_record(bytes, cursor, bytes.len(), 1, u64::MAX)?;
-        visit(record)?;
-        cursor = record.next;
-    }
-    Ok(())
 }
 
 fn visit_decoded_records(

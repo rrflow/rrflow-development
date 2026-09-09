@@ -1,6 +1,6 @@
 # rrflowKV current physical format
 
-**Status:** active implementation reference for the typed application-key and pre-alpha row-segment formats; the row format is not the accepted RRFlow 1.0 target
+**Status:** active implementation reference for the single current typed application-key and pre-alpha row-segment formats; the row format is not the accepted RRFlow 1.0 target
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`
 **Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-store` and `rrd-lsm`
 
@@ -11,7 +11,7 @@ Current comparison mechanics and evidence limitations are owned by the
 [benchmark-harness reference](rrflowkv-benchmark-harness.md).
 The [roadmap](../../roadmap/rrflow-1.0.md) owns the replacement and removal
 work; [POAM-002 and POAM-003](../../poam/rrflow-1.0-alpha.md) keep the physical
-layout and alternate-reader deficiencies open.
+layout and whole-executable closure deficiencies open.
 
 ## Current and target boundary
 
@@ -30,12 +30,13 @@ specified only by the engine data-flow record and is delivered by roadmap
 Gate C-06. When C-06 changes the physical format, its accepted format material
 replaces this body in place and the pre-alpha format detail is removed.
 
-The checkout still contains executable readers for manifest v1, mutation batch
-v1, and segment v1/v2. Those are observed pre-release removal debt, not
-supported alpha architecture. The alternate Fjall store, selector, and
-migration executor are absent. Gate C-05 must remove the remaining earlier
-physical readers directly before the alpha baseline; this document does not
-normalize them as product requirements.
+The active physical readers now accept exactly mutation batch v2, manifest v2,
+and segment v3. Pre-1.0 batch v1, manifest v1, and segment v1/v2 bytes are
+retained only as negative inputs that must return an explicit unsupported-format
+error before any alternate decoder runs. The Fjall store, backend selector,
+and migration executor are absent. Gate C-05 remains open until the complete
+default executable, dependency, opener, and physical-reader audit passes; this
+record does not turn any rejected format into a product requirement.
 
 ## Implemented object set
 
@@ -216,9 +217,9 @@ delete-with-length, trailing bytes, and out-of-contract lengths fail closed.
 One MVCC sequence is allocated per operation while the complete payload stays
 inside one atomic WAL frame.
 
-The v1 reader is a pre-1.0 branch scheduled for direct removal. It recognizes
-`RRDBAT01`, a one-byte operation kind, three zero operation-flag bytes, and
-separate `u32` key/value lengths. Writers emit only v2.
+The checked-in v1 bytes are a negative fixture. `RRDBAT01`/version 1 returns
+`UnsupportedVersion` before any operation header is decoded; no v1 reader is
+present. Writers and readers use only v2.
 
 ## Manifest, publication, and checkpoints
 
@@ -244,9 +245,10 @@ pointers that pin a manifest generation; rebinding a name fails, release is
 explicit, and garbage collection uses the checkpoint inventory rather than
 filename inference.
 
-The manifest-v1 reader is current removal debt. No superseded application-key
-reader remains after C-01; neither condition defines the complete 1.0 physical
-format.
+The manifest-v1 JSON is a negative fixture and returns `UnsupportedVersion`;
+no v1 manifest digest or state reader is present. No superseded
+application-key reader remains after C-01. These removals still do not qualify
+the C-06 physical target.
 
 ## Immutable row segment v3
 
@@ -268,9 +270,10 @@ while a positive still executes exact MVCC comparison. All segments in one
 database share a bounded decoded-block LRU. Blocks larger than its configured
 capacity may be decoded for a caller but are not retained.
 
-The v1 uncompressed and v2 single-compressed-block readers are explicit
-pre-1.0 branches scheduled for removal by C-05. They are not a reason to
-preserve row segments in the C-06 target.
+Constructed v1 uncompressed and v2 single-compressed-block inputs return
+`UnsupportedVersion` at every segment open and snapshot-validation boundary.
+No v1/v2 segment reader is present. The current v3 row layout remains scheduled
+for direct replacement by C-06.
 
 ## Flush, compaction, snapshots, and garbage collection
 
@@ -325,9 +328,9 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 - [`rrflow-kv-key-codec-v1.hex`](../../../crates/persistence/rrd-store/fixtures/rrflow-kv-key-codec-v1.hex)
 - [`rrflow-kv-store-layout-v1.hex`](../../../crates/persistence/rrd-store/fixtures/rrflow-kv-store-layout-v1.hex)
 - [`wal-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/wal-v1.hex)
-- [`batch-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v1.hex)
+- [`batch-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v1.hex) — rejection input only
 - [`batch-v2.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v2.hex)
-- [`manifest-v1.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v1.json)
+- [`manifest-v1.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v1.json) — rejection input only
 - [`manifest-v2.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v2.json)
 - [`snapshot-bundle-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex)
 
@@ -361,8 +364,9 @@ source-delta, rrflowMX/rrflowKV differential, exact-key failure-boundary, and
 rrflowKV-reopen evidence. C-03 is accepted by the canonical roadmap; that does
 not qualify Gate E's bounded read paths/materializers or Gate C-06's physical
 format. The remaining lower-level tests prove only the present object format.
-C-05 requires removal evidence for every pre-1.0 batch, manifest, and segment
-reader and continued absence of alternate stores. C-06 requires new vectors,
+C-05 still requires whole-executable source, dependency, opener, and
+current-reader closure evidence in addition to the focused pre-1.0 format
+rejections and continued absence of alternate stores. C-06 requires new vectors,
 property and crash tests, and fixed-hardware comparison for the hybrid
 Arrow-compatible target. Gate F requires streamed
 projection/predicate/budget counters through DataFusion. Passing this suite

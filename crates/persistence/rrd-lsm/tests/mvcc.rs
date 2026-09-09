@@ -36,10 +36,13 @@ fn batch_codec_is_canonical_strict_and_frozen() {
     let batch = fixture_batch();
     let encoded = batch.encode().unwrap();
     assert_eq!(WriteBatch::decode(&encoded).unwrap(), batch);
-    assert_eq!(
-        WriteBatch::decode(&batch_fixture("batch-v1.hex")).unwrap(),
-        batch
-    );
+    assert!(matches!(
+        WriteBatch::decode(&batch_fixture("batch-v1.hex")),
+        Err(Error::UnsupportedVersion {
+            object: "write batch",
+            version: 1
+        })
+    ));
 
     for end in 0..encoded.len() {
         assert!(WriteBatch::decode(&encoded[..end]).is_err());
@@ -95,7 +98,7 @@ fn batch_codec_is_canonical_strict_and_frozen() {
 }
 
 #[test]
-fn a_v1_batch_replays_through_the_wal_recovery_path() {
+fn a_pre_1_0_batch_is_rejected_by_the_wal_recovery_path() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("active.wal");
     let payload = batch_fixture("batch-v1.hex");
@@ -113,11 +116,13 @@ fn a_v1_batch_replays_through_the_wal_recovery_path() {
     drop(writer);
 
     let recovery = recover(&path).unwrap();
-    let table = Memtable::recover(&recovery.batches).unwrap();
-    assert_eq!(table.maximum_sequence(), 3);
-    assert_eq!(table.get(b"alpha", 1), Some(b"one".as_slice()));
-    assert_eq!(table.get(b"alpha", 3), None);
-    assert_eq!(table.get(b"beta", 3), Some(b"two".as_slice()));
+    assert!(matches!(
+        Memtable::recover(&recovery.batches),
+        Err(Error::UnsupportedVersion {
+            object: "write batch",
+            version: 1
+        })
+    ));
 }
 
 #[test]

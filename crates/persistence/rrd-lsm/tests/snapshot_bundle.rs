@@ -266,6 +266,25 @@ fn corruption_and_truncation_are_denied_before_manifest_publication() {
     assert!(target.install_snapshot_bundle(&decoded, 2).is_err());
     assert_eq!(target.manifest(), &original_manifest);
     assert_eq!(target.snapshot().sequence, 0);
+
+    let mut pre_1_0_segment = SnapshotBundle::decode(&encoded).unwrap();
+    pre_1_0_segment.segments[0].bytes[8..10].copy_from_slice(&2u16.to_be_bytes());
+    assert!(matches!(
+        pre_1_0_segment.validate(),
+        Err(Error::UnsupportedVersion {
+            object: "segment",
+            version: 2
+        })
+    ));
+    assert!(matches!(
+        target.install_snapshot_bundle(&pre_1_0_segment, 2),
+        Err(Error::UnsupportedVersion {
+            object: "segment",
+            version: 2
+        })
+    ));
+    assert_eq!(target.manifest(), &original_manifest);
+    assert_eq!(target.snapshot().sequence, 0);
 }
 
 #[test]

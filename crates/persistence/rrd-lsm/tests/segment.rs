@@ -205,31 +205,73 @@ fn v3_rejects_authenticated_length_flags_and_block_corruption() {
     ));
 }
 
-#[test]
-fn format_v1_segments_remain_readable_after_v2_compression() {
-    let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("legacy.seg");
-    let mut bytes = Vec::new();
-    bytes.extend_from_slice(b"RRDSEG01");
-    bytes.extend_from_slice(&1u16.to_be_bytes());
-    bytes.extend_from_slice(&40u16.to_be_bytes());
-    bytes.extend_from_slice(&0u32.to_be_bytes());
-    bytes.extend_from_slice(&1u64.to_be_bytes());
-    bytes.extend_from_slice(&1u64.to_be_bytes());
-    bytes.extend_from_slice(&1u64.to_be_bytes());
-    bytes.push(1);
-    bytes.extend_from_slice(&[0, 0, 0]);
-    bytes.extend_from_slice(&5u32.to_be_bytes());
-    bytes.extend_from_slice(&3u32.to_be_bytes());
-    bytes.extend_from_slice(&1u64.to_be_bytes());
-    bytes.extend_from_slice(b"alpha");
-    bytes.extend_from_slice(b"one");
-    bytes.extend_from_slice(rrd_core::digest::sha256_hex(&bytes).as_bytes());
-    std::fs::write(&path, bytes).unwrap();
+fn pre_1_0_segment(version: u16) -> Vec<u8> {
+    let mut record = Vec::new();
+    record.push(1);
+    record.extend_from_slice(&[0, 0, 0]);
+    record.extend_from_slice(&5u32.to_be_bytes());
+    record.extend_from_slice(&3u32.to_be_bytes());
+    record.extend_from_slice(&1u64.to_be_bytes());
+    record.extend_from_slice(b"alpha");
+    record.extend_from_slice(b"one");
 
-    let segment = Segment::open(&path).unwrap();
-    assert_eq!(segment.get(b"alpha", 1).unwrap(), Some(b"one".to_vec()));
-    assert_eq!(segment.descriptor.entries, 1);
+    let mut bytes = Vec::new();
+    match version {
+        1 => {
+            bytes.extend_from_slice(b"RRDSEG01");
+            bytes.extend_from_slice(&1u16.to_be_bytes());
+            bytes.extend_from_slice(&40u16.to_be_bytes());
+            bytes.extend_from_slice(&0u32.to_be_bytes());
+            bytes.extend_from_slice(&1u64.to_be_bytes());
+            bytes.extend_from_slice(&1u64.to_be_bytes());
+            bytes.extend_from_slice(&1u64.to_be_bytes());
+            bytes.extend_from_slice(&record);
+        }
+        2 => {
+            bytes.extend_from_slice(b"RRDSEG02");
+            bytes.extend_from_slice(&2u16.to_be_bytes());
+            bytes.extend_from_slice(&48u16.to_be_bytes());
+            bytes.extend_from_slice(&1u32.to_be_bytes());
+            bytes.extend_from_slice(&1u64.to_be_bytes());
+            bytes.extend_from_slice(&1u64.to_be_bytes());
+            bytes.extend_from_slice(&1u64.to_be_bytes());
+            bytes.extend_from_slice(&(record.len() as u64).to_be_bytes());
+            bytes.extend_from_slice(&lz4_flex::block::compress_prepend_size(&record));
+        }
+        _ => unreachable!("test constructs only pre-1.0 formats"),
+    }
+    bytes.extend_from_slice(rrd_core::digest::sha256_hex(&bytes).as_bytes());
+    bytes
+}
+
+#[test]
+fn pre_1_0_and_unknown_segment_formats_are_rejected() {
+    let directory = tempfile::tempdir().unwrap();
+    for version in [1, 2] {
+        let path = directory.path().join(format!("format-{version}.seg"));
+        std::fs::write(&path, pre_1_0_segment(version)).unwrap();
+        assert!(matches!(
+            Segment::open(&path),
+            Err(Error::UnsupportedVersion {
+                object: "segment",
+                version: rejected
+            }) if rejected == version
+        ));
+    }
+
+    let segments = directory.path().join("segments");
+    let (_, current) = Segment::write_from_memtable(&segments, &table()).unwrap();
+    let mut bytes = std::fs::read(current).unwrap();
+    bytes[8..10].copy_from_slice(&4u16.to_be_bytes());
+    let unknown = directory.path().join("format-4.seg");
+    std::fs::write(&unknown, bytes).unwrap();
+    assert!(matches!(
+        Segment::open(&unknown),
+        Err(Error::UnsupportedVersion {
+            object: "segment",
+            version: 4
+        })
+    ));
 }
 
 #[test]

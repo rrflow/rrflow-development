@@ -9,7 +9,7 @@
 //! authoritative.
 
 use super::runtime_state::{
-    accumulator_with, checked_key, get, get_json, read_sequence, read_stamp_with,
+    checked_key, current_accumulator, get, get_json, read_sequence, read_stamp_with,
     validate_read_stamp, values_for_scope, AccessRead,
 };
 use super::{read_versioned, schema_at_read, RuntimeReadBudget, RuntimeVersionedSource};
@@ -114,7 +114,7 @@ pub(crate) fn prepare_semantic_commit(
             actual: start,
         });
     }
-    let (mut accumulator, bootstrap_nodes) = accumulator_with(reader, start)?;
+    let mut accumulator = current_accumulator(reader, start)?;
     validate_retirement_targets(reader, commit, start)?;
     let effective_schema = validate_schema_and_objects(reader, commit)?;
     validate_references(reader, commit)?;
@@ -160,14 +160,6 @@ pub(crate) fn prepare_semantic_commit(
         },
         writes: BTreeMap::new(),
     };
-    for node in bootstrap_nodes {
-        plan.put_bytes(
-            keyspaces::META,
-            &keyspaces::runtime_accumulator_node_key(node.level, node.index),
-            node.digest.into_bytes(),
-        )?;
-    }
-
     let mut outbox_count = 0;
     let mut staged_relations = BTreeMap::<RuntimeRef, Option<RuntimeRelation>>::new();
     for (ordinal, mutation) in commit.mutations.iter().enumerate() {
@@ -1135,6 +1127,41 @@ mod tests {
         }
     }
 
+    fn remove_runtime_accumulator(storage: &dyn StorageEngine) {
+        let mut transaction = storage.begin_transaction().unwrap();
+        transaction
+            .delete(
+                checked_key(keyspaces::META, &keyspaces::runtime_accumulator_state_key()).unwrap(),
+            )
+            .unwrap();
+        transaction
+            .commit(crate::keyspaces::Durability::Authoritative)
+            .unwrap();
+    }
+
+    fn assert_missing_accumulator_is_rejected(storage: &dyn StorageEngine, cursor: u64) {
+        let error = storage
+            .runtime()
+            .commit(&RuntimeCommit {
+                scope: rrd_core::ScopeId::new("project:semantic-atomicity").unwrap(),
+                at: 400,
+                actor: "agent:semantic-atomicity".into(),
+                expected_cursor: cursor,
+                mutations: vec![RuntimeMutation::Record {
+                    record: RuntimeRecord {
+                        valid_from: 400,
+                        ..record("d")
+                    },
+                }],
+            })
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            Error::Substrate(reason)
+                if reason == format!("runtime accumulator is absent at non-empty cursor {cursor}")
+        ));
+    }
+
     #[test]
     fn graph_temporal_and_delivery_effects_share_one_plan_on_mx_kv_and_reopen() {
         let mx = RrflowMxStore::new();
@@ -1152,5 +1179,24 @@ mod tests {
         let reopened = RrflowKvStore::open(&path).unwrap();
         assert_physical_fan_out(&reopened, &kv_fixture);
         assert_eq!(mx_fixture.commit_ids, kv_fixture.commit_ids);
+    }
+
+    #[test]
+    fn nonempty_runtime_never_rebuilds_a_missing_accumulator_from_the_change_log() {
+        let mx = RrflowMxStore::new();
+        let mx_fixture = commit_fixture(&mx);
+        remove_runtime_accumulator(&mx);
+        assert_missing_accumulator_is_rejected(&mx, 7);
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("rrflow-kv");
+        {
+            let kv = RrflowKvStore::open(&path).unwrap();
+            let kv_fixture = commit_fixture(&kv);
+            assert_eq!(kv_fixture.commit_ids, mx_fixture.commit_ids);
+            remove_runtime_accumulator(&kv);
+        }
+        let reopened = RrflowKvStore::open(&path).unwrap();
+        assert_missing_accumulator_is_rejected(&reopened, 7);
     }
 }

@@ -4,8 +4,8 @@ use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Space};
 use crate::{Error, Result, StorageTransaction};
 use rrd_core::{
-    ReadStamp, RuntimeChange, RuntimeChangePage, RuntimeLogAccumulator, RuntimeMerkleNode,
-    RuntimeMutation, RuntimeReadValidation, RuntimeSchemaRegistry, ScopeId,
+    ReadStamp, RuntimeChange, RuntimeChangePage, RuntimeLogAccumulator, RuntimeMutation,
+    RuntimeReadValidation, RuntimeSchemaRegistry, ScopeId,
 };
 use serde::de::DeserializeOwned;
 
@@ -333,25 +333,15 @@ pub(crate) fn schema_version_at(
     Ok(Some(change))
 }
 
-pub(crate) fn accumulator_with(
+pub(crate) fn current_accumulator(
     reader: &(impl AccessRead + ?Sized),
     expected_size: u64,
-) -> Result<(RuntimeLogAccumulator, Vec<RuntimeMerkleNode>)> {
-    if let Some(accumulator) = load_accumulator(reader, expected_size)? {
-        return Ok((accumulator, Vec::new()));
-    }
-    let page = change_page(reader, expected_size, 0, usize::MAX, None)?;
-    let mut accumulator = RuntimeLogAccumulator::new();
-    let mut nodes = Vec::new();
-    for change in &page.changes {
-        nodes.extend(accumulator.append_change(change)?);
-    }
-    if accumulator.tree_size != expected_size {
-        return Err(Error::Substrate(
-            "runtime accumulator bootstrap did not cover the full log".into(),
-        ));
-    }
-    Ok((accumulator, nodes))
+) -> Result<RuntimeLogAccumulator> {
+    load_accumulator(reader, expected_size)?.ok_or_else(|| {
+        Error::Substrate(format!(
+            "runtime accumulator is absent at non-empty cursor {expected_size}"
+        ))
+    })
 }
 
 fn load_accumulator(
