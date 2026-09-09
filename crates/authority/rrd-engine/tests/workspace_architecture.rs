@@ -15,6 +15,7 @@ struct WorkspaceMetadata {
 struct PackageDependencies {
     manifest: PathBuf,
     description: String,
+    features: BTreeMap<String, BTreeSet<String>>,
     workspace: BTreeSet<String>,
     all: BTreeSet<String>,
     targets: BTreeSet<String>,
@@ -23,6 +24,9 @@ struct PackageDependencies {
 struct DependencyInput {
     owner: String,
     name: String,
+    kind: String,
+    optional: bool,
+    features: BTreeSet<String>,
     path: Option<PathBuf>,
     source: Option<String>,
 }
@@ -315,6 +319,120 @@ fn one_engine_authority_owns_every_product_storage_opening() {
         duplicate_handles.is_empty(),
         "rrd-engine must expose only RrdEngine as its storage-opening authority: {duplicate_handles:#?}"
     );
+}
+
+#[test]
+fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader() {
+    let metadata = workspace_metadata();
+
+    let lsm_edges = metadata
+        .dependency_inputs
+        .iter()
+        .filter(|dependency| dependency.name == "rrd-lsm")
+        .map(|dependency| {
+            (
+                dependency.owner.as_str(),
+                dependency.kind.as_str(),
+                dependency.optional,
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        lsm_edges,
+        vec![
+            ("rrd-cluster", "normal", true),
+            ("rrd-store", "normal", false),
+        ],
+        "rrd-lsm must have one required alpha owner; the only optional edge is the unavailable post-alpha cluster adapter"
+    );
+
+    let required_lsm_owners = lsm_edges
+        .iter()
+        .filter_map(|(owner, kind, optional)| {
+            (*kind != "dev" && !optional).then_some((*owner).to_owned())
+        })
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        required_lsm_owners,
+        names(&["rrd-store"]),
+        "the alpha executable must reach the physical substrate only through rrd-store"
+    );
+
+    let engine_cluster = metadata
+        .dependency_inputs
+        .iter()
+        .find(|dependency| dependency.owner == "rrd-engine" && dependency.name == "rrd-cluster")
+        .expect("rrd-engine must declare its cluster contract dependency");
+    assert_eq!(
+        engine_cluster.features,
+        names(&["object-transfer"]),
+        "the alpha engine may consume only cluster transfer contracts; consensus features remain unavailable"
+    );
+    let cluster = &metadata.packages["rrd-cluster"];
+    assert_eq!(
+        cluster.features.get("default"),
+        Some(&BTreeSet::new()),
+        "rrd-cluster must not activate an implementation by default"
+    );
+    let engine = &metadata.packages["rrd-engine"];
+    assert_eq!(
+        engine.features.get("default"),
+        Some(&names(&["full"])),
+        "rrd-engine's alpha composition changed"
+    );
+    assert!(
+        engine
+            .features
+            .get("full")
+            .is_some_and(|features| !features.iter().any(|feature| feature.contains("openraft"))),
+        "the alpha engine composition must not activate the post-alpha OpenRaft adapter"
+    );
+
+    for package in metadata.packages.values() {
+        assert!(
+            !package.all.contains("fjall"),
+            "Fjall must remain absent from workspace dependency metadata"
+        );
+    }
+
+    let batch = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/persistence/rrd-lsm/src/batch.rs"),
+    )
+    .expect("batch codec source must be readable");
+    let manifest = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/persistence/rrd-lsm/src/manifest.rs"),
+    )
+    .expect("manifest source must be readable");
+    let segment = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/persistence/rrd-lsm/src/segment.rs"),
+    )
+    .expect("segment source must be readable");
+    assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
+    assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 2;"));
+    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 3;"));
+    for (name, source) in [
+        ("batch", batch.as_str()),
+        ("manifest", manifest.as_str()),
+        ("segment", segment.as_str()),
+    ] {
+        for retired in [
+            "decode_legacy",
+            "SegmentStorage::Legacy",
+            "PersistentBackend",
+            "PersistentEngine",
+        ] {
+            assert!(
+                !source.contains(retired),
+                "{name} reader revived retired branch {retired}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -990,6 +1108,19 @@ fn workspace_metadata() -> WorkspaceMetadata {
             dependency_inputs.push(DependencyInput {
                 owner: name.to_owned(),
                 name: dependency_name.to_owned(),
+                kind: dependency["kind"].as_str().unwrap_or("normal").to_owned(),
+                optional: dependency["optional"].as_bool().unwrap_or(false),
+                features: dependency["features"]
+                    .as_array()
+                    .expect("dependency features must be an array")
+                    .iter()
+                    .map(|feature| {
+                        feature
+                            .as_str()
+                            .expect("dependency features must be strings")
+                            .to_owned()
+                    })
+                    .collect(),
                 path: dependency["path"].as_str().map(PathBuf::from),
                 source: dependency["source"].as_str().map(str::to_owned),
             });
@@ -1017,6 +1148,27 @@ fn workspace_metadata() -> WorkspaceMetadata {
                             .as_str()
                             .unwrap_or_default()
                             .to_owned(),
+                        features: package["features"]
+                            .as_object()
+                            .expect("package features must be an object")
+                            .iter()
+                            .map(|(feature, members)| {
+                                (
+                                    feature.clone(),
+                                    members
+                                        .as_array()
+                                        .expect("feature members must be an array")
+                                        .iter()
+                                        .map(|member| {
+                                            member
+                                                .as_str()
+                                                .expect("feature members must be strings")
+                                                .to_owned()
+                                        })
+                                        .collect(),
+                                )
+                            })
+                            .collect(),
                         workspace,
                         all,
                         targets,

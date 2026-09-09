@@ -24,7 +24,6 @@ tokio = { version = "1", features = ["rt", "time"] }
 tempfile = "3"
 rrd-core = { path = "../../kernel/rrd-core" }
 rrd-store = { path = "../../persistence/rrd-store" }
-rrd-lsm = { path = "../../persistence/rrd-lsm" }
 rrd-security = { path = "../../authority/rrd-security" }
 rrd-estate = { path = "../../authority/rrd-estate" }
 rrd-server = { path = "../../transport/rrd-server" }

@@ -4611,7 +4611,6 @@ dependencies = [
  "rrd-core",
  "rrd-engine",
  "rrd-estate",
- "rrd-lsm",
  "rrd-security",
  "rrd-server",
  "rrd-store",
