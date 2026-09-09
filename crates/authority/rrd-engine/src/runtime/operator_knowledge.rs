@@ -216,13 +216,7 @@ where
 {
     knowledge.validate()?;
     request.validate()?;
-    let verification =
-        store
-            .runtime()
-            .read_changes(&request.search.read, request.search.read.commit_cursor, 1)?;
-    if verification.through_cursor != request.search.read.commit_cursor {
-        return Err("operator-knowledge read stamp did not verify at its captured cursor".into());
-    }
+    store.runtime().validate_read_stamp(&request.search.read)?;
     let request_digest = request.digest()?;
     let binding_digest = knowledge.digest()?;
     let cursor = request.search.read.commit_cursor.to_be_bytes();

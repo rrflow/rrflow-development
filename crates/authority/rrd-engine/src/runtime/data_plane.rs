@@ -49,12 +49,7 @@ where
     B: EmbeddingBackend,
 {
     job.validate()?;
-    let verification = store
-        .runtime()
-        .read_changes(&job.read, job.read.commit_cursor, 1)?;
-    if verification.through_cursor != job.read.commit_cursor {
-        return Err("embedding read stamp did not verify at its captured cursor".into());
-    }
+    store.runtime().validate_read_stamp(&job.read)?;
     let descriptor = backend.descriptor().clone();
     descriptor.validate()?;
     let job_digest = job.digest()?;
@@ -363,13 +358,7 @@ pub fn execute_traced_vector_search<E: StorageEngine>(
     at: Millis,
 ) -> Result<TracedVectorSearch, Box<dyn std::error::Error>> {
     request.validate()?;
-    let verification =
-        store
-            .runtime()
-            .read_changes(&request.read, request.read.commit_cursor, 1)?;
-    if verification.through_cursor != request.read.commit_cursor {
-        return Err("vector read stamp did not verify at its captured cursor".into());
-    }
+    store.runtime().validate_read_stamp(&request.read)?;
     let required_source_cursor =
         required_projection_cursor(store, &request.read, ProjectionFamily::Vector)?;
     let request_digest = request.digest()?;

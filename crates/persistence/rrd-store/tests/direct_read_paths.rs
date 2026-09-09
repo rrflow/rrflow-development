@@ -309,6 +309,21 @@ fn snapshot(
 }
 
 fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<RuntimeReadEvidence> {
+    let retained_validation = engine
+        .runtime()
+        .validate_read_stamp(&corpus.retained)
+        .unwrap();
+    assert_eq!(retained_validation.method, "rfc9162_direct_versions");
+    assert!(retained_validation.change_reads > 0);
+    assert!(retained_validation.proof_nodes > 0);
+    let current_validation = engine
+        .runtime()
+        .validate_read_stamp(&corpus.current)
+        .unwrap();
+    assert_eq!(current_validation.method, "authenticated_current_head");
+    assert_eq!(current_validation.change_reads, 0);
+    assert_eq!(current_validation.proof_nodes, 0);
+
     let sources = RuntimeVersionedSource::all();
     let retained = engine
         .runtime()

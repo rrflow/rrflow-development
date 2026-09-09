@@ -125,11 +125,17 @@ outcome through one rrflowMX/rrflowKV transaction. The rrflowKV fault matrix
 proves all-or-none recovery at prepared, WAL-appended, WAL-synced, and visible-
 before-acknowledgement boundaries; public function-catalogue limits fit one
 physical batch; corrupt runtime-build substitution fails closed; and a durable
-receipt closes a lost acknowledgement without guest re-execution. The next
+receipt closes a lost acknowledgement without guest re-execution. C-04 is
+also complete: current and temporal state is selected through authenticated,
+budgeted semantic-version point/range reads at one `ReadStamp`; normal query,
+vector, retrieval, context, memory, and inference paths no longer reconstruct
+state from the runtime change log; and exact rrflowMX/rrflowKV, rrflowKV
+reopen, physical-counter, and source-closure evidence passes. The next
 executable package is
-[C-04 direct current and temporal reads](docs/roadmap/rrflow-1.0-execution-map.md#c-04--direct-current-and-temporal-reads).
-This is an atomic write foundation, not proof of bounded native reads, hybrid
-Arrow pages, DataFusion streaming, or persistent reasoning/recall.
+[C-05 removal of alternate pre-release execution](docs/roadmap/rrflow-1.0-execution-map.md#c-05--remove-alternate-pre-release-execution).
+This is a direct-read foundation, not proof of one final physical reader,
+hybrid Arrow pages, native graph/BM25/vector access paths, DataFusion
+streaming, or persistent reasoning/recall.
 
 ## Knowledge warp points
 

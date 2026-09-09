@@ -1,6 +1,7 @@
 use crate::access::runtime_state::{
     authenticated_point_page, change_page, checked_key, get, get_json, read_sequence,
-    read_stamp_with, scan_space, scan_space_from, validate_read_stamp,
+    read_stamp_with, scan_space, scan_space_from,
+    validate_read_stamp as validate_runtime_read_stamp,
 };
 use crate::access::{
     index_source_deltas, prepare_semantic_commit, read_versioned as read_versioned_access,
@@ -15,8 +16,8 @@ use crate::{
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
     RetentionPin, RuntimeChange, RuntimeChangePage, RuntimeCommit, RuntimeCommitOutcome,
-    RuntimeDataSnapshot, RuntimeGraphSnapshot, RuntimeMutation, RuntimeSchemaRegistry, ScopeId,
-    SnapshotHandle, SnapshotId,
+    RuntimeDataSnapshot, RuntimeGraphSnapshot, RuntimeMutation, RuntimeReadValidation,
+    RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
 };
 
 /// Canonical multi-model runtime repository shared by rrflowMX and rrflowKV.
@@ -60,6 +61,15 @@ impl<'a> RuntimeRepository<'a> {
     pub fn read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
         let transaction = self.storage.begin_transaction()?;
         read_stamp_with(&*transaction, scope)
+    }
+
+    /// Authenticates one previously captured read stamp without opening the
+    /// causal log as a range source. Current heads use only current-state point
+    /// reads; historical stamps use bounded accumulator and semantic-version
+    /// point proofs.
+    pub fn validate_read_stamp(&self, read: &ReadStamp) -> Result<RuntimeReadValidation> {
+        let transaction = self.storage.begin_transaction()?;
+        validate_runtime_read_stamp(&*transaction, read)
     }
 
     /// Reads authenticated semantic versions through typed, budgeted ranges.
@@ -175,7 +185,7 @@ impl<'a> RuntimeRepository<'a> {
         limit: usize,
     ) -> Result<RuntimeChangePage> {
         let transaction = self.storage.begin_transaction()?;
-        let validation = validate_read_stamp(&*transaction, read)?;
+        let validation = validate_runtime_read_stamp(&*transaction, read)?;
         if limit == 1 && after < read.commit_cursor && read.accumulator_root.is_some() {
             let mut page = authenticated_point_page(&*transaction, read, after + 1)?;
             if validation.method != "authenticated_current_head" {
