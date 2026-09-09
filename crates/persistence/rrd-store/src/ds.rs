@@ -77,9 +77,9 @@ pub trait DataRuntimeAccess {
             }
         }
         let commit_id = transaction.commit.digest();
-        match self.engine().runtime_commit_outcome(&commit_id)? {
+        match self.engine().runtime().commit_outcome(&commit_id)? {
             Some(outcome) => Ok(outcome),
-            None => self.engine().commit_data_transaction(transaction),
+            None => self.engine().runtime().commit_data_transaction(transaction),
         }
     }
 }
@@ -192,9 +192,9 @@ impl<E: StorageEngine, O: ImmutableObjectStore> DataRuntime<E, O> {
         hook(DataRuntimeStep::AfterObjectVerification)?;
         hook(DataRuntimeStep::BeforeCommit)?;
         let commit_id = transaction.commit.digest();
-        let outcome = match self.engine.runtime_commit_outcome(&commit_id)? {
+        let outcome = match self.engine.runtime().commit_outcome(&commit_id)? {
             Some(outcome) => outcome,
-            None => self.engine.commit_data_transaction(transaction)?,
+            None => self.engine.runtime().commit_data_transaction(transaction)?,
         };
         hook(DataRuntimeStep::AfterCommit)?;
         Ok(outcome)

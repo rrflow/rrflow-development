@@ -200,7 +200,7 @@ fn rrflow_mx_rejects_durability_only_operations_before_preparing_state() {
             "operation-rrflow-mx-backup-session",
         )
         .unwrap();
-    let before = engine.storage.control_sequence().unwrap();
+    let before = engine.storage.control().sequence().unwrap();
     let result = engine.create_instance_backup(
         &lease.session_id,
         &lease.token,
@@ -214,5 +214,5 @@ fn rrflow_mx_rejects_durability_only_operations_before_preparing_state() {
         "operation-rrflow-mx-backup",
     );
     assert!(matches!(result, Err(ServiceError::Backup(_))));
-    assert_eq!(engine.storage.control_sequence().unwrap(), before);
+    assert_eq!(engine.storage.control().sequence().unwrap(), before);
 }

@@ -320,7 +320,10 @@ fn run_probe(arguments: &[String]) -> Result<(), String> {
     }
     let started = Instant::now();
     let engine = RrflowKvStore::open(&path).map_err(|error| error.to_string())?;
-    let sequence = engine.sequence().map_err(|error| error.to_string())?;
+    let sequence = engine
+        .claims()
+        .sequence()
+        .map_err(|error| error.to_string())?;
     let recovery = started.elapsed();
     let correctness_verified = verify(&engine, &config, sequence)?;
     let (read_samples, read_elapsed) = read_workload(&engine, &config)?;
@@ -394,7 +397,10 @@ fn run_rrflow_kv(path: &Path, config: &Config) -> Result<Trial, String> {
     let probe = launch_probe(path, config)?;
     let reopened_footprint = storage_footprint(path)?;
     let reopened = RrflowKvStore::open(path).map_err(|error| error.to_string())?;
-    let sequence = reopened.sequence().map_err(|error| error.to_string())?;
+    let sequence = reopened
+        .claims()
+        .sequence()
+        .map_err(|error| error.to_string())?;
     let verified = verify(&reopened, config, sequence)?;
     let maintenance_started = Instant::now();
     reopened.compact(1, 1).map_err(|error| error.to_string())?;
@@ -406,6 +412,7 @@ fn run_rrflow_kv(path: &Path, config: &Config) -> Result<Trial, String> {
     drop(reopened);
     let maintained_store = RrflowKvStore::open(path).map_err(|error| error.to_string())?;
     let maintained_sequence = maintained_store
+        .claims()
         .sequence()
         .map_err(|error| error.to_string())?;
     let maintained_verified = verify(&maintained_store, config, maintained_sequence)?;
@@ -473,6 +480,7 @@ fn write_workload(
     for claims in corpus.chunks(config.batch_size) {
         let started = Instant::now();
         engine
+            .claims()
             .append_batch(claims)
             .map_err(|error| error.to_string())?;
         write_samples.push(started.elapsed());
@@ -493,6 +501,7 @@ fn read_workload(
         let start = (iteration.wrapping_mul(7_919) % span) as u64;
         let started = Instant::now();
         let claims = engine
+            .claims()
             .claims_in_range(start, start + config.read_width as u64)
             .map_err(|error| error.to_string())?;
         if claims.len() != config.read_width {
@@ -518,6 +527,7 @@ fn verify(engine: &dyn StorageEngine, config: &Config, sequence: u64) -> Result<
     while from < sequence {
         let to = from.saturating_add(page_width).min(sequence);
         let claims = engine
+            .claims()
             .claims_in_range(from, to)
             .map_err(|error| error.to_string())?;
         let expected = usize::try_from(to - from)

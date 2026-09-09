@@ -35,8 +35,8 @@ fn store() -> (tempfile::TempDir, RrflowKvStore) {
 }
 
 fn all_claims(store: &RrflowKvStore) -> Vec<Claim> {
-    let through = store.sequence().unwrap();
-    store.claims_in_range(0, through).unwrap()
+    let through = store.claims().sequence().unwrap();
+    store.claims().claims_in_range(0, through).unwrap()
 }
 
 #[test]
@@ -44,10 +44,11 @@ fn a_range_returns_exactly_the_claims_appended_in_it() {
     let (_dir, store) = store();
     let first: Vec<Claim> = (0..10).map(claim).collect();
     let second: Vec<Claim> = (10..25).map(claim).collect();
-    store.append_batch(&first).unwrap();
-    store.append_batch(&second).unwrap();
+    store.claims().append_batch(&first).unwrap();
+    store.claims().append_batch(&second).unwrap();
 
     let objects: Vec<String> = store
+        .claims()
         .claims_in_range(10, 25)
         .unwrap()
         .into_iter()
@@ -64,13 +65,14 @@ fn a_range_returns_exactly_the_claims_appended_in_it() {
 fn the_lower_bound_is_exclusive_so_a_watermark_can_be_passed_directly() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&(0..5).map(claim).collect::<Vec<_>>())
         .unwrap();
 
     // (0, 5] is everything; (5, 5] is empty; (4, 5] is the last claim alone.
-    assert_eq!(store.claims_in_range(0, 5).unwrap().len(), 5);
-    assert_eq!(store.claims_in_range(5, 5).unwrap().len(), 0);
-    let tail = store.claims_in_range(4, 5).unwrap();
+    assert_eq!(store.claims().claims_in_range(0, 5).unwrap().len(), 5);
+    assert_eq!(store.claims().claims_in_range(5, 5).unwrap().len(), 0);
+    let tail = store.claims().claims_in_range(4, 5).unwrap();
     assert_eq!(tail.len(), 1);
     assert_eq!(tail[0].object, "v4");
 }
@@ -79,11 +81,12 @@ fn the_lower_bound_is_exclusive_so_a_watermark_can_be_passed_directly() {
 fn an_inverted_or_empty_range_yields_nothing() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&(0..5).map(claim).collect::<Vec<_>>())
         .unwrap();
-    assert!(store.claims_in_range(4, 2).unwrap().is_empty());
-    assert!(store.claims_in_range(9, 9).unwrap().is_empty());
-    assert!(store.claims_in_range(100, 200).unwrap().is_empty());
+    assert!(store.claims().claims_in_range(4, 2).unwrap().is_empty());
+    assert!(store.claims().claims_in_range(9, 9).unwrap().is_empty());
+    assert!(store.claims().claims_in_range(100, 200).unwrap().is_empty());
 }
 
 #[test]
@@ -103,7 +106,7 @@ fn claims_are_returned_in_append_order() {
             )
         })
         .collect();
-    store.append_batch(&claims).unwrap();
+    store.claims().append_batch(&claims).unwrap();
 
     let objects: Vec<String> = all_claims(&store).into_iter().map(|c| c.object).collect();
     let expected: Vec<String> = (0..40).map(|i| format!("v{i}")).collect();
@@ -114,7 +117,7 @@ fn claims_are_returned_in_append_order() {
 fn a_full_scan_reproduces_every_stored_claim_against_the_grounding_reference() {
     let (_dir, store) = store();
     let claims: Vec<Claim> = (0..500).map(claim).collect();
-    store.append_batch(&claims).unwrap();
+    store.claims().append_batch(&claims).unwrap();
 
     let mut reference = MemoryClaims::new();
     for c in &claims {
@@ -151,12 +154,12 @@ fn the_index_stays_consistent_with_the_watermark_across_batches() {
     for round in 0..12 {
         let size = 1 + round * 3;
         let batch: Vec<Claim> = (written..written + size).map(claim).collect();
-        store.append_batch(&batch).unwrap();
+        store.claims().append_batch(&batch).unwrap();
         written += size;
-        let watermark = store.sequence().unwrap();
+        let watermark = store.claims().sequence().unwrap();
         assert_eq!(watermark as usize, written);
         assert_eq!(
-            store.claims_in_range(0, watermark).unwrap().len(),
+            store.claims().claims_in_range(0, watermark).unwrap().len(),
             written,
             "index entries and watermark disagree after round {round}"
         );
@@ -169,21 +172,24 @@ fn the_index_survives_reopen_and_continues() {
     {
         let store = RrflowKvStore::open(dir.path()).unwrap();
         store
+            .claims()
             .append_batch(&(0..30).map(claim).collect::<Vec<_>>())
             .unwrap();
     }
     let reopened = RrflowKvStore::open(dir.path()).unwrap();
-    assert_eq!(reopened.sequence().unwrap(), 30);
+    assert_eq!(reopened.claims().sequence().unwrap(), 30);
     assert_eq!(all_claims(&reopened).len(), 30);
 
     reopened
+        .claims()
         .append_batch(&(30..45).map(claim).collect::<Vec<_>>())
         .unwrap();
-    assert_eq!(reopened.sequence().unwrap(), 45);
+    assert_eq!(reopened.claims().sequence().unwrap(), 45);
     assert_eq!(all_claims(&reopened).len(), 45);
     // The claims appended after reopen are addressable by the range that
     // excludes everything written before it.
     let tail: Vec<String> = reopened
+        .claims()
         .claims_in_range(30, 45)
         .unwrap()
         .into_iter()
@@ -202,23 +208,27 @@ fn the_index_is_consistent_after_writer_driven_appends() {
     }
     writer.flush().unwrap();
 
-    let watermark = store.sequence().unwrap();
+    let watermark = store.claims().sequence().unwrap();
     assert_eq!(watermark, 1_000);
-    assert_eq!(store.claims_in_range(0, watermark).unwrap().len(), 1_000);
+    assert_eq!(
+        store.claims().claims_in_range(0, watermark).unwrap().len(),
+        1_000
+    );
 }
 
 #[test]
 fn a_rejected_batch_leaves_no_index_entries() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&(0..5).map(claim).collect::<Vec<_>>())
         .unwrap();
 
     let mut bad = claim(99);
     bad.valid_to = Some(1); // inverted against valid_from
-    assert!(store.append_batch(&[claim(6), bad]).is_err());
+    assert!(store.claims().append_batch(&[claim(6), bad]).is_err());
 
     // The transaction was not committed, so neither claims nor index advanced.
-    assert_eq!(store.sequence().unwrap(), 5);
+    assert_eq!(store.claims().sequence().unwrap(), 5);
     assert_eq!(all_claims(&store).len(), 5);
 }

@@ -112,13 +112,15 @@ malicious peers. Generic operation execution remains fail-closed until H-04;
 GraphQL now parses and validates against a read-stamped schema catalogue and
 lowers into the same bound rrflowQL `Query` representation, with no resolver,
 storage call, authorization bypass, or second executor. Its outward HTTP
-surface remains H-04 work. The next executable package is
-[C-02 transaction parity](docs/roadmap/rrflow-1.0-execution-map.md#c-02--transaction-port-and-mxkv-conformance).
-The independent C-01 storage package is also complete: all live rrflowKV
-application keys now use the manifest-authenticated `RRKV0001` typed ordered
-codec, and physical-key authority has left the kernel. This is the key spine,
-not the still-open transaction-parity, native-index, hybrid Arrow-page,
-DataFusion-streaming, or persistent reasoning/recall work.
+surface remains H-04 work. C-01 and C-02 are complete: live rrflowKV
+application keys use the manifest-authenticated `RRKV0001` ordered codec, and
+one snapshot-isolation transaction port now backs the claim, control,
+projection, runtime, and invocation repositories for both rrflowMX and
+rrflowKV. The broad profile-specific semantic store implementations are gone.
+The next executable package is
+[C-03 one semantic mutation batch](docs/roadmap/rrflow-1.0-execution-map.md#c-03--one-semantic-mutation-batch).
+This is a key and transaction foundation, not proof of atomic native indexes,
+hybrid Arrow pages, DataFusion streaming, or persistent reasoning/recall.
 
 ## Knowledge warp points
 

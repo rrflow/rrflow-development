@@ -36,13 +36,13 @@ fn corpus() -> Vec<Claim> {
 fn rebuild_applies_the_interval_and_advances_the_watermark_with_it() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
-    store.append_batch(&corpus()).unwrap();
+    store.claims().append_batch(&corpus()).unwrap();
 
-    let outcome = store.rebuild_current().unwrap();
+    let outcome = store.projections().rebuild_current().unwrap();
     assert_eq!((outcome.from, outcome.to, outcome.applied), (0, 6, 6));
 
-    let projection = store.current_projection().unwrap();
-    assert_eq!(projection.watermark, store.sequence().unwrap());
+    let projection = store.projections().current().unwrap();
+    assert_eq!(projection.watermark, store.claims().sequence().unwrap());
     assert_eq!(
         projection.len(),
         4,
@@ -58,7 +58,7 @@ fn rebuild_applies_the_interval_and_advances_the_watermark_with_it() {
     assert_eq!(newest.object, "done", "the newest version wins the fold");
 
     // A second rebuild finds an empty interval and changes nothing.
-    let again = store.rebuild_current().unwrap();
+    let again = store.projections().rebuild_current().unwrap();
     assert_eq!(again.applied, 0);
 }
 
@@ -66,20 +66,23 @@ fn rebuild_applies_the_interval_and_advances_the_watermark_with_it() {
 fn a_crash_mid_rebuild_replays_the_interval_rather_than_skipping_it() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
-    store.append_batch(&corpus()[..3]).unwrap();
-    store.rebuild_current().unwrap();
-    store.append_batch(&corpus()[3..]).unwrap();
+    store.claims().append_batch(&corpus()[..3]).unwrap();
+    store.projections().rebuild_current().unwrap();
+    store.claims().append_batch(&corpus()[3..]).unwrap();
 
     // The crash: claims of the new interval were read and folded in memory,
     // but the process died before the projection write. Nothing was stored, so
     // the watermark MUST still name the old interval end (§8.2: the watermark
     // advances in the same write as the projection, so there is no state in
     // which it moved and the entries did not).
-    let interval = store.claims_in_range(3, store.sequence().unwrap()).unwrap();
+    let interval = store
+        .claims()
+        .claims_in_range(3, store.claims().sequence().unwrap())
+        .unwrap();
     assert_eq!(interval.len(), 3);
     drop(interval); // folded state lost with the crash
 
-    let projection = store.current_projection().unwrap();
+    let projection = store.projections().current().unwrap();
     assert_eq!(
         projection.watermark, 3,
         "watermark did not advance without the write"
@@ -88,9 +91,9 @@ fn a_crash_mid_rebuild_replays_the_interval_rather_than_skipping_it() {
     // Recovery is an ordinary rebuild: the same interval replays in full and
     // the result equals a from-scratch recomputation — proven by grounding,
     // not by a hand-written expectation.
-    let outcome = store.rebuild_current().unwrap();
+    let outcome = store.projections().rebuild_current().unwrap();
     assert_eq!((outcome.from, outcome.to, outcome.applied), (3, 6, 3));
-    match store.ground_current(1_000).unwrap() {
+    match store.projections().ground_current(1_000).unwrap() {
         GroundingReport::Grounded(stamp) => assert_eq!(stamp.sequence, 6),
         GroundingReport::Divergence { differences } => {
             panic!("replayed projection diverged: {differences:?}")
@@ -102,10 +105,10 @@ fn a_crash_mid_rebuild_replays_the_interval_rather_than_skipping_it() {
 fn a_matching_projection_emits_grounded_with_a_stable_digest() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
-    store.append_batch(&corpus()).unwrap();
-    store.rebuild_current().unwrap();
+    store.claims().append_batch(&corpus()).unwrap();
+    store.projections().rebuild_current().unwrap();
 
-    let first = match store.ground_current(500).unwrap() {
+    let first = match store.projections().ground_current(500).unwrap() {
         GroundingReport::Grounded(stamp) => stamp,
         GroundingReport::Divergence { differences } => panic!("diverged: {differences:?}"),
     };
@@ -114,14 +117,15 @@ fn a_matching_projection_emits_grounded_with_a_stable_digest() {
 
     // Grounding again without new claims reproduces the digest: the digest
     // names content, not the grounding run.
-    let second = match store.ground_current(900).unwrap() {
+    let second = match store.projections().ground_current(900).unwrap() {
         GroundingReport::Grounded(stamp) => stamp,
         GroundingReport::Divergence { differences } => panic!("diverged: {differences:?}"),
     };
     assert_eq!(first.digest, second.digest);
     assert_eq!(
         store
-            .current_projection()
+            .projections()
+            .current()
             .unwrap()
             .last_grounded
             .unwrap()
@@ -135,21 +139,26 @@ fn a_matching_projection_emits_grounded_with_a_stable_digest() {
 fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
-    store.append_batch(&corpus()).unwrap();
-    store.rebuild_current().unwrap();
+    store.claims().append_batch(&corpus()).unwrap();
+    store.projections().rebuild_current().unwrap();
 
     // Induce the divergence §8.3 exists to catch: corrupt one entry of the
     // stored blob directly, bypassing the module's own write path.
-    let bytes = store.get_projection(CURRENT_PROJECTION).unwrap().unwrap();
+    let bytes = store
+        .projections()
+        .get(CURRENT_PROJECTION)
+        .unwrap()
+        .unwrap();
     let corrupted = String::from_utf8(bytes)
         .unwrap()
         .replacen("\"done\"", "\"drifted\"", 1);
     assert!(corrupted.contains("drifted"), "corruption must have landed");
     store
-        .put_projection(CURRENT_PROJECTION, corrupted.as_bytes())
+        .projections()
+        .put(CURRENT_PROJECTION, corrupted.as_bytes())
         .unwrap();
 
-    let differences = match store.ground_current(700).unwrap() {
+    let differences = match store.projections().ground_current(700).unwrap() {
         GroundingReport::Divergence { differences } => differences,
         GroundingReport::Grounded(_) => panic!("induced divergence went undetected"),
     };
@@ -160,7 +169,7 @@ fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
     );
 
     // Halted: reads, rebuilds, and further grounding all refuse.
-    let projection = store.current_projection().unwrap();
+    let projection = store.projections().current().unwrap();
     assert!(matches!(
         projection.status,
         ProjectionStatus::Quarantined { at: 700, .. }
@@ -172,11 +181,11 @@ fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
         Err(Error::Quarantined(_))
     ));
     assert!(matches!(
-        store.rebuild_current(),
+        store.projections().rebuild_current(),
         Err(Error::Quarantined(_))
     ));
     assert!(matches!(
-        store.ground_current(800),
+        store.projections().ground_current(800),
         Err(Error::Quarantined(_))
     ));
 
@@ -187,7 +196,7 @@ fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
     let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert!(
         matches!(
-            reopened.current_projection().unwrap().status,
+            reopened.projections().current().unwrap().status,
             ProjectionStatus::Quarantined { .. }
         ),
         "a detected divergence must not be forgettable"
@@ -195,13 +204,13 @@ fn an_induced_divergence_halts_and_quarantines_and_only_reset_recovers() {
 
     // The only exit is the explicit operator reset: recomputation becomes the
     // projection, and grounding passes again.
-    let outcome = reopened.reset_current().unwrap();
+    let outcome = reopened.projections().reset_current().unwrap();
     assert_eq!(outcome.applied, 6);
     assert!(matches!(
-        reopened.ground_current(900).unwrap(),
+        reopened.projections().ground_current(900).unwrap(),
         GroundingReport::Grounded(_)
     ));
-    let recovered = reopened.current_projection().unwrap();
+    let recovered = reopened.projections().current().unwrap();
     assert_eq!(
         recovered
             .get(&subject, &predicate)

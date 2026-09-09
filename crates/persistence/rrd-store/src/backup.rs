@@ -283,7 +283,7 @@ pub fn create_application_backup<E: StorageEngine, O: ImmutableObjectStore>(
     created_at: u64,
 ) -> Result<BackupEntry> {
     validate_label(label)?;
-    let control_sequence = engine.control_sequence()?;
+    let control_sequence = engine.control().sequence()?;
     let archives = catalogue_root.join(ARCHIVE_DIRECTORY);
     fs::create_dir_all(&archives).map_err(backup_io)?;
     let id = BACKUP_TEMP_ID.fetch_add(1, Ordering::Relaxed);
@@ -294,8 +294,8 @@ pub fn create_application_backup<E: StorageEngine, O: ImmutableObjectStore>(
     retain_content_addressed_file(&staging, &archive_path, &inventory)?;
 
     let references = object_references_at(engine, inventory.runtime_cursor)?;
-    if engine.sequence()? != inventory.claim_sequence
-        || engine.runtime_cursor()? != inventory.runtime_cursor
+    if engine.claims().sequence()? != inventory.claim_sequence
+        || engine.runtime().cursor()? != inventory.runtime_cursor
     {
         return Err(Error::Archive(
             "source watermarks changed while retaining object payloads; retry from a stable cut"
@@ -305,9 +305,9 @@ pub fn create_application_backup<E: StorageEngine, O: ImmutableObjectStore>(
     let (manifest_file, manifest_inventory) =
         retain_object_payloads(objects, catalogue_root, &references)?;
     let (catalogue_manifest_file, catalogue_manifest) = retain_catalogues(engine, catalogue_root)?;
-    if engine.sequence()? != inventory.claim_sequence
-        || engine.runtime_cursor()? != inventory.runtime_cursor
-        || engine.control_sequence()? != control_sequence
+    if engine.claims().sequence()? != inventory.claim_sequence
+        || engine.runtime().cursor()? != inventory.runtime_cursor
+        || engine.control().sequence()? != control_sequence
         || catalogue_manifest.source_control_sequence != control_sequence
     {
         return Err(Error::Archive(
@@ -609,7 +609,7 @@ fn object_references_at(engine: &impl StorageEngine, head: u64) -> Result<Vec<Ob
     let mut after = 0u64;
     let mut objects = std::collections::BTreeMap::<String, ObjectReference>::new();
     while after < head {
-        let page = engine.runtime_changes_since(after, PAGE_SIZE, None)?;
+        let page = engine.runtime().changes_since(after, PAGE_SIZE, None)?;
         if page.head_cursor != head || page.requested_after != after {
             return Err(Error::Archive(
                 "runtime watermark changed while collecting backup object references".into(),
@@ -650,12 +650,12 @@ fn retain_catalogues(
     engine: &impl StorageEngine,
     catalogue_root: &Path,
 ) -> Result<(String, CatalogueManifestInventory)> {
-    let source_control_sequence = engine.control_sequence()?;
+    let source_control_sequence = engine.control().sequence()?;
     let mut after = 0u64;
     let mut records = std::collections::BTreeMap::<String, CatalogueRecordSnapshot>::new();
     let mut scopes = std::collections::BTreeSet::<ScopeId>::new();
     while after < source_control_sequence {
-        let page = engine.control_journal_since(after, PAGE_SIZE)?;
+        let page = engine.control().journal_since(after, PAGE_SIZE)?;
         if page.is_empty() {
             return Err(Error::Archive(
                 "control journal ended before the captured backup watermark".into(),
@@ -697,7 +697,7 @@ fn retain_catalogues(
             }
         }
     }
-    if engine.control_sequence()? != source_control_sequence {
+    if engine.control().sequence()? != source_control_sequence {
         return Err(Error::Archive(
             "control journal changed while capturing catalogue state".into(),
         ));
@@ -706,7 +706,7 @@ fn retain_catalogues(
         .into_iter()
         .map(|scope| {
             Ok(CatalogueScopeSnapshot {
-                revision: engine.runtime_read_stamp(&scope)?.catalog_revision,
+                revision: engine.runtime().read_stamp(&scope)?.catalog_revision,
                 scope,
             })
         })
@@ -897,7 +897,7 @@ fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Resu
         let first = records.first().ok_or_else(|| {
             Error::Archive("catalogue revision has no materialized restore record".into())
         })?;
-        let mut revision = engine.runtime_read_stamp(&scope.scope)?.catalog_revision;
+        let mut revision = engine.runtime().read_stamp(&scope.scope)?.catalog_revision;
         if revision > scope.revision {
             return Err(Error::Archive(format!(
                 "restored catalogue revision {revision} exceeds {} for {}",
@@ -905,7 +905,7 @@ fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Resu
             )));
         }
         for (ordinal, record) in records.iter().enumerate() {
-            let existing = engine.control_record(&record.key)?;
+            let existing = engine.control().get(&record.key)?;
             if (ordinal as u64) < revision {
                 if existing.as_deref() != Some(record.value.as_slice()) {
                     return Err(Error::Archive(format!(
@@ -921,7 +921,7 @@ fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Resu
                     record.key
                 )));
             }
-            engine.commit_catalog_transition(
+            engine.control().commit_catalog(
                 &scope.scope,
                 &ControlTransition {
                     key: record.key.clone(),
@@ -937,7 +937,7 @@ fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Resu
             revision += 1;
         }
         while revision < scope.revision {
-            engine.commit_catalog_transition(
+            engine.control().commit_catalog(
                 &scope.scope,
                 &ControlTransition {
                     key: first.key.clone(),
@@ -960,7 +960,7 @@ fn restore_catalogues(manifest: &CatalogueManifest, staging_root: &Path) -> Resu
 fn verify_restored_catalogues(manifest: &CatalogueManifest, restored_root: &Path) -> Result<()> {
     let engine = RrflowKvStore::open(restored_root)?;
     for record in &manifest.records {
-        if engine.control_record(&record.key)?.as_deref() != Some(record.value.as_slice()) {
+        if engine.control().get(&record.key)?.as_deref() != Some(record.value.as_slice()) {
             return Err(Error::Archive(format!(
                 "restored catalogue record {} differs from its backup",
                 record.key
@@ -968,7 +968,7 @@ fn verify_restored_catalogues(manifest: &CatalogueManifest, restored_root: &Path
         }
     }
     for scope in &manifest.scopes {
-        let actual = engine.runtime_read_stamp(&scope.scope)?.catalog_revision;
+        let actual = engine.runtime().read_stamp(&scope.scope)?.catalog_revision;
         if actual != scope.revision {
             return Err(Error::Archive(format!(
                 "restored catalogue revision {actual} differs from {} for {}",

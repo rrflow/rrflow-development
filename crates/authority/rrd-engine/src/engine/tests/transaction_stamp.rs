@@ -55,7 +55,7 @@ fn catalogue_mutation_advances_the_transaction_read_stamp() {
         )
         .unwrap();
 
-    let after = engine.storage.runtime_read_stamp(&before.scope).unwrap();
+    let after = engine.storage.runtime().read_stamp(&before.scope).unwrap();
     assert_eq!(after.commit_cursor, before.commit_cursor);
     assert_eq!(after.catalog_revision, before.catalog_revision + 1);
     assert_ne!(after.manifest_id, before.manifest_id);
@@ -135,7 +135,8 @@ fn engine_transaction_preserves_session_read_and_commit_identity_across_replay_a
 
     let audit = engine
         .storage
-        .runtime_audit(&expected_commit_id)
+        .runtime()
+        .audit(&expected_commit_id)
         .unwrap()
         .unwrap();
     audit.validate().unwrap();
@@ -164,7 +165,8 @@ fn engine_transaction_preserves_session_read_and_commit_identity_across_replay_a
     assert_eq!(
         engine
             .storage
-            .runtime_audit(&expected_commit_id)
+            .runtime()
+            .audit(&expected_commit_id)
             .unwrap()
             .as_ref(),
         Some(&audit)
@@ -175,7 +177,8 @@ fn engine_transaction_preserves_session_read_and_commit_identity_across_replay_a
     assert_eq!(
         reopened
             .storage
-            .runtime_audit(&expected_commit_id)
+            .runtime()
+            .audit(&expected_commit_id)
             .unwrap()
             .as_ref(),
         Some(&audit)

@@ -482,7 +482,8 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
 
     pub fn load(&self) -> Result<Option<SecurityState>> {
         self.engine
-            .control_record(&security_key(&self.instance))?
+            .control()
+            .get(&security_key(&self.instance))?
             .map(|bytes| decode_state(&bytes))
             .transpose()
     }
@@ -541,7 +542,8 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
         let key = security_key(&self.instance);
         let current_bytes = self
             .engine
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(Error::NotInitialized)?;
         let current = decode_state(&current_bytes)?;
         if current == replacement {
@@ -780,7 +782,7 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
         let mut records = Vec::new();
         let mut reached_control_tail = false;
         while records.len() < limit {
-            let entries = self.engine.control_journal_since(cursor, limit)?;
+            let entries = self.engine.control().journal_since(cursor, limit)?;
             if entries.is_empty() {
                 reached_control_tail = true;
                 break;
@@ -801,14 +803,16 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
         }
         let durable_head = self
             .engine
-            .control_record(&audit_head_key(&self.instance))?
+            .control()
+            .get(&audit_head_key(&self.instance))?
             .as_deref()
             .map(decode_audit_head)
             .transpose()?;
         if let Some(head) = &durable_head {
             let head_record = self
                 .engine
-                .control_record(&audit_key(&self.instance, &head.audit_id))?
+                .control()
+                .get(&audit_key(&self.instance, &head.audit_id))?
                 .ok_or_else(|| Error::Invalid("audit head record is missing".into()))?;
             let head_record = decode_audit_bytes(&head_record)?;
             if head_record.audit_sha256 != head.audit_sha256 {
@@ -858,12 +862,12 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
     ) -> Result<()> {
         event.validate()?;
         let record_key = audit_key(&self.instance, &event.audit_id);
-        if let Some(existing) = self.engine.control_record(&record_key)? {
+        if let Some(existing) = self.engine.control().get(&record_key)? {
             return exact_audit_replay(&existing, event);
         }
         let head_key = audit_head_key(&self.instance);
         for _ in 0..16 {
-            let head_bytes = self.engine.control_record(&head_key)?;
+            let head_bytes = self.engine.control().get(&head_key)?;
             let head = head_bytes.as_deref().map(decode_audit_head).transpose()?;
             let record = AuditRecord::seal(
                 event.clone(),
@@ -908,14 +912,14 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
                 request_id: event.request_id.clone(),
                 operation_id: event.operation_id.clone(),
             });
-            match self.engine.commit_control_batch(&transitions) {
+            match self.engine.control().commit_batch(&transitions) {
                 Ok(_) => return Ok(()),
                 Err(rrd_store::Error::ControlConflict(key)) if key == head_key => continue,
                 Err(rrd_store::Error::ControlConflict(key)) if key == record_key => {
-                    let existing = self
-                        .engine
-                        .control_record(&record_key)?
-                        .ok_or_else(|| Error::Invalid("audit identity conflict vanished".into()))?;
+                    let existing =
+                        self.engine.control().get(&record_key)?.ok_or_else(|| {
+                            Error::Invalid("audit identity conflict vanished".into())
+                        })?;
                     return exact_audit_replay(&existing, event);
                 }
                 Err(error) => return Err(error.into()),

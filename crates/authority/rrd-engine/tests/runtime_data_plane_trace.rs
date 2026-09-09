@@ -72,7 +72,8 @@ fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
             .map(|vector| RuntimeMutation::Vector { vector }),
     );
     store
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 10,
             actor: "fixture".into(),
@@ -94,7 +95,7 @@ fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
 fn request<E: StorageEngine>(store: &E, mode: SearchMode) -> SearchRequest {
     SearchRequest {
         scope: scope(),
-        read: store.runtime_read_stamp(&scope()).unwrap(),
+        read: store.runtime().read_stamp(&scope()).unwrap(),
         valid_at: 10,
         field: "body".into(),
         query: VectorQuery::Dense {
@@ -122,7 +123,8 @@ struct TraceView {
 
 fn trace_views<E: StorageEngine>(store: &E) -> Vec<TraceView> {
     store
-        .runtime_changes_since(0, usize::MAX, Some(&scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
         .changes
         .into_iter()
@@ -184,7 +186,7 @@ fn vector_search_is_causal_private_and_equal_across_all_engines() {
     assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.prepared.plan().required_source_cursor, 7);
     assert_eq!(memory_result.execution.hits.len(), 1);
-    assert_eq!(memory.runtime_cursor().unwrap(), 14);
+    assert_eq!(memory.runtime().cursor().unwrap(), 14);
     let normalize = |traces: &[TraceView]| {
         traces
             .iter()
@@ -336,7 +338,8 @@ fn embedding_fixture<E: StorageEngine>(store: &E) {
         },
     );
     store
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 10,
             actor: "fixture".into(),
@@ -364,7 +367,7 @@ fn embedding_job<E: StorageEngine>(store: &E, backend: &FeatureHashBackend) -> E
         contract_version: EMBEDDING_CONTRACT_VERSION,
         id: RuntimeId::new("embedding-job-1").unwrap(),
         scope: scope(),
-        read: store.runtime_read_stamp(&scope()).unwrap(),
+        read: store.runtime().read_stamp(&scope()).unwrap(),
         source: RuntimeRef::new("document", "embedding-source").unwrap(),
         expected_source_digest: digest::sha256_hex(EMBEDDING_BYTES),
         target: RuntimeRef::new("embedding", "embedding-source-body").unwrap(),
@@ -430,7 +433,7 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
     assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.commit.first_cursor, 8);
     assert_eq!(memory_result.commit.last_cursor, 8);
-    assert_eq!(memory.runtime_cursor().unwrap(), 10);
+    assert_eq!(memory.runtime().cursor().unwrap(), 10);
     let normalize = |traces: &[TraceView]| {
         traces
             .iter()
@@ -474,7 +477,8 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
         .iter()
         .all(|trace| !trace.encoded.contains("super-secret-embedding-source")));
     let vector_work = memory
-        .runtime_outbox_since(0, 100)
+        .runtime()
+        .outbox_since(0, 100)
         .unwrap()
         .into_iter()
         .filter(|work| work.family == ProjectionFamily::Vector)
@@ -487,7 +491,8 @@ fn embedding_inference_rebases_only_its_trace_events_and_commits_on_all_engines(
     assert_eq!(trace_views(&reopened).len(), 6);
     assert_eq!(
         reopened
-            .runtime_changes_since(0, 100, Some(&scope()))
+            .runtime()
+            .changes_since(0, 100, Some(&scope()))
             .unwrap()
             .changes
             .into_iter()
@@ -535,7 +540,8 @@ fn embedding_source_change_after_inference_denies_without_a_vector_commit() {
     assert_eq!(traces[2].outcome, "ok");
     assert_eq!(traces[3].outcome, "denied");
     assert!(store
-        .runtime_outbox_since(0, 100)
+        .runtime()
+        .outbox_since(0, 100)
         .unwrap()
         .iter()
         .all(|work| work.family != ProjectionFamily::Vector));
@@ -551,9 +557,10 @@ impl<E: StorageEngine> EmbeddingSourceReader for MutatingReader<'_, E> {
     fn read(&mut self, _source: &RuntimeRef) -> rrd_core::Result<EmbeddingSourceSnapshot> {
         self.reads += 1;
         if self.reads == 2 {
-            let read = self.store.runtime_read_stamp(&scope()).unwrap();
+            let read = self.store.runtime().read_stamp(&scope()).unwrap();
             self.store
-                .commit_runtime(&RuntimeCommit {
+                .runtime()
+                .commit(&RuntimeCommit {
                     scope: scope(),
                     at: 100,
                     actor: "concurrent:test".into(),
@@ -605,7 +612,8 @@ fn embedding_rebase_rejects_non_trace_mutations_even_when_source_bytes_match() {
     assert_eq!(traces[5].name, "embedding.run");
     assert_eq!(traces[5].outcome, "denied");
     assert!(store
-        .runtime_outbox_since(0, 100)
+        .runtime()
+        .outbox_since(0, 100)
         .unwrap()
         .iter()
         .all(|work| work.family != ProjectionFamily::Vector));

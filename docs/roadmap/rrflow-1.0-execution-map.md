@@ -576,8 +576,9 @@ package, so the canonical roadmap records A-06 and KB-05 complete.
 
 A-07.0 traceability, all eight A-07.1 package/type/path packages, and A-07.2
 causal-evidence vocabulary are complete in their journals below. B-03 model
-admission, B-04 multiplexed WebSocket, and B-05 GraphQL lowering work are also
-complete. C-02 transaction-port parity is the next implementation package.
+admission, B-04 multiplexed WebSocket, B-05 GraphQL lowering, and C-02
+transaction-port convergence are also complete. C-03 one semantic mutation
+batch is the next implementation package.
 
 Resolved full-file reviews:
 
@@ -1713,12 +1714,29 @@ rollback, read-only commit, and bounded range ordering. The accepted alpha
 contract is snapshot isolation with write conflict detection. Explicitly test
 write skew so the code does not accidentally claim strict serializability.
 
-C-02 remains open after its first implementation slice. The physical
-transaction and cross-profile behavior now exist, but the former semantic
-surface still occupies the broad `StorageEngine` trait. The next C-02 slice
-moves those methods behind semantic repositories that consume this one
-transaction port; it must not retain the old trait as an alias or let either
-repository write around the port.
+C-02 is complete after two implementation slices. The first established the
+physical transaction and cross-profile behavior. The second moved the
+semantic surface behind repositories consuming that one transaction port,
+removed the duplicate profile implementations, and narrowed `StorageEngine`
+without an alias or repository write-around.
+
+The final convergence executed in four ordered, compile-breaking passes:
+
+1. add concrete claim, control, projection, runtime, and invocation
+   repositories whose only state dependency is a borrowed `StorageEngine`
+   transaction port;
+2. move the canonical key/value encoding, validation, snapshot reads, mutation
+   planning, and commit calls into those repositories, then delete the
+   rrflowMX semantic maps and the rrflowKV direct-database implementations of
+   those former trait methods;
+3. replace every caller with its owning repository and narrow
+   `StorageEngine` to transaction creation, repository access, and bounded
+   physical evidence—never a forwarding semantic mega-trait; and
+4. run the existing semantic suites plus a source-boundary test proving all
+   repository writes use `StorageTransaction` and both profiles execute the
+   same stored bytes and outcomes. Any behavior regression, remaining direct
+   semantic method, direct database write in a repository, or caller outside
+   `RrdEngine` that gains mutation authority stops completion.
 
 #### C-02 transaction-substrate progress journal
 
@@ -1736,6 +1754,24 @@ failure/crash/differential evidence: deterministic and threaded conflict cases a
 not run and reason: complete workspace tests, six-SDK conformance, server/Connectome, semantic graph/index failure injection, Arrow-page lifetime, DataFusion streaming/resource execution, persistent reasoning/context/feedback, installation/attunement, clean deployment, comparative benchmarks, and release assembly were not run because this slice adds the physical transaction behavior only and does not change those surfaces
 remaining known errors: C-02 is not complete while StorageEngine still carries the former broad claim/control/runtime/snapshot/projection methods and those semantic paths can write through profile-specific implementations rather than repositories consuming the transaction port. C-03 atomic record/temporal/adjacency/scalar/BM25/vector/log/outbox/audit publication, C-04 direct stamped reads, C-06 hybrid Arrow-compatible pages, F stamped DataFusion streaming, persistent reasoning/recall, install/attunement, Connectome, and release proof remain open
 roadmap checkbox changed: no; C-02 and Gate C remain 1/7 until the semantic surface is narrowed onto this port and the complete gate evidence passes
+```
+
+#### C-02 semantic-repository completion journal
+
+```text
+gate/package: C-02b / one semantic repository implementation over the shared rrflowMX/rrflowKV transaction port; closes C-02
+revision: parent 88f1fb99e4a4773879c5ab8e8548115d31362ab2, parent tree 8c420f978d67a70ab6f168348b03862e0a2cf76a; result is the commit containing this entry
+baseline files/digests: rrd-store engine.rs=cbcee20f4a2d325cc338868868d5b5684429c9d85b1c5d4c8e17c05a20e28713; rrflow_kv.rs=75596732f68cbda143daf5d86b2115a246ed4624ed032ad5a4d166eea1ec3e7e; lib.rs=7b63977d80d41b00abd44488026b2a600740cf57c4788895033090811d583cae; no repository directory or semantic-repository conformance target existed. Candidate engine.rs=4bdab0d4efbfc83d2c787b82331ea357251c20433f19eea6d73b558b96d5db00; rrflow_kv.rs=fd10b045e7efd9cb16a78df8d5f4f1d9b5451b05fee135b4ceaba9889b8983fc; lib.rs=0934f17e0dd7e1c17cd841d5c40e14417b4c9c0b0ebb1107ff9975cbbafd94de; repository claims.rs=ed5342b32e7b0e5a82ac145de38a7307ad6e5bc2cb46c35f7ae79f75597edd0c, common.rs=79d6aa13c2476e9ac76c7691f94692aa1e73579320193da14e85f5c714d98484, control.rs=abb0a8e39e8d1483931a4be69df06113e4c707f936d8a1b71695badd5c035df5, invocation.rs=5cd7b53ea8058b52f4852109320e36028fef5485f18bd516b9ca0b03746ead12, mod.rs=6b91588ff89029778bca5676ea3c3cb86dc04e3b3c15c1d0819d87b1e29f0584, projection.rs=84aecd8fa7efa5dec7b3acf0c4b95b828df5f723bbc57e54310b297893cb3518, runtime.rs=8ceb18be381786381f3f3843d0910724b3b8fc5854c62ba43a920c740ba46f42; semantic conformance=08cdc8b07ea9e66eff35a396c99e64bb46307c9297611949ec390eca3fa37875; control concurrency=e9b3c4a0e4652dec6426ab222ebaded84cb5d355baa5fbf913ab185d5d49b3e0; workspace boundary=6f1cbd1776210ff53b43547855d7a59879779018f8c5938f35d7186caadbf8c3; ordered candidate content digest across 125 changed Rust sources/tests=4f53cb67093d6f4fd210e19efc2a395081de363bb4a87b23789cde80f68e872a
+files read in full: AGENTS.md; root README; alpha objective and POA&M; canonical C-02/C-03 roadmap and complete C-02 execution owner; complete engine-data-flow owner; complete baseline and resulting rrd-store engine.rs; complete baseline and resulting rrflow_kv.rs; all seven resulting repository modules and their export root; semantic-repository, control-journal, snapshot, runtime, storage-profile, and store-engine conformance suites; complete workspace-architecture suite; complete Rust real-server integration suite and WebSocket server; complete engine invocation and security modules plus the relevant security audit repository. Every non-store caller change was reviewed as an exact API diff after the repository move, and every resulting source compiled under the strict workspace check
+files changed/created/deleted/moved: create rrd-store/src/repository/{mod,common,claims,control,projection,runtime,invocation}.rs and tests/semantic_repository_conformance.rs; move claim, control, projection, runtime, and invocation encoding, validation, reads, planning, and commit semantics from the two profile implementations into those repositories; delete rrflowMX's semantic maps and rrflowKV's duplicate semantic methods/helpers; narrow StorageEngine to begin_transaction, five typed repository accessors, and physical_store_evidence; box the larger rrflowKV StorageProfile variant after the semantic-map removal exposed its real enum-size asymmetry; migrate the breaking call surface through engine, compute, authority, operations, transport, adapter, examples, and tests with no forwarding methods; extend control-journal concurrency, snapshot physical-lease, semantic parity/reopen, and source-boundary evidence. No compatibility trait, alias, backend selector, alternate store, endpoint, provider hook, lifecycle runtime, graph/index implementation, Arrow page, or DataFusion path was added
+contract or behavior changed: all five semantic repository families now obtain one snapshot-isolated StorageTransaction and publish their encoded mutations only through that consumed port. rrflowMX and rrflowKV therefore execute one semantic implementation over different physical profiles instead of parallel semantic code. Control-journal commits use bounded re-planning for physical transaction conflicts caused by concurrent disjoint writers while retaining compare-and-swap failure for a changed controlled record. A committed logical snapshot handle creates its rrflowKV physical checkpoint before semantic acknowledgement, removes a newly created checkpoint if the transaction loses its conflict race, and reconciles release after committed deletion. The port still claims snapshot isolation with write conflict detection, not serializability. This package does not make record/adjacency/scalar/BM25/vector/runtime/audit/outbox effects one batch and does not change current row segments or materialized Arrow/DataFusion execution
+smallest test command and result: cargo test -p rrd-store --test semantic_repository_conformance --locked passed 2 MX/KV byte/outcome and rrflowKV reopen cases; cargo test -p rrd-store --test control_journal --locked passed 3 cases including eight concurrent disjoint writers on both profiles; cargo test -p rrd-store --test snapshot rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry --locked passed the physical lease regression
+owning package command and result: cargo test -p rrd-store --locked passed all 157 unit/integration cases; cargo test -p rrd-engine --locked passed all 119 unit/integration cases, including the 24-case workspace architecture suite; cargo test -p rrd-inference --locked passed all 10 cases; cargo clippy --workspace --all-targets --locked -- -D warnings passed all 20 packages with no suppression
+cross-boundary command and result: the locked query, vector, estate, security, cluster, maintenance, client, server, CLI, and MCP package suites all passed after the final transaction-conflict retry fix; the real HTTP/WebSocket Rust client/server path passed; cargo check --workspace --all-targets --locked passed all packages; exact source searches found no former semantic method declaration on engine.rs or rrflow_kv.rs, no StorageEngine UFCS caller, and no rrd-lsm, concrete profile, raw Database, or write_owned bypass in a semantic repository
+failure/crash/differential evidence: the first full store run exposed that moving logical snapshot handles into the common repository had lost the immediate rrflowKV physical-manifest lease; the transaction boundary now prepares that checkpoint and compensates it on a failed commit, and the focused regression plus full suite passed. The first broad downstream run exposed a real WebSocket-startup race: unrelated security/control writes could conflict on the global journal after the old rrflowKV mutex serialization disappeared. ControlRepository now rereads and replans only typed physical conflicts within 16 attempts; its new concurrent differential and the exact failed real-server test passed before the entire downstream command passed. Strict Clippy then exposed a 520-byte StorageProfile enum after duplicate MX maps disappeared; the rrflowKV variant is now boxed instead of suppressing the warning, and package plus workspace Clippy passed. The final MX/KV semantic corpus, rrflowKV reopen/SIGKILL/compaction/snapshot cases, and engine context/query/vector/security/recovery tests remained green. Repository-wide Ruff lint passed; Ruff format-check repeated the already-recorded formatting differences in the untouched .NET and Java SDK generators, so those unrelated files remain outside this package
+not run and reason: cargo test --workspace as one monolithic command, optional all-feature distributed qualification, the shared six-SDK real-daemon harness, Connectome, C-03 semantic-family WAL-boundary injection, C-06 Arrow-page lifetime tests, F DataFusion streaming/resource/fault execution, persistent routed reasoning/context/feedback, installation/attunement, clean offline deployment, and competitive benchmarks were not run. Every changed Rust package and the two owning full suites were run, but absent later capabilities cannot be qualified by a broader command
+remaining known errors: C-03 still owns one effect-complete record/relation/both-adjacency/scalar/BM25/vector/runtime/projection/function/audit/outbox batch and removal of remaining direct-store authorities. C-04 direct stamped access, C-05 old lower-format rejection, C-06 hybrid Arrow-compatible pages, C-07 final crash/lifetime proof, native E indexes, streamed F DataFusion, persisted G/H reasoning and context feedback, D installation/attunement, I routines/skills, Connectome, and release evidence remain open
+roadmap checkbox changed: yes; C-02 changes to complete, Gate C becomes 2/7, and C-03 is next. No other checkbox changes
 ```
 
 ### C-03 — one semantic mutation batch

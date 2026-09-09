@@ -571,7 +571,7 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
             1_300,
         )
         .unwrap();
-    let before = engine.storage.runtime_cursor().unwrap();
+    let before = engine.storage.runtime().cursor().unwrap();
     let mutations = vec![TransactionMutation::PutRecord {
         reference: DataReference {
             kind: person,
@@ -595,7 +595,7 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
         "operation-commit-binding-two",
     );
     assert!(matches!(rejected, Err(ServiceError::Function(_))));
-    assert_eq!(engine.storage.runtime_cursor().unwrap(), before);
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before);
 }
 
 #[test]
@@ -668,11 +668,7 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         "server/state/test-instance/session/{}",
         lease.session_id.as_str()
     );
-    let before = engine
-        .storage
-        .control_record(&session_key)
-        .unwrap()
-        .unwrap();
+    let before = engine.storage.control().get(&session_key).unwrap().unwrap();
     let mut prepared: Value = serde_json::from_slice(&before).unwrap();
     prepared["transactions"][transaction.transaction_id.as_str()]["commit_intent"] = serde_json::json!({
         "idempotency_key": "function-retry-commit",
@@ -683,7 +679,8 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
     });
     engine
         .storage
-        .commit_control_transition(&ControlTransition {
+        .control()
+        .commit(&ControlTransition {
             key: session_key,
             expected: Some(before),
             replacement: Some(serde_json::to_vec(&prepared).unwrap()),
@@ -902,7 +899,7 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_bindings() {
             1_110,
         )
         .unwrap();
-    let before = engine.storage.runtime_cursor().unwrap();
+    let before = engine.storage.runtime().cursor().unwrap();
     let request = commit_request("function-binding-must-be-denied");
     let denied_binding = engine.commit_transaction(
         &limited.session_id,
@@ -918,7 +915,7 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_bindings() {
         denied_binding,
         Err(ServiceError::PermissionDenied)
     ));
-    assert_eq!(engine.storage.runtime_cursor().unwrap(), before);
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before);
 
     let records = SecurityRepository::new(&engine.storage, instance())
         .audit_since(0, 64)

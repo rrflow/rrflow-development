@@ -59,7 +59,7 @@ fn embedded_engine_cannot_bypass_policy_grants() {
             "operation-create",
         )
         .unwrap();
-    let before = engine.storage.control_journal_since(0, 64).unwrap();
+    let before = engine.storage.control().journal_since(0, 64).unwrap();
 
     let denied = engine.create_instance_backup(
         &lease.session_id,
@@ -75,7 +75,7 @@ fn embedded_engine_cannot_bypass_policy_grants() {
     );
 
     assert!(matches!(denied, Err(ServiceError::PermissionDenied)));
-    let after = engine.storage.control_journal_since(0, 64).unwrap();
+    let after = engine.storage.control().journal_since(0, 64).unwrap();
     assert_eq!(
         after.len(),
         before.len() + 2,
@@ -331,7 +331,7 @@ fn denied_engine_invocation_is_audited_without_domain_mutation() {
             "operation-create-session-only",
         )
         .unwrap();
-    let before_runtime = engine.storage.runtime_cursor().unwrap();
+    let before_runtime = engine.storage.runtime().cursor().unwrap();
     let denied = engine.begin_invocation(
         Invocation {
             context: mutation_context(
@@ -351,7 +351,7 @@ fn denied_engine_invocation_is_audited_without_domain_mutation() {
         },
     );
     assert!(matches!(denied, Err(ServiceError::PermissionDenied)));
-    assert_eq!(engine.storage.runtime_cursor().unwrap(), before_runtime);
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before_runtime);
 
     let page = repository.audit_since(0, 16).unwrap();
     let denied = page

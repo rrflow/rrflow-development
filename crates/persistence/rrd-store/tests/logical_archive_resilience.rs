@@ -32,9 +32,13 @@ fn claim(name: impl std::fmt::Display, at: u64) -> Claim {
 
 fn mixed_source(root: &Path) -> RrflowKvStore {
     let engine = RrflowKvStore::open(root).unwrap();
-    engine.append_batch(&[claim("before", 10)]).unwrap();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .claims()
+        .append_batch(&[claim("before", 10)])
+        .unwrap();
+    engine
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:resilience").unwrap(),
             at: 20,
             actor: "agent:archive-resilience".into(),
@@ -44,9 +48,13 @@ fn mixed_source(root: &Path) -> RrflowKvStore {
             }],
         })
         .unwrap();
-    engine.append_batch(&[claim("middle", 30)]).unwrap();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .claims()
+        .append_batch(&[claim("middle", 30)])
+        .unwrap();
+    engine
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:resilience").unwrap(),
             at: 40,
             actor: "agent:archive-resilience".into(),
@@ -56,28 +64,33 @@ fn mixed_source(root: &Path) -> RrflowKvStore {
             }],
         })
         .unwrap();
-    engine.append_batch(&[claim("after", 50)]).unwrap();
+    engine.claims().append_batch(&[claim("after", 50)]).unwrap();
     engine
 }
 
 fn assert_same_runtime(left: &RrflowKvStore, right: &RrflowKvStore) {
-    assert_eq!(left.sequence().unwrap(), right.sequence().unwrap());
     assert_eq!(
-        left.runtime_cursor().unwrap(),
-        right.runtime_cursor().unwrap()
+        left.claims().sequence().unwrap(),
+        right.claims().sequence().unwrap()
     );
-    let claims = left.sequence().unwrap();
     assert_eq!(
-        left.claims_in_range(0, claims).unwrap(),
-        right.claims_in_range(0, claims).unwrap()
+        left.runtime().cursor().unwrap(),
+        right.runtime().cursor().unwrap()
     );
-    let cursor = left.runtime_cursor().unwrap();
+    let claims = left.claims().sequence().unwrap();
+    assert_eq!(
+        left.claims().claims_in_range(0, claims).unwrap(),
+        right.claims().claims_in_range(0, claims).unwrap()
+    );
+    let cursor = left.runtime().cursor().unwrap();
     let left_changes = left
-        .runtime_changes_since(0, cursor as usize + 1, None)
+        .runtime()
+        .changes_since(0, cursor as usize + 1, None)
         .unwrap()
         .changes;
     let right_changes = right
-        .runtime_changes_since(0, cursor as usize + 1, None)
+        .runtime()
+        .changes_since(0, cursor as usize + 1, None)
         .unwrap()
         .changes;
     assert_eq!(left_changes, right_changes);
@@ -87,8 +100,8 @@ fn assert_same_runtime(left: &RrflowKvStore, right: &RrflowKvStore) {
         .collect::<BTreeSet<_>>()
     {
         assert_eq!(
-            left.runtime_audit(commit_id).unwrap(),
-            right.runtime_audit(commit_id).unwrap()
+            left.runtime().audit(commit_id).unwrap(),
+            right.runtime().audit(commit_id).unwrap()
         );
     }
 }
@@ -234,7 +247,10 @@ fn source_advancement_invalidates_an_unfinished_export_cut() {
         Ok(())
     })
     .unwrap_err();
-    source.append_batch(&[claim("new-head", 60)]).unwrap();
+    source
+        .claims()
+        .append_batch(&[claim("new-head", 60)])
+        .unwrap();
     assert!(export_logical_archive(&source, &archive).is_err());
     assert!(!archive.exists());
     assert!(!root
@@ -342,7 +358,7 @@ fn claim_stream_crosses_multiple_pages_without_reordering() {
     let claims = (1..=2_100)
         .map(|index| claim(index, index))
         .collect::<Vec<_>>();
-    source.append_batch(&claims).unwrap();
+    source.claims().append_batch(&claims).unwrap();
     let archive = root.path().join("claims.rrd-archive");
     let target = root.path().join("restored");
     let inventory = export_logical_archive(&source, &archive).unwrap();
@@ -351,6 +367,7 @@ fn claim_stream_crosses_multiple_pages_without_reordering() {
     assert_eq!(
         RrflowKvStore::open(&target)
             .unwrap()
+            .claims()
             .claims_in_range(0, 2_100)
             .unwrap(),
         claims
@@ -367,7 +384,8 @@ fn one_commit_split_across_runtime_pages_remains_atomic() {
         })
         .collect::<Vec<_>>();
     let outcome = source
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:paged-commit").unwrap(),
             at: 1_100,
             actor: "agent:paged-commit".into(),
@@ -383,7 +401,10 @@ fn one_commit_split_across_runtime_pages_remains_atomic() {
     restore_logical_archive_to_new_root(&archive, &target, 100).unwrap();
     let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(
-        restored.runtime_commit_outcome(&outcome.commit_id).unwrap(),
+        restored
+            .runtime()
+            .commit_outcome(&outcome.commit_id)
+            .unwrap(),
         Some(outcome)
     );
     assert_same_runtime(&source, &restored);
@@ -401,7 +422,8 @@ fn every_canonical_runtime_family_and_transaction_audit_round_trips() {
     let scope = ScopeId::new("instance:all-families").unwrap();
     runtime
         .engine()
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 10,
             actor: "agent:all-families".into(),
@@ -417,7 +439,7 @@ fn every_canonical_runtime_family_and_transaction_audit_round_trips() {
             b"object bytes live in the application backup closure",
         )
         .unwrap();
-    let read = runtime.engine().runtime_read_stamp(&scope).unwrap();
+    let read = runtime.engine().runtime().read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(
         read,
         RuntimeCommit {
@@ -437,8 +459,12 @@ fn every_canonical_runtime_family_and_transaction_audit_round_trips() {
     let restored = RrflowKvStore::open(&target).unwrap();
     assert_same_runtime(runtime.engine(), &restored);
     assert_eq!(
-        restored.runtime_audit(&outcome.commit_id).unwrap(),
-        runtime.engine().runtime_audit(&outcome.commit_id).unwrap()
+        restored.runtime().audit(&outcome.commit_id).unwrap(),
+        runtime
+            .engine()
+            .runtime()
+            .audit(&outcome.commit_id)
+            .unwrap()
     );
 }
 

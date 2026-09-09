@@ -37,16 +37,17 @@ fn a_correction_at_the_same_valid_from_preserves_the_claim_it_corrects() {
     let predicate = Predicate::new("status").unwrap();
 
     store
+        .claims()
         .append_batch(&[
             recorded("wp3", "status", "blocked", 100, 100),
             recorded("wp3", "status", "in_progress", 100, 200),
         ])
         .unwrap();
 
-    let history = store.history(&subject, &predicate).unwrap();
+    let history = store.claims().history(&subject, &predicate).unwrap();
     assert_eq!(history.len(), 2, "the corrected claim was destroyed");
     assert_eq!(
-        store.sequence().unwrap(),
+        store.claims().sequence().unwrap(),
         2,
         "watermark and stored claim count must agree"
     );
@@ -54,6 +55,7 @@ fn a_correction_at_the_same_valid_from_preserves_the_claim_it_corrects() {
     // Current knowledge wins: the later transaction time resolves first.
     assert_eq!(
         store
+            .claims()
             .as_of(&subject, &predicate, 150)
             .unwrap()
             .map(|c| c.object),
@@ -76,16 +78,17 @@ fn stored_claim_count_tracks_the_sequence_watermark() {
     let claims: Vec<Claim> = (0..50)
         .map(|i| recorded("wp3", "status", &format!("v{i}"), 100, 100 + i))
         .collect();
-    store.append_batch(&claims).unwrap();
+    store.claims().append_batch(&claims).unwrap();
 
     let history = store
+        .claims()
         .history(
             &Subject::new("wp3").unwrap(),
             &Predicate::new("status").unwrap(),
         )
         .unwrap();
     assert_eq!(history.len(), 50);
-    assert_eq!(store.sequence().unwrap(), 50);
+    assert_eq!(store.claims().sequence().unwrap(), 50);
     // Newest knowledge first.
     assert_eq!(history.first().unwrap().object, "v49");
     assert_eq!(history.last().unwrap().object, "v0");
@@ -100,6 +103,7 @@ fn distinct_valid_times_are_unaffected_by_the_transaction_time_field() {
 
     // Recorded out of order: the earlier valid_from is learned about last.
     store
+        .claims()
         .append_batch(&[
             recorded("wp3", "status", "second", 200, 100),
             recorded("wp3", "status", "first", 100, 900),
@@ -109,6 +113,7 @@ fn distinct_valid_times_are_unaffected_by_the_transaction_time_field() {
     // Valid-time ordering governs resolution, not the order of recording.
     assert_eq!(
         store
+            .claims()
             .as_of(&subject, &predicate, 150)
             .unwrap()
             .map(|c| c.object),
@@ -116,6 +121,7 @@ fn distinct_valid_times_are_unaffected_by_the_transaction_time_field() {
     );
     assert_eq!(
         store
+            .claims()
             .as_of(&subject, &predicate, 250)
             .unwrap()
             .map(|c| c.object),

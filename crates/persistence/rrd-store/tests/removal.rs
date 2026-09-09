@@ -36,6 +36,7 @@ fn store() -> (tempfile::TempDir, RrflowKvStore) {
 fn a_pair_accessed_within_the_interval_is_never_a_candidate() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&[
             claim("wp3", "status", "v1", 100),
             claim("wp4", "status", "v1", 100),
@@ -43,6 +44,7 @@ fn a_pair_accessed_within_the_interval_is_never_a_candidate() {
         .unwrap();
 
     store
+        .claims()
         .observe(
             &reader("agent:clyffy"),
             &Subject::new("wp3").unwrap(),
@@ -51,7 +53,7 @@ fn a_pair_accessed_within_the_interval_is_never_a_candidate() {
         )
         .unwrap();
 
-    let report = store.removal_report(1_000, 9_000).unwrap();
+    let report = store.claims().removal_report(1_000, 9_000).unwrap();
     let candidates: Vec<_> = report.candidates().map(|p| p.subject.to_string()).collect();
     let retained: Vec<_> = report.retained().map(|p| p.subject.to_string()).collect();
 
@@ -63,11 +65,13 @@ fn a_pair_accessed_within_the_interval_is_never_a_candidate() {
 fn a_pair_with_no_access_in_the_interval_is_always_a_candidate() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&[claim("wp3", "status", "v1", 100)])
         .unwrap();
 
     // Accessed, but before the interval opens.
     store
+        .claims()
         .observe(
             &reader("agent:clyffy"),
             &Subject::new("wp3").unwrap(),
@@ -76,7 +80,7 @@ fn a_pair_with_no_access_in_the_interval_is_always_a_candidate() {
         )
         .unwrap();
 
-    let report = store.removal_report(1_000, 9_000).unwrap();
+    let report = store.claims().removal_report(1_000, 9_000).unwrap();
     assert_eq!(
         report.candidates().count(),
         1,
@@ -84,7 +88,7 @@ fn a_pair_with_no_access_in_the_interval_is_always_a_candidate() {
     );
 
     // Widening the interval to include that access retains the pair.
-    let widened = store.removal_report(0, 9_000).unwrap();
+    let widened = store.claims().removal_report(0, 9_000).unwrap();
     assert_eq!(widened.candidates().count(), 0);
     assert_eq!(widened.retained().count(), 1);
 }
@@ -93,9 +97,11 @@ fn a_pair_with_no_access_in_the_interval_is_always_a_candidate() {
 fn an_access_after_the_evaluation_instant_does_not_retain() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&[claim("wp3", "status", "v1", 100)])
         .unwrap();
     store
+        .claims()
         .observe(
             &reader("agent:clyffy"),
             &Subject::new("wp3").unwrap(),
@@ -104,7 +110,7 @@ fn an_access_after_the_evaluation_instant_does_not_retain() {
         )
         .unwrap();
 
-    let report = store.removal_report(1_000, 9_000).unwrap();
+    let report = store.claims().removal_report(1_000, 9_000).unwrap();
     assert_eq!(report.candidates().count(), 1);
 }
 
@@ -112,6 +118,7 @@ fn an_access_after_the_evaluation_instant_does_not_retain() {
 fn every_verdict_cites_its_evidence() {
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&[
             claim("wp3", "status", "v1", 100),
             claim("wp3", "status", "v2", 200),
@@ -120,6 +127,7 @@ fn every_verdict_cites_its_evidence() {
         .unwrap();
     for at in [2_000u64, 3_000, 4_000] {
         store
+            .claims()
             .observe(
                 &reader("agent:clyffy"),
                 &Subject::new("wp3").unwrap(),
@@ -129,7 +137,7 @@ fn every_verdict_cites_its_evidence() {
             .unwrap();
     }
 
-    let report = store.removal_report(1_000, 9_000).unwrap();
+    let report = store.claims().removal_report(1_000, 9_000).unwrap();
 
     let retained = report.retained().next().unwrap();
     assert_eq!(retained.access_count, 3);
@@ -158,9 +166,9 @@ fn claim_versions_are_counted_per_pair() {
     let claims: Vec<Claim> = (0..12)
         .map(|i| claim("wp3", "status", &format!("v{i}"), 100 + i))
         .collect();
-    store.append_batch(&claims).unwrap();
+    store.claims().append_batch(&claims).unwrap();
 
-    let report = store.removal_report(0, 9_000).unwrap();
+    let report = store.claims().removal_report(0, 9_000).unwrap();
     let pair = report.pairs.first().unwrap();
     assert_eq!(pair.claim_count, 12);
     assert_eq!(pair.verdict, Verdict::Candidate);
@@ -173,10 +181,12 @@ fn identifiers_containing_the_printable_separator_are_attributed_correctly() {
     // retained the other.
     let (_dir, store) = store();
     store
+        .claims()
         .append_batch(&[claim("a/b", "c", "v1", 100), claim("a", "b/c", "v1", 100)])
         .unwrap();
 
     store
+        .claims()
         .observe(
             &reader("r/1"),
             &Subject::new("a/b").unwrap(),
@@ -185,7 +195,7 @@ fn identifiers_containing_the_printable_separator_are_attributed_correctly() {
         )
         .unwrap();
 
-    let report = store.removal_report(0, 9_000).unwrap();
+    let report = store.claims().removal_report(0, 9_000).unwrap();
     let retained: Vec<_> = report
         .retained()
         .map(|p| format!("{}|{}", p.subject, p.predicate))
@@ -208,6 +218,7 @@ fn a_pair_with_access_but_no_stored_claim_is_not_reported() {
     let (_dir, store) = store();
     // Nothing to remove, so nothing to report.
     store
+        .claims()
         .observe(
             &reader("agent:clyffy"),
             &Subject::new("ghost").unwrap(),
@@ -216,14 +227,14 @@ fn a_pair_with_access_but_no_stored_claim_is_not_reported() {
         )
         .unwrap();
 
-    let report = store.removal_report(0, 9_000).unwrap();
+    let report = store.claims().removal_report(0, 9_000).unwrap();
     assert!(report.pairs.is_empty());
 }
 
 #[test]
 fn an_empty_store_reports_nothing() {
     let (_dir, store) = store();
-    let report = store.removal_report(0, 9_000).unwrap();
+    let report = store.claims().removal_report(0, 9_000).unwrap();
     assert!(report.pairs.is_empty());
     assert_eq!(report.candidates().count(), 0);
     assert!(report.render().contains("0 pair(s)"));

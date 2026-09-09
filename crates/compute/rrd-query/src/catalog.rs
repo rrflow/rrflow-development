@@ -261,7 +261,7 @@ fn latest(history: &[u64], known_at_cursor: u64) -> u64 {
 
 impl Catalog {
     pub fn capture<E: StorageEngine>(engine: &E, scope: &ScopeId) -> Result<Self> {
-        let read = engine.runtime_read_stamp(scope)?;
+        let read = engine.runtime().read_stamp(scope)?;
         Self::capture_at(engine, read)
     }
 
@@ -278,7 +278,7 @@ impl Catalog {
         let changes = if limit == 0 {
             Vec::new()
         } else {
-            let page = engine.runtime_read_changes(&read, 0, limit)?;
+            let page = engine.runtime().read_changes(&read, 0, limit)?;
             if page.through_cursor != read.commit_cursor {
                 return Err(Error::Catalog(format!(
                     "schema replay stopped at cursor {}, expected {}",
@@ -302,7 +302,9 @@ impl Catalog {
         // The catalogue is materialized outside the append-only runtime log.
         // Revalidate the same stamp after loading it so a concurrent index or
         // vector catalogue transition cannot produce a torn planning view.
-        engine.runtime_read_changes(&read, read.commit_cursor, 1)?;
+        engine
+            .runtime()
+            .read_changes(&read, read.commit_cursor, 1)?;
         Ok(Self {
             read,
             schemas,

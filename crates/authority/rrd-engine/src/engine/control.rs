@@ -15,7 +15,7 @@ pub(in crate::engine) fn commit_engine_control(
     state: &impl Serialize,
     context: EngineControlContext<'_>,
 ) -> Result<()> {
-    engine.commit_control_transition(&ControlTransition {
+    engine.control().commit(&ControlTransition {
         key,
         expected,
         replacement: Some(serde_json::to_vec(state).map_err(contract_json)?),

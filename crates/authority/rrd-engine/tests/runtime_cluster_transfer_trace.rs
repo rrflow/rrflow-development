@@ -46,7 +46,8 @@ struct TraceView {
 
 fn traces<E: StorageEngine>(engine: &E) -> Vec<TraceView> {
     engine
-        .runtime_changes_since(0, usize::MAX, Some(&scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
         .changes
         .into_iter()
@@ -97,7 +98,7 @@ fn exercise<E: StorageEngine>(
         RuntimeType::new("fixture").unwrap(),
         RuntimeRecordSchema::default(),
     );
-    let read = data.engine().runtime_read_stamp(&scope()).unwrap();
+    let read = data.engine().runtime().read_stamp(&scope()).unwrap();
     data.commit(
         &DataTransaction::new(
             read,
@@ -177,7 +178,7 @@ fn transport_observations_persist_as_one_causal_project_trace() {
         RuntimeType::new("fixture").unwrap(),
         RuntimeRecordSchema::default(),
     );
-    let read = runtime.engine().runtime_read_stamp(&scope()).unwrap();
+    let read = runtime.engine().runtime().read_stamp(&scope()).unwrap();
     runtime
         .commit(
             &DataTransaction::new(

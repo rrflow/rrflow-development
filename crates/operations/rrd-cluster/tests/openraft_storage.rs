@@ -489,10 +489,11 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
             );
 
             let native = RrflowKvStore::open(directory.path()).map_err(test_storage_error)?;
-            assert_eq!(native.runtime_cursor().map_err(test_storage_error)?, 2);
+            assert_eq!(native.runtime().cursor().map_err(test_storage_error)?, 2);
             assert_eq!(
                 native
-                    .runtime_commit_outcome(&outcome.commit_id)
+                    .runtime()
+                    .commit_outcome(&outcome.commit_id)
                     .map_err(test_storage_error)?,
                 Some(outcome.clone())
             );
@@ -630,17 +631,22 @@ fn canonical_runtime_commit_is_atomic_idempotent_durable_and_transferable() {
             let target_native =
                 RrflowKvStore::open(target_directory.path()).map_err(test_storage_error)?;
             assert_eq!(
-                target_native.runtime_cursor().map_err(test_storage_error)?,
+                target_native
+                    .runtime()
+                    .cursor()
+                    .map_err(test_storage_error)?,
                 2
             );
             assert_eq!(
                 target_native
-                    .runtime_commit_outcome(&outcome.commit_id)
+                    .runtime()
+                    .commit_outcome(&outcome.commit_id)
                     .map_err(test_storage_error)?,
                 Some(outcome.clone())
             );
             let target_objects = target_native
-                .runtime_changes_since(
+                .runtime()
+                .changes_since(
                     0,
                     usize::MAX,
                     Some(&ScopeId::new("cluster:atomic").map_err(test_storage_error)?),
@@ -746,7 +752,7 @@ fn stale_runtime_cursor_is_a_durable_denial_not_a_partial_apply() {
             drop(log_store);
 
             let native = RrflowKvStore::open(directory.path()).map_err(test_storage_error)?;
-            assert_eq!(native.runtime_cursor().map_err(test_storage_error)?, 1);
+            assert_eq!(native.runtime().cursor().map_err(test_storage_error)?, 1);
             drop(native);
             let (_, mut reopened) =
                 RrdRaftStore::open(directory.path(), ShardId(13)).map_err(test_storage_error)?;

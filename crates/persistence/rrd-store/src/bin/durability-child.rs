@@ -86,7 +86,7 @@ fn main() {
 fn rrflow_kv_transaction(path: &Path) -> ! {
     let engine = RrflowKvStore::open(path).expect("open rrflowKV store");
     let scope = ScopeId::new("instance:rrflow-kv-durability").unwrap();
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(
         read,
         RuntimeCommit {
@@ -98,7 +98,10 @@ fn rrflow_kv_transaction(path: &Path) -> ! {
         },
     )
     .unwrap();
-    let outcome = engine.commit_data_transaction(&transaction).unwrap();
+    let outcome = engine
+        .runtime()
+        .commit_data_transaction(&transaction)
+        .unwrap();
     assert_eq!(outcome.count, 9);
     ready_and_wait()
 }

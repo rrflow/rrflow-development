@@ -62,7 +62,7 @@ fn desired_state_is_journaled_and_idempotency_is_durable() {
     let replay = repository.set_desired(&request).unwrap();
     assert!(replay.idempotent_replay);
     assert_eq!(replay.document.revision, 2);
-    assert_eq!(engine.control_journal_since(0, 10).unwrap().len(), 2);
+    assert_eq!(engine.control().journal_since(0, 10).unwrap().len(), 2);
 
     let mut rebound = request;
     rebound.target.version = "0.2.0".into();
@@ -246,7 +246,7 @@ fn native_reopen_recovers_authority_and_hash_chained_history() {
         document.operation(&id("deploy-project-a")).unwrap().state,
         OperationState::Leased
     );
-    let journal = reopened.control_journal_since(0, 10).unwrap();
+    let journal = reopened.control().journal_since(0, 10).unwrap();
     assert_eq!(journal.len(), 3);
     assert!(journal.iter().all(|entry| entry.verify()));
     assert_eq!(

@@ -76,7 +76,7 @@ pub fn execute_traced_query<E: StorageEngine>(
     actor: &str,
     at: Millis,
 ) -> Result<TracedQueryExecution, Box<dyn std::error::Error>> {
-    let read = store.runtime_read_stamp(&scope)?;
+    let read = store.runtime().read_stamp(&scope)?;
     let pipeline = StampedQueryPipeline::new(store, read.clone())?;
     let query_digest = digest::sha256_hex(source.as_bytes());
     let parameter_bytes = serde_json::to_vec(parameters)?;

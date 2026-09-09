@@ -70,11 +70,11 @@ impl RrdEngine {
         self.authorize_session_policy(&session, stream_action(&request.stream), now)?;
         ensure_subscription_scope(self, &request.stream)?;
 
-        let head = self.storage.runtime_cursor()?;
+        let head = self.storage.runtime().cursor()?;
         validate_resume_cursor(request.after_cursor, head, request.retention_cursor_window)?;
         let operation_sha256 = operation_digest(request)?;
         let key = subscription_key(&self.instance, &request.subscription_id);
-        if let Some(bytes) = self.storage.control_record(&key)? {
+        if let Some(bytes) = self.storage.control().get(&key)? {
             let state = decode_subscription(&bytes)?;
             ensure_owner(&state, session_id)?;
             if state.open_idempotency_key != *idempotency_key
@@ -151,7 +151,8 @@ impl RrdEngine {
         let key = subscription_key(&self.instance, &resume.subscription_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SubscriptionNotFound)?;
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
@@ -165,7 +166,7 @@ impl RrdEngine {
             ));
         }
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
-        let head = self.storage.runtime_cursor()?;
+        let head = self.storage.runtime().cursor()?;
         validate_resume_cursor(
             state.acknowledged_cursor,
             head,
@@ -215,14 +216,15 @@ impl RrdEngine {
         let key = subscription_key(&self.instance, subscription_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SubscriptionNotFound)?;
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
         ensure_subscription_open(&state, now)?;
         ensure_generation(&state, connection_generation)?;
         self.authorize_session_policy(&session, stream_action(&state.stream), now)?;
-        let head = self.storage.runtime_cursor()?;
+        let head = self.storage.runtime().cursor()?;
         validate_resume_cursor(
             state.acknowledged_cursor,
             head,
@@ -335,7 +337,8 @@ impl RrdEngine {
         let key = subscription_key(&self.instance, &acknowledgement.subscription_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SubscriptionNotFound)?;
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
@@ -355,7 +358,7 @@ impl RrdEngine {
         state.acknowledged_cursor = acknowledgement.through_cursor;
         state.pending.drain(..=position);
         state.lease_expires_at_unix_ms = now.saturating_add(state.lease_ms);
-        let head = self.storage.runtime_cursor()?;
+        let head = self.storage.runtime().cursor()?;
         replace_subscription(
             self,
             key,
@@ -394,7 +397,8 @@ impl RrdEngine {
         let key = subscription_key(&self.instance, &coordinate.subscription_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SubscriptionNotFound)?;
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
@@ -407,7 +411,7 @@ impl RrdEngine {
             ));
         }
         state.lease_expires_at_unix_ms = now.saturating_add(state.lease_ms);
-        let head = self.storage.runtime_cursor()?;
+        let head = self.storage.runtime().cursor()?;
         replace_subscription(
             self,
             key,
@@ -444,7 +448,8 @@ impl RrdEngine {
         let key = subscription_key(&self.instance, &request.subscription_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SubscriptionNotFound)?;
         let mut state = decode_subscription(&bytes)?;
         ensure_owner(&state, session_id)?;
@@ -454,7 +459,7 @@ impl RrdEngine {
                 return Err(ServiceError::IdempotencyConflict);
             }
             return Ok(CloseSubscriptionResult {
-                subscription: subscription_snapshot(&state, self.storage.runtime_cursor()?),
+                subscription: subscription_snapshot(&state, self.storage.runtime().cursor()?),
                 idempotent_replay: true,
             });
         }
@@ -465,7 +470,7 @@ impl RrdEngine {
             operation_sha256: digest,
             closed_at_unix_ms: now,
         });
-        let head = self.storage.runtime_cursor()?;
+        let head = self.storage.runtime().cursor()?;
         replace_subscription(
             self,
             key,

@@ -87,7 +87,7 @@ pub fn restore_logical_archive_to_new_root_with_progress(
         }
         match action {
             ArchiveAction::StandaloneClaim { claim } => {
-                engine.append_batch(std::slice::from_ref(claim))?;
+                engine.claims().append_batch(std::slice::from_ref(claim))?;
             }
             ArchiveAction::RuntimeCommit { commit, audit } => {
                 let outcome = engine.restore_runtime_commit(commit, audit)?;
@@ -163,8 +163,8 @@ fn reconcile_staging_prefix(
     expected: &LogicalArchiveInventory,
     engine: &RrflowKvStore,
 ) -> Result<PrefixInventory> {
-    let actual_claims = engine.sequence()?;
-    let actual_cursor = engine.runtime_cursor()?;
+    let actual_claims = engine.claims().sequence()?;
+    let actual_cursor = engine.runtime().cursor()?;
     if actual_claims > expected.claim_sequence || actual_cursor > expected.runtime_cursor {
         return Err(Error::Archive(
             "logical restore staging is ahead of the selected archive".into(),
@@ -216,7 +216,9 @@ fn verify_action_present(
 ) -> Result<()> {
     match action {
         ArchiveAction::StandaloneClaim { claim } => {
-            let actual = engine.claims_in_range(claim_sequence, claim_sequence + 1)?;
+            let actual = engine
+                .claims()
+                .claims_in_range(claim_sequence, claim_sequence + 1)?;
             if actual.as_slice() != std::slice::from_ref(claim) {
                 return Err(Error::Archive(
                     "restore staging standalone claim differs from archive".into(),
@@ -225,7 +227,9 @@ fn verify_action_present(
         }
         ArchiveAction::RuntimeCommit { commit, audit } => {
             let count = commit.mutations.len();
-            let page = engine.runtime_changes_since(runtime_cursor, count, None)?;
+            let page = engine
+                .runtime()
+                .changes_since(runtime_cursor, count, None)?;
             if page.changes.len() != count
                 || page.through_cursor != runtime_cursor + count as u64
                 || page.changes.iter().enumerate().any(|(ordinal, change)| {
@@ -238,7 +242,7 @@ fn verify_action_present(
                     "restore staging runtime commit differs from archive".into(),
                 ));
             }
-            if engine.runtime_audit(&commit.digest())?.as_ref() != Some(audit) {
+            if engine.runtime().audit(&commit.digest())?.as_ref() != Some(audit) {
                 return Err(Error::Archive(
                     "restore staging runtime audit differs from archive".into(),
                 ));
@@ -252,7 +256,7 @@ fn verify_action_present(
                 })
                 .collect::<Vec<_>>();
             if !claim_mutations.is_empty() {
-                let actual = engine.claims_in_range(
+                let actual = engine.claims().claims_in_range(
                     claim_sequence,
                     claim_sequence + claim_mutations.len() as u64,
                 )?;
@@ -281,7 +285,8 @@ fn verify_action_present(
                     .filter(|mutation| rrd_core::projection_family(mutation).is_some())
                     .count(),
             };
-            if engine.runtime_commit_outcome(&commit.digest())?.as_ref() != Some(&expected_outcome)
+            if engine.runtime().commit_outcome(&commit.digest())?.as_ref()
+                != Some(&expected_outcome)
             {
                 return Err(Error::Archive(
                     "restore staging runtime outcome differs from archive".into(),
@@ -353,8 +358,8 @@ fn verify_watermarks(
     engine: &impl StorageEngine,
     expected: &LogicalArchiveInventory,
 ) -> Result<()> {
-    let sequence = engine.sequence()?;
-    let cursor = engine.runtime_cursor()?;
+    let sequence = engine.claims().sequence()?;
+    let cursor = engine.runtime().cursor()?;
     if sequence != expected.claim_sequence || cursor != expected.runtime_cursor {
         return Err(Error::Archive(format!(
             "restored watermarks diverged: claims {sequence}/{}, runtime {cursor}/{}",
@@ -362,7 +367,9 @@ fn verify_watermarks(
         )));
     }
     if expected.runtime_cursor > 0 {
-        let page = engine.runtime_changes_since(expected.runtime_cursor - 1, 1, None)?;
+        let page = engine
+            .runtime()
+            .changes_since(expected.runtime_cursor - 1, 1, None)?;
         let commit_id = page
             .changes
             .first()
@@ -370,7 +377,8 @@ fn verify_watermarks(
             .commit_id
             .clone();
         let audit = engine
-            .runtime_audit(&commit_id)?
+            .runtime()
+            .audit(&commit_id)?
             .ok_or_else(|| Error::Archive("restored runtime tail audit is absent".into()))?;
         if expected.runtime_audit_sha256.as_deref() != Some(audit.digest.as_str()) {
             return Err(Error::Archive(

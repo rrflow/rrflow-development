@@ -423,7 +423,9 @@ impl ReadPath {
             artifact_rows,
         } = self
         {
-            let validation = engine.runtime_read_changes(stamp, stamp.commit_cursor, 1)?;
+            let validation = engine
+                .runtime()
+                .read_changes(stamp, stamp.commit_cursor, 1)?;
             if validation.through_cursor != stamp.commit_cursor
                 || validation.head_cursor != stamp.commit_cursor
                 || !validation.changes.is_empty()
@@ -434,7 +436,8 @@ impl ReadPath {
             }
             let name = index_artifact_name(&stamp.scope, id, *generation, artifact_digest);
             let bytes = engine
-                .get_projection(&name)?
+                .projections()
+                .get(&name)?
                 .ok_or_else(|| Error::Integrity(format!("index artifact {id} is missing")))?;
             if rrd_core::digest::sha256_hex(&bytes) != *artifact_digest {
                 return Err(Error::Integrity(format!(
@@ -481,7 +484,7 @@ impl ReadPath {
             Self::EventCursorLookup { cursor, .. } => (cursor - 1, 1, *cursor),
             Self::Index { .. } => unreachable!("indexes return above"),
         };
-        let page = engine.runtime_read_changes(stamp, after, limit)?;
+        let page = engine.runtime().read_changes(stamp, after, limit)?;
         if page.through_cursor != expected_through || page.head_cursor != stamp.commit_cursor {
             return Err(Error::Integrity(format!(
                 "stamped access ended at {}/{}, expected {}/{}",

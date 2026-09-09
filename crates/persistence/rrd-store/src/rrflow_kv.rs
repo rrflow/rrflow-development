@@ -1,32 +1,24 @@
-//! Persistent rrflowKV implementation of the semantic [`StorageEngine`] port.
+//! Persistent rrflowKV implementation of the physical [`StorageEngine`] port.
 //!
-//! Logical keyspaces are encoded as stable byte prefixes inside one atomic
-//! rrflowKV database. One semantic commit becomes one rrflowKV write batch; the
-//! database's physical MVCC sequence is deliberately independent of claim and
-//! runtime cursors stored in the batch.
+//! Semantic repositories encode logical keyspaces as stable byte prefixes and
+//! publish through this store's snapshot transaction. The database's physical
+//! MVCC sequence is deliberately independent of claim and runtime cursors
+//! stored in those transactions.
 
-use crate::control::{
-    validate_control_batch, validate_control_key, verify_control_page, verify_control_tail,
-    ControlJournalEntry, ControlTransition,
-};
-use crate::engine::{validate_idempotency, PhysicalStoreEvidence, StorageEngine};
+use crate::engine::{PhysicalStoreEvidence, StorageEngine};
 use crate::error::{Error, Result};
-use crate::gc::{build_report, RemovalReport, Tally};
-use crate::invocation::{Invocation, InvocationInput};
 use crate::key_codec::{prefix_end, KeyCodec};
 use crate::keyspaces::{self, Durability};
-use crate::outcome::{AppendOutcome, IdempotentAppendOutcome};
 use crate::transaction::{StorageTransaction, TransactionCommit, TransactionRollback};
 use rrd_core::{
-    projection_family, AuditEnvelope, Claim, ClaimSource, Millis, ObjectReference, Predicate,
-    ProjectionWork, ReadStamp, Reader, RetentionPin, RuntimeChange, RuntimeChangePage,
-    RuntimeCommit, RuntimeCommitOutcome, RuntimeLogAccumulator, RuntimeMerkleNode, RuntimeMutation,
-    RuntimeRecord, RuntimeRef, RuntimeRelation, RuntimeSchemaRegistry, ScopeId, SnapshotHandle,
-    SnapshotId, Subject,
+    projection_family, AuditEnvelope, Millis, ObjectReference, ProjectionWork, ReadStamp,
+    RuntimeChange, RuntimeChangePage, RuntimeCommit, RuntimeCommitOutcome, RuntimeLogAccumulator,
+    RuntimeMerkleNode, RuntimeMutation, RuntimeRecord, RuntimeRef, RuntimeRelation,
+    RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
 };
 use rrd_lsm::{
     CompactionOutcome, Database, DatabaseOptions, GarbageCollectionReport, Manifest, Mutation,
-    Snapshot, SnapshotBundleFile, WriteBatch,
+    Snapshot, SnapshotBundleFile,
 };
 use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
@@ -44,6 +36,7 @@ pub struct RrflowKvStore {
 struct RrflowKvTransaction<'a> {
     store: &'a RrflowKvStore,
     transaction: rrd_lsm::Transaction,
+    runtime_snapshot_writes: BTreeMap<Vec<u8>, Option<Vec<u8>>>,
 }
 
 impl StorageTransaction for RrflowKvTransaction<'_> {
@@ -64,23 +57,68 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
     }
 
     fn put(&mut self, key: Vec<u8>, value: Vec<u8>) -> Result<()> {
-        self.transaction.put(key, value).map_err(Error::from)
+        self.transaction.put(key.clone(), value.clone())?;
+        if key.starts_with(&keyspaces::space_prefix(keyspaces::RUNTIME_SNAPSHOTS)) {
+            self.runtime_snapshot_writes.insert(key, Some(value));
+        }
+        Ok(())
     }
 
     fn delete(&mut self, key: Vec<u8>) -> Result<()> {
-        self.transaction.delete(key).map_err(Error::from)
+        self.transaction.delete(key.clone())?;
+        if key.starts_with(&keyspaces::space_prefix(keyspaces::RUNTIME_SNAPSHOTS)) {
+            self.runtime_snapshot_writes.insert(key, None);
+        }
+        Ok(())
     }
 
     fn commit(self: Box<Self>, durability: Durability) -> Result<TransactionCommit> {
-        let Self { store, transaction } = *self;
+        let Self {
+            store,
+            transaction,
+            runtime_snapshot_writes,
+        } = *self;
         let mut database = store.lock()?;
-        let outcome = database.commit_transaction(
+        let snapshot_handles = runtime_snapshot_writes
+            .values()
+            .flatten()
+            .map(|bytes| {
+                let handle: SnapshotHandle = serde_json::from_slice(bytes)?;
+                handle.validate()?;
+                Ok(handle)
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let mut created_checkpoints = Vec::new();
+        for handle in &snapshot_handles {
+            match ensure_runtime_checkpoint(&mut database, handle, handle.created_at) {
+                Ok(true) => created_checkpoints.push(runtime_checkpoint_name(&handle.id)),
+                Ok(false) => {}
+                Err(error) => {
+                    for name in created_checkpoints {
+                        let _ = database.release_checkpoint(&name);
+                    }
+                    return Err(error);
+                }
+            }
+        }
+        let outcome = match database.commit_transaction(
             transaction,
             match durability {
                 Durability::Authoritative => rrd_lsm::Durability::Authoritative,
                 Durability::Buffered => rrd_lsm::Durability::Buffered,
             },
-        )?;
+        ) {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                for name in created_checkpoints {
+                    let _ = database.release_checkpoint(&name);
+                }
+                return Err(error.into());
+            }
+        };
+        if runtime_snapshot_writes.values().any(Option::is_none) {
+            reconcile_runtime_checkpoints(&mut database, None, 0)?;
+        }
         let (first_sequence, last_sequence) = outcome
             .receipt
             .as_ref()
@@ -210,109 +248,6 @@ impl RrflowKvStore {
         database.garbage_collect().map_err(Error::from)
     }
 
-    /// Derives an evidence-backed removal report from rrflowKV claim and access
-    /// keyspaces.
-    pub fn removal_report(&self, since: Millis, evaluated_at: Millis) -> Result<RemovalReport> {
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let mut tallies = BTreeMap::<(String, String), Tally>::new();
-        for (stored_key, _) in scan_space(&database, snapshot, keyspaces::CLAIMS, &[])? {
-            let (subject, predicate, _, _) =
-                keyspaces::parse_claim_key(database_codec(&database)?, &stored_key)?;
-            tallies
-                .entry((subject.to_string(), predicate.to_string()))
-                .or_default()
-                .claim_count += 1;
-        }
-        for (stored_key, _) in scan_space_from(
-            &database,
-            snapshot,
-            keyspaces::ACCESS,
-            &keyspaces::access_bound(since),
-        )? {
-            let (at, reader, subject, predicate) =
-                keyspaces::parse_access_key(database_codec(&database)?, &stored_key)?;
-            if at > evaluated_at {
-                break;
-            }
-            let tally = tallies
-                .entry((subject.to_string(), predicate.to_string()))
-                .or_default();
-            tally.access_count += 1;
-            if tally.last_access.is_none_or(|previous| at >= previous) {
-                tally.last_access = Some(at);
-                tally.last_reader = Some(reader);
-            }
-        }
-        Ok(build_report(tallies, since, evaluated_at)?)
-    }
-
-    /// Exact rrflowKV access-record count.
-    pub fn access_count(&self) -> Result<usize> {
-        let database = self.lock()?;
-        Ok(scan_space(&database, database.snapshot(), keyspaces::ACCESS, &[])?.len())
-    }
-
-    /// Persists one authoritative operator invocation and its ordinal in one
-    /// rrflowKV batch.
-    #[tracing::instrument(level = "debug", skip_all, fields(command = input.command))]
-    pub fn record_invocation(&self, input: InvocationInput<'_>) -> Result<Invocation> {
-        let mut database = self.lock()?;
-        let previous = read_sequence(
-            &database,
-            database.snapshot(),
-            &keyspaces::invocation_watermark_key(),
-        )?;
-        let ordinal = previous.checked_add(1).ok_or(Error::SequenceOverflow)?;
-        let record = Invocation {
-            ordinal,
-            at: input.at,
-            trigger: input.trigger,
-            command: input.command.to_owned(),
-            arguments: input.arguments.to_vec(),
-            outcome: input.outcome,
-            duration_ms: input.duration_ms,
-            detail: input.detail,
-        };
-        let mut operations = Vec::with_capacity(2);
-        put(
-            &mut operations,
-            keyspaces::INVOCATIONS,
-            &keyspaces::invocation_key(input.at, ordinal),
-            serde_json::to_vec(&record)?,
-        );
-        put_sequence(
-            &mut operations,
-            &keyspaces::invocation_watermark_key(),
-            ordinal,
-        );
-        write(&mut database, operations, Durability::Authoritative)?;
-        tracing::debug!(ordinal, "invocation recorded");
-        Ok(record)
-    }
-
-    pub fn invocations_since(&self, since: Millis) -> Result<Vec<Invocation>> {
-        let database = self.lock()?;
-        scan_space_from(
-            &database,
-            database.snapshot(),
-            keyspaces::INVOCATIONS,
-            &keyspaces::invocation_bound(since),
-        )?
-        .into_iter()
-        .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
-        .collect()
-    }
-
-    pub fn invocation_count(&self) -> Result<u64> {
-        let database = self.lock()?;
-        read_sequence(
-            &database,
-            database.snapshot(),
-            &keyspaces::invocation_watermark_key(),
-        )
-    }
-
     /// Replays one already-authenticated logical-archive commit while
     /// preserving its original audit envelope. This is deliberately crate
     /// private: ordinary callers must use the live `StorageEngine` transaction
@@ -322,82 +257,13 @@ impl RrflowKvStore {
         commit: &RuntimeCommit,
         audit: &AuditEnvelope,
     ) -> Result<RuntimeCommitOutcome> {
-        let mut database = self.lock()?;
-        let plan = prepare_rrflow_kv_commit_at_read(&database, commit, None, Some(audit))?;
-        let (outcome, operations) = plan.into_parts();
-        write(&mut database, operations, Durability::Authoritative)?;
-        Ok(outcome)
+        self.runtime().restore_commit(commit, audit)
     }
 
     fn lock(&self) -> Result<MutexGuard<'_, Database>> {
         self.database
             .lock()
             .map_err(|_| Error::Substrate("rrflowKV database mutex poisoned".into()))
-    }
-}
-
-impl ClaimSource for RrflowKvStore {
-    type Error = Error;
-
-    fn versions_at_or_before(
-        &self,
-        subject: &Subject,
-        predicate: &Predicate,
-        as_of: Millis,
-    ) -> Result<Vec<Claim>> {
-        let database = self.lock()?;
-        scan_claims(
-            &database,
-            keyspaces::claim_version_prefix(subject, predicate),
-            keyspaces::claim_seek_key(subject, predicate, as_of),
-        )
-    }
-
-    fn all_versions(&self, subject: &Subject, predicate: &Predicate) -> Result<Vec<Claim>> {
-        let database = self.lock()?;
-        let prefix = keyspaces::claim_version_prefix(subject, predicate);
-        scan_claims(&database, prefix.clone(), prefix)
-    }
-
-    fn subject_versions(&self, subject: &Subject) -> Result<Vec<Claim>> {
-        let database = self.lock()?;
-        let prefix = keyspaces::claim_subject_prefix(subject);
-        scan_claims(&database, prefix.clone(), prefix)
-    }
-
-    fn subject_versions_batch(&self, subjects: &[Subject]) -> Result<Vec<Vec<Claim>>> {
-        if subjects.is_empty() {
-            return Ok(Vec::new());
-        }
-        let database = self.lock()?;
-        if let [subject] = subjects {
-            let prefix = keyspaces::claim_subject_prefix(subject);
-            return Ok(vec![scan_claims(&database, prefix.clone(), prefix)?]);
-        }
-
-        let mut unique_ranges = BTreeMap::new();
-        for subject in subjects {
-            let prefix = keyspaces::claim_subject_prefix(subject);
-            encoded_storage_key(&database, keyspaces::CLAIMS, &prefix)?;
-            let end = prefix_end(&prefix).ok_or_else(|| {
-                Error::Substrate("rrflowKV claim prefix has no upper bound".into())
-            })?;
-            unique_ranges.insert(prefix, end);
-        }
-        let ranges = unique_ranges.into_iter().collect::<Vec<_>>();
-        let rows = database.scan_ranges(&ranges, database.snapshot())?;
-        let mut grouped = BTreeMap::<Subject, Vec<Claim>>::new();
-        for (_, value) in rows {
-            let claim: Claim = serde_json::from_slice(&value)?;
-            grouped
-                .entry(claim.subject.clone())
-                .or_default()
-                .push(claim);
-        }
-        Ok(subjects
-            .iter()
-            .map(|subject| grouped.get(subject).cloned().unwrap_or_default())
-            .collect())
     }
 }
 
@@ -417,7 +283,28 @@ impl StorageEngine for RrflowKvStore {
         Ok(Box::new(RrflowKvTransaction {
             store: self,
             transaction,
+            runtime_snapshot_writes: BTreeMap::new(),
         }))
+    }
+
+    fn claims(&self) -> crate::ClaimRepository<'_> {
+        crate::ClaimRepository::new(self)
+    }
+
+    fn control(&self) -> crate::ControlRepository<'_> {
+        crate::ControlRepository::new(self)
+    }
+
+    fn projections(&self) -> crate::ProjectionRepository<'_> {
+        crate::ProjectionRepository::new(self)
+    }
+
+    fn runtime(&self) -> crate::RuntimeRepository<'_> {
+        crate::RuntimeRepository::new(self)
+    }
+
+    fn invocations(&self) -> crate::InvocationRepository<'_> {
+        crate::InvocationRepository::new(self)
     }
 
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
@@ -491,631 +378,6 @@ impl StorageEngine for RrflowKvStore {
             segment_io_peak_request_bytes: Some(segment_io.peak_request_bytes as u64),
         })
     }
-
-    #[tracing::instrument(level = "debug", skip_all, fields(claims = claims.len()))]
-    fn append_batch(&self, claims: &[Claim]) -> Result<AppendOutcome> {
-        for claim in claims {
-            claim.validate()?;
-        }
-        let mut database = self.lock()?;
-        let snapshot = database.snapshot();
-        let start = read_sequence(&database, snapshot, &keyspaces::sequence_watermark_key())?;
-        if claims.is_empty() {
-            return Ok(AppendOutcome {
-                first_sequence: start,
-                last_sequence: start,
-                count: 0,
-            });
-        }
-        let mut sequence = start;
-        let mut operations = Vec::with_capacity(claims.len() * 2 + 1);
-        let mut sequence_operations = Vec::with_capacity(claims.len());
-        for claim in claims {
-            sequence = sequence.checked_add(1).ok_or(Error::SequenceOverflow)?;
-            let claim_key = keyspaces::claim_key(
-                &claim.subject,
-                &claim.predicate,
-                claim.valid_from,
-                claim.tx_time,
-            );
-            let encoded_claim = serde_json::to_vec(claim)?;
-            put(
-                &mut sequence_operations,
-                keyspaces::SEQUENCE_INDEX,
-                &keyspaces::sequence_key(sequence),
-                claim_key.clone(),
-            );
-            put(
-                &mut operations,
-                keyspaces::CLAIMS,
-                &claim_key,
-                encoded_claim,
-            );
-        }
-        // Keep writes for each logical keyspace adjacent. The physical commit
-        // remains atomic, while the ordered memtable avoids bouncing between
-        // distant tree ranges for every claim in the batch.
-        operations.extend(sequence_operations);
-        put_sequence(
-            &mut operations,
-            &keyspaces::sequence_watermark_key(),
-            sequence,
-        );
-        write(&mut database, operations, Durability::Authoritative)?;
-        tracing::debug!(first = start + 1, last = sequence, "append committed");
-        Ok(AppendOutcome {
-            first_sequence: start + 1,
-            last_sequence: sequence,
-            count: claims.len(),
-        })
-    }
-
-    fn append_batch_idempotent(
-        &self,
-        idempotency_key: &str,
-        operation_sha256: &str,
-        claims: &[Claim],
-    ) -> Result<IdempotentAppendOutcome> {
-        validate_idempotency(idempotency_key, operation_sha256)?;
-        if claims.is_empty() {
-            return Err(Error::Substrate(
-                "idempotent claim append must not be empty".into(),
-            ));
-        }
-        for claim in claims {
-            claim.validate()?;
-        }
-        let mut database = self.lock()?;
-        let snapshot = database.snapshot();
-        let receipt_key = keyspaces::accepted_append_key(idempotency_key);
-        if let Some(bytes) = get(&database, snapshot, keyspaces::META, &receipt_key)? {
-            let mut outcome: IdempotentAppendOutcome = serde_json::from_slice(&bytes)?;
-            if outcome.operation_sha256 != operation_sha256 {
-                return Err(Error::IdempotencyConflict(idempotency_key.into()));
-            }
-            outcome.idempotent_replay = true;
-            return Ok(outcome);
-        }
-        let start = read_sequence(&database, snapshot, &keyspaces::sequence_watermark_key())?;
-        let mut sequence = start;
-        let mut operations = Vec::with_capacity(claims.len() * 2 + 2);
-        let mut sequence_operations = Vec::with_capacity(claims.len());
-        for claim in claims {
-            sequence = sequence.checked_add(1).ok_or(Error::SequenceOverflow)?;
-            let claim_key = keyspaces::claim_key(
-                &claim.subject,
-                &claim.predicate,
-                claim.valid_from,
-                claim.tx_time,
-            );
-            put(
-                &mut sequence_operations,
-                keyspaces::SEQUENCE_INDEX,
-                &keyspaces::sequence_key(sequence),
-                claim_key.clone(),
-            );
-            put(
-                &mut operations,
-                keyspaces::CLAIMS,
-                &claim_key,
-                serde_json::to_vec(claim)?,
-            );
-        }
-        operations.extend(sequence_operations);
-        put_sequence(
-            &mut operations,
-            &keyspaces::sequence_watermark_key(),
-            sequence,
-        );
-        let outcome = IdempotentAppendOutcome {
-            operation_sha256: operation_sha256.into(),
-            append: AppendOutcome {
-                first_sequence: start + 1,
-                last_sequence: sequence,
-                count: claims.len(),
-            },
-            idempotent_replay: false,
-        };
-        put(
-            &mut operations,
-            keyspaces::META,
-            &receipt_key,
-            serde_json::to_vec(&outcome)?,
-        );
-        write(&mut database, operations, Durability::Authoritative)?;
-        Ok(outcome)
-    }
-
-    fn control_record(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        validate_control_key(key)?;
-        let database = self.lock()?;
-        get(
-            &database,
-            database.snapshot(),
-            keyspaces::META,
-            &keyspaces::control_record_key(key),
-        )
-    }
-
-    fn commit_control_transition(
-        &self,
-        transition: &ControlTransition,
-    ) -> Result<ControlJournalEntry> {
-        commit_rrflow_kv_control_transition(self, transition, None).map(|(_, entry)| entry)
-    }
-
-    fn commit_control_batch(
-        &self,
-        transitions: &[ControlTransition],
-    ) -> Result<Vec<ControlJournalEntry>> {
-        commit_rrflow_kv_control_batch(self, transitions)
-    }
-
-    fn commit_catalog_transition(
-        &self,
-        scope: &ScopeId,
-        transition: &ControlTransition,
-    ) -> Result<(u64, ControlJournalEntry)> {
-        let (revision, entry) = commit_rrflow_kv_control_transition(self, transition, Some(scope))?;
-        Ok((
-            revision.expect("catalogue transition assigns a revision"),
-            entry,
-        ))
-    }
-
-    fn control_journal_since(&self, after: u64, limit: usize) -> Result<Vec<ControlJournalEntry>> {
-        if limit == 0 {
-            return Err(Error::Substrate(
-                "control journal limit must be non-zero".into(),
-            ));
-        }
-        let database = self.lock()?;
-        let anchor_digest = if after == 0 {
-            None
-        } else {
-            get(
-                &database,
-                database.snapshot(),
-                keyspaces::META,
-                &keyspaces::control_journal_key(after),
-            )?
-            .map(|bytes| serde_json::from_slice::<ControlJournalEntry>(&bytes))
-            .transpose()?
-            .map(|entry| {
-                if !entry.verify() || entry.sequence != after {
-                    return Err(Error::Substrate("control journal anchor is corrupt".into()));
-                }
-                Ok(entry.digest)
-            })
-            .transpose()?
-        };
-        let entries = scan_space_from(
-            &database,
-            database.snapshot(),
-            keyspaces::META,
-            &keyspaces::control_journal_key(after.saturating_add(1)),
-        )?
-        .into_iter()
-        .take_while(|(key, _)| {
-            database_codec(&database)
-                .ok()
-                .is_some_and(|codec| keyspaces::is_control_journal_key(codec, key))
-        })
-        .take(limit)
-        .map(|(_, bytes)| serde_json::from_slice(&bytes).map_err(Error::from))
-        .collect::<Result<Vec<ControlJournalEntry>>>()?;
-        verify_control_page(after, anchor_digest, &entries)?;
-        Ok(entries)
-    }
-
-    fn control_sequence(&self) -> Result<u64> {
-        let database = self.lock()?;
-        read_sequence(
-            &database,
-            database.snapshot(),
-            &keyspaces::control_journal_sequence_key(),
-        )
-    }
-
-    fn sequence(&self) -> Result<u64> {
-        let database = self.lock()?;
-        read_sequence(
-            &database,
-            database.snapshot(),
-            &keyspaces::sequence_watermark_key(),
-        )
-    }
-
-    fn claims_in_range(&self, from: u64, to: u64) -> Result<Vec<Claim>> {
-        if from >= to {
-            return Ok(Vec::new());
-        }
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let head = read_sequence(&database, snapshot, &keyspaces::sequence_watermark_key())?;
-        let last = to.min(head);
-        if from >= last {
-            return Ok(Vec::new());
-        }
-        let start = encoded_storage_key(
-            &database,
-            keyspaces::SEQUENCE_INDEX,
-            &keyspaces::sequence_key(from.saturating_add(1)),
-        )?;
-        let inclusive_end = encoded_storage_key(
-            &database,
-            keyspaces::SEQUENCE_INDEX,
-            &keyspaces::sequence_key(last),
-        )?;
-        let end = prefix_end(&inclusive_end)
-            .ok_or_else(|| Error::Substrate("rrflowKV sequence range has no upper bound".into()))?;
-        let expected = usize::try_from(last - from)
-            .map_err(|_| Error::Substrate("rrflowKV sequence range exceeds usize".into()))?;
-        let mut claims = Vec::with_capacity(expected);
-        let mut expected_sequence = from.saturating_add(1);
-        database.scan_each(
-            &start,
-            Some(&end),
-            snapshot,
-            |sequence_key, sequence_value| -> Result<()> {
-                let actual_sequence =
-                    keyspaces::parse_sequence_key(database_codec(&database)?, sequence_key)?;
-                if actual_sequence != expected_sequence {
-                    return Err(Error::Substrate(format!(
-                        "rrflowKV sequence index expected {expected_sequence} but found {actual_sequence}"
-                    )));
-                }
-                keyspaces::validate_space(
-                    database_codec(&database)?,
-                    keyspaces::CLAIMS,
-                    sequence_value,
-                )?;
-                let encoded = database.get(sequence_value, snapshot)?.ok_or_else(|| {
-                    Error::Substrate(format!(
-                        "rrflowKV sequence index references an absent claim in ({from}, {last}]"
-                    ))
-                })?;
-                claims.push(serde_json::from_slice(&encoded)?);
-                expected_sequence = expected_sequence.checked_add(1).ok_or_else(|| {
-                    Error::Substrate("rrflowKV sequence validation overflowed".into())
-                })?;
-                Ok(())
-            },
-        )?;
-        if claims.len() != expected {
-            return Err(Error::Substrate(format!(
-                "rrflowKV sequence index returned {} rows for expected interval ({from}, {last}]",
-                claims.len()
-            )));
-        }
-        Ok(claims)
-    }
-
-    fn subjects(&self) -> Result<Vec<Subject>> {
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let mut subjects = Vec::new();
-        for (stored_key, _) in scan_space(&database, snapshot, keyspaces::CLAIMS, &[])? {
-            let (subject, _, _, _) =
-                keyspaces::parse_claim_key(database_codec(&database)?, &stored_key)?;
-            if subjects
-                .last()
-                .is_none_or(|prior: &Subject| prior.as_str() != subject.as_str())
-            {
-                subjects.push(subject);
-            }
-        }
-        Ok(subjects)
-    }
-
-    fn observe(
-        &self,
-        reader: &Reader,
-        subject: &Subject,
-        predicate: &Predicate,
-        at: Millis,
-    ) -> Result<()> {
-        let mut database = self.lock()?;
-        write(
-            &mut database,
-            vec![Mutation::Put {
-                key: storage_key(
-                    keyspaces::ACCESS,
-                    &keyspaces::access_key(at, reader, subject, predicate),
-                ),
-                value: Vec::new(),
-            }],
-            Durability::Buffered,
-        )?;
-        Ok(())
-    }
-
-    fn get_projection(&self, name: &str) -> Result<Option<Vec<u8>>> {
-        let database = self.lock()?;
-        get(
-            &database,
-            database.snapshot(),
-            keyspaces::PROJECTIONS,
-            &keyspaces::projection_key(name),
-        )
-    }
-
-    fn put_projection_with(&self, name: &str, bytes: &[u8], durability: Durability) -> Result<()> {
-        let mut database = self.lock()?;
-        write(
-            &mut database,
-            vec![Mutation::Put {
-                key: storage_key(keyspaces::PROJECTIONS, &keyspaces::projection_key(name)),
-                value: bytes.to_vec(),
-            }],
-            durability,
-        )?;
-        Ok(())
-    }
-
-    fn runtime_cursor(&self) -> Result<u64> {
-        let database = self.lock()?;
-        read_sequence(
-            &database,
-            database.snapshot(),
-            &keyspaces::runtime_cursor_key(),
-        )
-    }
-
-    fn runtime_schema(&self, scope: &ScopeId) -> Result<Option<RuntimeSchemaRegistry>> {
-        let database = self.lock()?;
-        get_json(
-            &database,
-            database.snapshot(),
-            keyspaces::RUNTIME_SCHEMAS,
-            &keyspaces::runtime_schema_key(scope),
-        )
-    }
-
-    fn runtime_read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
-        let database = self.lock()?;
-        rrflow_kv_read_stamp(&database, database.snapshot(), scope)
-    }
-
-    fn open_runtime_snapshot(
-        &self,
-        scope: &ScopeId,
-        owner: &str,
-        now: Millis,
-        ttl: Millis,
-    ) -> Result<SnapshotHandle> {
-        let mut database = self.lock()?;
-        let handle = SnapshotHandle::new(
-            rrflow_kv_read_stamp(&database, database.snapshot(), scope)?,
-            owner,
-            now,
-            ttl,
-        )?;
-        if let Some(persisted) = get_json::<SnapshotHandle>(
-            &database,
-            database.snapshot(),
-            keyspaces::RUNTIME_SNAPSHOTS,
-            &keyspaces::runtime_snapshot_key(handle.id.as_str()),
-        )? {
-            if persisted != handle {
-                return Err(Error::SnapshotMismatch(handle.id.to_string()));
-            }
-            ensure_runtime_checkpoint(&mut database, &handle, now)?;
-            return Ok(handle);
-        }
-        write(
-            &mut database,
-            vec![Mutation::Put {
-                key: storage_key(
-                    keyspaces::RUNTIME_SNAPSHOTS,
-                    &keyspaces::runtime_snapshot_key(handle.id.as_str()),
-                ),
-                value: serde_json::to_vec(&handle)?,
-            }],
-            Durability::Authoritative,
-        )?;
-        if let Err(error) = ensure_runtime_checkpoint(&mut database, &handle, now) {
-            write(
-                &mut database,
-                vec![Mutation::Delete {
-                    key: storage_key(
-                        keyspaces::RUNTIME_SNAPSHOTS,
-                        &keyspaces::runtime_snapshot_key(handle.id.as_str()),
-                    ),
-                }],
-                Durability::Authoritative,
-            )?;
-            return Err(error);
-        }
-        Ok(handle)
-    }
-
-    fn runtime_snapshot_changes(
-        &self,
-        handle: &SnapshotHandle,
-        after: u64,
-        limit: usize,
-        now: Millis,
-    ) -> Result<RuntimeChangePage> {
-        handle.validate()?;
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let persisted: SnapshotHandle = get_json(
-            &database,
-            snapshot,
-            keyspaces::RUNTIME_SNAPSHOTS,
-            &keyspaces::runtime_snapshot_key(handle.id.as_str()),
-        )?
-        .ok_or_else(|| Error::SnapshotNotFound(handle.id.to_string()))?;
-        if &persisted != handle {
-            return Err(Error::SnapshotMismatch(handle.id.to_string()));
-        }
-        if handle.is_expired(now) {
-            return Err(Error::SnapshotExpired {
-                id: handle.id.to_string(),
-                expired_at: handle.expires_at,
-            });
-        }
-        rrflow_kv_change_page(
-            &database,
-            snapshot,
-            handle.read.commit_cursor,
-            after,
-            limit,
-            Some(&handle.read.scope),
-        )
-    }
-
-    fn release_runtime_snapshot(&self, id: &SnapshotId) -> Result<bool> {
-        let mut database = self.lock()?;
-        let stored_key = encoded_storage_key(
-            &database,
-            keyspaces::RUNTIME_SNAPSHOTS,
-            &keyspaces::runtime_snapshot_key(id.as_str()),
-        )?;
-        if database.get(&stored_key, database.snapshot())?.is_none() {
-            return Ok(false);
-        }
-        write(
-            &mut database,
-            vec![Mutation::Delete {
-                key: storage_key(
-                    keyspaces::RUNTIME_SNAPSHOTS,
-                    &keyspaces::runtime_snapshot_key(id.as_str()),
-                ),
-            }],
-            Durability::Authoritative,
-        )?;
-        database.release_checkpoint(&runtime_checkpoint_name(id))?;
-        Ok(true)
-    }
-
-    fn runtime_snapshots(&self, now: Millis) -> Result<Vec<SnapshotHandle>> {
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let mut handles = scan_space(&database, snapshot, keyspaces::RUNTIME_SNAPSHOTS, &[])?
-            .into_iter()
-            .map(|(_, bytes)| serde_json::from_slice::<SnapshotHandle>(&bytes).map_err(Error::from))
-            .collect::<Result<Vec<_>>>()?;
-        for handle in &handles {
-            handle.validate()?;
-        }
-        handles.retain(|handle| !handle.is_expired(now));
-        handles.sort_by(|left, right| left.id.cmp(&right.id));
-        Ok(handles)
-    }
-
-    fn runtime_retention_pins(&self, now: Millis) -> Result<Vec<RetentionPin>> {
-        self.runtime_snapshots(now)?
-            .iter()
-            .map(RetentionPin::from_snapshot)
-            .collect::<rrd_core::Result<Vec<_>>>()
-            .map_err(Error::from)
-    }
-
-    fn runtime_read_changes(
-        &self,
-        read: &ReadStamp,
-        after: u64,
-        limit: usize,
-    ) -> Result<RuntimeChangePage> {
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let validation = validate_rrflow_kv_read_stamp(&database, snapshot, read)?;
-        if limit == 1 && after < read.commit_cursor && read.accumulator_root.is_some() {
-            let mut page =
-                rrflow_kv_authenticated_point_page(&database, snapshot, read, after + 1)?;
-            if validation.method == "full_hash_chain_replay" {
-                page.validation.method = "full_hash_chain_replay_then_rfc9162_inclusion".into();
-                page.validation.change_reads = page
-                    .validation
-                    .change_reads
-                    .saturating_add(validation.change_reads);
-            }
-            return Ok(page);
-        }
-        let mut page = rrflow_kv_change_page(
-            &database,
-            snapshot,
-            read.commit_cursor,
-            after,
-            limit,
-            Some(&read.scope),
-        )?;
-        page.validation = validation;
-        Ok(page)
-    }
-
-    fn commit_runtime_at_read(
-        &self,
-        commit: &RuntimeCommit,
-        read: Option<&ReadStamp>,
-    ) -> Result<RuntimeCommitOutcome> {
-        commit.validate()?;
-        crate::engine::validate_retirement_targets(self, commit)?;
-        let mut database = self.lock()?;
-        let plan = prepare_rrflow_kv_commit_at_read(&database, commit, read, None)?;
-        let (outcome, operations) = plan.into_parts();
-        write(&mut database, operations, Durability::Authoritative)?;
-        Ok(outcome)
-    }
-
-    fn runtime_changes_since(
-        &self,
-        after: u64,
-        limit: usize,
-        scope: Option<&ScopeId>,
-    ) -> Result<RuntimeChangePage> {
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let head = read_sequence(&database, snapshot, &keyspaces::runtime_cursor_key())?;
-        rrflow_kv_change_page(&database, snapshot, head, after, limit, scope)
-    }
-
-    fn runtime_outbox_since(&self, after: u64, limit: usize) -> Result<Vec<ProjectionWork>> {
-        if limit == 0 {
-            return Err(Error::Substrate(
-                "runtime outbox page limit must be greater than zero".into(),
-            ));
-        }
-        let database = self.lock()?;
-        let snapshot = database.snapshot();
-        let start =
-            keyspaces::runtime_outbox_key(after.checked_add(1).ok_or(Error::SequenceOverflow)?);
-        scan_space_from(&database, snapshot, keyspaces::RUNTIME_OUTBOX, &start)?
-            .into_iter()
-            .take(limit)
-            .map(|(_, bytes)| {
-                let work: ProjectionWork = serde_json::from_slice(&bytes)?;
-                work.validate()?;
-                Ok(work)
-            })
-            .collect()
-    }
-
-    fn runtime_audit(&self, commit_id: &str) -> Result<Option<AuditEnvelope>> {
-        let database = self.lock()?;
-        let audit: Option<AuditEnvelope> = get_json(
-            &database,
-            database.snapshot(),
-            keyspaces::RUNTIME_AUDIT,
-            &keyspaces::runtime_audit_key(commit_id),
-        )?;
-        if let Some(value) = &audit {
-            value.validate()?;
-        }
-        Ok(audit)
-    }
-
-    fn runtime_commit_outcome(&self, commit_id: &str) -> Result<Option<RuntimeCommitOutcome>> {
-        let database = self.lock()?;
-        get_json(
-            &database,
-            database.snapshot(),
-            keyspaces::RUNTIME_COMMITS,
-            &keyspaces::runtime_commit_key(commit_id),
-        )
-    }
 }
 
 /// A validated rrflowKV runtime transaction that has not yet crossed the WAL
@@ -1163,10 +425,6 @@ pub fn rrflow_kv_commit_context(
 impl RrflowKvCommitPlan {
     pub fn outcome(&self) -> &RuntimeCommitOutcome {
         &self.outcome
-    }
-
-    fn into_parts(self) -> (RuntimeCommitOutcome, Vec<Mutation>) {
-        (self.outcome, self.operations)
     }
 
     /// Verifies the target database format before an external coordinator
@@ -1641,38 +899,6 @@ pub fn rrflow_kv_commit_outcome(
     Ok(outcome)
 }
 
-fn scan_claims(database: &Database, prefix: Vec<u8>, from: Vec<u8>) -> Result<Vec<Claim>> {
-    let snapshot = database.snapshot();
-    let start = encoded_storage_key(database, keyspaces::CLAIMS, &from)?;
-    let full_prefix = encoded_storage_key(database, keyspaces::CLAIMS, &prefix)?;
-    let end = prefix_end(&full_prefix)
-        .ok_or_else(|| Error::Substrate("rrflowKV claim prefix has no upper bound".into()))?;
-    database
-        .scan(&start, Some(&end), snapshot)?
-        .into_iter()
-        .map(|(_, value)| serde_json::from_slice(&value).map_err(Error::from))
-        .collect()
-}
-
-fn ensure_runtime_checkpoint(
-    database: &mut Database,
-    handle: &SnapshotHandle,
-    at: Millis,
-) -> Result<()> {
-    let name = runtime_checkpoint_name(&handle.id);
-    if database
-        .checkpoints()?
-        .iter()
-        .any(|checkpoint| checkpoint.name == name)
-    {
-        return Ok(());
-    }
-    let created_at = at.max(database.manifest().created_at);
-    database.flush_memtable(created_at)?;
-    database.checkpoint(&name, created_at)?;
-    Ok(())
-}
-
 fn reconcile_runtime_checkpoints(
     database: &mut Database,
     now: Option<Millis>,
@@ -1711,210 +937,30 @@ fn reconcile_runtime_checkpoints(
     Ok(())
 }
 
+/// Materializes the physical manifest pin before its logical snapshot handle
+/// can commit. A failed semantic transaction removes checkpoints it created;
+/// an interrupted pre-publication pin is reclaimed by open-time reconciliation.
+fn ensure_runtime_checkpoint(
+    database: &mut Database,
+    handle: &SnapshotHandle,
+    at: Millis,
+) -> Result<bool> {
+    let name = runtime_checkpoint_name(&handle.id);
+    if database
+        .checkpoints()?
+        .iter()
+        .any(|checkpoint| checkpoint.name == name)
+    {
+        return Ok(false);
+    }
+    let created_at = at.max(database.manifest().created_at);
+    database.flush_memtable(created_at)?;
+    database.checkpoint(&name, created_at)?;
+    Ok(true)
+}
+
 fn runtime_checkpoint_name(id: &SnapshotId) -> String {
     format!("{RUNTIME_CHECKPOINT_PREFIX}{}", id.as_str())
-}
-
-fn commit_rrflow_kv_control_transition(
-    engine: &RrflowKvStore,
-    transition: &ControlTransition,
-    catalog_scope: Option<&ScopeId>,
-) -> Result<(Option<u64>, ControlJournalEntry)> {
-    transition.validate()?;
-    let mut database = engine.lock()?;
-    let snapshot = database.snapshot();
-    let current = get(
-        &database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::control_record_key(&transition.key),
-    )?;
-    if current.as_deref() != transition.expected.as_deref() {
-        return Err(Error::ControlConflict(transition.key.clone()));
-    }
-
-    let current_sequence = read_sequence(
-        &database,
-        snapshot,
-        &keyspaces::control_journal_sequence_key(),
-    )?;
-    let previous_digest = get(
-        &database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::control_journal_last_digest_key(),
-    )?
-    .map(String::from_utf8)
-    .transpose()
-    .map_err(|error| Error::CorruptWatermark(error.to_string()))?;
-    let previous_entry = if current_sequence == 0 {
-        None
-    } else {
-        get(
-            &database,
-            snapshot,
-            keyspaces::META,
-            &keyspaces::control_journal_key(current_sequence),
-        )?
-        .map(|bytes| serde_json::from_slice(&bytes))
-        .transpose()?
-    };
-    verify_control_tail(
-        current_sequence,
-        previous_digest.as_deref(),
-        previous_entry.as_ref(),
-    )?;
-    let sequence = current_sequence
-        .checked_add(1)
-        .ok_or(Error::SequenceOverflow)?;
-    let catalog_revision = catalog_scope
-        .map(|scope| {
-            read_sequence(&database, snapshot, &keyspaces::catalog_revision_key(scope))?
-                .checked_add(1)
-                .ok_or(Error::SequenceOverflow)
-        })
-        .transpose()?;
-    let entry = ControlJournalEntry::committed(sequence, transition, previous_digest);
-    let mut operations = Vec::with_capacity(if catalog_revision.is_some() { 5 } else { 4 });
-    match &transition.replacement {
-        Some(value) => put(
-            &mut operations,
-            keyspaces::META,
-            &keyspaces::control_record_key(&transition.key),
-            value.clone(),
-        ),
-        None => operations.push(Mutation::Delete {
-            key: encoded_storage_key(
-                &database,
-                keyspaces::META,
-                &keyspaces::control_record_key(&transition.key),
-            )?,
-        }),
-    }
-    put(
-        &mut operations,
-        keyspaces::META,
-        &keyspaces::control_journal_key(sequence),
-        serde_json::to_vec(&entry)?,
-    );
-    put_sequence(
-        &mut operations,
-        &keyspaces::control_journal_sequence_key(),
-        sequence,
-    );
-    put(
-        &mut operations,
-        keyspaces::META,
-        &keyspaces::control_journal_last_digest_key(),
-        entry.digest.as_bytes().to_vec(),
-    );
-    if let (Some(scope), Some(revision)) = (catalog_scope, catalog_revision) {
-        put_sequence(
-            &mut operations,
-            &keyspaces::catalog_revision_key(scope),
-            revision,
-        );
-    }
-    write(&mut database, operations, Durability::Authoritative)?;
-    Ok((catalog_revision, entry))
-}
-
-fn commit_rrflow_kv_control_batch(
-    engine: &RrflowKvStore,
-    transitions: &[ControlTransition],
-) -> Result<Vec<ControlJournalEntry>> {
-    validate_control_batch(transitions)?;
-    let mut database = engine.lock()?;
-    let snapshot = database.snapshot();
-    for transition in transitions {
-        let current = get(
-            &database,
-            snapshot,
-            keyspaces::META,
-            &keyspaces::control_record_key(&transition.key),
-        )?;
-        if current.as_deref() != transition.expected.as_deref() {
-            return Err(Error::ControlConflict(transition.key.clone()));
-        }
-    }
-    let current_sequence = read_sequence(
-        &database,
-        snapshot,
-        &keyspaces::control_journal_sequence_key(),
-    )?;
-    let mut previous_digest = get(
-        &database,
-        snapshot,
-        keyspaces::META,
-        &keyspaces::control_journal_last_digest_key(),
-    )?
-    .map(String::from_utf8)
-    .transpose()
-    .map_err(|error| Error::CorruptWatermark(error.to_string()))?;
-    let previous_entry = if current_sequence == 0 {
-        None
-    } else {
-        get(
-            &database,
-            snapshot,
-            keyspaces::META,
-            &keyspaces::control_journal_key(current_sequence),
-        )?
-        .map(|bytes| serde_json::from_slice(&bytes))
-        .transpose()?
-    };
-    verify_control_tail(
-        current_sequence,
-        previous_digest.as_deref(),
-        previous_entry.as_ref(),
-    )?;
-    let mut entries = Vec::with_capacity(transitions.len());
-    for (offset, transition) in transitions.iter().enumerate() {
-        let sequence = current_sequence
-            .checked_add(offset as u64 + 1)
-            .ok_or(Error::SequenceOverflow)?;
-        let entry = ControlJournalEntry::committed(sequence, transition, previous_digest.clone());
-        previous_digest = Some(entry.digest.clone());
-        entries.push(entry);
-    }
-    let mut operations = Vec::with_capacity(transitions.len() * 2 + 2);
-    for (transition, entry) in transitions.iter().zip(&entries) {
-        match &transition.replacement {
-            Some(value) => put(
-                &mut operations,
-                keyspaces::META,
-                &keyspaces::control_record_key(&transition.key),
-                value.clone(),
-            ),
-            None => operations.push(Mutation::Delete {
-                key: encoded_storage_key(
-                    &database,
-                    keyspaces::META,
-                    &keyspaces::control_record_key(&transition.key),
-                )?,
-            }),
-        }
-        put(
-            &mut operations,
-            keyspaces::META,
-            &keyspaces::control_journal_key(entry.sequence),
-            serde_json::to_vec(entry)?,
-        );
-    }
-    let last = entries.last().expect("validated non-empty control batch");
-    put_sequence(
-        &mut operations,
-        &keyspaces::control_journal_sequence_key(),
-        last.sequence,
-    );
-    put(
-        &mut operations,
-        keyspaces::META,
-        &keyspaces::control_journal_last_digest_key(),
-        last.digest.as_bytes().to_vec(),
-    );
-    write(&mut database, operations, Durability::Authoritative)?;
-    Ok(entries)
 }
 
 fn rrflow_kv_read_stamp(
@@ -2116,47 +1162,6 @@ fn rrflow_kv_runtime_accumulator_with(
         ));
     }
     Ok((accumulator, nodes))
-}
-
-fn rrflow_kv_authenticated_point_page(
-    database: &Database,
-    snapshot: Snapshot,
-    read: &ReadStamp,
-    cursor: u64,
-) -> Result<RuntimeChangePage> {
-    let root = read
-        .accumulator_root
-        .as_deref()
-        .ok_or_else(|| Error::ReadStampMismatch(read.manifest_id.clone()))?;
-    let accumulator =
-        match load_rrflow_kv_runtime_accumulator(database, snapshot, read.commit_cursor) {
-            Ok(Some(accumulator)) if accumulator.root == root => accumulator,
-            Ok(_) | Err(_) => {
-                RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
-                    read_rrflow_kv_accumulator_node(database, snapshot, level, index)
-                })?
-            }
-        };
-    let change: RuntimeChange = get_json(
-        database,
-        snapshot,
-        keyspaces::RUNTIME_CHANGES,
-        &keyspaces::runtime_change_key(cursor),
-    )?
-    .ok_or_else(|| Error::ReadStampUnavailable(read.manifest_id.clone()))?;
-    let proof = accumulator.inclusion_proof(cursor - 1, |level, index| {
-        read_rrflow_kv_accumulator_node(database, snapshot, level, index)
-    })?;
-    let proof_nodes = proof.path.len();
-    proof.verify_change(&change, root)?;
-    let selected = (change.scope == read.scope).then_some(change);
-    Ok(RuntimeChangePage {
-        requested_after: cursor - 1,
-        through_cursor: cursor,
-        head_cursor: read.commit_cursor,
-        validation: rrd_core::RuntimeReadValidation::new("rfc9162_inclusion_proof", 1, proof_nodes),
-        changes: selected.into_iter().collect(),
-    })
 }
 
 fn read_rrflow_kv_accumulator_node(
@@ -2439,18 +1444,6 @@ fn decode_snapshot_objects(
     Ok(objects)
 }
 
-fn write(database: &mut Database, operations: Vec<Mutation>, durability: Durability) -> Result<()> {
-    database_codec(database)?;
-    database.write_owned(
-        WriteBatch::new(operations)?,
-        match durability {
-            Durability::Authoritative => rrd_lsm::Durability::Authoritative,
-            Durability::Buffered => rrd_lsm::Durability::Buffered,
-        },
-    )?;
-    Ok(())
-}
-
 fn put(operations: &mut Vec<Mutation>, space: keyspaces::Space, key: &[u8], value: Vec<u8>) {
     operations.push(Mutation::Put {
         key: storage_key(space, key),
@@ -2528,20 +1521,6 @@ fn scan_space(
         .map_err(Error::from)
 }
 
-fn scan_space_from(
-    database: &Database,
-    snapshot: Snapshot,
-    space: keyspaces::Space,
-    from: &[u8],
-) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-    let start = encoded_storage_key(database, space, from)?;
-    database_codec(database)?;
-    let end = prefix_end(&keyspaces::space_prefix(space));
-    database
-        .scan(&start, end.as_deref(), snapshot)
-        .map_err(Error::from)
-}
-
 fn storage_key(space: keyspaces::Space, key: &[u8]) -> Vec<u8> {
     keyspaces::validate_space(KeyCodec, space, key)
         .expect("rrflowKV mutations use a canonical typed key");
@@ -2582,10 +1561,11 @@ fn encoded_storage_key(
 mod tests {
     use super::*;
     use rrd_core::{
-        DataTransaction, ObjectReceipt, Producer, RuntimeEvent, RuntimeEventSchema,
-        RuntimeProperties, RuntimeRecordSchema, RuntimeType,
+        Claim, DataTransaction, ObjectReceipt, Predicate, Producer, RuntimeEvent,
+        RuntimeEventSchema, RuntimeProperties, RuntimeRecordSchema, RuntimeType, Subject,
     };
-    use rrd_lsm::{FailureMode, WriteBoundary};
+    use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
+    use std::collections::BTreeMap;
 
     fn claim() -> Claim {
         Claim::new(
@@ -2685,7 +1665,7 @@ mod tests {
                 )
                 .unwrap();
                 let expected = plan.outcome().clone();
-                let (_, operations) = plan.into_parts();
+                let (_, operations) = plan.into_parts_for(&database).unwrap();
                 let error = database
                     .write_owned_with_failure(
                         WriteBatch::new(operations).unwrap(),
@@ -2800,7 +1780,10 @@ mod tests {
             engine.manifest().unwrap().application_format,
             Some(keyspaces::RRFLOW_KV_FORMAT)
         );
-        StorageEngine::append_batch(&engine, std::slice::from_ref(&expected)).unwrap();
+        engine
+            .claims()
+            .append_batch(std::slice::from_ref(&expected))
+            .unwrap();
         {
             let database = engine.lock().unwrap();
             let start = keyspaces::space_prefix(keyspaces::CLAIMS);
@@ -2820,7 +1803,7 @@ mod tests {
             Some(keyspaces::RRFLOW_KV_FORMAT)
         );
         assert_eq!(
-            StorageEngine::claims_in_range(&reopened, 0, 1).unwrap(),
+            reopened.claims().claims_in_range(0, 1).unwrap(),
             vec![expected]
         );
     }

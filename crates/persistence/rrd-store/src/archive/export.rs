@@ -130,8 +130,8 @@ pub fn export_logical_archive_with_progress<E: StorageEngine>(
         )?;
     }
 
-    if engine.sequence()? != header.claim_sequence
-        || engine.runtime_cursor()? != header.runtime_cursor
+    if engine.claims().sequence()? != header.claim_sequence
+        || engine.runtime().cursor()? != header.runtime_cursor
     {
         remove_export_artifacts(&partial_path, &receipt_path)?;
         return Err(Error::Archive(
@@ -171,8 +171,8 @@ pub fn export_logical_archive_with_progress<E: StorageEngine>(
     let emitted = match emitted {
         Ok(value) => value,
         Err(error) => {
-            if engine.sequence()? != header.claim_sequence
-                || engine.runtime_cursor()? != header.runtime_cursor
+            if engine.claims().sequence()? != header.claim_sequence
+                || engine.runtime().cursor()? != header.runtime_cursor
             {
                 remove_export_artifacts(&partial_path, &receipt_path)?;
             }
@@ -227,8 +227,8 @@ fn stream_source(
     engine: &impl StorageEngine,
     mut emit: impl FnMut(&ArchiveAction, &[u8]) -> Result<()>,
 ) -> Result<SourceSummary> {
-    let claim_sequence = engine.sequence()?;
-    let runtime_cursor = engine.runtime_cursor()?;
+    let claim_sequence = engine.claims().sequence()?;
+    let runtime_cursor = engine.runtime().cursor()?;
     let mut claims = ClaimPager::new(engine, claim_sequence);
     let mut commits = RuntimeCommitPager::new(engine, runtime_cursor);
     let mut summary = SourceSummary {
@@ -291,7 +291,8 @@ fn stream_source(
     }
     claims.finish()?;
     commits.finish()?;
-    if engine.sequence()? != claim_sequence || engine.runtime_cursor()? != runtime_cursor {
+    if engine.claims().sequence()? != claim_sequence || engine.runtime().cursor()? != runtime_cursor
+    {
         return Err(Error::Archive(
             "source watermarks changed during logical export; retry from a stable cut".into(),
         ));
@@ -350,7 +351,7 @@ impl<'a, E: StorageEngine> ClaimPager<'a, E> {
     fn next_claim(&mut self) -> Result<Option<Claim>> {
         if self.page.is_empty() && self.after < self.head {
             let through = self.head.min(self.after.saturating_add(PAGE_SIZE as u64));
-            let page = self.engine.claims_in_range(self.after, through)?;
+            let page = self.engine.claims().claims_in_range(self.after, through)?;
             let expected = usize::try_from(through - self.after)
                 .map_err(|_| Error::Archive("claim page exceeds usize".into()))?;
             if page.len() != expected {
@@ -467,7 +468,7 @@ impl<'a, E: StorageEngine> RuntimeCommitPager<'a, E> {
                 expected_cursor + 1
             )));
         }
-        let audit = self.engine.runtime_audit(&commit_id)?.ok_or_else(|| {
+        let audit = self.engine.runtime().audit(&commit_id)?.ok_or_else(|| {
             Error::Archive(format!("runtime commit {commit_id} has no audit envelope"))
         })?;
         let expected_audit = AuditEnvelope::accepted_commit_at_read(
@@ -494,9 +495,10 @@ impl<'a, E: StorageEngine> RuntimeCommitPager<'a, E> {
             return Ok(Some(change));
         }
         if self.page.is_empty() && self.fetched_through < self.head {
-            let page = self
-                .engine
-                .runtime_changes_since(self.fetched_through, PAGE_SIZE, None)?;
+            let page =
+                self.engine
+                    .runtime()
+                    .changes_since(self.fetched_through, PAGE_SIZE, None)?;
             if page.head_cursor != self.head
                 || page.requested_after != self.fetched_through
                 || page.through_cursor <= self.fetched_through

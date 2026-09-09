@@ -397,7 +397,7 @@ impl RrdEngine {
             return Err(ServiceError::ProjectBindingMismatch);
         }
         let key = project_authority_key(self.instance_id());
-        if let Some(encoded) = self.storage.control_record(&key)? {
+        if let Some(encoded) = self.storage.control().get(&key)? {
             let existing: ProjectAuthorityBinding = serde_json::from_slice(&encoded)
                 .map_err(|error| ServiceError::Storage(error.to_string()))?;
             existing
@@ -409,7 +409,7 @@ impl RrdEngine {
                 Err(ServiceError::ProjectBindingMismatch)
             };
         }
-        self.storage.commit_control_transition(&ControlTransition {
+        self.storage.control().commit(&ControlTransition {
             key,
             expected: None,
             replacement: Some(
@@ -428,7 +428,8 @@ impl RrdEngine {
     pub fn project_authority_binding(&self) -> crate::Result<Option<ProjectAuthorityBinding>> {
         let Some(encoded) = self
             .storage
-            .control_record(&project_authority_key(self.instance_id()))?
+            .control()
+            .get(&project_authority_key(self.instance_id()))?
         else {
             return Ok(None);
         };

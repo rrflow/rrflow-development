@@ -35,12 +35,13 @@ fn flush_makes_every_prior_submission_readable() {
     }
     writer.flush().unwrap();
 
-    assert_eq!(store.sequence().unwrap(), 250);
+    assert_eq!(store.claims().sequence().unwrap(), 250);
     for i in [0usize, 1, 124, 249] {
         let subject = Subject::new(format!("s{i}")).unwrap();
         let predicate = Predicate::new("status").unwrap();
         assert_eq!(
             store
+                .claims()
                 .as_of(&subject, &predicate, 1_000)
                 .unwrap()
                 .map(|c| c.object),
@@ -55,7 +56,7 @@ fn flush_on_an_empty_queue_returns_without_committing() {
     let writer = ClaimBatchWriter::spawn(Arc::clone(&store), ClaimBatchWriterConfig::default());
     writer.flush().unwrap();
     writer.flush().unwrap();
-    assert_eq!(store.sequence().unwrap(), 0);
+    assert_eq!(store.claims().sequence().unwrap(), 0);
     assert_eq!(writer.stats().batches_committed, 0);
 }
 
@@ -72,11 +73,11 @@ fn elapsed_delay_commits_without_an_explicit_flush() {
     writer.submit(claim(0)).unwrap();
 
     let deadline = Instant::now() + Duration::from_secs(5);
-    while store.sequence().unwrap() == 0 && Instant::now() < deadline {
+    while store.claims().sequence().unwrap() == 0 && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(5));
     }
     assert_eq!(
-        store.sequence().unwrap(),
+        store.claims().sequence().unwrap(),
         1,
         "interval-triggered commit did not occur"
     );
@@ -100,11 +101,11 @@ fn pending_claims_do_not_commit_before_a_trigger() {
     // Give the worker ample opportunity to observe the non-empty queue. It
     // must still wait because no size, delay, or explicit-flush trigger fired.
     std::thread::sleep(Duration::from_millis(50));
-    assert_eq!(store.sequence().unwrap(), 0);
+    assert_eq!(store.claims().sequence().unwrap(), 0);
     assert_eq!(writer.durable_through(), 0);
 
     writer.flush().unwrap();
-    assert_eq!(store.sequence().unwrap(), 64);
+    assert_eq!(store.claims().sequence().unwrap(), 64);
 }
 
 #[test]
@@ -133,7 +134,7 @@ fn a_lone_claim_reaches_durability_within_a_bound_set_by_the_delay() {
         );
         std::thread::sleep(Duration::from_millis(1));
     }
-    assert_eq!(store.sequence().unwrap(), 1);
+    assert_eq!(store.claims().sequence().unwrap(), 1);
     assert_eq!(writer.stats().batches_committed, 1);
 }
 
@@ -177,11 +178,11 @@ fn a_full_batch_commits_without_waiting_for_the_delay() {
     }
 
     let deadline = Instant::now() + Duration::from_secs(5);
-    while store.sequence().unwrap() < 16 && Instant::now() < deadline {
+    while store.claims().sequence().unwrap() < 16 && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(5));
     }
     assert_eq!(
-        store.sequence().unwrap(),
+        store.claims().sequence().unwrap(),
         16,
         "size-triggered commit did not occur"
     );
@@ -206,7 +207,7 @@ fn a_full_queue_applies_backpressure_rather_than_growing() {
     writer.flush().unwrap();
 
     let stats = writer.stats();
-    assert_eq!(store.sequence().unwrap(), 2_000);
+    assert_eq!(store.claims().sequence().unwrap(), 2_000);
     assert_eq!(stats.claims_committed, 2_000);
     assert!(
         stats.backpressure_waits > 0,
@@ -233,7 +234,7 @@ fn shutdown_commits_outstanding_claims() {
         writer.submit(claim(i)).unwrap();
     }
     writer.shutdown().unwrap();
-    assert_eq!(store.sequence().unwrap(), 40);
+    assert_eq!(store.claims().sequence().unwrap(), 40);
 }
 
 #[test]
@@ -251,7 +252,7 @@ fn dropping_the_writer_commits_outstanding_claims() {
             writer.submit(claim(i)).unwrap();
         }
     }
-    assert_eq!(store.sequence().unwrap(), 40);
+    assert_eq!(store.claims().sequence().unwrap(), 40);
 }
 
 #[test]
@@ -275,7 +276,7 @@ fn concurrent_producers_all_reach_durability() {
         t.join().unwrap();
     }
     writer.flush().unwrap();
-    assert_eq!(store.sequence().unwrap(), 2_000);
+    assert_eq!(store.claims().sequence().unwrap(), 2_000);
     assert_eq!(writer.stats().claims_committed, 2_000);
 }
 
@@ -292,7 +293,7 @@ fn a_malformed_claim_is_rejected_at_submit_and_does_not_enter_the_queue() {
     writer.flush().unwrap();
 
     // Only the well-formed claim was committed; the batch was never poisoned.
-    assert_eq!(store.sequence().unwrap(), 1);
+    assert_eq!(store.claims().sequence().unwrap(), 1);
     assert_eq!(writer.stats().claims_submitted, 1);
 }
 

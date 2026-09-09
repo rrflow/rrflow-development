@@ -35,9 +35,10 @@ impl RrdEngine {
         let scope = ScopeId::new(request.scope.clone()).map_err(core_changefeed)?;
         let limit = usize::try_from(request.limit)
             .map_err(|_| ServiceError::Changefeed("changefeed limit exceeds usize".into()))?;
-        let page = self
-            .storage
-            .runtime_changes_since(request.after_cursor, limit, Some(&scope))?;
+        let page =
+            self.storage
+                .runtime()
+                .changes_since(request.after_cursor, limit, Some(&scope))?;
         Ok(ChangefeedPage {
             requested_after_cursor: page.requested_after,
             through_cursor: page.through_cursor,

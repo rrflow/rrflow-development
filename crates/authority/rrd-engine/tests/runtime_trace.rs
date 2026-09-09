@@ -16,7 +16,8 @@ fn identity(seed: &str) -> TraceIdentity {
 
 fn phases<E: StorageEngine>(store: &E) -> Vec<(String, String)> {
     store
-        .runtime_changes_since(0, usize::MAX, Some(&scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
         .changes
         .into_iter()
@@ -95,14 +96,15 @@ fn exercise<E: StorageEngine>(store: &E) -> Vec<Vec<u8>> {
             ("finish".into(), "ok".into())
         ]
     );
-    let schema = store.runtime_schema(&scope).unwrap().unwrap();
+    let schema = store.runtime().schema(&scope).unwrap().unwrap();
     assert_eq!(schema.revision, 1);
     assert_eq!(
         schema.events[&RuntimeTraceEvent::event_type().unwrap()],
         RuntimeTraceEvent::event_schema()
     );
     store
-        .runtime_changes_since(0, usize::MAX, Some(&scope))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope))
         .unwrap()
         .changes
         .into_iter()
@@ -129,7 +131,8 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
         rrd_core::RuntimeEventSchema::default(),
     );
     store
-        .commit_runtime(&rrd_core::RuntimeCommit {
+        .runtime()
+        .commit(&rrd_core::RuntimeCommit {
             scope: scope.clone(),
             at: 1,
             actor: "test:fixture".into(),
@@ -159,7 +162,7 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
     )
     .unwrap();
     assert_eq!(outcome.count, 2, "schema and event must share one commit");
-    assert_eq!(store.runtime_schema(&scope).unwrap().unwrap().revision, 2);
+    assert_eq!(store.runtime().schema(&scope).unwrap().unwrap().revision, 2);
     assert_eq!(phases(&store), [("annotation".into(), "ok".into())]);
 }
 
@@ -231,5 +234,5 @@ fn concurrent_trace_writers_rebase_without_losing_events() {
         thread.join().unwrap();
     }
     assert_eq!(phases(store.as_ref()).len(), 8);
-    assert_eq!(store.runtime_cursor().unwrap(), 9);
+    assert_eq!(store.runtime().cursor().unwrap(), 9);
 }

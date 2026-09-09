@@ -49,7 +49,7 @@ fn main() {
     let store = Arc::clone(&store_arc);
 
     // Warm the journal and page cache so the first batch is not an outlier.
-    store.append_batch(&claims(200, "warm")).unwrap();
+    store.claims().append_batch(&claims(200, "warm")).unwrap();
 
     println!(
         "{:>12}  {:>12}  {:>14}  {:>16}",
@@ -66,7 +66,7 @@ fn main() {
 
         let start = Instant::now();
         for batch in &batches {
-            store.append_batch(batch).unwrap();
+            store.claims().append_batch(batch).unwrap();
         }
         let elapsed = start.elapsed();
 
@@ -87,7 +87,7 @@ fn main() {
     let direct = claims(600, "direct");
     let start = Instant::now();
     for claim in &direct {
-        store.assert(claim).unwrap();
+        store.claims().assert(claim).unwrap();
     }
     let direct_ms = start.elapsed().as_secs_f64() * 1000.0 / direct.len() as f64;
     println!(
@@ -136,7 +136,7 @@ fn main() {
 
     let start = Instant::now();
     for _ in 0..2_000 {
-        store.as_of(&subject, &predicate, 1_000).unwrap();
+        store.claims().as_of(&subject, &predicate, 1_000).unwrap();
     }
     let read_ms = start.elapsed().as_secs_f64() * 1000.0 / 2_000.0;
     println!(
@@ -150,6 +150,7 @@ fn main() {
     let start = Instant::now();
     for i in 0..2_000 {
         store
+            .claims()
             .observe(&observer, &subject, &predicate, 1_000 + i)
             .unwrap();
     }
@@ -168,6 +169,9 @@ fn main() {
         observe_ms / read_ms
     );
 
-    println!("\nfinal sequence watermark: {}", store.sequence().unwrap());
+    println!(
+        "\nfinal sequence watermark: {}",
+        store.claims().sequence().unwrap()
+    );
     println!("database path: {}", path.display());
 }

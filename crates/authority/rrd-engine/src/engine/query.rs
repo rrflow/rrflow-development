@@ -81,7 +81,8 @@ impl RrdEngine {
         let budget = query_execution_budget(&request.budget)?;
         let read = self
             .storage
-            .runtime_read_stamp(&scope)
+            .runtime()
+            .read_stamp(&scope)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
         let pipeline = rrd_query::StampedQueryPipeline::new(&self.storage, read)
             .map_err(|error| ServiceError::Query(error.to_string()))?;

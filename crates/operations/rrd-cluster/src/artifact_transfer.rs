@@ -203,13 +203,15 @@ pub fn prepare_artifact_transfer<E: StorageEngine>(
 ) -> Result<ArtifactTransferManifest> {
     plan.validate()?;
     let read = engine
-        .runtime_read_stamp(scope)
+        .runtime()
+        .read_stamp(scope)
         .map_err(cluster_store_error)?;
     let mut cursor = 0;
     let mut objects = BTreeMap::new();
     loop {
         let page = engine
-            .runtime_read_changes(&read, cursor, REPLAY_PAGE)
+            .runtime()
+            .read_changes(&read, cursor, REPLAY_PAGE)
             .map_err(cluster_store_error)?;
         for change in page.changes {
             if !change.verify_digest() {

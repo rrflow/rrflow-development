@@ -104,7 +104,8 @@ fn query_transaction_commit_cancel_failure_replay_and_reopen_share_one_authority
     assert_eq!(receipt.last_runtime_cursor, Some(2));
     let audit = engine
         .storage
-        .runtime_audit(receipt.runtime_commit_sha256.as_ref().unwrap())
+        .runtime()
+        .audit(receipt.runtime_commit_sha256.as_ref().unwrap())
         .unwrap()
         .unwrap();
     assert_eq!(audit.read.as_ref().unwrap().commit_cursor, 0);
@@ -315,7 +316,7 @@ fn query_transaction_requires_the_existing_begin_and_commit_grants() {
             },
         )]),
     );
-    let before = engine.storage.runtime_cursor().unwrap();
+    let before = engine.storage.runtime().cursor().unwrap();
     let denied = engine.execute_query_transaction(
         &lease.session_id,
         &lease.token,
@@ -328,5 +329,5 @@ fn query_transaction_requires_the_existing_begin_and_commit_grants() {
         1_100,
     );
     assert!(matches!(denied, Err(ServiceError::PermissionDenied)));
-    assert_eq!(engine.storage.runtime_cursor().unwrap(), before);
+    assert_eq!(engine.storage.runtime().cursor().unwrap(), before);
 }

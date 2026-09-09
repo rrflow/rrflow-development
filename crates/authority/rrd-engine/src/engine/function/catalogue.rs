@@ -37,7 +37,7 @@ impl RrdEngine {
             .lock()
             .map_err(|_| ServiceError::Storage("engine transaction gate is poisoned".into()))?;
         let head_key = function_catalogue_head_key(&self.instance);
-        let expected_head = self.storage.control_record(&head_key)?;
+        let expected_head = self.storage.control().get(&head_key)?;
         let current = self.load_function_catalogue_from_head(expected_head.as_deref())?;
         if current.revision == request.catalogue.revision
             && current.sha256() == request.catalogue.sha256()
@@ -54,7 +54,7 @@ impl RrdEngine {
         let catalogue_sha256 = request.catalogue.sha256();
         let revision_key =
             function_catalogue_revision_key(&self.instance, request.catalogue.revision);
-        if self.storage.control_record(&revision_key)?.is_some() {
+        if self.storage.control().get(&revision_key)?.is_some() {
             return Err(ServiceError::StorageConflict(
                 "function catalogue revision identity already exists".into(),
             ));
@@ -64,7 +64,7 @@ impl RrdEngine {
             revision: request.catalogue.revision,
             catalogue_sha256,
         };
-        self.storage.commit_control_batch(&[
+        self.storage.control().commit_batch(&[
             ControlTransition {
                 key: revision_key,
                 expected: None,
@@ -112,7 +112,8 @@ impl RrdEngine {
     pub(in crate::engine) fn load_current_function_catalogue(&self) -> Result<FunctionCatalogue> {
         let head = self
             .storage
-            .control_record(&function_catalogue_head_key(&self.instance))?;
+            .control()
+            .get(&function_catalogue_head_key(&self.instance))?;
         self.load_function_catalogue_from_head(head.as_deref())
     }
 
@@ -125,7 +126,8 @@ impl RrdEngine {
         }
         let bytes = self
             .storage
-            .control_record(&function_catalogue_revision_key(&self.instance, revision))?
+            .control()
+            .get(&function_catalogue_revision_key(&self.instance, revision))?
             .ok_or(ServiceError::FunctionCatalogueRevisionNotFound)?;
         decode_catalogue(&bytes, Some(revision), None)
     }
@@ -146,7 +148,8 @@ impl RrdEngine {
         }
         let bytes = self
             .storage
-            .control_record(&function_catalogue_revision_key(
+            .control()
+            .get(&function_catalogue_revision_key(
                 &self.instance,
                 head.revision,
             ))?

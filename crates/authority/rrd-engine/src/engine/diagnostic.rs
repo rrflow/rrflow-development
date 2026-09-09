@@ -50,7 +50,8 @@ impl RrdEngine {
             };
             let schema = self
                 .storage
-                .runtime_schema(&scope)?
+                .runtime()
+                .schema(&scope)?
                 .as_ref()
                 .map(super::model::public_schema)
                 .transpose()?;
@@ -208,7 +209,7 @@ fn diagnostic_runtime_changes(
         let remaining = read.commit_cursor - after;
         let limit = usize::try_from(remaining.min(1_024))
             .expect("diagnostic runtime page size is bounded by 1024");
-        let page = engine.storage.runtime_read_changes(read, after, limit)?;
+        let page = engine.storage.runtime().read_changes(read, after, limit)?;
         changes.extend(page.changes);
         if page.through_cursor <= after {
             return Err(ServiceError::Storage(
@@ -468,15 +469,15 @@ fn capture_diagnostic_stamp(
 ) -> Result<EngineDiagnosticStamp> {
     let retention = diagnostic_retention(engine, now)?;
     Ok(EngineDiagnosticStamp {
-        control_sequence: engine.storage.control_sequence()?,
-        claim_sequence: engine.storage.sequence()?,
-        runtime: engine.storage.runtime_read_stamp(scope)?,
+        control_sequence: engine.storage.control().sequence()?,
+        claim_sequence: engine.storage.claims().sequence()?,
+        runtime: engine.storage.runtime().read_stamp(scope)?,
         retention_sha256: diagnostic_retention_sha256(&retention)?,
     })
 }
 
 fn diagnostic_retention(engine: &RrdEngine, now: u64) -> Result<DiagnosticRetentionSnapshot> {
-    let handles = engine.storage.runtime_snapshots(now)?;
+    let handles = engine.storage.runtime().snapshots(now)?;
     let mut leases = Vec::with_capacity(handles.len());
     let mut pins = Vec::with_capacity(handles.len());
     for handle in handles {

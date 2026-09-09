@@ -195,7 +195,7 @@ fn audit_is_redacted_idempotent_authenticated_and_replayable() {
     assert_eq!(page.chain_anchor_sha256, None);
     assert_eq!(page.chain_head_sha256, Some(query.audit_sha256.clone()));
     assert_eq!(page.through_sequence, 5);
-    let journal = engine.control_journal_since(0, 10).unwrap();
+    let journal = engine.control().journal_since(0, 10).unwrap();
     let encoded = serde_json::to_string(&journal).unwrap();
     assert!(!encoded.contains("do-not-journal-this-secret"));
     assert!(journal.iter().all(|entry| entry.verify()));
@@ -246,7 +246,7 @@ fn concurrent_audit_append_has_one_linear_chain_without_forks() {
         pair[1].1.previous_audit_sha256.as_deref() == Some(pair[0].1.audit_sha256.as_str())
     }));
     assert_eq!(page.chain_anchor_sha256, None);
-    assert_eq!(engine.control_sequence().unwrap(), 19);
+    assert_eq!(engine.control().sequence().unwrap(), 19);
 }
 
 #[test]
@@ -263,11 +263,12 @@ fn audit_read_rejects_a_substituted_durable_head() {
         )
         .unwrap();
     let key = format!("server/state/{instance}/audit-head");
-    let expected = engine.control_record(&key).unwrap().unwrap();
+    let expected = engine.control().get(&key).unwrap().unwrap();
     let mut substituted: serde_json::Value = serde_json::from_slice(&expected).unwrap();
     substituted["audit_sha256"] = serde_json::Value::String("f".repeat(64));
     engine
-        .commit_control_transition(&ControlTransition {
+        .control()
+        .commit(&ControlTransition {
             key,
             expected: Some(expected),
             replacement: Some(serde_json::to_vec(&substituted).unwrap()),
@@ -491,7 +492,7 @@ fn roles_jwt_external_identity_rotation_revocation_and_reopen_share_one_authorit
         Err(Error::PermissionDenied)
     ));
 
-    let persisted = serde_json::to_vec(&engine.control_journal_since(0, 64).unwrap()).unwrap();
+    let persisted = serde_json::to_vec(&engine.control().journal_since(0, 64).unwrap()).unwrap();
     assert!(!persisted
         .windows(jwt.token.len())
         .any(|window| window == jwt.token.as_bytes()));

@@ -49,7 +49,7 @@ impl RrdEngine {
         self.require_persistent_root("backup creation")?;
         let operation_sha256 = operation_digest(request)?;
         let key = backup_operation_key(&self.instance, session_id, idempotency_key);
-        let existing = self.storage.control_record(&key)?;
+        let existing = self.storage.control().get(&key)?;
         let (prepared_bytes, mut state) = if let Some(bytes) = existing {
             let state: BackupOperationState =
                 serde_json::from_slice(&bytes).map_err(contract_json)?;
@@ -71,7 +71,7 @@ impl RrdEngine {
                 result: None,
             };
             let bytes = serde_json::to_vec(&state).map_err(contract_json)?;
-            self.storage.commit_control_transition(&ControlTransition {
+            self.storage.control().commit(&ControlTransition {
                 key: key.clone(),
                 expected: None,
                 replacement: Some(bytes.clone()),
@@ -182,7 +182,7 @@ impl RrdEngine {
         self.require_persistent_root("backup restore")?;
         let operation_sha256 = operation_digest(request)?;
         let key = restore_operation_key(&self.instance, session_id, idempotency_key);
-        let existing = self.storage.control_record(&key)?;
+        let existing = self.storage.control().get(&key)?;
         let (prepared_bytes, mut state) = if let Some(bytes) = existing {
             let state: RestoreOperationState =
                 serde_json::from_slice(&bytes).map_err(contract_json)?;
@@ -207,7 +207,7 @@ impl RrdEngine {
                 result: None,
             };
             let bytes = serde_json::to_vec(&state).map_err(contract_json)?;
-            self.storage.commit_control_transition(&ControlTransition {
+            self.storage.control().commit(&ControlTransition {
                 key: key.clone(),
                 expected: None,
                 replacement: Some(bytes.clone()),
@@ -230,8 +230,8 @@ impl RrdEngine {
         let target = self.restore_root()?.join(request.restore_id.as_str());
         let (inventory, reopened, recovered) = if target.exists() {
             let restored = rrd_store::RrflowKvStore::open(&target)?;
-            if restored.sequence()? != backup.archive.claim_sequence
-                || restored.runtime_cursor()? != backup.archive.runtime_cursor
+            if restored.claims().sequence()? != backup.archive.claim_sequence
+                || restored.runtime().cursor()? != backup.archive.runtime_cursor
             {
                 return Err(ServiceError::Backup(
                     "existing restore target watermarks differ from the backup".into(),

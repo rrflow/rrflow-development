@@ -351,7 +351,8 @@ fn seed_query_fixture(root: &Path) {
         },
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:socket-test").unwrap(),
             at: 100,
             actor: "rrd-query-fixture".into(),
@@ -650,8 +651,8 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     assert!(!json_lines.contains(token));
     server.stop();
     let reopened = RrflowKvStore::open(&root).unwrap();
-    assert_eq!(reopened.runtime_cursor().unwrap(), 2);
-    let journal = reopened.control_journal_since(0, 64).unwrap();
+    assert_eq!(reopened.runtime().cursor().unwrap(), 2);
+    let journal = reopened.control().journal_since(0, 64).unwrap();
     let encoded = serde_json::to_string(&journal).unwrap();
     assert!(!encoded.contains("local-api-key"));
     assert!(!encoded.contains("ApiKey"));
@@ -1302,8 +1303,8 @@ fn managed_backup_and_restore_are_authenticated_replay_safe_and_path_closed() {
         .join("rrd-service/socket-test/restores/restore-a");
     assert!(restored_root.join("CURRENT").is_file());
     let restored_engine = RrflowKvStore::open(&restored_root).unwrap();
-    assert_eq!(restored_engine.sequence().unwrap(), 0);
-    assert_eq!(restored_engine.runtime_cursor().unwrap(), 2);
+    assert_eq!(restored_engine.claims().sequence().unwrap(), 0);
+    assert_eq!(restored_engine.runtime().cursor().unwrap(), 2);
     drop(restored_engine);
 
     let server = start(&root);
@@ -2096,11 +2097,12 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
 
     let engine = RrflowKvStore::open(&root).unwrap();
     let page = engine
-        .runtime_changes_since(0, 32, Some(&ScopeId::new("instance:socket-test").unwrap()))
+        .runtime()
+        .changes_since(0, 32, Some(&ScopeId::new("instance:socket-test").unwrap()))
         .unwrap();
     assert_eq!(page.changes.len(), 11);
-    assert_eq!(engine.runtime_cursor().unwrap(), 11);
-    assert_eq!(engine.sequence().unwrap(), 1);
+    assert_eq!(engine.runtime().cursor().unwrap(), 11);
+    assert_eq!(engine.claims().sequence().unwrap(), 1);
 }
 
 #[test]
@@ -2394,7 +2396,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
 
     process.stop();
     let reopened = RrflowKvStore::open(&root).unwrap();
-    assert_eq!(reopened.runtime_cursor().unwrap(), 3);
+    assert_eq!(reopened.runtime().cursor().unwrap(), 3);
 }
 
 #[test]

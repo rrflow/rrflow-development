@@ -50,7 +50,8 @@ fn record(id: &str) -> RuntimeRecord {
 
 fn bootstrap(engine: &dyn StorageEngine, scope: &ScopeId) -> u64 {
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 100,
             actor: "agent:m4-test".into(),
@@ -173,7 +174,7 @@ fn exercise_unified_commit<E: StorageEngine>(engine: E) {
             b"source bytes",
         )
         .unwrap();
-    let read = runtime.engine().runtime_read_stamp(&scope).unwrap();
+    let read = runtime.engine().runtime().read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(
         read,
         RuntimeCommit {
@@ -190,12 +191,13 @@ fn exercise_unified_commit<E: StorageEngine>(engine: E) {
     assert_eq!(outcome.count, 8);
     assert_eq!(outcome.outbox_count, 7);
     assert_eq!(runtime.objects().get(&object).unwrap(), b"source bytes");
-    let work = runtime.engine().runtime_outbox_since(cursor, 20).unwrap();
+    let work = runtime.engine().runtime().outbox_since(cursor, 20).unwrap();
     assert_eq!(work.len(), 7);
     assert!(work.iter().all(|entry| entry.validate().is_ok()));
     let audit = runtime
         .engine()
-        .runtime_audit(&outcome.commit_id)
+        .runtime()
+        .audit(&outcome.commit_id)
         .unwrap()
         .unwrap();
     audit.validate().unwrap();
@@ -206,7 +208,7 @@ fn exercise_unified_commit<E: StorageEngine>(engine: E) {
     let retried = runtime.commit(&transaction).unwrap();
     assert_eq!(retried, outcome);
     assert_eq!(
-        runtime.engine().runtime_cursor().unwrap(),
+        runtime.engine().runtime().cursor().unwrap(),
         outcome.last_cursor
     );
 }
@@ -250,12 +252,16 @@ fn dangling_late_family_rolls_back_every_earlier_family() {
         ],
     };
     assert!(matches!(
-        engine.commit_runtime(&commit),
+        engine.runtime().commit(&commit),
         Err(Error::DanglingRuntimeReference(_))
     ));
-    assert_eq!(engine.runtime_cursor().unwrap(), cursor);
-    assert!(engine.runtime_outbox_since(cursor, 10).unwrap().is_empty());
-    assert!(engine.runtime_audit(&commit.digest()).unwrap().is_none());
+    assert_eq!(engine.runtime().cursor().unwrap(), cursor);
+    assert!(engine
+        .runtime()
+        .outbox_since(cursor, 10)
+        .unwrap()
+        .is_empty());
+    assert!(engine.runtime().audit(&commit.digest()).unwrap().is_none());
 }
 
 #[test]
@@ -270,7 +276,7 @@ fn object_and_commit_failure_boundaries_are_recoverable() {
         .stage_object("orphan", None, "application/octet-stream", b"orphan")
         .unwrap();
     let transaction = DataTransaction::new(
-        runtime.engine().runtime_read_stamp(&scope).unwrap(),
+        runtime.engine().runtime().read_stamp(&scope).unwrap(),
         RuntimeCommit {
             scope,
             at: 101,
@@ -291,7 +297,7 @@ fn object_and_commit_failure_boundaries_are_recoverable() {
         }
     });
     assert!(matches!(before, Err(Error::FaultInjected("before_commit"))));
-    assert_eq!(runtime.engine().runtime_cursor().unwrap(), cursor);
+    assert_eq!(runtime.engine().runtime().cursor().unwrap(), cursor);
     assert_eq!(
         runtime
             .objects()
@@ -312,7 +318,7 @@ fn object_and_commit_failure_boundaries_are_recoverable() {
     assert!(matches!(after, Err(Error::FaultInjected("after_commit"))));
     let retried = runtime.commit(&transaction).unwrap();
     assert_eq!(
-        runtime.engine().runtime_cursor().unwrap(),
+        runtime.engine().runtime().cursor().unwrap(),
         retried.last_cursor
     );
     assert_eq!(retried.last_cursor, cursor + 1);
@@ -341,7 +347,7 @@ fn rrflow_kv_unified_evidence_survives_reopen_and_retry() {
             )
             .unwrap();
         transaction = DataTransaction::new(
-            runtime.engine().runtime_read_stamp(&scope).unwrap(),
+            runtime.engine().runtime().read_stamp(&scope).unwrap(),
             RuntimeCommit {
                 scope: scope.clone(),
                 at: 101,
@@ -363,14 +369,16 @@ fn rrflow_kv_unified_evidence_survives_reopen_and_retry() {
     assert_eq!(
         reopened
             .engine()
-            .runtime_outbox_since(transaction.read.commit_cursor, 20)
+            .runtime()
+            .outbox_since(transaction.read.commit_cursor, 20)
             .unwrap()
             .len(),
         7
     );
     let reopened_audit = reopened
         .engine()
-        .runtime_audit(&outcome.commit_id)
+        .runtime()
+        .audit(&outcome.commit_id)
         .unwrap()
         .unwrap();
     assert_eq!(reopened_audit.read.as_ref(), Some(&transaction.read));

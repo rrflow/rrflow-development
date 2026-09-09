@@ -786,7 +786,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             request_id: context.request_id.clone(),
             operation_id: context.operation_id.to_string(),
         };
-        match self.engine.commit_control_transition(&transition) {
+        match self.engine.control().commit(&transition) {
             Ok(_) => Ok(CreateOutcome {
                 document,
                 idempotent_replay: false,
@@ -798,7 +798,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                 let mut after = 0;
                 let mut scanned = 0;
                 loop {
-                    let page = self.engine.control_journal_since(after, 1_024)?;
+                    let page = self.engine.control().journal_since(after, 1_024)?;
                     scanned += page.len();
                     if page.iter().any(|entry| {
                         entry.key == self.key
@@ -834,7 +834,8 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
 
     pub fn load(&self) -> Result<Option<EstateDocument>> {
         self.engine
-            .control_record(&self.key)?
+            .control()
+            .get(&self.key)?
             .map(|bytes| decode(&bytes))
             .transpose()
     }
@@ -843,7 +844,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         validate_context(&request.context)?;
         validate_ascii_key(&request.idempotency_key, "authority idempotency key")?;
         let request_sha256 = authority::authority_request_sha256(request);
-        let Some(current_bytes) = self.engine.control_record(&self.key)? else {
+        let Some(current_bytes) = self.engine.control().get(&self.key)? else {
             return Err(Error::NotFound(self.estate_id.to_string()));
         };
         let mut document = decode(&current_bytes)?;
@@ -899,7 +900,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         validate_ascii_key(&request.idempotency_key, "idempotency key")?;
         validate_target(&request.target)?;
         let request_sha256 = desired_request_sha256(request);
-        let Some(current_bytes) = self.engine.control_record(&self.key)? else {
+        let Some(current_bytes) = self.engine.control().get(&self.key)? else {
             return Err(Error::NotFound(self.estate_id.to_string()));
         };
         let mut document = decode(&current_bytes)?;
@@ -1206,7 +1207,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         action: &str,
         mutate: impl FnOnce(&mut EstateDocument) -> Result<()>,
     ) -> Result<EstateDocument> {
-        let Some(current_bytes) = self.engine.control_record(&self.key)? else {
+        let Some(current_bytes) = self.engine.control().get(&self.key)? else {
             return Err(Error::NotFound(self.estate_id.to_string()));
         };
         let mut document = decode(&current_bytes)?;
@@ -1233,7 +1234,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         document.updated_at = context.at;
         document.validate()?;
         let replacement = encode(&document)?;
-        self.engine.commit_control_transition(&ControlTransition {
+        self.engine.control().commit(&ControlTransition {
             key: self.key.clone(),
             expected: Some(expected),
             replacement: Some(replacement),

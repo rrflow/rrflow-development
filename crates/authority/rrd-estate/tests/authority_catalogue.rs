@@ -255,7 +255,7 @@ fn every_estate_resource_and_receipt_survives_native_reopen() {
     let encoded = serde_json::to_string(&public).unwrap();
     assert!(!encoded.contains("vault://"));
 
-    let journal = reopened.control_journal_since(0, 10).unwrap();
+    let journal = reopened.control().journal_since(0, 10).unwrap();
     assert_eq!(
         journal
             .iter()

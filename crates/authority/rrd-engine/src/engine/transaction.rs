@@ -81,7 +81,7 @@ impl RrdEngine {
             .min(state.absolute_expires_at_unix_ms);
         let scope = ScopeId::new(format!("instance:{}", self.instance))
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         let transaction = TransactionLease {
             transaction_id: transaction_id.clone(),
             session_id: session_id.clone(),
@@ -316,22 +316,23 @@ impl RrdEngine {
             if commit.digest() != *expected_commit {
                 return Err(ServiceError::OperationDigestMismatch);
             }
-            let (outcome, idempotent_replay) =
-                if let Some(outcome) = self.storage.runtime_commit_outcome(expected_commit)? {
-                    (outcome, true)
-                } else {
-                    let transaction = DataTransaction::new(read.clone(), commit.clone())
-                        .map_err(|error| ServiceError::Contract(error.to_string()))?;
-                    rrd_query::validate_unique_indexes(&self.storage, &transaction, runtime_at)
-                        .map_err(|error| ServiceError::Query(error.to_string()))?;
-                    match self.storage.commit_data_transaction(&transaction) {
-                        Ok(outcome) => (outcome, false),
-                        Err(error) => match self.storage.runtime_commit_outcome(expected_commit)? {
-                            Some(outcome) => (outcome, true),
-                            None => return Err(error.into()),
-                        },
-                    }
-                };
+            let (outcome, idempotent_replay) = if let Some(outcome) =
+                self.storage.runtime().commit_outcome(expected_commit)?
+            {
+                (outcome, true)
+            } else {
+                let transaction = DataTransaction::new(read.clone(), commit.clone())
+                    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                rrd_query::validate_unique_indexes(&self.storage, &transaction, runtime_at)
+                    .map_err(|error| ServiceError::Query(error.to_string()))?;
+                match self.storage.runtime().commit_data_transaction(&transaction) {
+                    Ok(outcome) => (outcome, false),
+                    Err(error) => match self.storage.runtime().commit_outcome(expected_commit)? {
+                        Some(outcome) => (outcome, true),
+                        None => return Err(error.into()),
+                    },
+                }
+            };
             runtime_receipt(
                 transaction_id,
                 &request.operation_sha256,
@@ -547,8 +548,11 @@ impl RrdEngine {
         } else {
             public_data_snapshot(
                 &transaction.read,
-                self.storage
-                    .preview_data_snapshot(&data_transaction, valid_at, replay_limit)?,
+                self.storage.runtime().preview_data_snapshot(
+                    &data_transaction,
+                    valid_at,
+                    replay_limit,
+                )?,
             )?
         };
         let preview = TransactionPreview {

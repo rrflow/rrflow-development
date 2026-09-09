@@ -49,7 +49,9 @@ where
     B: EmbeddingBackend,
 {
     job.validate()?;
-    let verification = store.runtime_read_changes(&job.read, job.read.commit_cursor, 1)?;
+    let verification = store
+        .runtime()
+        .read_changes(&job.read, job.read.commit_cursor, 1)?;
     if verification.through_cursor != job.read.commit_cursor {
         return Err("embedding read stamp did not verify at its captured cursor".into());
     }
@@ -175,7 +177,7 @@ where
             }],
         },
     )?;
-    let commit = match store.commit_data_transaction(&transaction) {
+    let commit = match store.runtime().commit_data_transaction(&transaction) {
         Ok(commit) => commit,
         Err(error) => {
             let outcome = if matches!(error, rrd_store::Error::RuntimeConflict { .. }) {
@@ -361,7 +363,10 @@ pub fn execute_traced_vector_search<E: StorageEngine>(
     at: Millis,
 ) -> Result<TracedVectorSearch, Box<dyn std::error::Error>> {
     request.validate()?;
-    let verification = store.runtime_read_changes(&request.read, request.read.commit_cursor, 1)?;
+    let verification =
+        store
+            .runtime()
+            .read_changes(&request.read, request.read.commit_cursor, 1)?;
     if verification.through_cursor != request.read.commit_cursor {
         return Err("vector read stamp did not verify at its captured cursor".into());
     }
@@ -597,7 +602,7 @@ fn required_projection_cursor<E: StorageEngine>(
     let mut after = 0;
     let mut required = 0;
     loop {
-        let page = store.runtime_outbox_since(after, 4_096)?;
+        let page = store.runtime().outbox_since(after, 4_096)?;
         if page.is_empty() {
             return Ok(required);
         }
@@ -625,7 +630,7 @@ fn trace_only_rebase<E: StorageEngine>(
     store: &E,
     original: &ReadStamp,
 ) -> Result<ReadStamp, Box<dyn std::error::Error>> {
-    let rebased = store.runtime_read_stamp(&original.scope)?;
+    let rebased = store.runtime().read_stamp(&original.scope)?;
     if rebased.commit_cursor < original.commit_cursor {
         return Err("embedding rebase moved behind its original read".into());
     }
@@ -653,7 +658,9 @@ fn trace_only_rebase<E: StorageEngine>(
         .ok_or("embedding rebase cursor underflow")?;
     let limit = usize::try_from(gap)
         .map_err(|_| "embedding trace-only rebase exceeds this platform's address space")?;
-    let page = store.runtime_read_changes(&rebased, original.commit_cursor, limit)?;
+    let page = store
+        .runtime()
+        .read_changes(&rebased, original.commit_cursor, limit)?;
     if page.through_cursor != rebased.commit_cursor || page.changes.len() != limit {
         return Err("embedding trace-only rebase did not replay the complete cursor gap".into());
     }

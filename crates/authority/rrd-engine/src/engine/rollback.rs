@@ -19,7 +19,7 @@ impl RrdEngine {
             ));
         }
         let scope = ScopeId::new(format!("instance:{}", self.instance)).map_err(core_contract)?;
-        let live_read = self.storage.runtime_read_stamp(&scope)?;
+        let live_read = self.storage.runtime().read_stamp(&scope)?;
         if read_cursor > live_read.commit_cursor {
             return Err(ServiceError::StorageConflict(format!(
                 "rollback read cursor {read_cursor} exceeds live head {}",
@@ -32,7 +32,7 @@ impl RrdEngine {
         let changes = if limit == 0 {
             Vec::new()
         } else {
-            let page = self.storage.runtime_read_changes(&live_read, 0, limit)?;
+            let page = self.storage.runtime().read_changes(&live_read, 0, limit)?;
             if page.through_cursor != read_cursor {
                 return Err(ServiceError::Storage(format!(
                     "rollback replay stopped at {}, expected {read_cursor}",

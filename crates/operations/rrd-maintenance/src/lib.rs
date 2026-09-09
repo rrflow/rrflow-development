@@ -1031,7 +1031,7 @@ impl<'a, E: StorageEngine + ?Sized> MaintenanceRepository<'a, E> {
         expected_cursor: u64,
     ) -> Result<()> {
         let mut mutations = Vec::new();
-        if self.engine.runtime_schema(&self.scope)?.is_none() {
+        if self.engine.runtime().schema(&self.scope)?.is_none() {
             mutations.push(RuntimeMutation::Schema {
                 registry: maintenance_schema()?,
             });
@@ -1051,7 +1051,7 @@ impl<'a, E: StorageEngine + ?Sized> MaintenanceRepository<'a, E> {
         if let Some(projection) = projection {
             mutations.push(projection_record(projection)?);
         }
-        self.engine.commit_runtime(&RuntimeCommit {
+        self.engine.runtime().commit(&RuntimeCommit {
             scope: self.scope.clone(),
             at: next.updated_at,
             actor: next.actor.clone(),
@@ -1062,15 +1062,16 @@ impl<'a, E: StorageEngine + ?Sized> MaintenanceRepository<'a, E> {
     }
 
     fn load(&self) -> Result<LoadedMaintenance> {
-        let head_cursor = self.engine.runtime_cursor()?;
+        let head_cursor = self.engine.runtime().cursor()?;
         let mut after = 0_u64;
         let mut revisions = BTreeMap::<String, Vec<MaintenanceRun>>::new();
         let mut events = BTreeMap::<(String, u64), MaintenanceEvent>::new();
         let mut projections = Vec::<ActiveMaintenanceProjection>::new();
         while after < head_cursor {
-            let page = self
-                .engine
-                .runtime_changes_since(after, REPLAY_PAGE, Some(&self.scope))?;
+            let page =
+                self.engine
+                    .runtime()
+                    .changes_since(after, REPLAY_PAGE, Some(&self.scope))?;
             if page.head_cursor != head_cursor {
                 return Err(contract("maintenance source cursor changed during replay"));
             }

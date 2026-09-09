@@ -154,5 +154,8 @@ fn main() {
         }
     }
 
-    println!("\nfinal sequence watermark: {}", store.sequence().unwrap());
+    println!(
+        "\nfinal sequence watermark: {}",
+        store.claims().sequence().unwrap()
+    );
 }

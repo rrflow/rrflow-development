@@ -552,7 +552,7 @@ impl RrdEngine {
                     &instance_id,
                     &idempotency_key,
                 );
-                let existing = engine.storage.control_record(&state_key)?;
+                let existing = engine.storage.control().get(&state_key)?;
                 let recovered_operation = existing.is_some();
                 let (prepared_bytes, mut state) = if let Some(bytes) = existing {
                     let state: EstateRecoveryPruneOperationState =
@@ -798,7 +798,7 @@ impl RrdEngine {
                     &instance_id,
                     &idempotency_key,
                 );
-                let existing = engine.storage.control_record(&state_key)?;
+                let existing = engine.storage.control().get(&state_key)?;
                 let recovered_operation = existing.is_some();
                 let (prepared_bytes, mut state) = if let Some(bytes) = existing {
                     let state: EstateRecoveryRestoreOperationState =
@@ -912,8 +912,8 @@ impl RrdEngine {
                         ));
                     }
                     let restored = RrflowKvStore::open(&target)?;
-                    if restored.sequence()? != entry.archive.claim_sequence
-                        || restored.runtime_cursor()? != entry.archive.runtime_cursor
+                    if restored.claims().sequence()? != entry.archive.claim_sequence
+                        || restored.runtime().cursor()? != entry.archive.runtime_cursor
                     {
                         return Err(ServiceError::Backup(
                             "existing restore target watermarks differ from the recovery point"
@@ -935,8 +935,8 @@ impl RrdEngine {
                         at,
                     )?;
                     let restored = RrflowKvStore::open(&target)?;
-                    if restored.sequence()? != report.inventory.claim_sequence
-                        || restored.runtime_cursor()? != report.inventory.runtime_cursor
+                    if restored.claims().sequence()? != report.inventory.claim_sequence
+                        || restored.runtime().cursor()? != report.inventory.runtime_cursor
                     {
                         return Err(ServiceError::Backup(
                             "published restore watermarks failed verification".into(),
@@ -1370,7 +1370,7 @@ fn commit_local_recovery_control(
     request_id: &str,
     operation_id: &str,
 ) -> Result<()> {
-    engine.commit_control_transition(&ControlTransition {
+    engine.control().commit(&ControlTransition {
         key,
         expected,
         replacement: Some(serde_json::to_vec(state).map_err(contract_json)?),

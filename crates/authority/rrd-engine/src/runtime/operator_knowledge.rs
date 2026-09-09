@@ -217,7 +217,9 @@ where
     knowledge.validate()?;
     request.validate()?;
     let verification =
-        store.runtime_read_changes(&request.search.read, request.search.read.commit_cursor, 1)?;
+        store
+            .runtime()
+            .read_changes(&request.search.read, request.search.read.commit_cursor, 1)?;
     if verification.through_cursor != request.search.read.commit_cursor {
         return Err("operator-knowledge read stamp did not verify at its captured cursor".into());
     }

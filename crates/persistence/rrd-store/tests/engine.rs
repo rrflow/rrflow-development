@@ -37,19 +37,28 @@ fn rrflow_kv_physical_maintenance_preserves_exact_semantics_across_reopen() {
     let parent = tempfile::tempdir().unwrap();
     let root = parent.path().join("rrflow-kv");
     let store = RrflowKvStore::open(&root).unwrap();
-    StorageEngine::append_batch(&store, &corpus()).unwrap();
-    let before = StorageEngine::claims_in_range(&store, 0, corpus().len() as u64).unwrap();
+    store.claims().append_batch(&corpus()).unwrap();
+    let before = store
+        .claims()
+        .claims_in_range(0, corpus().len() as u64)
+        .unwrap();
     store.flush(1_000).unwrap();
     store.compact(1_001, 1_001).unwrap();
     assert_eq!(
-        StorageEngine::claims_in_range(&store, 0, corpus().len() as u64).unwrap(),
+        store
+            .claims()
+            .claims_in_range(0, corpus().len() as u64)
+            .unwrap(),
         before
     );
     drop(store);
 
     let reopened = RrflowKvStore::open(&root).unwrap();
     assert_eq!(
-        StorageEngine::claims_in_range(&reopened, 0, corpus().len() as u64).unwrap(),
+        reopened
+            .claims()
+            .claims_in_range(0, corpus().len() as u64)
+            .unwrap(),
         before
     );
 }
@@ -66,23 +75,23 @@ fn all_engines_are_indistinguishable_through_the_port() {
 
     // Same sequence, same interval replay, same subjects.
     assert_eq!(
-        StorageEngine::sequence(&rrflow_kv).unwrap(),
-        StorageEngine::sequence(&memory).unwrap()
+        rrflow_kv.claims().sequence().unwrap(),
+        memory.claims().sequence().unwrap()
     );
     assert_eq!(
-        StorageEngine::claims_in_range(&rrflow_kv, 2, 5).unwrap(),
-        StorageEngine::claims_in_range(&memory, 2, 5).unwrap()
+        rrflow_kv.claims().claims_in_range(2, 5).unwrap(),
+        memory.claims().claims_in_range(2, 5).unwrap()
     );
     assert_eq!(
-        StorageEngine::subjects(&rrflow_kv).unwrap(),
-        StorageEngine::subjects(&memory).unwrap()
+        rrflow_kv.claims().subjects().unwrap(),
+        memory.claims().subjects().unwrap()
     );
 
     // Same projection after rebuild, and the SAME grounding digest — the
     // stamp names content, not the engine that computed it.
     let ga = match (
-        rrflow_kv.rebuild_current().unwrap(),
-        rrflow_kv.ground_current(500).unwrap(),
+        rrflow_kv.projections().rebuild_current().unwrap(),
+        rrflow_kv.projections().ground_current(500).unwrap(),
     ) {
         (_, GroundingReport::Grounded(stamp)) => stamp,
         (_, GroundingReport::Divergence { differences }) => {
@@ -90,8 +99,8 @@ fn all_engines_are_indistinguishable_through_the_port() {
         }
     };
     let gb = match (
-        memory.rebuild_current().unwrap(),
-        memory.ground_current(500).unwrap(),
+        memory.projections().rebuild_current().unwrap(),
+        memory.projections().ground_current(500).unwrap(),
     ) {
         (_, GroundingReport::Grounded(stamp)) => stamp,
         (_, GroundingReport::Divergence { differences }) => {
@@ -106,20 +115,24 @@ fn all_engines_are_indistinguishable_through_the_port() {
 
     // The quarantine semantics ride the trait too: corrupt the reference
     // engine's stored blob and the provided ground_current halts it.
-    let bytes = StorageEngine::get_projection(&memory, rrd_store::CURRENT_PROJECTION)
+    let bytes = memory
+        .projections()
+        .get(rrd_store::CURRENT_PROJECTION)
         .unwrap()
         .unwrap();
     let corrupted = String::from_utf8(bytes)
         .unwrap()
         .replacen("\"done\"", "\"drifted\"", 1);
-    StorageEngine::put_projection(&memory, rrd_store::CURRENT_PROJECTION, corrupted.as_bytes())
+    memory
+        .projections()
+        .put(rrd_store::CURRENT_PROJECTION, corrupted.as_bytes())
         .unwrap();
     assert!(matches!(
-        memory.ground_current(600).unwrap(),
+        memory.projections().ground_current(600).unwrap(),
         GroundingReport::Divergence { .. }
     ));
     assert!(matches!(
-        memory.rebuild_current(),
+        memory.projections().rebuild_current(),
         Err(rrd_store::Error::Quarantined(_))
     ));
 }
@@ -132,12 +145,15 @@ fn a_rejected_batch_is_atomic_in_all_engines() {
     let valid = claim("wp3", "status", "valid", 100);
     let mut invalid = claim("wp4", "status", "invalid", 200);
     invalid.valid_to = Some(200);
-    assert!(StorageEngine::append_batch(&rrflow_kv, &[valid.clone(), invalid.clone()]).is_err());
-    assert!(StorageEngine::append_batch(&memory, &[valid, invalid]).is_err());
-    assert_eq!(StorageEngine::sequence(&rrflow_kv).unwrap(), 0);
-    assert_eq!(StorageEngine::sequence(&memory).unwrap(), 0);
-    assert!(StorageEngine::subjects(&rrflow_kv).unwrap().is_empty());
-    assert!(StorageEngine::subjects(&memory).unwrap().is_empty());
+    assert!(rrflow_kv
+        .claims()
+        .append_batch(&[valid.clone(), invalid.clone()])
+        .is_err());
+    assert!(memory.claims().append_batch(&[valid, invalid]).is_err());
+    assert_eq!(rrflow_kv.claims().sequence().unwrap(), 0);
+    assert_eq!(memory.claims().sequence().unwrap(), 0);
+    assert!(rrflow_kv.claims().subjects().unwrap().is_empty());
+    assert!(memory.claims().subjects().unwrap().is_empty());
 }
 
 #[test]
@@ -147,9 +163,12 @@ fn assert_retires_the_previous_claim_atomically() {
     let first = claim("wp3", "status", "failing", 100);
     let mut second = claim("wp3", "status", "passing", 200);
     second.tx_time = 250;
-    StorageEngine::assert(&store, &first).unwrap();
-    StorageEngine::assert(&store, &second).unwrap();
-    let history = store.history(&first.subject, &first.predicate).unwrap();
+    store.claims().assert(&first).unwrap();
+    store.claims().assert(&second).unwrap();
+    let history = store
+        .claims()
+        .history(&first.subject, &first.predicate)
+        .unwrap();
     let retired = history
         .iter()
         .find(|candidate| candidate.object == "failing" && candidate.valid_to == Some(200))
@@ -157,6 +176,7 @@ fn assert_retires_the_previous_claim_atomically() {
     assert_eq!(retired.tx_time, 250);
     assert_eq!(
         store
+            .claims()
             .as_of(&first.subject, &first.predicate, 150)
             .unwrap()
             .unwrap()
@@ -165,6 +185,7 @@ fn assert_retires_the_previous_claim_atomically() {
     );
     assert_eq!(
         store
+            .claims()
             .as_of(&first.subject, &first.predicate, 250)
             .unwrap()
             .unwrap()
@@ -180,6 +201,6 @@ trait AnyEngine {
 }
 impl<E: StorageEngine> AnyEngine for E {
     fn load(&self, claims: &[Claim]) {
-        StorageEngine::append_batch(self, claims).unwrap();
+        self.claims().append_batch(claims).unwrap();
     }
 }

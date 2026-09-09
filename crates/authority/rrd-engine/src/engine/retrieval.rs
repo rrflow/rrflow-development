@@ -43,7 +43,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
 
         let query = rrd_query::parse(&format!(
             "FROM record:{} AT VALID {} KNOWN {} WHERE {} MATCH $hybrid_text LIMIT {}",

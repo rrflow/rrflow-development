@@ -278,7 +278,7 @@ fn authorized_admin_mutations_replay_reopen_and_journal_exact_identity() {
     assert_eq!(document.revision, 9);
     assert_eq!(document.instances.len(), 1);
     assert_eq!(document.backup_jobs.len(), 1);
-    let journal = engine.control_journal_since(0, 64).unwrap();
+    let journal = engine.control().journal_since(0, 64).unwrap();
     assert!(journal.iter().any(|entry| entry.action == "security.audit"));
     let estate_journal = journal
         .iter()

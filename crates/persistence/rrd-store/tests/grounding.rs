@@ -85,7 +85,7 @@ fn adapter_matches_grounding_reference_across_the_corpus() {
     let mut reference = MemoryClaims::new();
 
     let claims = corpus();
-    store.append_batch(&claims).unwrap();
+    store.claims().append_batch(&claims).unwrap();
     for c in &claims {
         reference.insert(c.clone()).unwrap();
     }
@@ -94,7 +94,7 @@ fn adapter_matches_grounding_reference_across_the_corpus() {
     for (subject, predicate) in pairs() {
         // Resolution must agree at every instant across the corpus range.
         for at in (0..600).step_by(7) {
-            let from_store = store.as_of(&subject, &predicate, at).unwrap();
+            let from_store = store.claims().as_of(&subject, &predicate, at).unwrap();
             let from_reference = reference.as_of(&subject, &predicate, at).unwrap();
             assert_eq!(
                 from_store.as_ref().map(|c| &c.object),
@@ -106,6 +106,7 @@ fn adapter_matches_grounding_reference_across_the_corpus() {
 
         // History must agree in content and in order.
         let store_history: Vec<_> = store
+            .claims()
             .history(&subject, &predicate)
             .unwrap()
             .into_iter()
@@ -132,9 +133,10 @@ fn adapter_matches_grounding_reference_across_the_corpus() {
 fn batch_allocates_contiguous_sequences_and_advances_the_watermark() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
-    assert_eq!(store.sequence().unwrap(), 0);
+    assert_eq!(store.claims().sequence().unwrap(), 0);
 
     let first = store
+        .claims()
         .append_batch(&[
             claim("a", "p", "1", 100, None),
             claim("b", "p", "2", 100, None),
@@ -143,14 +145,15 @@ fn batch_allocates_contiguous_sequences_and_advances_the_watermark() {
         .unwrap();
     assert_eq!(first.first_sequence, 1);
     assert_eq!(first.last_sequence, 3);
-    assert_eq!(store.sequence().unwrap(), 3);
+    assert_eq!(store.claims().sequence().unwrap(), 3);
 
     let second = store
+        .claims()
         .append_batch(&[claim("d", "p", "4", 100, None)])
         .unwrap();
     assert_eq!(second.first_sequence, 4);
     assert_eq!(second.last_sequence, 4);
-    assert_eq!(store.sequence().unwrap(), 4);
+    assert_eq!(store.claims().sequence().unwrap(), 4);
 }
 
 #[test]
@@ -158,11 +161,12 @@ fn empty_batch_is_a_no_write_and_does_not_advance_the_watermark() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
     store
+        .claims()
         .append_batch(&[claim("a", "p", "1", 100, None)])
         .unwrap();
-    let outcome = store.append_batch(&[]).unwrap();
+    let outcome = store.claims().append_batch(&[]).unwrap();
     assert_eq!(outcome.count, 0);
-    assert_eq!(store.sequence().unwrap(), 1);
+    assert_eq!(store.claims().sequence().unwrap(), 1);
 }
 
 #[test]
@@ -173,13 +177,13 @@ fn claims_and_watermark_survive_reopen() {
 
     {
         let store = RrflowKvStore::open(dir.path()).unwrap();
-        store.append_batch(&claims).unwrap();
-        assert_eq!(store.sequence().unwrap(), expected_sequence);
+        store.claims().append_batch(&claims).unwrap();
+        assert_eq!(store.claims().sequence().unwrap(), expected_sequence);
     }
 
     let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(
-        reopened.sequence().unwrap(),
+        reopened.claims().sequence().unwrap(),
         expected_sequence,
         "watermark did not survive reopen"
     );
@@ -193,6 +197,7 @@ fn claims_and_watermark_survive_reopen() {
     for at in (0..600).step_by(11) {
         assert_eq!(
             reopened
+                .claims()
                 .as_of(&subject, &predicate, at)
                 .unwrap()
                 .map(|c| c.object),
@@ -212,8 +217,8 @@ fn invalid_claim_is_rejected_before_any_write() {
     // An inverted valid-time interval must abort the batch, leaving the
     // watermark untouched.
     let bad = claim("a", "p", "x", 200, Some(100));
-    assert!(store.append_batch(&[bad]).is_err());
-    assert_eq!(store.sequence().unwrap(), 0);
+    assert!(store.claims().append_batch(&[bad]).is_err());
+    assert_eq!(store.claims().sequence().unwrap(), 0);
 }
 
 #[test]
@@ -223,11 +228,13 @@ fn access_records_are_written_without_blocking_reads() {
     let subject = Subject::new("wp3").unwrap();
     let predicate = Predicate::new("status").unwrap();
     store
+        .claims()
         .append_batch(&[claim("wp3", "status", "v1", 100, None)])
         .unwrap();
 
     for i in 0..10 {
         store
+            .claims()
             .observe(
                 &rrd_core::Reader::new("agent:clyffy").unwrap(),
                 &subject,
@@ -236,7 +243,11 @@ fn access_records_are_written_without_blocking_reads() {
             )
             .unwrap();
     }
-    assert_eq!(store.access_count().unwrap(), 10);
+    assert_eq!(store.claims().access_count().unwrap(), 10);
     // The claim remains readable after telemetry writes.
-    assert!(store.as_of(&subject, &predicate, 150).unwrap().is_some());
+    assert!(store
+        .claims()
+        .as_of(&subject, &predicate, 150)
+        .unwrap()
+        .is_some());
 }

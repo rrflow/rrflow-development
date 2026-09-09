@@ -37,7 +37,8 @@ fn seed<E: StorageEngine>(engine: &E) {
         },
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 10,
             actor: "test".into(),
@@ -55,7 +56,8 @@ fn seed<E: StorageEngine>(engine: &E) {
 fn exercise<E: StorageEngine>(engine: &E) -> LiveQueryDelta {
     seed(engine);
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 20,
             actor: "test".into(),

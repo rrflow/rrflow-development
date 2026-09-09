@@ -37,6 +37,7 @@ fn runtime_claim(expected_cursor: u64, value: Claim) -> RuntimeCommit {
 fn source(root: &std::path::Path) -> RrflowKvStore {
     let engine = RrflowKvStore::open(root).unwrap();
     engine
+        .claims()
         .append_batch(&[claim("standalone-before", 10)])
         .unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "archive test bootstrap");
@@ -45,7 +46,8 @@ fn source(root: &std::path::Path) -> RrflowKvStore {
         RuntimeEventSchema::default(),
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:archive-test").unwrap(),
             at: 15,
             actor: "agent:archive-test".into(),
@@ -54,15 +56,19 @@ fn source(root: &std::path::Path) -> RrflowKvStore {
         })
         .unwrap();
     engine
-        .commit_runtime(&runtime_claim(1, claim("runtime-one", 20)))
+        .runtime()
+        .commit(&runtime_claim(1, claim("runtime-one", 20)))
         .unwrap();
     engine
+        .claims()
         .append_batch(&[claim("standalone-middle", 30)])
         .unwrap();
     engine
-        .commit_runtime(&runtime_claim(2, claim("runtime-two", 40)))
+        .runtime()
+        .commit(&runtime_claim(2, claim("runtime-two", 40)))
         .unwrap();
     engine
+        .claims()
         .append_batch(&[claim("standalone-after", 50)])
         .unwrap();
     engine
@@ -88,18 +94,25 @@ fn exports_inspects_and_restores_exact_log_coordinates() {
     assert_eq!(report.inventory, exported);
 
     let restored = RrflowKvStore::open(&target).unwrap();
-    assert_eq!(restored.sequence().unwrap(), source.sequence().unwrap());
     assert_eq!(
-        restored.runtime_cursor().unwrap(),
-        source.runtime_cursor().unwrap()
+        restored.claims().sequence().unwrap(),
+        source.claims().sequence().unwrap()
     );
     assert_eq!(
-        restored.claims_in_range(0, 5).unwrap(),
-        source.claims_in_range(0, 5).unwrap()
+        restored.runtime().cursor().unwrap(),
+        source.runtime().cursor().unwrap()
     );
     assert_eq!(
-        restored.runtime_changes_since(0, 10, None).unwrap().changes,
-        source.runtime_changes_since(0, 10, None).unwrap().changes
+        restored.claims().claims_in_range(0, 5).unwrap(),
+        source.claims().claims_in_range(0, 5).unwrap()
+    );
+    assert_eq!(
+        restored
+            .runtime()
+            .changes_since(0, 10, None)
+            .unwrap()
+            .changes,
+        source.runtime().changes_since(0, 10, None).unwrap().changes
     );
 }
 
@@ -129,7 +142,14 @@ fn corruption_is_denied_before_target_publication_and_retry_succeeds() {
 
     std::fs::write(&archive, original).unwrap();
     restore_logical_archive_to_new_root(&archive, &target, 101).unwrap();
-    assert_eq!(RrflowKvStore::open(&target).unwrap().sequence().unwrap(), 5);
+    assert_eq!(
+        RrflowKvStore::open(&target)
+            .unwrap()
+            .claims()
+            .sequence()
+            .unwrap(),
+        5
+    );
 }
 
 #[test]
@@ -156,7 +176,7 @@ fn restore_preserves_the_original_transaction_audit_envelope() {
     let target = root.path().join("restored");
     let source = source(&source_root);
     let scope = ScopeId::new("instance:archive-test").unwrap();
-    let read = source.runtime_read_stamp(&scope).unwrap();
+    let read = source.runtime().read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(
         read,
         RuntimeCommit {
@@ -170,8 +190,11 @@ fn restore_preserves_the_original_transaction_audit_envelope() {
         },
     )
     .unwrap();
-    let outcome = source.commit_data_transaction(&transaction).unwrap();
-    let expected_audit = source.runtime_audit(&outcome.commit_id).unwrap().unwrap();
+    let outcome = source
+        .runtime()
+        .commit_data_transaction(&transaction)
+        .unwrap();
+    let expected_audit = source.runtime().audit(&outcome.commit_id).unwrap().unwrap();
     assert_eq!(expected_audit.read.as_ref(), Some(&transaction.read));
 
     export_logical_archive(&source, &archive).unwrap();
@@ -179,7 +202,7 @@ fn restore_preserves_the_original_transaction_audit_envelope() {
 
     let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(
-        restored.runtime_audit(&outcome.commit_id).unwrap(),
+        restored.runtime().audit(&outcome.commit_id).unwrap(),
         Some(expected_audit),
         "logical recovery must retain the transaction's exact read and audit chain"
     );

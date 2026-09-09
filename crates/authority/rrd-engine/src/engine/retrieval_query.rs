@@ -64,7 +64,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
             .load()
             .map_err(vector_collection_error)?;
@@ -86,7 +86,7 @@ impl RrdEngine {
         }
         let scan_limit = usize::try_from(request.max_scanned_changes)
             .map_err(|_| ServiceError::Vector("retrieval scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime_read_changes(&read, 0, scan_limit)?;
+        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
         if page.through_cursor < page.head_cursor {
             return Err(ServiceError::Vector(format!(
                 "retrieval query requires more than {} retained changes",

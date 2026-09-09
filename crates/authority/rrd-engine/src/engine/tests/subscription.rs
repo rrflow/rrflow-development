@@ -584,7 +584,8 @@ fn subscription_open_requires_both_subscription_and_stream_permissions() {
     ));
     assert!(engine
         .storage
-        .control_record(&format!(
+        .control()
+        .get(&format!(
             "server/state/{}/subscription/{}",
             instance(),
             request.subscription_id.as_str()
@@ -619,7 +620,8 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
     };
     engine
         .storage
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 10,
             actor: "node-one".into(),
@@ -636,7 +638,8 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
         .unwrap();
     engine
         .storage
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 20,
             actor: "node-two".into(),
@@ -748,7 +751,8 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
     registry.migration = "subscription cursor-only schema revision".into();
     engine
         .storage
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope,
             at: 30,
             actor: "node-three".into(),

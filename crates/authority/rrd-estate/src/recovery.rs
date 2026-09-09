@@ -564,7 +564,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
     ) -> Result<RecoveryMutationOutcome> {
         validate_context(context)?;
         validate_ascii_key(idempotency_key, "recovery idempotency key")?;
-        let Some(current_bytes) = self.engine.control_record(&self.key)? else {
+        let Some(current_bytes) = self.engine.control().get(&self.key)? else {
             return Err(Error::NotFound(self.estate_id.to_string()));
         };
         let mut document = super::decode(&current_bytes)?;

@@ -105,7 +105,8 @@ fn seed(engine: &RrflowKvStore, scope: &str) {
         },
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new(scope).unwrap(),
             at: 100,
             actor: "rrd-client-fixture".into(),
@@ -260,9 +261,10 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
     let root = binding.expected_store();
     let storage = RrflowKvStore::open(&root).unwrap();
     seed(&storage, "instance:sdk-test");
-    let runtime_head = storage.runtime_cursor().unwrap();
+    let runtime_head = storage.runtime().cursor().unwrap();
     storage
-        .open_runtime_snapshot(
+        .runtime()
+        .open_snapshot(
             &ScopeId::new("instance:sdk-test").unwrap(),
             "rust-sdk-fixture",
             u64::try_from(

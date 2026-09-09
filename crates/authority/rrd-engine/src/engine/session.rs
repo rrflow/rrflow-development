@@ -140,7 +140,7 @@ impl RrdEngine {
         let session_id = self.keyed_id("session", &[idempotency_key.as_str()])?;
         let token = self.session_token(&session_id, 0)?;
         let key = session_key(&self.instance, &session_id);
-        if let Some(bytes) = self.storage.control_record(&key)? {
+        if let Some(bytes) = self.storage.control().get(&key)? {
             let state = decode_session(&bytes)?;
             if state.principal_id != principal_id
                 || state.principal_credential_revision != principal_credential_revision
@@ -182,7 +182,7 @@ impl RrdEngine {
             closure: None,
             transactions: BTreeMap::new(),
         };
-        self.storage.commit_control_transition(&ControlTransition {
+        self.storage.control().commit(&ControlTransition {
             key: session_key(&self.instance, &session_id),
             expected: None,
             replacement: Some(serde_json::to_vec(&state).map_err(contract_json)?),
@@ -206,7 +206,8 @@ impl RrdEngine {
         let key = session_key(&self.instance, session_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SessionNotFound)?;
         let mut state = decode_session(&bytes)?;
         let presented_sha256 = digest::sha256_hex(token.as_str().as_bytes());
@@ -253,7 +254,8 @@ impl RrdEngine {
         let key = session_key(&self.instance, session_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SessionNotFound)?;
         let mut state = decode_session(&bytes)?;
         self.authorize_session_policy(&state, SecurityAction::SessionRenew, now)?;
@@ -329,7 +331,8 @@ impl RrdEngine {
         let key = session_key(&self.instance, session_id);
         let bytes = self
             .storage
-            .control_record(&key)?
+            .control()
+            .get(&key)?
             .ok_or(ServiceError::SessionNotFound)?;
         let mut state = decode_session(&bytes)?;
         self.authorize_session_policy(&state, SecurityAction::SessionClose, now)?;
@@ -512,7 +515,8 @@ impl RrdEngine {
     ) -> Result<(Vec<u8>, SessionState)> {
         let bytes = self
             .storage
-            .control_record(&session_key(&self.instance, session_id))?
+            .control()
+            .get(&session_key(&self.instance, session_id))?
             .ok_or(ServiceError::SessionNotFound)?;
         let state = decode_session(&bytes)?;
         if state.token_sha256 != digest::sha256_hex(token.as_str().as_bytes()) {
@@ -623,7 +627,7 @@ impl RrdEngine {
         operation_id: &str,
     ) -> Result<Vec<u8>> {
         let replacement = serde_json::to_vec(&state).map_err(contract_json)?;
-        self.storage.commit_control_transition(&ControlTransition {
+        self.storage.control().commit(&ControlTransition {
             key: session_key(&self.instance, session_id),
             expected: Some(expected),
             replacement: Some(replacement.clone()),

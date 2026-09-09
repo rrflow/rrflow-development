@@ -43,17 +43,17 @@ fn main() {
             producer.clone(),
         ));
         if batch.len() == 500 {
-            store.append_batch(&batch).expect("append");
+            store.claims().append_batch(&batch).expect("append");
             batch.clear();
         }
     }
     if !batch.is_empty() {
-        store.append_batch(&batch).expect("append");
+        store.claims().append_batch(&batch).expect("append");
     }
     println!("append   {:>8} claims in {:?}", count, started.elapsed());
 
     let started = Instant::now();
-    let outcome = store.rebuild_current().expect("rebuild");
+    let outcome = store.projections().rebuild_current().expect("rebuild");
     println!(
         "rebuild  {:>8} applied in {:?} (watermark {} -> {})",
         outcome.applied,
@@ -63,7 +63,7 @@ fn main() {
     );
 
     let started = Instant::now();
-    match store.ground_current(count).expect("ground") {
+    match store.projections().ground_current(count).expect("ground") {
         GroundingReport::Grounded(stamp) => println!(
             "ground   {:>8} claims in {:?} (digest {:016x})",
             count,
@@ -78,6 +78,7 @@ fn main() {
     // The incremental case grounding exists to protect: a small interval on
     // top of a large log.
     store
+        .claims()
         .append_batch(&[Claim::new(
             Subject::new("s0").unwrap(),
             Predicate::new("p0").unwrap(),
@@ -88,7 +89,10 @@ fn main() {
         )])
         .expect("append tail");
     let started = Instant::now();
-    let outcome = store.rebuild_current().expect("incremental rebuild");
+    let outcome = store
+        .projections()
+        .rebuild_current()
+        .expect("incremental rebuild");
     println!(
         "rebuild  {:>8} applied in {:?} (incremental)",
         outcome.applied,

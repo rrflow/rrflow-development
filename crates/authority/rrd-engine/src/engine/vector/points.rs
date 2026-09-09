@@ -44,10 +44,10 @@ impl RrdEngine {
                     request.vector_name, request.collection_id
                 ))
             })?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         let scan_limit = usize::try_from(request.max_scanned_changes)
             .map_err(|_| ServiceError::Vector("vector point scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime_read_changes(&read, 0, scan_limit)?;
+        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
         if page.through_cursor < page.head_cursor {
             return Err(ServiceError::Vector(format!(
                 "vector point scroll requires more than {} retained changes",
@@ -150,10 +150,10 @@ impl RrdEngine {
                     request.vector_name, request.collection_id
                 ))
             })?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         let scan_limit = usize::try_from(request.max_scanned_changes)
             .map_err(|_| ServiceError::Vector("vector point scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime_read_changes(&read, 0, scan_limit)?;
+        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
         if page.through_cursor < page.head_cursor {
             return Err(ServiceError::Vector(format!(
                 "vector point retrieve requires more than {} retained changes",

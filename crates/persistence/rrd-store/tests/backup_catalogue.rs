@@ -32,13 +32,13 @@ fn catalogues_multiple_cuts_and_restores_the_selected_backup() {
     let root = tempfile::tempdir().unwrap();
     let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
-    engine.append_batch(&[claim("one", 10)]).unwrap();
+    engine.claims().append_batch(&[claim("one", 10)]).unwrap();
     let first = create_logical_backup(&engine, &catalogue_root, "first", 100).unwrap();
     assert_eq!(first.claims, BackupCoverage::Included);
     assert_eq!(first.object_payloads, BackupCoverage::ReferencedOnly);
     assert!(!first.application_complete);
 
-    engine.append_batch(&[claim("two", 20)]).unwrap();
+    engine.claims().append_batch(&[claim("two", 20)]).unwrap();
     let second = create_logical_backup(&engine, &catalogue_root, "second", 200).unwrap();
     let catalogue = verify_backup_catalogue(&catalogue_root).unwrap();
     assert_eq!(catalogue.revision, 2);
@@ -47,9 +47,9 @@ fn catalogues_multiple_cuts_and_restores_the_selected_backup() {
     let target = root.path().join("restored-first");
     restore_catalogued_backup(&catalogue_root, &first.backup_id, &target, 300).unwrap();
     let restored = RrflowKvStore::open(&target).unwrap();
-    assert_eq!(restored.sequence().unwrap(), 1);
+    assert_eq!(restored.claims().sequence().unwrap(), 1);
     assert_eq!(
-        restored.claims_in_range(0, 1).unwrap(),
+        restored.claims().claims_in_range(0, 1).unwrap(),
         vec![claim("one", 10)]
     );
 }
@@ -59,7 +59,7 @@ fn repeated_identical_backup_is_idempotent() {
     let root = tempfile::tempdir().unwrap();
     let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
-    engine.append_batch(&[claim("one", 10)]).unwrap();
+    engine.claims().append_batch(&[claim("one", 10)]).unwrap();
     let first = create_logical_backup(&engine, &catalogue_root, "daily", 100).unwrap();
     let retry = create_logical_backup(&engine, &catalogue_root, "daily", 100).unwrap();
     assert_eq!(retry, first);
@@ -132,9 +132,9 @@ fn prune_rejects_incomplete_or_corrupt_inventory_before_publication() {
     let root = tempfile::tempdir().unwrap();
     let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
-    engine.append_batch(&[claim("one", 10)]).unwrap();
+    engine.claims().append_batch(&[claim("one", 10)]).unwrap();
     let first = create_logical_backup(&engine, &catalogue_root, "first", 100).unwrap();
-    engine.append_batch(&[claim("two", 20)]).unwrap();
+    engine.claims().append_batch(&[claim("two", 20)]).unwrap();
     let second = create_logical_backup(&engine, &catalogue_root, "second", 200).unwrap();
     let before = verify_backup_catalogue(&catalogue_root).unwrap();
     let incomplete = BackupPrunePlan {
@@ -170,7 +170,7 @@ fn archive_or_catalogue_corruption_fails_closed() {
     let root = tempfile::tempdir().unwrap();
     let engine = RrflowKvStore::open(&root.path().join("source")).unwrap();
     let catalogue_root = root.path().join("catalogue");
-    engine.append_batch(&[claim("one", 10)]).unwrap();
+    engine.claims().append_batch(&[claim("one", 10)]).unwrap();
     let entry = create_logical_backup(&engine, &catalogue_root, "daily", 100).unwrap();
     let archive = catalogue_root.join(&entry.archive_file);
     let mut file = OpenOptions::new().write(true).open(&archive).unwrap();
@@ -205,7 +205,8 @@ fn application_backup_payload_corruption_fails_before_restore_publication() {
     );
     runtime
         .engine()
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 10,
             actor: "backup-test".into(),
@@ -231,7 +232,7 @@ fn application_backup_payload_corruption_fails_before_restore_publication() {
             b"authenticated backup payload",
         )
         .unwrap();
-    let read = runtime.engine().runtime_read_stamp(&scope).unwrap();
+    let read = runtime.engine().runtime().read_stamp(&scope).unwrap();
     runtime
         .commit(
             &DataTransaction::new(
@@ -289,7 +290,8 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
     );
     let bootstrap = runtime
         .engine()
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 10,
             actor: "backup-closure".into(),
@@ -315,7 +317,7 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
             b"portable object closure",
         )
         .unwrap();
-    let read = runtime.engine().runtime_read_stamp(&scope).unwrap();
+    let read = runtime.engine().runtime().read_stamp(&scope).unwrap();
     let object_commit = runtime
         .commit(
             &DataTransaction::new(
@@ -340,7 +342,8 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
     let catalogue_value = br#"{"collection":"documents","vector":"body"}"#.to_vec();
     runtime
         .engine()
-        .commit_catalog_transition(
+        .control()
+        .commit_catalog(
             &scope,
             &ControlTransition {
                 key: catalogue_key.clone(),
@@ -368,7 +371,8 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
         entry.archive.runtime_audit_sha256.as_deref(),
         runtime
             .engine()
-            .runtime_audit(&object_commit.commit_id)
+            .runtime()
+            .audit(&object_commit.commit_id)
             .unwrap()
             .as_ref()
             .map(|audit| audit.digest.as_str())
@@ -380,21 +384,23 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
     restore_catalogued_backup(&catalogue_root, &entry.backup_id, &target, 200).unwrap();
     let restored = RrflowKvStore::open(&target).unwrap();
     assert_eq!(
-        restored.control_record(&catalogue_key).unwrap(),
+        restored.control().get(&catalogue_key).unwrap(),
         Some(catalogue_value)
     );
     assert_eq!(
         restored
-            .runtime_read_stamp(&scope)
+            .runtime()
+            .read_stamp(&scope)
             .unwrap()
             .catalog_revision,
         1
     );
     assert_eq!(
-        restored.runtime_audit(&object_commit.commit_id).unwrap(),
+        restored.runtime().audit(&object_commit.commit_id).unwrap(),
         runtime
             .engine()
-            .runtime_audit(&object_commit.commit_id)
+            .runtime()
+            .audit(&object_commit.commit_id)
             .unwrap()
     );
     let restored_objects = LocalObjectStore::open(target.join("immutable")).unwrap();

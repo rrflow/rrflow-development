@@ -177,7 +177,7 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
 
     {
         let engine = RrflowKvStore::open(&root).unwrap();
-        let read = engine.runtime_read_stamp(&scope).unwrap();
+        let read = engine.runtime().read_stamp(&scope).unwrap();
         let commit = first
             .prepare_runtime_commit(
                 scope.clone(),
@@ -187,8 +187,8 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
             )
             .unwrap();
         assert_eq!(commit.mutations.len(), 2);
-        engine.commit_runtime(&commit).unwrap();
-        let (_, snapshot) = engine.runtime_data_snapshot(&scope, 100, 10_000).unwrap();
+        engine.runtime().commit(&commit).unwrap();
+        let (_, snapshot) = engine.runtime().data_snapshot(&scope, 100, 10_000).unwrap();
         assert_eq!(
             DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, &cluster)
                 .unwrap()
@@ -200,8 +200,8 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
         second.revision = 2;
         second.updated_at = 200;
         second.validate_successor(&first).unwrap();
-        let read = engine.runtime_read_stamp(&scope).unwrap();
-        let schema = engine.runtime_schema(&scope).unwrap().unwrap();
+        let read = engine.runtime().read_stamp(&scope).unwrap();
+        let schema = engine.runtime().schema(&scope).unwrap().unwrap();
         let commit = second
             .prepare_runtime_commit(
                 scope.clone(),
@@ -211,11 +211,14 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
             )
             .unwrap();
         assert_eq!(commit.mutations.len(), 1);
-        engine.commit_runtime(&commit).unwrap();
+        engine.runtime().commit(&commit).unwrap();
     }
 
     let reopened = RrflowKvStore::open(&root).unwrap();
-    let (_, snapshot) = reopened.runtime_data_snapshot(&scope, 200, 10_000).unwrap();
+    let (_, snapshot) = reopened
+        .runtime()
+        .data_snapshot(&scope, 200, 10_000)
+        .unwrap();
     let restored = DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, &cluster)
         .unwrap()
         .unwrap();

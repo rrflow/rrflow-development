@@ -392,7 +392,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
     }
 
     pub fn load(&self) -> Result<IndexCatalogue> {
-        let Some(bytes) = self.engine.control_record(&self.key)? else {
+        let Some(bytes) = self.engine.control().get(&self.key)? else {
             return Ok(IndexCatalogue::empty(self.scope.clone()));
         };
         let catalogue: IndexCatalogue = serde_json::from_slice(&bytes)?;
@@ -658,7 +658,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
         let bytes = artifact.encode()?;
         let artifact_digest = digest::sha256_hex(&bytes);
         let name = index_artifact_name(&self.scope, id, generation, &artifact_digest);
-        if let Some(existing) = self.engine.get_projection(&name)? {
+        if let Some(existing) = self.engine.projections().get(&name)? {
             if existing != bytes {
                 return Err(Error::Integrity(
                     "content-addressed index artifact name contains different bytes".into(),
@@ -666,11 +666,13 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             }
         } else {
             self.engine
-                .put_projection_with(&name, &bytes, Durability::Authoritative)?;
+                .projections()
+                .put_with(&name, &bytes, Durability::Authoritative)?;
         }
         let stored = self
             .engine
-            .get_projection(&name)?
+            .projections()
+            .get(&name)?
             .ok_or_else(|| Error::Integrity("published index artifact is unreadable".into()))?;
         if digest::sha256_hex(&stored) != artifact_digest {
             return Err(Error::Integrity(
@@ -713,7 +715,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
         publication: &IndexArtifactPublication,
     ) -> Result<IndexCatalogue> {
         context.validate()?;
-        let scope_head = self.engine.runtime_read_stamp(&self.scope)?.commit_cursor;
+        let scope_head = self.engine.runtime().read_stamp(&self.scope)?.commit_cursor;
         if publication.source_cursor == 0 || publication.source_cursor > scope_head {
             return Err(Error::Catalog(
                 "index source cursor must name an existing authoritative change".into(),
@@ -799,7 +801,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
         action: &str,
         mutate: impl FnOnce(&mut IndexCatalogue) -> Result<()>,
     ) -> Result<IndexCatalogue> {
-        let expected = self.engine.control_record(&self.key)?;
+        let expected = self.engine.control().get(&self.key)?;
         let mut catalogue = match &expected {
             Some(bytes) => serde_json::from_slice(bytes)?,
             None => IndexCatalogue::empty(self.scope.clone()),
@@ -812,7 +814,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             .ok_or_else(|| Error::Integrity("index catalogue revision overflow".into()))?;
         catalogue.validate()?;
         let replacement = serde_json::to_vec(&catalogue)?;
-        self.engine.commit_catalog_transition(
+        self.engine.control().commit_catalog(
             &self.scope,
             &ControlTransition {
                 key: self.key.clone(),
@@ -1017,7 +1019,7 @@ fn current_records_at_read<E: StorageEngine>(
     }
     let limit = usize::try_from(read.commit_cursor)
         .map_err(|_| Error::Budget("unique-index replay cursor exceeds usize".into()))?;
-    let page = engine.runtime_read_changes(read, 0, limit)?;
+    let page = engine.runtime().read_changes(read, 0, limit)?;
     if page.through_cursor != read.commit_cursor {
         return Err(Error::Integrity(
             "unique-index validation did not reach the transaction read cursor".into(),
@@ -1183,7 +1185,8 @@ fn maintenance_evidence<E: StorageEngine>(
     };
     let name = index_artifact_name(scope, id, prior.generation, &prior.artifact_digest);
     let bytes = engine
-        .get_projection(&name)?
+        .projections()
+        .get(&name)?
         .ok_or_else(|| Error::Integrity("prior index artifact is missing".into()))?;
     let artifact = IndexArtifact::decode(&bytes)?;
     if artifact.source_cursor != prior.source_cursor || artifact.valid_at != prior.valid_at {

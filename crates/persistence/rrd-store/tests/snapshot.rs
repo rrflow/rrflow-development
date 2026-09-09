@@ -72,53 +72,55 @@ fn item(scope: &ScopeId, expected_cursor: u64, id: &str) -> RuntimeCommit {
 
 fn assert_snapshot_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:snapshot").unwrap();
-    engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+    engine.runtime().commit(&bootstrap(&scope, 0)).unwrap();
 
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     assert_eq!(read.schema_revision, Some(1));
     assert_eq!(read.commit_cursor, 1);
     assert!(read.head_digest.is_some());
     read.validate().unwrap();
 
     let snapshot = engine
-        .open_runtime_snapshot(&scope, "agent:reader", 1_000, 100)
+        .runtime()
+        .open_snapshot(&scope, "agent:reader", 1_000, 100)
         .unwrap();
     assert_eq!(snapshot.read, read);
-    engine.commit_runtime(&pulse(&scope, 1)).unwrap();
+    engine.runtime().commit(&pulse(&scope, 1)).unwrap();
 
     let frozen = engine
-        .runtime_snapshot_changes(&snapshot, 0, 10, 1_050)
+        .runtime()
+        .snapshot_changes(&snapshot, 0, 10, 1_050)
         .unwrap();
     assert_eq!(frozen.head_cursor, 1);
     assert_eq!(frozen.through_cursor, 1);
     assert_eq!(frozen.changes.len(), 1);
     assert!(!frozen.has_more());
 
-    let live = engine.runtime_changes_since(0, 10, Some(&scope)).unwrap();
+    let live = engine.runtime().changes_since(0, 10, Some(&scope)).unwrap();
     assert_eq!(live.head_cursor, 2);
     assert_eq!(live.changes.len(), 2);
     assert_eq!(
-        engine.runtime_snapshots(1_050).unwrap(),
+        engine.runtime().snapshots(1_050).unwrap(),
         vec![snapshot.clone()]
     );
-    let pins = engine.runtime_retention_pins(1_050).unwrap();
+    let pins = engine.runtime().retention_pins(1_050).unwrap();
     assert_eq!(pins.len(), 1);
     assert_eq!(pins[0].snapshot_id, snapshot.id);
     assert_eq!(pins[0].manifest_id, snapshot.read.manifest_id);
     assert_eq!(pins[0].minimum_cursor, snapshot.read.commit_cursor);
-    assert!(engine.runtime_snapshots(1_100).unwrap().is_empty());
-    assert!(engine.runtime_retention_pins(1_100).unwrap().is_empty());
+    assert!(engine.runtime().snapshots(1_100).unwrap().is_empty());
+    assert!(engine.runtime().retention_pins(1_100).unwrap().is_empty());
     assert!(matches!(
-        engine.runtime_snapshot_changes(&snapshot, 0, 10, 1_100),
+        engine.runtime().snapshot_changes(&snapshot, 0, 10, 1_100),
         Err(Error::SnapshotExpired {
             expired_at: 1_100,
             ..
         })
     ));
-    assert!(engine.release_runtime_snapshot(&snapshot.id).unwrap());
-    assert!(!engine.release_runtime_snapshot(&snapshot.id).unwrap());
+    assert!(engine.runtime().release_snapshot(&snapshot.id).unwrap());
+    assert!(!engine.runtime().release_snapshot(&snapshot.id).unwrap());
     assert!(matches!(
-        engine.runtime_snapshot_changes(&snapshot, 0, 10, 1_050),
+        engine.runtime().snapshot_changes(&snapshot, 0, 10, 1_050),
         Err(Error::SnapshotNotFound(_))
     ));
 }
@@ -134,13 +136,13 @@ fn all_engines_enforce_identical_snapshot_semantics() {
 
 fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:historical-proof").unwrap();
-    engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
-    engine.commit_runtime(&pulse(&scope, 1)).unwrap();
-    let retained = engine.runtime_read_stamp(&scope).unwrap();
+    engine.runtime().commit(&bootstrap(&scope, 0)).unwrap();
+    engine.runtime().commit(&pulse(&scope, 1)).unwrap();
+    let retained = engine.runtime().read_stamp(&scope).unwrap();
     assert!(retained.accumulator_root.is_some());
-    engine.commit_runtime(&item(&scope, 2, "later")).unwrap();
+    engine.runtime().commit(&item(&scope, 2, "later")).unwrap();
 
-    let point = engine.runtime_read_changes(&retained, 0, 1).unwrap();
+    let point = engine.runtime().read_changes(&retained, 0, 1).unwrap();
     assert_eq!(point.head_cursor, 2);
     assert_eq!(point.through_cursor, 1);
     assert_eq!(point.changes.len(), 1);
@@ -159,7 +161,7 @@ fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
         "66".repeat(32),
     )
     .unwrap();
-    assert!(engine.runtime_read_changes(&forged, 0, 1).is_err());
+    assert!(engine.runtime().read_changes(&forged, 0, 1).is_err());
 }
 
 #[test]
@@ -177,22 +179,24 @@ fn rrflow_kv_snapshot_catalog_survives_wal_restart() {
     let scope = ScopeId::new("instance:restart").unwrap();
     let handle = {
         let store = RrflowKvStore::open(dir.path()).unwrap();
-        store.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+        store.runtime().commit(&bootstrap(&scope, 0)).unwrap();
         store
-            .open_runtime_snapshot(&scope, "agent:restart", 10, 100)
+            .runtime()
+            .open_snapshot(&scope, "agent:restart", 10, 100)
             .unwrap()
     };
 
     let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(
-        reopened.runtime_snapshots(20).unwrap(),
+        reopened.runtime().snapshots(20).unwrap(),
         vec![handle.clone()]
     );
-    let pins = reopened.runtime_retention_pins(20).unwrap();
+    let pins = reopened.runtime().retention_pins(20).unwrap();
     assert_eq!(pins.len(), 1);
     assert_eq!(pins[0].snapshot_id, handle.id);
     let page = reopened
-        .runtime_snapshot_changes(&handle, 0, 10, 20)
+        .runtime()
+        .snapshot_changes(&handle, 0, 10, 20)
         .unwrap();
     assert_eq!(page.head_cursor, 1);
     assert_eq!(page.changes.len(), 1);
@@ -205,20 +209,22 @@ fn rrflow_kv_snapshot_catalog_survives_flush_and_restart() {
     let scope = ScopeId::new("instance:rrflow-kv-restart").unwrap();
     let handle = {
         let store = RrflowKvStore::open(&path).unwrap();
-        store.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+        store.runtime().commit(&bootstrap(&scope, 0)).unwrap();
         let handle = store
-            .open_runtime_snapshot(&scope, "agent:restart", 10, 100)
+            .runtime()
+            .open_snapshot(&scope, "agent:restart", 10, 100)
             .unwrap();
         store.flush(15).unwrap();
         handle
     };
     let reopened = RrflowKvStore::open(&path).unwrap();
     assert_eq!(
-        reopened.runtime_snapshots(20).unwrap(),
+        reopened.runtime().snapshots(20).unwrap(),
         vec![handle.clone()]
     );
     let page = reopened
-        .runtime_snapshot_changes(&handle, 0, 10, 20)
+        .runtime()
+        .snapshot_changes(&handle, 0, 10, 20)
         .unwrap();
     assert_eq!(page.head_cursor, 1);
     assert_eq!(page.changes.len(), 1);
@@ -230,21 +236,23 @@ fn rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry() {
     let path = dir.path().join("rrflow-kv");
     let scope = ScopeId::new("instance:physical-pin").unwrap();
     let store = RrflowKvStore::open(&path).unwrap();
-    store.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+    store.runtime().commit(&bootstrap(&scope, 0)).unwrap();
     let handle = store
-        .open_runtime_snapshot(&scope, "agent:pin", 1_000, 100)
+        .runtime()
+        .open_snapshot(&scope, "agent:pin", 1_000, 100)
         .unwrap();
     let checkpoint = path
         .join("checkpoints")
         .join(format!("runtime-{}.json", handle.id));
     assert!(checkpoint.exists());
 
-    store.commit_runtime(&pulse(&scope, 1)).unwrap();
+    store.runtime().commit(&pulse(&scope, 1)).unwrap();
     store.compact(1_050, 1_050).unwrap();
     store.garbage_collect(1_050, 1_050).unwrap();
     assert!(checkpoint.exists());
     let frozen = store
-        .runtime_snapshot_changes(&handle, 0, 10, 1_050)
+        .runtime()
+        .snapshot_changes(&handle, 0, 10, 1_050)
         .unwrap();
     assert_eq!(frozen.head_cursor, 1);
 
@@ -252,46 +260,50 @@ fn rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry() {
     store.garbage_collect(1_100, 1_100).unwrap();
     assert!(!checkpoint.exists());
     assert!(matches!(
-        store.runtime_snapshot_changes(&handle, 0, 10, 1_100),
+        store.runtime().snapshot_changes(&handle, 0, 10, 1_100),
         Err(Error::SnapshotExpired { .. })
     ));
 }
 
 fn assert_data_transaction_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:transaction").unwrap();
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     let transaction = DataTransaction::new(read.clone(), bootstrap(&scope, 0)).unwrap();
     let digest = transaction.digest();
     assert_eq!(digest.len(), 64);
-    let outcome = engine.commit_data_transaction(&transaction).unwrap();
+    let outcome = engine
+        .runtime()
+        .commit_data_transaction(&transaction)
+        .unwrap();
     assert_eq!(outcome.last_cursor, 1);
-    let audit = engine.runtime_audit(&outcome.commit_id).unwrap().unwrap();
+    let audit = engine.runtime().audit(&outcome.commit_id).unwrap().unwrap();
     assert_eq!(audit.read.as_ref(), Some(&transaction.read));
 
     let stale = DataTransaction::new(read, bootstrap(&scope, 0)).unwrap();
     assert!(matches!(
-        engine.commit_data_transaction(&stale),
+        engine.runtime().commit_data_transaction(&stale),
         Err(Error::RuntimeConflict {
             expected: 0,
             actual: 1
         })
     ));
 
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     let pending = DataTransaction::new(read.clone(), pulse(&scope, 1)).unwrap();
-    let view = engine.preview_data_transaction(&pending, 101).unwrap();
+    let view = engine.runtime().preview_transaction(&pending, 101).unwrap();
     assert_eq!(view.read, read);
     assert_eq!(view.prospective_cursor, 2);
     assert_eq!(view.records.len(), 1);
     assert_eq!(view.records[0].reference.kind.as_str(), "pulse");
     assert_eq!(view.events().count(), 1);
-    assert_eq!(engine.runtime_cursor().unwrap(), 1);
+    assert_eq!(engine.runtime().cursor().unwrap(), 1);
 
-    let outcome = engine.commit_data_transaction(&pending).unwrap();
-    let audit = engine.runtime_audit(&outcome.commit_id).unwrap().unwrap();
+    let outcome = engine.runtime().commit_data_transaction(&pending).unwrap();
+    let audit = engine.runtime().audit(&outcome.commit_id).unwrap().unwrap();
     assert_eq!(audit.read.as_ref(), Some(&pending.read));
     let committed = engine
-        .runtime_read_changes(&engine.runtime_read_stamp(&scope).unwrap(), 0, 10)
+        .runtime()
+        .read_changes(&engine.runtime().read_stamp(&scope).unwrap(), 0, 10)
         .unwrap();
     let graph = RuntimeGraphSnapshot::from_changes(&committed.changes, scope.clone(), 101, 2);
     assert_eq!(view.records, graph.records);
@@ -302,16 +314,16 @@ fn assert_data_transaction_contract(engine: &dyn StorageEngine) {
         None,
         0,
         2,
-        engine.runtime_read_stamp(&scope).unwrap().head_digest,
+        engine.runtime().read_stamp(&scope).unwrap().head_digest,
     )
     .unwrap();
     assert!(matches!(
-        engine.runtime_read_changes(&wrong_schema, 0, 10),
+        engine.runtime().read_changes(&wrong_schema, 0, 10),
         Err(Error::ReadStampMismatch(_))
     ));
     let unavailable = ReadStamp::new(scope, Some(1), 0, 99, Some("66".repeat(32))).unwrap();
     assert!(matches!(
-        engine.runtime_read_changes(&unavailable, 0, 10),
+        engine.runtime().read_changes(&unavailable, 0, 10),
         Err(Error::ReadStampUnavailable(_))
     ));
 }
@@ -328,7 +340,7 @@ where
     E: StorageEngine + Send + Sync + 'static,
 {
     let scope = ScopeId::new("instance:race").unwrap();
-    engine.commit_runtime(&bootstrap(&scope, 0)).unwrap();
+    engine.runtime().commit(&bootstrap(&scope, 0)).unwrap();
 
     let run_pair = |left: DataTransaction, right: DataTransaction| {
         let barrier = Arc::new(Barrier::new(3));
@@ -338,7 +350,7 @@ where
             let barrier = Arc::clone(&barrier);
             workers.push(thread::spawn(move || {
                 barrier.wait();
-                engine.commit_data_transaction(&transaction)
+                engine.runtime().commit_data_transaction(&transaction)
             }));
         }
         barrier.wait();
@@ -348,7 +360,7 @@ where
             .collect::<Vec<_>>()
     };
 
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     let same = run_pair(
         DataTransaction::new(read.clone(), item(&scope, 1, "shared")).unwrap(),
         DataTransaction::new(read, item(&scope, 1, "shared")).unwrap(),
@@ -361,7 +373,7 @@ where
         1
     );
 
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     let disjoint = run_pair(
         DataTransaction::new(read.clone(), item(&scope, 2, "left")).unwrap(),
         DataTransaction::new(read, item(&scope, 2, "right")).unwrap(),
@@ -375,7 +387,7 @@ where
         1,
         "M1 deliberately uses global serializable CAS even for disjoint identities"
     );
-    assert_eq!(engine.runtime_cursor().unwrap(), 3);
+    assert_eq!(engine.runtime().cursor().unwrap(), 3);
 }
 
 #[test]
@@ -396,11 +408,11 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
     ];
 
     for scope in &scopes {
-        let cursor = rrflow_kv.runtime_cursor().unwrap();
+        let cursor = rrflow_kv.runtime().cursor().unwrap();
         let commit = bootstrap(scope, cursor);
         assert_eq!(
-            rrflow_kv.commit_runtime(&commit).unwrap().commit_id,
-            memory.commit_runtime(&commit).unwrap().commit_id
+            rrflow_kv.runtime().commit(&commit).unwrap().commit_id,
+            memory.runtime().commit(&commit).unwrap().commit_id
         );
     }
 
@@ -411,19 +423,21 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
         let scope = &scopes[(state >> 63) as usize];
-        let cursor = rrflow_kv.runtime_cursor().unwrap();
+        let cursor = rrflow_kv.runtime().cursor().unwrap();
         let commit = pulse(scope, cursor);
-        let left = rrflow_kv.commit_runtime(&commit).unwrap();
-        let right = memory.commit_runtime(&commit).unwrap();
+        let left = rrflow_kv.runtime().commit(&commit).unwrap();
+        let right = memory.runtime().commit(&commit).unwrap();
         assert_eq!(left.commit_id, right.commit_id);
         assert_eq!(left.last_cursor, right.last_cursor);
 
         if step == 15 {
             let left = rrflow_kv
-                .open_runtime_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
+                .runtime()
+                .open_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
                 .unwrap();
             let right = memory
-                .open_runtime_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
+                .runtime()
+                .open_snapshot(&scopes[0], "agent:trace", 10_000, 1_000)
                 .unwrap();
             assert_eq!(left, right);
             frozen = Some(left);
@@ -432,13 +446,17 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
             let after = cursor.saturating_sub(3);
             assert_eq!(
                 rrflow_kv
-                    .runtime_changes_since(after, 4, Some(scope))
+                    .runtime()
+                    .changes_since(after, 4, Some(scope))
                     .unwrap(),
-                memory.runtime_changes_since(after, 4, Some(scope)).unwrap()
+                memory
+                    .runtime()
+                    .changes_since(after, 4, Some(scope))
+                    .unwrap()
             );
             assert_eq!(
-                rrflow_kv.runtime_read_stamp(scope).unwrap(),
-                memory.runtime_read_stamp(scope).unwrap()
+                rrflow_kv.runtime().read_stamp(scope).unwrap(),
+                memory.runtime().read_stamp(scope).unwrap()
             );
         }
     }
@@ -446,20 +464,24 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
     let frozen = frozen.unwrap();
     assert_eq!(
         rrflow_kv
-            .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
+            .runtime()
+            .snapshot_changes(&frozen, 0, 128, 10_500)
             .unwrap(),
         memory
-            .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
+            .runtime()
+            .snapshot_changes(&frozen, 0, 128, 10_500)
             .unwrap()
     );
     let mut after = 0;
     let mut replayed = Vec::new();
     loop {
         let left = rrflow_kv
-            .runtime_snapshot_changes(&frozen, after, 3, 10_500)
+            .runtime()
+            .snapshot_changes(&frozen, after, 3, 10_500)
             .unwrap();
         let right = memory
-            .runtime_snapshot_changes(&frozen, after, 3, 10_500)
+            .runtime()
+            .snapshot_changes(&frozen, after, 3, 10_500)
             .unwrap();
         assert_eq!(left, right);
         let has_more = left.has_more();
@@ -473,7 +495,8 @@ fn deterministic_mixed_scope_trace_is_identical_across_backends() {
         after = through;
     }
     let one_page = rrflow_kv
-        .runtime_snapshot_changes(&frozen, 0, 128, 10_500)
+        .runtime()
+        .snapshot_changes(&frozen, 0, 128, 10_500)
         .unwrap();
     assert_eq!(replayed, one_page.changes);
 }

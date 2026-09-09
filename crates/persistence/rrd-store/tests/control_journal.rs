@@ -1,4 +1,5 @@
 use rrd_store::{ControlTransition, Error, RrflowKvStore, RrflowMxStore, StorageEngine};
+use std::sync::{Arc, Barrier};
 
 fn transition(expected: Option<&[u8]>, replacement: Option<&[u8]>, at: u64) -> ControlTransition {
     keyed_transition("server/state/session/session-1", expected, replacement, at)
@@ -24,7 +25,8 @@ fn keyed_transition(
 
 fn assert_atomic_batch(engine: &dyn StorageEngine) {
     let entries = engine
-        .commit_control_batch(&[
+        .control()
+        .commit_batch(&[
             keyed_transition("server/state/audit/record-1", None, Some(b"record"), 20),
             keyed_transition("server/state/audit/head", None, Some(b"head"), 20),
         ])
@@ -36,49 +38,49 @@ fn assert_atomic_batch(engine: &dyn StorageEngine) {
         Some(entries[0].digest.as_str())
     );
     assert_eq!(
-        engine
-            .control_record("server/state/audit/record-1")
-            .unwrap(),
+        engine.control().get("server/state/audit/record-1").unwrap(),
         Some(b"record".to_vec())
     );
 
-    let before = engine.control_sequence().unwrap();
-    let denied = engine.commit_control_batch(&[
+    let before = engine.control().sequence().unwrap();
+    let denied = engine.control().commit_batch(&[
         keyed_transition("server/state/audit/record-2", None, Some(b"record-2"), 21),
         keyed_transition("server/state/audit/head", None, Some(b"wrong-head"), 21),
     ]);
     assert!(matches!(denied, Err(Error::ControlConflict(_))));
-    assert_eq!(engine.control_sequence().unwrap(), before);
+    assert_eq!(engine.control().sequence().unwrap(), before);
     assert_eq!(
-        engine
-            .control_record("server/state/audit/record-2")
-            .unwrap(),
+        engine.control().get("server/state/audit/record-2").unwrap(),
         None
     );
     assert_eq!(
-        engine.control_record("server/state/audit/head").unwrap(),
+        engine.control().get("server/state/audit/head").unwrap(),
         Some(b"head".to_vec())
     );
 }
 
 fn assert_journal(engine: &dyn StorageEngine) {
-    assert_eq!(engine.control_sequence().unwrap(), 0);
+    assert_eq!(engine.control().sequence().unwrap(), 0);
     let created = engine
-        .commit_control_transition(&transition(None, Some(b"open"), 10))
+        .control()
+        .commit(&transition(None, Some(b"open"), 10))
         .unwrap();
     assert_eq!(created.sequence, 1);
     assert!(created.verify());
     assert_eq!(
-        engine.control_record(&created.key).unwrap(),
+        engine.control().get(&created.key).unwrap(),
         Some(b"open".to_vec())
     );
 
     assert!(matches!(
-        engine.commit_control_transition(&transition(None, Some(b"collision"), 11)),
+        engine
+            .control()
+            .commit(&transition(None, Some(b"collision"), 11)),
         Err(Error::ControlConflict(_))
     ));
     let renewed = engine
-        .commit_control_transition(&transition(Some(b"open"), Some(b"renewed"), 12))
+        .control()
+        .commit(&transition(Some(b"open"), Some(b"renewed"), 12))
         .unwrap();
     assert_eq!(renewed.sequence, 2);
     assert_eq!(
@@ -86,14 +88,15 @@ fn assert_journal(engine: &dyn StorageEngine) {
         Some(created.digest.as_str())
     );
     let deleted = engine
-        .commit_control_transition(&transition(Some(b"renewed"), None, 13))
+        .control()
+        .commit(&transition(Some(b"renewed"), None, 13))
         .unwrap();
     assert_eq!(deleted.sequence, 3);
-    assert_eq!(engine.control_record(&deleted.key).unwrap(), None);
-    let journal = engine.control_journal_since(0, 10).unwrap();
+    assert_eq!(engine.control().get(&deleted.key).unwrap(), None);
+    let journal = engine.control().journal_since(0, 10).unwrap();
     assert_eq!(journal, vec![created, renewed, deleted]);
     assert!(journal.iter().all(|entry| entry.verify()));
-    assert_eq!(engine.control_sequence().unwrap(), 3);
+    assert_eq!(engine.control().sequence().unwrap(), 3);
 }
 
 #[test]
@@ -112,16 +115,52 @@ fn materialized_state_and_hash_chain_survive_restart() {
     let root = tempfile::tempdir().unwrap();
     let engine = RrflowKvStore::open(root.path()).unwrap();
     engine
-        .commit_control_transition(&transition(None, Some(b"open"), 10))
+        .control()
+        .commit(&transition(None, Some(b"open"), 10))
         .unwrap();
     drop(engine);
     let reopened = RrflowKvStore::open(root.path()).unwrap();
     assert_eq!(
         reopened
-            .control_record("server/state/session/session-1")
+            .control()
+            .get("server/state/session/session-1")
             .unwrap(),
         Some(b"open".to_vec())
     );
-    assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 1);
-    assert_eq!(reopened.control_sequence().unwrap(), 1);
+    assert_eq!(reopened.control().journal_since(0, 10).unwrap().len(), 1);
+    assert_eq!(reopened.control().sequence().unwrap(), 1);
+}
+
+fn assert_concurrent_disjoint_progress(engine: Arc<dyn StorageEngine>) {
+    const WRITERS: usize = 8;
+    let barrier = Arc::new(Barrier::new(WRITERS));
+    let handles = (0..WRITERS)
+        .map(|writer| {
+            let engine = Arc::clone(&engine);
+            let barrier = Arc::clone(&barrier);
+            std::thread::spawn(move || {
+                barrier.wait();
+                engine.control().commit(&keyed_transition(
+                    &format!("server/state/concurrent/{writer}"),
+                    None,
+                    Some(b"committed"),
+                    100 + writer as u64,
+                ))
+            })
+        })
+        .collect::<Vec<_>>();
+    for handle in handles {
+        handle.join().unwrap().unwrap();
+    }
+    let journal = engine.control().journal_since(0, WRITERS).unwrap();
+    assert_eq!(journal.len(), WRITERS);
+    assert_eq!(engine.control().sequence().unwrap(), WRITERS as u64);
+    assert!(journal.iter().all(|entry| entry.verify()));
+}
+
+#[test]
+fn concurrent_disjoint_control_writes_serialize_through_the_shared_journal() {
+    assert_concurrent_disjoint_progress(Arc::new(RrflowMxStore::new()));
+    let root = tempfile::tempdir().unwrap();
+    assert_concurrent_disjoint_progress(Arc::new(RrflowKvStore::open(root.path()).unwrap()));
 }

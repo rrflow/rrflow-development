@@ -26,7 +26,8 @@ fn stdio_context_flows_through_the_single_engine_operation() {
         },
     );
     storage
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:mcp-context-test").unwrap(),
             at: 100,
             actor: "mcp-context-fixture".into(),

@@ -200,7 +200,7 @@ fn reopen_between_every_boundary_converges_and_deduplicates_a_lost_ack() {
     assert_eq!(operation.attempts, 1);
     assert_eq!(operation.receipts.len(), 3);
     assert_eq!(document.revision, 7);
-    let journal = reopened.control_journal_since(0, 20).unwrap();
+    let journal = reopened.control().journal_since(0, 20).unwrap();
     assert_eq!(journal.len(), 7);
     assert!(journal.iter().all(|entry| entry.verify()));
     assert_eq!(

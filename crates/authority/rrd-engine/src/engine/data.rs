@@ -29,7 +29,8 @@ impl RrdEngine {
             .map_err(|_| ServiceError::Query("data snapshot replay limit exceeds usize".into()))?;
         let (read, snapshot) =
             self.storage
-                .runtime_data_snapshot(&scope, request.valid_at, replay_limit)?;
+                .runtime()
+                .data_snapshot(&scope, request.valid_at, replay_limit)?;
 
         public_data_snapshot(&read, snapshot)
     }

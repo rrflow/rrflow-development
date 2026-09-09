@@ -333,7 +333,7 @@ fn commit_loop(store: Arc<RrflowKvStore>, shared: Arc<Shared>, config: ClaimBatc
         };
 
         let count = batch.len() as u64;
-        let outcome = store.append_batch(&batch);
+        let outcome = store.claims().append_batch(&batch);
 
         let mut state = shared.state.lock().expect("writer state poisoned");
         match outcome {

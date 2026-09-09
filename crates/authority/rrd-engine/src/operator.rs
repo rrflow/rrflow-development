@@ -131,23 +131,23 @@ impl RrdEngine {
         &self,
         input: OperatorInvocationInput<'_>,
     ) -> OperatorResult<OperatorInvocation> {
-        Ok(self.persistent_storage()?.record_invocation(input)?)
+        Ok(self.persistent_storage()?.invocations().record(input)?)
     }
 
     pub fn invocations_since(&self, since: Millis) -> OperatorResult<Vec<OperatorInvocation>> {
-        Ok(self.persistent_storage()?.invocations_since(since)?)
+        Ok(self.persistent_storage()?.invocations().since(since)?)
     }
 
     pub fn invocation_count(&self) -> OperatorResult<u64> {
-        Ok(self.persistent_storage()?.invocation_count()?)
+        Ok(self.persistent_storage()?.invocations().count()?)
     }
 
     pub fn access_count(&self) -> OperatorResult<usize> {
-        Ok(self.persistent_storage()?.access_count()?)
+        Ok(self.persistent_storage()?.claims().access_count()?)
     }
 
     pub fn sequence(&self) -> OperatorResult<u64> {
-        Ok(self.storage.sequence()?)
+        Ok(self.storage.claims().sequence()?)
     }
 
     pub fn observe(
@@ -157,7 +157,10 @@ impl RrdEngine {
         predicate: &Predicate,
         at: Millis,
     ) -> OperatorResult<()> {
-        Ok(self.storage.observe(reader, subject, predicate, at)?)
+        Ok(self
+            .storage
+            .claims()
+            .observe(reader, subject, predicate, at)?)
     }
 
     pub fn assert_claim(&self, claim: &Claim) -> OperatorResult<rrd_store::AppendOutcome> {
@@ -169,10 +172,11 @@ impl RrdEngine {
                 "transaction gate lock is poisoned".into()
             })?;
         let scope = ScopeId::new(format!("instance:{}", self.instance_id()))?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
-        let previous = self
-            .storage
-            .as_of(&claim.subject, &claim.predicate, claim.valid_from)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
+        let previous =
+            self.storage
+                .claims()
+                .as_of(&claim.subject, &claim.predicate, claim.valid_from)?;
         let claims = match previous {
             Some(previous) if previous.valid_from < claim.valid_from => {
                 rrd_core::supersede(&previous, claim.clone())?.to_vec()
@@ -198,7 +202,7 @@ impl RrdEngine {
                 .cloned()
                 .map(|claim| RuntimeMutation::Claim { claim }),
         );
-        let outcome = self.storage.commit_runtime(&RuntimeCommit {
+        let outcome = self.storage.runtime().commit(&RuntimeCommit {
             scope,
             at: claim.tx_time,
             actor: claim.producer.actor.clone(),
@@ -222,7 +226,7 @@ impl RrdEngine {
         predicate: &Predicate,
         at: Millis,
     ) -> OperatorResult<Option<Claim>> {
-        Ok(self.storage.as_of(subject, predicate, at)?)
+        Ok(self.storage.claims().as_of(subject, predicate, at)?)
     }
 
     pub fn claim_history(
@@ -230,7 +234,7 @@ impl RrdEngine {
         subject: &Subject,
         predicate: &Predicate,
     ) -> OperatorResult<Vec<Claim>> {
-        Ok(self.storage.history(subject, predicate)?)
+        Ok(self.storage.claims().history(subject, predicate)?)
     }
 
     pub fn removal_report(
@@ -240,6 +244,7 @@ impl RrdEngine {
     ) -> OperatorResult<RemovalReport> {
         Ok(self
             .persistent_storage()?
+            .claims()
             .removal_report(since, evaluated_at)?)
     }
 

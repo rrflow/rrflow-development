@@ -66,7 +66,7 @@ fn committed_audit(
     receipt: &rrd_contract::CommitReceipt,
 ) -> (String, rrd_core::AuditEnvelope) {
     let commit_id = receipt.runtime_commit_sha256.clone().unwrap();
-    let audit = engine.storage.runtime_audit(&commit_id).unwrap().unwrap();
+    let audit = engine.storage.runtime().audit(&commit_id).unwrap().unwrap();
     audit.validate().unwrap();
     assert_eq!(
         audit.read.as_ref().unwrap().commit_cursor + 1,
@@ -237,7 +237,8 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
     assert_eq!(
         reopened
             .storage
-            .runtime_audit(&retirement_commit_id)
+            .runtime()
+            .audit(&retirement_commit_id)
             .unwrap(),
         Some(retirement_audit)
     );

@@ -351,7 +351,8 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
         RuntimeValue::Digest(digest::sha256_hex(bytes)),
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: job.scope.clone(),
             at: 10,
             actor: "test:source".into(),
@@ -382,7 +383,7 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
             ],
         })
         .unwrap();
-    job.read = engine.runtime_read_stamp(&job.scope).unwrap();
+    job.read = engine.runtime().read_stamp(&job.scope).unwrap();
     let snapshot =
         EmbeddingSourceSnapshot::for_bytes(job.source.clone(), "text/plain", bytes.to_vec())
             .unwrap();
@@ -398,7 +399,8 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
         RuntimeValue::Digest(digest::sha256_hex(b"changed after inference")),
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: job.scope.clone(),
             at: 12,
             actor: "test:source".into(),
@@ -415,7 +417,10 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
         .unwrap();
 
     let transaction = prepared.transaction(&job, "agent:embedding", 13).unwrap();
-    assert!(engine.commit_data_transaction(&transaction).is_err());
+    assert!(engine
+        .runtime()
+        .commit_data_transaction(&transaction)
+        .is_err());
 }
 
 #[test]

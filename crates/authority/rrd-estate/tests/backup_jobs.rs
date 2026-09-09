@@ -122,7 +122,7 @@ fn backup_schedule_is_quiescence_bound_and_durably_idempotent() {
     assert!(replay.idempotent_replay);
     assert_eq!(replay.document.revision, 8);
     assert_eq!(replay.document.backup_jobs.len(), 1);
-    let journal = engine.control_journal_since(0, 32).unwrap();
+    let journal = engine.control().journal_since(0, 32).unwrap();
     assert_eq!(journal.last().unwrap().action, "estate.backup.schedule");
     assert_eq!(
         journal

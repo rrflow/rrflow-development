@@ -469,7 +469,8 @@ fn independent_processes_recover_fail_over_snapshot_and_reject_corruption() {
 fn project_changes(root: &Path) -> Vec<RuntimeChange> {
     let engine = RrflowKvStore::open(root).unwrap();
     engine
-        .runtime_changes_since(0, usize::MAX, Some(&project_scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&project_scope()))
         .unwrap()
         .changes
 }

@@ -476,9 +476,10 @@ fn real_consensus_replicates_canonical_runtime_truth_to_every_voter() {
 
         for id in [1, 2, 3, 4] {
             let engine = RrflowKvStore::open(directories[&id].path()).unwrap();
-            assert_eq!(engine.runtime_cursor().unwrap(), 1, "node {id}");
+            assert_eq!(engine.runtime().cursor().unwrap(), 1, "node {id}");
             assert!(engine
-                .runtime_commit_outcome(&commit.digest())
+                .runtime()
+                .commit_outcome(&commit.digest())
                 .unwrap()
                 .is_some());
         }

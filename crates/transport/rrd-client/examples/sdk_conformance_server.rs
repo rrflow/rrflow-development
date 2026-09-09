@@ -151,7 +151,7 @@ fn seed_schema(
             ..RuntimeRecordSchema::default()
         },
     );
-    storage.commit_runtime(&RuntimeCommit {
+    storage.runtime().commit(&RuntimeCommit {
         scope: ScopeId::new(format!("instance:{}", corpus.identity.instance))?,
         at: 100,
         actor: "sdk-conformance-harness".into(),

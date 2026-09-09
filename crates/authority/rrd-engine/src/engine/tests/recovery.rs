@@ -40,7 +40,7 @@ fn commit_reopens_replays_and_does_not_duplicate_claims() {
         )
         .unwrap();
     assert!(!first.idempotent_replay);
-    assert_eq!(service.storage.sequence().unwrap(), 1);
+    assert_eq!(service.storage.claims().sequence().unwrap(), 1);
     drop(service);
 
     let service = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
@@ -57,7 +57,7 @@ fn commit_reopens_replays_and_does_not_duplicate_claims() {
         )
         .unwrap();
     assert!(replay.idempotent_replay);
-    assert_eq!(service.storage.sequence().unwrap(), 1);
+    assert_eq!(service.storage.claims().sequence().unwrap(), 1);
     assert!(matches!(
         service.commit_transaction(
             &lease.session_id,
@@ -71,10 +71,11 @@ fn commit_reopens_replays_and_does_not_duplicate_claims() {
         ),
         Err(ServiceError::IdempotencyConflict)
     ));
-    assert_eq!(service.storage.sequence().unwrap(), 1);
+    assert_eq!(service.storage.claims().sequence().unwrap(), 1);
     let actions = service
         .storage
-        .control_journal_since(0, 10)
+        .control()
+        .journal_since(0, 10)
         .unwrap()
         .into_iter()
         .map(|entry| entry.action)
@@ -131,9 +132,14 @@ fn durable_prepare_reopens_without_republishing_or_rejournaling() {
         .unwrap();
     assert!(!first.idempotent_replay);
     assert_eq!(first.prospective.known_at_cursor, 1);
-    assert_eq!(service.storage.runtime_cursor().unwrap(), 0);
+    assert_eq!(service.storage.runtime().cursor().unwrap(), 0);
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         3
     );
     drop(service);
@@ -151,9 +157,14 @@ fn durable_prepare_reopens_without_republishing_or_rejournaling() {
         .unwrap();
     assert!(replay.idempotent_replay);
     assert_eq!(replay.prospective, first.prospective);
-    assert_eq!(service.storage.runtime_cursor().unwrap(), 0);
+    assert_eq!(service.storage.runtime().cursor().unwrap(), 0);
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         3
     );
 
@@ -266,7 +277,7 @@ fn expired_session_still_resolves_an_exact_committed_transaction_replay() {
         )
         .unwrap();
     assert!(replay.idempotent_replay);
-    assert_eq!(service.storage.sequence().unwrap(), 1);
+    assert_eq!(service.storage.claims().sequence().unwrap(), 1);
 }
 
 #[test]
@@ -308,7 +319,8 @@ fn retry_closes_the_journal_gap_after_a_crash_window() {
     );
     let before = service
         .storage
-        .control_record(&session_key)
+        .control()
+        .get(&session_key)
         .unwrap()
         .unwrap();
     let mut prepared: Value = serde_json::from_slice(&before).unwrap();
@@ -320,7 +332,8 @@ fn retry_closes_the_journal_gap_after_a_crash_window() {
     });
     service
         .storage
-        .commit_control_transition(&ControlTransition {
+        .control()
+        .commit(&ControlTransition {
             key: session_key,
             expected: Some(before),
             replacement: Some(serde_json::to_vec(&prepared).unwrap()),
@@ -335,9 +348,14 @@ fn retry_closes_the_journal_gap_after_a_crash_window() {
     let crash_key = id("crash-key");
     drop(service);
     let service = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
-    service.storage.commit_runtime(&runtime_commit).unwrap();
+    service.storage.runtime().commit(&runtime_commit).unwrap();
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         3
     );
 
@@ -356,11 +374,12 @@ fn retry_closes_the_journal_gap_after_a_crash_window() {
         )
         .unwrap();
     assert!(recovered.idempotent_replay);
-    assert_eq!(service.storage.sequence().unwrap(), 1);
+    assert_eq!(service.storage.claims().sequence().unwrap(), 1);
     let state: Value = serde_json::from_slice(
         &service
             .storage
-            .control_record(&format!(
+            .control()
+            .get(&format!(
                 "server/state/test-instance/session/{}",
                 lease.session_id.as_str()
             ))
@@ -372,7 +391,8 @@ fn retry_closes_the_journal_gap_after_a_crash_window() {
     assert_eq!(
         service
             .storage
-            .control_journal_since(0, 10)
+            .control()
+            .journal_since(0, 10)
             .unwrap()
             .last()
             .unwrap()
@@ -416,9 +436,14 @@ fn an_operation_digest_mismatch_never_mutates_data_or_journal() {
         ),
         Err(ServiceError::OperationDigestMismatch)
     ));
-    assert_eq!(service.storage.sequence().unwrap(), 0);
+    assert_eq!(service.storage.claims().sequence().unwrap(), 0);
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         2
     );
 }

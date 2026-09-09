@@ -98,7 +98,7 @@ fn metadata_commit_and_consistency_routes_share_one_engine_authority() {
 
     {
         let store = RrflowKvStore::open(&root).unwrap();
-        store.commit_runtime(&prepared.commit).unwrap();
+        store.runtime().commit(&prepared.commit).unwrap();
     }
 
     let engine = RrdEngine::open(&root, instance, [7_u8; 32]).unwrap();

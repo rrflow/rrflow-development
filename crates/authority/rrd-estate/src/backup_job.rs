@@ -152,7 +152,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
         validate_context(&request.context)?;
         validate_ascii_key(&request.idempotency_key, "backup idempotency key")?;
         validate_backup_label(&request.label)?;
-        let Some(current_bytes) = self.engine.control_record(&self.key)? else {
+        let Some(current_bytes) = self.engine.control().get(&self.key)? else {
             return Err(Error::NotFound(self.estate_id.to_string()));
         };
         let mut document = super::decode(&current_bytes)?;
@@ -480,7 +480,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             .ok_or_else(|| Error::Invalid("estate revision overflow".into()))?;
         document.updated_at = context.at;
         document.validate()?;
-        self.engine.commit_control_transition(&ControlTransition {
+        self.engine.control().commit(&ControlTransition {
             key: self.key.clone(),
             expected: Some(expected),
             replacement: Some(encode(&document)?),

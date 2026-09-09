@@ -164,8 +164,8 @@ impl RrdEngine {
         let backend = self.storage.physical_store_evidence()?.backend;
         Ok(Readiness {
             observed_at_unix_ms,
-            claim_sequence: self.storage.sequence()?,
-            runtime_cursor: self.storage.runtime_cursor()?,
+            claim_sequence: self.storage.claims().sequence()?,
+            runtime_cursor: self.storage.runtime().cursor()?,
             backend: CanonicalId::new(backend)
                 .map_err(|error| ServiceError::Contract(error.to_string()))?,
         })

@@ -318,6 +318,76 @@ fn one_engine_authority_owns_every_product_storage_opening() {
 }
 
 #[test]
+fn storage_semantics_use_repositories_over_one_transaction_port() {
+    let metadata = workspace_metadata();
+    let store_source = metadata.root.join("crates/persistence/rrd-store/src");
+    let engine = fs::read_to_string(store_source.join("engine.rs"))
+        .expect("rrd-store engine source must be readable");
+    let trait_body = engine
+        .split_once("pub trait StorageEngine")
+        .expect("StorageEngine declaration must exist")
+        .1
+        .split_once("/// rrflowMX")
+        .expect("StorageEngine declaration must precede rrflowMX")
+        .0;
+    for required in [
+        "fn begin_transaction",
+        "fn claims",
+        "fn control",
+        "fn projections",
+        "fn runtime",
+        "fn invocations",
+        "fn physical_store_evidence",
+    ] {
+        assert!(
+            trait_body.contains(required),
+            "StorageEngine is missing its narrow {required} boundary"
+        );
+    }
+    for forbidden in [
+        "fn append_batch",
+        "fn commit_control",
+        "fn runtime_commit",
+        "fn get_projection",
+        "fn record_invocation",
+        "fn removal_report",
+    ] {
+        assert!(
+            !trait_body.contains(forbidden),
+            "StorageEngine regained semantic mega-trait method {forbidden}"
+        );
+    }
+
+    let repository_root = store_source.join("repository");
+    for name in [
+        "claims.rs",
+        "control.rs",
+        "invocation.rs",
+        "projection.rs",
+        "runtime.rs",
+    ] {
+        let source = fs::read_to_string(repository_root.join(name))
+            .unwrap_or_else(|error| panic!("cannot read repository {name}: {error}"));
+        assert!(
+            source.contains("begin_transaction()"),
+            "semantic repository {name} does not consume the shared transaction port"
+        );
+        for forbidden in [
+            "rrd_lsm::",
+            "RrflowKvStore",
+            "RrflowMxStore",
+            "write_owned(",
+            "Database",
+        ] {
+            assert!(
+                !source.contains(forbidden),
+                "semantic repository {name} bypasses the transaction port through {forbidden}"
+            );
+        }
+    }
+}
+
+#[test]
 fn outward_cli_owns_product_executables_while_physical_crates_own_none() {
     let metadata = workspace_metadata();
     let product_executables = names(&[

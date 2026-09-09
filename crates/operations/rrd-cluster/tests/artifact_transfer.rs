@@ -96,7 +96,7 @@ fn source_runtime(
         RuntimeType::new("document").unwrap(),
         RuntimeRecordSchema::default(),
     );
-    let read = runtime.engine().runtime_read_stamp(&scope).unwrap();
+    let read = runtime.engine().runtime().read_stamp(&scope).unwrap();
     runtime
         .commit(
             &DataTransaction::new(

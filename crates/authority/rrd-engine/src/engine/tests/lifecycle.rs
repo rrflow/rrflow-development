@@ -62,7 +62,12 @@ fn journal_redacts_tokens_and_records_expiry_once() {
         Err(ServiceError::Unauthenticated)
     ));
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         2
     );
 
@@ -91,7 +96,7 @@ fn journal_redacts_tokens_and_records_expiry_once() {
         Err(ServiceError::SessionExpired)
     ));
 
-    let journal = service.storage.control_journal_since(0, 10).unwrap();
+    let journal = service.storage.control().journal_since(0, 10).unwrap();
     assert_eq!(journal.len(), 3);
     assert_eq!(journal[0].action, "session.created");
     assert_eq!(journal[1].action, "transaction.began");
@@ -152,7 +157,12 @@ fn quota_transaction_expiry_and_abort_are_authoritative_transitions() {
         Err(ServiceError::TransactionQuota)
     ));
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         2
     );
     drop(service);
@@ -172,7 +182,7 @@ fn quota_transaction_expiry_and_abort_are_authoritative_transitions() {
         ),
         Err(ServiceError::TransactionExpired)
     ));
-    let journal = service.storage.control_journal_since(0, 10).unwrap();
+    let journal = service.storage.control().journal_since(0, 10).unwrap();
     assert_eq!(journal.last().unwrap().action, "transaction.expired");
 
     let second = service
@@ -214,7 +224,7 @@ fn quota_transaction_expiry_and_abort_are_authoritative_transitions() {
         )
         .unwrap();
     assert_eq!(replay.state, TransactionState::Aborted);
-    let journal = service.storage.control_journal_since(0, 10).unwrap();
+    let journal = service.storage.control().journal_since(0, 10).unwrap();
     assert_eq!(journal.last().unwrap().action, "transaction.aborted");
 }
 
@@ -243,7 +253,12 @@ fn create_and_begin_replay_exact_responses_and_reject_collisions() {
         .unwrap();
     assert_eq!(replay, first);
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         1
     );
     assert!(matches!(
@@ -294,7 +309,12 @@ fn create_and_begin_replay_exact_responses_and_reject_collisions() {
         Err(ServiceError::IdempotencyConflict)
     ));
     assert_eq!(
-        service.storage.control_journal_since(0, 10).unwrap().len(),
+        service
+            .storage
+            .control()
+            .journal_since(0, 10)
+            .unwrap()
+            .len(),
         2
     );
 }
@@ -413,7 +433,7 @@ fn renewal_rotates_without_persisting_tokens_and_close_is_idempotent() {
         Err(ServiceError::SessionExpired)
     ));
 
-    let journal = service.storage.control_journal_since(0, 10).unwrap();
+    let journal = service.storage.control().journal_since(0, 10).unwrap();
     assert_eq!(
         journal
             .iter()

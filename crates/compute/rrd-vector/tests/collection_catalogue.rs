@@ -140,7 +140,7 @@ fn payload_index_and_collection_deletion_lifecycles_reopen_and_replay() {
         .unwrap();
     assert!(replay);
     assert!(catalogue.collections.is_empty());
-    assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 4);
+    assert_eq!(reopened.control().journal_since(0, 10).unwrap().len(), 4);
 }
 
 fn definition(dimensions: u32) -> VectorCollectionDefinition {
@@ -185,7 +185,7 @@ fn native_collection_catalogue_reopens_and_replays_exactly() {
             catalogue.collections[&ProjectionId::new("documents").unwrap()].generation,
             1
         );
-        assert_eq!(engine.control_journal_since(0, 10).unwrap().len(), 1);
+        assert_eq!(engine.control().journal_since(0, 10).unwrap().len(), 1);
     }
 
     let reopened = RrflowKvStore::open(&root).unwrap();
@@ -200,7 +200,7 @@ fn native_collection_catalogue_reopens_and_replays_exactly() {
         .unwrap();
     assert!(replay);
     assert_eq!(catalogue.revision, 1);
-    assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 1);
+    assert_eq!(reopened.control().journal_since(0, 10).unwrap().len(), 1);
 
     let collision = repository.ensure(
         &context(300, "collision"),
@@ -226,5 +226,5 @@ fn native_collection_catalogue_reopens_and_replays_exactly() {
     assert_eq!(entry.generation, 2);
     assert_eq!(entry.created_at, 100);
     assert_eq!(entry.updated_at, 400);
-    assert_eq!(reopened.control_journal_since(0, 10).unwrap().len(), 2);
+    assert_eq!(reopened.control().journal_since(0, 10).unwrap().len(), 2);
 }

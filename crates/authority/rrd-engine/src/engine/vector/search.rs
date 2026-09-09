@@ -22,7 +22,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         self.search_vectors_at(request, read)
     }
 
@@ -88,7 +88,7 @@ impl RrdEngine {
             };
         let limit = usize::try_from(request.max_scanned_changes)
             .map_err(|_| ServiceError::Vector("vector scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime_read_changes(&read, 0, limit)?;
+        let page = self.storage.runtime().read_changes(&read, 0, limit)?;
         if page.through_cursor < page.head_cursor {
             return Err(ServiceError::Vector(format!(
                 "vector exact scan requires more than {} retained changes",

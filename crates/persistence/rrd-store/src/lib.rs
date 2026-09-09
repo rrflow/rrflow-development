@@ -22,6 +22,7 @@ mod keyspaces;
 mod object;
 mod outcome;
 mod projection;
+mod repository;
 mod rrflow_kv;
 mod s3;
 mod transaction;
@@ -57,6 +58,10 @@ pub use outcome::{AppendOutcome, IdempotentAppendOutcome};
 pub use projection::{
     CurrentProjection, GroundedStamp, GroundingReport, ProjectionStatus, RebuildOutcome,
     CURRENT_PROJECTION,
+};
+pub use repository::{
+    ClaimRepository, ControlRepository, InvocationRepository, ProjectionRepository,
+    RuntimeRepository,
 };
 pub use rrd_core::{
     DataTransaction, DataTransactionView, ReadStamp, RetentionPin, RetentionPinId,

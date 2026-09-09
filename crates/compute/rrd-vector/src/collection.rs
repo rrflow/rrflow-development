@@ -346,7 +346,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
     }
 
     pub fn load(&self) -> CollectionResult<CollectionCatalogue> {
-        let Some(bytes) = self.engine.control_record(&self.key)? else {
+        let Some(bytes) = self.engine.control().get(&self.key)? else {
             return Ok(CollectionCatalogue::empty(self.scope.clone()));
         };
         let catalogue: CollectionCatalogue = serde_json::from_slice(&bytes)
@@ -436,7 +436,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
         {
             return Ok((self.load()?, true));
         }
-        let expected = self.engine.control_record(&self.key)?;
+        let expected = self.engine.control().get(&self.key)?;
         let mut catalogue = match &expected {
             Some(bytes) => serde_json::from_slice(bytes)
                 .map_err(|error| CollectionError::Integrity(error.to_string()))?,
@@ -491,7 +491,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
         catalogue.validate()?;
         let replacement = serde_json::to_vec(&catalogue)
             .map_err(|error| CollectionError::Integrity(error.to_string()))?;
-        match self.engine.commit_catalog_transition(
+        match self.engine.control().commit_catalog(
             &self.scope,
             &ControlTransition {
                 key: self.key.clone(),
@@ -533,7 +533,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
         if let Some(receipt) = self.deletion_receipt(&idempotency_key, &operation_digest)? {
             return Ok((self.load()?, receipt.deleted_entry, true));
         }
-        let expected = self.engine.control_record(&self.key)?;
+        let expected = self.engine.control().get(&self.key)?;
         let mut catalogue = catalogue_from_expected(&self.scope, &expected)?;
         require_operation_budget(&catalogue)?;
         let deleted_entry = catalogue.collections.remove(collection_id).ok_or_else(|| {
@@ -584,7 +584,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
             }
             return Ok((self.load()?, receipt.index, true));
         }
-        let expected = self.engine.control_record(&self.key)?;
+        let expected = self.engine.control().get(&self.key)?;
         let mut catalogue = catalogue_from_expected(&self.scope, &expected)?;
         require_operation_budget(&catalogue)?;
         let collection = catalogue
@@ -680,7 +680,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
             }
             return Ok((self.load()?, receipt.index, true));
         }
-        let expected = self.engine.control_record(&self.key)?;
+        let expected = self.engine.control().get(&self.key)?;
         let mut catalogue = catalogue_from_expected(&self.scope, &expected)?;
         require_operation_budget(&catalogue)?;
         let collection = catalogue
@@ -735,7 +735,7 @@ impl<'a, E: StorageEngine> VectorCollectionRepository<'a, E> {
         catalogue.validate()?;
         let replacement = serde_json::to_vec(&catalogue)
             .map_err(|error| CollectionError::Integrity(error.to_string()))?;
-        match self.engine.commit_catalog_transition(
+        match self.engine.control().commit_catalog(
             &self.scope,
             &ControlTransition {
                 key: self.key.clone(),

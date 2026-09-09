@@ -40,7 +40,10 @@ fn public_rrflow_kv_writes_frozen_typed_keys_and_reopens_them() {
 
     let store = RrflowKvStore::open(&root).unwrap();
     assert_eq!(store.manifest().unwrap().application_format, Some(FORMAT));
-    StorageEngine::append_batch(&store, std::slice::from_ref(&expected_claim)).unwrap();
+    store
+        .claims()
+        .append_batch(std::slice::from_ref(&expected_claim))
+        .unwrap();
     drop(store);
 
     let database = Database::open(&root).unwrap();
@@ -64,7 +67,7 @@ fn public_rrflow_kv_writes_frozen_typed_keys_and_reopens_them() {
 
     let reopened = RrflowKvStore::open(&root).unwrap();
     assert_eq!(
-        StorageEngine::claims_in_range(&reopened, 0, 1).unwrap(),
+        reopened.claims().claims_in_range(0, 1).unwrap(),
         vec![expected_claim]
     );
 }

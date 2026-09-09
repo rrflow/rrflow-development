@@ -69,7 +69,7 @@ fn flushed_claims_survive_sigkill() {
 
     let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(
-        store.sequence().unwrap(),
+        store.claims().sequence().unwrap(),
         500,
         "flush returned Ok but claims did not survive termination"
     );
@@ -84,7 +84,7 @@ fn unflushed_claims_are_not_claimed_as_durable() {
 
     let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(
-        store.sequence().unwrap(),
+        store.claims().sequence().unwrap(),
         0,
         "claims were durable before flush returned, contradicting the documented contract"
     );
@@ -99,8 +99,8 @@ fn the_sequence_index_agrees_with_the_watermark_after_sigkill() {
     run_and_kill(&db, 500, "flush");
 
     let store = RrflowKvStore::open(&db).expect("reopen after kill");
-    let watermark = store.sequence().unwrap();
-    let scanned = store.claims_in_range(0, watermark).unwrap().len();
+    let watermark = store.claims().sequence().unwrap();
+    let scanned = store.claims().claims_in_range(0, watermark).unwrap().len();
     assert_eq!(watermark, 500);
     assert_eq!(
         scanned, watermark as usize,
@@ -114,10 +114,11 @@ fn an_unflushed_index_is_as_empty_as_the_claims_it_indexes() {
     run_and_kill(&db, 500, "noflush");
 
     let store = RrflowKvStore::open(&db).expect("reopen after kill");
-    assert_eq!(store.sequence().unwrap(), 0);
+    assert_eq!(store.claims().sequence().unwrap(), 0);
     assert_eq!(
         store
-            .claims_in_range(0, store.sequence().unwrap())
+            .claims()
+            .claims_in_range(0, store.claims().sequence().unwrap())
             .unwrap()
             .len(),
         0,
@@ -133,7 +134,7 @@ fn a_reopened_store_continues_the_sequence_rather_than_restarting_it() {
 
     let store = RrflowKvStore::open(&db).expect("reopen after kill");
     assert_eq!(
-        store.sequence().unwrap(),
+        store.claims().sequence().unwrap(),
         200,
         "sequence restarted after termination, which would overwrite claims"
     );
@@ -146,10 +147,10 @@ fn rrflow_kv_stamped_multi_family_transaction_survives_sigkill_atomically() {
 
     let engine = RrflowKvStore::open(&db).expect("reopen rrflowKV store after kill");
     let scope = ScopeId::new("instance:rrflow-kv-durability").unwrap();
-    assert_eq!(engine.runtime_cursor().unwrap(), 9);
-    assert_eq!(engine.sequence().unwrap(), 1);
+    assert_eq!(engine.runtime().cursor().unwrap(), 9);
+    assert_eq!(engine.claims().sequence().unwrap(), 1);
 
-    let page = engine.runtime_changes_since(0, 32, Some(&scope)).unwrap();
+    let page = engine.runtime().changes_since(0, 32, Some(&scope)).unwrap();
     assert_eq!(page.changes.len(), 9);
     assert_eq!(page.through_cursor, 9);
     let commit_id = page.changes[0].commit_id.clone();
@@ -191,13 +192,15 @@ fn rrflow_kv_stamped_multi_family_transaction_survives_sigkill_atomically() {
         .any(|change| matches!(change.mutation, RuntimeMutation::Claim { .. })));
 
     let outcome = engine
-        .runtime_commit_outcome(&commit_id)
+        .runtime()
+        .commit_outcome(&commit_id)
         .unwrap()
         .expect("commit outcome");
     assert_eq!(outcome.count, 9);
     assert_eq!(outcome.last_cursor, 9);
     let audit = engine
-        .runtime_audit(&commit_id)
+        .runtime()
+        .audit(&commit_id)
         .unwrap()
         .expect("commit audit");
     audit.validate().unwrap();
@@ -236,5 +239,5 @@ fn rrflow_kv_writer_lock_fails_fast_across_processes_and_recovers_after_owner_de
 
     kill_child(&mut owner);
     let reopened = RrflowKvStore::open(&db).expect("reopen after writer owner death");
-    assert_eq!(reopened.runtime_cursor().unwrap(), 0);
+    assert_eq!(reopened.runtime().cursor().unwrap(), 0);
 }

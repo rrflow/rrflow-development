@@ -30,7 +30,8 @@ fn fixture<E: StorageEngine>(store: &E) {
         },
     );
     store
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 10,
             actor: "fixture".into(),
@@ -82,7 +83,8 @@ struct TraceView {
 
 fn trace_views<E: StorageEngine>(store: &E) -> Vec<TraceView> {
     store
-        .runtime_changes_since(0, usize::MAX, Some(&scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
         .changes
         .into_iter()
@@ -153,7 +155,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
         memory_result.execution.batches[0].rows[0].identity,
         "record:document:a"
     );
-    assert_eq!(memory.runtime_cursor().unwrap(), 14);
+    assert_eq!(memory.runtime().cursor().unwrap(), 14);
 
     let normalize_logical = |traces: &[TraceView]| {
         traces

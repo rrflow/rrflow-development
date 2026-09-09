@@ -87,7 +87,8 @@ fn test_schema() -> RuntimeMutation {
 fn assert_schema_free_claim_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:schema-free-claims").unwrap();
     let outcome = engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 10,
             actor: "agent:claim-test".into(),
@@ -113,7 +114,8 @@ fn assert_schema_free_claim_contract(engine: &dyn StorageEngine) {
     assert_eq!(outcome.first_claim_sequence, Some(1));
 
     let outcome = engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope,
             at: 20,
             actor: "agent:claim-test".into(),
@@ -140,13 +142,13 @@ fn claim_only_runtime_commits_share_the_transaction_log_without_synthetic_schema
 
 fn assert_runtime_contract(engine: &dyn StorageEngine) {
     let first = commit(0, "instance:a");
-    let outcome = engine.commit_runtime(&first).unwrap();
+    let outcome = engine.runtime().commit(&first).unwrap();
     assert_eq!(outcome.first_cursor, 1);
     assert_eq!(outcome.last_cursor, 5);
     assert_eq!(outcome.first_claim_sequence, Some(1));
-    assert_eq!(engine.sequence().unwrap(), 1);
+    assert_eq!(engine.claims().sequence().unwrap(), 1);
 
-    let page = engine.runtime_changes_since(0, 2, None).unwrap();
+    let page = engine.runtime().changes_since(0, 2, None).unwrap();
     assert_eq!(page.through_cursor, 2);
     assert_eq!(page.head_cursor, 5);
     assert!(page.has_more());
@@ -154,7 +156,8 @@ fn assert_runtime_contract(engine: &dyn StorageEngine) {
     assert!(page.changes.iter().all(|change| change.verify_digest()));
 
     let rest = engine
-        .runtime_changes_since(page.through_cursor, 10, None)
+        .runtime()
+        .changes_since(page.through_cursor, 10, None)
         .unwrap();
     assert_eq!(rest.through_cursor, 5);
     assert!(!rest.has_more());
@@ -166,14 +169,14 @@ fn assert_runtime_contract(engine: &dyn StorageEngine) {
 
     let stale = commit(0, "instance:a");
     assert!(matches!(
-        engine.commit_runtime(&stale),
+        engine.runtime().commit(&stale),
         Err(Error::RuntimeConflict {
             expected: 0,
             actual: 5
         })
     ));
-    assert_eq!(engine.runtime_cursor().unwrap(), 5);
-    assert_eq!(engine.sequence().unwrap(), 1);
+    assert_eq!(engine.runtime().cursor().unwrap(), 5);
+    assert_eq!(engine.claims().sequence().unwrap(), 1);
 }
 
 #[test]
@@ -209,19 +212,19 @@ fn dangling_relation_rejects_the_entire_commit() {
         ],
     };
     assert!(matches!(
-        store.commit_runtime(&bad),
+        store.runtime().commit(&bad),
         Err(Error::DanglingRuntimeReference(_))
     ));
-    assert_eq!(store.runtime_cursor().unwrap(), 0);
+    assert_eq!(store.runtime().cursor().unwrap(), 0);
 }
 
 #[test]
 fn scope_filter_advances_across_nonmatching_changes() {
     let dir = tempfile::tempdir().unwrap();
     let store = RrflowKvStore::open(dir.path()).unwrap();
-    store.commit_runtime(&commit(0, "instance:a")).unwrap();
+    store.runtime().commit(&commit(0, "instance:a")).unwrap();
     let only_b = ScopeId::new("instance:b").unwrap();
-    let page = store.runtime_changes_since(0, 3, Some(&only_b)).unwrap();
+    let page = store.runtime().changes_since(0, 3, Some(&only_b)).unwrap();
     assert!(page.changes.is_empty());
     assert_eq!(page.through_cursor, 3);
     assert!(page.has_more());
@@ -232,8 +235,8 @@ fn runtime_log_survives_reopen_and_continues_its_hash_chain() {
     let dir = tempfile::tempdir().unwrap();
     let first_digest = {
         let store = RrflowKvStore::open(dir.path()).unwrap();
-        store.commit_runtime(&commit(0, "instance:a")).unwrap();
-        store.runtime_changes_since(4, 1, None).unwrap().changes[0]
+        store.runtime().commit(&commit(0, "instance:a")).unwrap();
+        store.runtime().changes_since(4, 1, None).unwrap().changes[0]
             .digest
             .clone()
     };
@@ -250,9 +253,10 @@ fn runtime_log_survives_reopen_and_continues_its_hash_chain() {
             },
         ],
     };
-    reopened.commit_runtime(&next).unwrap();
+    reopened.runtime().commit(&next).unwrap();
     let change = reopened
-        .runtime_changes_since(5, 1, None)
+        .runtime()
+        .changes_since(5, 1, None)
         .unwrap()
         .changes
         .remove(0);
@@ -260,7 +264,7 @@ fn runtime_log_survives_reopen_and_continues_its_hash_chain() {
         change.previous_digest.as_deref(),
         Some(first_digest.as_str())
     );
-    assert_eq!(reopened.runtime_cursor().unwrap(), 7);
+    assert_eq!(reopened.runtime().cursor().unwrap(), 7);
 }
 
 #[test]
@@ -269,9 +273,9 @@ fn rrflow_kv_runtime_log_survives_flush_reopen_and_continues_its_hash_chain() {
     let path = dir.path().join("rrflow-kv");
     let first_digest = {
         let store = RrflowKvStore::open(&path).unwrap();
-        store.commit_runtime(&commit(0, "instance:a")).unwrap();
+        store.runtime().commit(&commit(0, "instance:a")).unwrap();
         store.flush(150).unwrap();
-        store.runtime_changes_since(4, 1, None).unwrap().changes[0]
+        store.runtime().changes_since(4, 1, None).unwrap().changes[0]
             .digest
             .clone()
     };
@@ -288,9 +292,10 @@ fn rrflow_kv_runtime_log_survives_flush_reopen_and_continues_its_hash_chain() {
             },
         ],
     };
-    reopened.commit_runtime(&next).unwrap();
+    reopened.runtime().commit(&next).unwrap();
     let change = reopened
-        .runtime_changes_since(5, 1, None)
+        .runtime()
+        .changes_since(5, 1, None)
         .unwrap()
         .changes
         .remove(0);
@@ -298,13 +303,14 @@ fn rrflow_kv_runtime_log_survives_flush_reopen_and_continues_its_hash_chain() {
         change.previous_digest.as_deref(),
         Some(first_digest.as_str())
     );
-    assert_eq!(reopened.runtime_cursor().unwrap(), 7);
+    assert_eq!(reopened.runtime().cursor().unwrap(), 7);
 }
 
 fn assert_schema_contract(engine: &dyn StorageEngine) {
     let scope = ScopeId::new("instance:schema").unwrap();
     let error = engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 99,
             actor: "agent:schema-test".into(),
@@ -315,7 +321,7 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
         })
         .unwrap_err();
     assert!(matches!(error, Error::RuntimeSchemaMissing(_)));
-    assert_eq!(engine.runtime_cursor().unwrap(), 0);
+    assert_eq!(engine.runtime().cursor().unwrap(), 0);
 
     let mut registry = RuntimeSchemaRegistry::empty(1, "bootstrap strict schema");
     registry.records.insert(
@@ -350,7 +356,8 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
     let outcome_one = record("outcome", "o1");
     let outcome_two = record("outcome", "o2");
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 100,
             actor: "agent:schema-test".into(),
@@ -381,14 +388,18 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
             ],
         })
         .unwrap();
-    assert_eq!(engine.runtime_schema(&scope).unwrap().unwrap().revision, 1);
+    assert_eq!(
+        engine.runtime().schema(&scope).unwrap().unwrap().revision,
+        1
+    );
 
     let mut wrong_type = record("prompt", "p2");
     wrong_type
         .properties
         .insert("text".into(), RuntimeValue::Unsigned(7));
     let error = engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 101,
             actor: "agent:schema-test".into(),
@@ -397,10 +408,11 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
         })
         .unwrap_err();
     assert!(error.to_string().contains("wrong value type"));
-    assert_eq!(engine.runtime_cursor().unwrap(), 5);
+    assert_eq!(engine.runtime().cursor().unwrap(), 5);
 
     let error = engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 102,
             actor: "agent:schema-test".into(),
@@ -418,13 +430,14 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
         })
         .unwrap_err();
     assert!(error.to_string().contains("max_outgoing=1"));
-    assert_eq!(engine.runtime_cursor().unwrap(), 5);
+    assert_eq!(engine.runtime().cursor().unwrap(), 5);
 
     let mut migrated = registry;
     migrated.revision = 2;
     migrated.migration = "document compatible schema evolution".into();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 103,
             actor: "agent:schema-test".into(),
@@ -432,7 +445,10 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
             mutations: vec![RuntimeMutation::Schema { registry: migrated }],
         })
         .unwrap();
-    assert_eq!(engine.runtime_schema(&scope).unwrap().unwrap().revision, 2);
+    assert_eq!(
+        engine.runtime().schema(&scope).unwrap().unwrap().revision,
+        2
+    );
 }
 
 #[test]
@@ -447,7 +463,8 @@ fn all_engines_enforce_schema_types_cardinality_and_migrations() {
     let reopened = RrflowKvStore::open(dir.path()).unwrap();
     assert_eq!(
         reopened
-            .runtime_schema(&ScopeId::new("instance:schema").unwrap())
+            .runtime()
+            .schema(&ScopeId::new("instance:schema").unwrap())
             .unwrap()
             .unwrap()
             .revision,

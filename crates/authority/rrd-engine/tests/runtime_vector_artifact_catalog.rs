@@ -158,7 +158,8 @@ fn publication_atomically_binds_typed_record_object_and_serving_view() {
 
     let changes = data
         .engine()
-        .runtime_changes_since(0, usize::MAX, Some(&scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
         .changes;
     let record_commit = changes.iter().find_map(|change| match &change.mutation {

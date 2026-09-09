@@ -47,7 +47,8 @@ fn commit(engine: &dyn StorageEngine, scope: &ScopeId) -> ReadStamp {
         });
     }
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 1,
             actor: "agent:vector-differential".into(),
@@ -55,13 +56,13 @@ fn commit(engine: &dyn StorageEngine, scope: &ScopeId) -> ReadStamp {
             mutations,
         })
         .unwrap();
-    engine.runtime_read_stamp(scope).unwrap()
+    engine.runtime().read_stamp(scope).unwrap()
 }
 
 fn search(engine: &dyn StorageEngine) -> Vec<(String, f64)> {
     let scope = ScopeId::new("instance:vector-differential").unwrap();
     let read = commit(engine, &scope);
-    let page = engine.runtime_read_changes(&read, 0, usize::MAX).unwrap();
+    let page = engine.runtime().read_changes(&read, 0, usize::MAX).unwrap();
     let hits = search_changes_exact(
         &SearchRequest {
             scope,

@@ -22,11 +22,11 @@ fn missing_paths_create_rrflow_kv_and_reopen_by_authenticated_marker() {
     let path = root.path().join("nested").join("store");
     let engine = RrflowKvStore::open(&path).unwrap();
     assert!(path.join("CURRENT").is_file());
-    StorageEngine::append_batch(&engine, &[claim("rrflow-kv")]).unwrap();
+    engine.claims().append_batch(&[claim("rrflow-kv")]).unwrap();
     drop(engine);
 
     let reopened = RrflowKvStore::open(&path).unwrap();
-    assert_eq!(StorageEngine::sequence(&reopened).unwrap(), 1);
+    assert_eq!(reopened.claims().sequence().unwrap(), 1);
 }
 
 #[test]

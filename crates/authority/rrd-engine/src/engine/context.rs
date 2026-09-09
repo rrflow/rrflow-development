@@ -97,7 +97,8 @@ impl RrdEngine {
             .map_err(|_| ServiceError::Query("context scan budget exceeds usize".into()))?;
         let (read, snapshot) =
             self.storage
-                .runtime_data_snapshot(&scope, request.valid_at, replay_limit)?;
+                .runtime()
+                .data_snapshot(&scope, request.valid_at, replay_limit)?;
         if snapshot.known_at_cursor != read.commit_cursor
             || snapshot.schema_revision != read.schema_revision.unwrap_or(0)
         {

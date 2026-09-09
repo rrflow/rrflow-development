@@ -179,7 +179,7 @@ where
         &generation_bytes,
         &revision_bytes,
     ])?;
-    let read = data.engine().runtime_read_stamp(&scope)?;
+    let read = data.engine().runtime().read_stamp(&scope)?;
     let links = vec![TraceLink::Read { stamp: read }];
     let span = DurableTraceSpan::start(
         data.engine(),
@@ -409,7 +409,7 @@ where
         &generation_bytes,
         b"build",
     ])?;
-    let trace_read = data.engine().runtime_read_stamp(&scope)?;
+    let trace_read = data.engine().runtime().read_stamp(&scope)?;
     let links = vec![TraceLink::Read { stamp: trace_read }];
     let span = DurableTraceSpan::start(
         data.engine(),
@@ -518,7 +518,7 @@ where
         &generation_bytes,
         action_name.as_bytes(),
     ])?;
-    let trace_read = data.engine().runtime_read_stamp(scope)?;
+    let trace_read = data.engine().runtime().read_stamp(scope)?;
     let links = vec![TraceLink::Read { stamp: trace_read }];
     let span = DurableTraceSpan::start(
         data.engine(),
@@ -620,11 +620,11 @@ fn quantization_artifact_catalogue_at_read<E>(
 where
     E: StorageEngine,
 {
-    let read = engine.runtime_read_stamp(scope)?;
+    let read = engine.runtime().read_stamp(scope)?;
     let mut cursor = 0;
     let mut changes = Vec::new();
     loop {
-        let page = engine.runtime_read_changes(&read, cursor, REPLAY_PAGE)?;
+        let page = engine.runtime().read_changes(&read, cursor, REPLAY_PAGE)?;
         let has_more = page.has_more();
         let through_cursor = page.through_cursor;
         changes.extend(page.changes);
@@ -763,7 +763,7 @@ fn commit_quantization_records<D>(
 where
     D: DataRuntimeAccess,
 {
-    let current = data.engine().runtime_schema(scope)?;
+    let current = data.engine().runtime().schema(scope)?;
     if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
         return Err("quantization lifecycle schema changed during publication preflight".into());
     }
@@ -1020,7 +1020,9 @@ where
     let mut cursor = 0;
     let mut changes = Vec::new();
     loop {
-        let page = engine.runtime_changes_since(cursor, REPLAY_PAGE, Some(scope))?;
+        let page = engine
+            .runtime()
+            .changes_since(cursor, REPLAY_PAGE, Some(scope))?;
         let has_more = page.has_more();
         let through_cursor = page.through_cursor;
         changes.extend(page.changes);
@@ -1117,8 +1119,8 @@ where
     D: DataRuntimeAccess,
 {
     for _ in 0..PUBLICATION_RETRIES {
-        let read = data.engine().runtime_read_stamp(scope)?;
-        let current = data.engine().runtime_schema(scope)?;
+        let read = data.engine().runtime().read_stamp(scope)?;
+        let current = data.engine().runtime().schema(scope)?;
         if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
             continue;
         }

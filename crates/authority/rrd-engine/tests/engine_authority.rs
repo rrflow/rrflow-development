@@ -843,6 +843,7 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     let divergent_target = state_root.join("restores/instance-a/restore-divergent");
     let divergent = rrd_store::RrflowKvStore::open(&divergent_target).unwrap();
     divergent
+        .claims()
         .append_batch(&[Claim::new(
             Subject::new("restore:divergent").unwrap(),
             Predicate::new("status").unwrap(),

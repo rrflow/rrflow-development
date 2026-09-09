@@ -138,7 +138,7 @@ impl DurableTraceSpan {
         }
         self.links.extend(extra_links);
         self.links.push(TraceLink::RuntimeCursor {
-            cursor: store.runtime_cursor()?,
+            cursor: store.runtime().cursor()?,
         });
         insert_attribute(
             &mut self.attributes,
@@ -216,8 +216,8 @@ fn commit_trace<E: StorageEngine>(
         return Err("runtime trace actor must not be empty".into());
     }
     for _ in 0..TRACE_COMMIT_RETRIES {
-        let read = store.runtime_read_stamp(scope)?;
-        let current = store.runtime_schema(scope)?;
+        let read = store.runtime().read_stamp(scope)?;
+        let current = store.runtime().schema(scope)?;
         if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
             continue;
         }
@@ -246,7 +246,7 @@ fn commit_trace<E: StorageEngine>(
                 mutations: vec![RuntimeMutation::Schema { registry }],
             }
         };
-        match store.commit_runtime(&commit) {
+        match store.runtime().commit(&commit) {
             Ok(outcome) => return Ok(Some(outcome)),
             Err(Error::RuntimeConflict { .. }) => continue,
             Err(error) => return Err(error.into()),

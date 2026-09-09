@@ -61,9 +61,9 @@ impl RrdEngine {
         catalogue.validate().map_err(cluster_error)?;
         validate_replay_limit(max_scanned_changes)?;
         let scope = distributed_scope(&self.instance)?;
-        let schema = self.storage.runtime_schema(&scope)?;
+        let schema = self.storage.runtime().schema(&scope)?;
         let (read, previous) = if schema.is_some() {
-            let (read, snapshot) = self.storage.runtime_data_snapshot(
+            let (read, snapshot) = self.storage.runtime().data_snapshot(
                 &scope,
                 catalogue.updated_at,
                 max_scanned_changes,
@@ -73,7 +73,7 @@ impl RrdEngine {
                     .map_err(cluster_error)?;
             (read, previous)
         } else {
-            (self.storage.runtime_read_stamp(&scope)?, None)
+            (self.storage.runtime().read_stamp(&scope)?, None)
         };
         match previous {
             Some(previous) => catalogue
@@ -108,12 +108,13 @@ impl RrdEngine {
     ) -> Result<Option<DistributedAuthorityRead>> {
         validate_replay_limit(max_scanned_changes)?;
         let scope = distributed_scope(&self.instance)?;
-        if self.storage.runtime_schema(&scope)?.is_none() {
+        if self.storage.runtime().schema(&scope)?.is_none() {
             return Ok(None);
         }
         let (read, snapshot) =
             self.storage
-                .runtime_data_snapshot(&scope, valid_at, max_scanned_changes)?;
+                .runtime()
+                .data_snapshot(&scope, valid_at, max_scanned_changes)?;
         let catalogue = DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, cluster)
             .map_err(cluster_error)?;
         Ok(catalogue.map(|catalogue| DistributedAuthorityRead { read, catalogue }))

@@ -64,7 +64,8 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         },
     );
     storage
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:mcp-daemon-test").unwrap(),
             at: 100,
             actor: "daemon-context-fixture".into(),

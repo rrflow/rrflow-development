@@ -41,7 +41,8 @@ fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
     )
     .unwrap();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 1_000,
             actor: "adapter:pgvector".into(),
@@ -77,7 +78,8 @@ fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
     )
     .unwrap();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 1_001,
             actor: "adapter:pgvector".into(),
@@ -88,7 +90,7 @@ fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
         })
         .unwrap();
 
-    let page = engine.runtime_changes_since(0, 10, Some(&scope)).unwrap();
+    let page = engine.runtime().changes_since(0, 10, Some(&scope)).unwrap();
     assert_eq!(page.head_cursor, 3);
     assert_eq!(page.changes.len(), 3);
     assert!(page.changes.iter().all(|change| change.verify_digest()));

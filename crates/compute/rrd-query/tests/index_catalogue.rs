@@ -36,7 +36,8 @@ fn seed<E: StorageEngine>(engine: &E) -> Catalog {
         },
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 1,
             actor: "test".into(),
@@ -141,7 +142,8 @@ fn exercise<E: StorageEngine>(engine: &E) {
     );
 
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 20,
             actor: "test".into(),
@@ -280,7 +282,7 @@ fn exercise<E: StorageEngine>(engine: &E) {
     );
     retired.validate().unwrap();
 
-    let journal = engine.control_journal_since(0, 32).unwrap();
+    let journal = engine.control().journal_since(0, 32).unwrap();
     assert_eq!(journal.len(), 6);
     assert!(journal.iter().all(|entry| entry.verify()));
     assert_eq!(journal[0].action, "index.created");
@@ -394,7 +396,8 @@ fn selected_index_fails_closed_when_artifact_bytes_are_corrupted() {
         entry.stamp.artifact_digest
     );
     engine
-        .put_projection_with(&artifact_name, b"corrupted", Durability::Authoritative)
+        .projections()
+        .put_with(&artifact_name, b"corrupted", Durability::Authoritative)
         .unwrap();
     assert!(matches!(
         execute(&engine, &physical, &ExecutionBudget::default()),
@@ -519,7 +522,7 @@ fn count_grouped_count_materialized_view_and_bm25_are_durable_artifacts() {
             entry.stamp.artifact_digest
         );
         let artifact =
-            IndexArtifact::decode(&engine.get_projection(&artifact_name).unwrap().unwrap())
+            IndexArtifact::decode(&engine.projections().get(&artifact_name).unwrap().unwrap())
                 .unwrap();
         match entry.definition.kind {
             IndexKind::Count => {
@@ -604,7 +607,7 @@ fn compound_unique_constraint_rejects_a_prospective_commit_even_when_index_is_st
         rebuilding.entries[&unique.id].stamp.state,
         ProjectionState::Building
     );
-    let read = engine.runtime_read_stamp(&scope()).unwrap();
+    let read = engine.runtime().read_stamp(&scope()).unwrap();
     let transaction = DataTransaction::new(
         read.clone(),
         RuntimeCommit {
@@ -646,7 +649,8 @@ fn geo_index_builds_from_the_same_catalogue_and_read_stamp() {
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::Geo),
     );
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: geo_scope.clone(),
             at: 1,
             actor: "test".into(),

@@ -236,7 +236,14 @@ fn backup_catalogue_cli_creates_lists_and_restores() {
         ],
     );
     assert!(ok, "backup restore failed: {err}");
-    assert_eq!(RrflowKvStore::open(&target).unwrap().sequence().unwrap(), 1);
+    assert_eq!(
+        RrflowKvStore::open(&target)
+            .unwrap()
+            .claims()
+            .sequence()
+            .unwrap(),
+        1
+    );
 }
 
 #[test]

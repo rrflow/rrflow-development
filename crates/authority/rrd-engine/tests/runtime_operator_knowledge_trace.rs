@@ -85,7 +85,8 @@ fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
             .map(|vector| RuntimeMutation::Vector { vector }),
     );
     store
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope(),
             at: 10,
             actor: "fixture".into(),
@@ -169,7 +170,7 @@ fn request<E: StorageEngine>(
         required_source_cursor: knowledge.projection.source_cursor,
         search: SearchRequest {
             scope: scope(),
-            read: store.runtime_read_stamp(&scope()).unwrap(),
+            read: store.runtime().read_stamp(&scope()).unwrap(),
             valid_at: 10,
             field: "body".into(),
             query: VectorQuery::Dense {
@@ -212,7 +213,8 @@ struct TraceView {
 
 fn traces<E: StorageEngine>(store: &E) -> Vec<TraceView> {
     store
-        .runtime_changes_since(0, usize::MAX, Some(&scope()))
+        .runtime()
+        .changes_since(0, usize::MAX, Some(&scope()))
         .unwrap()
         .changes
         .into_iter()
@@ -280,7 +282,7 @@ fn operator_search_is_project_bound_private_and_equal_across_engines() {
     let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv, &instance);
     assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.result.hits.len(), 2);
-    assert_eq!(memory.runtime_cursor().unwrap(), 12);
+    assert_eq!(memory.runtime().cursor().unwrap(), 12);
     let normalize = |traces: &[TraceView]| {
         traces
             .iter()
@@ -423,13 +425,15 @@ fn traced_outbox_retry_applies_external_payload_once() {
     let candidates = fixture(&store);
     let knowledge = knowledge(&instance);
     let source = store
-        .runtime_outbox_since(0, 100)
+        .runtime()
+        .outbox_since(0, 100)
         .unwrap()
         .into_iter()
         .find(|work| work.source_cursor == 7)
         .unwrap();
     let source_change = store
-        .runtime_changes_since(6, 1, Some(&scope()))
+        .runtime()
+        .changes_since(6, 1, Some(&scope()))
         .unwrap()
         .changes
         .pop()
@@ -474,7 +478,7 @@ fn traced_outbox_retry_applies_external_payload_once() {
     assert!(first.receipt.applied_now);
     assert!(retry.receipt.idempotent_replay);
     assert_eq!(writer.apply_count(), 1);
-    assert_eq!(store.runtime_cursor().unwrap(), 16);
+    assert_eq!(store.runtime().cursor().unwrap(), 16);
     let traces = traces(&store);
     assert_eq!(
         traces

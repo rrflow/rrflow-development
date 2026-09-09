@@ -181,7 +181,7 @@ fn fixture_commit() -> RuntimeCommit {
 }
 
 fn execute_fixture<E: StorageEngine>(engine: &E, text: &str) -> rrd_query::QueryExecution {
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query = parse(text).unwrap();
     execute(
@@ -213,9 +213,10 @@ fn flattened_rows(execution: &rrd_query::QueryExecution) -> Vec<rrd_query::Query
 
 fn seed_historical_corrections<E: StorageEngine>(engine: &E) {
     let first = fixture_commit();
-    let head = engine.commit_runtime(&first).unwrap().last_cursor;
+    let head = engine.runtime().commit(&first).unwrap().last_cursor;
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:test").unwrap(),
             at: 101,
             actor: "agent:correction".into(),
@@ -295,10 +296,12 @@ fn rrflow_mx_and_rrflow_kv_return_identical_exact_rows() {
     assert_eq!(left.batches[0].rows[0].values["title"], value("Alpha"));
 
     let read = memory
-        .runtime_read_stamp(&ScopeId::new("instance:test").unwrap())
+        .runtime()
+        .read_stamp(&ScopeId::new("instance:test").unwrap())
         .unwrap();
     let page = memory
-        .runtime_read_changes(&read, 0, read.commit_cursor as usize)
+        .runtime()
+        .read_changes(&read, 0, read.commit_cursor as usize)
         .unwrap();
     let direct =
         RuntimeGraphSnapshot::from_changes(&page.changes, read.scope, 100, read.commit_cursor);
@@ -328,9 +331,9 @@ fn rrflow_mx_and_rrflow_kv_return_identical_exact_rows() {
 #[test]
 fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
     let engine = RrflowMxStore::new();
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let scope = ScopeId::new("instance:test").unwrap();
-    let read = engine.runtime_read_stamp(&scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
     let query = parse(
         "FROM record:document AT VALID 100 KNOWN HEAD WHERE status = \"open\" PROJECT id, title EXPLAIN CONTRACT",
     )
@@ -361,7 +364,8 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
     ));
 
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: scope.clone(),
             at: 101,
             actor: "agent:correction".into(),
@@ -407,7 +411,7 @@ fn stamped_pipeline_matches_manual_execution_and_retains_its_read_coordinate() {
 #[test]
 fn explain_analyze_reports_governed_streaming_plane_and_preserves_reference_rows() {
     let engine = RrflowMxStore::new();
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query = parse(
         "FROM record:document AT VALID 100 KNOWN HEAD WHERE status != \"closed\" PROJECT title LIMIT 1 EXPLAIN ANALYZE",
@@ -678,7 +682,7 @@ fn bounded_graph_traversal_is_deterministic_across_every_engine() {
 #[test]
 fn all_source_families_execute_at_explicit_time() {
     let engine = RrflowMxStore::new();
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     for (text, identity) in [
         (
@@ -717,7 +721,7 @@ fn all_source_families_execute_at_explicit_time() {
 #[test]
 fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
     fn exercise<E: StorageEngine>(engine: &E) -> rrd_query::QueryExecution {
-        engine.commit_runtime(&fixture_commit()).unwrap();
+        engine.runtime().commit(&fixture_commit()).unwrap();
         let catalog = Catalog::capture(engine, &ScopeId::new("instance:test").unwrap()).unwrap();
         let query = parse(
             "FROM event:tool_result AT VALID 100 KNOWN HEAD WHERE cursor = 5 AND ok = true PROJECT cursor",
@@ -773,7 +777,7 @@ fn bound_event_cursor_uses_one_exact_authoritative_position_on_every_engine() {
 #[test]
 fn event_cursor_outside_the_stamp_is_an_exact_empty_path() {
     let engine = RrflowMxStore::new();
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let query =
         parse("FROM event:tool_result AT VALID 100 KNOWN HEAD WHERE cursor = 99 PROJECT cursor")
@@ -797,12 +801,14 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
     const EVENTS: u64 = 4_096;
     let engine = RrflowMxStore::new();
     let fixture_head = engine
-        .commit_runtime(&fixture_commit())
+        .runtime()
+        .commit(&fixture_commit())
         .unwrap()
         .last_cursor;
     let subject = RuntimeRef::new("document", "a").unwrap();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:test").unwrap(),
             at: 101,
             actor: "agent:bulk".into(),
@@ -862,7 +868,7 @@ fn cursor_lookup_uses_authenticated_logarithmic_validation() {
 #[test]
 fn text_and_typed_sdk_produce_the_same_plan() {
     let engine = RrflowMxStore::new();
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let parsed = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT id").unwrap();
     let mut typed = Query::new(
@@ -883,7 +889,7 @@ fn text_and_typed_sdk_produce_the_same_plan() {
 #[test]
 fn binding_and_budget_fail_closed() {
     let engine = RrflowMxStore::new();
-    engine.commit_runtime(&fixture_commit()).unwrap();
+    engine.runtime().commit(&fixture_commit()).unwrap();
     let catalog = Catalog::capture(&engine, &ScopeId::new("instance:test").unwrap()).unwrap();
     let unknown = parse("FROM record:document AT VALID 100 KNOWN HEAD PROJECT missing").unwrap();
     assert!(matches!(
@@ -935,9 +941,10 @@ fn binding_and_budget_fail_closed() {
 #[test]
 fn event_queries_honor_cursor_typed_retirement_at_valid_time() {
     let engine = RrflowMxStore::new();
-    let initial = engine.commit_runtime(&fixture_commit()).unwrap();
+    let initial = engine.runtime().commit(&fixture_commit()).unwrap();
     engine
-        .commit_runtime(&RuntimeCommit {
+        .runtime()
+        .commit(&RuntimeCommit {
             scope: ScopeId::new("instance:test").unwrap(),
             at: 101,
             actor: "agent:event-retirement".into(),

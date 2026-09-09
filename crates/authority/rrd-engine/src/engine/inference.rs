@@ -78,7 +78,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         self.generate_embeddings_at(request, read)
     }
 
@@ -103,7 +103,7 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let read = self.storage.runtime_read_stamp(&scope)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
         let descriptor = self.embedding_descriptor(&request.backend_id)?;
         validate_embedding_collection(self, request, &descriptor, scope)?;
         let generated = self.generate_embeddings_at(
