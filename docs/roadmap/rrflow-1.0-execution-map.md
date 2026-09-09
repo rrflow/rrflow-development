@@ -1966,6 +1966,40 @@ three packages and the final source-closure search pass.
    catalogue rebuild, recovery verification, and diagnostic comparison may
    retain bounded/paged log consumption under their already named owners.
 
+Execute C-04c in the following reviewable passes. These are one dependency
+chain, not alternate readers or compatibility stages:
+
+1. **C-04c1 — rrflowQL direct sources.** Replace catalogue and execution-log
+   reconstruction with explicit typed version-source closure, direct physical
+   operators, key-budget evidence, MX/KV equality, and rrflowKV reopen and
+   physical-counter proof. Remove the former query operator and budget fields
+   directly so downstream callers fail at compile time until C-04c2. This
+   pass is recorded at revision `43eabc132282bd235c9ed4d411195e6207d04262`.
+2. **C-04c2 — public read vocabulary and engine adoption.** Add one
+   provider-neutral direct-read evidence contract under
+   `rrd-contract/src/read.rs` with its closed-schema golden fixture/test; use
+   `max_storage_keys`, `selected_versions`,
+   and closed point/range/key/value/byte path evidence for every normal query,
+   data-snapshot, transaction-preview, vector, retrieval, context, memory-warp,
+   seat-resolution, router-context, and embed/search read. The replay-only
+   diagnostic, rollback, archive, changefeed, subscription, cluster-artifact,
+   projection-rebuild, and recovery budgets retain change-log terminology.
+   Update `rrd-contract/src/{lib,memory_context,memory_estate,router,inference}.rs`,
+   `rrd-core/src/trace.rs`, one engine-owned evidence mapper, the named
+   `rrd-engine` query/runtime/retrieval/context/vector consumers, and their
+   complete focused tests. Remove the old successful wire/property/trace names
+   rather than accepting both. Regenerate the OpenAPI-derived TypeScript schema
+   and endpoint digests, update provider-neutral CLI/MCP fields and schemas,
+   update the six-SDK conformance fixture/tests, and prove the generated
+   surfaces from the contract export. No client or adapter receives storage,
+   planning, or lifecycle authority.
+3. **C-04c3 — final source and evidence closure.** Run the explicit replay
+   allowlist, exact-reducer comparisons, rrflowMX/rrflowKV differential suites,
+   rrflowKV close/reopen physical-counter cases, strict owning-package and
+   workspace checks, and generated-surface/document/inventory policies. Only
+   this pass may update C-04 status, and only if no normal query, vector,
+   retrieval, context, memory, or inference path opens the runtime change log.
+
 Final source closure rejects `read_changes(..., 0, ...)`,
 `runtime_read_changes(..., 0, ...)`, `RuntimeDataSnapshot::from_changes`, or
 `RuntimeGraphSnapshot::from_changes` in a normal query/vector/context path.
@@ -2046,6 +2080,24 @@ failure/crash/differential evidence: the same query corpus returns byte-for-byte
 not run and reason: workspace tests and workspace Clippy cannot start while the deliberately surfaced C-04c2 compile boundary remains unresolved. External SDK, HTTP/WebSocket/MCP/Connectome, crash-matrix, C-06 Arrow-page, E index-quality/recall, F streamed-DataFusion/unified-budget, installation/attunement, deployment, comparative benchmark, release-assembly, signing, and promotion suites were not run because this is the query half of C-04c and changes none of those acceptance surfaces
 remaining known errors: C-04c2 must migrate every named rrd-engine query/retrieval/vector/context consumer and its public evidence vocabulary to direct version sources, remove all normal cursor-zero replay, and restore complete workspace compilation without aliases. The current rrflowQL path still materializes selected semantic versions into Vec<QueryRow> before Arrow conversion; C-06/F-01 own Arrow-compatible pages and streamed RecordBatch production. F-04 owns one cross-operator resource ledger, including rejecting an oversized immutable index artifact before allocation rather than only after decode. Accumulator bootstrap replay remains C-05 inventory. C-05 through J and every alpha outcome remain open
 roadmap checkbox changed: no; C-04c1 is evidence for only the rrflowQL half, C-04 and Gate C remain at their prior status, and C-04c2 is the next executable package
+```
+
+#### C-04c2 public/engine adoption plan journal
+
+```text
+gate/package: C-04c2-plan / direct-read public vocabulary and engine-consumer trace correction; no runtime gate completion
+revision: starting revision 43eabc132282bd235c9ed4d411195e6207d04262; result is the commit containing this entry
+baseline files/digests: execution map=48b7aec2f5cae144b4e70f539dfef927e792f85723e1246829479e8103a425cf; file plan=a3d54a724265a85069120d00e9e7fbe928c0a57d0b459403a450902aecbf79e1; inventory generator=dff2f8a12d459366408496dc819cf2c35c777a966d610a07f5d67899d5ac310d; rrd-contract lib.rs=b2904edfa596ebfbb9e4640c381fd56c126f350f22ed520e69e76ea0edf4b176; memory_context.rs=dafd96e694df7a1ea699c32789fde379aa172bcac42361e0e4a023b5ad7ea773; memory_estate.rs=51beba97887a00fdacb30e1322212986925ce0f8ad86506de801afcffa27d752; router.rs=d051ea5501990f28f9279617d22c689762faf648c69eb297bc0b620d7e4dd051; inference.rs=6d626476c784b12007ca3c7caba2da1b15bd1d146405e0ac5beb318262806480; rrd-core trace.rs=3e4774c5f52eabbc0c3fc187ff5b4372489712585a3fad4014fbefcf744b14fd
+files read in full: repository instructions and the README/objective/roadmap/POA&M/C-04 owner chain retained from C-04c1; complete C-04 execution package and C-04c1 evidence; complete deterministic execution-inventory generator; complete TypeScript/Python generated-surface scripts and generated-surface checker; current Git remote/ref state; and every repository hit for the replay-era query operators, catalogue entrypoints, max_scanned_changes, scanned_changes, and flattened stamp-validation fields. Relevant rrd-contract normal-read type definitions, store direct-read evidence, query execution budget/evidence, and trace-attribute definitions were traced before changing this plan. Every implementation file named by C-04c2 must be read in full in its implementation pass before editing
+files changed/created/deleted/moved: expand only the C-04c execution owner with the C-04c1 completed revision and explicit C-04c2 public-contract/engine/generated-surface boundary plus C-04c3 closure; reserve the direct-read contract/fixture/test and engine evidence-mapper paths, assign C-04 to affected first-party packages and SDK projections in the deterministic inventory generator, and regenerate its JSONL output. No implementation, runtime test, fixture, API, wire schema, generated SDK, binary, dependency, version, adapter, hook, lifecycle, or official-repository state changed
+contract or behavior changed: none. The corrected plan forbids mapping a physical key budget or selected semantic-version count into fields that claim to count a replay scan. It distinguishes normal direct reads from the explicitly allowlisted log operations that retain change terminology, requires one closed provider-neutral evidence vocabulary, names every outward projection that must change atomically with the contract, and prevents adapters from becoming a second reader or planner
+smallest test command and result: repository-wide symbol inventory found 21 already recorded rrd-engine compile errors from C-04c1 plus direct cursor-zero normal reads in retrieval_query and five vector modules. It also found the stale public terms across query, vector, context, memory, inference, router, CLI, MCP, SDK fixtures/tests, and generated TypeScript schema; diagnostic, rollback, changefeed, cluster-artifact, projection-rebuild, and recovery occurrences were classified as explicit replay owners rather than mechanically renamed
+owning package command and result: not applicable to this documentation-only trace correction; no implementation suite is counted as evidence
+cross-boundary command and result: the C-04c1 rrflowQL suite and policies passed at the immediately preceding committed revision. Deterministic inventory passed with 908 current/generated/planned records including the four reserved implementation paths; documentation policy passed with 90 statuses and 88 classified coordinates; targeted Ruff lint/format and diff integrity passed
+failure/crash/differential evidence: no new runtime evidence. Review caught the missing public/generated file closure before any C-04c2 implementation edit. Treating max_scanned_changes as max_storage_keys would have made limits and evidence semantically false; retaining both names would have created a forbidden compatibility surface. The implementation plan now requires direct replacement and complete regeneration
+not run and reason: no Cargo package, SDK, transport, Connectome, crash, deployment, benchmark, install, or release suite can qualify a documentation-only plan correction
+remaining known errors: all 21 C-04c2 compile errors and every listed normal cursor-zero retrieval/vector consumer remain until the implementation pass. C-04 through J and every alpha outcome remain open
+roadmap checkbox changed: no; C-04 remains unchecked, Gate C remains 3/7, and the C-04c2 implementation is next
 ```
 
 ### C-05 — remove alternate pre-release execution

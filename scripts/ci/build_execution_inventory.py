@@ -196,6 +196,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "H-01",
         "H-05",
     ),
+    "crates/kernel/rrd-core/src/trace.rs": ("C-04", "H-05"),
     "crates/kernel/rrd-core/tests/golden.rs": ("C-01", "J-01"),
     "crates/persistence/rrd-lsm/src/database.rs": (
         "C-02",
@@ -314,6 +315,12 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "I-06",
         "J-01",
         "J-02",
+    ),
+    "crates/transport/rrd-contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
+    "crates/authority/rrd-engine/src/runtime/read_evidence.rs": (
+        "C-04",
+        "F-04",
+        "H-05",
     ),
     "crates/authority/rrd-engine/src/engine/context.rs": (
         "G-02",
@@ -508,6 +515,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "J-03",
         "J-05",
     ),
+    "fixtures/rrd-sdk-conformance-v1.json": ("C-04", "H-04", "J-02"),
     "sdks/dotnet/Rrflow.Rrd.slnx": ("J-02", "J-03", "J-05"),
     "sdks/dotnet/scripts/generate.py": ("H-04", "J-02", "J-05"),
     "sdks/dotnet/src/Rrflow.Rrd.Client/Errors.cs": ("H-04", "J-02"),
@@ -586,7 +594,78 @@ REMOVE_OR_REWRITE = {
     "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",
 }
 
+C04_DIRECT_READ_PATHS = {
+    "crates/adapters/rrflow-cli/src/command.rs",
+    "crates/adapters/rrflow-mcp/src/authority.rs",
+    "crates/adapters/rrflow-mcp/src/main.rs",
+    "crates/adapters/rrflow-mcp/tests/stdio.rs",
+    "crates/authority/rrd-engine/src/engine/context.rs",
+    "crates/authority/rrd-engine/src/engine/data.rs",
+    "crates/authority/rrd-engine/src/engine/inference.rs",
+    "crates/authority/rrd-engine/src/engine/memory_estate.rs",
+    "crates/authority/rrd-engine/src/engine/query.rs",
+    "crates/authority/rrd-engine/src/engine/retrieval.rs",
+    "crates/authority/rrd-engine/src/engine/retrieval_query.rs",
+    "crates/authority/rrd-engine/src/engine/tests/context.rs",
+    "crates/authority/rrd-engine/src/engine/tests/data_crud.rs",
+    "crates/authority/rrd-engine/src/engine/tests/function.rs",
+    "crates/authority/rrd-engine/src/engine/tests/memory_estate.rs",
+    "crates/authority/rrd-engine/src/engine/tests/native_inference.rs",
+    "crates/authority/rrd-engine/src/engine/tests/query_transaction.rs",
+    "crates/authority/rrd-engine/src/engine/tests/recovery.rs",
+    "crates/authority/rrd-engine/src/engine/tests/security.rs",
+    "crates/authority/rrd-engine/src/engine/tests/vector_index.rs",
+    "crates/authority/rrd-engine/src/engine/transaction.rs",
+    "crates/authority/rrd-engine/src/engine/vector/collection.rs",
+    "crates/authority/rrd-engine/src/engine/vector/index.rs",
+    "crates/authority/rrd-engine/src/engine/vector/points.rs",
+    "crates/authority/rrd-engine/src/engine/vector/quantization.rs",
+    "crates/authority/rrd-engine/src/engine/vector/search.rs",
+    "crates/authority/rrd-engine/src/runtime/data_plane.rs",
+    "crates/authority/rrd-engine/src/runtime/query.rs",
+    "crates/authority/rrd-engine/tests/engine_authority.rs",
+    "crates/authority/rrd-engine/tests/runtime_query_trace.rs",
+    "crates/kernel/rrd-core/src/trace.rs",
+    "crates/transport/rrd-client/tests/real_server.rs",
+    "crates/transport/rrd-contract/fixtures/router-contract-v1.json",
+    "crates/transport/rrd-contract/fixtures/websocket-protocol-v1.json",
+    "crates/transport/rrd-contract/src/inference.rs",
+    "crates/transport/rrd-contract/src/lib.rs",
+    "crates/transport/rrd-contract/src/memory_context.rs",
+    "crates/transport/rrd-contract/src/memory_estate.rs",
+    "crates/transport/rrd-contract/src/router.rs",
+    "crates/transport/rrd-contract/tests/public_contract.rs",
+    "crates/transport/rrd-contract/tests/router_contract.rs",
+    "crates/transport/rrd-server/tests/http_process.rs",
+    "fixtures/rrd-sdk-conformance-v1.json",
+    "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/OperationId.g.cs",
+    "sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/RrdClientTests.cs",
+    "sdks/go/client_test.go",
+    "sdks/go/endpoints_gen.go",
+    "sdks/java/src/main/java/io/rrflow/rrd/OperationId.java",
+    "sdks/java/src/test/java/io/rrflow/rrd/RrdClientTest.java",
+    "sdks/python/src/rrd_client/generated/endpoints.py",
+    "sdks/python/tests/test_client.py",
+    "sdks/typescript/src/generated/endpoints.ts",
+    "sdks/typescript/src/generated/rrd-openapi.ts",
+    "sdks/typescript/tests/client.test.ts",
+}
+
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {
+    "crates/transport/rrd-contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
+    "crates/transport/rrd-contract/fixtures/read-evidence-v1.json": (
+        "C-04",
+        "H-04",
+    ),
+    "crates/transport/rrd-contract/tests/read_evidence_contract.rs": (
+        "C-04",
+        "H-04",
+    ),
+    "crates/authority/rrd-engine/src/runtime/read_evidence.rs": (
+        "C-04",
+        "F-04",
+        "H-05",
+    ),
     "crates/transport/rrd-contract/fixtures/knowledge-package-v1.json": ("KB-02",),
     "crates/transport/rrd-contract/fixtures/function-contract-v1.json": (
         "A-07",
@@ -1438,40 +1517,42 @@ def package_name(path: str) -> str | None:
 
 def planned_gates(path: str) -> tuple[str, ...]:
     if path in FILE_OVERRIDES:
-        return ("A-07", *FILE_OVERRIDES[path])
-    if path in PLANNED_PATHS:
-        return PLANNED_PATHS[path]
-    package = package_name(path)
-    if package is not None:
-        return PACKAGE_GATES.get(package, ("A-07", "J-01"))
-    if path in {"README.md", "docs/README.md"} or (
+        gates = ("A-07", *FILE_OVERRIDES[path])
+    elif path in PLANNED_PATHS:
+        gates = PLANNED_PATHS[path]
+    elif (package := package_name(path)) is not None:
+        gates = PACKAGE_GATES.get(package, ("A-07", "J-01"))
+    elif path in {"README.md", "docs/README.md"} or (
         path.startswith("docs/") and path.endswith("/README.md")
     ):
-        return ("A-06", "KB-08", "J-01")
-    if path.startswith("docs/") and len(Path(path).parts) == 2:
-        return ("KB-05", "J-01")
-    if path.startswith("docs/") or path in {
+        gates = ("A-06", "KB-08", "J-01")
+    elif path.startswith("docs/") and len(Path(path).parts) == 2:
+        gates = ("KB-05", "J-01")
+    elif path.startswith("docs/") or path in {
         "AGENTS.md",
         "CLAUDE.md",
         "GEMINI.md",
         "SPEC.md",
     }:
-        return ("A-06", "J-01")
-    if path.startswith("sdks/"):
-        return ("H-04", "J-02", "J-05")
-    if path.startswith("eval/"):
-        return ("G-06", "J-02", "J-04")
-    if path.startswith("deploy/"):
-        return ("D-07", "D-10", "J-03", "J-05")
-    if path.startswith("fixtures/"):
-        return ("B-04", "H-04", "J-02")
-    if path == "scripts/ci/check_documentation.py" or path == (
+        gates = ("A-06", "J-01")
+    elif path.startswith("sdks/"):
+        gates = ("H-04", "J-02", "J-05")
+    elif path.startswith("eval/"):
+        gates = ("G-06", "J-02", "J-04")
+    elif path.startswith("deploy/"):
+        gates = ("D-07", "D-10", "J-03", "J-05")
+    elif path.startswith("fixtures/"):
+        gates = ("B-04", "H-04", "J-02")
+    elif path == "scripts/ci/check_documentation.py" or path == (
         ".github/workflows/ci-reusable.yml"
     ):
-        return ("KB-04", "A-07", "J-01", "J-02", "J-05")
-    if path.startswith(("scripts/", ".github/")):
-        return ("A-06", "A-07", "J-01", "J-02", "J-05")
-    return ("A-07", "J-01", "J-05")
+        gates = ("KB-04", "A-07", "J-01", "J-02", "J-05")
+    elif path.startswith(("scripts/", ".github/")):
+        gates = ("A-06", "A-07", "J-01", "J-02", "J-05")
+    else:
+        gates = ("A-07", "J-01", "J-05")
+    additions = ("C-04",) if path in C04_DIRECT_READ_PATHS else ()
+    return tuple(dict.fromkeys((*gates, *additions)))
 
 
 def action(path: str) -> str:
