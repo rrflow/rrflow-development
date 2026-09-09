@@ -10,8 +10,8 @@ use crate::key_codec::{
     CatalogueSubfamily, DecodedKeyPart, KeyAddress, KeyCodec, KeyFamily, KeyPart,
 };
 use rrd_core::{
-    Millis, Predicate, ProjectionFamily, ProjectionWork, Reader, RuntimeRef, RuntimeRelation,
-    ScopeId, Subject,
+    Millis, Predicate, ProjectionFamily, ProjectionId, ProjectionWork, Reader, RuntimeRef,
+    RuntimeRelation, RuntimeValue, ScopeId, Subject,
 };
 
 pub(crate) use crate::key_codec::APPLICATION_FORMAT as RRFLOW_KV_FORMAT;
@@ -35,10 +35,18 @@ pub(crate) enum Space {
     RuntimeIncomingEdges,
     RuntimeIncomingEdgeVersions,
     RuntimeVectors,
+    RuntimeVectorVersions,
     RuntimeSeries,
     RuntimeGeo,
     RuntimeObjects,
     RuntimeProjectionDeltas,
+    RuntimeIndexSourceDeltas,
+    RuntimeVectorSourceDeltas,
+    RuntimeIndexBindings,
+    RuntimeIndexBindingVersions,
+    RuntimeIndexBindingSets,
+    RuntimeScalarEntries,
+    RuntimeUniqueEntries,
     RuntimeOutbox,
     RuntimeAudit,
     RuntimeCommits,
@@ -62,10 +70,18 @@ pub(crate) const RUNTIME_OUTGOING_EDGE_VERSIONS: Space = Space::RuntimeOutgoingE
 pub(crate) const RUNTIME_INCOMING_EDGES: Space = Space::RuntimeIncomingEdges;
 pub(crate) const RUNTIME_INCOMING_EDGE_VERSIONS: Space = Space::RuntimeIncomingEdgeVersions;
 pub(crate) const RUNTIME_VECTORS: Space = Space::RuntimeVectors;
+pub(crate) const RUNTIME_VECTOR_VERSIONS: Space = Space::RuntimeVectorVersions;
 pub(crate) const RUNTIME_SERIES: Space = Space::RuntimeSeries;
 pub(crate) const RUNTIME_GEO: Space = Space::RuntimeGeo;
 pub(crate) const RUNTIME_OBJECTS: Space = Space::RuntimeObjects;
 pub(crate) const RUNTIME_PROJECTION_DELTAS: Space = Space::RuntimeProjectionDeltas;
+pub(crate) const RUNTIME_INDEX_SOURCE_DELTAS: Space = Space::RuntimeIndexSourceDeltas;
+pub(crate) const RUNTIME_VECTOR_SOURCE_DELTAS: Space = Space::RuntimeVectorSourceDeltas;
+pub(crate) const RUNTIME_INDEX_BINDINGS: Space = Space::RuntimeIndexBindings;
+pub(crate) const RUNTIME_INDEX_BINDING_VERSIONS: Space = Space::RuntimeIndexBindingVersions;
+pub(crate) const RUNTIME_INDEX_BINDING_SETS: Space = Space::RuntimeIndexBindingSets;
+pub(crate) const RUNTIME_SCALAR_ENTRIES: Space = Space::RuntimeScalarEntries;
+pub(crate) const RUNTIME_UNIQUE_ENTRIES: Space = Space::RuntimeUniqueEntries;
 pub(crate) const RUNTIME_OUTBOX: Space = Space::RuntimeOutbox;
 pub(crate) const RUNTIME_AUDIT: Space = Space::RuntimeAudit;
 pub(crate) const RUNTIME_COMMITS: Space = Space::RuntimeCommits;
@@ -81,18 +97,25 @@ impl Space {
             | Self::RuntimeRelationVersions => KeyFamily::Temporal,
             Self::Access | Self::RuntimeAudit => KeyFamily::Audit,
             Self::System => KeyFamily::System,
-            Self::Invocations | Self::RuntimeSchemas | Self::RuntimeSnapshots => {
-                KeyFamily::Catalogue
-            }
-            Self::Projections => KeyFamily::ProjectionDelta,
-            Self::RuntimeProjectionDeltas => KeyFamily::ProjectionDelta,
+            Self::Invocations
+            | Self::RuntimeSchemas
+            | Self::RuntimeSnapshots
+            | Self::RuntimeIndexBindings
+            | Self::RuntimeIndexBindingVersions
+            | Self::RuntimeIndexBindingSets => KeyFamily::Catalogue,
+            Self::Projections
+            | Self::RuntimeProjectionDeltas
+            | Self::RuntimeIndexSourceDeltas
+            | Self::RuntimeVectorSourceDeltas => KeyFamily::ProjectionDelta,
             Self::RuntimeChanges => KeyFamily::EngineEvent,
             Self::RuntimeRecords
             | Self::RuntimeRelations
             | Self::RuntimeSeries
             | Self::RuntimeGeo
             | Self::RuntimeObjects => KeyFamily::Current,
-            Self::RuntimeVectors => KeyFamily::Vector,
+            Self::RuntimeVectors | Self::RuntimeVectorVersions => KeyFamily::Vector,
+            Self::RuntimeScalarEntries => KeyFamily::Scalar,
+            Self::RuntimeUniqueEntries => KeyFamily::Unique,
             Self::RuntimeOutgoingEdges | Self::RuntimeOutgoingEdgeVersions => {
                 KeyFamily::OutgoingEdge
             }
@@ -117,8 +140,13 @@ impl Space {
             Self::Invocations => CatalogueSubfamily::InvocationReceipt as u8,
             Self::RuntimeSchemas => 0x20,
             Self::RuntimeSnapshots => 0x21,
+            Self::RuntimeIndexBindings => 0x30,
+            Self::RuntimeIndexBindingVersions => 0x31,
+            Self::RuntimeIndexBindingSets => 0x32,
             Self::Projections => 0x01,
             Self::RuntimeProjectionDeltas => 0x02,
+            Self::RuntimeIndexSourceDeltas => 0x03,
+            Self::RuntimeVectorSourceDeltas => 0x04,
             Self::RuntimeChanges => 0x01,
             Self::RuntimeRecords => 0x01,
             Self::RuntimeRelations => 0x02,
@@ -126,6 +154,8 @@ impl Space {
             Self::RuntimeGeo => 0x04,
             Self::RuntimeObjects => 0x05,
             Self::RuntimeVectors => 0x01,
+            Self::RuntimeVectorVersions => 0x02,
+            Self::RuntimeScalarEntries | Self::RuntimeUniqueEntries => 0x01,
             Self::RuntimeOutgoingEdges | Self::RuntimeIncomingEdges => 0x01,
             Self::RuntimeOutgoingEdgeVersions | Self::RuntimeIncomingEdgeVersions => 0x02,
             Self::RuntimeOutbox => 0x01,
@@ -427,6 +457,212 @@ pub(crate) fn runtime_projection_delta_start(cursor: u64) -> Vec<u8> {
     encode(RUNTIME_PROJECTION_DELTAS, &[KeyPart::U64(cursor)])
 }
 
+pub(crate) fn runtime_index_binding_key(scope: &ScopeId, index: &ProjectionId) -> Vec<u8> {
+    encode(
+        RUNTIME_INDEX_BINDINGS,
+        &[KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())],
+    )
+}
+
+pub(crate) fn runtime_index_binding_scope_prefix(scope: &ScopeId) -> Vec<u8> {
+    encode(RUNTIME_INDEX_BINDINGS, &[KeyPart::Text(scope.as_str())])
+}
+
+pub(crate) fn runtime_index_binding_set_key(scope: &ScopeId) -> Vec<u8> {
+    encode(RUNTIME_INDEX_BINDING_SETS, &[KeyPart::Text(scope.as_str())])
+}
+
+pub(crate) fn runtime_index_binding_version_key(
+    scope: &ScopeId,
+    index: &ProjectionId,
+    catalogue_revision: u64,
+    schema_revision: u64,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_INDEX_BINDING_VERSIONS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(index.as_str()),
+            KeyPart::U64(catalogue_revision),
+            KeyPart::U64(schema_revision),
+        ],
+    )
+}
+
+pub(crate) fn runtime_index_entry_prefix(
+    space: Space,
+    scope: &ScopeId,
+    index: &ProjectionId,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeScalarEntries | Space::RuntimeUniqueEntries
+    ));
+    encode(
+        space,
+        &[KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())],
+    )
+}
+
+pub(crate) fn runtime_index_value_prefix<'a>(
+    space: Space,
+    scope: &'a ScopeId,
+    index: &'a ProjectionId,
+    values: &'a [RuntimeValue],
+) -> Result<Vec<u8>> {
+    let mut parts = vec![KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())];
+    append_index_values(&mut parts, values)?;
+    Ok(encode(space, &parts))
+}
+
+pub(crate) fn runtime_index_entry_key<'a>(
+    space: Space,
+    scope: &'a ScopeId,
+    index: &'a ProjectionId,
+    values: &'a [RuntimeValue],
+    reference: &'a RuntimeRef,
+    valid_from: Millis,
+) -> Result<Vec<u8>> {
+    let mut parts = vec![KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())];
+    append_index_values(&mut parts, values)?;
+    parts.extend([
+        KeyPart::Text(reference.kind.as_str()),
+        KeyPart::Text(reference.id.as_str()),
+        KeyPart::DescU64(valid_from),
+    ]);
+    Ok(encode(space, &parts))
+}
+
+fn append_index_values<'a>(parts: &mut Vec<KeyPart<'a>>, values: &'a [RuntimeValue]) -> Result<()> {
+    for value in values {
+        match value {
+            RuntimeValue::Null => parts.push(KeyPart::U8(0)),
+            RuntimeValue::Bool(value) => {
+                parts.extend([KeyPart::U8(1), KeyPart::Bool(*value)]);
+            }
+            RuntimeValue::Integer(value) => {
+                parts.extend([KeyPart::U8(2), KeyPart::I64(*value)]);
+            }
+            RuntimeValue::Unsigned(value) => {
+                parts.extend([KeyPart::U8(3), KeyPart::U64(*value)]);
+            }
+            RuntimeValue::Decimal(value) => {
+                parts.extend([KeyPart::U8(4), KeyPart::Text(value)]);
+            }
+            RuntimeValue::String(value) => {
+                parts.extend([KeyPart::U8(5), KeyPart::Text(value)]);
+            }
+            RuntimeValue::Digest(value) => {
+                parts.extend([KeyPart::U8(6), KeyPart::Text(value)]);
+            }
+            RuntimeValue::List(_) | RuntimeValue::Map(_) => {
+                return Err(Error::Codec(
+                    "scalar index keys cannot contain list or map values".into(),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn runtime_index_source_delta_key(
+    scope: &ScopeId,
+    index: &ProjectionId,
+    cursor: u64,
+    ordinal: u64,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_INDEX_SOURCE_DELTAS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(index.as_str()),
+            KeyPart::U64(cursor),
+            KeyPart::U64(ordinal),
+        ],
+    )
+}
+
+pub(crate) fn runtime_index_source_delta_start(
+    scope: &ScopeId,
+    index: &ProjectionId,
+    cursor: u64,
+) -> Vec<u8> {
+    runtime_index_source_delta_key(scope, index, cursor, 0)
+}
+
+pub(crate) fn runtime_index_source_delta_prefix(scope: &ScopeId, index: &ProjectionId) -> Vec<u8> {
+    encode(
+        RUNTIME_INDEX_SOURCE_DELTAS,
+        &[KeyPart::Text(scope.as_str()), KeyPart::Text(index.as_str())],
+    )
+}
+
+pub(crate) fn runtime_vector_version_key(
+    scope: &ScopeId,
+    reference: &RuntimeRef,
+    effective_at: Millis,
+    cursor: u64,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_VECTOR_VERSIONS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(reference.kind.as_str()),
+            KeyPart::Text(reference.id.as_str()),
+            KeyPart::DescU64(effective_at),
+            KeyPart::DescU64(cursor),
+        ],
+    )
+}
+
+pub(crate) fn runtime_vector_source_delta_key(
+    scope: &ScopeId,
+    collection_id: Option<&str>,
+    vector_name: Option<&str>,
+    field: &str,
+    cursor: u64,
+    ordinal: u64,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_VECTOR_SOURCE_DELTAS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(collection_id.unwrap_or("")),
+            KeyPart::Text(vector_name.unwrap_or("")),
+            KeyPart::Text(field),
+            KeyPart::U64(cursor),
+            KeyPart::U64(ordinal),
+        ],
+    )
+}
+
+pub(crate) fn runtime_vector_source_delta_start(
+    scope: &ScopeId,
+    collection_id: Option<&str>,
+    vector_name: Option<&str>,
+    field: &str,
+    cursor: u64,
+) -> Vec<u8> {
+    runtime_vector_source_delta_key(scope, collection_id, vector_name, field, cursor, 0)
+}
+
+pub(crate) fn runtime_vector_source_delta_prefix(
+    scope: &ScopeId,
+    collection_id: Option<&str>,
+    vector_name: Option<&str>,
+    field: &str,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_VECTOR_SOURCE_DELTAS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(collection_id.unwrap_or("")),
+            KeyPart::Text(vector_name.unwrap_or("")),
+            KeyPart::Text(field),
+        ],
+    )
+}
+
 fn projection_family_tag(family: ProjectionFamily) -> u8 {
     match family {
         ProjectionFamily::Scalar => 0,
@@ -613,10 +849,18 @@ mod tests {
             RUNTIME_INCOMING_EDGES,
             RUNTIME_INCOMING_EDGE_VERSIONS,
             RUNTIME_VECTORS,
+            RUNTIME_VECTOR_VERSIONS,
             RUNTIME_SERIES,
             RUNTIME_GEO,
             RUNTIME_OBJECTS,
             RUNTIME_PROJECTION_DELTAS,
+            RUNTIME_INDEX_SOURCE_DELTAS,
+            RUNTIME_VECTOR_SOURCE_DELTAS,
+            RUNTIME_INDEX_BINDINGS,
+            RUNTIME_INDEX_BINDING_VERSIONS,
+            RUNTIME_INDEX_BINDING_SETS,
+            RUNTIME_SCALAR_ENTRIES,
+            RUNTIME_UNIQUE_ENTRIES,
             RUNTIME_OUTBOX,
             RUNTIME_AUDIT,
             RUNTIME_COMMITS,
@@ -748,6 +992,64 @@ mod tests {
                 100,
                 8,
             )
+        );
+    }
+
+    #[test]
+    fn native_index_and_vector_delta_keys_are_typed_ordered_and_source_isolated() {
+        let scope = ScopeId::new("project:index-key-order").unwrap();
+        let index = ProjectionId::new("by-score").unwrap();
+        let reference = RuntimeRef::new("document", "alpha").unwrap();
+        let negative = vec![RuntimeValue::Integer(-7)];
+        let positive = vec![RuntimeValue::Integer(9)];
+        let negative_key = runtime_index_entry_key(
+            RUNTIME_SCALAR_ENTRIES,
+            &scope,
+            &index,
+            &negative,
+            &reference,
+            10,
+        )
+        .unwrap();
+        let positive_key = runtime_index_entry_key(
+            RUNTIME_SCALAR_ENTRIES,
+            &scope,
+            &index,
+            &positive,
+            &reference,
+            10,
+        )
+        .unwrap();
+        assert!(negative_key < positive_key);
+
+        let unique_prefix =
+            runtime_index_value_prefix(RUNTIME_UNIQUE_ENTRIES, &scope, &index, &positive).unwrap();
+        let unique_key = runtime_index_entry_key(
+            RUNTIME_UNIQUE_ENTRIES,
+            &scope,
+            &index,
+            &positive,
+            &reference,
+            10,
+        )
+        .unwrap();
+        assert!(unique_key.starts_with(&unique_prefix));
+        assert!(
+            runtime_index_source_delta_key(&scope, &index, 9, 0)
+                < runtime_index_source_delta_key(&scope, &index, 10, 0)
+        );
+        assert!(
+            runtime_vector_version_key(&scope, &reference, 20, 9)
+                < runtime_vector_version_key(&scope, &reference, 10, 8)
+        );
+        assert_ne!(
+            runtime_vector_source_delta_prefix(
+                &scope,
+                Some("documents"),
+                Some("semantic"),
+                "title",
+            ),
+            runtime_vector_source_delta_prefix(&scope, Some("archive"), Some("semantic"), "title",)
         );
     }
 }

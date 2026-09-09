@@ -29,7 +29,12 @@ mod s3;
 mod transaction;
 mod writer;
 
-pub use access::SemanticCommitPlan;
+pub use access::{
+    IndexCommitBindingDefinition, IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow,
+    SemanticCommitPlan, VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
+    INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
+    VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
+};
 pub use archive::{
     export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,
     restore_logical_archive_to_new_root, restore_logical_archive_to_new_root_with,

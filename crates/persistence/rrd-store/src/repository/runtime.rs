@@ -1,10 +1,12 @@
-use crate::access::prepare_semantic_commit;
 use crate::access::runtime_state::{
     authenticated_point_page, change_page, checked_key, get, get_json, read_sequence,
     read_stamp_with, scan_space, scan_space_from, validate_read_stamp,
 };
+use crate::access::{index_source_deltas, prepare_semantic_commit, vector_source_deltas};
 use crate::keyspaces::{self, Durability};
-use crate::{Error, Result, StorageEngine};
+use crate::{
+    Error, IndexSourceDelta, Result, StorageEngine, VectorSourceAddress, VectorSourceDelta,
+};
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
     RetentionPin, RuntimeChange, RuntimeChangePage, RuntimeCommit, RuntimeCommitOutcome,
@@ -297,6 +299,34 @@ impl<'a> RuntimeRepository<'a> {
                 Ok(work)
             })
             .collect()
+    }
+
+    /// Exact old/new record fields committed for one schema-bound native
+    /// index. Consumers checkpoint `source_cursor`; they never replay the full
+    /// runtime log to infer maintenance work.
+    pub fn index_source_deltas_since(
+        &self,
+        scope: &ScopeId,
+        index: &rrd_core::ProjectionId,
+        after: u64,
+        limit: usize,
+    ) -> Result<Vec<IndexSourceDelta>> {
+        let transaction = self.storage.begin_transaction()?;
+        index_source_deltas(&*transaction, scope, index, after, limit)
+    }
+
+    /// Exact vector-version pointer changes for one collection/name/field
+    /// source. Accelerator builders consume this stream outside the commit
+    /// path and publish only through their own verified gate.
+    pub fn vector_source_deltas_since(
+        &self,
+        scope: &ScopeId,
+        source: &VectorSourceAddress,
+        after: u64,
+        limit: usize,
+    ) -> Result<Vec<VectorSourceDelta>> {
+        let transaction = self.storage.begin_transaction()?;
+        vector_source_deltas(&*transaction, scope, source, after, limit)
     }
 
     pub fn audit(&self, commit_id: &str) -> Result<Option<AuditEnvelope>> {

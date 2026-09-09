@@ -95,6 +95,51 @@ pub(crate) fn scan_space(
     reader.scan_range(&start, &end, usize::MAX)
 }
 
+pub(crate) fn scan_space_bounded(
+    reader: &(impl AccessRead + ?Sized),
+    space: Space,
+    prefix: &[u8],
+    limit: usize,
+) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+    if limit == 0 {
+        return Err(Error::Substrate(
+            "canonical key-prefix scan limit must be greater than zero".into(),
+        ));
+    }
+    let start = if prefix.is_empty() {
+        keyspaces::space_prefix(space)
+    } else {
+        checked_key(space, prefix)?
+    };
+    let end = prefix_end(&start)
+        .ok_or_else(|| Error::Substrate("canonical key prefix has no upper bound".into()))?;
+    reader.scan_range(&start, &end, limit)
+}
+
+pub(crate) fn scan_space_bounded_from(
+    reader: &(impl AccessRead + ?Sized),
+    space: Space,
+    prefix: &[u8],
+    from: &[u8],
+    limit: usize,
+) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+    if limit == 0 {
+        return Err(Error::Substrate(
+            "canonical key-prefix scan limit must be greater than zero".into(),
+        ));
+    }
+    let prefix = checked_key(space, prefix)?;
+    let from = checked_key(space, from)?;
+    let end = prefix_end(&prefix)
+        .ok_or_else(|| Error::Substrate("canonical key prefix has no upper bound".into()))?;
+    if from < prefix || from >= end {
+        return Err(Error::Substrate(
+            "canonical range start escaped its key prefix".into(),
+        ));
+    }
+    reader.scan_range(&from, &end, limit)
+}
+
 pub(crate) fn scan_space_from(
     reader: &(impl AccessRead + ?Sized),
     space: Space,

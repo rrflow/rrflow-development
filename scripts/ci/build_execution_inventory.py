@@ -939,6 +939,12 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/persistence/rrd-store/tests/key_codec.rs": ("C-01",),
     "crates/persistence/rrd-store/tests/storage_profile_conformance.rs": ("C-02",),
     "crates/persistence/rrd-store/tests/semantic_commit_atomicity.rs": ("C-03",),
+    "crates/persistence/rrd-store/tests/native_index_commit.rs": (
+        "C-03",
+        "E-02",
+        "E-03",
+        "E-04",
+    ),
     "crates/persistence/rrd-store/tests/direct_read_paths.rs": ("C-04",),
     "crates/persistence/rrd-store/src/access/mod.rs": ("C-03", "C-04"),
     "crates/persistence/rrd-store/src/access/runtime_state.rs": ("C-03", "C-04"),

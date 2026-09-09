@@ -1,16 +1,24 @@
 use crate::access::runtime_state::{
     checked_key, get, put_sequence, read_sequence, scan_space_from,
 };
+use crate::access::synchronize_index_commit_bindings;
 use crate::control::{
     validate_control_batch, validate_control_key, verify_control_page, verify_control_tail,
     ControlJournalEntry, ControlTransition,
 };
 use crate::key_codec::KeyCodec;
 use crate::keyspaces::{self, Durability};
-use crate::{Error, Result, StorageEngine};
-use rrd_core::ScopeId;
+use crate::{Error, IndexCommitBindingDefinition, Result, StorageEngine};
+use rrd_core::{digest, ScopeId};
 
 const CONTROL_TRANSACTION_ATTEMPTS: usize = 16;
+const INDEX_CATALOGUE_CONTROL_PREFIX: &str = "server/state/index-catalogue/";
+
+struct IndexBindingProjection<'a> {
+    expected_schema_revision: u64,
+    definitions: &'a [IndexCommitBindingDefinition],
+    source_control_sha256: String,
+}
 
 /// Materialized control state and its hash-chained journal over one storage
 /// transaction authority.
@@ -34,7 +42,8 @@ impl<'a> ControlRepository<'a> {
     }
 
     pub fn commit(&self, transition: &ControlTransition) -> Result<ControlJournalEntry> {
-        self.commit_one(transition, None).map(|(_, entry)| entry)
+        self.commit_one(transition, None, None)
+            .map(|(_, entry)| entry)
     }
 
     pub fn commit_catalog(
@@ -42,9 +51,41 @@ impl<'a> ControlRepository<'a> {
         scope: &ScopeId,
         transition: &ControlTransition,
     ) -> Result<(u64, ControlJournalEntry)> {
-        let (revision, entry) = self.commit_one(transition, Some(scope))?;
+        let (revision, entry) = self.commit_one(transition, Some(scope), None)?;
         Ok((
             revision.expect("catalogue transition assigns a revision"),
+            entry,
+        ))
+    }
+
+    /// Commits the authoritative rrflowQL catalogue replacement and its
+    /// storage-facing derived bindings in one physical transaction.
+    pub fn commit_catalog_with_index_bindings(
+        &self,
+        scope: &ScopeId,
+        expected_schema_revision: u64,
+        transition: &ControlTransition,
+        definitions: &[IndexCommitBindingDefinition],
+    ) -> Result<(u64, ControlJournalEntry)> {
+        let expected_key = format!("{INDEX_CATALOGUE_CONTROL_PREFIX}{scope}");
+        if transition.key != expected_key {
+            return Err(Error::IndexConstraint(
+                "index commit bindings require the scope's canonical index catalogue key".into(),
+            ));
+        }
+        let replacement = transition.replacement.as_ref().ok_or_else(|| {
+            Error::IndexConstraint(
+                "index catalogue binding transition requires replacement bytes".into(),
+            )
+        })?;
+        let projection = IndexBindingProjection {
+            expected_schema_revision,
+            definitions,
+            source_control_sha256: digest::sha256_hex(replacement),
+        };
+        let (revision, entry) = self.commit_one(transition, Some(scope), Some(&projection))?;
+        Ok((
+            revision.expect("index catalogue transition assigns a revision"),
             entry,
         ))
     }
@@ -53,10 +94,11 @@ impl<'a> ControlRepository<'a> {
         &self,
         transition: &ControlTransition,
         catalog_scope: Option<&ScopeId>,
+        index_bindings: Option<&IndexBindingProjection<'_>>,
     ) -> Result<(Option<u64>, ControlJournalEntry)> {
         transition.validate()?;
         for _ in 0..CONTROL_TRANSACTION_ATTEMPTS {
-            match self.commit_one_attempt(transition, catalog_scope) {
+            match self.commit_one_attempt(transition, catalog_scope, index_bindings) {
                 Err(Error::TransactionConflict { .. }) => continue,
                 result => return result,
             }
@@ -70,6 +112,7 @@ impl<'a> ControlRepository<'a> {
         &self,
         transition: &ControlTransition,
         catalog_scope: Option<&ScopeId>,
+        index_bindings: Option<&IndexBindingProjection<'_>>,
     ) -> Result<(Option<u64>, ControlJournalEntry)> {
         let mut transaction = self.storage.begin_transaction()?;
         let record_key = keyspaces::control_record_key(&transition.key);
@@ -119,6 +162,17 @@ impl<'a> ControlRepository<'a> {
                 transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
             }
             None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
+        }
+        if let Some(projection) = index_bindings {
+            synchronize_index_commit_bindings(
+                &mut *transaction,
+                catalog_scope.expect("index binding projection has a catalogue scope"),
+                projection.expected_schema_revision,
+                catalog_revision.expect("index binding projection has a catalogue revision"),
+                &transition.key,
+                &projection.source_control_sha256,
+                projection.definitions,
+            )?;
         }
         transaction.put(
             checked_key(keyspaces::META, &keyspaces::control_journal_key(sequence))?,

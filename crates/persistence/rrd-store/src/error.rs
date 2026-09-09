@@ -40,6 +40,8 @@ pub enum Error {
     RuntimeSchemaMissing(String),
     /// A schema update skipped or repeated a persisted revision.
     RuntimeSchemaConflict { expected: u64, actual: u64 },
+    /// A schema-bound native index rejected an invalid definition or write.
+    IndexConstraint(String),
     /// A leased snapshot is not present in the authoritative snapshot catalog.
     SnapshotNotFound(String),
     /// A leased snapshot was presented after its expiration instant.
@@ -108,6 +110,7 @@ impl fmt::Display for Error {
                 f,
                 "runtime schema conflict: expected revision {expected}, actual revision {actual}"
             ),
+            Error::IndexConstraint(message) => write!(f, "index constraint: {message}"),
             Error::SnapshotNotFound(id) => write!(f, "runtime snapshot not found: {id}"),
             Error::SnapshotExpired { id, expired_at } => {
                 write!(f, "runtime snapshot {id} expired at {expired_at}")

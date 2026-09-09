@@ -58,12 +58,17 @@ impl SemanticCommitPlan {
         (self.outcome, self.writes)
     }
 
-    fn put_bytes(&mut self, space: Space, key: &[u8], value: Vec<u8>) -> Result<()> {
+    pub(crate) fn put_bytes(&mut self, space: Space, key: &[u8], value: Vec<u8>) -> Result<()> {
         self.writes.insert(checked_key(space, key)?, Some(value));
         Ok(())
     }
 
-    fn put_json<T: serde::Serialize>(&mut self, space: Space, key: &[u8], value: &T) -> Result<()> {
+    pub(crate) fn put_json<T: serde::Serialize>(
+        &mut self,
+        space: Space,
+        key: &[u8],
+        value: &T,
+    ) -> Result<()> {
         self.put_bytes(space, key, serde_json::to_vec(value)?)
     }
 
@@ -71,7 +76,7 @@ impl SemanticCommitPlan {
         self.put_bytes(keyspaces::META, key, sequence.to_string().into_bytes())
     }
 
-    fn delete(&mut self, space: Space, key: &[u8]) -> Result<()> {
+    pub(crate) fn delete(&mut self, space: Space, key: &[u8]) -> Result<()> {
         self.writes.insert(checked_key(space, key)?, None);
         Ok(())
     }
@@ -108,8 +113,10 @@ pub(crate) fn prepare_semantic_commit(
     }
     let (mut accumulator, bootstrap_nodes) = accumulator_with(reader, start)?;
     validate_retirement_targets(reader, commit, start)?;
-    validate_schema_and_objects(reader, commit)?;
+    let effective_schema = validate_schema_and_objects(reader, commit)?;
     validate_references(reader, commit)?;
+    let catalogue_revision =
+        read_sequence(reader, &keyspaces::catalog_revision_key(&commit.scope))?;
 
     let claim_count = commit
         .mutations
@@ -232,6 +239,18 @@ pub(crate) fn prepare_semantic_commit(
         previous_digest = Some(change.digest);
     }
 
+    if let Some(schema) = effective_schema.as_ref() {
+        super::encode_record_index_effects(
+            reader,
+            &mut plan,
+            commit,
+            schema,
+            catalogue_revision,
+            start,
+        )?;
+    }
+    super::encode_vector_source_effects(reader, &mut plan, commit, start)?;
+
     if claim_count > 0 {
         plan.put_sequence(&keyspaces::sequence_watermark_key(), claim_sequence)?;
     }
@@ -246,12 +265,13 @@ pub(crate) fn prepare_semantic_commit(
         &keyspaces::runtime_accumulator_state_key(),
         &accumulator,
     )?;
-    if let Some(read) = read {
-        plan.put_sequence(
-            &keyspaces::catalog_revision_key(&read.scope),
-            read.catalog_revision,
-        )?;
-    }
+    // Every semantic transaction writes the catalogue watermark it observed.
+    // A concurrent catalogue transition therefore conflicts at physical
+    // commit even for internal callers that did not supply a ReadStamp.
+    plan.put_sequence(
+        &keyspaces::catalog_revision_key(&commit.scope),
+        catalogue_revision,
+    )?;
 
     let audit_read = archived_audit
         .and_then(|audit| audit.read.as_ref())
@@ -301,7 +321,7 @@ pub(crate) fn prepare_semantic_commit(
 fn validate_schema_and_objects(
     reader: &(impl AccessRead + ?Sized),
     commit: &RuntimeCommit,
-) -> Result<()> {
+) -> Result<Option<RuntimeSchemaRegistry>> {
     let previous_schema: Option<RuntimeSchemaRegistry> = get_json(
         reader,
         keyspaces::RUNTIME_SCHEMAS,
@@ -318,7 +338,7 @@ fn validate_schema_and_objects(
             .iter()
             .all(|mutation| matches!(mutation, RuntimeMutation::Claim { .. }));
     if schema_free_claims {
-        return Ok(());
+        return Ok(None);
     }
     let effective_schema = match (previous_schema.as_ref(), proposed_schema) {
         (None, Some(registry)) if registry.revision == 1 => registry,
@@ -359,7 +379,7 @@ fn validate_schema_and_objects(
         Vec::new()
     };
     effective_schema.validate_objects(&commit.mutations, &existing_records, &existing_relations)?;
-    Ok(())
+    Ok(Some(effective_schema.clone()))
 }
 
 fn validate_references(reader: &(impl AccessRead + ?Sized), commit: &RuntimeCommit) -> Result<()> {
@@ -545,15 +565,9 @@ fn encode_domain_effect(
             staged_relations.insert(relation.reference.clone(), Some(relation.clone()));
             Ok(())
         }
-        RuntimeMutation::Vector { vector } => plan.put_json(
-            keyspaces::RUNTIME_VECTORS,
-            &keyspaces::runtime_identity_key(
-                keyspaces::RUNTIME_VECTORS,
-                &commit.scope,
-                &vector.reference,
-            ),
-            vector,
-        ),
+        RuntimeMutation::Vector { vector } => {
+            super::encode_vector_version(plan, &commit.scope, vector, change)
+        }
         RuntimeMutation::SeriesSample { sample } => plan.put_json(
             keyspaces::RUNTIME_SERIES,
             &keyspaces::runtime_identity_key(
@@ -630,7 +644,16 @@ fn encode_domain_effect(
                     }
                     Some(keyspaces::RUNTIME_RELATIONS)
                 }
-                rrd_core::RuntimeLogicalModel::Vector => Some(keyspaces::RUNTIME_VECTORS),
+                rrd_core::RuntimeLogicalModel::Vector => {
+                    super::encode_vector_retirement(
+                        plan,
+                        &commit.scope,
+                        &retirement.reference,
+                        retirement.effective_at,
+                        change,
+                    )?;
+                    None
+                }
                 rrd_core::RuntimeLogicalModel::TimeSeries => Some(keyspaces::RUNTIME_SERIES),
                 rrd_core::RuntimeLogicalModel::Geo => Some(keyspaces::RUNTIME_GEO),
                 rrd_core::RuntimeLogicalModel::Object => Some(keyspaces::RUNTIME_OBJECTS),

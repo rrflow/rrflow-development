@@ -5,9 +5,9 @@ use rrd_core::{
     RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_query::{
-    bind, execute, plan, validate_unique_indexes, Bm25Config, Catalog, ComparisonOperator, Error,
-    ExecutionBudget, Filter, IndexArtifact, IndexArtifactPublication, IndexCatalogueRepository,
-    IndexDefinition, IndexKind, IndexMutationContext, Parameters, ValueExpr,
+    bind, execute, plan, Bm25Config, Catalog, ComparisonOperator, Error, ExecutionBudget, Filter,
+    IndexArtifact, IndexArtifactPublication, IndexCatalogueRepository, IndexDefinition, IndexKind,
+    IndexMutationContext, Parameters, ValueExpr,
 };
 use rrd_query::{parse, Source};
 use rrd_store::{Durability, RrflowKvStore, RrflowMxStore, StorageEngine};
@@ -629,10 +629,13 @@ fn compound_unique_constraint_rejects_a_prospective_commit_even_when_index_is_st
         },
     )
     .unwrap();
+    let cursor_before = read.commit_cursor;
     assert!(matches!(
-        validate_unique_indexes(&engine, &transaction, 20),
-        Err(Error::Catalog(message)) if message.contains("rejects overlapping duplicate records")
+        engine.runtime().commit_data_transaction(&transaction),
+        Err(rrd_store::Error::IndexConstraint(message))
+            if message.contains("rejects overlapping duplicate records")
     ));
+    assert_eq!(engine.runtime().cursor().unwrap(), cursor_before);
 }
 
 #[test]

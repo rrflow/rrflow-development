@@ -4,8 +4,25 @@
 //! of canonical semantic write plans. It does not authenticate,
 //! authorize, select a storage profile, or publish a transaction.
 
+mod index;
 pub(crate) mod runtime_state;
 mod semantic_commit;
+mod vector;
 
+pub(crate) use index::{
+    encode_record_index_effects, index_source_deltas, synchronize_index_commit_bindings,
+};
+pub use index::{
+    IndexCommitBindingDefinition, IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow,
+    INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
+};
 pub(crate) use semantic_commit::prepare_semantic_commit;
 pub use semantic_commit::SemanticCommitPlan;
+pub(crate) use vector::{
+    encode_vector_retirement, encode_vector_source_effects, encode_vector_version,
+    vector_source_deltas,
+};
+pub use vector::{
+    VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
+    VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
+};

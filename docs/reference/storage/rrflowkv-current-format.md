@@ -103,6 +103,44 @@ The frozen top-level family bytes are:
 | `0x17` | term statistic | `0x20` | system |
 | `0x18` | term posting |  |  |
 
+The C-03 semantic writer currently assigns these implemented subspaces. The
+tuple fields shown are logical typed components encoded by `KeyCodec`; they are
+not delimiter-concatenated strings.
+
+| Family | Subspace | Current key purpose |
+|---|---:|---|
+| catalogue | `0x20` / `0x21` | current runtime schema / retained runtime snapshot |
+| catalogue | `0x30` / `0x31` / `0x32` | current schema-bound index commit binding / immutable binding revision / scope-level binding-set integrity head |
+| scalar | `0x01` | current non-unique scalar entry keyed by scope, index, typed values, record, and descending valid-from |
+| unique | `0x01` | current unique-window entry with the same typed value and record coordinates |
+| vector | `0x01` / `0x02` | current vector head with commit coordinate / immutable temporal vector change |
+| projection delta | `0x02` | generic projection work identity committed with its source mutation |
+| projection delta | `0x03` | schema/catalogue/digest-bound scalar or BM25 old/new record fields |
+| projection delta | `0x04` | vector-source old/new immutable-version pointers; no HNSW bytes |
+
+An rrflowQL index-catalogue replacement and its commit bindings are written by
+one control transaction. Installing or changing a scalar binding performs a
+bounded current-record backfill; a unique binding rejects overlapping
+non-null value windows before either the catalogue or entries publish. Later
+record replacement or retirement removes the exact old scalar/unique key,
+writes the exact new key when present, and records one materializer delta in
+the semantic transaction. The binding-set head pins the complete projected
+definition digest to the exact canonical catalogue bytes. A missing, partial,
+or generically replaced projection therefore fails the next semantic commit
+closed instead of silently bypassing an index constraint. The transaction also
+rewrites the catalogue watermark value it observed, so a concurrent catalogue
+transition conflicts at physical commit rather than publishing data under an
+unobserved definition.
+
+Current vector values are stored as heads containing the exact source commit
+coordinate. Every vector insert, replacement, or retirement also writes a
+temporal version plus source-specific pointer delta in the same semantic
+batch. BM25 term dictionaries/postings, exact-vector access, TurboQuant, and
+HNSW generations are not constructed here; Gates E-03 and E-04 consume the
+committed deltas and must prove their independent publication and exact
+fallback behavior. These current values remain JSON row encodings inside the
+v3 row segment and do not qualify the C-06 Arrow-compatible target.
+
 Catalogue subfamilies separately address function artifacts, definitions,
 transaction bindings, membership revisions, the compare-and-swap head, and
 invocation receipts. Artifact bytes remain values addressed by digest; they
@@ -293,6 +331,7 @@ Run focused contract evidence before the package suite:
 
 ```bash
 cargo test -p rrd-store --test key_codec --locked
+cargo test -p rrd-store --test native_index_commit --locked
 cargo test -p rrd-store --locked
 cargo test -p rrd-lsm --test mvcc batch_codec_is_canonical_strict_and_frozen -- --exact
 cargo test -p rrd-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_truncates_it -- --exact
@@ -304,11 +343,14 @@ cargo test -p rrd-lsm
 
 The key-codec tests prove C-01's ordered application-key contract, frozen bytes,
 strict malformed-key rejection, real-store persistence, and close/reopen
-readback. They do not prove C-02 transaction parity, C-03 multi-model atomicity,
-or native index access. The lower-level tests prove the present object format
-only. C-05 requires removal evidence for every pre-1.0 batch, manifest, and
-segment reader and continued absence of alternate stores. C-06 requires new
-vectors, property and crash tests, and fixed-hardware comparison for the hybrid
+readback. The native-index test proves the C-03b insert, replacement,
+retirement, unique-conflict, catalogue-drift rejection, source-delta,
+rrflowMX/rrflowKV differential, and rrflowKV-reopen slice; it does not close
+C-03 or qualify Gate E read paths and materializers. The lower-level tests
+prove the present object format only.
+C-05 requires removal evidence for every pre-1.0 batch, manifest, and segment
+reader and continued absence of alternate stores. C-06 requires new vectors,
+property and crash tests, and fixed-hardware comparison for the hybrid
 Arrow-compatible target. Gate F requires streamed
 projection/predicate/budget counters through DataFusion. Passing this suite
 cannot close any of those gates by itself.

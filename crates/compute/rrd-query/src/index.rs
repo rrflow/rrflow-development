@@ -4,10 +4,13 @@ use crate::{
 };
 use crate::{CursorExpr, Filter, Projection, Query, Source, TemporalSelector, TimeExpr};
 use rrd_core::{
-    digest, DataTransaction, ProjectionId, ProjectionStamp, ProjectionState, ReadStamp,
-    RuntimeMutation, RuntimeRecord, RuntimeValue, ScopeId, DATA_RUNTIME_CONTRACT_VERSION,
+    digest, ProjectionId, ProjectionStamp, ProjectionState, RuntimeValue, ScopeId,
+    DATA_RUNTIME_CONTRACT_VERSION,
 };
-use rrd_store::{ControlTransition, Durability, StorageEngine};
+use rrd_store::{
+    ControlTransition, Durability, IndexCommitBindingDefinition, IndexCommitBindingKind,
+    StorageEngine,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -124,9 +127,9 @@ pub struct IndexEntry {
     pub analytics_total_count: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub analytics_group_count: Option<u64>,
-    /// A unique definition becomes an integrity constraint only after its
-    /// first complete build proves the existing authoritative state. Rebuild,
-    /// quarantine, and read-path staleness do not disable that constraint.
+    /// A unique definition becomes an integrity constraint in the same
+    /// transaction that installs its schema-bound commit projection. Artifact
+    /// rebuild, quarantine, and read-path staleness do not disable it.
     #[serde(default, skip_serializing_if = "is_false")]
     pub unique_validated: bool,
 }
@@ -489,6 +492,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             }
             let config_digest = definition.config_digest()?;
             let id = definition.id.clone();
+            let unique_validated = definition.unique;
             catalogue.entries.insert(
                 id.clone(),
                 IndexEntry {
@@ -508,7 +512,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                     maintenance: None,
                     analytics_total_count: None,
                     analytics_group_count: None,
-                    unique_validated: false,
+                    unique_validated,
                 },
             );
             Ok(())
@@ -596,7 +600,6 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             .flat_map(|batch| batch.rows)
             .collect::<Vec<_>>();
         validate_unique_rows(&definition, &rows)?;
-        validate_unique_definition(self.engine, &query_catalogue.read, &definition)?;
         let bm25 = match &definition.kind {
             IndexKind::Scalar
             | IndexKind::Count
@@ -813,9 +816,17 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
             .checked_add(1)
             .ok_or_else(|| Error::Integrity("index catalogue revision overflow".into()))?;
         catalogue.validate()?;
+        let schema_revision = self
+            .engine
+            .runtime()
+            .read_stamp(&self.scope)?
+            .schema_revision
+            .ok_or_else(|| Error::Catalog("index catalogue requires an installed schema".into()))?;
+        let bindings = commit_binding_definitions(&catalogue)?;
         let replacement = serde_json::to_vec(&catalogue)?;
-        self.engine.control().commit_catalog(
+        self.engine.control().commit_catalog_with_index_bindings(
             &self.scope,
+            schema_revision,
             &ControlTransition {
                 key: self.key.clone(),
                 expected,
@@ -826,6 +837,7 @@ impl<'a, E: StorageEngine> IndexCatalogueRepository<'a, E> {
                 request_id: context.request_id.clone(),
                 operation_id: context.operation_id.clone(),
             },
+            &bindings,
         )?;
         Ok(catalogue)
     }
@@ -939,165 +951,40 @@ fn validate_unique_rows(definition: &IndexDefinition, rows: &[QueryRow]) -> Resu
     Ok(())
 }
 
-/// Checks every installed engine-owned unique constraint against the exact
-/// prospective transaction state. Callers serialize this check with the
-/// authoritative commit; rebuilding, quarantined, retiring, or stale data
-/// indexes remain constraints even though planners reject them as access paths.
-pub fn validate_unique_indexes<E: StorageEngine>(
-    engine: &E,
-    transaction: &DataTransaction,
-    _default_valid_at: u64,
-) -> Result<()> {
-    let catalogue = IndexCatalogueRepository::new(engine, transaction.read.scope.clone()).load()?;
-    let unique = catalogue
+fn commit_binding_definitions(
+    catalogue: &IndexCatalogue,
+) -> Result<Vec<IndexCommitBindingDefinition>> {
+    catalogue
         .entries
         .values()
-        .filter(|entry| entry.definition.unique && entry.unique_validated)
-        .collect::<Vec<_>>();
-    if unique.is_empty() {
-        return Ok(());
-    }
-    let mut records = current_records_at_read(engine, &transaction.read)?;
-    for mutation in &transaction.commit.mutations {
-        match mutation {
-            RuntimeMutation::Record { record } => {
-                records.insert(record.reference.clone(), record.clone());
-            }
-            RuntimeMutation::Retire { retirement } if retirement.model.is_record_like() => {
-                records.remove(&retirement.reference);
-            }
-            _ => {}
-        }
-    }
-    for entry in unique {
-        let Source::Record { kind } = &entry.definition.source else {
-            return Err(Error::Integrity(format!(
-                "unique index {} does not name a record source",
-                entry.definition.id
-            )));
-        };
-        validate_unique_records(
-            &entry.definition,
-            records
-                .values()
-                .filter(|record| &record.reference.kind == kind)
-                .collect(),
-        )?;
-    }
-    Ok(())
-}
-
-fn validate_unique_definition<E: StorageEngine>(
-    engine: &E,
-    read: &ReadStamp,
-    definition: &IndexDefinition,
-) -> Result<()> {
-    if !definition.unique {
-        return Ok(());
-    }
-    let Source::Record { kind } = &definition.source else {
-        return Err(Error::Integrity(format!(
-            "unique index {} does not name a record source",
-            definition.id
-        )));
-    };
-    validate_unique_records(
-        definition,
-        current_records_at_read(engine, read)?
-            .values()
-            .filter(|record| &record.reference.kind == kind)
-            .collect(),
-    )
-}
-
-fn current_records_at_read<E: StorageEngine>(
-    engine: &E,
-    read: &ReadStamp,
-) -> Result<BTreeMap<rrd_core::RuntimeRef, RuntimeRecord>> {
-    if read.commit_cursor == 0 {
-        return Ok(BTreeMap::new());
-    }
-    let limit = usize::try_from(read.commit_cursor)
-        .map_err(|_| Error::Budget("unique-index replay cursor exceeds usize".into()))?;
-    let page = engine.runtime().read_changes(read, 0, limit)?;
-    if page.through_cursor != read.commit_cursor {
-        return Err(Error::Integrity(
-            "unique-index validation did not reach the transaction read cursor".into(),
-        ));
-    }
-    let mut records = BTreeMap::new();
-    for change in page.changes {
-        match change.mutation {
-            RuntimeMutation::Record { record } => {
-                records.insert(record.reference.clone(), record);
-            }
-            RuntimeMutation::Retire { retirement } if retirement.model.is_record_like() => {
-                records.remove(&retirement.reference);
-            }
-            _ => {}
-        }
-    }
-    Ok(records)
-}
-
-fn validate_unique_records(
-    definition: &IndexDefinition,
-    records: Vec<&RuntimeRecord>,
-) -> Result<()> {
-    let mut groups = BTreeMap::<Vec<u8>, Vec<&RuntimeRecord>>::new();
-    for record in records {
-        let values = definition
-            .fields
-            .iter()
-            .map(|field| match field.as_str() {
-                "id" => RuntimeValue::String(record.reference.id.to_string()),
-                "kind" => RuntimeValue::String(record.reference.kind.to_string()),
-                "valid_from" => RuntimeValue::Unsigned(record.valid_from),
-                "valid_to" => record
-                    .valid_to
-                    .map_or(RuntimeValue::Null, RuntimeValue::Unsigned),
-                _ => record
-                    .properties
-                    .get(field)
-                    .cloned()
-                    .unwrap_or(RuntimeValue::Null),
-            })
-            .collect::<Vec<_>>();
-        if values.contains(&RuntimeValue::Null) {
-            continue;
-        }
-        groups
-            .entry(serde_json::to_vec(&values)?)
-            .or_default()
-            .push(record);
-    }
-    for group in groups.values() {
-        for (index, left) in group.iter().enumerate() {
-            if group[index + 1..].iter().any(|right| {
-                windows_overlap(
-                    left.valid_from,
-                    left.valid_to,
-                    right.valid_from,
-                    right.valid_to,
-                )
-            }) {
-                return Err(Error::Catalog(format!(
-                    "unique index {} rejects overlapping duplicate records",
-                    definition.id
-                )));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn windows_overlap(
-    left_from: u64,
-    left_to: Option<u64>,
-    right_from: u64,
-    right_to: Option<u64>,
-) -> bool {
-    left_from < right_to.unwrap_or(u64::MAX) && right_from < left_to.unwrap_or(u64::MAX)
+        .filter_map(|entry| {
+            let Source::Record { kind: record_kind } = &entry.definition.source else {
+                return None;
+            };
+            let binding_kind = match entry.definition.kind {
+                IndexKind::Scalar => IndexCommitBindingKind::Scalar {
+                    unique: entry.definition.unique,
+                },
+                IndexKind::Bm25 { .. } => IndexCommitBindingKind::Bm25,
+                IndexKind::Count
+                | IndexKind::Geo
+                | IndexKind::MaterializedView
+                | IndexKind::AggregateCount => return None,
+            };
+            Some(
+                entry
+                    .definition
+                    .config_digest()
+                    .map(|configuration_sha256| IndexCommitBindingDefinition {
+                        id: entry.definition.id.clone(),
+                        record_kind: record_kind.clone(),
+                        fields: entry.definition.fields.clone(),
+                        kind: binding_kind,
+                        configuration_sha256,
+                    }),
+            )
+        })
+        .collect()
 }
 
 fn is_false(value: &bool) -> bool {

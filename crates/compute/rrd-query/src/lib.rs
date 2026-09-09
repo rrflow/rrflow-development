@@ -36,10 +36,10 @@ pub use graphql::{
     GRAPHQL_ADAPTER_CONTRACT_VERSION, MAX_GRAPHQL_DOCUMENT_BYTES, MAX_GRAPHQL_VARIABLES,
 };
 pub use index::{
-    validate_unique_indexes, IndexAnalyticsArtifact, IndexArtifact, IndexArtifactPublication,
-    IndexArtifactReference, IndexCatalogue, IndexCatalogueRepository, IndexCountGroup,
-    IndexDefinition, IndexEntry, IndexKind, IndexMaintenanceEvidence, IndexMutationContext,
-    IndexOperationReceipt, INDEX_ARTIFACT_CONTRACT_VERSION, INDEX_CATALOGUE_CONTRACT_VERSION,
+    IndexAnalyticsArtifact, IndexArtifact, IndexArtifactPublication, IndexArtifactReference,
+    IndexCatalogue, IndexCatalogueRepository, IndexCountGroup, IndexDefinition, IndexEntry,
+    IndexKind, IndexMaintenanceEvidence, IndexMutationContext, IndexOperationReceipt,
+    INDEX_ARTIFACT_CONTRACT_VERSION, INDEX_CATALOGUE_CONTRACT_VERSION,
 };
 pub use live::{poll_live_query, LiveQueryBudget, LiveQueryDelta, LiveRowChange};
 pub use pipeline::{StampedQueryExecution, StampedQueryPipeline};

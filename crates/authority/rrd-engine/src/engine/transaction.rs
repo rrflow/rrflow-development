@@ -323,8 +323,6 @@ impl RrdEngine {
             } else {
                 let transaction = DataTransaction::new(read.clone(), commit.clone())
                     .map_err(|error| ServiceError::Contract(error.to_string()))?;
-                rrd_query::validate_unique_indexes(&self.storage, &transaction, runtime_at)
-                    .map_err(|error| ServiceError::Query(error.to_string()))?;
                 match self.storage.runtime().commit_data_transaction(&transaction) {
                     Ok(outcome) => (outcome, false),
                     Err(error) => match self.storage.runtime().commit_outcome(expected_commit)? {
