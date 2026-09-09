@@ -11,8 +11,20 @@ pub const MAX_FUNCTIONS_PER_CATALOGUE: usize = 64;
 pub const MAX_TRANSACTION_FUNCTION_BINDINGS_PER_CATALOGUE: usize = 128;
 pub const MAX_FUNCTION_SOURCE_BYTES: usize = 64 * 1024;
 pub const MAX_FUNCTION_WASM_BYTES: usize = 256 * 1024;
-pub const MAX_FUNCTION_CATALOGUE_ARTIFACT_BYTES: usize =
-    MAX_FUNCTIONS_PER_CATALOGUE * MAX_FUNCTION_WASM_BYTES;
+/// Maximum decoded executable content in one catalogue replacement.
+///
+/// This aggregate bound is intentionally lower than the sum of every
+/// per-artifact maximum: one replacement must remain one atomic rrflowKV
+/// batch after typed definitions, bindings, membership, keys, and framing are
+/// added.
+pub const MAX_FUNCTION_CATALOGUE_ARTIFACT_BYTES: usize = 3 * 1024 * 1024;
+/// Maximum canonical JSON bytes accepted for one function catalogue.
+///
+/// The public representation includes base64 artifacts. The physical store
+/// performs a second exact current-format admission check; this conservative
+/// public bound leaves room for immutable-record envelopes and escaped
+/// canonical definition/binding JSON without exposing the WAL format here.
+pub const MAX_FUNCTION_CATALOGUE_ENCODED_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_FUNCTION_INPUT_BYTES: usize = 256 * 1024;
 pub const MAX_FUNCTION_OUTPUT_BYTES: usize = 256 * 1024;
 pub const MAX_FUNCTION_VALUE_DEPTH: usize = 64;
@@ -498,6 +510,14 @@ impl FunctionCatalogue {
             }
             binding.validate(&self.functions)?;
         }
+        let encoded_bytes = serde_json::to_vec(self)
+            .map_err(|error| crate::ContractError(error.to_string()))?
+            .len();
+        if encoded_bytes > MAX_FUNCTION_CATALOGUE_ENCODED_BYTES {
+            return invalid(format!(
+                "function catalogue is {encoded_bytes} encoded bytes; maximum is {MAX_FUNCTION_CATALOGUE_ENCODED_BYTES}"
+            ));
+        }
         Ok(())
     }
 
@@ -910,6 +930,42 @@ mod tests {
         (artifact, definition)
     }
 
+    fn maximum_webassembly(id: &str, marker: u32) -> (FunctionArtifact, FunctionDefinition) {
+        let mut content = vec![0_u8; MAX_FUNCTION_WASM_BYTES];
+        content[..8].copy_from_slice(b"\0asm\x01\0\0\0");
+        content[8..12].copy_from_slice(&marker.to_be_bytes());
+        let content_sha256 = sha256(&content);
+        let artifact = FunctionArtifact {
+            content_sha256: content_sha256.clone(),
+            media_type: FunctionArtifactMediaType::WebAssemblyBinary,
+            byte_length: content.len().try_into().unwrap(),
+            content_base64: STANDARD.encode(content),
+        };
+        let input_schema = schema(&format!("{id}-input"), FunctionValueShape::CanonicalValueV1);
+        let output_schema = schema(
+            &format!("{id}-output"),
+            FunctionValueShape::CanonicalValueV1,
+        );
+        let definition = FunctionDefinition {
+            function_id: CanonicalId::new(id).unwrap(),
+            revision: 1,
+            predecessor_sha256: None,
+            runtime: FunctionRuntime::WebAssemblyV1 {
+                artifact_sha256: content_sha256,
+                runtime_profile: CanonicalId::new("webassembly-json-v1").unwrap(),
+                runtime_build_sha256: "1".repeat(64),
+                abi: WebAssemblyAbi::JsonV1,
+            },
+            input_schema_sha256: input_schema.sha256(),
+            input_schema,
+            output_schema_sha256: output_schema.sha256(),
+            output_schema,
+            limits: limits(),
+            capabilities: BTreeSet::new(),
+        };
+        (artifact, definition)
+    }
+
     #[test]
     fn catalogue_rejects_digest_identity_capability_and_retry_substitution() {
         let (artifact, function) = javascript("validator", "(input) => input.allowed === true");
@@ -1001,6 +1057,49 @@ mod tests {
         }
         .validate()
         .is_err());
+    }
+
+    #[test]
+    fn catalogue_encoded_limit_admits_the_largest_max_artifact_prefix_and_rejects_the_next() {
+        let mut candidate = FunctionCatalogue {
+            contract_version: FUNCTION_CONTRACT_VERSION,
+            revision: 1,
+            artifacts: BTreeMap::new(),
+            functions: BTreeMap::new(),
+            transaction_bindings: BTreeMap::new(),
+        };
+        let mut accepted = None;
+        let rejection = loop {
+            let index = candidate.functions.len();
+            let id = format!("maximum-wasm-{index:02}");
+            let (artifact, definition) = maximum_webassembly(&id, index as u32);
+            candidate
+                .artifacts
+                .insert(artifact.content_sha256.clone(), artifact);
+            candidate
+                .functions
+                .insert(definition.function_id.clone(), definition);
+            match candidate.validate() {
+                Ok(()) => accepted = Some(candidate.clone()),
+                Err(error) => break error,
+            }
+        };
+        let accepted = accepted.expect("at least one maximum-size artifact is admitted");
+        let encoded = serde_json::to_vec(&accepted).unwrap();
+        assert!(encoded.len() <= MAX_FUNCTION_CATALOGUE_ENCODED_BYTES);
+        assert!(
+            encoded.len() > MAX_FUNCTION_CATALOGUE_ENCODED_BYTES - 2 * MAX_FUNCTION_WASM_BYTES,
+            "the positive fixture must exercise the upper catalogue range"
+        );
+        assert!(
+            accepted
+                .artifacts
+                .values()
+                .map(|artifact| artifact.byte_length as usize)
+                .sum::<usize>()
+                <= MAX_FUNCTION_CATALOGUE_ARTIFACT_BYTES
+        );
+        assert!(rejection.to_string().contains("encoded bytes"));
     }
 
     #[test]

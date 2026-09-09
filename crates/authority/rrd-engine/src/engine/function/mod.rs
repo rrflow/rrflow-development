@@ -13,3 +13,5 @@ mod transaction_binding;
 mod webassembly;
 
 pub(super) use execution::encode_receipt_record;
+#[cfg(test)]
+pub(in crate::engine) use execution::{reset_test_execution_count, test_execution_count};

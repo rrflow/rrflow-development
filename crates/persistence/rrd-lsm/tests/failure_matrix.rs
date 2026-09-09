@@ -49,7 +49,12 @@ fn ordinary_write_boundaries_recover_atomic_borrowed_and_owned_batches() {
     for owned in [false, true] {
         for durability in [Durability::Buffered, Durability::Authoritative] {
             for mode in [FailureMode::Crash, FailureMode::StorageFull] {
-                for boundary in [WriteBoundary::BeforeWalAppend, WriteBoundary::WalSynced] {
+                for boundary in [
+                    WriteBoundary::Prepared,
+                    WriteBoundary::WalAppended,
+                    WriteBoundary::WalSynced,
+                    WriteBoundary::Visible,
+                ] {
                     let directory = tempfile::tempdir().unwrap();
                     let root = directory.path().join("database");
                     let mut database = Database::create(&root).unwrap();
@@ -65,14 +70,28 @@ fn ordinary_write_boundaries_recover_atomic_borrowed_and_owned_batches() {
                     };
                     assert!(matches!(error, Error::InjectedFailure { .. }));
 
+                    let before_reopen = database.snapshot();
+                    assert_eq!(
+                        database.get(b"alpha", before_reopen).unwrap().is_some(),
+                        boundary == WriteBoundary::Visible,
+                        "only the post-visibility failure is readable before reopen"
+                    );
+                    assert_eq!(
+                        database.get(b"beta", before_reopen).unwrap().is_some(),
+                        boundary == WriteBoundary::Visible,
+                        "a semantic batch cannot become partly visible"
+                    );
+
                     match boundary {
-                        WriteBoundary::BeforeWalAppend => {
+                        WriteBoundary::Prepared => {
                             database
                                 .write(&put("replacement", "accepted"), Durability::Authoritative)
                                 .unwrap();
                             database.sync().unwrap();
                         }
-                        WriteBoundary::WalSynced => {
+                        WriteBoundary::WalAppended
+                        | WriteBoundary::WalSynced
+                        | WriteBoundary::Visible => {
                             assert!(matches!(
                                 database
                                     .write(&put("forbidden", "write"), Durability::Authoritative),
@@ -92,7 +111,7 @@ fn ordinary_write_boundaries_recover_atomic_borrowed_and_owned_batches() {
 
                     let mut recovered = Database::open(&root).unwrap();
                     let snapshot = recovered.snapshot();
-                    let batch_published = boundary == WriteBoundary::WalSynced;
+                    let batch_published = boundary != WriteBoundary::Prepared;
                     assert_eq!(
                         recovered.get(b"alpha", snapshot).unwrap().is_some(),
                         batch_published,

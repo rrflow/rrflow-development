@@ -32,6 +32,7 @@ impl<'a> FunctionCatalogueRepository<'a> {
     ) -> Result<FunctionCatalogueSnapshot> {
         validate_coordinate(instance, "function catalogue instance")?;
         publication.validate()?;
+        publication.maximum_physical_batch_bytes(instance)?;
         for _ in 0..FUNCTION_TRANSACTION_ATTEMPTS {
             match self.publish_once(instance, publication) {
                 Err(Error::TransactionConflict { .. }) => continue,

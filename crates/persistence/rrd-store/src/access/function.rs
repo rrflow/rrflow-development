@@ -12,6 +12,7 @@ use super::SemanticCommitPlan;
 use crate::keyspaces;
 use crate::{Error, Result, StorageTransaction};
 use rrd_core::digest;
+use rrd_lsm::{Mutation, WriteBatch};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -368,6 +369,72 @@ impl FunctionCataloguePublication {
             ));
         }
         Ok(())
+    }
+
+    /// Exact current-format payload size when every immutable member is new.
+    ///
+    /// Publication may reuse content-addressed records already present in the
+    /// store, but admission is intentionally based on the full closure. Any
+    /// public catalogue accepted here therefore fits one physical write batch
+    /// regardless of prior local state.
+    pub fn maximum_physical_batch_bytes(&self, instance: &str) -> Result<usize> {
+        validate_coordinate(instance, "function catalogue instance")?;
+        self.validate()?;
+        let mut mutations = Vec::with_capacity(
+            self.artifacts.len() + self.definitions.len() + self.bindings.len() + 2,
+        );
+        let mut put = |space, key: Vec<u8>, value: Vec<u8>| -> Result<()> {
+            mutations.push(Mutation::Put {
+                key: checked_key(space, &key)?,
+                value,
+            });
+            Ok(())
+        };
+        for artifact in &self.artifacts {
+            put(
+                keyspaces::FUNCTION_ARTIFACTS,
+                keyspaces::function_artifact_key(instance, &artifact.content_sha256)?,
+                artifact.encode()?,
+            )?;
+        }
+        for definition in &self.definitions {
+            put(
+                keyspaces::FUNCTION_DEFINITIONS,
+                keyspaces::function_definition_key(
+                    instance,
+                    &definition.function_id,
+                    &definition.definition_sha256,
+                )?,
+                serde_json::to_vec(definition)?,
+            )?;
+        }
+        for binding in &self.bindings {
+            put(
+                keyspaces::TRANSACTION_FUNCTION_BINDINGS,
+                keyspaces::transaction_function_binding_key(
+                    instance,
+                    &binding.binding_id,
+                    &binding.binding_sha256,
+                )?,
+                serde_json::to_vec(binding)?,
+            )?;
+        }
+        put(
+            keyspaces::FUNCTION_CATALOGUE_MEMBERSHIPS,
+            keyspaces::function_catalogue_membership_key(instance, self.membership.revision),
+            serde_json::to_vec(&self.membership)?,
+        )?;
+        put(
+            keyspaces::FUNCTION_CATALOGUE_HEADS,
+            keyspaces::function_catalogue_head_key(instance),
+            serde_json::to_vec(&self.head())?,
+        )?;
+        let batch = WriteBatch::new(mutations).map_err(|error| {
+            function_error(format!(
+                "function catalogue does not fit one rrflowKV write batch: {error}"
+            ))
+        })?;
+        Ok(batch.encoded_len())
     }
 
     pub fn head(&self) -> FunctionCatalogueHeadRecord {

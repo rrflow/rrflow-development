@@ -190,15 +190,19 @@ pub enum FailureMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WriteBoundary {
-    BeforeWalAppend,
+    Prepared,
+    WalAppended,
     WalSynced,
+    Visible,
 }
 
 impl WriteBoundary {
     fn as_str(self) -> &'static str {
         match self {
-            Self::BeforeWalAppend => "write.before_wal_append",
+            Self::Prepared => "write.prepared",
+            Self::WalAppended => "write.wal_appended",
             Self::WalSynced => "write.wal_synced",
+            Self::Visible => "write.visible",
         }
     }
 }
@@ -488,8 +492,30 @@ impl Database {
     /// Only keys written by the transaction participate in conflict detection.
     pub fn commit_transaction(
         &mut self,
+        transaction: crate::Transaction,
+        durability: Durability,
+    ) -> Result<crate::TransactionCommit> {
+        self.commit_transaction_inner(transaction, durability, None)
+    }
+
+    /// Commits through one deterministic write-boundary failure. This is the
+    /// transaction-level fault surface used to prove that a semantic write
+    /// set never becomes a collection of independently visible families.
+    pub fn commit_transaction_with_failure(
+        &mut self,
+        transaction: crate::Transaction,
+        durability: Durability,
+        boundary: WriteBoundary,
+        mode: FailureMode,
+    ) -> Result<crate::TransactionCommit> {
+        self.commit_transaction_inner(transaction, durability, Some((boundary, mode)))
+    }
+
+    fn commit_transaction_inner(
+        &mut self,
         mut transaction: crate::Transaction,
         durability: Durability,
+        failure: Option<(WriteBoundary, FailureMode)>,
     ) -> Result<crate::TransactionCommit> {
         self.ensure_writer_ready()?;
         self.validate_transaction_owner(&transaction)?;
@@ -528,7 +554,7 @@ impl Database {
         }
         let snapshot_sequence = transaction.snapshot().sequence;
         let batch = WriteBatch::new(transaction.take_mutations())?;
-        let receipt = self.write_owned(batch, durability)?;
+        let receipt = self.write_owned_inner(batch, durability, failure)?;
         tracing::debug!(
             target: "rrd_lsm::transaction",
             snapshot_sequence,
@@ -595,16 +621,19 @@ impl Database {
     ) -> Result<AppendReceipt> {
         self.ensure_writer_ready()?;
         let payload = batch.encode()?;
-        inject_write_failure(failure, WriteBoundary::BeforeWalAppend)?;
         self.prepare_write(batch, payload.len())?;
+        inject_write_failure(failure, WriteBoundary::Prepared)?;
+        let append_durability = append_durability(durability, failure);
         let receipt = self
             .wal
-            .append_encoded_write_batch(batch, &payload, durability)?;
+            .append_encoded_write_batch(batch, &payload, append_durability)?;
+        self.inject_post_append_failure(failure)?;
         self.inject_post_wal_failure(failure, &receipt)?;
         self.memtable
             .apply_write_batch(batch, receipt.first_sequence, receipt.last_sequence)?;
         self.wal_payload_bytes = self.wal_payload_bytes.saturating_add(payload.len());
         self.record_memtable_peak();
+        self.inject_post_visibility_failure(failure)?;
         Ok(receipt)
     }
 
@@ -637,11 +666,13 @@ impl Database {
     ) -> Result<AppendReceipt> {
         self.ensure_writer_ready()?;
         let payload = batch.encode()?;
-        inject_write_failure(failure, WriteBoundary::BeforeWalAppend)?;
         self.prepare_write(&batch, payload.len())?;
+        inject_write_failure(failure, WriteBoundary::Prepared)?;
+        let append_durability = append_durability(durability, failure);
         let receipt = self
             .wal
-            .append_encoded_write_batch(&batch, &payload, durability)?;
+            .append_encoded_write_batch(&batch, &payload, append_durability)?;
+        self.inject_post_append_failure(failure)?;
         self.inject_post_wal_failure(failure, &receipt)?;
         self.memtable.apply_owned_write_batch(
             batch,
@@ -650,7 +681,23 @@ impl Database {
         )?;
         self.wal_payload_bytes = self.wal_payload_bytes.saturating_add(payload.len());
         self.record_memtable_peak();
+        self.inject_post_visibility_failure(failure)?;
         Ok(receipt)
+    }
+
+    fn inject_post_append_failure(
+        &mut self,
+        failure: Option<(WriteBoundary, FailureMode)>,
+    ) -> Result<()> {
+        let Some((WriteBoundary::WalAppended, mode)) = failure else {
+            return Ok(());
+        };
+        let boundary = WriteBoundary::WalAppended.as_str();
+        self.writer_requires_reopen = Some(boundary);
+        Err(Error::InjectedFailure {
+            mode: mode.as_str(),
+            boundary,
+        })
     }
 
     fn inject_post_wal_failure(
@@ -665,6 +712,21 @@ impl Database {
             self.wal.sync()?;
         }
         let boundary = WriteBoundary::WalSynced.as_str();
+        self.writer_requires_reopen = Some(boundary);
+        Err(Error::InjectedFailure {
+            mode: mode.as_str(),
+            boundary,
+        })
+    }
+
+    fn inject_post_visibility_failure(
+        &mut self,
+        failure: Option<(WriteBoundary, FailureMode)>,
+    ) -> Result<()> {
+        let Some((WriteBoundary::Visible, mode)) = failure else {
+            return Ok(());
+        };
+        let boundary = WriteBoundary::Visible.as_str();
         self.writer_requires_reopen = Some(boundary);
         Err(Error::InjectedFailure {
             mode: mode.as_str(),
@@ -1866,6 +1928,20 @@ fn inject_write_failure(
         });
     }
     Ok(())
+}
+
+fn append_durability(
+    requested: Durability,
+    failure: Option<(WriteBoundary, FailureMode)>,
+) -> Durability {
+    if matches!(failure, Some((WriteBoundary::WalAppended, _))) {
+        // The injected boundary must occur after a complete frame write but
+        // before an authoritative sync. Recovery may therefore observe the
+        // complete frame, but can never observe only part of its operations.
+        Durability::Buffered
+    } else {
+        requested
+    }
 }
 
 fn inject_snapshot_install_failure(

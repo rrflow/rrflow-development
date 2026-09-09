@@ -1,6 +1,6 @@
 # RRFlow persistence, reasoning, and recall scenario matrix
 
-**Status:** active acceptance test plan; current characterization exists, but no C, E, or F gate is complete
+**Status:** active acceptance test plan; C-01 through C-03 are accepted, while C-04 through C-07, E, and F remain open
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/test-plan/persistence-reasoning-recall`
 **Owner:** executable persistence-to-context scenarios and their evidence state
 
@@ -17,7 +17,7 @@ implementation instructions.
 |---|---|
 | Characterization | The named test exists and protects useful current behavior. It can expose work that a rewrite must preserve, but cannot close a target gate by itself. |
 | Planned | The owning roadmap gate requires the scenario, but its accepted implementation and evidence do not exist yet. |
-| Accepted | The owning roadmap row cites retained output at an exact revision. No row in this matrix currently has this state. |
+| Accepted | The owning roadmap row cites retained output at an exact revision. C-01 through C-03 currently have this state. |
 
 Every scenario runs at least one test in its own process with zero failures and
 no hidden retry. A filtered-out invocation is not a pass. Failure artifacts and
@@ -32,8 +32,8 @@ These tests are real and valuable. Their limitations are equally important.
 | ID | Existing test | Behavior protected | Why it is not target completion |
 |---|---|---|---|
 | CHAR-01 | `crates/persistence/rrd-store/tests/rrflow_kv_open.rs::missing_paths_create_rrflow_kv_and_reopen_by_authenticated_marker` | A missing root initializes rrflowKV, persists a claim, and reopens through `CURRENT`. | Does not reject every pre-1.0 batch, manifest, and segment reader required by C-05. |
-| CHAR-02 | `crates/persistence/rrd-store/tests/unified_data.rs::unified_transaction_and_evidence_match_across_storage_profiles` | rrflowMX and rrflowKV agree on one transaction containing claims, records, relations, events, dense vectors, series, geo, and immutable-object references. | Current semantic planning still uses JSON keyspaces and reconstructed runtime state; native adjacency/index keys are not proved. |
-| CHAR-03 | `crates/persistence/rrd-store/tests/unified_data.rs::rrflow_kv_unified_evidence_survives_reopen_and_retry` | The rrflowKV commit outcome, projection outbox, audit stamp, immutable payload reference, and idempotent retry survive reopen. | Does not prove that every authoritative family and synchronous index update share the C-03 physical batch. |
+| CHAR-02 | `crates/persistence/rrd-store/tests/unified_data.rs::unified_transaction_and_evidence_match_across_storage_profiles` | rrflowMX and rrflowKV agree on one transaction containing claims, records, relations, events, dense vectors, series, geo, and immutable-object references. | This broad semantic characterization does not itself prove C-04 bounded direct reads or the C-06 hybrid immutable format; C-03's native fan-out is proven by its separate accepted corpus. |
+| CHAR-03 | `crates/persistence/rrd-store/tests/unified_data.rs::rrflow_kv_unified_evidence_survives_reopen_and_retry` | The rrflowKV commit outcome, projection outbox, audit stamp, immutable payload reference, and idempotent retry survive reopen. | This test does not inject each C-03 physical boundary; the accepted `rrflow_kv` semantic fault case supplies that separate evidence. |
 | CHAR-04 | `crates/authority/rrd-engine/src/engine/tests/recovery.rs::commit_reopens_replays_and_does_not_duplicate_claims` | `RrdEngine` session and transaction state reopens and exact commit retry does not duplicate a claim or journal transition. | Protects current transaction recovery, not future reasoning-tree or attunement-job persistence. |
 | CHAR-05 | `crates/persistence/rrd-store/tests/bitemporal.rs::a_correction_at_the_same_valid_from_preserves_the_claim_it_corrects` | Transaction-time corrections retain superseded valid-time state. | The normal query path can still reconstruct history from the runtime log instead of bounded version-key reads. |
 | CHAR-06 | `crates/persistence/rrd-store/tests/snapshot.rs::{retained_prefix_proofs_survive_later_commits_on_all_engines,rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry}` | Authenticated read stamps behave the same on rrflowMX/rrflowKV, and durable leases pin rrflowKV manifests. | The proof method currently performs full hash-chain replay, and no Arrow-page lifetime exists to pin. |
@@ -52,14 +52,14 @@ compatibility reader or migration executor.
 
 ## Required persistent-substrate proof
 
-All rows below are `Planned` until the owning roadmap checkbox cites exact
-evidence.
+C-01 through C-03 are `Accepted` by the owning roadmap. C-04 through C-07
+remain `Planned`; later tests cannot substitute for their named observations.
 
 | Gate | Scenario | Planned test owner | Required observation |
 |---|---|---|---|
 | C-01 | Ordered key codec | `crates/persistence/rrd-store/tests/key_codec.rs` | Golden/property corpus proves tenant-safe round trip and lexicographic prefix/range boundaries for record versions, both edge directions, scalar values, terms, vectors, projection work, catalogue state, and commits; malformed keys fail. |
 | C-02 | rrflowMX/rrflowKV snapshot transaction conformance | `crates/persistence/rrd-store/tests/storage_profile_conformance.rs`; `crates/persistence/rrd-lsm/tests/transaction_conformance.rs` | Point/range, read-your-writes, repeatable read, conflict, delete, rollback, and write-skew-policy results agree; only rrflowKV is expected to reopen. |
-| C-03 | One semantic write batch | `crates/persistence/rrd-store/tests/semantic_commit_atomicity.rs` | Record/version, relation, outgoing/incoming adjacency, scalar/BM25/vector index changes, runtime entry, projection delta/outbox, audit, and cursor are all visible or all absent at each injected WAL/sync/publication failure. |
+| C-03 | One semantic write batch | `crates/persistence/rrd-store/src/rrflow_kv.rs::tests::rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary`; `crates/persistence/rrd-store/tests/{semantic_commit_atomicity,native_index_commit}.rs`; `crates/authority/rrd-engine/src/engine/tests/function.rs` | Accepted: record/version, relation, both adjacency directions, scalar and unique entries, scalar/unique/BM25 source deltas, current and temporal vector state plus its source delta, runtime state, projection/outbox, audit, cursor/outcome, and function receipt are compared as one exact key closure across prepared, WAL-appended, WAL-synced, visible-before-acknowledgement, retry, and reopen cases; catalogue maxima fit one batch and recovery does not re-execute a durable receipt. |
 | C-04 | Direct versioned access | `crates/persistence/rrd-store/tests/direct_read_paths.rs` | Current, valid-time, transaction-time, record, relation, vector, and runtime reads touch bounded ordered ranges at one `ReadStamp`; normal execution performs no cursor-zero reconstruction. |
 | C-05 | One accepted physical reader | `crates/persistence/rrd-store/tests/rrflow_kv_open.rs`; `crates/persistence/rrd-lsm` format tests | Dependency/symbol searches find no alternate store, selector, upgrader, or migration executor; old batch/manifest/segment bytes fail with one unsupported-format error. |
 | C-06 | Hybrid immutable generation | `crates/persistence/rrd-lsm/tests/hybrid_segment.rs` | A sorted memtable flushes to one ordered key/version spine plus typed Arrow-compatible pages; point reads use the spine, projected scans read only selected pages, and exact results equal the memtable oracle. |

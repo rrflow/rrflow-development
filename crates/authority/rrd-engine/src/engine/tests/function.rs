@@ -9,7 +9,9 @@ use rrd_contract::{
     FunctionValueSchema, FunctionValueShape, QueryValue, ReadDataSnapshot,
     ReplaceFunctionCatalogue, TransactionFunctionBinding, TransactionFunctionEffect,
     TransactionMutationKind, WebAssemblyAbi, FUNCTION_CONTRACT_VERSION,
+    MAX_FUNCTION_CATALOGUE_ENCODED_BYTES, MAX_FUNCTION_WASM_BYTES,
 };
+use rrd_core::{DataTransaction, ScopeId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 
@@ -127,6 +129,46 @@ fn webassembly(id: &str, wat: &str) -> PackagedFunction {
     }
 }
 
+fn maximum_webassembly(id: &str, marker: u32) -> PackagedFunction {
+    let mut module = vec![0_u8; MAX_FUNCTION_WASM_BYTES];
+    module[..8].copy_from_slice(b"\0asm\x01\0\0\0");
+    module[8..12].copy_from_slice(&marker.to_be_bytes());
+    let artifact_sha256 = digest::sha256_hex(&module);
+    let artifact = FunctionArtifact {
+        content_sha256: artifact_sha256.clone(),
+        media_type: FunctionArtifactMediaType::WebAssemblyBinary,
+        byte_length: module.len().try_into().unwrap(),
+        content_base64: STANDARD.encode(module),
+    };
+    let input_schema = value_schema(id, "input");
+    let output_schema = value_schema(id, "output");
+    let definition = FunctionDefinition {
+        function_id: CanonicalId::new(id).unwrap(),
+        revision: 1,
+        predecessor_sha256: None,
+        runtime: FunctionRuntime::WebAssemblyV1 {
+            artifact_sha256,
+            runtime_profile: super::super::function::runtime_profile::runtime_profile(
+                FunctionRuntimeKind::WebAssemblyV1,
+            ),
+            runtime_build_sha256: super::super::function::runtime_profile::runtime_build_sha256(
+                FunctionRuntimeKind::WebAssemblyV1,
+            ),
+            abi: WebAssemblyAbi::JsonV1,
+        },
+        input_schema_sha256: input_schema.sha256(),
+        input_schema,
+        output_schema_sha256: output_schema.sha256(),
+        output_schema,
+        limits: limits(),
+        capabilities: BTreeSet::new(),
+    };
+    PackagedFunction {
+        artifact,
+        definition,
+    }
+}
+
 fn packaged_catalogue_functions(catalogue: &FunctionCatalogue) -> Vec<PackagedFunction> {
     catalogue
         .functions
@@ -210,6 +252,49 @@ fn install(
             &format!("request-catalogue-{suffix}"),
             &format!("operation-catalogue-{suffix}"),
         )
+        .unwrap();
+}
+
+#[allow(clippy::too_many_arguments)]
+fn persist_function_commit_intent(
+    engine: &RrdEngine,
+    lease: &rrd_contract::SessionLease,
+    transaction_id: &CorrelationId,
+    idempotency_key: &str,
+    request: &CommitTransaction,
+    runtime_at: u64,
+    runtime_commit_sha256: &str,
+    function_catalogue_revision: u64,
+    function_receipts: &[FunctionInvocationReceipt],
+    suffix: &str,
+) {
+    let session_key = format!(
+        "server/state/test-instance/session/{}",
+        lease.session_id.as_str()
+    );
+    let before = engine.storage.control().get(&session_key).unwrap().unwrap();
+    let mut session_state: Value = serde_json::from_slice(&before).unwrap();
+    session_state["transactions"][transaction_id.as_str()]["commit_intent"] = serde_json::json!({
+        "idempotency_key": idempotency_key,
+        "operation_sha256": request.operation_sha256.clone(),
+        "runtime_at_unix_ms": runtime_at,
+        "runtime_commit_sha256": runtime_commit_sha256,
+        "function_catalogue_revision": function_catalogue_revision,
+        "function_receipts": function_receipts,
+    });
+    engine
+        .storage
+        .control()
+        .commit(&ControlTransition {
+            key: session_key,
+            expected: Some(before),
+            replacement: Some(serde_json::to_vec(&session_state).unwrap()),
+            at: runtime_at,
+            actor: "rrd-engine-test".into(),
+            action: "transaction.commit_prepared".into(),
+            request_id: format!("request-{suffix}"),
+            operation_id: format!("operation-{suffix}"),
+        })
         .unwrap();
 }
 
@@ -537,6 +622,89 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
 }
 
 #[test]
+fn largest_admitted_public_catalogue_fits_one_physical_batch_and_reopens() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("maximum-function-catalogue");
+    let engine = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
+    let lease = engine
+        .create_session(
+            &session_request(10_000, 2),
+            &id("maximum-function-catalogue-session"),
+            1_000,
+            "request-maximum-function-catalogue-session",
+            "operation-maximum-function-catalogue-session",
+        )
+        .unwrap();
+
+    let mut packaged = Vec::new();
+    let (accepted, rejected) = loop {
+        let index = packaged.len();
+        packaged.push(maximum_webassembly(
+            &format!("maximum-wasm-{index:02}"),
+            index as u32,
+        ));
+        let candidate = catalogue(1, packaged.clone(), Vec::new());
+        match candidate.validate() {
+            Ok(()) => continue,
+            Err(error) => {
+                packaged.pop();
+                break (catalogue(1, packaged, Vec::new()), (candidate, error));
+            }
+        }
+    };
+    let encoded_bytes = serde_json::to_vec(&accepted).unwrap().len();
+    assert!(encoded_bytes <= MAX_FUNCTION_CATALOGUE_ENCODED_BYTES);
+    assert!(encoded_bytes > MAX_FUNCTION_CATALOGUE_ENCODED_BYTES - 2 * MAX_FUNCTION_WASM_BYTES);
+    assert!(rejected.1.to_string().contains("encoded bytes"));
+
+    let installed = engine
+        .replace_function_catalogue(
+            &lease.session_id,
+            &lease.token,
+            &ReplaceFunctionCatalogue {
+                expected_revision: 0,
+                catalogue: accepted.clone(),
+            },
+            1_100,
+            "request-maximum-function-catalogue-install",
+            "operation-maximum-function-catalogue-install",
+        )
+        .unwrap();
+    assert_eq!(installed, accepted);
+    let before_rejection = engine.storage.physical_store_evidence().unwrap();
+    assert!(matches!(
+        engine.replace_function_catalogue(
+            &lease.session_id,
+            &lease.token,
+            &ReplaceFunctionCatalogue {
+                expected_revision: 1,
+                catalogue: rejected.0,
+            },
+            1_200,
+            "request-over-limit-function-catalogue",
+            "operation-over-limit-function-catalogue",
+        ),
+        Err(ServiceError::Contract(message)) if message.contains("encoded bytes")
+    ));
+    assert_eq!(
+        engine
+            .storage
+            .physical_store_evidence()
+            .unwrap()
+            .physical_sequence,
+        before_rejection.physical_sequence,
+        "over-limit admission must happen before any physical mutation"
+    );
+    drop(engine);
+
+    let reopened = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
+    assert_eq!(
+        reopened.load_current_function_catalogue().unwrap(),
+        accepted
+    );
+}
+
+#[test]
 fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchanged() {
     let (_root, engine) = isolated_engine();
     let lease = engine
@@ -861,34 +1029,18 @@ fn transaction_retry_reuses_prepared_receipts_pinned_before_the_crash_window() {
         )
         .unwrap();
     let prepared_receipt = prepared_functions.receipts[0].clone();
-    let session_key = format!(
-        "server/state/test-instance/session/{}",
-        lease.session_id.as_str()
+    persist_function_commit_intent(
+        &engine,
+        &lease,
+        &transaction.transaction_id,
+        "function-retry-commit",
+        &request,
+        runtime_at,
+        &prepared_functions.commit.digest(),
+        1,
+        &prepared_functions.receipts,
+        "function-retry-prepare",
     );
-    let before = engine.storage.control().get(&session_key).unwrap().unwrap();
-    let mut session_state: Value = serde_json::from_slice(&before).unwrap();
-    session_state["transactions"][transaction.transaction_id.as_str()]["commit_intent"] = serde_json::json!({
-        "idempotency_key": "function-retry-commit",
-        "operation_sha256": request.operation_sha256.clone(),
-        "runtime_at_unix_ms": runtime_at,
-        "runtime_commit_sha256": prepared_functions.commit.digest(),
-        "function_catalogue_revision": 1,
-        "function_receipts": prepared_functions.receipts,
-    });
-    engine
-        .storage
-        .control()
-        .commit(&ControlTransition {
-            key: session_key,
-            expected: Some(before),
-            replacement: Some(serde_json::to_vec(&session_state).unwrap()),
-            at: runtime_at,
-            actor: "rrd-engine-test".into(),
-            action: "transaction.commit_prepared".into(),
-            request_id: "request-function-retry-prepare".into(),
-            operation_id: "operation-function-retry-prepare".into(),
-        })
-        .unwrap();
 
     let mut rejected = javascript("claim-policy", "() => false");
     rejected.revision = 2;
@@ -943,6 +1095,295 @@ fn transaction_retry_reuses_prepared_receipts_pinned_before_the_crash_window() {
         reopened.load_current_function_catalogue().unwrap().revision,
         2,
         "recovery must retain the newer head while executing pinned revision one",
+    );
+}
+
+#[test]
+fn substituted_runtime_build_in_a_prepared_receipt_fails_closed_after_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("function-runtime-substitution");
+    let engine = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
+    let lease = engine
+        .create_session(
+            &session_request(5_000, 2),
+            &id("function-runtime-substitution-session"),
+            1_000,
+            "request-function-runtime-substitution-session",
+            "operation-function-runtime-substitution-session",
+        )
+        .unwrap();
+    let accepted = javascript("runtime-bound-policy", "() => true");
+    let accepted_binding = binding(
+        "runtime-bound-validator",
+        &accepted,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    install(
+        &engine,
+        &lease,
+        0,
+        catalogue(1, vec![accepted], vec![accepted_binding]),
+        "runtime-substitution",
+    );
+    let transaction = engine
+        .begin_transaction(
+            &lease.session_id,
+            &lease.token,
+            &begin_request(),
+            &mutation_context(
+                &id("function-runtime-substitution-begin"),
+                "request-function-runtime-substitution-begin",
+                "operation-function-runtime-substitution-begin",
+            ),
+            1_100,
+        )
+        .unwrap();
+    let request = commit_request("substituted-runtime-build-must-not-commit");
+    let runtime_at = 1_150;
+    let base = public_runtime_commit(
+        &request,
+        &lease.session_id,
+        &instance(),
+        transaction.read_cursor,
+        runtime_at,
+    )
+    .unwrap();
+    let prepared = engine
+        .prepare_transaction_function_bindings(
+            &engine.load_current_function_catalogue().unwrap(),
+            &request,
+            &transaction.transaction_id,
+            base,
+            None,
+            runtime_at,
+            "request-function-runtime-substitution-prepare",
+            "operation-function-runtime-substitution-prepare",
+        )
+        .unwrap();
+    let expected_commit_sha256 = prepared.commit.digest();
+    let invocation_id = prepared.receipts[0].invocation_id.clone();
+    let mut substituted_receipt = prepared.receipts[0].clone();
+    substituted_receipt.runtime_build_sha256 =
+        digest::sha256_hex(b"unavailable-substituted-runtime-build");
+    let substituted_receipt = substituted_receipt.seal().unwrap();
+    persist_function_commit_intent(
+        &engine,
+        &lease,
+        &transaction.transaction_id,
+        "function-runtime-substitution-commit",
+        &request,
+        runtime_at,
+        &expected_commit_sha256,
+        1,
+        &[substituted_receipt],
+        "function-runtime-substitution-prepare",
+    );
+    drop(engine);
+
+    let reopened = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
+    let before_cursor = reopened.storage.runtime().cursor().unwrap();
+    let rejected = reopened.commit_transaction(
+        &lease.session_id,
+        &lease.token,
+        &transaction.transaction_id,
+        &id("function-runtime-substitution-commit"),
+        &request,
+        1_300,
+        "request-function-runtime-substitution-commit",
+        "operation-function-runtime-substitution-commit",
+    );
+    assert!(matches!(
+        rejected,
+        Err(ServiceError::OperationDigestMismatch)
+    ));
+    assert_eq!(reopened.storage.runtime().cursor().unwrap(), before_cursor);
+    assert_eq!(reopened.storage.claims().sequence().unwrap(), 0);
+    assert!(reopened
+        .storage
+        .runtime()
+        .commit_outcome(&expected_commit_sha256)
+        .unwrap()
+        .is_none());
+    assert!(reopened
+        .storage
+        .function_catalogue()
+        .invocation_receipt(instance().as_str(), invocation_id.as_str())
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn durable_function_receipt_closes_a_lost_ack_without_reexecution() {
+    super::super::function::reset_test_execution_count();
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("function-lost-ack");
+    let engine = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
+    let lease = engine
+        .create_session(
+            &session_request(5_000, 2),
+            &id("function-lost-ack-session"),
+            1_000,
+            "request-function-lost-ack-session",
+            "operation-function-lost-ack-session",
+        )
+        .unwrap();
+    let binding_id = CanonicalId::new("lost-ack-validator").unwrap();
+    let accepted = javascript("lost-ack-policy", "() => true");
+    let accepted_definition_sha256 = accepted.sha256();
+    let accepted_binding = binding(
+        binding_id.as_str(),
+        &accepted,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    let accepted_binding_sha256 = accepted_binding.sha256();
+    install(
+        &engine,
+        &lease,
+        0,
+        catalogue(1, vec![accepted], vec![accepted_binding]),
+        "lost-ack-one",
+    );
+    let transaction = engine
+        .begin_transaction(
+            &lease.session_id,
+            &lease.token,
+            &begin_request(),
+            &mutation_context(
+                &id("function-lost-ack-begin"),
+                "request-function-lost-ack-begin",
+                "operation-function-lost-ack-begin",
+            ),
+            1_100,
+        )
+        .unwrap();
+    let request = commit_request("durable-receipt-must-win");
+    let runtime_at = 1_150;
+    let base = public_runtime_commit(
+        &request,
+        &lease.session_id,
+        &instance(),
+        transaction.read_cursor,
+        runtime_at,
+    )
+    .unwrap();
+    let prepared = engine
+        .prepare_transaction_function_bindings(
+            &engine.load_current_function_catalogue().unwrap(),
+            &request,
+            &transaction.transaction_id,
+            base,
+            None,
+            runtime_at,
+            "request-function-lost-ack-prepare",
+            "operation-function-lost-ack-prepare",
+        )
+        .unwrap();
+    assert_eq!(super::super::function::test_execution_count(), 1);
+    let expected_commit_sha256 = prepared.commit.digest();
+    let prepared_receipt = prepared.receipts[0].clone();
+    persist_function_commit_intent(
+        &engine,
+        &lease,
+        &transaction.transaction_id,
+        "function-lost-ack-commit",
+        &request,
+        runtime_at,
+        &expected_commit_sha256,
+        1,
+        &prepared.receipts,
+        "function-lost-ack-prepare",
+    );
+
+    let scope = ScopeId::new(format!("instance:{}", instance())).unwrap();
+    let read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    assert_eq!(read.commit_cursor, transaction.read_cursor);
+    let data_transaction = DataTransaction::new(read, prepared.commit).unwrap();
+    let receipt_records = prepared
+        .receipts
+        .iter()
+        .map(super::super::function::encode_receipt_record)
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .unwrap();
+    let committed = engine
+        .storage
+        .runtime()
+        .commit_data_transaction_with_function_receipts(
+            &data_transaction,
+            instance().as_str(),
+            &receipt_records,
+        )
+        .unwrap();
+    assert_eq!(committed.last_cursor, 1);
+    assert_eq!(super::super::function::test_execution_count(), 1);
+
+    let mut rejected = javascript("lost-ack-policy", "() => false");
+    rejected.revision = 2;
+    rejected.predecessor_sha256 = Some(accepted_definition_sha256);
+    let mut rejected_binding = binding(
+        binding_id.as_str(),
+        &rejected,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    rejected_binding.revision = 2;
+    rejected_binding.predecessor_sha256 = Some(accepted_binding_sha256);
+    install(
+        &engine,
+        &lease,
+        1,
+        catalogue(2, vec![rejected], vec![rejected_binding]),
+        "lost-ack-two",
+    );
+    drop(engine);
+
+    let reopened = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
+    assert_eq!(
+        reopened.load_current_function_catalogue().unwrap().revision,
+        2
+    );
+    let before_retry_cursor = reopened.storage.runtime().cursor().unwrap();
+    let recovered = reopened
+        .commit_transaction(
+            &lease.session_id,
+            &lease.token,
+            &transaction.transaction_id,
+            &id("function-lost-ack-commit"),
+            &request,
+            1_300,
+            "request-function-lost-ack-commit",
+            "operation-function-lost-ack-commit",
+        )
+        .unwrap();
+    assert!(recovered.idempotent_replay);
+    assert_eq!(recovered.last_runtime_cursor, Some(1));
+    assert_eq!(
+        reopened.storage.runtime().cursor().unwrap(),
+        before_retry_cursor
+    );
+    assert_eq!(reopened.storage.claims().sequence().unwrap(), 1);
+    assert_eq!(
+        super::super::function::test_execution_count(),
+        1,
+        "recovery must use the durable build-bound receipt instead of executing a function again",
+    );
+    let stored_receipt = reopened
+        .storage
+        .function_catalogue()
+        .invocation_receipt(instance().as_str(), prepared_receipt.invocation_id.as_str())
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        stored_receipt.receipt_sha256,
+        prepared_receipt.receipt_sha256
+    );
+    assert_eq!(
+        stored_receipt.runtime_commit_sha256,
+        Some(expected_commit_sha256)
     );
 }
 

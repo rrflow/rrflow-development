@@ -1,6 +1,21 @@
 use super::super::*;
 use rrd_store::{FunctionInvocationReceiptRecord, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION};
 
+#[cfg(test)]
+thread_local! {
+    static TEST_EXECUTION_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+pub(in crate::engine) fn reset_test_execution_count() {
+    TEST_EXECUTION_COUNT.set(0);
+}
+
+#[cfg(test)]
+pub(in crate::engine) fn test_execution_count() -> u64 {
+    TEST_EXECUTION_COUNT.get()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ExecutedFunction {
     pub output: QueryValue,
@@ -122,6 +137,8 @@ pub(super) fn execute_definition(
     artifact: &[u8],
     input: &QueryValue,
 ) -> Result<ExecutedFunction> {
+    #[cfg(test)]
+    TEST_EXECUTION_COUNT.set(TEST_EXECUTION_COUNT.get().saturating_add(1));
     definition
         .validate()
         .map_err(|error| ServiceError::Contract(error.to_string()))?;

@@ -33,7 +33,7 @@ Roadmap completion currently stands at:
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 5 / 5 |
-| C | sole hybrid persistent rrflowKV substrate | 2 / 7 |
+| C | sole hybrid persistent rrflowKV substrate | 3 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
 | F | streamed Arrow/DataFusion analytical execution | 0 / 5 |
@@ -103,11 +103,10 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **C-03**, one effect-complete semantic mutation
-batch across canonical records, graph adjacency, synchronous indexes, runtime
-state, durable projection deltas, function receipts, audit, and outbox. C-01's
-physical-key package, C-02's shared transaction/repository package, and every
-Gate B contract package are complete.
+The next executable item is **C-04**, direct current and temporal reads from
+bounded versioned key ranges at one `ReadStamp`. C-01's physical-key package,
+C-02's shared transaction/repository package, C-03's effect-complete semantic
+mutation batch, and every Gate B contract package are complete.
 A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
@@ -802,7 +801,7 @@ golden vectors without importing Rust internals.
 |---|---|---|---|---|
 | [x] | C-01 | Freeze one ordered binary key codec for current records, temporal versions, outgoing/incoming edges, scalar values, term postings, vectors, projection deltas, catalogue state, and runtime commits. | `rrd-core`, `rrd-store` | Ordering/golden tests prove prefix boundaries, round trips, tenant separation, and malformed-key rejection. |
 | [x] | C-02 | Expose the minimal snapshot transaction primitives required by the semantic store: point read, bounded range scan, put, delete, commit, rollback, and conflict. | `rrd-lsm`, `rrd-store` | rrflowKV and rrflowMX conformance suites agree on read-your-writes, repeatable reads, range ordering, and write conflicts. |
-| [ ] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
+| [x] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
 | [ ] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [ ] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
 | [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property tests, exact differential reads, selective-scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all read, decoded, decompressed, copied, allocated, and cached bytes are reported. Family-specific page or cache policy is retained only when the declared workload improves without correctness or other-family regression. |
@@ -871,6 +870,45 @@ C-02 evidence (2026-09-09):
   workspace all-target Clippy. This closes C-02 only; C-03 atomic multi-model
   effects, C-04 direct stamped reads, hybrid Arrow pages, streamed DataFusion,
   and persistent reasoning/recall remain open.
+
+C-03 evidence (2026-09-09):
+
+- One `SemanticCommitPlan` encodes current and temporal records and relations,
+  current and temporal outgoing/incoming adjacency, schema-bound scalar and
+  unique changes, BM25 and vector source deltas, runtime changes, durable
+  projection work, outbox, semantic audit, commit cursor/outcome, and prepared
+  function receipts. Both storage profiles consume that same plan through the
+  C-02 transaction port; rrflowKV alone claims reopen durability.
+- Governed-function catalogues now publish content-addressed binary artifacts,
+  typed immutable definition/binding records, digest-only membership revisions,
+  and one compare-and-swap head. Public admission caps decoded artifacts at
+  3 MiB and canonical catalogue JSON at 4 MiB; the store also constructs the
+  exact full publication closure and rejects it unless it fits one current
+  16 MiB rrflowKV WAL batch before beginning a transaction.
+- Deterministic low-level injection covers prepared, complete-WAL-appended,
+  WAL-synced, and process-visible-before-acknowledgement boundaries for crash
+  and storage-full modes, both borrowed and owned writes, and buffered and
+  authoritative durability. The complete multi-family semantic key set is
+  compared before and after reopen at every boundary; no family becomes partly
+  visible, and post-WAL uncertainty requires reopen before another write.
+- Function recovery rejects a validly resealed prepared receipt whose runtime
+  build differs from the pinned definition. A separate lost-acknowledgement
+  test makes the domain batch and receipt durable, advances the active
+  catalogue to a rejecting function, reopens, and proves the exact receipt
+  closes the session transaction with no second guest execution or cursor
+  advance. A rejected receipt cannot leave domain state, outcome, or an orphan
+  allowed receipt.
+- The complete locked `rrd-contract`, `rrd-lsm`, `rrd-store`, and `rrd-engine`
+  suites passed: 76, 76, 166, and 117 tests respectively. Strict affected-
+  package Clippy, workspace all-target checking, architecture, documentation,
+  generated-surface, inventory, formatting, and diff-integrity checks are
+  recorded in the C-03d execution journal.
+- This closes only C-03. C-04 still owns bounded direct reads; C-05 removes
+  earlier physical readers; C-06 builds hybrid Arrow-compatible immutable
+  pages; C-07 supplies final storage recovery/lifetime qualification; Gates E
+  and F still own native materializers/access paths and streamed DataFusion;
+  persistent reasoning/context, installation, routines/skills, Connectome,
+  deployment, optimization, and release evidence remain open.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.

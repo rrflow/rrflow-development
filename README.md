@@ -117,10 +117,19 @@ application keys use the manifest-authenticated `RRKV0001` ordered codec, and
 one snapshot-isolation transaction port now backs the claim, control,
 projection, runtime, and invocation repositories for both rrflowMX and
 rrflowKV. The broad profile-specific semantic store implementations are gone.
-The next executable package is
-[C-03 one semantic mutation batch](docs/roadmap/rrflow-1.0-execution-map.md#c-03--one-semantic-mutation-batch).
-This is a key and transaction foundation, not proof of atomic native indexes,
-hybrid Arrow pages, DataFusion streaming, or persistent reasoning/recall.
+C-03 is also complete: one storage-neutral semantic plan now commits temporal
+records and relations, both graph directions, schema-bound scalar/unique
+changes, BM25/vector source deltas, runtime state, durable projection work,
+governed-function receipts and proposals, semantic audit, outbox, cursor, and
+outcome through one rrflowMX/rrflowKV transaction. The rrflowKV fault matrix
+proves all-or-none recovery at prepared, WAL-appended, WAL-synced, and visible-
+before-acknowledgement boundaries; public function-catalogue limits fit one
+physical batch; corrupt runtime-build substitution fails closed; and a durable
+receipt closes a lost acknowledgement without guest re-execution. The next
+executable package is
+[C-04 direct current and temporal reads](docs/roadmap/rrflow-1.0-execution-map.md#c-04--direct-current-and-temporal-reads).
+This is an atomic write foundation, not proof of bounded native reads, hybrid
+Arrow pages, DataFusion streaming, or persistent reasoning/recall.
 
 ## Knowledge warp points
 

@@ -1,6 +1,6 @@
 # RRFlow governed functions and transaction bindings
 
-**Status:** active target contract; C-03c typed state and prepared receipts are implemented, with later acceptance gaps named below
+**Status:** active target contract; C-03 atomic persistence and recovery are accepted, with later capability gaps named below
 **Coordinate:** `rrflow://rrflow-instance/data/reference/automation/functions`
 **Owner:** governed function definition, execution, transaction-binding, persistence, and evidence semantics
 
@@ -343,39 +343,34 @@ external unless an operator installs a bounded adapter or capability.
 
 | Current code | Verified useful behavior | Defect or required convergence |
 |---|---|---|
-| `rrd-contract/src/function.rs` plus `fixtures/function-contract-v1.json` and `tests/function_contract.rs` | The closed contract now separates one content-addressed binary artifact from immutable typed definitions and bindings; pins input/output schemas, runtime profile/build, catalogue/definition/binding digests, limits, proposals, and invocation receipts; rejects inline source, absent artifacts, stale digests, unsafe values, and former fields. | The receipt does not yet carry the complete principal/representation/authorization/read-stamp/trace coordinate set required by H-04/H-05, and no cross-language fixture or final physical catalogue-limit proof exists. |
-| `rrd-store/src/access/function.rs`, `repository/function.rs`, and `rrd-engine/src/engine/function/catalogue.rs` | rrflowMX and rrflowKV store binary artifacts once by digest, typed definition/binding records by immutable digest, digest-only membership revisions, one CAS head, and typed receipts through the common transaction port. `RrdEngine` alone validates public contracts, exact runtime availability, historical identity lineage, and catalogue publication. The former whole-catalogue control keys and function-level direct-store path have no reader or alias. | C-03d still owns every physical failure/size/corruption boundary and reclamation of proven unreferenced artifacts; C-04 owns direct stamped catalogue access where later consumers require it. |
+| `rrd-contract/src/function.rs` plus `fixtures/function-contract-v1.json` and `tests/function_contract.rs` | The closed contract now separates one content-addressed binary artifact from immutable typed definitions and bindings; pins input/output schemas, runtime profile/build, catalogue/definition/binding digests, limits, proposals, and invocation receipts; rejects inline source, absent artifacts, stale digests, unsafe values, former fields, more than 3 MiB decoded artifact content, and more than 4 MiB canonical catalogue JSON. | The receipt does not yet carry the complete principal/representation/authorization/read-stamp/trace coordinate set required by H-04/H-05, and no cross-language fixture exists. |
+| `rrd-store/src/access/function.rs`, `repository/function.rs`, and `rrd-engine/src/engine/function/catalogue.rs` | rrflowMX and rrflowKV store binary artifacts once by digest, typed definition/binding records by immutable digest, digest-only membership revisions, one CAS head, and typed receipts through the common transaction port. `RrdEngine` alone validates public contracts, exact runtime availability, historical identity lineage, and catalogue publication. The exact full publication closure must fit one physical rrflowKV batch before a transaction starts. The former whole-catalogue control keys and function-level direct-store path have no reader or alias. | Reclamation of proven unreferenced artifacts remains an engine-owned maintenance operation; C-04 owns direct stamped catalogue access where later consumers require it. |
 | `rrd-engine/src/engine/function/{execution,javascript,webassembly}.rs` | Fresh QuickJS contexts, memory/stack/interrupt limits, synchronous output; Wasmi eager compilation, fuel, stack/store limits, import denial, and ABI/pointer/output checks remain isolated and characterized. | JavaScript policy disables only selected globals and has no supported-target determinism corpus; interrupt counts are not portable fuel. Wasm start functions and default feature choices remain enabled, compilation structure is not explicitly bounded, and error classes depend partly on message text. |
-| `rrd-engine/src/engine/function/transaction_binding.rs` plus `engine/transaction.rs` | Original-mutation matching, stable map order, and no recursive rematch remain. First execution seals the validated output/proposal, exact catalogue/definition/artifact/schema/runtime identities, and resource use into the commit intent. Recovery replays that receipt into the same runtime commit without guest execution; the accepted receipt, derived event, semantic audit, indexes, outbox, cursor, and outcome publish in one store transaction. A known outcome is accepted only when every exact prepared receipt is also present. No pre-domain terminal allowed function audit is written. | C-03d still must inject every prepare/WAL/sync/visibility/acknowledgement gap and prove known-outcome reconciliation across those interruptions. H-05/POAM-016 still owns same-stamp effect-complete authorization and the full security/trace coordinate closure. |
-| `rrd-engine/src/engine/tests/function.rs`, `tests/function_conformance.rs`, `rrd-store/tests/semantic_commit_atomicity.rs`, and `fixtures/rrd-function-conformance-v1.json` | Five focused engine tests cover JavaScript/Wasm bounds, standalone receipt replay/reopen, binding acceptance/rejection, prepared-receipt recovery without re-execution, historical definition/binding lineage, and exact security actions. Shared corpora prove selected JavaScript and atomic semantic-receipt results equal on rrflowMX and rrflowKV, rrflowKV reopen, and rejection without a cursor, outcome, or orphan receipt when the receipt names another commit. | The corpora do not yet cover Wasm profile equivalence across supported targets, every injected storage/ack gap, advertised maximum encoded/allocated size, runtime upgrade/corruption, complete effect authorization, or any outward surface. |
+| `rrd-engine/src/engine/function/transaction_binding.rs` plus `engine/transaction.rs` | Original-mutation matching, stable map order, and no recursive rematch remain. First execution seals the validated output/proposal, exact catalogue/definition/artifact/schema/runtime identities, and resource use into the commit intent. Recovery replays that receipt into the same runtime commit without guest execution; the accepted receipt, derived event, semantic audit, indexes, outbox, cursor, and outcome publish in one store transaction. A known outcome is accepted only when every exact prepared receipt is also present. No pre-domain terminal allowed function audit is written. Lost-acknowledgement recovery is proven not to execute the guest again, and substituted runtime-build identity fails closed before domain mutation. | H-05/POAM-016 still owns same-stamp effect-complete authorization and the full security/trace coordinate closure. |
+| `rrd-engine/src/engine/tests/function.rs`, `tests/function_conformance.rs`, `rrd-store/src/rrflow_kv.rs`, `rrd-store/tests/semantic_commit_atomicity.rs`, and `fixtures/rrd-function-conformance-v1.json` | Eight focused engine tests cover runtime bounds, standalone replay/reopen, binding acceptance/rejection, prepared recovery, corrupt build substitution, lost-acknowledgement recovery without re-execution, physical catalogue maxima, lineage, and security. Shared corpora prove selected JavaScript and atomic semantic-receipt results equal on rrflowMX and rrflowKV. The physical fault corpus compares the exact complete semantic key closure across prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement failures and reopen. | Wasm profile equivalence across supported targets, complete effect authorization, and outward-surface equivalence remain open under H/J rather than C-03. |
 | capability and outward surfaces | Engine-only list/replace/execute methods are described by capability discovery with current H-04/H-06 ownership and without overstating runtime determinism. | No executable HTTP/WebSocket/SDK/CLI/MCP/Connectome function operation exists. |
 
-At this review, the four contract unit tests, two golden/closure tests, five
-engine function tests, one focused rrflowMX/rrflowKV/reopen function corpus,
-and two semantic-commit receipt tests pass. This completes only C-03c; it does
-not close C-03, H-04, H-05, I, or J.
+At this review, all five contract unit tests, two golden/closure tests, eight
+engine function tests, the focused rrflowMX/rrflowKV/reopen function corpus,
+the complete semantic physical-fault case, and two semantic-commit receipt
+tests pass. Along with the full affected package suites, this closes C-03. It
+does not close H-04, H-05, I, or J or accept the governed-function capability
+as an outward installed feature.
 
 ## Exact implementation sequence
 
-1. **A-07 governed-function slice (implemented; A-07 remains open):** the
-   direct catalogue/binding type, field, method, key, module, and test renames;
-   closed contract fixture; function-module split; and first shared
-   rrflowMX/rrflowKV/reopen corpus are present without compatibility aliases.
-   Complete the remaining A-07 package/SDK vocabulary and causal-vocabulary
-   work without hiding the C/I function gaps.
-2. **C-03d, then C-04:** retain C-03c's typed content-addressed state and
-   prepared receipts while closing every physical effect gap and advertised
-   size bound; then expose only the bounded stamped reads required by later
-   engine access paths.
-3. **D-01 and I-06:** include default artifacts and runtime manifests in the
+1. **C-04:** retain C-03's typed content-addressed state, prepared receipts,
+   physical maxima, and fault evidence while exposing only the bounded stamped
+   reads required by later engine access paths.
+2. **D-01 and I-06:** include default artifacts and runtime manifests in the
    offline distribution; add candidate/preview/apply/retire/uninstall without
    executing functions during install or attunement.
-4. **I-01/I-02:** lower proposed events into the sole canonical engine-event
+3. **I-01/I-02:** lower proposed events into the sole canonical engine-event
    envelope and implement post-commit triggers separately from transaction
    function bindings.
-5. **F and H-04/H-05:** keep vectorized query operators separate; expose the
+4. **F and H-04/H-05:** keep vectorized query operators separate; expose the
    shared public operations with complete causal/resource evidence.
-6. **J:** remove every superseded spelling/private key/old fixture, run the
+5. **J:** remove every superseded spelling/private key/old fixture, run the
    runtime, differential, crash, security, resource, surface, and clean-install
    corpora, and account for every runtime/artifact in the signed distribution.
 

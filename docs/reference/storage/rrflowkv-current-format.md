@@ -164,6 +164,16 @@ durability. A failed write or synchronization poisons that writer instance, so
 the caller must reopen and recover rather than append after an unknown partial
 write.
 
+The deterministic write-fault surface names four ordered boundaries:
+`write.prepared` after validation/admission and before append;
+`write.wal_appended` after one complete frame is written but before the
+authoritative sync; `write.wal_synced` after synchronization but before the
+memtable becomes visible; and `write.visible` after the complete batch is
+visible but before its receipt returns. Failures after append fence the writer
+until reopen. Recovery may retain or discard an unacknowledged complete frame
+at the unsynced boundary, but it may never expose only some operations from
+that frame; synchronized and visible frames recover completely.
+
 WAL file header, 16 bytes:
 
 | Offset | Bytes | Meaning |
@@ -332,7 +342,9 @@ Run focused contract evidence before the package suite:
 ```bash
 cargo test -p rrd-store --test key_codec --locked
 cargo test -p rrd-store --test native_index_commit --locked
+cargo test -p rrd-store --lib rrflow_kv::tests::rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary --locked -- --exact
 cargo test -p rrd-store --locked
+cargo test -p rrd-lsm --test failure_matrix --locked
 cargo test -p rrd-lsm --test mvcc batch_codec_is_canonical_strict_and_frozen -- --exact
 cargo test -p rrd-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_truncates_it -- --exact
 cargo test -p rrd-lsm --test manifest current_publication_is_ordered_content_addressed_and_compare_and_swap -- --exact
@@ -343,11 +355,12 @@ cargo test -p rrd-lsm
 
 The key-codec tests prove C-01's ordered application-key contract, frozen bytes,
 strict malformed-key rejection, real-store persistence, and close/reopen
-readback. The native-index test proves the C-03b insert, replacement,
-retirement, unique-conflict, catalogue-drift rejection, source-delta,
-rrflowMX/rrflowKV differential, and rrflowKV-reopen slice; it does not close
-C-03 or qualify Gate E read paths and materializers. The lower-level tests
-prove the present object format only.
+readback. The native-index and complete semantic-fault tests contribute C-03's
+insert, replacement, retirement, unique-conflict, catalogue-drift rejection,
+source-delta, rrflowMX/rrflowKV differential, exact-key failure-boundary, and
+rrflowKV-reopen evidence. C-03 is accepted by the canonical roadmap; that does
+not qualify Gate E's bounded read paths/materializers or Gate C-06's physical
+format. The remaining lower-level tests prove only the present object format.
 C-05 requires removal evidence for every pre-1.0 batch, manifest, and segment
 reader and continued absence of alternate stores. C-06 requires new vectors,
 property and crash tests, and fixed-hardware comparison for the hybrid

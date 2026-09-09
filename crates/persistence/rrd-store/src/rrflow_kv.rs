@@ -470,7 +470,7 @@ pub fn prepare_rrflow_kv_commit(
     database: &Database,
     commit: &RuntimeCommit,
 ) -> Result<SemanticCommitPlan> {
-    prepare_rrflow_kv_commit_at_read(database, commit, None, None)
+    prepare_rrflow_kv_commit_at_read(database, commit, None, None, None)
 }
 
 fn prepare_rrflow_kv_commit_at_read(
@@ -478,12 +478,13 @@ fn prepare_rrflow_kv_commit_at_read(
     commit: &RuntimeCommit,
     read: Option<&ReadStamp>,
     archived_audit: Option<&AuditEnvelope>,
+    function_receipts: Option<(&str, &[crate::FunctionInvocationReceiptRecord])>,
 ) -> Result<SemanticCommitPlan> {
     let reader = RrflowKvSnapshotRead {
         database,
         snapshot: database.snapshot(),
     };
-    prepare_semantic_commit(&reader, commit, read, archived_audit, None)
+    prepare_semantic_commit(&reader, commit, read, archived_audit, function_receipts)
 }
 
 /// Reads a previously accepted rrflowKV runtime outcome from a caller-held
@@ -848,9 +849,12 @@ fn encoded_storage_key(
 mod tests {
     use super::*;
     use rrd_core::{
-        Claim, DataTransaction, ObjectReceipt, Predicate, Producer, RuntimeEvent,
-        RuntimeEventSchema, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
-        RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeType, Subject,
+        digest, Claim, DataTransaction, ObjectReceipt, Predicate, Producer, ProjectionId,
+        RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+        RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
+        RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType,
+        RuntimeValue, RuntimeValueType, RuntimeVector, Subject, VectorCollectionAddress,
+        VectorValue,
     };
     use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
     use std::collections::BTreeMap;
@@ -870,15 +874,37 @@ mod tests {
         )
     }
 
-    fn failure_transaction(database: &Database) -> DataTransaction {
-        let scope = ScopeId::new("instance:rrflow-kv-failure").unwrap();
-        let read = rrflow_kv_read_stamp(database, database.snapshot(), &scope).unwrap();
+    fn failure_scope() -> ScopeId {
+        ScopeId::new("instance:rrflow-kv-failure").unwrap()
+    }
+
+    fn failure_schema() -> RuntimeSchemaRegistry {
         let item_kind = RuntimeType::new("item").unwrap();
-        let item = RuntimeRef::new("item", "one").unwrap();
-        let mut registry = RuntimeSchemaRegistry::empty(1, "rrflowKV failure matrix");
-        registry
-            .records
-            .insert(item_kind.clone(), RuntimeRecordSchema::default());
+        let mut registry = RuntimeSchemaRegistry::empty(1, "rrflowKV semantic failure matrix");
+        registry.records.insert(
+            item_kind.clone(),
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    (
+                        "status".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "title".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "code".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        );
+        registry.tables.insert(
+            RuntimeType::new("embedding").unwrap(),
+            RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
+        );
         registry.events.insert(
             RuntimeType::new("pulse").unwrap(),
             RuntimeEventSchema {
@@ -896,31 +922,134 @@ mod tests {
                 ..RuntimeRelationSchema::default()
             },
         );
+        registry
+    }
+
+    fn failure_record(id: &str, status: &str, title: &str, valid_from: u64) -> RuntimeRecord {
+        RuntimeRecord {
+            reference: RuntimeRef::new("item", id).unwrap(),
+            valid_from,
+            valid_to: None,
+            properties: BTreeMap::from([
+                (
+                    "code".into(),
+                    RuntimeValue::String(format!("{id}-{valid_from}")),
+                ),
+                ("status".into(), RuntimeValue::String(status.into())),
+                ("title".into(), RuntimeValue::String(title.into())),
+            ]),
+        }
+    }
+
+    fn bootstrap_failure_database(root: &Path) -> Database {
+        let store = RrflowKvStore::open(root).unwrap();
+        store
+            .runtime()
+            .commit(&RuntimeCommit {
+                scope: failure_scope(),
+                at: 10,
+                actor: "agent:rrflow-kv-failure".into(),
+                expected_cursor: 0,
+                mutations: vec![
+                    RuntimeMutation::Schema {
+                        registry: failure_schema(),
+                    },
+                    RuntimeMutation::Record {
+                        record: failure_record("one", "open", "First", 10),
+                    },
+                    RuntimeMutation::Record {
+                        record: failure_record("two", "closed", "Second", 10),
+                    },
+                ],
+            })
+            .unwrap();
+        let bindings = [
+            crate::IndexCommitBindingDefinition {
+                id: ProjectionId::new("item-status").unwrap(),
+                record_kind: RuntimeType::new("item").unwrap(),
+                fields: vec!["status".into()],
+                kind: crate::IndexCommitBindingKind::Scalar { unique: false },
+                configuration_sha256: digest::sha256_hex(b"item-status:scalar"),
+            },
+            crate::IndexCommitBindingDefinition {
+                id: ProjectionId::new("item-code").unwrap(),
+                record_kind: RuntimeType::new("item").unwrap(),
+                fields: vec!["code".into()],
+                kind: crate::IndexCommitBindingKind::Scalar { unique: true },
+                configuration_sha256: digest::sha256_hex(b"item-code:unique"),
+            },
+            crate::IndexCommitBindingDefinition {
+                id: ProjectionId::new("item-title-bm25").unwrap(),
+                record_kind: RuntimeType::new("item").unwrap(),
+                fields: vec!["title".into()],
+                kind: crate::IndexCommitBindingKind::Bm25,
+                configuration_sha256: digest::sha256_hex(b"item-title:bm25"),
+            },
+        ];
+        let scope = failure_scope();
+        store
+            .control()
+            .commit_catalog_with_index_bindings(
+                &scope,
+                1,
+                &crate::ControlTransition {
+                    key: format!("server/state/index-catalogue/{scope}"),
+                    expected: None,
+                    replacement: Some(br#"{"contract":"semantic-failure-matrix-v1"}"#.to_vec()),
+                    at: 20,
+                    actor: "agent:rrflow-kv-failure".into(),
+                    action: "index_catalogue.installed".into(),
+                    request_id: "request-semantic-failure-index".into(),
+                    operation_id: "operation-semantic-failure-index".into(),
+                },
+                &bindings,
+            )
+            .unwrap();
+        drop(store);
+        Database::open(root).unwrap()
+    }
+
+    fn failure_transaction(database: &Database) -> DataTransaction {
+        let scope = failure_scope();
+        let read = rrflow_kv_read_stamp(database, database.snapshot(), &scope).unwrap();
+        let item = RuntimeRef::new("item", "one").unwrap();
         DataTransaction::new(
             read,
             RuntimeCommit {
                 scope,
                 at: 100,
                 actor: "agent:rrflow-kv-failure".into(),
-                expected_cursor: 0,
+                expected_cursor: 3,
                 mutations: vec![
-                    RuntimeMutation::Schema { registry },
                     RuntimeMutation::Record {
-                        record: RuntimeRecord {
-                            reference: item.clone(),
+                        record: failure_record("one", "pending", "First revised", 100),
+                    },
+                    RuntimeMutation::Relation {
+                        relation: RuntimeRelation {
+                            reference: RuntimeRef::new("links", "one-two").unwrap(),
+                            from: RuntimeRef::new("item", "one").unwrap(),
+                            to: RuntimeRef::new("item", "two").unwrap(),
                             valid_from: 100,
                             valid_to: None,
                             properties: RuntimeProperties::new(),
                         },
                     },
-                    RuntimeMutation::Relation {
-                        relation: RuntimeRelation {
-                            reference: RuntimeRef::new("links", "one-self").unwrap(),
-                            from: RuntimeRef::new("item", "one").unwrap(),
-                            to: RuntimeRef::new("item", "one").unwrap(),
+                    RuntimeMutation::Vector {
+                        vector: RuntimeVector {
+                            reference: RuntimeRef::new("embedding", "one-title").unwrap(),
+                            subject: item.clone(),
+                            collection: Some(VectorCollectionAddress {
+                                collection_id: "items".into(),
+                                vector_name: "semantic".into(),
+                            }),
+                            field: "title".into(),
                             valid_from: 100,
                             valid_to: None,
-                            properties: RuntimeProperties::new(),
+                            value: VectorValue::Dense {
+                                values: vec![1.0, 0.0],
+                            },
+                            provenance: None,
+                            properties: BTreeMap::new(),
                         },
                     },
                     RuntimeMutation::Event {
@@ -950,43 +1079,159 @@ mod tests {
         .unwrap()
     }
 
+    fn failure_function_receipt(commit_id: &str) -> crate::FunctionInvocationReceiptRecord {
+        let canonical_receipt_json = format!(
+            "{{\"invocation_id\":\"failure-function\",\"runtime_commit_sha256\":\"{commit_id}\"}}"
+        );
+        crate::FunctionInvocationReceiptRecord {
+            format_version: crate::FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+            invocation_id: "failure-function".into(),
+            runtime_commit_sha256: Some(commit_id.into()),
+            receipt_sha256: digest::sha256_hex(format!("receipt:{commit_id}").as_bytes()),
+            canonical_receipt_sha256: digest::sha256_hex(canonical_receipt_json.as_bytes()),
+            canonical_receipt_json,
+        }
+    }
+
     #[test]
     fn rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary() {
         for mode in [FailureMode::Crash, FailureMode::StorageFull] {
-            for boundary in [WriteBoundary::BeforeWalAppend, WriteBoundary::WalSynced] {
+            for boundary in [
+                WriteBoundary::Prepared,
+                WriteBoundary::WalAppended,
+                WriteBoundary::WalSynced,
+                WriteBoundary::Visible,
+            ] {
                 let directory = tempfile::tempdir().unwrap();
                 let root = directory.path().join("rrflow-kv-failure");
-                let mut database = Database::create_with_application_format(
-                    &root,
-                    DatabaseOptions::default(),
-                    keyspaces::RRFLOW_KV_FORMAT,
-                )
-                .unwrap();
+                let mut database = bootstrap_failure_database(&root);
                 let transaction = failure_transaction(&database);
+                let function_receipt = failure_function_receipt(&transaction.commit.digest());
                 let plan = prepare_rrflow_kv_commit_at_read(
                     &database,
                     &transaction.commit,
                     Some(&transaction.read),
                     None,
+                    Some(("rrflow-kv-failure", std::slice::from_ref(&function_receipt))),
                 )
                 .unwrap();
                 let expected = plan.outcome().clone();
                 let (_, operations) = plan.into_parts_for(&database).unwrap();
+                for (space, name, minimum) in [
+                    (keyspaces::RUNTIME_RECORDS, "current record", 1),
+                    (keyspaces::RUNTIME_RECORD_VERSIONS, "record version", 1),
+                    (keyspaces::RUNTIME_RELATIONS, "current relation", 1),
+                    (keyspaces::RUNTIME_RELATION_VERSIONS, "relation version", 1),
+                    (keyspaces::RUNTIME_OUTGOING_EDGES, "outgoing edge", 1),
+                    (
+                        keyspaces::RUNTIME_OUTGOING_EDGE_VERSIONS,
+                        "outgoing edge version",
+                        1,
+                    ),
+                    (keyspaces::RUNTIME_INCOMING_EDGES, "incoming edge", 1),
+                    (
+                        keyspaces::RUNTIME_INCOMING_EDGE_VERSIONS,
+                        "incoming edge version",
+                        1,
+                    ),
+                    (
+                        keyspaces::RUNTIME_INDEX_SOURCE_DELTAS,
+                        "scalar, unique, and BM25 source deltas",
+                        3,
+                    ),
+                    (keyspaces::RUNTIME_SCALAR_ENTRIES, "scalar index entry", 1),
+                    (keyspaces::RUNTIME_UNIQUE_ENTRIES, "unique index entry", 1),
+                    (keyspaces::RUNTIME_VECTORS, "current vector", 1),
+                    (keyspaces::RUNTIME_VECTOR_VERSIONS, "vector version", 1),
+                    (
+                        keyspaces::RUNTIME_VECTOR_SOURCE_DELTAS,
+                        "vector source delta",
+                        1,
+                    ),
+                    (keyspaces::RUNTIME_CHANGES, "runtime changes", 5),
+                    (keyspaces::RUNTIME_PROJECTION_DELTAS, "projection deltas", 1),
+                    (keyspaces::RUNTIME_OUTBOX, "outbox", 1),
+                    (keyspaces::RUNTIME_AUDIT, "audit", 1),
+                    (keyspaces::RUNTIME_COMMITS, "commit outcome", 1),
+                    (keyspaces::INVOCATIONS, "function receipt", 1),
+                ] {
+                    let prefix = keyspaces::space_prefix(space);
+                    assert!(
+                        operations
+                            .iter()
+                            .filter(|operation| operation.key().starts_with(&prefix))
+                            .count()
+                            >= minimum,
+                        "semantic plan lacks {name}"
+                    );
+                }
+                let baseline_snapshot = database.snapshot();
+                let baseline = operations
+                    .iter()
+                    .map(|operation| {
+                        (
+                            operation.key().to_vec(),
+                            database.get(operation.key(), baseline_snapshot).unwrap(),
+                        )
+                    })
+                    .collect::<BTreeMap<_, _>>();
+                let mut physical = database.begin_transaction().unwrap();
+                for operation in &operations {
+                    match operation {
+                        Mutation::Put { key, value } => {
+                            physical.put(key.clone(), value.clone()).unwrap()
+                        }
+                        Mutation::Delete { key } => physical.delete(key.clone()).unwrap(),
+                    }
+                }
                 let error = database
-                    .write_owned_with_failure(
-                        WriteBatch::new(operations).unwrap(),
+                    .commit_transaction_with_failure(
+                        physical,
                         rrd_lsm::Durability::Authoritative,
                         boundary,
                         mode,
                     )
                     .unwrap_err();
                 assert!(matches!(error, rrd_lsm::Error::InjectedFailure { .. }));
+
+                let visible_before_reopen = boundary == WriteBoundary::Visible;
+                let in_process_snapshot = database.snapshot();
+                for operation in &operations {
+                    let expected_value = if visible_before_reopen {
+                        match operation {
+                            Mutation::Put { value, .. } => Some(value.clone()),
+                            Mutation::Delete { .. } => None,
+                        }
+                    } else {
+                        baseline[operation.key()].clone()
+                    };
+                    assert_eq!(
+                        database.get(operation.key(), in_process_snapshot).unwrap(),
+                        expected_value,
+                        "in-process family split for mode={mode:?} boundary={boundary:?}"
+                    );
+                }
                 drop(database);
 
                 let mut recovered = Database::open(&root).unwrap();
                 let snapshot = recovered.snapshot();
-                let published = boundary == WriteBoundary::WalSynced;
-                let expected_runtime_cursor = if published { 5 } else { 0 };
+                let published = boundary != WriteBoundary::Prepared;
+                for operation in &operations {
+                    let expected_value = if published {
+                        match operation {
+                            Mutation::Put { value, .. } => Some(value.clone()),
+                            Mutation::Delete { .. } => None,
+                        }
+                    } else {
+                        baseline[operation.key()].clone()
+                    };
+                    assert_eq!(
+                        recovered.get(operation.key(), snapshot).unwrap(),
+                        expected_value,
+                        "reopened family split for mode={mode:?} boundary={boundary:?}"
+                    );
+                }
+                let expected_runtime_cursor = if published { 8 } else { 3 };
                 let expected_claim_sequence = if published { 1 } else { 0 };
                 assert_eq!(
                     read_sequence(&recovered, snapshot, &keyspaces::runtime_cursor_key(),).unwrap(),
@@ -999,80 +1244,6 @@ mod tests {
                     expected_claim_sequence,
                     "mode={mode:?} boundary={boundary:?}"
                 );
-                assert_eq!(
-                    scan_space(&recovered, snapshot, keyspaces::RUNTIME_CHANGES, &[])
-                        .unwrap()
-                        .len(),
-                    expected_runtime_cursor as usize
-                );
-                assert_eq!(
-                    scan_space(&recovered, snapshot, keyspaces::RUNTIME_OUTBOX, &[])
-                        .unwrap()
-                        .len(),
-                    if published { 3 } else { 0 }
-                );
-                assert_eq!(
-                    scan_space(
-                        &recovered,
-                        snapshot,
-                        keyspaces::RUNTIME_PROJECTION_DELTAS,
-                        &[],
-                    )
-                    .unwrap()
-                    .len(),
-                    if published { 3 } else { 0 }
-                );
-                assert_eq!(
-                    scan_space(
-                        &recovered,
-                        snapshot,
-                        keyspaces::RUNTIME_RECORD_VERSIONS,
-                        &[],
-                    )
-                    .unwrap()
-                    .len(),
-                    usize::from(published)
-                );
-                assert_eq!(
-                    scan_space(
-                        &recovered,
-                        snapshot,
-                        keyspaces::RUNTIME_RELATION_VERSIONS,
-                        &[],
-                    )
-                    .unwrap()
-                    .len(),
-                    usize::from(published)
-                );
-                for adjacency in [
-                    keyspaces::RUNTIME_OUTGOING_EDGES,
-                    keyspaces::RUNTIME_INCOMING_EDGES,
-                ] {
-                    assert_eq!(
-                        scan_space(&recovered, snapshot, adjacency, &[])
-                            .unwrap()
-                            .len(),
-                        usize::from(published)
-                    );
-                }
-                for adjacency_history in [
-                    keyspaces::RUNTIME_OUTGOING_EDGE_VERSIONS,
-                    keyspaces::RUNTIME_INCOMING_EDGE_VERSIONS,
-                ] {
-                    assert_eq!(
-                        scan_space(&recovered, snapshot, adjacency_history, &[])
-                            .unwrap()
-                            .len(),
-                        usize::from(published)
-                    );
-                }
-                assert_eq!(
-                    scan_space(&recovered, snapshot, keyspaces::CLAIMS, &[])
-                        .unwrap()
-                        .len(),
-                    expected_claim_sequence as usize
-                );
-
                 let outcome: Option<RuntimeCommitOutcome> = get_json(
                     &recovered,
                     snapshot,
@@ -1094,16 +1265,23 @@ mod tests {
                 );
                 assert_eq!(
                     audit.as_ref().and_then(|value| value.outcome_cursor),
-                    published.then_some(5)
+                    published.then_some(8)
                 );
-                let schema: Option<RuntimeSchemaRegistry> = get_json(
-                    &recovered,
-                    snapshot,
-                    keyspaces::RUNTIME_SCHEMAS,
-                    &keyspaces::runtime_schema_key(&transaction.commit.scope),
-                )
-                .unwrap();
-                assert_eq!(schema.is_some(), published);
+                let stored_function_receipt: Option<crate::FunctionInvocationReceiptRecord> =
+                    get_json(
+                        &recovered,
+                        snapshot,
+                        keyspaces::INVOCATIONS,
+                        &keyspaces::function_invocation_receipt_key(
+                            "rrflow-kv-failure",
+                            &function_receipt.invocation_id,
+                        ),
+                    )
+                    .unwrap();
+                assert_eq!(
+                    stored_function_receipt.as_ref(),
+                    published.then_some(&function_receipt)
+                );
                 let record: Option<RuntimeRecord> = get_json(
                     &recovered,
                     snapshot,
@@ -1115,7 +1293,12 @@ mod tests {
                     ),
                 )
                 .unwrap();
-                assert_eq!(record.is_some(), published);
+                let expected_record = if published {
+                    failure_record("one", "pending", "First revised", 100)
+                } else {
+                    failure_record("one", "open", "First", 10)
+                };
+                assert_eq!(record.unwrap().properties, expected_record.properties);
                 let relation: Option<RuntimeRelation> = get_json(
                     &recovered,
                     snapshot,
@@ -1123,7 +1306,7 @@ mod tests {
                     &keyspaces::runtime_identity_key(
                         keyspaces::RUNTIME_RELATIONS,
                         &transaction.commit.scope,
-                        &RuntimeRef::new("links", "one-self").unwrap(),
+                        &RuntimeRef::new("links", "one-two").unwrap(),
                     ),
                 )
                 .unwrap();

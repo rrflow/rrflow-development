@@ -84,6 +84,16 @@ impl WriteBatch {
         &self.operations
     }
 
+    /// Exact byte length of this batch in the current authenticated WAL
+    /// payload encoding.
+    ///
+    /// Higher semantic layers use this only for pre-admission evidence. The
+    /// WAL remains the physical authority and validates the encoded payload
+    /// again when it is appended.
+    pub fn encoded_len(&self) -> usize {
+        self.encoded_len
+    }
+
     /// Consumes a validated batch and returns its ordered mutations.
     pub fn into_operations(self) -> Vec<Mutation> {
         self.operations
