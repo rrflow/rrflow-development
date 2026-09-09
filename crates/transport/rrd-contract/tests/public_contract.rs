@@ -8,21 +8,21 @@ use rrd_contract::{
     EmbeddingNetworkPolicy, EnsureQueryIndex, EnsureVectorCollection, EnsureVectorIndex,
     EnsureVectorPayloadIndex, ErrorBody, ErrorCode, EstateActivityPolicySnapshot,
     EstateAuthoritySnapshot, EstateBackupJobSnapshot, EstateBackupJobState,
-    EstateBackupJobsSnapshot, EstateMutationResult, EstateSnapshot, ExecuteQuery,
-    ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed, ForwardRollbackCounts,
-    ForwardRollbackRequest, GenerateEmbeddings, HybridFusion, IdempotencyBinding, ListQueryIndexes,
-    ListVectorCollections, ListVectorPayloadIndexes, ListVectorQuantizationArtifacts, Liveness,
-    NamedVectorDefinition, PollLiveQuery, PreviewTransaction, ProductCapability,
-    ProductCapabilityCatalogue, ProductSurface, QueryBudget, QueryExecutionAnalysisSnapshot,
-    QueryExecutionSnapshot, QueryIndexKind, QueryPlanCandidate, QueryPlanSnapshot, QueryResult,
-    QueryRowSnapshot, QueryValue, ReadAccessPath, ReadAudit, ReadChangefeed, ReadDataSnapshot,
-    ReadEstate, ReadEvidence, ReadPathEvidence, ReadStampValidationEvidence,
-    ReadStampValidationMethod, Readiness, RenewSession, RequestContext, RequestEnvelope,
-    ResourceId, ResourceKind, ResourcePath, ResponseEnvelope, ResponseOutcome,
-    RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrievalFusion, RetrievalPrefetch,
-    RetrievalQuery, RetrievalResultShape, SearchHybrid, SearchVectors, ServiceCapabilities,
-    SessionEndState, SessionLease, SessionLimits, SessionTermination, SurfaceBinding,
-    SurfaceDisposition, TransactionMutation, TransactionPreview, TransactionState,
+    EstateBackupJobsSnapshot, EstateBackupRecoveryPolicySnapshot, EstateMutationResult,
+    EstateSnapshot, ExecuteQuery, ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed,
+    ForwardRollbackCounts, ForwardRollbackRequest, GenerateEmbeddings, HybridFusion,
+    IdempotencyBinding, ListQueryIndexes, ListVectorCollections, ListVectorPayloadIndexes,
+    ListVectorQuantizationArtifacts, Liveness, NamedVectorDefinition, PollLiveQuery,
+    PreviewTransaction, ProductCapability, ProductCapabilityCatalogue, ProductSurface, QueryBudget,
+    QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot, QueryIndexKind, QueryPlanCandidate,
+    QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryValue, ReadAccessPath, ReadAudit,
+    ReadChangefeed, ReadDataSnapshot, ReadEstate, ReadEvidence, ReadPathEvidence,
+    ReadStampValidationEvidence, ReadStampValidationMethod, Readiness, RenewSession,
+    RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
+    ResponseOutcome, RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrievalFusion,
+    RetrievalPrefetch, RetrievalQuery, RetrievalResultShape, SearchHybrid, SearchVectors,
+    ServiceCapabilities, SessionEndState, SessionLease, SessionLimits, SessionTermination,
+    SurfaceBinding, SurfaceDisposition, TransactionMutation, TransactionPreview, TransactionState,
     VectorIndexBuildPolicy, VectorIndexConfiguration, VectorMemoryTier, VectorPayloadCondition,
     VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
     VectorQuantizationBits, VectorQuantizationMethod, VectorSearchMetric, VectorSearchMode,
@@ -396,7 +396,13 @@ fn estate_backup_jobs_are_a_separate_strict_public_resource() {
             attempts: 0,
             created_at_unix_ms: 80,
             updated_at_unix_ms: 80,
-            recovery_policy: None,
+            recovery_policy: EstateBackupRecoveryPolicySnapshot {
+                revision: 1,
+                max_rpo_ms: 86_400_000,
+                max_rto_ms: 3_600_000,
+                minimum_recovery_points: 1,
+                retention_ms: 604_800_000,
+            },
             lease: None,
             receipts: Vec::new(),
             backup_id: None,
@@ -417,7 +423,14 @@ fn estate_backup_jobs_are_a_separate_strict_public_resource() {
             "state": "pending",
             "attempts": 0,
             "created_at_unix_ms": 80,
-            "updated_at_unix_ms": 80
+            "updated_at_unix_ms": 80,
+            "recovery_policy": {
+                "revision": 1,
+                "max_rpo_ms": 86400000,
+                "max_rto_ms": 3600000,
+                "minimum_recovery_points": 1,
+                "retention_ms": 604800000
+            }
         }]
     });
     assert_eq!(serde_json::to_value(&snapshot).unwrap(), expected);
@@ -425,6 +438,12 @@ fn estate_backup_jobs_are_a_separate_strict_public_resource() {
         serde_json::from_value::<EstateBackupJobsSnapshot>(expected.clone()).unwrap(),
         snapshot
     );
+    let mut missing_policy = expected.clone();
+    missing_policy["jobs"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("recovery_policy");
+    assert!(serde_json::from_value::<EstateBackupJobsSnapshot>(missing_policy).is_err());
     let mut unknown = expected;
     unknown["jobs"][0]["unknown"] = serde_json::json!(true);
     assert!(serde_json::from_value::<EstateBackupJobsSnapshot>(unknown).is_err());

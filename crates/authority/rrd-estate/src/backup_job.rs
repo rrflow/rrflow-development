@@ -58,8 +58,7 @@ pub struct EstateBackupJob {
     pub attempts: u32,
     pub created_at: u64,
     pub updated_at: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recovery_policy: Option<BackupRecoveryPolicySnapshot>,
+    pub recovery_policy: BackupRecoveryPolicySnapshot,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lease: Option<OperationLease>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -167,7 +166,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
                 &request.instance_id,
                 job.source_generation,
                 &request.label,
-                job.recovery_policy.as_ref(),
+                &job.recovery_policy,
             );
             if binding.request_sha256 != request_sha256
                 || job.request_sha256 != request_sha256
@@ -230,7 +229,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             &request.instance_id,
             source_generation,
             &request.label,
-            Some(&recovery_policy),
+            &recovery_policy,
         );
         let job = EstateBackupJob {
             id: request.context.operation_id.clone(),
@@ -242,7 +241,7 @@ impl<'a, E: StorageEngine + ?Sized> EstateRepository<'a, E> {
             attempts: 0,
             created_at: request.context.at,
             updated_at: request.context.at,
-            recovery_policy: Some(recovery_policy),
+            recovery_policy,
             lease: None,
             receipts: Vec::new(),
             backup_id: None,
@@ -556,15 +555,13 @@ pub fn public_backup_job(job: &EstateBackupJob) -> rrd_contract::EstateBackupJob
         archive_sha256: job.archive_sha256.clone(),
         catalogue_sha256: job.catalogue_sha256.clone(),
         error: job.error.clone(),
-        recovery_policy: job.recovery_policy.as_ref().map(|policy| {
-            rrd_contract::EstateBackupRecoveryPolicySnapshot {
-                revision: policy.revision,
-                max_rpo_ms: policy.max_rpo_ms,
-                max_rto_ms: policy.max_rto_ms,
-                minimum_recovery_points: policy.minimum_recovery_points,
-                retention_ms: policy.retention_ms,
-            }
-        }),
+        recovery_policy: rrd_contract::EstateBackupRecoveryPolicySnapshot {
+            revision: job.recovery_policy.revision,
+            max_rpo_ms: job.recovery_policy.max_rpo_ms,
+            max_rto_ms: job.recovery_policy.max_rto_ms,
+            minimum_recovery_points: job.recovery_policy.minimum_recovery_points,
+            retention_ms: job.recovery_policy.retention_ms,
+        },
     }
 }
 
@@ -587,21 +584,18 @@ pub(crate) fn validate_backup_state(document: &EstateDocument) -> Result<()> {
         {
             return Err(Error::Invalid(format!("backup job {} is invalid", job.id)));
         }
-        if let Some(policy) = &job.recovery_policy {
-            if policy.revision == 0
-                || policy.max_rpo_ms == 0
-                || policy.max_rto_ms == 0
-                || policy.minimum_recovery_points == 0
-                || policy.retention_ms < policy.max_rpo_ms
-            {
-                return Err(Error::Invalid(format!(
-                    "backup job {} recovery policy is invalid",
-                    job.id
-                )));
-            }
+        let policy = &job.recovery_policy;
+        if policy.revision == 0
+            || policy.max_rpo_ms == 0
+            || policy.max_rto_ms == 0
+            || policy.minimum_recovery_points == 0
+            || policy.retention_ms < policy.max_rpo_ms
+        {
+            return Err(Error::Invalid(format!(
+                "backup job {} recovery policy is invalid",
+                job.id
+            )));
         }
-        // Legacy jobs may predate estate-owned policy bindings. They remain
-        // readable, but completion refuses to promote one into a recovery point.
         if job.receipts.len() > MAX_BACKUP_RECEIPTS_PER_JOB {
             return Err(Error::Invalid("backup receipt limit exceeded".into()));
         }
@@ -793,7 +787,7 @@ fn backup_request_sha256(
     instance_id: &CanonicalId,
     source_generation: u64,
     label: &str,
-    recovery_policy: Option<&BackupRecoveryPolicySnapshot>,
+    recovery_policy: &BackupRecoveryPolicySnapshot,
 ) -> String {
     digest::sha256_hex(
         &serde_json::to_vec(&(

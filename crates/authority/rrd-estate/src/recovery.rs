@@ -825,10 +825,7 @@ pub(crate) fn record_completed_recovery_point(
         .catalogue_sha256
         .clone()
         .ok_or_else(|| Error::Invalid("completed backup has no catalogue".into()))?;
-    let policy = job
-        .recovery_policy
-        .as_ref()
-        .ok_or_else(|| Error::Invalid("legacy backup job has no recovery policy binding".into()))?;
+    let policy = &job.recovery_policy;
     let point = EstateRecoveryPoint {
         backup_id: backup_id.clone(),
         instance_id: job.instance_id.clone(),
@@ -908,10 +905,7 @@ pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
             .backup_jobs
             .get(point.backup_job_id.as_str())
             .ok_or_else(|| Error::Invalid(format!("recovery point {key} has no backup job")))?;
-        let policy = job
-            .recovery_policy
-            .as_ref()
-            .ok_or_else(|| Error::Invalid(format!("recovery point {key} has no policy binding")))?;
+        let policy = &job.recovery_policy;
         if point.source_generation == 0
             || point.source_cut_at == 0
             || point.completed_at < point.source_cut_at
@@ -935,9 +929,11 @@ pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
             return Err(Error::Invalid(format!("recovery point {key} is invalid")));
         }
     }
-    for job in document.backup_jobs.values().filter(|job| {
-        job.state == super::BackupJobState::Succeeded && job.recovery_policy.is_some()
-    }) {
+    for job in document
+        .backup_jobs
+        .values()
+        .filter(|job| job.state == super::BackupJobState::Succeeded)
+    {
         let backup_id = job
             .backup_id
             .as_deref()
@@ -974,10 +970,7 @@ pub(crate) fn validate_recovery_state(document: &EstateDocument) -> Result<()> {
             })
             .collect::<Vec<_>>();
         let job = &document.backup_jobs[point.backup_job_id.as_str()];
-        let policy = job
-            .recovery_policy
-            .as_ref()
-            .expect("recovery point validation established its policy");
+        let policy = &job.recovery_policy;
         let expected_expiry = point
             .completed_at
             .checked_add(policy.retention_ms)

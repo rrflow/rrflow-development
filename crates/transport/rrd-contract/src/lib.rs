@@ -4425,8 +4425,7 @@ pub struct EstateBackupJobSnapshot {
     pub attempts: u32,
     pub created_at_unix_ms: u64,
     pub updated_at_unix_ms: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recovery_policy: Option<EstateBackupRecoveryPolicySnapshot>,
+    pub recovery_policy: EstateBackupRecoveryPolicySnapshot,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lease: Option<EstateLeaseSnapshot>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

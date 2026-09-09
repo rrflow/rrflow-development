@@ -168,14 +168,33 @@ fn backup_schedule_denies_an_unobserved_or_running_instance() {
 }
 
 #[test]
-fn legacy_estate_documents_decode_without_backup_fields() {
+fn canonical_estate_document_requires_authority_backup_and_recovery_fields() {
     let document = EstateDocument::new(id("estate-a"), 10).unwrap();
     let encoded = serde_json::to_value(&document).unwrap();
-    assert!(encoded.get("backup_jobs").is_none());
-    assert!(encoded.get("backup_idempotency").is_none());
+    for field in [
+        "authority",
+        "backup_jobs",
+        "backup_idempotency",
+        "recovery_policies",
+        "recovery_points",
+        "recovery_pins",
+        "restore_evidence",
+        "recovery_idempotency",
+        "recovery_prune_intents",
+    ] {
+        assert!(
+            encoded.get(field).is_some(),
+            "missing canonical field {field}"
+        );
+        let mut incomplete = encoded.clone();
+        incomplete.as_object_mut().unwrap().remove(field);
+        assert!(
+            serde_json::from_value::<EstateDocument>(incomplete).is_err(),
+            "estate document accepted missing field {field}"
+        );
+    }
 
     let decoded: EstateDocument = serde_json::from_value(encoded).unwrap();
-    assert!(decoded.backup_jobs.is_empty());
-    assert!(decoded.backup_idempotency.is_empty());
+    assert_eq!(decoded, document);
     decoded.validate().unwrap();
 }

@@ -956,6 +956,33 @@ C-04 evidence (2026-09-09):
   installation/attunement, routines/skills, Connectome, deployment,
   optimization, and release proof remain open.
 
+C-05 accepted convergence evidence so far (gate remains open):
+
+- C-05a at `b8f07c97775d4440df728bceb261a1128c4d816a` removes the
+  pre-1.0 batch, manifest, and segment decoders and the nonempty
+  cursor-zero accumulator reconstruction path. Earlier physical bytes now
+  fail with an explicit unsupported-version result before another decoder or
+  memtable publication; missing authenticated accumulator state at a nonzero
+  cursor fails closed on rrflowMX, rrflowKV, and rrflowKV reopen.
+- C-05b, in the reviewed change containing this record, requires
+  `EstateDocument` authority and all eight backup/recovery maps and requires
+  the bound recovery-policy snapshot in both internal and public backup-job
+  state. The absence branches, legacy comment, and successful incomplete
+  fixtures are removed. Negative tests reject omission of every named field;
+  one fresh estate/backup/recovery corpus is identical on rrflowMX, rrflowKV,
+  and rrflowKV reopen. This accepts the evidence required to close POAM-018.
+- Both packages pass their focused and owning suites, all 24 workspace
+  architecture guards, the complete default workspace all-target test and
+  strict Clippy matrices, and the repository inventory, documentation,
+  generated-surface, workflow, version, formatting, and diff policies. Exact
+  commands, counts, source probes, and scope exclusions are recorded in the
+  C-05a and C-05b execution journals.
+- C-05 remains unchecked. Whole-executable opener, dependency, reader, and
+  old-shape closure is not yet proved; direct cluster openers and mapped
+  kernel/vector residues remain under their declared convergence gates. C-06
+  still replaces the sole current row segment with the hybrid ordered-spine
+  and Arrow-page format.
+
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.
 

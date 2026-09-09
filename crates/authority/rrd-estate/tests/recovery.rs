@@ -159,7 +159,7 @@ fn policy_backup_point_and_public_posture_survive_reopen_and_replay() {
             .unwrap()
             .unwrap();
         let job = &document.backup_jobs["backup-one"];
-        assert_eq!(job.recovery_policy.as_ref().unwrap().revision, 1);
+        assert_eq!(job.recovery_policy.revision, 1);
         assert_eq!(document.recovery_points[&backup_id].policy_revision, 1);
         assert!(document.recovery_pins.values().any(|pin| {
             pin.backup_id == backup_id && pin.kind == rrd_estate::EstateRetentionPinKind::Policy
@@ -332,7 +332,7 @@ fn restore_evidence_records_measured_rpo_and_rto_without_paths() {
 }
 
 #[test]
-fn legacy_backup_jobs_decode_without_recovery_policy_snapshots() {
+fn canonical_backup_job_requires_its_recovery_policy_snapshot() {
     let engine = RrflowMxStore::new();
     prepare_stopped_instance(&engine);
     let scheduled = EstateRepository::new(&engine, id("estate-a"))
@@ -344,11 +344,45 @@ fn legacy_backup_jobs_decode_without_recovery_policy_snapshots() {
         })
         .unwrap();
     let mut encoded = serde_json::to_value(scheduled.document).unwrap();
+    assert!(encoded["backup_jobs"]["backup-one"]["recovery_policy"].is_object());
     encoded["backup_jobs"]["backup-one"]
         .as_object_mut()
         .unwrap()
         .remove("recovery_policy");
-    let decoded: EstateDocument = serde_json::from_value(encoded).unwrap();
-    assert!(decoded.backup_jobs["backup-one"].recovery_policy.is_none());
-    decoded.validate().unwrap();
+    assert!(serde_json::from_value::<EstateDocument>(encoded).is_err());
+}
+
+#[test]
+fn canonical_estate_backup_and_recovery_match_mx_and_kv_reopen() {
+    let mx = RrflowMxStore::new();
+    prepare_stopped_instance(&mx);
+    set_policy(&mx, 75, "set-policy");
+    complete_backup(&mx, "backup-one", 80, '3');
+    let expected = EstateRepository::new(&mx, id("estate-a"))
+        .load()
+        .unwrap()
+        .unwrap();
+    expected.validate().unwrap();
+
+    let root = tempfile::tempdir().unwrap();
+    let database = root.path().join("estate-native");
+    {
+        let kv = RrflowKvStore::open(&database).unwrap();
+        prepare_stopped_instance(&kv);
+        set_policy(&kv, 75, "set-policy");
+        complete_backup(&kv, "backup-one", 80, '3');
+        let actual = EstateRepository::new(&kv, id("estate-a"))
+            .load()
+            .unwrap()
+            .unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    let reopened = RrflowKvStore::open(&database).unwrap();
+    let actual = EstateRepository::new(&reopened, id("estate-a"))
+        .load()
+        .unwrap()
+        .unwrap();
+    assert_eq!(actual, expected);
+    actual.validate().unwrap();
 }

@@ -326,26 +326,17 @@ pub struct EstateDocument {
     pub created_at: u64,
     pub updated_at: u64,
     pub activity_policy: ActivityPolicy,
-    #[serde(default)]
     pub authority: EstateAuthorityState,
     pub instances: BTreeMap<String, ManagedInstance>,
     pub operations: BTreeMap<String, EstateOperation>,
     pub idempotency: BTreeMap<String, IdempotencyBinding>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub backup_jobs: BTreeMap<String, EstateBackupJob>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub backup_idempotency: BTreeMap<String, BackupIdempotencyBinding>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub recovery_policies: BTreeMap<String, EstateRecoveryPolicy>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub recovery_points: BTreeMap<String, EstateRecoveryPoint>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub recovery_pins: BTreeMap<String, EstateRetentionPin>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub restore_evidence: BTreeMap<String, EstateRestoreEvidence>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub recovery_idempotency: BTreeMap<String, RecoveryIdempotencyBinding>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub recovery_prune_intents: BTreeMap<String, EstateRecoveryPruneIntent>,
 }
 
