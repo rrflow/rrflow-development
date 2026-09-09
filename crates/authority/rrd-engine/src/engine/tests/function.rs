@@ -3,12 +3,15 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 use rrd_contract::{
     DataEventSchema, DataLogicalModel, DataRecordSchema, DataReference, DataSchemaMode,
-    DataSchemaRegistry, DataTableSchema, ExecuteFunction, FunctionCapability, FunctionCatalogue,
-    FunctionDefinition, FunctionLimits, FunctionRuntime, QueryValue, ReadDataSnapshot,
+    DataSchemaRegistry, DataTableSchema, ExecuteFunction, FunctionArtifact,
+    FunctionArtifactMediaType, FunctionCapability, FunctionCatalogue, FunctionDefinition,
+    FunctionInvocationReceipt, FunctionLimits, FunctionRuntime, FunctionRuntimeKind,
+    FunctionValueSchema, FunctionValueShape, QueryValue, ReadDataSnapshot,
     ReplaceFunctionCatalogue, TransactionFunctionBinding, TransactionFunctionEffect,
     TransactionMutationKind, WebAssemblyAbi, FUNCTION_CONTRACT_VERSION,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::{Deref, DerefMut};
 
 fn limits() -> FunctionLimits {
     FunctionLimits {
@@ -21,43 +24,165 @@ fn limits() -> FunctionLimits {
     }
 }
 
-fn javascript(id: &str, source: &str) -> FunctionDefinition {
-    FunctionDefinition {
-        function_id: CanonicalId::new(id).unwrap(),
-        runtime: FunctionRuntime::JavaScriptEs2020 {
-            source: source.into(),
-            source_sha256: digest::sha256_hex(source.as_bytes()),
-        },
-        limits: limits(),
-        capabilities: BTreeSet::new(),
+#[derive(Clone)]
+struct PackagedFunction {
+    artifact: FunctionArtifact,
+    definition: FunctionDefinition,
+}
+
+impl Deref for PackagedFunction {
+    type Target = FunctionDefinition;
+
+    fn deref(&self) -> &Self::Target {
+        &self.definition
     }
 }
 
-fn webassembly(id: &str, wat: &str) -> FunctionDefinition {
-    let module = wat::parse_str(wat).unwrap();
-    FunctionDefinition {
+impl DerefMut for PackagedFunction {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.definition
+    }
+}
+
+fn value_schema(id: &str, direction: &str) -> FunctionValueSchema {
+    FunctionValueSchema {
+        schema_id: CanonicalId::new(format!("{id}-{direction}")).unwrap(),
+        revision: 1,
+        shape: FunctionValueShape::CanonicalValueV1,
+    }
+}
+
+fn javascript(id: &str, source: &str) -> PackagedFunction {
+    let bytes = source.as_bytes();
+    let artifact_sha256 = digest::sha256_hex(bytes);
+    let artifact = FunctionArtifact {
+        content_sha256: artifact_sha256.clone(),
+        media_type: FunctionArtifactMediaType::JavaScriptUtf8,
+        byte_length: bytes.len().try_into().unwrap(),
+        content_base64: STANDARD.encode(bytes),
+    };
+    let input_schema = value_schema(id, "input");
+    let output_schema = value_schema(id, "output");
+    let definition = FunctionDefinition {
         function_id: CanonicalId::new(id).unwrap(),
-        runtime: FunctionRuntime::WebAssemblyV1 {
-            abi: WebAssemblyAbi::JsonV1,
-            module_base64: STANDARD.encode(&module),
-            module_sha256: digest::sha256_hex(&module),
+        revision: 1,
+        predecessor_sha256: None,
+        runtime: FunctionRuntime::JavaScriptEs2020 {
+            artifact_sha256,
+            runtime_profile: super::super::function::runtime_profile::runtime_profile(
+                FunctionRuntimeKind::JavaScriptEs2020,
+            ),
+            runtime_build_sha256: super::super::function::runtime_profile::runtime_build_sha256(
+                FunctionRuntimeKind::JavaScriptEs2020,
+            ),
         },
+        input_schema_sha256: input_schema.sha256(),
+        input_schema,
+        output_schema_sha256: output_schema.sha256(),
+        output_schema,
         limits: limits(),
         capabilities: BTreeSet::new(),
+    };
+    PackagedFunction {
+        artifact,
+        definition,
+    }
+}
+
+fn webassembly(id: &str, wat: &str) -> PackagedFunction {
+    let module = wat::parse_str(wat).unwrap();
+    let artifact_sha256 = digest::sha256_hex(&module);
+    let artifact = FunctionArtifact {
+        content_sha256: artifact_sha256.clone(),
+        media_type: FunctionArtifactMediaType::WebAssemblyBinary,
+        byte_length: module.len().try_into().unwrap(),
+        content_base64: STANDARD.encode(&module),
+    };
+    let input_schema = value_schema(id, "input");
+    let output_schema = value_schema(id, "output");
+    let definition = FunctionDefinition {
+        function_id: CanonicalId::new(id).unwrap(),
+        revision: 1,
+        predecessor_sha256: None,
+        runtime: FunctionRuntime::WebAssemblyV1 {
+            artifact_sha256,
+            runtime_profile: super::super::function::runtime_profile::runtime_profile(
+                FunctionRuntimeKind::WebAssemblyV1,
+            ),
+            runtime_build_sha256: super::super::function::runtime_profile::runtime_build_sha256(
+                FunctionRuntimeKind::WebAssemblyV1,
+            ),
+            abi: WebAssemblyAbi::JsonV1,
+        },
+        input_schema_sha256: input_schema.sha256(),
+        input_schema,
+        output_schema_sha256: output_schema.sha256(),
+        output_schema,
+        limits: limits(),
+        capabilities: BTreeSet::new(),
+    };
+    PackagedFunction {
+        artifact,
+        definition,
+    }
+}
+
+fn packaged_catalogue_functions(catalogue: &FunctionCatalogue) -> Vec<PackagedFunction> {
+    catalogue
+        .functions
+        .values()
+        .map(|definition| PackagedFunction {
+            artifact: catalogue
+                .artifacts
+                .get(definition.runtime.artifact_sha256())
+                .unwrap()
+                .clone(),
+            definition: definition.clone(),
+        })
+        .collect()
+}
+
+fn binding(
+    binding_id: &str,
+    function: &FunctionDefinition,
+    mutation: TransactionMutationKind,
+    kind: Option<CanonicalId>,
+    effect: TransactionFunctionEffect,
+) -> TransactionFunctionBinding {
+    TransactionFunctionBinding {
+        binding_id: CanonicalId::new(binding_id).unwrap(),
+        revision: 1,
+        predecessor_sha256: None,
+        function_id: function.function_id.clone(),
+        function_definition_sha256: function.sha256(),
+        mutation,
+        kind,
+        effect,
+        max_attempts: 1,
     }
 }
 
 fn catalogue(
     revision: u64,
-    functions: Vec<FunctionDefinition>,
+    functions: Vec<PackagedFunction>,
     transaction_bindings: Vec<TransactionFunctionBinding>,
 ) -> FunctionCatalogue {
+    let artifacts = functions
+        .iter()
+        .map(|function| {
+            (
+                function.artifact.content_sha256.clone(),
+                function.artifact.clone(),
+            )
+        })
+        .collect();
     FunctionCatalogue {
         contract_version: FUNCTION_CONTRACT_VERSION,
         revision,
+        artifacts,
         functions: functions
             .into_iter()
-            .map(|function| (function.function_id.clone(), function))
+            .map(|function| (function.definition.function_id.clone(), function.definition))
             .collect(),
         transaction_bindings: transaction_bindings
             .into_iter()
@@ -174,10 +299,24 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
         )
         .unwrap();
     assert_eq!(
-        javascript_result.output,
+        javascript_result.receipt.output,
         QueryValue::Map(BTreeMap::from([("answer".into(), QueryValue::Integer(42))]))
     );
-    assert_eq!(javascript_result.fuel_consumed, 0);
+    assert_eq!(javascript_result.receipt.fuel_consumed, 0);
+    let javascript_replay = engine
+        .execute_function(
+            &lease.session_id,
+            &lease.token,
+            &ExecuteFunction {
+                function_id: CanonicalId::new("add-one").unwrap(),
+                input: input.clone(),
+            },
+            1_200,
+            "request-js",
+            "operation-js",
+        )
+        .unwrap();
+    assert_eq!(javascript_replay, javascript_result);
     let unsafe_integer_input = engine.execute_function(
         &lease.session_id,
         &lease.token,
@@ -207,8 +346,8 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
             "operation-wasm",
         )
         .unwrap();
-    assert_eq!(wasm_result.output, javascript_result.output);
-    assert!(wasm_result.fuel_consumed > 0);
+    assert_eq!(wasm_result.receipt.output, javascript_result.receipt.output);
+    assert!(wasm_result.receipt.fuel_consumed > 0);
 
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
@@ -223,6 +362,19 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
         .unwrap();
     assert_eq!(restored.revision, 1);
     assert_eq!(restored.functions.len(), 2);
+    let persisted_execution = reopened
+        .storage
+        .function_catalogue()
+        .invocation_receipt(
+            instance().as_str(),
+            javascript_result.receipt.invocation_id.as_str(),
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        persisted_execution.receipt_sha256,
+        javascript_result.receipt.receipt_sha256
+    );
 
     let mut endless = javascript("endless", "() => { while (true) {} }");
     endless.limits.max_interrupts = 1;
@@ -267,9 +419,8 @@ fn javascript_and_webassembly_are_bounded_deterministic_and_restart_safe() {
         1,
         catalogue(
             2,
-            restored
-                .functions
-                .into_values()
+            packaged_catalogue_functions(&restored)
+                .into_iter()
                 .chain([
                     endless,
                     heap_hog,
@@ -404,21 +555,20 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
     event_function
         .capabilities
         .insert(FunctionCapability::EmitEvent);
-    let binding = TransactionFunctionBinding {
-        binding_id: CanonicalId::new("person-event").unwrap(),
-        function_id: event_function.function_id.clone(),
-        mutation: TransactionMutationKind::PutRecord,
-        kind: Some(CanonicalId::new("person").unwrap()),
-        effect: TransactionFunctionEffect::AppendEvent {
+    let event_binding = binding(
+        "person-event",
+        &event_function,
+        TransactionMutationKind::PutRecord,
+        Some(CanonicalId::new("person").unwrap()),
+        TransactionFunctionEffect::AppendEvent {
             kind: CanonicalId::new("person-changed").unwrap(),
         },
-        max_attempts: 1,
-    };
+    );
     install(
         &engine,
         &lease,
         0,
-        catalogue(1, vec![event_function], vec![binding]),
+        catalogue(1, vec![event_function], vec![event_binding]),
         "binding-one",
     );
 
@@ -533,21 +683,65 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
     let binding_audit = SecurityRepository::new(&engine.storage, instance())
         .audit_since(0, 64)
         .unwrap();
-    assert!(binding_audit.records.iter().any(|(_, record)| {
+    assert!(!binding_audit.records.iter().any(|(_, record)| {
         record.action == SecurityAction::FunctionExecute
             && record.phase == rrd_contract::AuditPhase::Completed
             && record.decision == AuditDecision::Allowed
-    }));
+    }), "successful transaction functions are evidenced by atomic receipts, not a pre-commit allowed audit");
+    let session_key = format!(
+        "server/state/test-instance/session/{}",
+        lease.session_id.as_str()
+    );
+    let state: Value =
+        serde_json::from_slice(&engine.storage.control().get(&session_key).unwrap().unwrap())
+            .unwrap();
+    let function_receipt: FunctionInvocationReceipt = serde_json::from_value(
+        state["transactions"][transaction.transaction_id.as_str()]["commit_intent"]
+            ["function_receipts"][0]
+            .clone(),
+    )
+    .unwrap();
+    let stored_receipt = engine
+        .storage
+        .function_catalogue()
+        .invocation_receipt(instance().as_str(), function_receipt.invocation_id.as_str())
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        stored_receipt.receipt_sha256,
+        function_receipt.receipt_sha256
+    );
+    assert_eq!(
+        stored_receipt.runtime_commit_sha256,
+        function_receipt.runtime_commit_sha256
+    );
+    assert!(engine
+        .storage
+        .runtime()
+        .audit(function_receipt.runtime_commit_sha256.as_deref().unwrap())
+        .unwrap()
+        .is_some());
+    engine
+        .require_committed_transaction_function_receipts(std::slice::from_ref(&function_receipt))
+        .unwrap();
+    let mut absent_receipt = function_receipt.clone();
+    absent_receipt.invocation_id = CanonicalId::new("function-absent-receipt").unwrap();
+    absent_receipt.receipt_sha256.clear();
+    let absent_receipt = absent_receipt.seal().unwrap();
+    assert!(matches!(
+        engine
+            .require_committed_transaction_function_receipts(std::slice::from_ref(&absent_receipt)),
+        Err(ServiceError::OperationDigestMismatch)
+    ));
 
     let reject = javascript("reject-person", "() => false");
-    let reject_binding = TransactionFunctionBinding {
-        binding_id: CanonicalId::new("reject-person").unwrap(),
-        function_id: reject.function_id.clone(),
-        mutation: TransactionMutationKind::PutRecord,
-        kind: Some(person.clone()),
-        effect: TransactionFunctionEffect::RequireTrue,
-        max_attempts: 1,
-    };
+    let reject_binding = binding(
+        "reject-person",
+        &reject,
+        TransactionMutationKind::PutRecord,
+        Some(person.clone()),
+        TransactionFunctionEffect::RequireTrue,
+    );
     install(
         &engine,
         &lease,
@@ -599,7 +793,7 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
 }
 
 #[test]
-fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_window() {
+fn transaction_retry_reuses_prepared_receipts_pinned_before_the_crash_window() {
     let root = tempfile::tempdir().unwrap();
     let path = root.path().join("function-retry");
     let engine = RrdEngine::open(&path, instance(), TOKEN_KEY).unwrap();
@@ -614,14 +808,15 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         .unwrap();
     let binding_id = CanonicalId::new("claim-validator").unwrap();
     let accepted = javascript("claim-policy", "() => true");
-    let accepted_binding = TransactionFunctionBinding {
-        binding_id: binding_id.clone(),
-        function_id: accepted.function_id.clone(),
-        mutation: TransactionMutationKind::AssertClaim,
-        kind: None,
-        effect: TransactionFunctionEffect::RequireTrue,
-        max_attempts: 1,
-    };
+    let accepted_binding = binding(
+        binding_id.as_str(),
+        &accepted,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    let accepted_definition_sha256 = accepted.sha256();
+    let accepted_binding_sha256 = accepted_binding.sha256();
     install(
         &engine,
         &lease,
@@ -653,10 +848,11 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
     )
     .unwrap();
     let revision_one = engine.load_current_function_catalogue().unwrap();
-    let derived = engine
-        .apply_transaction_function_bindings(
+    let prepared_functions = engine
+        .prepare_transaction_function_bindings(
             &revision_one,
             &request,
+            &transaction.transaction_id,
             base,
             None,
             runtime_at,
@@ -664,18 +860,20 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
             "operation-function-retry-prepare",
         )
         .unwrap();
+    let prepared_receipt = prepared_functions.receipts[0].clone();
     let session_key = format!(
         "server/state/test-instance/session/{}",
         lease.session_id.as_str()
     );
     let before = engine.storage.control().get(&session_key).unwrap().unwrap();
-    let mut prepared: Value = serde_json::from_slice(&before).unwrap();
-    prepared["transactions"][transaction.transaction_id.as_str()]["commit_intent"] = serde_json::json!({
+    let mut session_state: Value = serde_json::from_slice(&before).unwrap();
+    session_state["transactions"][transaction.transaction_id.as_str()]["commit_intent"] = serde_json::json!({
         "idempotency_key": "function-retry-commit",
         "operation_sha256": request.operation_sha256.clone(),
         "runtime_at_unix_ms": runtime_at,
-        "runtime_commit_sha256": derived.digest(),
+        "runtime_commit_sha256": prepared_functions.commit.digest(),
         "function_catalogue_revision": 1,
+        "function_receipts": prepared_functions.receipts,
     });
     engine
         .storage
@@ -683,7 +881,7 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         .commit(&ControlTransition {
             key: session_key,
             expected: Some(before),
-            replacement: Some(serde_json::to_vec(&prepared).unwrap()),
+            replacement: Some(serde_json::to_vec(&session_state).unwrap()),
             at: runtime_at,
             actor: "rrd-engine-test".into(),
             action: "transaction.commit_prepared".into(),
@@ -692,15 +890,18 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         })
         .unwrap();
 
-    let rejected = javascript("claim-policy", "() => false");
-    let rejected_binding = TransactionFunctionBinding {
-        binding_id,
-        function_id: rejected.function_id.clone(),
-        mutation: TransactionMutationKind::AssertClaim,
-        kind: None,
-        effect: TransactionFunctionEffect::RequireTrue,
-        max_attempts: 1,
-    };
+    let mut rejected = javascript("claim-policy", "() => false");
+    rejected.revision = 2;
+    rejected.predecessor_sha256 = Some(accepted_definition_sha256);
+    let mut rejected_binding = binding(
+        binding_id.as_str(),
+        &rejected,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    rejected_binding.revision = 2;
+    rejected_binding.predecessor_sha256 = Some(accepted_binding_sha256);
     install(
         &engine,
         &lease,
@@ -724,10 +925,139 @@ fn transaction_retry_executes_the_catalogue_revision_pinned_before_the_crash_win
         )
         .unwrap();
     assert_eq!(receipt.last_runtime_cursor, Some(1));
+    let stored_receipt = reopened
+        .storage
+        .function_catalogue()
+        .invocation_receipt(instance().as_str(), prepared_receipt.invocation_id.as_str())
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        stored_receipt.receipt_sha256,
+        prepared_receipt.receipt_sha256
+    );
+    assert_eq!(
+        stored_receipt.runtime_commit_sha256,
+        prepared_receipt.runtime_commit_sha256
+    );
     assert_eq!(
         reopened.load_current_function_catalogue().unwrap().revision,
         2,
         "recovery must retain the newer head while executing pinned revision one",
+    );
+}
+
+#[test]
+fn catalogue_identity_lineage_cannot_reset_after_an_inactive_membership() {
+    let (root, engine) = isolated_engine();
+    let lease = engine
+        .create_session(
+            &session_request(5_000, 2),
+            &id("function-lineage-session"),
+            1_000,
+            "request-function-lineage-session",
+            "operation-function-lineage-session",
+        )
+        .unwrap();
+    let original = javascript("lineage-policy", "() => true");
+    let original_definition_sha256 = original.sha256();
+    let original_binding = binding(
+        "lineage-binding",
+        &original,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    let original_binding_sha256 = original_binding.sha256();
+    install(
+        &engine,
+        &lease,
+        0,
+        catalogue(1, vec![original.clone()], vec![original_binding.clone()]),
+        "lineage-one",
+    );
+    install(
+        &engine,
+        &lease,
+        1,
+        catalogue(2, vec![], vec![]),
+        "lineage-inactive",
+    );
+
+    let reset_definition = javascript("lineage-policy", "() => false");
+    let reset_definition_result = engine.replace_function_catalogue(
+        &lease.session_id,
+        &lease.token,
+        &ReplaceFunctionCatalogue {
+            expected_revision: 2,
+            catalogue: catalogue(3, vec![reset_definition], vec![]),
+        },
+        1_200,
+        "request-lineage-definition-reset",
+        "operation-lineage-definition-reset",
+    );
+    assert!(matches!(
+        reset_definition_result,
+        Err(ServiceError::Contract(_))
+    ));
+
+    let reset_binding = binding(
+        "lineage-binding",
+        &original,
+        TransactionMutationKind::PutSchema,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    let reset_binding_result = engine.replace_function_catalogue(
+        &lease.session_id,
+        &lease.token,
+        &ReplaceFunctionCatalogue {
+            expected_revision: 2,
+            catalogue: catalogue(3, vec![original.clone()], vec![reset_binding]),
+        },
+        1_201,
+        "request-lineage-binding-reset",
+        "operation-lineage-binding-reset",
+    );
+    assert!(matches!(
+        reset_binding_result,
+        Err(ServiceError::Contract(_))
+    ));
+    assert_eq!(
+        engine.load_current_function_catalogue().unwrap().revision,
+        2
+    );
+
+    let mut successor = javascript("lineage-policy", "() => false");
+    successor.revision = 2;
+    successor.predecessor_sha256 = Some(original_definition_sha256);
+    let mut successor_binding = binding(
+        "lineage-binding",
+        &successor,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
+    successor_binding.revision = 2;
+    successor_binding.predecessor_sha256 = Some(original_binding_sha256);
+    install(
+        &engine,
+        &lease,
+        2,
+        catalogue(3, vec![successor], vec![successor_binding]),
+        "lineage-three",
+    );
+    drop(engine);
+
+    let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    let restored = reopened.load_current_function_catalogue().unwrap();
+    assert_eq!(restored.revision, 3);
+    assert_eq!(
+        restored.functions[&CanonicalId::new("lineage-policy").unwrap()].revision,
+        2
+    );
+    assert_eq!(
+        restored.transaction_bindings[&CanonicalId::new("lineage-binding").unwrap()].revision,
+        2
     );
 }
 
@@ -825,14 +1155,13 @@ fn exact_security_actions_gate_catalogue_execution_and_transaction_bindings() {
         )
         .unwrap();
     let definition = javascript("secured-policy", "() => true");
-    let binding = TransactionFunctionBinding {
-        binding_id: CanonicalId::new("secured-binding").unwrap(),
-        function_id: definition.function_id.clone(),
-        mutation: TransactionMutationKind::AssertClaim,
-        kind: None,
-        effect: TransactionFunctionEffect::RequireTrue,
-        max_attempts: 1,
-    };
+    let binding = binding(
+        "secured-binding",
+        &definition,
+        TransactionMutationKind::AssertClaim,
+        None,
+        TransactionFunctionEffect::RequireTrue,
+    );
     install(
         &engine,
         &admin,

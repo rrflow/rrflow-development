@@ -1,6 +1,9 @@
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine as _;
 use rrd_contract::{
-    CanonicalId, ExecuteFunction, FunctionCapability, FunctionCatalogue, FunctionDefinition,
-    FunctionLimits, FunctionRuntime, ListFunctionCatalogue, QueryValue, ReplaceFunctionCatalogue,
+    CanonicalId, ExecuteFunction, FunctionArtifact, FunctionArtifactMediaType, FunctionCapability,
+    FunctionCatalogue, FunctionDefinition, FunctionLimits, FunctionRuntime, FunctionValueSchema,
+    FunctionValueShape, ListFunctionCatalogue, QueryValue, ReplaceFunctionCatalogue,
     TransactionFunctionBinding, TransactionFunctionEffect, TransactionMutationKind,
     FUNCTION_CONTRACT_VERSION,
 };
@@ -35,12 +38,37 @@ fn sha256(bytes: &[u8]) -> String {
 
 fn golden_contract() -> GoldenFunctionContract {
     let source = "(input) => input.allowed === true";
+    let artifact_sha256 = sha256(source.as_bytes());
+    let artifact = FunctionArtifact {
+        content_sha256: artifact_sha256.clone(),
+        media_type: FunctionArtifactMediaType::JavaScriptUtf8,
+        byte_length: source.len().try_into().unwrap(),
+        content_base64: STANDARD.encode(source),
+    };
+    let input_schema = FunctionValueSchema {
+        schema_id: canonical_id("function-input"),
+        revision: 1,
+        shape: FunctionValueShape::CanonicalValueV1,
+    };
+    let output_schema = FunctionValueSchema {
+        schema_id: canonical_id("function-output"),
+        revision: 1,
+        shape: FunctionValueShape::Boolean,
+    };
     let function = FunctionDefinition {
         function_id: canonical_id("validate-record"),
+        revision: 1,
+        predecessor_sha256: None,
         runtime: FunctionRuntime::JavaScriptEs2020 {
-            source: source.into(),
-            source_sha256: sha256(source.as_bytes()),
+            artifact_sha256: artifact_sha256.clone(),
+            runtime_profile: canonical_id("javascript-es2020-json-v1"),
+            runtime_build_sha256:
+                "7b565bf62da8b17fcb258102bf025eb9fc94e530a20f4d937317de81831a8474".into(),
         },
+        input_schema_sha256: input_schema.sha256(),
+        input_schema,
+        output_schema_sha256: output_schema.sha256(),
+        output_schema,
         limits: FunctionLimits {
             max_input_bytes: 4_096,
             max_output_bytes: 4_096,
@@ -53,7 +81,10 @@ fn golden_contract() -> GoldenFunctionContract {
     };
     let binding = TransactionFunctionBinding {
         binding_id: canonical_id("person-record-policy"),
+        revision: 1,
+        predecessor_sha256: None,
         function_id: function.function_id.clone(),
+        function_definition_sha256: function.sha256(),
         mutation: TransactionMutationKind::PutRecord,
         kind: Some(canonical_id("person")),
         effect: TransactionFunctionEffect::RequireTrue,
@@ -62,6 +93,7 @@ fn golden_contract() -> GoldenFunctionContract {
     let catalogue = FunctionCatalogue {
         contract_version: FUNCTION_CONTRACT_VERSION,
         revision: 1,
+        artifacts: BTreeMap::from([(artifact_sha256, artifact)]),
         functions: BTreeMap::from([(function.function_id.clone(), function)]),
         transaction_bindings: BTreeMap::from([(binding.binding_id.clone(), binding)]),
     };
@@ -107,9 +139,11 @@ fn function_contract_schema_is_closed_and_old_shapes_fail() {
     let definitions = schema["$defs"].as_object().unwrap();
     for name in [
         "ExecuteFunction",
+        "FunctionArtifact",
         "FunctionCatalogue",
         "FunctionDefinition",
         "FunctionLimits",
+        "FunctionValueSchema",
         "ListFunctionCatalogue",
         "ReplaceFunctionCatalogue",
         "TransactionFunctionBinding",
@@ -153,4 +187,20 @@ fn function_contract_schema_is_closed_and_old_shapes_fail() {
     let binding_id = binding.remove("binding_id").unwrap();
     binding.insert(["trigger", "_id"].concat(), binding_id);
     assert!(serde_json::from_value::<GoldenFunctionContract>(old_binding_field).is_err());
+
+    let mut inline_source = serde_json::to_value(golden_contract()).unwrap();
+    inline_source["catalogue"]["functions"]["validate-record"]["runtime"]["source"] =
+        serde_json::json!("() => true");
+    assert!(serde_json::from_value::<GoldenFunctionContract>(inline_source).is_err());
+
+    let mut missing_artifact = golden_contract();
+    missing_artifact.catalogue.artifacts.clear();
+    assert!(missing_artifact.catalogue.validate().is_err());
+
+    let mut omitted_artifacts = serde_json::to_value(golden_contract()).unwrap();
+    omitted_artifacts["catalogue"]
+        .as_object_mut()
+        .unwrap()
+        .remove("artifacts");
+    assert!(serde_json::from_value::<GoldenFunctionContract>(omitted_artifacts).is_err());
 }

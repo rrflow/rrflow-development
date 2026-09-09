@@ -1,87 +1,126 @@
 {
   "catalogue": {
+    "artifacts": {
+      "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472": {
+        "byte_length": 33,
+        "content_base64": "KGlucHV0KSA9PiBpbnB1dC5hbGxvd2VkID09PSB0cnVl",
+        "content_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472",
+        "media_type": "java_script_utf8"
+      }
+    },
     "contract_version": 1,
-    "revision": 1,
     "functions": {
       "validate-record": {
         "function_id": "validate-record",
-        "runtime": {
-          "runtime": "java_script_es2020",
-          "source": "(input) => input.allowed === true",
-          "source_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472"
+        "input_schema": {
+          "revision": 1,
+          "schema_id": "function-input",
+          "shape": { "shape": "canonical_value_v1" }
         },
+        "input_schema_sha256": "a1c732436ca5af9001de61e69657bdf18e5a6fe01f58226c0920eea56dd59fb2",
         "limits": {
+          "max_fuel": 100000,
           "max_input_bytes": 4096,
+          "max_interrupts": 1000,
           "max_output_bytes": 4096,
           "memory_bytes": 1048576,
-          "stack_bytes": 65536,
-          "max_interrupts": 1000,
-          "max_fuel": 100000
+          "stack_bytes": 65536
+        },
+        "output_schema": {
+          "revision": 1,
+          "schema_id": "function-output",
+          "shape": { "shape": "boolean" }
+        },
+        "output_schema_sha256": "14c4117e498bd5ba210913ab1d75966b1fdef9e21e6180433af10120d7d0ac61",
+        "revision": 1,
+        "runtime": {
+          "artifact_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472",
+          "runtime": "java_script_es2020",
+          "runtime_build_sha256": "7b565bf62da8b17fcb258102bf025eb9fc94e530a20f4d937317de81831a8474",
+          "runtime_profile": "javascript-es2020-json-v1"
         }
       }
     },
+    "revision": 1,
     "transaction_bindings": {
       "person-record-policy": {
         "binding_id": "person-record-policy",
+        "effect": { "effect": "require_true" },
+        "function_definition_sha256": "ef59c435a3948aa98a5e8ad30601255fdfe5963ec02f55a0534e67316ed62974",
         "function_id": "validate-record",
-        "mutation": "put_record",
         "kind": "person",
-        "effect": {
-          "effect": "require_true"
-        },
-        "max_attempts": 1
+        "max_attempts": 1,
+        "mutation": "put_record",
+        "revision": 1
       }
     }
   },
-  "catalogue_sha256": "f4652b6819ee73e2e1e2480c43a63c7fc148eb7d5cf04579d2338fcd830a7c36",
-  "replace": {
-    "expected_revision": 0,
-    "catalogue": {
-      "contract_version": 1,
-      "revision": 1,
-      "functions": {
-        "validate-record": {
-          "function_id": "validate-record",
-          "runtime": {
-            "runtime": "java_script_es2020",
-            "source": "(input) => input.allowed === true",
-            "source_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472"
-          },
-          "limits": {
-            "max_input_bytes": 4096,
-            "max_output_bytes": 4096,
-            "memory_bytes": 1048576,
-            "stack_bytes": 65536,
-            "max_interrupts": 1000,
-            "max_fuel": 100000
-          }
-        }
-      },
-      "transaction_bindings": {
-        "person-record-policy": {
-          "binding_id": "person-record-policy",
-          "function_id": "validate-record",
-          "mutation": "put_record",
-          "kind": "person",
-          "effect": {
-            "effect": "require_true"
-          },
-          "max_attempts": 1
-        }
-      }
-    }
-  },
-  "list": {},
+  "catalogue_sha256": "a277be2d78f12e52edab800c8969bf887b10b9a17d069a09b944e0aff1075d11",
   "execute": {
     "function_id": "validate-record",
     "input": {
       "type": "map",
-      "value": {
-        "allowed": {
-          "type": "bool",
-          "value": true
+      "value": { "allowed": { "type": "bool", "value": true } }
+    }
+  },
+  "list": {},
+  "replace": {
+    "catalogue": {
+      "artifacts": {
+        "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472": {
+          "byte_length": 33,
+          "content_base64": "KGlucHV0KSA9PiBpbnB1dC5hbGxvd2VkID09PSB0cnVl",
+          "content_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472",
+          "media_type": "java_script_utf8"
+        }
+      },
+      "contract_version": 1,
+      "functions": {
+        "validate-record": {
+          "function_id": "validate-record",
+          "input_schema": {
+            "revision": 1,
+            "schema_id": "function-input",
+            "shape": { "shape": "canonical_value_v1" }
+          },
+          "input_schema_sha256": "a1c732436ca5af9001de61e69657bdf18e5a6fe01f58226c0920eea56dd59fb2",
+          "limits": {
+            "max_fuel": 100000,
+            "max_input_bytes": 4096,
+            "max_interrupts": 1000,
+            "max_output_bytes": 4096,
+            "memory_bytes": 1048576,
+            "stack_bytes": 65536
+          },
+          "output_schema": {
+            "revision": 1,
+            "schema_id": "function-output",
+            "shape": { "shape": "boolean" }
+          },
+          "output_schema_sha256": "14c4117e498bd5ba210913ab1d75966b1fdef9e21e6180433af10120d7d0ac61",
+          "revision": 1,
+          "runtime": {
+            "artifact_sha256": "1d7dbe211935b5178c5a746fc3498f0c1553c0c21e73f6fc9a7ba5e648585472",
+            "runtime": "java_script_es2020",
+            "runtime_build_sha256": "7b565bf62da8b17fcb258102bf025eb9fc94e530a20f4d937317de81831a8474",
+            "runtime_profile": "javascript-es2020-json-v1"
+          }
+        }
+      },
+      "revision": 1,
+      "transaction_bindings": {
+        "person-record-policy": {
+          "binding_id": "person-record-policy",
+          "effect": { "effect": "require_true" },
+          "function_definition_sha256": "ef59c435a3948aa98a5e8ad30601255fdfe5963ec02f55a0534e67316ed62974",
+          "function_id": "validate-record",
+          "kind": "person",
+          "max_attempts": 1,
+          "mutation": "put_record",
+          "revision": 1
         }
       }
-    }
+    },
+    "expected_revision": 0
   }
 }

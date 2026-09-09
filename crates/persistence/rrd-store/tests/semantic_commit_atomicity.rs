@@ -1,9 +1,12 @@
 use rrd_core::{
-    RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
-    RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType,
-    ScopeId,
+    digest, DataTransaction, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord,
+    RuntimeRecordSchema, RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry,
+    RuntimeType, ScopeId,
 };
-use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
+use rrd_store::{
+    Error, FunctionInvocationReceiptRecord, RrflowKvStore, RrflowMxStore, StorageEngine,
+    FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+};
 use std::collections::BTreeSet;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -15,6 +18,8 @@ struct PublicEvidence {
     relations: usize,
     delta_cursors: Vec<u64>,
     audit_cursor: u64,
+    function_invocation_id: String,
+    function_receipt_sha256: String,
 }
 
 fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
@@ -35,43 +40,52 @@ fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
     );
     let source = RuntimeRef::new("file", "src/lib.rs").unwrap();
     let target = RuntimeRef::new("file", "src/store.rs").unwrap();
+    let commit = RuntimeCommit {
+        scope: scope.clone(),
+        at: 100,
+        actor: "agent:semantic-commit-public".into(),
+        expected_cursor: 0,
+        mutations: vec![
+            RuntimeMutation::Schema { registry: schema },
+            RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference: source.clone(),
+                    valid_from: 100,
+                    valid_to: None,
+                    properties: RuntimeProperties::new(),
+                },
+            },
+            RuntimeMutation::Record {
+                record: RuntimeRecord {
+                    reference: target.clone(),
+                    valid_from: 100,
+                    valid_to: None,
+                    properties: RuntimeProperties::new(),
+                },
+            },
+            RuntimeMutation::Relation {
+                relation: RuntimeRelation {
+                    reference: RuntimeRef::new("imports", "lib-store").unwrap(),
+                    from: source,
+                    to: target,
+                    valid_from: 100,
+                    valid_to: None,
+                    properties: RuntimeProperties::new(),
+                },
+            },
+        ],
+    };
+    let runtime_commit_sha256 = commit.digest();
+    let function_receipt = function_receipt(&runtime_commit_sha256);
+    let transaction =
+        DataTransaction::new(storage.runtime().read_stamp(&scope).unwrap(), commit).unwrap();
     let outcome = storage
         .runtime()
-        .commit(&RuntimeCommit {
-            scope: scope.clone(),
-            at: 100,
-            actor: "agent:semantic-commit-public".into(),
-            expected_cursor: 0,
-            mutations: vec![
-                RuntimeMutation::Schema { registry: schema },
-                RuntimeMutation::Record {
-                    record: RuntimeRecord {
-                        reference: source.clone(),
-                        valid_from: 100,
-                        valid_to: None,
-                        properties: RuntimeProperties::new(),
-                    },
-                },
-                RuntimeMutation::Record {
-                    record: RuntimeRecord {
-                        reference: target.clone(),
-                        valid_from: 100,
-                        valid_to: None,
-                        properties: RuntimeProperties::new(),
-                    },
-                },
-                RuntimeMutation::Relation {
-                    relation: RuntimeRelation {
-                        reference: RuntimeRef::new("imports", "lib-store").unwrap(),
-                        from: source,
-                        to: target,
-                        valid_from: 100,
-                        valid_to: None,
-                        properties: RuntimeProperties::new(),
-                    },
-                },
-            ],
-        })
+        .commit_data_transaction_with_function_receipts(
+            &transaction,
+            "semantic-commit-instance",
+            std::slice::from_ref(&function_receipt),
+        )
         .unwrap();
     let page = storage
         .runtime()
@@ -95,6 +109,12 @@ fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
         .unwrap()
         .unwrap();
     audit.validate().unwrap();
+    let stored_receipt = storage
+        .function_catalogue()
+        .invocation_receipt("semantic-commit-instance", &function_receipt.invocation_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored_receipt, function_receipt);
 
     PublicEvidence {
         commit_id: outcome.commit_id,
@@ -107,11 +127,29 @@ fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
             .map(|delta| delta.source_cursor)
             .collect(),
         audit_cursor: audit.outcome_cursor.unwrap(),
+        function_invocation_id: stored_receipt.invocation_id,
+        function_receipt_sha256: stored_receipt.receipt_sha256,
+    }
+}
+
+fn function_receipt(runtime_commit_sha256: &str) -> FunctionInvocationReceiptRecord {
+    let canonical_receipt_json = format!(
+        "{{\"invocation_id\":\"semantic-function-one\",\"runtime_commit_sha256\":\"{runtime_commit_sha256}\"}}"
+    );
+    FunctionInvocationReceiptRecord {
+        format_version: FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+        invocation_id: "semantic-function-one".into(),
+        runtime_commit_sha256: Some(runtime_commit_sha256.into()),
+        receipt_sha256: digest::sha256_hex(
+            format!("accepted-function-receipt:{runtime_commit_sha256}").as_bytes(),
+        ),
+        canonical_receipt_sha256: digest::sha256_hex(canonical_receipt_json.as_bytes()),
+        canonical_receipt_json,
     }
 }
 
 #[test]
-fn semantic_commit_has_identical_public_evidence_on_mx_kv_and_kv_reopen() {
+fn semantic_commit_and_function_receipt_have_identical_evidence_on_mx_kv_and_kv_reopen() {
     let mx = RrflowMxStore::new();
     let mx_evidence = commit(&mx);
 
@@ -144,4 +182,74 @@ fn semantic_commit_has_identical_public_evidence_on_mx_kv_and_kv_reopen() {
             .outcome_cursor,
         Some(kv_evidence.audit_cursor)
     );
+    let receipt = reopened
+        .function_catalogue()
+        .invocation_receipt(
+            "semantic-commit-instance",
+            &kv_evidence.function_invocation_id,
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(receipt.receipt_sha256, kv_evidence.function_receipt_sha256);
+    assert_eq!(receipt.runtime_commit_sha256, Some(kv_evidence.commit_id));
+}
+
+fn assert_mismatched_receipt_leaves_no_semantic_effect(storage: &dyn StorageEngine) {
+    let scope = ScopeId::new("project:mismatched-function-receipt").unwrap();
+    let mut schema = RuntimeSchemaRegistry::empty(1, "mismatched receipt must not commit");
+    schema.records.insert(
+        RuntimeType::new("receipt-probe").unwrap(),
+        RuntimeRecordSchema::default(),
+    );
+    let commit = RuntimeCommit {
+        scope: scope.clone(),
+        at: 200,
+        actor: "agent:mismatched-function-receipt".into(),
+        expected_cursor: 0,
+        mutations: vec![RuntimeMutation::Schema { registry: schema }],
+    };
+    let commit_id = commit.digest();
+    let transaction =
+        DataTransaction::new(storage.runtime().read_stamp(&scope).unwrap(), commit).unwrap();
+    let mut receipt = function_receipt(&commit_id);
+    receipt.invocation_id = "mismatched-function-receipt".into();
+    receipt.runtime_commit_sha256 = Some(digest::sha256_hex(b"another-runtime-commit"));
+    let rejected = storage
+        .runtime()
+        .commit_data_transaction_with_function_receipts(
+            &transaction,
+            "mismatched-receipt-instance",
+            std::slice::from_ref(&receipt),
+        );
+    assert!(matches!(rejected, Err(Error::FunctionConstraint(_))));
+    assert_eq!(storage.runtime().cursor().unwrap(), 0);
+    assert!(storage
+        .runtime()
+        .commit_outcome(&commit_id)
+        .unwrap()
+        .is_none());
+    assert!(storage
+        .function_catalogue()
+        .invocation_receipt("mismatched-receipt-instance", &receipt.invocation_id)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn mismatched_function_receipt_cannot_escape_a_rejected_semantic_commit() {
+    assert_mismatched_receipt_leaves_no_semantic_effect(&RrflowMxStore::new());
+
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("rrflow-kv-rejected-receipt");
+    {
+        let kv = RrflowKvStore::open(&path).unwrap();
+        assert_mismatched_receipt_leaves_no_semantic_effect(&kv);
+    }
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    assert_eq!(reopened.runtime().cursor().unwrap(), 0);
+    assert!(reopened
+        .function_catalogue()
+        .invocation_receipt("mismatched-receipt-instance", "mismatched-function-receipt")
+        .unwrap()
+        .is_none());
 }

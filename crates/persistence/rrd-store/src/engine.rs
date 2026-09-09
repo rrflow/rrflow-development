@@ -152,6 +152,7 @@ pub trait StorageEngine: Send + Sync {
     fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>>;
     fn claims(&self) -> crate::ClaimRepository<'_>;
     fn control(&self) -> crate::ControlRepository<'_>;
+    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_>;
     fn projections(&self) -> crate::ProjectionRepository<'_>;
     fn runtime(&self) -> crate::RuntimeRepository<'_>;
     fn invocations(&self) -> crate::InvocationRepository<'_>;
@@ -434,6 +435,10 @@ impl StorageEngine for RrflowMxStore {
         crate::ControlRepository::new(self)
     }
 
+    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_> {
+        crate::FunctionCatalogueRepository::new(self)
+    }
+
     fn projections(&self) -> crate::ProjectionRepository<'_> {
         crate::ProjectionRepository::new(self)
     }
@@ -503,6 +508,10 @@ impl StorageEngine for StorageProfile {
 
     fn control(&self) -> crate::ControlRepository<'_> {
         crate::ControlRepository::new(self)
+    }
+
+    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_> {
+        crate::FunctionCatalogueRepository::new(self)
     }
 
     fn projections(&self) -> crate::ProjectionRepository<'_> {

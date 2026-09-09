@@ -329,6 +329,8 @@ fn retry_closes_the_journal_gap_after_a_crash_window() {
         "operation_sha256": request.operation_sha256.clone(),
         "runtime_at_unix_ms": 1_150,
         "runtime_commit_sha256": runtime_commit_sha256,
+        "function_catalogue_revision": 0,
+        "function_receipts": [],
     });
     service
         .storage

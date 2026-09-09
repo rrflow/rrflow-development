@@ -27,20 +27,21 @@ use rrd_contract::{
     EnsureVectorIndex, EnsureVectorIndexResult, EnsureVectorPayloadIndex,
     EnsureVectorPayloadIndexResult, ExecuteFunction, ExecuteQuery, ExecuteQueryTransaction,
     ExecuteRetrievalQuery, ExportAudit, FollowChangefeed, ForwardRollbackCounts,
-    ForwardRollbackPlan, ForwardRollbackRequest, FunctionCatalogue, FunctionDefinition,
-    FunctionExecutionResult, FunctionRuntime, HybridFusion, HybridSearchHit, HybridSearchResult,
-    InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot, ListInstanceBackups, ListQueryIndexes,
-    ListVectorCollections, ListVectorPayloadIndexes, ListVectorQuantizationArtifacts,
-    ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult, LiveQueryRowChange,
-    LogicalArchiveSnapshot, NamedVectorDefinition, OpenSubscription, OpenSubscriptionResult,
-    PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
-    QueryFullTextConfiguration, QueryIndexCatalogueSnapshot, QueryIndexKind,
-    QueryIndexMaintenanceSnapshot, QueryIndexSnapshot, QueryIndexState, QueryPlanCandidate,
-    QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryTextAnalyzer, QueryTextStemmer,
-    QueryTextTokenizer, QueryTransactionResult, QueryValue, ReadAudit, ReadChangefeed,
-    ReadDataSnapshot, ReadDiagnosticSnapshot, Readiness, RenewSession, ReplaceFunctionCatalogue,
-    RequestContext, ResourceId, ResourceKind, ResourcePath, RestoreInstanceBackup,
-    RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
+    ForwardRollbackPlan, ForwardRollbackRequest, FunctionArtifact, FunctionArtifactMediaType,
+    FunctionCatalogue, FunctionDefinition, FunctionExecutionResult, FunctionInvocationProposal,
+    FunctionInvocationReceipt, FunctionRuntime, FunctionRuntimeKind, HybridFusion, HybridSearchHit,
+    HybridSearchResult, InstanceBackupCatalogueSnapshot, InstanceBackupSnapshot,
+    ListInstanceBackups, ListQueryIndexes, ListVectorCollections, ListVectorPayloadIndexes,
+    ListVectorQuantizationArtifacts, ListVectorQuantizationArtifactsResult, LiveQueryDeltaResult,
+    LiveQueryRowChange, LogicalArchiveSnapshot, NamedVectorDefinition, OpenSubscription,
+    OpenSubscriptionResult, PollLiveQuery, PreviewTransaction, QueryExecutionAnalysisSnapshot,
+    QueryExecutionSnapshot, QueryFullTextConfiguration, QueryIndexCatalogueSnapshot,
+    QueryIndexKind, QueryIndexMaintenanceSnapshot, QueryIndexSnapshot, QueryIndexState,
+    QueryPlanCandidate, QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryTextAnalyzer,
+    QueryTextStemmer, QueryTextTokenizer, QueryTransactionResult, QueryValue, ReadAudit,
+    ReadChangefeed, ReadDataSnapshot, ReadDiagnosticSnapshot, Readiness, RenewSession,
+    ReplaceFunctionCatalogue, RequestContext, ResourceId, ResourceKind, ResourcePath,
+    RestoreInstanceBackup, RestoreInstanceBackupResult, RetireVectorQuantizationArtifact,
     RetireVectorQuantizationArtifactResult, RetrievalContextPair, RetrievalContribution,
     RetrievalFacet, RetrievalFusion, RetrievalGroup, RetrievalHit, RetrievalMatrixCell,
     RetrievalOutput, RetrievalPrefetch, RetrievalQuery, RetrievalQueryResult,
@@ -142,7 +143,7 @@ pub use token_key::{
     load_or_create_api_key, load_or_create_token_key, API_KEY_HEX_BYTES, TOKEN_KEY_BYTES,
 };
 
-const SESSION_STATE_FORMAT: u16 = 2;
+const SESSION_STATE_FORMAT: u16 = 3;
 const MAX_SESSION_RENEWALS: usize = 64;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -223,12 +224,10 @@ struct PreparedRecord {
 struct CommitIntent {
     idempotency_key: CorrelationId,
     operation_sha256: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    runtime_at_unix_ms: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    runtime_commit_sha256: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    function_catalogue_revision: Option<u64>,
+    runtime_at_unix_ms: u64,
+    runtime_commit_sha256: String,
+    function_catalogue_revision: u64,
+    function_receipts: Vec<FunctionInvocationReceipt>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

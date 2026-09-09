@@ -4,11 +4,21 @@
 //! of canonical semantic write plans. It does not authenticate,
 //! authorize, select a storage profile, or publish a transaction.
 
+mod function;
 mod index;
 pub(crate) mod runtime_state;
 mod semantic_commit;
 mod vector;
 
+pub(crate) use function::{
+    encode_function_invocation_receipts, put_standalone_function_receipt, validate_coordinate,
+};
+pub use function::{
+    FunctionArtifactMediaTypeRecord, FunctionArtifactRecord, FunctionCatalogueHeadRecord,
+    FunctionCatalogueMembershipRecord, FunctionCataloguePublication, FunctionCatalogueSnapshot,
+    FunctionDefinitionRecord, FunctionInvocationReceiptRecord, TransactionFunctionBindingRecord,
+    FUNCTION_CATALOGUE_STATE_FORMAT_VERSION, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
+};
 pub(crate) use index::{
     encode_record_index_effects, index_source_deltas, synchronize_index_commit_bindings,
 };

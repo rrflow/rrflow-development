@@ -1,22 +1,28 @@
 use super::super::security::AuditEvent;
 use super::super::*;
-use super::execution::{execute_definition, json_to_query_value};
+use super::execution::{
+    encode_receipt_record, execute_definition, invocation_id, json_to_query_value,
+};
+
+pub(in crate::engine) struct PreparedTransactionFunctions {
+    pub commit: RuntimeCommit,
+    pub receipts: Vec<FunctionInvocationReceipt>,
+}
 
 impl RrdEngine {
     #[allow(clippy::too_many_arguments)]
-    pub(in crate::engine) fn apply_transaction_function_bindings(
+    pub(in crate::engine) fn prepare_transaction_function_bindings(
         &self,
         catalogue: &FunctionCatalogue,
         request: &CommitTransaction,
+        transaction_id: &CorrelationId,
         mut commit: RuntimeCommit,
         principal_id: Option<CanonicalId>,
         at: u64,
         request_id: &str,
         operation_id: &str,
-    ) -> Result<RuntimeCommit> {
-        if catalogue.transaction_bindings.is_empty() {
-            return Ok(commit);
-        }
+    ) -> Result<PreparedTransactionFunctions> {
+        let mut receipts = Vec::new();
         for (index, mutation) in request.mutations.iter().enumerate() {
             for binding in catalogue
                 .transaction_bindings
@@ -27,28 +33,22 @@ impl RrdEngine {
                     .functions
                     .get(&binding.function_id)
                     .ok_or(ServiceError::FunctionNotFound)?;
+                let artifact = catalogue
+                    .artifacts
+                    .get(definition.runtime.artifact_sha256())
+                    .ok_or_else(|| ServiceError::Storage("function artifact is missing".into()))?;
+                super::runtime_profile::validate_runtime_identity(&definition.runtime)?;
                 let input = transaction_binding_input(index, mutation, at)?;
                 let binding_operation_id = format!(
                     "{operation_id}:transaction-function-binding:{}",
                     binding.binding_id
                 );
-                let input_sha256 =
-                    digest::sha256_hex(&serde_json::to_vec(&input).map_err(contract_json)?);
-                self.append_audit(AuditEvent {
-                    at_unix_ms: at,
-                    attempt: 1,
-                    principal_id: principal_id.clone(),
-                    action: SecurityAction::FunctionExecute,
-                    resource: self.instance_resource(),
-                    request_id: request_id.into(),
-                    operation_id: binding_operation_id.clone(),
-                    phase: AuditPhase::Authorized,
-                    decision: AuditDecision::Allowed,
-                    status_code: 100,
-                    request_sha256: input_sha256.clone(),
-                    response_sha256: digest::sha256_hex(b"rrd-audit-completion-pending"),
-                })?;
-                let executed = match execute_definition(definition, &input) {
+                let input_bytes = serde_json::to_vec(&input).map_err(contract_json)?;
+                let input_sha256 = digest::sha256_hex(&input_bytes);
+                let content = artifact
+                    .decoded_content()
+                    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                let executed = match execute_definition(definition, &content, &input) {
                     Ok(executed) => executed,
                     Err(error) => {
                         self.append_audit(AuditEvent {
@@ -68,26 +68,153 @@ impl RrdEngine {
                         return Err(error);
                     }
                 };
-                apply_transaction_binding_effect(binding, executed.output.clone(), &mut commit)?;
-                self.append_audit(AuditEvent {
-                    at_unix_ms: at,
-                    attempt: 1,
-                    principal_id: principal_id.clone(),
-                    action: SecurityAction::FunctionExecute,
-                    resource: self.instance_resource(),
-                    request_id: request_id.into(),
-                    operation_id: binding_operation_id,
-                    phase: AuditPhase::Completed,
-                    decision: AuditDecision::Allowed,
-                    status_code: 200,
-                    request_sha256: input_sha256,
-                    response_sha256: digest::sha256_hex(
-                        &serde_json::to_vec(&executed.output).map_err(contract_json)?,
-                    ),
+                let output_bytes = serde_json::to_vec(&executed.output).map_err(contract_json)?;
+                let output_sha256 = digest::sha256_hex(&output_bytes);
+                let proposal = apply_transaction_binding_effect(
+                    binding,
+                    executed.output.clone(),
+                    &mut commit,
+                    &output_sha256,
+                )?;
+                let mutation_index: u32 = index.try_into().map_err(|_| {
+                    ServiceError::Contract(
+                        "transaction function binding mutation index exceeds u32".into(),
+                    )
                 })?;
+                let invocation = invocation_id(&[
+                    transaction_id.as_str(),
+                    request.operation_sha256.as_str(),
+                    binding.binding_id.as_str(),
+                    &mutation_index.to_string(),
+                    &input_sha256,
+                ])?;
+                receipts.push(FunctionInvocationReceipt {
+                    contract_version: rrd_contract::FUNCTION_CONTRACT_VERSION,
+                    invocation_id: invocation,
+                    catalogue_revision: catalogue.revision,
+                    catalogue_sha256: catalogue.sha256(),
+                    function_id: definition.function_id.clone(),
+                    function_definition_sha256: definition.sha256(),
+                    binding_id: Some(binding.binding_id.clone()),
+                    mutation_index: Some(mutation_index),
+                    runtime: definition.runtime.kind(),
+                    artifact_sha256: definition.runtime.artifact_sha256().into(),
+                    runtime_profile: definition.runtime.runtime_profile().clone(),
+                    runtime_build_sha256: definition.runtime.runtime_build_sha256().into(),
+                    input_schema_sha256: definition.input_schema_sha256.clone(),
+                    output_schema_sha256: definition.output_schema_sha256.clone(),
+                    input_sha256,
+                    output_sha256,
+                    output: executed.output,
+                    proposal,
+                    runtime_commit_sha256: None,
+                    limits: definition.limits.clone(),
+                    attempts: 1,
+                    interrupts_consumed: executed.interrupts_consumed,
+                    fuel_consumed: executed.fuel_consumed,
+                    receipt_sha256: String::new(),
+                });
             }
         }
         commit.validate().map_err(core_contract)?;
+        let commit_sha256 = commit.digest();
+        let receipts = receipts
+            .into_iter()
+            .map(|mut receipt| {
+                receipt.runtime_commit_sha256 = Some(commit_sha256.clone());
+                receipt
+                    .seal()
+                    .map_err(|error| ServiceError::Contract(error.to_string()))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(PreparedTransactionFunctions { commit, receipts })
+    }
+
+    pub(in crate::engine) fn apply_prepared_transaction_function_receipts(
+        &self,
+        catalogue: &FunctionCatalogue,
+        request: &CommitTransaction,
+        transaction_id: &CorrelationId,
+        mut commit: RuntimeCommit,
+        receipts: &[FunctionInvocationReceipt],
+        at: u64,
+    ) -> Result<RuntimeCommit> {
+        let mut receipt_index = 0_usize;
+        for (index, mutation) in request.mutations.iter().enumerate() {
+            for binding in catalogue
+                .transaction_bindings
+                .values()
+                .filter(|binding| transaction_binding_matches(binding, mutation))
+            {
+                let receipt = receipts.get(receipt_index).ok_or_else(|| {
+                    ServiceError::Contract(
+                        "prepared transaction is missing a function receipt".into(),
+                    )
+                })?;
+                receipt_index += 1;
+                receipt
+                    .validate()
+                    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                let definition = catalogue
+                    .functions
+                    .get(&binding.function_id)
+                    .ok_or(ServiceError::FunctionNotFound)?;
+                let input = transaction_binding_input(index, mutation, at)?;
+                let input_sha256 =
+                    digest::sha256_hex(&serde_json::to_vec(&input).map_err(contract_json)?);
+                definition
+                    .input_schema
+                    .validate_value(&input)
+                    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                let mutation_index: u32 = index.try_into().map_err(|_| {
+                    ServiceError::Contract(
+                        "transaction function binding mutation index exceeds u32".into(),
+                    )
+                })?;
+                let expected_invocation = invocation_id(&[
+                    transaction_id.as_str(),
+                    request.operation_sha256.as_str(),
+                    binding.binding_id.as_str(),
+                    &mutation_index.to_string(),
+                    &input_sha256,
+                ])?;
+                if receipt.invocation_id != expected_invocation
+                    || receipt.catalogue_revision != catalogue.revision
+                    || receipt.catalogue_sha256 != catalogue.sha256()
+                    || receipt.function_id != definition.function_id
+                    || receipt.function_definition_sha256 != definition.sha256()
+                    || receipt.binding_id.as_ref() != Some(&binding.binding_id)
+                    || receipt.mutation_index != Some(mutation_index)
+                    || receipt.runtime != definition.runtime.kind()
+                    || receipt.artifact_sha256 != definition.runtime.artifact_sha256()
+                    || receipt.runtime_profile != *definition.runtime.runtime_profile()
+                    || receipt.runtime_build_sha256 != definition.runtime.runtime_build_sha256()
+                    || receipt.input_schema_sha256 != definition.input_schema_sha256
+                    || receipt.output_schema_sha256 != definition.output_schema_sha256
+                    || receipt.input_sha256 != input_sha256
+                {
+                    return Err(ServiceError::OperationDigestMismatch);
+                }
+                definition
+                    .output_schema
+                    .validate_value(&receipt.output)
+                    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                apply_prepared_proposal(binding, receipt, &mut commit)?;
+            }
+        }
+        if receipt_index != receipts.len() {
+            return Err(ServiceError::Contract(
+                "prepared transaction contains unmatched function receipts".into(),
+            ));
+        }
+        commit.validate().map_err(core_contract)?;
+        let commit_sha256 = commit.digest();
+        if receipts
+            .iter()
+            .any(|receipt| receipt.runtime_commit_sha256.as_deref() != Some(commit_sha256.as_str()))
+        {
+            return Err(ServiceError::OperationDigestMismatch);
+        }
         Ok(commit)
     }
 
@@ -128,6 +255,24 @@ impl RrdEngine {
                 Err(error)
             }
         }
+    }
+
+    pub(in crate::engine) fn require_committed_transaction_function_receipts(
+        &self,
+        receipts: &[FunctionInvocationReceipt],
+    ) -> Result<()> {
+        for receipt in receipts {
+            let expected = encode_receipt_record(receipt)?;
+            let stored = self
+                .storage
+                .function_catalogue()
+                .invocation_receipt(self.instance.as_str(), receipt.invocation_id.as_str())?
+                .ok_or(ServiceError::OperationDigestMismatch)?;
+            if stored != expected {
+                return Err(ServiceError::OperationDigestMismatch);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -200,9 +345,12 @@ fn apply_transaction_binding_effect(
     binding: &TransactionFunctionBinding,
     output: QueryValue,
     commit: &mut RuntimeCommit,
-) -> Result<()> {
+    output_sha256: &str,
+) -> Result<FunctionInvocationProposal> {
     match &binding.effect {
-        TransactionFunctionEffect::RequireTrue if output == QueryValue::Bool(true) => Ok(()),
+        TransactionFunctionEffect::RequireTrue if output == QueryValue::Bool(true) => {
+            Ok(FunctionInvocationProposal::RequireTrue)
+        }
         TransactionFunctionEffect::RequireTrue => Err(ServiceError::Function(format!(
             "transaction function binding {} rejected the transaction",
             binding.binding_id
@@ -221,7 +369,40 @@ fn apply_transaction_binding_effect(
                     properties: runtime_properties(&properties)?,
                 },
             });
+            Ok(FunctionInvocationProposal::AppendEvent {
+                kind: kind.clone(),
+                properties_sha256: output_sha256.into(),
+            })
+        }
+    }
+}
+
+fn apply_prepared_proposal(
+    binding: &TransactionFunctionBinding,
+    receipt: &FunctionInvocationReceipt,
+    commit: &mut RuntimeCommit,
+) -> Result<()> {
+    match (&binding.effect, &receipt.proposal) {
+        (TransactionFunctionEffect::RequireTrue, FunctionInvocationProposal::RequireTrue) => Ok(()),
+        (
+            TransactionFunctionEffect::AppendEvent { kind },
+            FunctionInvocationProposal::AppendEvent {
+                kind: receipt_kind,
+                properties_sha256,
+            },
+        ) if kind == receipt_kind && properties_sha256 == &receipt.output_sha256 => {
+            let QueryValue::Map(properties) = &receipt.output else {
+                return Err(ServiceError::OperationDigestMismatch);
+            };
+            commit.mutations.push(RuntimeMutation::Event {
+                event: RuntimeEvent {
+                    kind: RuntimeType::new(kind.as_str()).map_err(core_contract)?,
+                    subject: None,
+                    properties: runtime_properties(properties)?,
+                },
+            });
             Ok(())
         }
+        _ => Err(ServiceError::OperationDigestMismatch),
     }
 }

@@ -12,7 +12,7 @@ use super::runtime_state::{
     values_for_scope, AccessRead,
 };
 use crate::keyspaces::{self, Space};
-use crate::{Error, Result, StorageTransaction};
+use crate::{Error, FunctionInvocationReceiptRecord, Result, StorageTransaction};
 use rrd_core::{
     projection_family, AuditEnvelope, ProjectionWork, ReadStamp, RuntimeChange, RuntimeCommit,
     RuntimeCommitOutcome, RuntimeDataSnapshot, RuntimeMutation, RuntimeRecord, RuntimeRef,
@@ -87,6 +87,7 @@ pub(crate) fn prepare_semantic_commit(
     commit: &RuntimeCommit,
     read: Option<&ReadStamp>,
     archived_audit: Option<&AuditEnvelope>,
+    function_receipts: Option<(&str, &[FunctionInvocationReceiptRecord])>,
 ) -> Result<SemanticCommitPlan> {
     commit.validate()?;
     if read.is_some() && archived_audit.is_some() {
@@ -250,6 +251,11 @@ pub(crate) fn prepare_semantic_commit(
         )?;
     }
     super::encode_vector_source_effects(reader, &mut plan, commit, start)?;
+    if let Some((instance, receipts)) = function_receipts {
+        super::encode_function_invocation_receipts(
+            reader, &mut plan, instance, &commit_id, receipts,
+        )?;
+    }
 
     if claim_count > 0 {
         plan.put_sequence(&keyspaces::sequence_watermark_key(), claim_sequence)?;

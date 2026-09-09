@@ -24,6 +24,11 @@ pub(crate) enum Space {
     Access,
     System,
     Invocations,
+    FunctionArtifacts,
+    FunctionDefinitions,
+    TransactionFunctionBindings,
+    FunctionCatalogueMemberships,
+    FunctionCatalogueHeads,
     Projections,
     RuntimeChanges,
     RuntimeRecords,
@@ -59,6 +64,11 @@ pub(crate) const SEQUENCE_INDEX: Space = Space::SequenceIndex;
 pub(crate) const ACCESS: Space = Space::Access;
 pub(crate) const META: Space = Space::System;
 pub(crate) const INVOCATIONS: Space = Space::Invocations;
+pub(crate) const FUNCTION_ARTIFACTS: Space = Space::FunctionArtifacts;
+pub(crate) const FUNCTION_DEFINITIONS: Space = Space::FunctionDefinitions;
+pub(crate) const TRANSACTION_FUNCTION_BINDINGS: Space = Space::TransactionFunctionBindings;
+pub(crate) const FUNCTION_CATALOGUE_MEMBERSHIPS: Space = Space::FunctionCatalogueMemberships;
+pub(crate) const FUNCTION_CATALOGUE_HEADS: Space = Space::FunctionCatalogueHeads;
 pub(crate) const PROJECTIONS: Space = Space::Projections;
 pub(crate) const RUNTIME_CHANGES: Space = Space::RuntimeChanges;
 pub(crate) const RUNTIME_RECORDS: Space = Space::RuntimeRecords;
@@ -98,6 +108,11 @@ impl Space {
             Self::Access | Self::RuntimeAudit => KeyFamily::Audit,
             Self::System => KeyFamily::System,
             Self::Invocations
+            | Self::FunctionArtifacts
+            | Self::FunctionDefinitions
+            | Self::TransactionFunctionBindings
+            | Self::FunctionCatalogueMemberships
+            | Self::FunctionCatalogueHeads
             | Self::RuntimeSchemas
             | Self::RuntimeSnapshots
             | Self::RuntimeIndexBindings
@@ -138,6 +153,13 @@ impl Space {
             // This is the canonical catalogue receipt subfamily, not a second
             // invocation namespace.
             Self::Invocations => CatalogueSubfamily::InvocationReceipt as u8,
+            Self::FunctionArtifacts => CatalogueSubfamily::FunctionArtifact as u8,
+            Self::FunctionDefinitions => CatalogueSubfamily::FunctionDefinition as u8,
+            Self::TransactionFunctionBindings => {
+                CatalogueSubfamily::TransactionFunctionBinding as u8
+            }
+            Self::FunctionCatalogueMemberships => CatalogueSubfamily::Membership as u8,
+            Self::FunctionCatalogueHeads => CatalogueSubfamily::Head as u8,
             Self::RuntimeSchemas => 0x20,
             Self::RuntimeSnapshots => 0x21,
             Self::RuntimeIndexBindings => 0x30,
@@ -320,6 +342,87 @@ pub(crate) fn invocation_key(at: Millis, ordinal: u64) -> Vec<u8> {
 
 pub(crate) fn invocation_bound(at: Millis) -> Vec<u8> {
     encode(INVOCATIONS, &[KeyPart::U64(at)])
+}
+
+pub(crate) fn function_artifact_key(instance: &str, content_sha256: &str) -> Result<Vec<u8>> {
+    let digest = decode_sha256(content_sha256)?;
+    Ok(encode(
+        FUNCTION_ARTIFACTS,
+        &[KeyPart::Text(instance), KeyPart::Bytes(&digest)],
+    ))
+}
+
+pub(crate) fn function_definition_key(
+    instance: &str,
+    function_id: &str,
+    definition_sha256: &str,
+) -> Result<Vec<u8>> {
+    let digest = decode_sha256(definition_sha256)?;
+    Ok(encode(
+        FUNCTION_DEFINITIONS,
+        &[
+            KeyPart::Text(instance),
+            KeyPart::Text(function_id),
+            KeyPart::Bytes(&digest),
+        ],
+    ))
+}
+
+pub(crate) fn transaction_function_binding_key(
+    instance: &str,
+    binding_id: &str,
+    binding_sha256: &str,
+) -> Result<Vec<u8>> {
+    let digest = decode_sha256(binding_sha256)?;
+    Ok(encode(
+        TRANSACTION_FUNCTION_BINDINGS,
+        &[
+            KeyPart::Text(instance),
+            KeyPart::Text(binding_id),
+            KeyPart::Bytes(&digest),
+        ],
+    ))
+}
+
+pub(crate) fn function_catalogue_membership_key(instance: &str, revision: u64) -> Vec<u8> {
+    encode(
+        FUNCTION_CATALOGUE_MEMBERSHIPS,
+        &[KeyPart::Text(instance), KeyPart::U64(revision)],
+    )
+}
+
+pub(crate) fn function_catalogue_head_key(instance: &str) -> Vec<u8> {
+    encode(FUNCTION_CATALOGUE_HEADS, &[KeyPart::Text(instance)])
+}
+
+pub(crate) fn function_invocation_receipt_key(instance: &str, invocation_id: &str) -> Vec<u8> {
+    encode(
+        INVOCATIONS,
+        &[KeyPart::Text(instance), KeyPart::Text(invocation_id)],
+    )
+}
+
+fn decode_sha256(value: &str) -> Result<[u8; 32]> {
+    if value.len() != 64 {
+        return Err(Error::Codec(
+            "SHA-256 key coordinate has invalid length".into(),
+        ));
+    }
+    let mut digest = [0_u8; 32];
+    for (index, pair) in value.as_bytes().as_chunks::<2>().0.iter().enumerate() {
+        digest[index] = (decode_hex_digit(pair[0])? << 4) | decode_hex_digit(pair[1])?;
+    }
+    Ok(digest)
+}
+
+fn decode_hex_digit(value: u8) -> Result<u8> {
+    match value {
+        b'0'..=b'9' => Ok(value - b'0'),
+        b'a'..=b'f' => Ok(value - b'a' + 10),
+        _ => Err(Error::Codec(
+            "SHA-256 key coordinate is not lowercase hexadecimal".into(),
+        )),
+    }
 }
 
 pub(crate) fn projection_key(name: &str) -> Vec<u8> {
@@ -838,6 +941,11 @@ mod tests {
             ACCESS,
             META,
             INVOCATIONS,
+            FUNCTION_ARTIFACTS,
+            FUNCTION_DEFINITIONS,
+            TRANSACTION_FUNCTION_BINDINGS,
+            FUNCTION_CATALOGUE_MEMBERSHIPS,
+            FUNCTION_CATALOGUE_HEADS,
             PROJECTIONS,
             RUNTIME_CHANGES,
             RUNTIME_RECORDS,

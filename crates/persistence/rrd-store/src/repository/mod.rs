@@ -8,12 +8,14 @@
 
 mod claims;
 mod control;
+mod function;
 mod invocation;
 mod projection;
 mod runtime;
 
 pub use claims::ClaimRepository;
 pub use control::ControlRepository;
+pub use function::FunctionCatalogueRepository;
 pub use invocation::InvocationRepository;
 pub use projection::ProjectionRepository;
 pub use runtime::RuntimeRepository;

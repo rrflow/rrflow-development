@@ -5,7 +5,8 @@ use crate::access::runtime_state::{
 use crate::access::{index_source_deltas, prepare_semantic_commit, vector_source_deltas};
 use crate::keyspaces::{self, Durability};
 use crate::{
-    Error, IndexSourceDelta, Result, StorageEngine, VectorSourceAddress, VectorSourceDelta,
+    Error, FunctionInvocationReceiptRecord, IndexSourceDelta, Result, StorageEngine,
+    VectorSourceAddress, VectorSourceDelta,
 };
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
@@ -206,7 +207,7 @@ impl<'a> RuntimeRepository<'a> {
     }
 
     pub fn commit(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
-        self.commit_at_read(commit, None, None)
+        self.commit_at_read(commit, None, None, None)
     }
 
     pub fn commit_data_transaction(
@@ -214,7 +215,27 @@ impl<'a> RuntimeRepository<'a> {
         transaction: &DataTransaction,
     ) -> Result<RuntimeCommitOutcome> {
         transaction.validate()?;
-        self.commit_at_read(&transaction.commit, Some(&transaction.read), None)
+        self.commit_at_read(&transaction.commit, Some(&transaction.read), None, None)
+    }
+
+    /// Commits prepared governed-function receipts through the same physical
+    /// transaction as their domain, graph, index, event, outbox, audit, cursor,
+    /// and outcome effects. The receipt records are already validated and
+    /// runtime-build-bound by `RrdEngine`; this boundary additionally proves
+    /// that each one names this exact runtime commit.
+    pub fn commit_data_transaction_with_function_receipts(
+        &self,
+        transaction: &DataTransaction,
+        instance: &str,
+        receipts: &[FunctionInvocationReceiptRecord],
+    ) -> Result<RuntimeCommitOutcome> {
+        transaction.validate()?;
+        self.commit_at_read(
+            &transaction.commit,
+            Some(&transaction.read),
+            None,
+            Some((instance, receipts)),
+        )
     }
 
     pub(crate) fn restore_commit(
@@ -222,7 +243,7 @@ impl<'a> RuntimeRepository<'a> {
         commit: &RuntimeCommit,
         audit: &AuditEnvelope,
     ) -> Result<RuntimeCommitOutcome> {
-        self.commit_at_read(commit, None, Some(audit))
+        self.commit_at_read(commit, None, Some(audit), None)
     }
 
     fn commit_at_read(
@@ -230,10 +251,17 @@ impl<'a> RuntimeRepository<'a> {
         commit: &RuntimeCommit,
         read: Option<&ReadStamp>,
         archived_audit: Option<&AuditEnvelope>,
+        function_receipts: Option<(&str, &[FunctionInvocationReceiptRecord])>,
     ) -> Result<RuntimeCommitOutcome> {
         commit.validate()?;
         let mut transaction = self.storage.begin_transaction()?;
-        let plan = prepare_semantic_commit(&*transaction, commit, read, archived_audit)?;
+        let plan = prepare_semantic_commit(
+            &*transaction,
+            commit,
+            read,
+            archived_audit,
+            function_receipts,
+        )?;
         let outcome = plan.apply(&mut *transaction)?;
         match transaction.commit(Durability::Authoritative) {
             Ok(_) => Ok(outcome),

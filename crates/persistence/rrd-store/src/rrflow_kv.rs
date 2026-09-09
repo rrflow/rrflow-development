@@ -296,6 +296,10 @@ impl StorageEngine for RrflowKvStore {
         crate::ControlRepository::new(self)
     }
 
+    fn function_catalogue(&self) -> crate::FunctionCatalogueRepository<'_> {
+        crate::FunctionCatalogueRepository::new(self)
+    }
+
     fn projections(&self) -> crate::ProjectionRepository<'_> {
         crate::ProjectionRepository::new(self)
     }
@@ -479,7 +483,7 @@ fn prepare_rrflow_kv_commit_at_read(
         database,
         snapshot: database.snapshot(),
     };
-    prepare_semantic_commit(&reader, commit, read, archived_audit)
+    prepare_semantic_commit(&reader, commit, read, archived_audit, None)
 }
 
 /// Reads a previously accepted rrflowKV runtime outcome from a caller-held

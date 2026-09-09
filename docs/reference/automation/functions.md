@@ -1,6 +1,6 @@
 # RRFlow governed functions and transaction bindings
 
-**Status:** active target contract; the present implementation is partial characterization
+**Status:** active target contract; C-03c typed state and prepared receipts are implemented, with later acceptance gaps named below
 **Coordinate:** `rrflow://rrflow-instance/data/reference/automation/functions`
 **Owner:** governed function definition, execution, transaction-binding, persistence, and evidence semantics
 
@@ -343,17 +343,17 @@ external unless an operator installs a bounded adapter or capability.
 
 | Current code | Verified useful behavior | Defect or required convergence |
 |---|---|---|
-| `rrd-contract/src/function.rs` plus `fixtures/function-contract-v1.json` and `tests/function_contract.rs` | Canonical closed Serde shapes; content digests; ordered maps/sets; byte/depth/item/numeric limits; sequential catalogue revisions; one-attempt binding rule; one golden wire fixture; closed-schema and former-field rejection. | Source/module bytes remain inline; there are no schema, artifact, runtime-build, read-stamp, authorization, or prepared-receipt coordinates, and no cross-language fixture exists. |
-| `rrd-engine/src/engine/function/catalogue.rs` | Head/revision digest validation, immutable revision lookup, CAS replacement, and transaction revision pinning remain characterized under the function-only boundary. | It still calls `StorageEngine` directly and stores the whole JSON catalogue under private `server/state/.../function-catalogue/*` keys, bypassing typed semantic records. The one-MiB control-value limit contradicts the advertised aggregate of up to 64 decoded 256-KiB Wasm modules; the control journal also copies replacement bytes. |
+| `rrd-contract/src/function.rs` plus `fixtures/function-contract-v1.json` and `tests/function_contract.rs` | The closed contract now separates one content-addressed binary artifact from immutable typed definitions and bindings; pins input/output schemas, runtime profile/build, catalogue/definition/binding digests, limits, proposals, and invocation receipts; rejects inline source, absent artifacts, stale digests, unsafe values, and former fields. | The receipt does not yet carry the complete principal/representation/authorization/read-stamp/trace coordinate set required by H-04/H-05, and no cross-language fixture or final physical catalogue-limit proof exists. |
+| `rrd-store/src/access/function.rs`, `repository/function.rs`, and `rrd-engine/src/engine/function/catalogue.rs` | rrflowMX and rrflowKV store binary artifacts once by digest, typed definition/binding records by immutable digest, digest-only membership revisions, one CAS head, and typed receipts through the common transaction port. `RrdEngine` alone validates public contracts, exact runtime availability, historical identity lineage, and catalogue publication. The former whole-catalogue control keys and function-level direct-store path have no reader or alias. | C-03d still owns every physical failure/size/corruption boundary and reclamation of proven unreferenced artifacts; C-04 owns direct stamped catalogue access where later consumers require it. |
 | `rrd-engine/src/engine/function/{execution,javascript,webassembly}.rs` | Fresh QuickJS contexts, memory/stack/interrupt limits, synchronous output; Wasmi eager compilation, fuel, stack/store limits, import denial, and ABI/pointer/output checks remain isolated and characterized. | JavaScript policy disables only selected globals and has no supported-target determinism corpus; interrupt counts are not portable fuel. Wasm start functions and default feature choices remain enabled, compilation structure is not explicitly bounded, and error classes depend partly on message text. |
-| `rrd-engine/src/engine/function/transaction_binding.rs` plus `engine/transaction.rs` | Original-mutation matching, stable map order, no recursive rematch, false/error rejection, derived event in the runtime commit, and revision/digest replay checks remain characterized under transaction-binding names. | Authorized and terminal allowed function audits are separate control commits before the data commit, so a later conflict/storage failure can leave false success evidence. Recovery re-executes under the currently installed runtime build because only the derived digest is persisted. |
-| `rrd-engine/src/engine/tests/function.rs`, `tests/function_conformance.rs`, and `fixtures/rrd-function-conformance-v1.json` | Four focused engine tests retain JavaScript/Wasm, binding atomicity/denial, revision-retry, and security characterization. One shared corpus now proves the selected JavaScript catalogue/read/execute/transaction result is equal on rrflowMX and rrflowKV and that the rrflowKV catalogue and invocation reopen. | The corpus does not yet cover Wasm profile equivalence, atomic audit/receipt crash gaps, storage-size boundaries, supported-target/runtime-build identity, schemas/effect-complete authorization, corruption/upgrade, or any outward surface. |
+| `rrd-engine/src/engine/function/transaction_binding.rs` plus `engine/transaction.rs` | Original-mutation matching, stable map order, and no recursive rematch remain. First execution seals the validated output/proposal, exact catalogue/definition/artifact/schema/runtime identities, and resource use into the commit intent. Recovery replays that receipt into the same runtime commit without guest execution; the accepted receipt, derived event, semantic audit, indexes, outbox, cursor, and outcome publish in one store transaction. A known outcome is accepted only when every exact prepared receipt is also present. No pre-domain terminal allowed function audit is written. | C-03d still must inject every prepare/WAL/sync/visibility/acknowledgement gap and prove known-outcome reconciliation across those interruptions. H-05/POAM-016 still owns same-stamp effect-complete authorization and the full security/trace coordinate closure. |
+| `rrd-engine/src/engine/tests/function.rs`, `tests/function_conformance.rs`, `rrd-store/tests/semantic_commit_atomicity.rs`, and `fixtures/rrd-function-conformance-v1.json` | Five focused engine tests cover JavaScript/Wasm bounds, standalone receipt replay/reopen, binding acceptance/rejection, prepared-receipt recovery without re-execution, historical definition/binding lineage, and exact security actions. Shared corpora prove selected JavaScript and atomic semantic-receipt results equal on rrflowMX and rrflowKV, rrflowKV reopen, and rejection without a cursor, outcome, or orphan receipt when the receipt names another commit. | The corpora do not yet cover Wasm profile equivalence across supported targets, every injected storage/ack gap, advertised maximum encoded/allocated size, runtime upgrade/corruption, complete effect authorization, or any outward surface. |
 | capability and outward surfaces | Engine-only list/replace/execute methods are described by capability discovery with current H-04/H-06 ownership and without overstating runtime determinism. | No executable HTTP/WebSocket/SDK/CLI/MCP/Connectome function operation exists. |
 
-At this review, the three contract unit tests, two golden/closure tests, four
-engine function tests, one focused rrflowMX/rrflowKV/reopen conformance test,
-and two control-journal tests characterize the useful foundation. This evidence
-does not close A-07, C-03, H-04, I, or J.
+At this review, the four contract unit tests, two golden/closure tests, five
+engine function tests, one focused rrflowMX/rrflowKV/reopen function corpus,
+and two semantic-commit receipt tests pass. This completes only C-03c; it does
+not close C-03, H-04, H-05, I, or J.
 
 ## Exact implementation sequence
 
@@ -363,10 +363,10 @@ does not close A-07, C-03, H-04, I, or J.
    rrflowMX/rrflowKV/reopen corpus are present without compatibility aliases.
    Complete the remaining A-07 package/SDK vocabulary and causal-vocabulary
    work without hiding the C/I function gaps.
-2. **C-01 through C-04:** replace private control JSON with typed key families,
-   separate content-addressed artifacts, direct stamped reads, prepared
-   receipts, and one atomic effect-complete semantic commit on rrflowMX and
-   rrflowKV.
+2. **C-03d, then C-04:** retain C-03c's typed content-addressed state and
+   prepared receipts while closing every physical effect gap and advertised
+   size bound; then expose only the bounded stamped reads required by later
+   engine access paths.
 3. **D-01 and I-06:** include default artifacts and runtime manifests in the
    offline distribution; add candidate/preview/apply/retire/uninstall without
    executing functions during install or attunement.

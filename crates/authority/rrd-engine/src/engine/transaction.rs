@@ -172,7 +172,7 @@ impl RrdEngine {
         if record.lease.state != TransactionState::Open {
             return Err(ServiceError::TransactionClosed);
         }
-        let mut prepared_runtime_commit = None;
+        let mut prepared_runtime_functions = None;
         if let Some(intent) = &record.commit_intent {
             require_same_commit(intent, idempotency_key, &request.operation_sha256)?;
         } else {
@@ -234,17 +234,23 @@ impl RrdEngine {
                     read.commit_cursor,
                     runtime_at,
                 )?;
-                let commit = self.apply_transaction_function_bindings(
+                let prepared = self.prepare_transaction_function_bindings(
                     &catalogue,
                     request,
+                    transaction_id,
                     commit,
                     principal_id.clone(),
                     runtime_at,
                     request_id,
                     operation_id,
                 )?;
-                let identity = (runtime_at, commit.digest(), catalogue.revision);
-                prepared_runtime_commit = Some(commit);
+                let identity = (
+                    runtime_at,
+                    prepared.commit.digest(),
+                    catalogue.revision,
+                    prepared.receipts.clone(),
+                );
+                prepared_runtime_functions = Some(prepared);
                 identity
             } else {
                 return Err(ServiceError::WrongScope);
@@ -256,9 +262,10 @@ impl RrdEngine {
                 .commit_intent = Some(CommitIntent {
                 idempotency_key: idempotency_key.clone(),
                 operation_sha256: request.operation_sha256.clone(),
-                runtime_at_unix_ms: Some(runtime_identity.0),
-                runtime_commit_sha256: Some(runtime_identity.1),
-                function_catalogue_revision: Some(runtime_identity.2),
+                runtime_at_unix_ms: runtime_identity.0,
+                runtime_commit_sha256: runtime_identity.1,
+                function_catalogue_revision: runtime_identity.2,
+                function_receipts: runtime_identity.3,
             });
             bytes = self.replace_session(
                 session_id,
@@ -276,18 +283,14 @@ impl RrdEngine {
                 .get(transaction_id)
                 .and_then(|record| record.commit_intent.as_ref())
                 .ok_or(ServiceError::TransactionClosed)?;
-            let runtime_at = intent.runtime_at_unix_ms.ok_or_else(|| {
-                ServiceError::Contract("data transaction intent lacks runtime time".into())
-            })?;
-            let expected_commit = intent.runtime_commit_sha256.as_ref().ok_or_else(|| {
-                ServiceError::Contract("data transaction intent lacks runtime identity".into())
-            })?;
-            let commit = match prepared_runtime_commit.take() {
-                Some(commit) => commit,
+            let runtime_at = intent.runtime_at_unix_ms;
+            let expected_commit = &intent.runtime_commit_sha256;
+            let prepared_receipts = intent.function_receipts.clone();
+            let commit = match prepared_runtime_functions.take() {
+                Some(prepared) => prepared.commit,
                 None => {
-                    let catalogue = self.load_function_catalogue_revision(
-                        intent.function_catalogue_revision.unwrap_or(0),
-                    )?;
+                    let catalogue =
+                        self.load_function_catalogue_revision(intent.function_catalogue_revision)?;
                     self.authorize_transaction_function_bindings(
                         &state,
                         &catalogue,
@@ -302,14 +305,13 @@ impl RrdEngine {
                         read.commit_cursor,
                         runtime_at,
                     )?;
-                    self.apply_transaction_function_bindings(
+                    self.apply_prepared_transaction_function_receipts(
                         &catalogue,
                         request,
+                        transaction_id,
                         commit,
-                        principal_id.clone(),
+                        &prepared_receipts,
                         runtime_at,
-                        request_id,
-                        operation_id,
                     )?
                 }
             };
@@ -319,14 +321,31 @@ impl RrdEngine {
             let (outcome, idempotent_replay) = if let Some(outcome) =
                 self.storage.runtime().commit_outcome(expected_commit)?
             {
+                self.require_committed_transaction_function_receipts(&prepared_receipts)?;
                 (outcome, true)
             } else {
                 let transaction = DataTransaction::new(read.clone(), commit.clone())
                     .map_err(|error| ServiceError::Contract(error.to_string()))?;
-                match self.storage.runtime().commit_data_transaction(&transaction) {
+                let receipt_records = prepared_receipts
+                    .iter()
+                    .map(super::function::encode_receipt_record)
+                    .collect::<Result<Vec<_>>>()?;
+                match self
+                    .storage
+                    .runtime()
+                    .commit_data_transaction_with_function_receipts(
+                        &transaction,
+                        self.instance.as_str(),
+                        &receipt_records,
+                    ) {
                     Ok(outcome) => (outcome, false),
                     Err(error) => match self.storage.runtime().commit_outcome(expected_commit)? {
-                        Some(outcome) => (outcome, true),
+                        Some(outcome) => {
+                            self.require_committed_transaction_function_receipts(
+                                &prepared_receipts,
+                            )?;
+                            (outcome, true)
+                        }
                         None => return Err(error.into()),
                     },
                 }

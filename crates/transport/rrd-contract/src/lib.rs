@@ -48,13 +48,16 @@ pub use diagnostic::{
     DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
 };
 pub use function::{
-    validate_function_value, ExecuteFunction, FunctionCapability, FunctionCatalogue,
-    FunctionDefinition, FunctionExecutionResult, FunctionLimits, FunctionRuntime,
-    FunctionRuntimeKind, ListFunctionCatalogue, ReplaceFunctionCatalogue,
-    TransactionFunctionBinding, TransactionFunctionEffect, TransactionMutationKind, WebAssemblyAbi,
-    FUNCTION_CONTRACT_VERSION, MAX_FUNCTIONS_PER_CATALOGUE, MAX_FUNCTION_INPUT_BYTES,
-    MAX_FUNCTION_JSON_SAFE_INTEGER, MAX_FUNCTION_OUTPUT_BYTES, MAX_FUNCTION_SOURCE_BYTES,
-    MAX_FUNCTION_VALUE_DEPTH, MAX_FUNCTION_VALUE_ITEMS, MAX_FUNCTION_WASM_BYTES,
+    validate_function_value, ExecuteFunction, FunctionArtifact, FunctionArtifactMediaType,
+    FunctionCapability, FunctionCatalogue, FunctionDefinition, FunctionExecutionResult,
+    FunctionInvocationProposal, FunctionInvocationReceipt, FunctionLimits, FunctionRuntime,
+    FunctionRuntimeKind, FunctionValueSchema, FunctionValueShape, ListFunctionCatalogue,
+    ReplaceFunctionCatalogue, TransactionFunctionBinding, TransactionFunctionEffect,
+    TransactionMutationKind, WebAssemblyAbi, FUNCTION_CONTRACT_VERSION,
+    MAX_FUNCTIONS_PER_CATALOGUE, MAX_FUNCTION_CATALOGUE_ARTIFACT_BYTES, MAX_FUNCTION_INPUT_BYTES,
+    MAX_FUNCTION_JSON_SAFE_INTEGER, MAX_FUNCTION_OUTPUT_BYTES, MAX_FUNCTION_SCHEMA_DEPTH,
+    MAX_FUNCTION_SCHEMA_ITEMS, MAX_FUNCTION_SOURCE_BYTES, MAX_FUNCTION_VALUE_DEPTH,
+    MAX_FUNCTION_VALUE_ITEMS, MAX_FUNCTION_WASM_BYTES,
     MAX_TRANSACTION_FUNCTION_BINDINGS_PER_CATALOGUE,
 };
 pub use inference::{

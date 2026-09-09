@@ -30,8 +30,12 @@ mod transaction;
 mod writer;
 
 pub use access::{
-    IndexCommitBindingDefinition, IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow,
-    SemanticCommitPlan, VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
+    FunctionArtifactMediaTypeRecord, FunctionArtifactRecord, FunctionCatalogueHeadRecord,
+    FunctionCatalogueMembershipRecord, FunctionCataloguePublication, FunctionCatalogueSnapshot,
+    FunctionDefinitionRecord, FunctionInvocationReceiptRecord, IndexCommitBindingDefinition,
+    IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow, SemanticCommitPlan,
+    TransactionFunctionBindingRecord, VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
+    FUNCTION_CATALOGUE_STATE_FORMAT_VERSION, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
     VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
 };
@@ -67,8 +71,8 @@ pub use projection::{
     CURRENT_PROJECTION,
 };
 pub use repository::{
-    ClaimRepository, ControlRepository, InvocationRepository, ProjectionRepository,
-    RuntimeRepository,
+    ClaimRepository, ControlRepository, FunctionCatalogueRepository, InvocationRepository,
+    ProjectionRepository, RuntimeRepository,
 };
 pub use rrd_core::{
     DataTransaction, DataTransactionView, ReadStamp, RetentionPin, RetentionPinId,

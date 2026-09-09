@@ -97,7 +97,7 @@ fn install_and_execute(
             "operation-function-execute",
         )
         .unwrap();
-    assert_eq!(execution.output, fixture.expected_output);
+    assert_eq!(execution.receipt.output, fixture.expected_output);
 
     let transaction = engine
         .begin_transaction(
@@ -140,7 +140,7 @@ fn install_and_execute(
         lease,
         ProfileEvidence {
             catalogue_sha256: installed.sha256(),
-            output: execution.output,
+            output: execution.receipt.output,
             runtime_commit_sha256: receipt.runtime_commit_sha256.unwrap(),
             first_runtime_cursor: receipt.first_runtime_cursor.unwrap(),
             last_runtime_cursor: receipt.last_runtime_cursor.unwrap(),
@@ -185,6 +185,9 @@ fn canonical_function_corpus_matches_rrflow_mx_and_rrflow_kv_and_reopens() {
             "operation-function-execute-reopen",
         )
         .unwrap();
-    assert_eq!(execution.output, fixture.expected_output);
-    assert_eq!(execution.catalogue_sha256, kv_evidence.catalogue_sha256);
+    assert_eq!(execution.receipt.output, fixture.expected_output);
+    assert_eq!(
+        execution.receipt.catalogue_sha256,
+        kv_evidence.catalogue_sha256
+    );
 }

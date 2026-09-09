@@ -8,5 +8,8 @@
 mod catalogue;
 mod execution;
 mod javascript;
+pub(in crate::engine) mod runtime_profile;
 mod transaction_binding;
 mod webassembly;
+
+pub(super) use execution::encode_receipt_record;

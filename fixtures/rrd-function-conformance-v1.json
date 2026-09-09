@@ -2,14 +2,40 @@
   "catalogue": {
     "contract_version": 1,
     "revision": 1,
+    "artifacts": {
+      "2514aac809cba4d120d1a27aad6787c8d8e63792c7b22741ff0533e4985baca1": {
+        "content_sha256": "2514aac809cba4d120d1a27aad6787c8d8e63792c7b22741ff0533e4985baca1",
+        "media_type": "java_script_utf8",
+        "byte_length": 10,
+        "content_base64": "KCkgPT4gdHJ1ZQ=="
+      }
+    },
     "functions": {
       "allow-claim": {
         "function_id": "allow-claim",
+        "revision": 1,
         "runtime": {
           "runtime": "java_script_es2020",
-          "source": "() => true",
-          "source_sha256": "2514aac809cba4d120d1a27aad6787c8d8e63792c7b22741ff0533e4985baca1"
+          "artifact_sha256": "2514aac809cba4d120d1a27aad6787c8d8e63792c7b22741ff0533e4985baca1",
+          "runtime_profile": "javascript-es2020-json-v1",
+          "runtime_build_sha256": "7b565bf62da8b17fcb258102bf025eb9fc94e530a20f4d937317de81831a8474"
         },
+        "input_schema": {
+          "schema_id": "allow-claim-input",
+          "revision": 1,
+          "shape": {
+            "shape": "canonical_value_v1"
+          }
+        },
+        "input_schema_sha256": "b3b8f2f273853a3d243d88ad55c5b264e7711934ee1d79bbd724d4dee36f0bb8",
+        "output_schema": {
+          "schema_id": "allow-claim-output",
+          "revision": 1,
+          "shape": {
+            "shape": "boolean"
+          }
+        },
+        "output_schema_sha256": "bfd6d21c19d7713cc389281426c2dbf6137b3fbd496753aa95be02434afd6973",
         "limits": {
           "max_input_bytes": 4096,
           "max_output_bytes": 4096,
@@ -23,7 +49,9 @@
     "transaction_bindings": {
       "claim-policy": {
         "binding_id": "claim-policy",
+        "revision": 1,
         "function_id": "allow-claim",
+        "function_definition_sha256": "a9c9d73db354dabc7b95bab833e8d7c21f5d400df690211604861cf44a3b89e7",
         "mutation": "assert_claim",
         "effect": {
           "effect": "require_true"
