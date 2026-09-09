@@ -447,6 +447,66 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
 }
 
 #[test]
+fn schema_catalogue_has_one_explicit_logical_model_authority() {
+    let metadata = workspace_metadata();
+    let core_schema =
+        fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/schema.rs"))
+            .expect("runtime schema source must be readable");
+    let core_runtime =
+        fs::read_to_string(metadata.root.join("crates/kernel/rrd-core/src/runtime.rs"))
+            .expect("runtime snapshot source must be readable");
+    let public_contract = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/transport/rrd-contract/src/lib.rs"),
+    )
+    .expect("public contract source must be readable");
+
+    let optional_table_field =
+        "#[serde(default, skip_serializing_if = \"BTreeMap::is_empty\")]\n    pub tables:";
+    assert!(
+        !core_schema.contains(optional_table_field),
+        "RuntimeSchemaRegistry tables must not regain an omitted encoding"
+    );
+    assert!(
+        !public_contract.contains(optional_table_field),
+        "DataSchemaRegistry tables must not regain an omitted wire encoding"
+    );
+    assert!(core_schema.contains("runtime schema must declare an explicit canonical table map"));
+    assert!(public_contract.contains("data schema requires an explicit non-empty table map"));
+    for paired_author in [
+        "pub fn define_record_table(",
+        "pub fn define_relation_table(",
+        "pub fn define_event_table(",
+    ] {
+        assert!(
+            core_schema.contains(paired_author),
+            "runtime schema lost paired authoring API {paired_author}"
+        );
+    }
+    for retired_fallback in [
+        "legacy_model",
+        "if schema.tables.is_empty()",
+        "persisted pre-G03 migration form",
+    ] {
+        assert!(
+            !core_schema.contains(retired_fallback)
+                && !core_runtime.contains(retired_fallback)
+                && !public_contract.contains(retired_fallback),
+            "schema model derivation or missing-table fallback revived: {retired_fallback}"
+        );
+    }
+    assert!(
+        core_schema.contains("Ok(self.tables.clone())"),
+        "catalogue_tables must return the validated canonical table map"
+    );
+    assert!(
+        core_runtime.contains("runtime value type {} is absent from schema revision {}"),
+        "snapshot assembly must fail closed when a table model is absent"
+    );
+}
+
+#[test]
 fn storage_semantics_use_repositories_over_one_transaction_port() {
     let metadata = workspace_metadata();
     let store_source = metadata.root.join("crates/persistence/rrd-store/src");

@@ -38,22 +38,25 @@ fn record_catalog<E: StorageEngine>(engine: &E) -> Catalog {
 
 fn seed<E: StorageEngine>(engine: &E) -> Catalog {
     let mut registry = RuntimeSchemaRegistry::empty(1, "index fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([
-                (
-                    "status".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-                (
-                    "title".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    (
+                        "status".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "title".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     engine
         .runtime()
         .commit(&RuntimeCommit {
@@ -672,10 +675,13 @@ fn geo_index_builds_from_the_same_catalogue_and_read_stamp() {
     let engine = RrflowMxStore::new();
     let geo_scope = ScopeId::new("instance:geo-index-test").unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "geo fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
     registry.tables.insert(
         RuntimeType::new("location").unwrap(),
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::Geo),

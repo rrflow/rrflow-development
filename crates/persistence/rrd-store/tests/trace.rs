@@ -1,7 +1,7 @@
 use rrd_core::{
-    RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry, RuntimeTraceEvent,
-    RuntimeType, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary, TraceDataClass,
-    TraceId, TraceLink, TraceOperation, TraceOutcome,
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
+    RuntimeTraceEvent, RuntimeType, RuntimeValue, ScopeId, SpanId, TraceAttribute, TraceBoundary,
+    TraceDataClass, TraceId, TraceLink, TraceOperation, TraceOutcome,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 
@@ -16,10 +16,13 @@ fn span_id() -> SpanId {
 fn exercise(engine: &dyn StorageEngine) -> Vec<Vec<u8>> {
     let scope = ScopeId::new("instance:trace-differential").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "install persisted runtime tracing");
-    schema.events.insert(
-        RuntimeType::new("runtime_trace").unwrap(),
-        RuntimeTraceEvent::event_schema(),
-    );
+    schema
+        .define_event_table(
+            RuntimeType::new("runtime_trace").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeTraceEvent::event_schema(),
+        )
+        .unwrap();
 
     let start = RuntimeTraceEvent::start(
         trace_id(),

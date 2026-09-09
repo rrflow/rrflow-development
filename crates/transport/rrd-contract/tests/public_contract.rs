@@ -1580,6 +1580,32 @@ fn unified_catalogue_is_strict_round_trippable_and_rejects_mode_confusion() {
 }
 
 #[test]
+fn public_schema_requires_one_explicit_nonempty_table_map() {
+    let document = CanonicalId::new("document").unwrap();
+    let registry = DataSchemaRegistry {
+        revision: 1,
+        migration: "reject inferred public table models".into(),
+        catalogue: DataCatalogueIdentity::default(),
+        tables: BTreeMap::new(),
+        records: BTreeMap::from([(document, DataRecordSchema::default())]),
+        relations: BTreeMap::new(),
+        events: BTreeMap::new(),
+    };
+    assert!(TransactionMutation::PutSchema {
+        registry: registry.clone()
+    }
+    .validate()
+    .is_err());
+
+    let mut encoded = serde_json::to_value(TransactionMutation::PutSchema { registry }).unwrap();
+    encoded["registry"]
+        .as_object_mut()
+        .unwrap()
+        .remove("tables");
+    assert!(serde_json::from_value::<TransactionMutation>(encoded).is_err());
+}
+
+#[test]
 fn data_retirement_targets_are_model_typed_and_event_cursor_addressed() {
     let document = DataTarget::Reference {
         reference: DataReference {

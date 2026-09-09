@@ -1470,21 +1470,16 @@ impl RuntimeDataSnapshot {
     ) -> Result<Self> {
         schema.validate()?;
         let tables = schema.catalogue_tables()?;
-        let model_for = |reference: &RuntimeRef,
-                         legacy_model: crate::RuntimeLogicalModel|
-         -> Result<crate::RuntimeLogicalModel> {
-            if let Some(table) = tables.get(&reference.kind) {
-                Ok(table.model)
-            } else if schema.tables.is_empty() {
-                Ok(legacy_model)
-            } else {
-                Err(Error::InvalidRuntime {
+        let model_for = |reference: &RuntimeRef| -> Result<crate::RuntimeLogicalModel> {
+            tables
+                .get(&reference.kind)
+                .map(|table| table.model)
+                .ok_or_else(|| Error::InvalidRuntime {
                     reason: format!(
                         "runtime value type {} is absent from schema revision {}",
                         reference.kind, schema.revision
                     ),
                 })
-            }
         };
 
         let mut records = BTreeMap::<RuntimeRef, RuntimeModelValue<RuntimeRecord>>::new();
@@ -1508,8 +1503,7 @@ impl RuntimeDataSnapshot {
                         .push(claim.clone());
                 }
                 RuntimeMutation::Record { record } if record.valid_from <= valid_at => {
-                    let model =
-                        model_for(&record.reference, crate::RuntimeLogicalModel::Relational)?;
+                    let model = model_for(&record.reference)?;
                     if !model.is_record_like() {
                         return data_snapshot_model_error(&record.reference, model, "record");
                     }
@@ -1522,10 +1516,7 @@ impl RuntimeDataSnapshot {
                     );
                 }
                 RuntimeMutation::Relation { relation } if relation.valid_from <= valid_at => {
-                    let model = model_for(
-                        &relation.reference,
-                        crate::RuntimeLogicalModel::GraphRelation,
-                    )?;
+                    let model = model_for(&relation.reference)?;
                     if model != crate::RuntimeLogicalModel::GraphRelation {
                         return data_snapshot_model_error(
                             &relation.reference,
@@ -1543,7 +1534,7 @@ impl RuntimeDataSnapshot {
                 }
                 RuntimeMutation::Event { event } if change.at <= valid_at => {
                     let reference = runtime_event_reference(event, change.cursor);
-                    let model = model_for(&reference, crate::RuntimeLogicalModel::Event)?;
+                    let model = model_for(&reference)?;
                     if !model.is_event_like() {
                         return data_snapshot_model_error(&reference, model, "event");
                     }
@@ -1560,7 +1551,7 @@ impl RuntimeDataSnapshot {
                     );
                 }
                 RuntimeMutation::Vector { vector } if vector.valid_from <= valid_at => {
-                    let model = model_for(&vector.reference, crate::RuntimeLogicalModel::Vector)?;
+                    let model = model_for(&vector.reference)?;
                     if model != crate::RuntimeLogicalModel::Vector {
                         return data_snapshot_model_error(&vector.reference, model, "vector");
                     }
@@ -1573,8 +1564,7 @@ impl RuntimeDataSnapshot {
                     );
                 }
                 RuntimeMutation::SeriesSample { sample } if sample.observed_at <= valid_at => {
-                    let model =
-                        model_for(&sample.reference, crate::RuntimeLogicalModel::TimeSeries)?;
+                    let model = model_for(&sample.reference)?;
                     if model != crate::RuntimeLogicalModel::TimeSeries {
                         return data_snapshot_model_error(
                             &sample.reference,
@@ -1591,7 +1581,7 @@ impl RuntimeDataSnapshot {
                     );
                 }
                 RuntimeMutation::Geo { geo: value } if value.valid_from <= valid_at => {
-                    let model = model_for(&value.reference, crate::RuntimeLogicalModel::Geo)?;
+                    let model = model_for(&value.reference)?;
                     if model != crate::RuntimeLogicalModel::Geo {
                         return data_snapshot_model_error(&value.reference, model, "geo value");
                     }
@@ -1604,7 +1594,7 @@ impl RuntimeDataSnapshot {
                     );
                 }
                 RuntimeMutation::Object { object } if change.at <= valid_at => {
-                    let model = model_for(&object.reference, crate::RuntimeLogicalModel::Object)?;
+                    let model = model_for(&object.reference)?;
                     if model != crate::RuntimeLogicalModel::Object {
                         return data_snapshot_model_error(
                             &object.reference,
@@ -1621,7 +1611,7 @@ impl RuntimeDataSnapshot {
                     );
                 }
                 RuntimeMutation::Retire { retirement } if retirement.effective_at <= valid_at => {
-                    let actual = model_for(&retirement.reference, retirement.model)?;
+                    let actual = model_for(&retirement.reference)?;
                     if actual != retirement.model {
                         return data_snapshot_model_error(
                             &retirement.reference,
@@ -2390,38 +2380,35 @@ fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry) {
         encode_property_schemas(out, &schema.properties);
         out.push(u8::from(schema.allow_additional_properties));
     }
-    let default_catalogue = crate::RuntimeCatalogueIdentity::default();
-    if registry.catalogue != default_catalogue || !registry.tables.is_empty() {
-        out.extend_from_slice(b"rrflow-unified-catalogue-v1\0");
-        text(out, registry.catalogue.namespace.as_str());
-        text(out, registry.catalogue.database.as_str());
-        out.extend_from_slice(&(registry.tables.len() as u64).to_be_bytes());
-        for (kind, table) in &registry.tables {
-            text(out, kind.as_str());
-            out.push(match table.model {
-                crate::RuntimeLogicalModel::Document => 0,
-                crate::RuntimeLogicalModel::Relational => 1,
-                crate::RuntimeLogicalModel::GraphNode => 2,
-                crate::RuntimeLogicalModel::GraphRelation => 3,
-                crate::RuntimeLogicalModel::KeyValue => 4,
-                crate::RuntimeLogicalModel::Vector => 5,
-                crate::RuntimeLogicalModel::Event => 6,
-                crate::RuntimeLogicalModel::TimeSeries => 7,
-                crate::RuntimeLogicalModel::Geo => 8,
-                crate::RuntimeLogicalModel::Object => 9,
-                crate::RuntimeLogicalModel::ReasoningRecord => 10,
-                crate::RuntimeLogicalModel::ReasoningEvent => 11,
-                crate::RuntimeLogicalModel::LifecycleRecord => 12,
-                crate::RuntimeLogicalModel::LifecycleEvent => 13,
-                crate::RuntimeLogicalModel::ReasoningClaim => 14,
-            });
-            out.push(match table.mode {
-                crate::RuntimeSchemaMode::Strict => 0,
-                crate::RuntimeSchemaMode::Schemaless => 1,
-            });
-            encode_property_schemas(out, &table.properties);
-            out.push(u8::from(table.allow_additional_properties));
-        }
+    out.extend_from_slice(b"rrflow-unified-catalogue-v1\0");
+    text(out, registry.catalogue.namespace.as_str());
+    text(out, registry.catalogue.database.as_str());
+    out.extend_from_slice(&(registry.tables.len() as u64).to_be_bytes());
+    for (kind, table) in &registry.tables {
+        text(out, kind.as_str());
+        out.push(match table.model {
+            crate::RuntimeLogicalModel::Document => 0,
+            crate::RuntimeLogicalModel::Relational => 1,
+            crate::RuntimeLogicalModel::GraphNode => 2,
+            crate::RuntimeLogicalModel::GraphRelation => 3,
+            crate::RuntimeLogicalModel::KeyValue => 4,
+            crate::RuntimeLogicalModel::Vector => 5,
+            crate::RuntimeLogicalModel::Event => 6,
+            crate::RuntimeLogicalModel::TimeSeries => 7,
+            crate::RuntimeLogicalModel::Geo => 8,
+            crate::RuntimeLogicalModel::Object => 9,
+            crate::RuntimeLogicalModel::ReasoningRecord => 10,
+            crate::RuntimeLogicalModel::ReasoningEvent => 11,
+            crate::RuntimeLogicalModel::LifecycleRecord => 12,
+            crate::RuntimeLogicalModel::LifecycleEvent => 13,
+            crate::RuntimeLogicalModel::ReasoningClaim => 14,
+        });
+        out.push(match table.mode {
+            crate::RuntimeSchemaMode::Strict => 0,
+            crate::RuntimeSchemaMode::Schemaless => 1,
+        });
+        encode_property_schemas(out, &table.properties);
+        out.push(u8::from(table.allow_additional_properties));
     }
 }
 
@@ -2473,6 +2460,35 @@ mod tests {
             valid_to: None,
             properties: RuntimeProperties::new(),
         }
+    }
+
+    #[test]
+    fn data_snapshot_never_infers_a_model_for_an_absent_table() {
+        let scope = ScopeId::new("instance:missing-table-model").unwrap();
+        let mut schema = RuntimeSchemaRegistry::empty(1, "reject inferred snapshot models");
+        schema.records.insert(
+            RuntimeType::new("declared").unwrap(),
+            crate::RuntimeRecordSchema::default(),
+        );
+        let commit = RuntimeCommit {
+            scope: scope.clone(),
+            at: 10,
+            actor: "agent:test".into(),
+            expected_cursor: 0,
+            mutations: vec![RuntimeMutation::Record {
+                record: record("undeclared", "one", 10),
+            }],
+        };
+        let change = RuntimeChange::committed(
+            1,
+            &commit,
+            &commit.digest(),
+            0,
+            commit.mutations[0].clone(),
+            None,
+        );
+
+        assert!(RuntimeDataSnapshot::from_changes(&[change], &schema, scope, 10, 1).is_err());
     }
 
     #[test]

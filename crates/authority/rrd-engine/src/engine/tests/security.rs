@@ -1,7 +1,8 @@
 use super::*;
 use rrd_contract::{
-    AssembleContext, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaRegistry,
-    DataValueType, ExecuteQuery, QueryBudget, QueryValue,
+    AssembleContext, DataLogicalModel, DataPropertySchema, DataRecordSchema, DataReference,
+    DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, ExecuteQuery, QueryBudget,
+    QueryValue,
 };
 use rrd_core::RuntimeValue;
 use rrd_security::{
@@ -713,7 +714,15 @@ fn compiled_role_policy_injects_tenant_rows_and_fields_before_query_planning() {
                 revision: 1,
                 migration: "install tenant policy fixture".into(),
                 catalogue: DataCatalogueIdentity::default(),
-                tables: BTreeMap::new(),
+                tables: BTreeMap::from([(
+                    CanonicalId::new("document").unwrap(),
+                    DataTableSchema {
+                        model: DataLogicalModel::Relational,
+                        mode: DataSchemaMode::Strict,
+                        properties: BTreeMap::new(),
+                        allow_additional_properties: false,
+                    },
+                )]),
                 records: BTreeMap::from([(
                     CanonicalId::new("document").unwrap(),
                     DataRecordSchema {
@@ -849,7 +858,15 @@ fn context_records_authorization_and_denies_unenforced_data_policy_before_snapsh
                 revision: 1,
                 migration: "install context authorization fixture".into(),
                 catalogue: DataCatalogueIdentity::default(),
-                tables: BTreeMap::new(),
+                tables: BTreeMap::from([(
+                    CanonicalId::new("document").unwrap(),
+                    DataTableSchema {
+                        model: DataLogicalModel::Relational,
+                        mode: DataSchemaMode::Strict,
+                        properties: BTreeMap::new(),
+                        allow_additional_properties: false,
+                    },
+                )]),
                 records: BTreeMap::from([(
                     CanonicalId::new("document").unwrap(),
                     DataRecordSchema {

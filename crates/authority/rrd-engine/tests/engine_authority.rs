@@ -1,11 +1,12 @@
 use rrd_contract::{
     transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction, CanonicalId,
     CloseSession, CommitTransaction, CorrelationId, CreateSession, DataCatalogueIdentity,
-    DataProperties, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaRegistry,
-    DataValueType, DataVectorValue, EnsureQueryIndex, EnsureVectorCollection, EstateDesiredPhase,
-    NamedVectorDefinition, QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed,
-    ReadDiagnosticSnapshot, RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction,
-    SessionLimits, TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    DataLogicalModel, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
+    DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue,
+    EnsureQueryIndex, EnsureVectorCollection, EstateDesiredPhase, NamedVectorDefinition,
+    QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
+    RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
+    TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
 };
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
@@ -242,7 +243,26 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
                 revision: 1,
                 migration: "install authority fixture schema".into(),
                 catalogue: DataCatalogueIdentity::default(),
-                tables: BTreeMap::new(),
+                tables: BTreeMap::from([
+                    (
+                        canonical("document"),
+                        DataTableSchema {
+                            model: DataLogicalModel::Relational,
+                            mode: DataSchemaMode::Strict,
+                            properties: BTreeMap::new(),
+                            allow_additional_properties: false,
+                        },
+                    ),
+                    (
+                        canonical("embedding"),
+                        DataTableSchema {
+                            model: DataLogicalModel::Vector,
+                            mode: DataSchemaMode::Schemaless,
+                            properties: BTreeMap::new(),
+                            allow_additional_properties: false,
+                        },
+                    ),
+                ]),
                 records: BTreeMap::from([(
                     canonical("document"),
                     DataRecordSchema {

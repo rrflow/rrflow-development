@@ -1,7 +1,7 @@
 use rrd_core::{
-    digest, ProjectionFamily, RuntimeCommit, RuntimeId, RuntimeMutation, RuntimeProperties,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeVector, ScopeId, VectorValue,
+    digest, ProjectionFamily, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorValue,
 };
 use rrd_engine::{
     execute_traced_embedding, execute_traced_vector_search, publish_traced_vector_artifact,
@@ -24,12 +24,19 @@ fn scope() -> ScopeId {
 fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
     let scope = scope();
     let mut registry = RuntimeSchemaRegistry::empty(1, "vector trace fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            allow_additional_properties: true,
-            ..RuntimeRecordSchema::default()
-        },
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                allow_additional_properties: true,
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry.tables.insert(
+        RuntimeType::new("embedding").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
     );
     let records = (0..3)
         .map(|index| RuntimeRecord {
@@ -330,12 +337,19 @@ const EMBEDDING_BYTES: &[u8] = b"super-secret-embedding-source";
 
 fn embedding_fixture<E: StorageEngine>(store: &E) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "embedding trace fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            allow_additional_properties: true,
-            ..RuntimeRecordSchema::default()
-        },
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                allow_additional_properties: true,
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry.tables.insert(
+        RuntimeType::new("embedding").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
     );
     store
         .runtime()

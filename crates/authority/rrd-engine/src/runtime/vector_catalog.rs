@@ -8,10 +8,10 @@
 use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
     DataTransaction, Millis, ObjectReference, ProjectionId, ReadStamp, RuntimeChange,
-    RuntimeCommit, RuntimeCommitOutcome, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId, TraceBoundary, TraceDataClass, TraceLink,
-    TraceOutcome,
+    RuntimeCommit, RuntimeCommitOutcome, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId, TraceBoundary,
+    TraceDataClass, TraceLink, TraceOutcome,
 };
 use rrd_store::{DataRuntimeAccess, Error as StoreError, ImmutableObjectStore, StorageEngine};
 use rrd_vector::{
@@ -800,17 +800,23 @@ fn quantization_schema_update(
     let lifecycle_type = RuntimeType::new(QUANTIZATION_LIFECYCLE_RECORD_TYPE)?;
     let artifact_schema = quantization_artifact_record_schema();
     let lifecycle_schema = quantization_lifecycle_record_schema();
-    if current.as_ref().is_some_and(|registry| {
-        registry.records.get(&artifact_type) == Some(&artifact_schema)
-            && registry.records.get(&lifecycle_type) == Some(&lifecycle_schema)
-    }) {
-        return Ok(None);
-    }
     let mut registry = current
         .clone()
         .unwrap_or_else(|| RuntimeSchemaRegistry::empty(1, "install quantization lifecycle"));
-    registry.records.insert(artifact_type, artifact_schema);
-    registry.records.insert(lifecycle_type, lifecycle_schema);
+    registry.define_record_table(
+        artifact_type,
+        RuntimeLogicalModel::Relational,
+        artifact_schema,
+    )?;
+    registry.define_record_table(
+        lifecycle_type,
+        RuntimeLogicalModel::Relational,
+        lifecycle_schema,
+    )?;
+    ensure_object_table(&mut registry)?;
+    if current.as_ref() == Some(&registry) {
+        return Ok(None);
+    }
     if let Some(current) = current {
         registry.revision = current
             .revision
@@ -1162,17 +1168,14 @@ fn catalog_schema_update(
 ) -> Result<Option<RuntimeSchemaRegistry>, Box<dyn std::error::Error>> {
     let record_type = RuntimeType::new(VECTOR_ARTIFACT_RECORD_TYPE)?;
     let schema = catalog_record_schema();
-    if current
-        .as_ref()
-        .and_then(|registry| registry.records.get(&record_type))
-        == Some(&schema)
-    {
-        return Ok(None);
-    }
     let mut registry = current
         .clone()
         .unwrap_or_else(|| RuntimeSchemaRegistry::empty(1, "install vector artifact catalog"));
-    registry.records.insert(record_type, schema);
+    registry.define_record_table(record_type, RuntimeLogicalModel::Relational, schema)?;
+    ensure_object_table(&mut registry)?;
+    if current.as_ref() == Some(&registry) {
+        return Ok(None);
+    }
     if let Some(current) = current {
         registry.revision = current
             .revision
@@ -1181,6 +1184,23 @@ fn catalog_schema_update(
         registry.migration = "install authoritative vector artifact catalog".into();
     }
     Ok(Some(registry))
+}
+
+fn ensure_object_table(
+    registry: &mut RuntimeSchemaRegistry,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let object_type = RuntimeType::new("object")?;
+    match registry.tables.get(&object_type) {
+        Some(table) if table.model == RuntimeLogicalModel::Object => Ok(()),
+        Some(_) => Err("canonical object table belongs to another logical model".into()),
+        None => {
+            registry.tables.insert(
+                object_type,
+                RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
+            );
+            Ok(())
+        }
+    }
 }
 
 fn catalog_record_schema() -> RuntimeRecordSchema {

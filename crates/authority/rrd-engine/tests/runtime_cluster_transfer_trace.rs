@@ -4,8 +4,8 @@ use rrd_cluster::{
     CLUSTER_CONTRACT_VERSION,
 };
 use rrd_core::{
-    DataTransaction, RuntimeCommit, RuntimeMutation, RuntimeRecordSchema, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, ScopeId,
+    DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId,
 };
 use rrd_engine::{execute_traced_artifact_transfer, DurableArtifactTransferObserver};
 use rrd_store::{DataRuntime, LocalObjectStore, RrflowKvStore, RrflowMxStore, StorageEngine};
@@ -94,9 +94,9 @@ fn exercise<E: StorageEngine>(
         )
         .unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "cluster transfer trace fixture");
-    schema.records.insert(
-        RuntimeType::new("fixture").unwrap(),
-        RuntimeRecordSchema::default(),
+    schema.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     let read = data.engine().runtime().read_stamp(&scope()).unwrap();
     data.commit(
@@ -174,9 +174,9 @@ fn transport_observations_persist_as_one_causal_project_trace() {
         )
         .unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "observed transfer fixture");
-    schema.records.insert(
-        RuntimeType::new("fixture").unwrap(),
-        RuntimeRecordSchema::default(),
+    schema.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     let read = runtime.engine().runtime().read_stamp(&scope()).unwrap();
     runtime

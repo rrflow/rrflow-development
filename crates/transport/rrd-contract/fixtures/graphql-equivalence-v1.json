@@ -23,8 +23,8 @@
         }
       },
       "rrflowql": "FROM record:document AT VALID $when KNOWN $cursor WHERE status = $status PROJECT id, status LIMIT 10 EXPLAIN CONTRACT",
-      "expected_schema_digest": "4f86708c9c6e772db1fd0929b6e55bbff0fc63f039de49ddbb6e7e6f2442deed",
-      "expected_bound_digest": "a48960ed2a8201e8fd153942def70a1d72fdc98887e6798d742f575150e3b296"
+      "expected_schema_digest": "ef3c0f82ddff2bdea704bb0b0719205512bdad440ad000c9a207e0ac533c3575",
+      "expected_bound_digest": "fd4e543366c5179d7e7c11cf07966ced3382bf8311cfb239254b1c1fc7354389"
     },
     {
       "name": "exact_event_cursor",
@@ -33,8 +33,8 @@
         "document": "{ event(kind: \"tool_result\", validAt: 100, knownAt: 4, where: [{field: \"cursor\", comparison: EQ, value: 4}], explain: CONTRACT) { cursor } }"
       },
       "rrflowql": "FROM event:tool_result AT VALID 100 KNOWN 4 WHERE cursor = 4 PROJECT cursor EXPLAIN CONTRACT",
-      "expected_schema_digest": "4f86708c9c6e772db1fd0929b6e55bbff0fc63f039de49ddbb6e7e6f2442deed",
-      "expected_bound_digest": "fa60ac6d4fbff79189f4d2ba049a181571fe0f43c3a1b732a1069900bd80e323"
+      "expected_schema_digest": "ef3c0f82ddff2bdea704bb0b0719205512bdad440ad000c9a207e0ac533c3575",
+      "expected_bound_digest": "12cb14db60c4898559e7c93084f70d7e7401804534977617a4bc1819d23bd51d"
     },
     {
       "name": "directed_traversal",
@@ -43,8 +43,8 @@
         "document": "{ traverse(relation: \"depends_on\", startKind: \"document\", startId: \"a\", direction: OUTGOING, depth: 4, validAt: 100, knownAt: HEAD) { node_id depth path } }"
       },
       "rrflowql": "FROM traverse:depends_on START document:a DIRECTION OUTGOING DEPTH 4 AT VALID 100 KNOWN HEAD PROJECT node_id, depth, path",
-      "expected_schema_digest": "4f86708c9c6e772db1fd0929b6e55bbff0fc63f039de49ddbb6e7e6f2442deed",
-      "expected_bound_digest": "0110b852e6cc5205002a423a86e74cbe36f1e3f07b5bffeab6249117ab779b49"
+      "expected_schema_digest": "ef3c0f82ddff2bdea704bb0b0719205512bdad440ad000c9a207e0ac533c3575",
+      "expected_bound_digest": "a02fda9ee92ea39cbfe07d23abd3d0330583f6fa9721a00a6251f82e07b9e152"
     },
     {
       "name": "record_relation_join",
@@ -53,8 +53,8 @@
         "document": "{ record(kind: \"document\", validAt: 100, knownAt: HEAD, join: {family: RELATION, kind: \"depends_on\", leftField: \"id\", rightField: \"from_id\"}) { left { id } right { to_id } } }"
       },
       "rrflowql": "FROM record:document JOIN relation:depends_on ON id = from_id AT VALID 100 KNOWN HEAD PROJECT left.id, right.to_id",
-      "expected_schema_digest": "4f86708c9c6e772db1fd0929b6e55bbff0fc63f039de49ddbb6e7e6f2442deed",
-      "expected_bound_digest": "e76dab74bb8c29d49f40916e9385b2ed7962b9e4b14ceb3f10c39758d23ba5be"
+      "expected_schema_digest": "ef3c0f82ddff2bdea704bb0b0719205512bdad440ad000c9a207e0ac533c3575",
+      "expected_bound_digest": "7883d1cddcbba381f9c1801dc7f3593556402b2297225026e4f544b7f787e773"
     },
     {
       "name": "claim_filter",
@@ -63,8 +63,8 @@
         "document": "{ claim(predicate: \"status\", validAt: 100, knownAt: HEAD, where: [{field: \"object\", comparison: EQ, value: \"ready\"}]) { subject object } }"
       },
       "rrflowql": "FROM claim:status AT VALID 100 KNOWN HEAD WHERE object = \"ready\" PROJECT subject, object",
-      "expected_schema_digest": "4f86708c9c6e772db1fd0929b6e55bbff0fc63f039de49ddbb6e7e6f2442deed",
-      "expected_bound_digest": "1791693245e31472c8e3dee8bdceaf73857f4892e9433d547ba5124c8336b8cb"
+      "expected_schema_digest": "ef3c0f82ddff2bdea704bb0b0719205512bdad440ad000c9a207e0ac533c3575",
+      "expected_bound_digest": "98a34eca313fe65cc3e38970e04e179a546c2c24a8dc1a5cd48818fd9cfa5767"
     }
   ],
   "denials": [

@@ -198,11 +198,9 @@ pub struct RuntimeSchemaRegistry {
     pub migration: String,
     #[serde(default, skip_serializing_if = "RuntimeCatalogueIdentity::is_default")]
     pub catalogue: RuntimeCatalogueIdentity,
-    /// Empty only for the persisted pre-G03 migration form. In that form the
-    /// specialized record/relation/event maps derive strict entries. Once any
-    /// explicit table is published, every non-claim mutation must resolve
-    /// through this map.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    /// Sole logical-model authority for every schema-bound table. Specialized
+    /// maps below add family-specific constraints; they never create a table
+    /// or infer its model.
     pub tables: BTreeMap<RuntimeType, RuntimeTableSchema>,
     #[serde(default)]
     pub records: BTreeMap<RuntimeType, RuntimeRecordSchema>,
@@ -225,6 +223,88 @@ impl RuntimeSchemaRegistry {
         }
     }
 
+    /// Defines one strict record-like table and its specialized constraints as
+    /// one in-memory authoring operation. A new schema revision may replace an
+    /// existing definition in the same family, but cannot silently change the
+    /// mutation family represented by a table identity.
+    pub fn define_record_table(
+        &mut self,
+        kind: RuntimeType,
+        model: RuntimeLogicalModel,
+        schema: RuntimeRecordSchema,
+    ) -> Result<bool> {
+        if !model.is_record_like() {
+            return invalid(format!(
+                "record table type {kind} cannot use non-record model {model:?}"
+            ));
+        }
+        self.reject_family_conflict(&kind, RuntimeMutationFamily::Record)?;
+        let table = RuntimeTableSchema::strict(model);
+        let changed =
+            self.tables.get(&kind) != Some(&table) || self.records.get(&kind) != Some(&schema);
+        self.tables.insert(kind.clone(), table);
+        self.records.insert(kind, schema);
+        Ok(changed)
+    }
+
+    /// Defines one strict graph-relation table and its endpoint/cardinality
+    /// constraints as one in-memory authoring operation.
+    pub fn define_relation_table(
+        &mut self,
+        kind: RuntimeType,
+        schema: RuntimeRelationSchema,
+    ) -> Result<bool> {
+        self.reject_family_conflict(&kind, RuntimeMutationFamily::Relation)?;
+        let table = RuntimeTableSchema::strict(RuntimeLogicalModel::GraphRelation);
+        let changed =
+            self.tables.get(&kind) != Some(&table) || self.relations.get(&kind) != Some(&schema);
+        self.tables.insert(kind.clone(), table);
+        self.relations.insert(kind, schema);
+        Ok(changed)
+    }
+
+    /// Defines one strict event-like table and its subject/property constraints
+    /// as one in-memory authoring operation.
+    pub fn define_event_table(
+        &mut self,
+        kind: RuntimeType,
+        model: RuntimeLogicalModel,
+        schema: RuntimeEventSchema,
+    ) -> Result<bool> {
+        if !model.is_event_like() {
+            return invalid(format!(
+                "event table type {kind} cannot use non-event model {model:?}"
+            ));
+        }
+        self.reject_family_conflict(&kind, RuntimeMutationFamily::Event)?;
+        let table = RuntimeTableSchema::strict(model);
+        let changed =
+            self.tables.get(&kind) != Some(&table) || self.events.get(&kind) != Some(&schema);
+        self.tables.insert(kind.clone(), table);
+        self.events.insert(kind, schema);
+        Ok(changed)
+    }
+
+    fn reject_family_conflict(
+        &self,
+        kind: &RuntimeType,
+        family: RuntimeMutationFamily,
+    ) -> Result<()> {
+        if self
+            .tables
+            .get(kind)
+            .is_some_and(|table| table.model.family() != family)
+            || (family != RuntimeMutationFamily::Record && self.records.contains_key(kind))
+            || (family != RuntimeMutationFamily::Relation && self.relations.contains_key(kind))
+            || (family != RuntimeMutationFamily::Event && self.events.contains_key(kind))
+        {
+            return invalid(format!(
+                "table type {kind} already belongs to a different mutation family"
+            ));
+        }
+        Ok(())
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.revision == 0 {
             return invalid("runtime schema revision must be greater than zero");
@@ -232,12 +312,8 @@ impl RuntimeSchemaRegistry {
         if self.migration.trim().is_empty() {
             return invalid("runtime schema migration description must not be empty");
         }
-        if self.tables.is_empty()
-            && self.records.is_empty()
-            && self.relations.is_empty()
-            && self.events.is_empty()
-        {
-            return invalid("runtime schema must declare at least one governed type");
+        if self.tables.is_empty() {
+            return invalid("runtime schema must declare an explicit canonical table map");
         }
         self.catalogue_tables()?;
         for (kind, schema) in &self.records {
@@ -269,37 +345,19 @@ impl RuntimeSchemaRegistry {
         Ok(())
     }
 
-    /// Complete table catalogue, including strict entries derived for legacy
-    /// record/relation/event registries. A returned map is therefore stable for
-    /// diagnostics and query planning even before a scope performs its G03
-    /// migration.
+    /// Validates and returns the exact authoritative table catalogue. No table
+    /// identity or logical model is derived from specialized constraints.
     pub fn catalogue_tables(&self) -> Result<BTreeMap<RuntimeType, RuntimeTableSchema>> {
-        let mut tables = self.tables.clone();
         for kind in self.records.keys() {
-            install_specialized_table(
-                &mut tables,
-                kind,
-                RuntimeMutationFamily::Record,
-                RuntimeLogicalModel::Relational,
-            )?;
+            validate_specialized_table(&self.tables, kind, RuntimeMutationFamily::Record)?;
         }
         for kind in self.relations.keys() {
-            install_specialized_table(
-                &mut tables,
-                kind,
-                RuntimeMutationFamily::Relation,
-                RuntimeLogicalModel::GraphRelation,
-            )?;
+            validate_specialized_table(&self.tables, kind, RuntimeMutationFamily::Relation)?;
         }
         for kind in self.events.keys() {
-            install_specialized_table(
-                &mut tables,
-                kind,
-                RuntimeMutationFamily::Event,
-                RuntimeLogicalModel::Event,
-            )?;
+            validate_specialized_table(&self.tables, kind, RuntimeMutationFamily::Event)?;
         }
-        for (kind, table) in &tables {
+        for (kind, table) in &self.tables {
             validate_table(kind, table)?;
             let specialized = match table.model.family() {
                 RuntimeMutationFamily::Record => self.records.contains_key(kind),
@@ -338,7 +396,7 @@ impl RuntimeSchemaRegistry {
                 _ => {}
             }
         }
-        Ok(tables)
+        Ok(self.tables.clone())
     }
 
     pub fn validate_objects<'a>(
@@ -349,7 +407,6 @@ impl RuntimeSchemaRegistry {
     ) -> Result<()> {
         self.validate()?;
         let tables = self.catalogue_tables()?;
-        let unified = !self.tables.is_empty();
         let mutations = mutations.into_iter().collect::<Vec<_>>();
         for mutation in &mutations {
             match mutation {
@@ -378,38 +435,34 @@ impl RuntimeSchemaRegistry {
                     self.validate_relation(relation, &tables)?
                 }
                 RuntimeMutation::Event { event } => self.validate_event(event, &tables)?,
-                RuntimeMutation::Vector { vector } if unified => validate_structural_table(
+                RuntimeMutation::Vector { vector } => validate_structural_table(
                     "vector",
                     &vector.reference.kind,
                     &vector.properties,
                     RuntimeMutationFamily::Vector,
                     &tables,
                 )?,
-                RuntimeMutation::SeriesSample { sample } if unified => validate_structural_table(
+                RuntimeMutation::SeriesSample { sample } => validate_structural_table(
                     "time-series sample",
                     &sample.reference.kind,
                     &sample.properties,
                     RuntimeMutationFamily::Series,
                     &tables,
                 )?,
-                RuntimeMutation::Geo { geo } if unified => validate_structural_table(
+                RuntimeMutation::Geo { geo } => validate_structural_table(
                     "geo value",
                     &geo.reference.kind,
                     &geo.properties,
                     RuntimeMutationFamily::Geo,
                     &tables,
                 )?,
-                RuntimeMutation::Object { object } if unified => validate_structural_table(
+                RuntimeMutation::Object { object } => validate_structural_table(
                     "object",
                     &object.reference.kind,
                     &object.properties,
                     RuntimeMutationFamily::Object,
                     &tables,
                 )?,
-                RuntimeMutation::Vector { .. }
-                | RuntimeMutation::SeriesSample { .. }
-                | RuntimeMutation::Geo { .. }
-                | RuntimeMutation::Object { .. } => {}
             }
         }
 
@@ -712,22 +765,17 @@ impl RuntimeSchemaRegistry {
     }
 }
 
-fn install_specialized_table(
-    tables: &mut BTreeMap<RuntimeType, RuntimeTableSchema>,
+fn validate_specialized_table(
+    tables: &BTreeMap<RuntimeType, RuntimeTableSchema>,
     kind: &RuntimeType,
     family: RuntimeMutationFamily,
-    inferred_model: RuntimeLogicalModel,
 ) -> Result<()> {
-    if let Some(table) = tables.get(kind) {
-        if table.model.family() != family {
-            return invalid(format!(
-                "table type {kind} is catalogued as {:?} but also has a {:?} schema",
-                table.model, family
-            ));
-        }
-        return Ok(());
+    let table = require_table(kind, family, tables)?;
+    if table.mode != RuntimeSchemaMode::Strict {
+        return invalid(format!(
+            "table type {kind} is schemaless but also has a strict {family:?} schema"
+        ));
     }
-    tables.insert(kind.clone(), RuntimeTableSchema::strict(inferred_model));
     Ok(())
 }
 
@@ -886,27 +934,98 @@ mod tests {
     }
 
     #[test]
+    fn canonical_table_map_is_required_and_never_inferred() {
+        let prompt = RuntimeType::new("prompt").unwrap();
+        let mut registry = RuntimeSchemaRegistry::empty(1, "reject missing table authority");
+        registry
+            .records
+            .insert(prompt, RuntimeRecordSchema::default());
+
+        assert!(registry
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("table"));
+    }
+
+    #[test]
+    fn serialized_schema_cannot_omit_the_canonical_table_map() {
+        let serialized = serde_json::json!({
+            "revision": 1,
+            "migration": "reject omitted table authority",
+            "catalogue": {
+                "namespace": "default",
+                "database": "default"
+            },
+            "records": {
+                "prompt": {}
+            },
+            "relations": {},
+            "events": {}
+        });
+
+        assert!(serde_json::from_value::<RuntimeSchemaRegistry>(serialized).is_err());
+    }
+
+    #[test]
+    fn paired_table_authoring_rejects_cross_family_reclassification() {
+        let kind = RuntimeType::new("shared").unwrap();
+        let mut registry = RuntimeSchemaRegistry::empty(1, "reject family reclassification");
+        registry
+            .define_record_table(
+                kind.clone(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema::default(),
+            )
+            .unwrap();
+
+        assert!(registry
+            .define_relation_table(kind.clone(), RuntimeRelationSchema::default())
+            .is_err());
+        assert!(registry
+            .define_event_table(
+                kind,
+                RuntimeLogicalModel::Event,
+                RuntimeEventSchema::default(),
+            )
+            .is_err());
+        assert!(registry
+            .define_record_table(
+                RuntimeType::new("vector").unwrap(),
+                RuntimeLogicalModel::Vector,
+                RuntimeRecordSchema::default(),
+            )
+            .is_err());
+    }
+
+    #[test]
     fn required_properties_and_endpoint_types_fail_closed() {
         let mut registry = RuntimeSchemaRegistry::empty(1, "bootstrap");
-        registry.records.insert(
-            RuntimeType::new("prompt").unwrap(),
-            RuntimeRecordSchema {
-                properties: BTreeMap::from([(
-                    "text".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                )]),
-                ..RuntimeRecordSchema::default()
-            },
-        );
-        registry.relations.insert(
-            RuntimeType::new("caused").unwrap(),
-            RuntimeRelationSchema {
-                from: BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
-                to: BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
-                unique_pair: true,
-                ..RuntimeRelationSchema::default()
-            },
-        );
+        let prompt = RuntimeType::new("prompt").unwrap();
+        registry
+            .define_record_table(
+                prompt.clone(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema {
+                    properties: BTreeMap::from([(
+                        "text".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    )]),
+                    ..RuntimeRecordSchema::default()
+                },
+            )
+            .unwrap();
+        registry
+            .define_relation_table(
+                RuntimeType::new("caused").unwrap(),
+                RuntimeRelationSchema {
+                    from: BTreeSet::from([prompt.clone()]),
+                    to: BTreeSet::from([prompt]),
+                    unique_pair: true,
+                    ..RuntimeRelationSchema::default()
+                },
+            )
+            .unwrap();
         let record = RuntimeRecord {
             reference: reference("prompt", "p1"),
             valid_from: 1,
@@ -927,19 +1046,25 @@ mod tests {
     #[test]
     fn cardinality_is_measured_across_temporal_overlap() {
         let mut registry = RuntimeSchemaRegistry::empty(1, "bootstrap");
-        registry.records.insert(
-            RuntimeType::new("prompt").unwrap(),
-            RuntimeRecordSchema::default(),
-        );
-        registry.relations.insert(
-            RuntimeType::new("next").unwrap(),
-            RuntimeRelationSchema {
-                from: BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
-                to: BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
-                max_outgoing: Some(1),
-                ..RuntimeRelationSchema::default()
-            },
-        );
+        let prompt = RuntimeType::new("prompt").unwrap();
+        registry
+            .define_record_table(
+                prompt.clone(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema::default(),
+            )
+            .unwrap();
+        registry
+            .define_relation_table(
+                RuntimeType::new("next").unwrap(),
+                RuntimeRelationSchema {
+                    from: BTreeSet::from([prompt.clone()]),
+                    to: BTreeSet::from([prompt]),
+                    max_outgoing: Some(1),
+                    ..RuntimeRelationSchema::default()
+                },
+            )
+            .unwrap();
         let relation = |id: &str, to: &str, from: u64, until: Option<u64>| RuntimeRelation {
             reference: reference("next", id),
             from: reference("prompt", "p1"),
@@ -1030,6 +1155,6 @@ mod tests {
             .validate()
             .unwrap_err()
             .to_string()
-            .contains("also has a Record schema"));
+            .contains("not Record"));
     }
 }

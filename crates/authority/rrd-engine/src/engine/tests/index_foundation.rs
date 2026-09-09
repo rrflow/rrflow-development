@@ -105,15 +105,26 @@ fn public_engine_owns_every_index_family_and_enforces_unique_commits() {
                     revision: 1,
                     migration: "install index foundation fixture".into(),
                     catalogue: DataCatalogueIdentity::default(),
-                    tables: BTreeMap::from([(
-                        CanonicalId::new("location").unwrap(),
-                        DataTableSchema {
-                            model: DataLogicalModel::Geo,
-                            mode: DataSchemaMode::Schemaless,
-                            properties: BTreeMap::new(),
-                            allow_additional_properties: false,
-                        },
-                    )]),
+                    tables: BTreeMap::from([
+                        (
+                            CanonicalId::new("document").unwrap(),
+                            DataTableSchema {
+                                model: DataLogicalModel::Relational,
+                                mode: DataSchemaMode::Strict,
+                                properties: BTreeMap::new(),
+                                allow_additional_properties: false,
+                            },
+                        ),
+                        (
+                            CanonicalId::new("location").unwrap(),
+                            DataTableSchema {
+                                model: DataLogicalModel::Geo,
+                                mode: DataSchemaMode::Schemaless,
+                                properties: BTreeMap::new(),
+                                allow_additional_properties: false,
+                            },
+                        ),
+                    ]),
                     records: BTreeMap::from([(
                         CanonicalId::new("document").unwrap(),
                         DataRecordSchema {

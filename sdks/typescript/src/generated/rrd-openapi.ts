@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 786e633fb850d9de13d96754d8929618a1bcea9d1184d8efdf02ed819b3e48ef
+// OpenAPI SHA-256: 048d49d611cdf0b21e919fbc3e17e0c5c07b47fe578e12cac05597246754ec94
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -1028,7 +1028,7 @@ export interface components {
                                             };
                                             /** Format: uint64 */
                                             revision: number;
-                                            tables?: {
+                                            tables: {
                                                 [key: string]: {
                                                     /** @default false */
                                                     allow_additional_properties: boolean;
@@ -3447,7 +3447,7 @@ export interface operations {
                                                     };
                                                     /** Format: uint64 */
                                                     revision: number;
-                                                    tables?: {
+                                                    tables: {
                                                         [key: string]: {
                                                             /** @default false */
                                                             allow_additional_properties: boolean;
@@ -4439,7 +4439,7 @@ export interface operations {
                                                     };
                                                     /** Format: uint64 */
                                                     revision: number;
-                                                    tables?: {
+                                                    tables: {
                                                         [key: string]: {
                                                             /** @default false */
                                                             allow_additional_properties: boolean;
@@ -5482,7 +5482,7 @@ export interface operations {
                                                 };
                                                 /** Format: uint64 */
                                                 revision: number;
-                                                tables?: {
+                                                tables: {
                                                     [key: string]: {
                                                         /** @default false */
                                                         allow_additional_properties: boolean;
@@ -6469,7 +6469,7 @@ export interface operations {
                                                 };
                                                 /** Format: uint64 */
                                                 revision: number;
-                                                tables?: {
+                                                tables: {
                                                     [key: string]: {
                                                         /** @default false */
                                                         allow_additional_properties: boolean;
@@ -8095,7 +8095,7 @@ export interface operations {
                                                     };
                                                     /** Format: uint64 */
                                                     revision: number;
-                                                    tables?: {
+                                                    tables: {
                                                         [key: string]: {
                                                             /** @default false */
                                                             allow_additional_properties: boolean;
@@ -10068,7 +10068,7 @@ export interface operations {
                                     };
                                     /** Format: uint64 */
                                     revision: number;
-                                    tables?: {
+                                    tables: {
                                         [key: string]: {
                                             /** @default false */
                                             allow_additional_properties: boolean;
@@ -10476,7 +10476,7 @@ export interface operations {
                                                     };
                                                     /** Format: uint64 */
                                                     revision: number;
-                                                    tables?: {
+                                                    tables: {
                                                         [key: string]: {
                                                             /** @default false */
                                                             allow_additional_properties: boolean;
@@ -12449,7 +12449,7 @@ export interface operations {
                                     };
                                     /** Format: uint64 */
                                     revision: number;
-                                    tables?: {
+                                    tables: {
                                         [key: string]: {
                                             /** @default false */
                                             allow_additional_properties: boolean;
@@ -16923,7 +16923,7 @@ export interface operations {
                                 };
                                 /** Format: uint64 */
                                 revision: number;
-                                tables?: {
+                                tables: {
                                     [key: string]: {
                                         /** @default false */
                                         allow_additional_properties?: boolean;
@@ -17970,7 +17970,7 @@ export interface operations {
                                 };
                                 /** Format: uint64 */
                                 revision: number;
-                                tables?: {
+                                tables: {
                                     [key: string]: {
                                         /** @default false */
                                         allow_additional_properties?: boolean;
@@ -18906,7 +18906,7 @@ export interface operations {
                                         };
                                         /** Format: uint64 */
                                         revision: number;
-                                        tables?: {
+                                        tables: {
                                             [key: string]: {
                                                 /** @default false */
                                                 allow_additional_properties: boolean;
@@ -19846,7 +19846,7 @@ export interface operations {
                                                 };
                                                 /** Format: uint64 */
                                                 revision: number;
-                                                tables?: {
+                                                tables: {
                                                     [key: string]: {
                                                         /** @default false */
                                                         allow_additional_properties: boolean;
@@ -20838,7 +20838,7 @@ export interface operations {
                                         };
                                         /** Format: uint64 */
                                         revision: number;
-                                        tables?: {
+                                        tables: {
                                             [key: string]: {
                                                 /** @default false */
                                                 allow_additional_properties: boolean;
@@ -21778,7 +21778,7 @@ export interface operations {
                                                 };
                                                 /** Format: uint64 */
                                                 revision: number;
-                                                tables?: {
+                                                tables: {
                                                     [key: string]: {
                                                         /** @default false */
                                                         allow_additional_properties: boolean;

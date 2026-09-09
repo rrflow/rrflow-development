@@ -2,8 +2,8 @@ use rrd_contract::{
     CanonicalId, ResourceId, ResourceKind, ResourcePath, SdkConformanceCorpus, SecurityAction,
 };
 use rrd_core::{
-    digest, RuntimeCommit, RuntimeMutation, RuntimePropertySchema, RuntimeRecordSchema,
-    RuntimeSchemaRegistry, RuntimeType, RuntimeValueType, ScopeId,
+    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
+    RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValueType, ScopeId,
 };
 use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_estate::{EstateRepository, MutationContext};
@@ -141,8 +141,9 @@ fn seed_schema(
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut registry = RuntimeSchemaRegistry::empty(1, "SDK conformance schema");
-    registry.records.insert(
+    registry.define_record_table(
         RuntimeType::new("document")?,
+        RuntimeLogicalModel::Relational,
         RuntimeRecordSchema {
             properties: BTreeMap::from([(
                 "title".into(),
@@ -150,7 +151,7 @@ fn seed_schema(
             )]),
             ..RuntimeRecordSchema::default()
         },
-    );
+    )?;
     storage.runtime().commit(&RuntimeCommit {
         scope: ScopeId::new(format!("instance:{}", corpus.identity.instance))?,
         at: 100,

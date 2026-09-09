@@ -1,7 +1,7 @@
 use rrd_core::{
-    RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    RuntimeValueType, ScopeId,
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_engine::{execute_traced_query, query_parameters_from_json, ExecutionBudget, Parameters};
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
@@ -13,22 +13,25 @@ fn scope() -> ScopeId {
 
 fn fixture<E: StorageEngine>(store: &E) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "traced query fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([
-                (
-                    "status".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-                (
-                    "title".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    (
+                        "status".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "title".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     store
         .runtime()
         .commit(&RuntimeCommit {

@@ -843,14 +843,20 @@ mod tests {
 
     fn schema_change() -> (ReadStamp, RuntimeChange) {
         let scope = ScopeId::new("project:version-entry-validation").unwrap();
+        let mut registry = RuntimeSchemaRegistry::empty(1, "version entry validation");
+        registry
+            .define_record_table(
+                RuntimeType::new("document").unwrap(),
+                RuntimeLogicalModel::Relational,
+                Default::default(),
+            )
+            .unwrap();
         let commit = RuntimeCommit {
             scope: scope.clone(),
             at: 100,
             actor: "test:version-entry-validation".into(),
             expected_cursor: 0,
-            mutations: vec![RuntimeMutation::Schema {
-                registry: RuntimeSchemaRegistry::empty(1, "version entry validation"),
-            }],
+            mutations: vec![RuntimeMutation::Schema { registry }],
         };
         let change = RuntimeChange::committed(
             1,

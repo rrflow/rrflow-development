@@ -132,15 +132,18 @@ vector, retrieval, context, memory, and inference paths no longer reconstruct
 state from the runtime change log; and exact rrflowMX/rrflowKV, rrflowKV
 reopen, physical-counter, and source-closure evidence passes. C-05 has removed
 the retired physical readers and proved that the only required production
-dependency on `rrd-lsm` is through `rrd-store`. The first bounded package from
-the subsequent whole-executable audit now rejects vector artifact catalogue v1
-and retains one v2 identity digest. Missing schema tables, missing vector
-collection addresses, and the second vector/TurboQuant catalogue remain
+dependency on `rrd-lsm` is through `rrd-store`. The first two bounded packages
+from the subsequent whole-executable audit now reject vector artifact catalogue
+v1, require one explicit nonempty logical table map on every schema, and remove
+caller-selected snapshot model inference. Every specialized record, relation,
+and event schema now resolves through that same table authority; the public
+contract and generated TypeScript projection also require the map. Missing
+vector collection addresses and the second vector/TurboQuant catalogue remain
 successful pre-release shapes above that physical boundary, so C-05 remains
 open and C-06 has not begun. The unavailable post-alpha OpenRaft implementation
 also remains an explicit POA&M item and is not part of the alpha composition.
-The next executable package is C-05f, requiring the canonical runtime schema
-table map identified by the
+The next executable package is C-05g, requiring the canonical collection
+address on every runtime vector identified by the
 [C-05d whole-executable audit](docs/roadmap/rrflow-1.0-execution-map.md#c-05d-whole-executable-old-shape-audit-correction-plan-journal).
 This is a single-physical-reader foundation, not proof of one final executable
 shape, hybrid Arrow pages, native graph/BM25/vector access paths, DataFusion

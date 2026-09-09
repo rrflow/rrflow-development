@@ -3,9 +3,9 @@ use rrd_contract::{
     RouterModelHandshake, RouterModelManifest,
 };
 use rrd_core::{
-    digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeMutation, RuntimeProperties, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, ScopeId,
-    VectorValue,
+    digest, ReadStamp, RuntimeCommit, RuntimeId, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeTableSchema, RuntimeType, RuntimeValue, ScopeId, VectorValue,
 };
 use rrd_inference::{
     load_router_model_after_handshake, EmbeddingBackend, EmbeddingBackendRegistry,
@@ -362,12 +362,19 @@ fn transaction_cas_rejects_a_runtime_source_change_after_inference() {
                     registry: {
                         let mut registry =
                             RuntimeSchemaRegistry::empty(1, "embedding source test schema");
-                        registry.records.insert(
-                            RuntimeType::new("document").unwrap(),
-                            RuntimeRecordSchema {
-                                allow_additional_properties: true,
-                                ..RuntimeRecordSchema::default()
-                            },
+                        registry
+                            .define_record_table(
+                                RuntimeType::new("document").unwrap(),
+                                RuntimeLogicalModel::Relational,
+                                RuntimeRecordSchema {
+                                    allow_additional_properties: true,
+                                    ..RuntimeRecordSchema::default()
+                                },
+                            )
+                            .unwrap();
+                        registry.tables.insert(
+                            RuntimeType::new("embedding").unwrap(),
+                            RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
                         );
                         registry
                     },

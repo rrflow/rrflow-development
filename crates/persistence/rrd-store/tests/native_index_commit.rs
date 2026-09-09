@@ -21,22 +21,25 @@ fn reference(kind: &str, id: &str) -> RuntimeRef {
 
 fn schema() -> RuntimeSchemaRegistry {
     let mut schema = RuntimeSchemaRegistry::empty(1, "install native index fixture");
-    schema.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([
-                (
-                    "status".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-                (
-                    "title".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    schema
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    (
+                        "status".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "title".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     schema.tables.insert(
         RuntimeType::new("embedding").unwrap(),
         RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),

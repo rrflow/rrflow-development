@@ -936,16 +936,22 @@ mod tests {
         let file = RuntimeType::new("file").unwrap();
         let mut registry = RuntimeSchemaRegistry::empty(1, "semantic commit fan-out");
         registry
-            .records
-            .insert(file.clone(), RuntimeRecordSchema::default());
-        registry.relations.insert(
-            RuntimeType::new("imports").unwrap(),
-            RuntimeRelationSchema {
-                from: BTreeSet::from([file.clone()]),
-                to: BTreeSet::from([file]),
-                ..RuntimeRelationSchema::default()
-            },
-        );
+            .define_record_table(
+                file.clone(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema::default(),
+            )
+            .unwrap();
+        registry
+            .define_relation_table(
+                RuntimeType::new("imports").unwrap(),
+                RuntimeRelationSchema {
+                    from: BTreeSet::from([file.clone()]),
+                    to: BTreeSet::from([file]),
+                    ..RuntimeRelationSchema::default()
+                },
+            )
+            .unwrap();
         registry
     }
 

@@ -1,7 +1,7 @@
 use rrd_core::{
-    ReadStamp, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    RuntimeVector, ScopeId, VectorValue,
+    ReadStamp, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema,
+    RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorValue,
 };
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
 use rrd_vector::{search_changes_exact, ScoreMetric, SearchMode, SearchRequest, VectorQuery};
@@ -9,9 +9,16 @@ use tempfile::tempdir;
 
 fn commit(engine: &dyn StorageEngine, scope: &ScopeId) -> ReadStamp {
     let mut schema = RuntimeSchemaRegistry::empty(1, "vector differential");
-    schema.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema::default(),
+    schema
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    schema.tables.insert(
+        RuntimeType::new("embedding").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
     );
     let documents = [
         ("a", vec![1.0, 0.0], "red"),

@@ -10,9 +10,9 @@
           "schema_revision": 1,
           "catalog_revision": 0,
           "commit_cursor": 4,
-          "head_digest": "11a8e3a37737153050683c082c6ef98908ce55bf88b74778ef50c1de7d928569",
-          "accumulator_root": "da7da2c5abdb8acc4950c048d73f58ef28820664401ddb1c041f05902a6aaf4f",
-          "manifest_id": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e"
+          "head_digest": "e83a72bff2eee024b97b1928261d9a1c7d567abc5d4eb3c620f0185c190f71bc",
+          "accumulator_root": "cb4bfa0b7adb17731dc5217fe1c86adeb726e13ef21948bbe285b3a264865b3c",
+          "manifest_id": "eef349e83bcfdde4b7947a3b1473c887869d4f2e21b19ac29d28e0998b029038"
         },
         "schema_revision": 1,
         "source_cursor": 3,
@@ -83,7 +83,7 @@
       ],
       "explanation": {
         "contract": {
-          "read_manifest": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e",
+          "read_manifest": "eef349e83bcfdde4b7947a3b1473c887869d4f2e21b19ac29d28e0998b029038",
           "scope": "instance:golden",
           "valid_at": 100,
           "known_at_cursor": 4,
@@ -112,7 +112,7 @@
           }
         ]
       },
-      "digest": "48f6c6a89041c30ba63ebf741fef0cc8a8f101708b2c65dc69887705afc75995"
+      "digest": "a73c16ec240cfd14d68569f2690f3e64fb4f40d719cb62d9c553047d0ed3f989"
     }
   },
   {
@@ -126,9 +126,9 @@
           "schema_revision": 1,
           "catalog_revision": 0,
           "commit_cursor": 4,
-          "head_digest": "11a8e3a37737153050683c082c6ef98908ce55bf88b74778ef50c1de7d928569",
-          "accumulator_root": "da7da2c5abdb8acc4950c048d73f58ef28820664401ddb1c041f05902a6aaf4f",
-          "manifest_id": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e"
+          "head_digest": "e83a72bff2eee024b97b1928261d9a1c7d567abc5d4eb3c620f0185c190f71bc",
+          "accumulator_root": "cb4bfa0b7adb17731dc5217fe1c86adeb726e13ef21948bbe285b3a264865b3c",
+          "manifest_id": "eef349e83bcfdde4b7947a3b1473c887869d4f2e21b19ac29d28e0998b029038"
         },
         "schema_revision": 1,
         "source_cursor": 4,
@@ -222,7 +222,7 @@
       ],
       "explanation": {
         "contract": {
-          "read_manifest": "6762cf471165060621284d8f8b27b275211ef5edf46a1debc60d86ad97abf90e",
+          "read_manifest": "eef349e83bcfdde4b7947a3b1473c887869d4f2e21b19ac29d28e0998b029038",
           "scope": "instance:golden",
           "valid_at": 100,
           "known_at_cursor": 4,
@@ -257,7 +257,7 @@
           }
         ]
       },
-      "digest": "0f5d8f386079db5a66a3c8027136526fd329de49da286d723a6a23bca3edb7de"
+      "digest": "4419f9baab33180caa248a6157b2deaa87951150a43e8be0c57d1e1794abfe16"
     }
   }
 ]

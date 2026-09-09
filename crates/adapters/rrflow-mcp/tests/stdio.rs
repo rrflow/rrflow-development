@@ -1,7 +1,7 @@
 use rrd_core::{
-    RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    RuntimeValueType, ScopeId,
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::BTreeMap;
@@ -15,16 +15,19 @@ fn stdio_context_flows_through_the_single_engine_operation() {
     let db = root.path().join(".rrflow/rrd");
     let storage = RrflowKvStore::open(&db).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "MCP context fixture");
-    registry.records.insert(
-        RuntimeType::new("note").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "body".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("note").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "body".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     storage
         .runtime()
         .commit(&RuntimeCommit {

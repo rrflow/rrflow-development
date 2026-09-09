@@ -1,6 +1,7 @@
 use rrd_core::{
-    RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeMutation, RuntimeProperties,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+    RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeType, ScopeId,
 };
 use rrd_query::parse;
 use rrd_query::{bind, plan, Catalog, ExecutionBudget, Parameters, Source};
@@ -18,18 +19,24 @@ struct Vector {
 fn physical_plan_matches_golden_vector() {
     let scope = ScopeId::new("instance:golden").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "golden query contract");
-    schema.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            allow_additional_properties: false,
-            properties: BTreeMap::new(),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    schema.events.insert(
-        RuntimeType::new("tool_result").unwrap(),
-        RuntimeEventSchema::default(),
-    );
+    schema
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                allow_additional_properties: false,
+                properties: BTreeMap::new(),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    schema
+        .define_event_table(
+            RuntimeType::new("tool_result").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema::default(),
+        )
+        .unwrap();
     let engine = RrflowMxStore::new();
     engine
         .runtime()

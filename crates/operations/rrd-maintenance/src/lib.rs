@@ -6,9 +6,9 @@
 
 use rrd_contract::CanonicalId;
 use rrd_core::{
-    digest, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
+    digest, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_store::StorageEngine;
 use serde::{Deserialize, Serialize};
@@ -1269,46 +1269,55 @@ pub fn pending_gates() -> Vec<ValidationGate> {
 
 fn maintenance_schema() -> Result<RuntimeSchemaRegistry> {
     let mut registry = RuntimeSchemaRegistry::empty(1, "install context maintenance v1");
-    registry.records.insert(
-        RuntimeType::new(RUN_TYPE).map_err(|error| contract(error.to_string()))?,
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([
-                ("run_json".into(), required(RuntimeValueType::String)),
-                ("revision".into(), required(RuntimeValueType::Unsigned)),
-                ("stage".into(), required(RuntimeValueType::String)),
-                ("status".into(), required(RuntimeValueType::String)),
-                ("state_sha256".into(), required(RuntimeValueType::Digest)),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.records.insert(
-        RuntimeType::new(PROJECTION_TYPE).map_err(|error| contract(error.to_string()))?,
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([
-                ("projection_json".into(), required(RuntimeValueType::String)),
-                ("generation".into(), required(RuntimeValueType::Unsigned)),
-                ("state_sha256".into(), required(RuntimeValueType::Digest)),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.events.insert(
-        RuntimeType::new(EVENT_TYPE).map_err(|error| contract(error.to_string()))?,
-        RuntimeEventSchema {
-            subject_required: true,
-            subject_types: BTreeSet::from([
-                RuntimeType::new(RUN_TYPE).map_err(|error| contract(error.to_string()))?
-            ]),
-            properties: BTreeMap::from([
-                ("event_json".into(), required(RuntimeValueType::String)),
-                ("revision".into(), required(RuntimeValueType::Unsigned)),
-                ("stage".into(), required(RuntimeValueType::String)),
-                ("state_sha256".into(), required(RuntimeValueType::Digest)),
-            ]),
-            ..RuntimeEventSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new(RUN_TYPE).map_err(|error| contract(error.to_string()))?,
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    ("run_json".into(), required(RuntimeValueType::String)),
+                    ("revision".into(), required(RuntimeValueType::Unsigned)),
+                    ("stage".into(), required(RuntimeValueType::String)),
+                    ("status".into(), required(RuntimeValueType::String)),
+                    ("state_sha256".into(), required(RuntimeValueType::Digest)),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .map_err(|error| contract(error.to_string()))?;
+    registry
+        .define_record_table(
+            RuntimeType::new(PROJECTION_TYPE).map_err(|error| contract(error.to_string()))?,
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    ("projection_json".into(), required(RuntimeValueType::String)),
+                    ("generation".into(), required(RuntimeValueType::Unsigned)),
+                    ("state_sha256".into(), required(RuntimeValueType::Digest)),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .map_err(|error| contract(error.to_string()))?;
+    registry
+        .define_event_table(
+            RuntimeType::new(EVENT_TYPE).map_err(|error| contract(error.to_string()))?,
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: true,
+                subject_types: BTreeSet::from([
+                    RuntimeType::new(RUN_TYPE).map_err(|error| contract(error.to_string()))?
+                ]),
+                properties: BTreeMap::from([
+                    ("event_json".into(), required(RuntimeValueType::String)),
+                    ("revision".into(), required(RuntimeValueType::Unsigned)),
+                    ("stage".into(), required(RuntimeValueType::String)),
+                    ("state_sha256".into(), required(RuntimeValueType::Digest)),
+                ]),
+                ..RuntimeEventSchema::default()
+            },
+        )
+        .map_err(|error| contract(error.to_string()))?;
     registry
         .validate()
         .map_err(|error| contract(error.to_string()))?;
@@ -1516,4 +1525,32 @@ fn validate_sha256(value: &str, name: &str) -> Result<()> {
 
 fn contract(message: impl Into<String>) -> MaintenanceError {
     MaintenanceError::Contract(message.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maintenance_schema_declares_every_runtime_mutation_family() {
+        let registry = maintenance_schema().unwrap();
+        assert_eq!(
+            registry
+                .logical_model(&RuntimeType::new(RUN_TYPE).unwrap())
+                .unwrap(),
+            RuntimeLogicalModel::Relational
+        );
+        assert_eq!(
+            registry
+                .logical_model(&RuntimeType::new(PROJECTION_TYPE).unwrap())
+                .unwrap(),
+            RuntimeLogicalModel::Relational
+        );
+        assert_eq!(
+            registry
+                .logical_model(&RuntimeType::new(EVENT_TYPE).unwrap())
+                .unwrap(),
+            RuntimeLogicalModel::Event
+        );
+    }
 }

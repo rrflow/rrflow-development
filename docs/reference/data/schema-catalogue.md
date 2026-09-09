@@ -48,22 +48,26 @@ prove equal mixed-model create, update, retire, recreate, and conflict
 behavior. rrflowKV fixtures also prove the registry and resulting data
 snapshot survive close and reopen.
 
-`RuntimeDataSnapshot` currently reduces records, relations, events, vectors,
-series, geo values, and objects at one valid time and authenticated read stamp.
-That provides a coherent logical oracle, but its normal implementation reads
-the retained runtime changes from cursor zero and reconstructs the complete
-state. It is not the final native point/range read path.
+`RuntimeDataSnapshot` reduces records, relations, events, vectors, series, geo
+values, and objects selected from authenticated semantic-version point/range
+reads at one valid time and `ReadStamp`. Each value obtains its model only from
+the registry's explicit table map. A missing type fails closed; the mutation
+family or caller cannot supply a fallback model.
 
 ## Required 1.0 convergence
 
-The current Rust type still accepts an empty explicit `tables` map and derives
-strict record, relation, and event entries from older specialized maps.
-`RuntimeDataSnapshot` then permits caller-selected model fallback when that map
-is empty. Those pre-release branches are implementation inventory, not an
-RRFlow 1.0 compatibility promise. Gate C-05 must require the canonical table
-map, remove both fallback branches, and reject the omitted shape.
+The kernel `RuntimeSchemaRegistry` and public `DataSchemaRegistry` now require
+an explicit nonempty `tables` map. Specialized record, relation, and event maps
+add strict family constraints but cannot create a table or infer a model. The
+kernel's paired `define_record_table`, `define_relation_table`, and
+`define_event_table` methods author those two pieces together and reject a
+cross-family collision. Persisted or public JSON with an omitted table map,
+an empty table map, a specialized schema without its matching strict table, or
+a runtime value whose kind is absent from the map is rejected.
 
-Gate C-03 already commits records, both graph adjacency directions,
+This closes the schema-authority portion of C-05; C-05 remains open for the
+separately inventoried vector collection and second-catalogue branches. Gate
+C-03 already commits records, both graph adjacency directions,
 synchronous index changes, the runtime entry, and durable projection deltas as
 one physical batch. Gate C-04 already replaced normal whole-log snapshot
 reconstruction with versioned keys at one `ReadStamp`. Gates E and F must make native graph,

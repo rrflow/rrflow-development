@@ -1,6 +1,7 @@
 use rrd_core::{
-    RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry, RuntimeTraceEvent, RuntimeType,
-    ScopeId, TraceBoundary, TraceDataClass, TraceOperation, TraceOutcome,
+    RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeSchemaRegistry,
+    RuntimeTraceEvent, RuntimeType, ScopeId, TraceBoundary, TraceDataClass, TraceOperation,
+    TraceOutcome,
 };
 use rrd_engine::{install_runtime_trace_contract, record_runtime_trace, TraceIdentity};
 use rrd_store::{RrflowKvStore, RrflowMxStore, StorageEngine};
@@ -126,10 +127,13 @@ fn conflicting_trace_schema_is_repaired_atomically_with_the_first_event() {
     let store = RrflowMxStore::new();
     let scope = scope();
     let mut wrong = RuntimeSchemaRegistry::empty(1, "deliberately incomplete trace schema");
-    wrong.events.insert(
-        RuntimeType::new("runtime_trace").unwrap(),
-        rrd_core::RuntimeEventSchema::default(),
-    );
+    wrong
+        .define_event_table(
+            RuntimeType::new("runtime_trace").unwrap(),
+            RuntimeLogicalModel::Event,
+            rrd_core::RuntimeEventSchema::default(),
+        )
+        .unwrap();
     store
         .runtime()
         .commit(&rrd_core::RuntimeCommit {

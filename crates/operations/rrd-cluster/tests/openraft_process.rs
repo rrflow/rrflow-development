@@ -13,8 +13,9 @@ use rrd_cluster::{
     RRFLOW_NODE_CONFIG_VERSION, RRFLOW_NODE_CONTROL_VERSION,
 };
 use rrd_core::{
-    ObjectReference, RuntimeChange, RuntimeCommit, RuntimeMutation, RuntimeRecordSchema,
-    RuntimeSchemaRegistry, RuntimeType, RuntimeValue, ScopeId,
+    ObjectReference, RuntimeChange, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
+    ScopeId,
 };
 use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
@@ -214,9 +215,16 @@ fn independent_processes_recover_fail_over_snapshot_and_reject_corruption() {
     )
     .unwrap();
     let mut artifact_schema = RuntimeSchemaRegistry::empty(1, "process artifact fixture");
-    artifact_schema.records.insert(
-        RuntimeType::new("artifact_fixture").unwrap(),
-        RuntimeRecordSchema::default(),
+    artifact_schema
+        .define_record_table(
+            RuntimeType::new("artifact_fixture").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    artifact_schema.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     let artifact_commit = RuntimeCommit {
         scope: project_scope(),

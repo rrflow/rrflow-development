@@ -27,25 +27,34 @@ fn schema() -> RuntimeSchemaRegistry {
     let entity = RuntimeType::new("entity").unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "direct versioned-read proof");
     registry
-        .records
-        .insert(entity.clone(), RuntimeRecordSchema::default());
-    registry.relations.insert(
-        RuntimeType::new("links").unwrap(),
-        RuntimeRelationSchema {
-            from: BTreeSet::from([entity.clone()]),
-            to: BTreeSet::from([entity.clone()]),
-            ..RuntimeRelationSchema::default()
-        },
-    );
-    registry.events.insert(
-        RuntimeType::new("observed").unwrap(),
-        RuntimeEventSchema {
-            subject_required: true,
-            subject_types: BTreeSet::from([entity]),
-            properties: BTreeMap::new(),
-            allow_additional_properties: false,
-        },
-    );
+        .define_record_table(
+            entity.clone(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("links").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([entity.clone()]),
+                to: BTreeSet::from([entity.clone()]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_event_table(
+            RuntimeType::new("observed").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: true,
+                subject_types: BTreeSet::from([entity.clone()]),
+                properties: BTreeMap::new(),
+                allow_additional_properties: false,
+            },
+        )
+        .unwrap();
     for (kind, model) in [
         ("embedding", RuntimeLogicalModel::Vector),
         ("sample", RuntimeLogicalModel::TimeSeries),
@@ -374,7 +383,7 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
             retained.evidence.values_decoded,
             retained.evidence.decoded_bytes,
         ),
-        (49, 10, 68, 68, 15_371),
+        (49, 10, 68, 68, 16_271),
     );
     assert_eq!(
         (
@@ -384,7 +393,7 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
             current.evidence.values_decoded,
             current.evidence.decoded_bytes,
         ),
-        (89, 9, 107, 107, 17_109),
+        (89, 9, 107, 107, 18_009),
     );
     for evidence in [&retained.evidence, &current.evidence] {
         evidence.validate().unwrap();

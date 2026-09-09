@@ -14,8 +14,8 @@ use rrd_cluster::{
     CLUSTER_CONTRACT_VERSION,
 };
 use rrd_core::{
-    RuntimeCommit, RuntimeMutation, RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType,
-    ScopeId,
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
+    RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 use rrd_store::{RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
@@ -525,10 +525,13 @@ where
 
 fn bootstrap_runtime_commit() -> RuntimeCommit {
     let mut registry = RuntimeSchemaRegistry::empty(1, "consensus bootstrap");
-    registry.records.insert(
-        RuntimeType::new("reasoning_run").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("reasoning_run").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
     RuntimeCommit {
         scope: ScopeId::new("cluster:consensus").unwrap(),
         at: 1,

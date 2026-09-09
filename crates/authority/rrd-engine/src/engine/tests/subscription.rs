@@ -5,9 +5,9 @@ use rrd_contract::{
     SubscriptionStream,
 };
 use rrd_core::{
-    RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    RuntimeValueType, ScopeId,
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
 };
 use std::collections::BTreeMap;
 
@@ -599,16 +599,19 @@ fn live_query_subscription_pushes_semantic_delta_on_the_runtime_cursor() {
     let (_root, engine) = isolated_engine();
     let scope = ScopeId::new(format!("instance:{}", instance())).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "subscription live query fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "status".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "status".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     let record = |status: &str| RuntimeRecord {
         reference: RuntimeRef::new("document", "alpha").unwrap(),
         valid_from: 10,

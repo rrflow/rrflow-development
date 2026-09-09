@@ -65,6 +65,39 @@ fn document_mutation(id: &str, body: &str) -> TransactionMutation {
     }
 }
 
+fn vector_fixture_schema(
+    migration: impl Into<String>,
+    document: DataRecordSchema,
+) -> DataSchemaRegistry {
+    let document_kind = CanonicalId::new("document").unwrap();
+    let document_table = DataTableSchema {
+        model: DataLogicalModel::Relational,
+        mode: DataSchemaMode::Strict,
+        properties: BTreeMap::new(),
+        allow_additional_properties: false,
+    };
+    DataSchemaRegistry {
+        revision: 1,
+        migration: migration.into(),
+        catalogue: DataCatalogueIdentity::default(),
+        tables: BTreeMap::from([
+            (document_kind.clone(), document_table),
+            (
+                CanonicalId::new("embedding").unwrap(),
+                DataTableSchema {
+                    model: DataLogicalModel::Vector,
+                    mode: DataSchemaMode::Schemaless,
+                    properties: BTreeMap::new(),
+                    allow_additional_properties: false,
+                },
+            ),
+        ]),
+        records: BTreeMap::from([(document_kind, document)]),
+        relations: BTreeMap::new(),
+        events: BTreeMap::new(),
+    }
+}
+
 fn commit_vectors(
     engine: &RrdEngine,
     lease: &rrd_contract::SessionLease,
@@ -271,21 +304,13 @@ fn prepare_gpu_index_fixture(engine: &RrdEngine) -> rrd_contract::SessionLease {
         300,
         vec![
             TransactionMutation::PutSchema {
-                registry: DataSchemaRegistry {
-                    revision: 1,
-                    migration: "install GPU index fixture schema".into(),
-                    catalogue: DataCatalogueIdentity::default(),
-                    tables: BTreeMap::new(),
-                    records: BTreeMap::from([(
-                        CanonicalId::new("document").unwrap(),
-                        DataRecordSchema {
-                            allow_additional_properties: true,
-                            ..DataRecordSchema::default()
-                        },
-                    )]),
-                    relations: BTreeMap::new(),
-                    events: BTreeMap::new(),
-                },
+                registry: vector_fixture_schema(
+                    "install GPU index fixture schema",
+                    DataRecordSchema {
+                        allow_additional_properties: true,
+                        ..DataRecordSchema::default()
+                    },
+                ),
             },
             document_mutation("gpu-a", "gpu alpha"),
             document_mutation("gpu-b", "gpu beta"),
@@ -588,21 +613,13 @@ fn engine_vector_memory_tiers_are_physical_bounded_and_restart_safe() {
         300,
         vec![
             TransactionMutation::PutSchema {
-                registry: DataSchemaRegistry {
-                    revision: 1,
-                    migration: "install residency fixture schema".into(),
-                    catalogue: DataCatalogueIdentity::default(),
-                    tables: BTreeMap::new(),
-                    records: BTreeMap::from([(
-                        CanonicalId::new("document").unwrap(),
-                        DataRecordSchema {
-                            allow_additional_properties: true,
-                            ..DataRecordSchema::default()
-                        },
-                    )]),
-                    relations: BTreeMap::new(),
-                    events: BTreeMap::new(),
-                },
+                registry: vector_fixture_schema(
+                    "install residency fixture schema",
+                    DataRecordSchema {
+                        allow_additional_properties: true,
+                        ..DataRecordSchema::default()
+                    },
+                ),
             },
             document_mutation("resident-a", "resident alpha"),
             document_mutation("resident-b", "resident beta"),
@@ -852,28 +869,20 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
         &lease,
         300,
         std::iter::once(TransactionMutation::PutSchema {
-            registry: DataSchemaRegistry {
-                revision: 1,
-                migration: "install quantization fixture schema".into(),
-                catalogue: DataCatalogueIdentity::default(),
-                tables: BTreeMap::new(),
-                records: BTreeMap::from([(
-                    CanonicalId::new("document").unwrap(),
-                    DataRecordSchema {
-                        properties: BTreeMap::from([(
-                            "body".into(),
-                            DataPropertySchema {
-                                value_type: DataValueType::String,
-                                required: false,
-                            },
-                        )]),
-                        allow_additional_properties: true,
-                        ..DataRecordSchema::default()
-                    },
-                )]),
-                relations: BTreeMap::new(),
-                events: BTreeMap::new(),
-            },
+            registry: vector_fixture_schema(
+                "install quantization fixture schema",
+                DataRecordSchema {
+                    properties: BTreeMap::from([(
+                        "body".into(),
+                        DataPropertySchema {
+                            value_type: DataValueType::String,
+                            required: false,
+                        },
+                    )]),
+                    allow_additional_properties: true,
+                    ..DataRecordSchema::default()
+                },
+            ),
         })
         .chain((0..12).flat_map(|row| {
             let id = format!("q{row}");
@@ -1191,28 +1200,20 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
         300,
         vec![
             TransactionMutation::PutSchema {
-                registry: DataSchemaRegistry {
-                    revision: 1,
-                    migration: "install vector fixture schema".into(),
-                    catalogue: DataCatalogueIdentity::default(),
-                    tables: BTreeMap::new(),
-                    records: BTreeMap::from([(
-                        CanonicalId::new("document").unwrap(),
-                        DataRecordSchema {
-                            properties: BTreeMap::from([(
-                                "body".into(),
-                                DataPropertySchema {
-                                    value_type: DataValueType::String,
-                                    required: true,
-                                },
-                            )]),
-                            allow_additional_properties: true,
-                            ..DataRecordSchema::default()
-                        },
-                    )]),
-                    relations: BTreeMap::new(),
-                    events: BTreeMap::new(),
-                },
+                registry: vector_fixture_schema(
+                    "install vector fixture schema",
+                    DataRecordSchema {
+                        properties: BTreeMap::from([(
+                            "body".into(),
+                            DataPropertySchema {
+                                value_type: DataValueType::String,
+                                required: true,
+                            },
+                        )]),
+                        allow_additional_properties: true,
+                        ..DataRecordSchema::default()
+                    },
+                ),
             },
             document_mutation("alpha", "rrflow durable reasoning"),
             document_mutation("beta", "unrelated storage"),
@@ -1597,28 +1598,20 @@ fn application_backup_restores_turboquant_payload_before_instance_activation() {
         300,
         vec![
             TransactionMutation::PutSchema {
-                registry: DataSchemaRegistry {
-                    revision: 1,
-                    migration: "install backup vector fixture schema".into(),
-                    catalogue: DataCatalogueIdentity::default(),
-                    tables: BTreeMap::new(),
-                    records: BTreeMap::from([(
-                        CanonicalId::new("document").unwrap(),
-                        DataRecordSchema {
-                            properties: BTreeMap::from([(
-                                "body".into(),
-                                DataPropertySchema {
-                                    value_type: DataValueType::String,
-                                    required: false,
-                                },
-                            )]),
-                            allow_additional_properties: true,
-                            ..DataRecordSchema::default()
-                        },
-                    )]),
-                    relations: BTreeMap::new(),
-                    events: BTreeMap::new(),
-                },
+                registry: vector_fixture_schema(
+                    "install backup vector fixture schema",
+                    DataRecordSchema {
+                        properties: BTreeMap::from([(
+                            "body".into(),
+                            DataPropertySchema {
+                                value_type: DataValueType::String,
+                                required: false,
+                            },
+                        )]),
+                        allow_additional_properties: true,
+                        ..DataRecordSchema::default()
+                    },
+                ),
             },
             document_mutation("alpha", "rrflow backup alpha"),
             document_mutation("beta", "rrflow backup beta"),
@@ -2826,28 +2819,20 @@ fn unified_retrieval_algebra_executes_multimodal_late_interaction_and_analytics(
     };
     let mut mutations = vec![
         TransactionMutation::PutSchema {
-            registry: DataSchemaRegistry {
-                revision: 1,
-                migration: "install unified retrieval fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
-                tables: BTreeMap::new(),
-                records: BTreeMap::from([(
-                    CanonicalId::new("document").unwrap(),
-                    DataRecordSchema {
-                        properties: BTreeMap::from([(
-                            "body".into(),
-                            DataPropertySchema {
-                                value_type: DataValueType::String,
-                                required: true,
-                            },
-                        )]),
-                        allow_additional_properties: false,
-                        ..DataRecordSchema::default()
-                    },
-                )]),
-                relations: BTreeMap::new(),
-                events: BTreeMap::new(),
-            },
+            registry: vector_fixture_schema(
+                "install unified retrieval fixture",
+                DataRecordSchema {
+                    properties: BTreeMap::from([(
+                        "body".into(),
+                        DataPropertySchema {
+                            value_type: DataValueType::String,
+                            required: true,
+                        },
+                    )]),
+                    allow_additional_properties: false,
+                    ..DataRecordSchema::default()
+                },
+            ),
         },
         document_mutation("alpha", "rrflow durable multimodal reasoning"),
         document_mutation("beta", "unrelated archival storage"),

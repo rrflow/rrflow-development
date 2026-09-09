@@ -10,9 +10,10 @@
 
 use rrd_core::{
     Claim, DataTransaction, GeoPoint, GeoValue, Predicate, Producer, RuntimeCommit, RuntimeEvent,
-    RuntimeEventSchema, RuntimeGeo, RuntimeMutation, RuntimeProperties, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry,
-    RuntimeSeriesSample, RuntimeType, RuntimeVector, ScopeId, SeriesValue, Subject, VectorValue,
+    RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation, RuntimeRelationSchema,
+    RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeVector,
+    ScopeId, SeriesValue, Subject, VectorValue,
 };
 use rrd_store::{ClaimBatchWriter, ClaimBatchWriterConfig, RrflowKvStore, StorageEngine};
 use std::collections::{BTreeMap, BTreeSet};
@@ -110,25 +111,44 @@ fn rrflow_kv_mixed_family_mutations() -> Vec<RuntimeMutation> {
     let entity = RuntimeType::new("entity").unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "rrflowKV durability schema");
     registry
-        .records
-        .insert(entity.clone(), RuntimeRecordSchema::default());
-    registry.relations.insert(
-        RuntimeType::new("links").unwrap(),
-        RuntimeRelationSchema {
-            from: BTreeSet::from([entity.clone()]),
-            to: BTreeSet::from([entity.clone()]),
-            ..RuntimeRelationSchema::default()
-        },
-    );
-    registry.events.insert(
-        RuntimeType::new("observed").unwrap(),
-        RuntimeEventSchema {
-            subject_required: true,
-            subject_types: BTreeSet::from([entity]),
-            properties: BTreeMap::new(),
-            allow_additional_properties: false,
-        },
-    );
+        .define_record_table(
+            entity.clone(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("links").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([entity.clone()]),
+                to: BTreeSet::from([entity.clone()]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_event_table(
+            RuntimeType::new("observed").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: true,
+                subject_types: BTreeSet::from([entity.clone()]),
+                properties: BTreeMap::new(),
+                allow_additional_properties: false,
+            },
+        )
+        .unwrap();
+    for (kind, model) in [
+        ("embedding", RuntimeLogicalModel::Vector),
+        ("sample", RuntimeLogicalModel::TimeSeries),
+        ("location", RuntimeLogicalModel::Geo),
+    ] {
+        registry.tables.insert(
+            RuntimeType::new(kind).unwrap(),
+            RuntimeTableSchema::schemaless(model),
+        );
+    }
     let a = RuntimeRef::new("entity", "a").unwrap();
     let b = RuntimeRef::new("entity", "b").unwrap();
     let record = |reference| RuntimeRecord {

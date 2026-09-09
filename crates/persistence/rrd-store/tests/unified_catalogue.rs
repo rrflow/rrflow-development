@@ -112,37 +112,45 @@ fn catalogue(revision: u64, vector_quality_required: bool) -> RuntimeSchemaRegis
             schemaless(RuntimeLogicalModel::LifecycleEvent),
         ),
     ]);
-    registry.records.insert(
-        kind("entity"),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "name".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.relations.insert(
-        kind("links"),
-        RuntimeRelationSchema {
-            from: BTreeSet::from([kind("entity")]),
-            to: BTreeSet::from([kind("document")]),
-            unique_pair: true,
-            ..RuntimeRelationSchema::default()
-        },
-    );
-    registry.events.insert(
-        kind("observed"),
-        RuntimeEventSchema {
-            subject_required: true,
-            subject_types: BTreeSet::from([kind("entity")]),
-            properties: BTreeMap::from([(
-                "stage".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            allow_additional_properties: false,
-        },
-    );
+    registry
+        .define_record_table(
+            kind("entity"),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "name".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            kind("links"),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([kind("entity")]),
+                to: BTreeSet::from([kind("document")]),
+                unique_pair: true,
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_event_table(
+            kind("observed"),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: true,
+                subject_types: BTreeSet::from([kind("entity")]),
+                properties: BTreeMap::from([(
+                    "stage".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                allow_additional_properties: false,
+            },
+        )
+        .unwrap();
     registry
 }
 

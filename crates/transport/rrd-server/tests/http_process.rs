@@ -3,9 +3,9 @@ use rrd_contract::{
     ReadAccessPath, ReadEvidence, TransactionMutation,
 };
 use rrd_core::{
-    RuntimeCommit, RuntimeEventSchema, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId,
+    RuntimeCommit, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_engine::{load_or_create_token_key, InstanceManifest, RrdEngine};
 use rrd_security::{
@@ -338,27 +338,33 @@ fn start_root() -> (tempfile::TempDir, PathBuf, RunningServer) {
 fn seed_query_fixture(root: &Path) {
     let engine = RrflowKvStore::open(root).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "RRD query fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "title".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.events.insert(
-        RuntimeType::new("observed").unwrap(),
-        RuntimeEventSchema {
-            subject_required: true,
-            subject_types: [RuntimeType::new("document").unwrap()]
-                .into_iter()
-                .collect(),
-            allow_additional_properties: true,
-            ..RuntimeEventSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "title".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_event_table(
+            RuntimeType::new("observed").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: true,
+                subject_types: [RuntimeType::new("document").unwrap()]
+                    .into_iter()
+                    .collect(),
+                allow_additional_properties: true,
+                ..RuntimeEventSchema::default()
+            },
+        )
+        .unwrap();
     engine
         .runtime()
         .commit(&RuntimeCommit {
@@ -400,6 +406,9 @@ fn deployment_mutations() -> Vec<TransactionMutation> {
         "registry": {
             "revision": 1,
             "migration": "install deployment conformance corpus",
+            "tables": {
+                "document": {"model": "relational", "mode": "strict"}
+            },
             "records": {
                 "document": {
                     "properties": {
@@ -1416,6 +1425,16 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             "registry": {
                 "revision": 1,
                 "migration": "bootstrap all public data models",
+                "tables": {
+                    "document": {"model": "relational", "mode": "strict"},
+                    "series": {"model": "relational", "mode": "strict"},
+                    "linked": {"model": "graph_relation", "mode": "strict"},
+                    "observed": {"model": "event", "mode": "strict"},
+                    "embedding": {"model": "vector", "mode": "schemaless"},
+                    "sample": {"model": "time_series", "mode": "schemaless"},
+                    "location": {"model": "geo", "mode": "schemaless"},
+                    "object": {"model": "object", "mode": "schemaless"}
+                },
                 "records": {
                     "document": {
                         "properties": {"title": {"value_type": "string", "required": true}},

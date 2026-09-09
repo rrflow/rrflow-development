@@ -1,8 +1,8 @@
 use rrd_core::{
-    digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit, RuntimeMutation,
-    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, RuntimeVector, ScopeId, VectorNormalization, VectorValue,
-    DATA_RUNTIME_CONTRACT_VERSION,
+    digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
+    RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
+    RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, RuntimeValue,
+    RuntimeVector, ScopeId, VectorNormalization, VectorValue, DATA_RUNTIME_CONTRACT_VERSION,
 };
 use rrd_engine::{execute_traced_operator_search, InstanceBinding, InstanceManifest};
 use rrd_operator_knowledge::{
@@ -30,12 +30,19 @@ fn model() -> EmbeddingModelBinding {
 
 fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
     let mut registry = RuntimeSchemaRegistry::empty(1, "operator trace fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            allow_additional_properties: true,
-            ..RuntimeRecordSchema::default()
-        },
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                allow_additional_properties: true,
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry.tables.insert(
+        RuntimeType::new("embedding").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
     );
     let records = (0..3)
         .map(|index| RuntimeRecord {

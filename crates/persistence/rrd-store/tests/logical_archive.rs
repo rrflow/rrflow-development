@@ -1,7 +1,7 @@
 use rrd_core::{
     Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeMutation, ScopeId, Subject,
 };
-use rrd_core::{RuntimeEventSchema, RuntimeSchemaRegistry, RuntimeType};
+use rrd_core::{RuntimeEventSchema, RuntimeLogicalModel, RuntimeSchemaRegistry, RuntimeType};
 use rrd_store::{
     export_logical_archive, inspect_logical_archive, restore_logical_archive_to_new_root,
     RrflowKvStore, StorageEngine,
@@ -41,10 +41,13 @@ fn source(root: &std::path::Path) -> RrflowKvStore {
         .append_batch(&[claim("standalone-before", 10)])
         .unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "archive test bootstrap");
-    registry.events.insert(
-        RuntimeType::new("archive_event").unwrap(),
-        RuntimeEventSchema::default(),
-    );
+    registry
+        .define_event_table(
+            RuntimeType::new("archive_event").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema::default(),
+        )
+        .unwrap();
     engine
         .runtime()
         .commit(&RuntimeCommit {

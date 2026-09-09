@@ -103,10 +103,10 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **C-05f**, requiring the canonical runtime schema
-table map and removing the caller-selected missing-table model fallback found
-by the whole-executable audit after C-05c. C-05e has already removed vector
-artifact catalogue v1 and its alternate identity digest. C-01's physical-key
+The next executable item is **C-05g**, requiring every runtime vector to carry
+its canonical collection address. C-05e removed vector artifact catalogue v1
+and its alternate identity digest; C-05f requires one explicit nonempty schema
+table map and removes all missing-table model inference. C-01's physical-key
 package, C-02's shared
 transaction/repository package, C-03's effect-complete semantic mutation
 batch, C-04's direct current/temporal read package, C-05's lower physical
@@ -991,19 +991,28 @@ C-05 accepted convergence evidence and audit correction (gate remains open):
   digest-consistent v1 entry fails before artifact decoding or engine replay.
   Current v2 publication remains identical on rrflowMX and rrflowKV, and the
   rrflowKV catalogue still reopens before missing artifact bytes fail closed.
-- C-05a through C-05c and C-05e pass their focused and owning suites, all 25 workspace
+- C-05f, in the reviewed change containing this record, makes the canonical
+  logical table map required and nonempty in both the kernel and public schema
+  contracts. Specialized record, relation, and event constraints must resolve
+  to an explicit strict table of the matching family; vector, series, geo, and
+  object mutations always resolve through the same map. Paired authoring
+  methods publish each strict specialized schema with its table identity, and
+  snapshot reconstruction has no caller-selected model fallback. Schema bytes
+  and generated client projections carry that authority explicitly.
+- C-05a through C-05c, C-05e, and C-05f pass their focused and owning suites, all 26 workspace
   architecture guards, the complete default workspace all-target test and
   strict Clippy matrices, and the repository inventory, documentation,
   generated-surface, workflow, version, formatting, and diff policies. Exact
   commands, counts, source probes, and scope exclusions are recorded in the
-  C-05a through C-05e execution journals.
+  C-05a through C-05f execution journals.
 - C-05c closes only the independently installable alpha's physical dependency
   and reader slice. The first C-06 owner read then followed every active C-05
   reference and found compiled successful pre-release paths above that slice:
   vector artifact catalogue v1 beside v2; missing-table schema derivation and
   caller-selected snapshot model fallback; missing vector collection
   addresses; and suppression of the second vector/TurboQuant catalogue during
-  runtime reconstruction. C-05e removes the first item. The C-05d correction
+  runtime reconstruction. C-05e removes the first item and C-05f removes the
+  second. The C-05d correction
   journal records the complete discovery, keeps this checkbox open, and blocks
   C-06 until direct-removal packages close the remaining inventory.
 - The optional post-alpha OpenRaft implementation still contains direct cluster

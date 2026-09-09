@@ -881,47 +881,55 @@ mod tests {
     fn failure_schema() -> RuntimeSchemaRegistry {
         let item_kind = RuntimeType::new("item").unwrap();
         let mut registry = RuntimeSchemaRegistry::empty(1, "rrflowKV semantic failure matrix");
-        registry.records.insert(
-            item_kind.clone(),
-            RuntimeRecordSchema {
-                properties: BTreeMap::from([
-                    (
-                        "status".into(),
-                        RuntimePropertySchema::required(RuntimeValueType::String),
-                    ),
-                    (
-                        "title".into(),
-                        RuntimePropertySchema::required(RuntimeValueType::String),
-                    ),
-                    (
-                        "code".into(),
-                        RuntimePropertySchema::required(RuntimeValueType::String),
-                    ),
-                ]),
-                ..RuntimeRecordSchema::default()
-            },
-        );
+        registry
+            .define_record_table(
+                item_kind.clone(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema {
+                    properties: BTreeMap::from([
+                        (
+                            "status".into(),
+                            RuntimePropertySchema::required(RuntimeValueType::String),
+                        ),
+                        (
+                            "title".into(),
+                            RuntimePropertySchema::required(RuntimeValueType::String),
+                        ),
+                        (
+                            "code".into(),
+                            RuntimePropertySchema::required(RuntimeValueType::String),
+                        ),
+                    ]),
+                    ..RuntimeRecordSchema::default()
+                },
+            )
+            .unwrap();
         registry.tables.insert(
             RuntimeType::new("embedding").unwrap(),
             RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
         );
-        registry.events.insert(
-            RuntimeType::new("pulse").unwrap(),
-            RuntimeEventSchema {
-                subject_required: true,
-                subject_types: BTreeSet::from([item_kind]),
-                properties: BTreeMap::new(),
-                allow_additional_properties: false,
-            },
-        );
-        registry.relations.insert(
-            RuntimeType::new("links").unwrap(),
-            RuntimeRelationSchema {
-                from: BTreeSet::from([RuntimeType::new("item").unwrap()]),
-                to: BTreeSet::from([RuntimeType::new("item").unwrap()]),
-                ..RuntimeRelationSchema::default()
-            },
-        );
+        registry
+            .define_event_table(
+                RuntimeType::new("pulse").unwrap(),
+                RuntimeLogicalModel::Event,
+                RuntimeEventSchema {
+                    subject_required: true,
+                    subject_types: BTreeSet::from([item_kind.clone()]),
+                    properties: BTreeMap::new(),
+                    allow_additional_properties: false,
+                },
+            )
+            .unwrap();
+        registry
+            .define_relation_table(
+                RuntimeType::new("links").unwrap(),
+                RuntimeRelationSchema {
+                    from: BTreeSet::from([item_kind.clone()]),
+                    to: BTreeSet::from([item_kind]),
+                    ..RuntimeRelationSchema::default()
+                },
+            )
+            .unwrap();
         registry
     }
 

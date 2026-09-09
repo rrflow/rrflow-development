@@ -157,7 +157,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "786e633fb850d9de13d96754d8929618a1bcea9d1184d8efdf02ed819b3e48ef";
+    "048d49d611cdf0b21e919fbc3e17e0c5c07b47fe578e12cac05597246754ec94";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -5400,7 +5400,6 @@ pub struct DataSchemaRegistry {
     pub migration: String,
     #[serde(default, skip_serializing_if = "DataCatalogueIdentity::is_default")]
     pub catalogue: DataCatalogueIdentity,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub tables: BTreeMap<CanonicalId, DataTableSchema>,
     #[serde(default)]
     pub records: BTreeMap<CanonicalId, DataRecordSchema>,
@@ -5803,12 +5802,8 @@ fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> {
     if registry.revision == 0 || registry.migration.trim().is_empty() {
         return invalid("data schema requires a positive revision and migration description");
     }
-    if registry.tables.is_empty()
-        && registry.records.is_empty()
-        && registry.relations.is_empty()
-        && registry.events.is_empty()
-    {
-        return invalid("data schema must govern at least one type");
+    if registry.tables.is_empty() {
+        return invalid("data schema requires an explicit non-empty table map");
     }
     for (kind, table) in &registry.tables {
         if table.mode == DataSchemaMode::Schemaless
@@ -5912,9 +5907,11 @@ fn validate_specialized_data_table(
     kind: &CanonicalId,
     family: &str,
 ) -> Result<()> {
-    let Some(table) = registry.tables.get(kind) else {
-        return Ok(());
-    };
+    let table = registry.tables.get(kind).ok_or_else(|| {
+        ContractError(format!(
+            "specialized {family} schema {kind} has no explicit table entry"
+        ))
+    })?;
     if data_model_family(table.model) != family || table.mode != DataSchemaMode::Strict {
         return invalid(format!(
             "table {kind} conflicts with its strict specialized {family} schema"

@@ -3,8 +3,8 @@ use rrd_core::{
     RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
     RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
     RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaRegistry,
-    RuntimeSeriesSample, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId, SeriesValue,
-    Subject,
+    RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
+    SeriesValue, Subject,
 };
 use rrd_query::{
     bind, execute, plan, Catalog, Error, ExecutionBudget, Parameters, PhysicalOperator,
@@ -32,50 +32,71 @@ fn properties(values: &[(&str, &str)]) -> RuntimeProperties {
 
 fn schema() -> RuntimeMutation {
     let mut registry = RuntimeSchemaRegistry::empty(1, "query fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([
-                (
-                    "status".into(),
+    let document_kind = RuntimeType::new("document").unwrap();
+    registry
+        .define_record_table(
+            document_kind.clone(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([
+                    (
+                        "status".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "title".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_record_table(
+            RuntimeType::new("metric").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("depends_on").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([document_kind.clone()]),
+                to: BTreeSet::from([document_kind.clone()]),
+                properties: BTreeMap::from([(
+                    "strength".into(),
                     RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-                (
-                    "title".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.records.insert(
-        RuntimeType::new("metric").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
-    registry.relations.insert(
-        RuntimeType::new("depends_on").unwrap(),
-        RuntimeRelationSchema {
-            from: BTreeSet::from([RuntimeType::new("document").unwrap()]),
-            to: BTreeSet::from([RuntimeType::new("document").unwrap()]),
-            properties: BTreeMap::from([(
-                "strength".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRelationSchema::default()
-        },
-    );
-    registry.events.insert(
-        RuntimeType::new("tool_result").unwrap(),
-        RuntimeEventSchema {
-            subject_required: true,
-            subject_types: BTreeSet::from([RuntimeType::new("document").unwrap()]),
-            properties: BTreeMap::from([(
-                "ok".into(),
-                RuntimePropertySchema::required(RuntimeValueType::Bool),
-            )]),
-            ..RuntimeEventSchema::default()
-        },
-    );
+                )]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_event_table(
+            RuntimeType::new("tool_result").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: true,
+                subject_types: BTreeSet::from([document_kind]),
+                properties: BTreeMap::from([(
+                    "ok".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::Bool),
+                )]),
+                ..RuntimeEventSchema::default()
+            },
+        )
+        .unwrap();
+    for (kind, model) in [
+        ("sample", RuntimeLogicalModel::TimeSeries),
+        ("location", RuntimeLogicalModel::Geo),
+    ] {
+        registry.tables.insert(
+            RuntimeType::new(kind).unwrap(),
+            RuntimeTableSchema::schemaless(model),
+        );
+    }
     RuntimeMutation::Schema { registry }
 }
 

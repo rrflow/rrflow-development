@@ -1,8 +1,8 @@
 use rrd_core::{
-    digest, Predicate, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeMutation,
-    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
-    RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    RuntimeValueType, ScopeId,
+    digest, Predicate, RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel,
+    RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
+    RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_query::{
     bind, bind_graphql, derive_graphql_schema, lower_graphql, parse, Catalog, ExecutionBudget,
@@ -48,45 +48,54 @@ fn fixture_path() -> String {
 fn catalog() -> Catalog {
     let scope = ScopeId::new("instance:graphql-equivalence").unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "GraphQL equivalence schema");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            allow_additional_properties: false,
-            properties: BTreeMap::from([
-                (
-                    "status".into(),
+    let document_kind = RuntimeType::new("document").unwrap();
+    registry
+        .define_record_table(
+            document_kind.clone(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                allow_additional_properties: false,
+                properties: BTreeMap::from([
+                    (
+                        "status".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                    (
+                        "title".into(),
+                        RuntimePropertySchema::required(RuntimeValueType::String),
+                    ),
+                ]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("depends_on").unwrap(),
+            RuntimeRelationSchema {
+                from: BTreeSet::from([document_kind.clone()]),
+                to: BTreeSet::from([document_kind]),
+                properties: BTreeMap::from([(
+                    "strength".into(),
                     RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-                (
-                    "title".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                ),
-            ]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.relations.insert(
-        RuntimeType::new("depends_on").unwrap(),
-        RuntimeRelationSchema {
-            from: BTreeSet::from([RuntimeType::new("document").unwrap()]),
-            to: BTreeSet::from([RuntimeType::new("document").unwrap()]),
-            properties: BTreeMap::from([(
-                "strength".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRelationSchema::default()
-        },
-    );
-    registry.events.insert(
-        RuntimeType::new("tool_result").unwrap(),
-        RuntimeEventSchema {
-            properties: BTreeMap::from([(
-                "ok".into(),
-                RuntimePropertySchema::required(RuntimeValueType::Bool),
-            )]),
-            ..RuntimeEventSchema::default()
-        },
-    );
+                )]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_event_table(
+            RuntimeType::new("tool_result").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                properties: BTreeMap::from([(
+                    "ok".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::Bool),
+                )]),
+                ..RuntimeEventSchema::default()
+            },
+        )
+        .unwrap();
     let engine = RrflowMxStore::new();
     let document = RuntimeRef::new("document", "a").unwrap();
     engine

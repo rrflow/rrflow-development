@@ -13,8 +13,8 @@ use rrd_cluster::{
     RrdSnapshotData, ShardId, ShardPlacement, ShardReadStamp, ZoneId, CLUSTER_CONTRACT_VERSION,
 };
 use rrd_core::{
-    ObjectReference, RuntimeCommit, RuntimeMutation, RuntimeRecordSchema, RuntimeSchemaRegistry,
-    RuntimeType, ScopeId,
+    ObjectReference, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
+    RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, ScopeId,
 };
 use rrd_lsm::{recover, Database, Durability, Mutation, SnapshotBundle, WriteBatch};
 use rrd_store::{LocalObjectStore, RrflowKvStore, StorageEngine};
@@ -805,9 +805,16 @@ fn test_storage_error(error: impl std::fmt::Display) -> StorageError<u64> {
 
 fn bootstrap_runtime_commit(scope: &str, expected_cursor: u64) -> RuntimeCommit {
     let mut registry = RuntimeSchemaRegistry::empty(1, "cluster bootstrap");
-    registry.records.insert(
-        RuntimeType::new("reasoning_run").unwrap(),
-        RuntimeRecordSchema::default(),
+    registry
+        .define_record_table(
+            RuntimeType::new("reasoning_run").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     RuntimeCommit {
         scope: ScopeId::new(scope).unwrap(),

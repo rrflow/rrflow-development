@@ -1,8 +1,8 @@
 use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
 use rrd_core::{
-    digest, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId,
+    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
+    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_security::{
@@ -53,16 +53,19 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
     };
     let storage = RrflowKvStore::open(&store).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "Daemon context fixture");
-    registry.records.insert(
-        RuntimeType::new("note").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "body".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("note").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "body".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     storage
         .runtime()
         .commit(&RuntimeCommit {

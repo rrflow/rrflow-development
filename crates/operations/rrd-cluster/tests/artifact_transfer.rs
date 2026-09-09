@@ -7,8 +7,9 @@ use rrd_cluster::{
     ARTIFACT_TRANSFER_CHUNK_MAX_BYTES, CLUSTER_CONTRACT_VERSION,
 };
 use rrd_core::{
-    DataTransaction, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+    DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeTableSchema,
+    RuntimeType, ScopeId,
 };
 use rrd_store::{DataRuntime, LocalObjectStore, RrflowMxStore, StorageEngine};
 use std::collections::BTreeSet;
@@ -92,9 +93,16 @@ fn source_runtime(
         )
         .unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "artifact transfer fixture");
-    schema.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema::default(),
+    schema
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    schema.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     let read = runtime.engine().runtime().read_stamp(&scope).unwrap();
     runtime

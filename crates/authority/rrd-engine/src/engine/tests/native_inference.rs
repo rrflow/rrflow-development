@@ -1,9 +1,9 @@
 use super::*;
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CommitTransaction, DataCatalogueIdentity,
-    DataRecordSchema, DataReference, DataSchemaRegistry, EmbedAndSearchVectors, EmbeddingInput,
-    EmbeddingNetworkPolicy, GenerateEmbeddings, ListEmbeddingModels, VectorEmbeddingModel,
-    VectorSearchMode,
+    DataLogicalModel, DataRecordSchema, DataReference, DataSchemaMode, DataSchemaRegistry,
+    DataTableSchema, EmbedAndSearchVectors, EmbeddingInput, EmbeddingNetworkPolicy,
+    GenerateEmbeddings, ListEmbeddingModels, VectorEmbeddingModel, VectorSearchMode,
 };
 use std::collections::BTreeMap;
 
@@ -115,7 +115,26 @@ fn native_inference_batches_with_provenance_and_searches_at_one_read_stamp() {
             revision: 1,
             migration: "install native inference fixture".into(),
             catalogue: DataCatalogueIdentity::default(),
-            tables: BTreeMap::new(),
+            tables: BTreeMap::from([
+                (
+                    CanonicalId::new("document").unwrap(),
+                    DataTableSchema {
+                        model: DataLogicalModel::Relational,
+                        mode: DataSchemaMode::Strict,
+                        properties: BTreeMap::new(),
+                        allow_additional_properties: false,
+                    },
+                ),
+                (
+                    CanonicalId::new("embedding").unwrap(),
+                    DataTableSchema {
+                        model: DataLogicalModel::Vector,
+                        mode: DataSchemaMode::Schemaless,
+                        properties: BTreeMap::new(),
+                        allow_additional_properties: false,
+                    },
+                ),
+            ]),
             records: BTreeMap::from([(
                 CanonicalId::new("document").unwrap(),
                 DataRecordSchema {

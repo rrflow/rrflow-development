@@ -7,9 +7,9 @@
 
 use crate::{
     AuditDecision, Error, Millis, ProjectionStamp, ReadStamp, ReasoningActiveCursor, Result,
-    RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType,
-    ScopeId, SnapshotId,
+    RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
+    RuntimeValueType, ScopeId, SnapshotId,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -1007,11 +1007,7 @@ impl RuntimeTraceEvent {
     pub fn register_schema(registry: &mut RuntimeSchemaRegistry) -> Result<bool> {
         let kind = Self::event_type()?;
         let schema = Self::event_schema();
-        if registry.events.get(&kind) == Some(&schema) {
-            return Ok(false);
-        }
-        registry.events.insert(kind, schema);
-        Ok(true)
+        registry.define_event_table(kind, RuntimeLogicalModel::Event, schema)
     }
 
     /// Prepares the one canonical runtime commit used by both local engines

@@ -1,8 +1,8 @@
 use rrd_core::{
-    Claim, Predicate, Producer, RuntimeCommit, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
-    RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue, RuntimeValueType,
-    ScopeId, Subject,
+    Claim, Predicate, Producer, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
+    RuntimeValueType, ScopeId, Subject,
 };
 use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 use std::collections::BTreeMap;
@@ -62,25 +62,33 @@ fn commit(expected_cursor: u64, scope: &str) -> RuntimeCommit {
 
 fn test_schema() -> RuntimeMutation {
     let mut registry = RuntimeSchemaRegistry::empty(1, "test schema");
-    registry.records.insert(
-        RuntimeType::new("prompt").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
-    registry.records.insert(
-        RuntimeType::new("outcome").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
-    registry.relations.insert(
-        RuntimeType::new("caused").unwrap(),
-        RuntimeRelationSchema {
-            from: std::collections::BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
-            to: std::collections::BTreeSet::from([RuntimeType::new("outcome").unwrap()]),
-            unique_pair: true,
-            max_outgoing: Some(1),
-            max_incoming: Some(1),
-            ..RuntimeRelationSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("prompt").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry
+        .define_record_table(
+            RuntimeType::new("outcome").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("caused").unwrap(),
+            RuntimeRelationSchema {
+                from: std::collections::BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
+                to: std::collections::BTreeSet::from([RuntimeType::new("outcome").unwrap()]),
+                unique_pair: true,
+                max_outgoing: Some(1),
+                max_incoming: Some(1),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
     RuntimeMutation::Schema { registry }
 }
 
@@ -324,31 +332,39 @@ fn assert_schema_contract(engine: &dyn StorageEngine) {
     assert_eq!(engine.runtime().cursor().unwrap(), 0);
 
     let mut registry = RuntimeSchemaRegistry::empty(1, "bootstrap strict schema");
-    registry.records.insert(
-        RuntimeType::new("prompt").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "text".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            unique_properties: std::collections::BTreeSet::from(["text".into()]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
-    registry.records.insert(
-        RuntimeType::new("outcome").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
-    registry.relations.insert(
-        RuntimeType::new("caused").unwrap(),
-        RuntimeRelationSchema {
-            from: std::collections::BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
-            to: std::collections::BTreeSet::from([RuntimeType::new("outcome").unwrap()]),
-            unique_pair: true,
-            max_outgoing: Some(1),
-            ..RuntimeRelationSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("prompt").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "text".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                unique_properties: std::collections::BTreeSet::from(["text".into()]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    registry
+        .define_record_table(
+            RuntimeType::new("outcome").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    registry
+        .define_relation_table(
+            RuntimeType::new("caused").unwrap(),
+            RuntimeRelationSchema {
+                from: std::collections::BTreeSet::from([RuntimeType::new("prompt").unwrap()]),
+                to: std::collections::BTreeSet::from([RuntimeType::new("outcome").unwrap()]),
+                unique_pair: true,
+                max_outgoing: Some(1),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
     let mut prompt = record("prompt", "p1");
     prompt
         .properties

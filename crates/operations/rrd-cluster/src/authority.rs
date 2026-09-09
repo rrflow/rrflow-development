@@ -906,8 +906,8 @@ fn authority_schema_transition(
             .ok_or_else(|| ClusterError::Invalid("runtime schema revision overflowed".into()))?;
         next.migration = "install distributed metadata-shard authority".into();
         next.tables = tables;
-        next.tables.insert(kind.clone(), table_schema);
-        next.records.insert(kind.clone(), record_schema);
+        next.define_record_table(kind.clone(), RuntimeLogicalModel::KeyValue, record_schema)
+            .map_err(|error| ClusterError::Invalid(error.to_string()))?;
         next.validate()
             .map_err(|error| ClusterError::Invalid(error.to_string()))?;
         return Ok(Some(next));
@@ -915,8 +915,9 @@ fn authority_schema_transition(
 
     let mut registry =
         RuntimeSchemaRegistry::empty(1, "install distributed metadata-shard authority");
-    registry.tables.insert(kind.clone(), table_schema);
-    registry.records.insert(kind.clone(), record_schema);
+    registry
+        .define_record_table(kind.clone(), RuntimeLogicalModel::KeyValue, record_schema)
+        .map_err(|error| ClusterError::Invalid(error.to_string()))?;
     registry
         .validate()
         .map_err(|error| ClusterError::Invalid(error.to_string()))?;

@@ -1,7 +1,7 @@
 use rrd_core::{
-    Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeMutation, RuntimeProperties,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
-    Subject,
+    Claim, DataTransaction, Predicate, Producer, RuntimeCommit, RuntimeLogicalModel,
+    RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeType, ScopeId, Subject,
 };
 use rrd_store::{
     create_application_backup, create_logical_backup, load_backup_catalogue,
@@ -199,9 +199,16 @@ fn application_backup_payload_corruption_fails_before_restore_publication() {
     );
     let scope = ScopeId::new("instance:complete-backup").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "backup object schema");
-    schema.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema::default(),
+    schema
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    schema.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     runtime
         .engine()
@@ -284,9 +291,16 @@ fn application_backup_restores_object_catalogue_and_audit_closure() {
     );
     let scope = ScopeId::new("instance:closure").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "backup closure schema");
-    schema.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema::default(),
+    schema
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    schema.tables.insert(
+        RuntimeType::new("object").unwrap(),
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
     );
     let bootstrap = runtime
         .engine()

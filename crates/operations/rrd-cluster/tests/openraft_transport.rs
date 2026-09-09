@@ -17,9 +17,9 @@ use rrd_cluster::{
     ShardPlacement, ZoneId, CLUSTER_CONTRACT_VERSION,
 };
 use rrd_core::{
-    ObjectReference, RuntimeCommit, RuntimeMutation, RuntimeRecordSchema, RuntimeSchemaRegistry,
-    RuntimeTraceEvent, RuntimeType, ScopeId, SpanId, TraceBoundary, TraceDataClass, TraceId,
-    TraceOperation, TraceOutcome,
+    ObjectReference, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeRecordSchema,
+    RuntimeSchemaRegistry, RuntimeTableSchema, RuntimeTraceEvent, RuntimeType, ScopeId, SpanId,
+    TraceBoundary, TraceDataClass, TraceId, TraceOperation, TraceOutcome,
 };
 use rrd_store::LocalObjectStore;
 use rustls::pki_types::{CertificateRevocationListDer, PrivateKeyDer, PrivatePkcs8KeyDer};
@@ -286,9 +286,16 @@ fn mutual_tls_transport_replicates_and_denies_identity_confusion() {
         )
         .unwrap();
         let mut artifact_schema = RuntimeSchemaRegistry::empty(1, "TLS artifact transfer fixture");
-        artifact_schema.records.insert(
-            RuntimeType::new("artifact_fixture").unwrap(),
-            RuntimeRecordSchema::default(),
+        artifact_schema
+            .define_record_table(
+                RuntimeType::new("artifact_fixture").unwrap(),
+                RuntimeLogicalModel::Relational,
+                RuntimeRecordSchema::default(),
+            )
+            .unwrap();
+        artifact_schema.tables.insert(
+            RuntimeType::new("object").unwrap(),
+            RuntimeTableSchema::schemaless(RuntimeLogicalModel::Object),
         );
         let runtime_response = running[&1]
             .raft

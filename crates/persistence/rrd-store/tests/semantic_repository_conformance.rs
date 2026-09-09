@@ -1,6 +1,6 @@
 use rrd_core::{
-    Claim, Producer, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+    Claim, Producer, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 use rrd_store::{ControlTransition, RrflowKvStore, StorageEngine, StorageProfile};
 
@@ -36,8 +36,12 @@ fn exercise(storage: &dyn StorageEngine) -> (u64, u64, String, usize) {
     let item = RuntimeRef::new("item", "one").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "repository conformance");
     schema
-        .records
-        .insert(item_kind, RuntimeRecordSchema::default());
+        .define_record_table(
+            item_kind,
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
     let outcome = storage
         .runtime()
         .commit(&RuntimeCommit {

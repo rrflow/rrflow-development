@@ -17,9 +17,9 @@ use rrd_contract::{
     WebSocketRequest, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_core::{
-    digest, RuntimeCommit, RuntimeProperties, RuntimePropertySchema, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, RuntimeValue,
-    RuntimeValueType, ScopeId,
+    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeProperties, RuntimePropertySchema,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
+    RuntimeValue, RuntimeValueType, ScopeId,
 };
 use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
 use rrd_security::{
@@ -94,16 +94,19 @@ fn instance_resource() -> ResourcePath {
 
 fn seed(engine: &RrflowKvStore, scope: &str) {
     let mut registry = RuntimeSchemaRegistry::empty(1, "Rust SDK fixture");
-    registry.records.insert(
-        RuntimeType::new("document").unwrap(),
-        RuntimeRecordSchema {
-            properties: BTreeMap::from([(
-                "title".into(),
-                RuntimePropertySchema::required(RuntimeValueType::String),
-            )]),
-            ..RuntimeRecordSchema::default()
-        },
-    );
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "title".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
     engine
         .runtime()
         .commit(&RuntimeCommit {
@@ -145,6 +148,9 @@ fn deployment_mutations() -> Vec<TransactionMutation> {
         "registry": {
             "revision": 1,
             "migration": "install deployment conformance corpus",
+            "tables": {
+                "document": {"model": "relational", "mode": "strict"}
+            },
             "records": {
                 "document": {
                     "properties": {

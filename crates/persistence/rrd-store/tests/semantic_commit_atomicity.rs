@@ -1,7 +1,7 @@
 use rrd_core::{
-    digest, DataTransaction, RuntimeCommit, RuntimeMutation, RuntimeProperties, RuntimeRecord,
-    RuntimeRecordSchema, RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaRegistry,
-    RuntimeType, ScopeId,
+    digest, DataTransaction, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeRelation,
+    RuntimeRelationSchema, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 use rrd_store::{
     Error, FunctionInvocationReceiptRecord, RrflowKvStore, RrflowMxStore, StorageEngine,
@@ -28,16 +28,22 @@ fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
     let imports = RuntimeType::new("imports").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "public semantic commit corpus");
     schema
-        .records
-        .insert(file.clone(), RuntimeRecordSchema::default());
-    schema.relations.insert(
-        imports,
-        RuntimeRelationSchema {
-            from: BTreeSet::from([file.clone()]),
-            to: BTreeSet::from([file]),
-            ..RuntimeRelationSchema::default()
-        },
-    );
+        .define_record_table(
+            file.clone(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    schema
+        .define_relation_table(
+            imports,
+            RuntimeRelationSchema {
+                from: BTreeSet::from([file.clone()]),
+                to: BTreeSet::from([file]),
+                ..RuntimeRelationSchema::default()
+            },
+        )
+        .unwrap();
     let source = RuntimeRef::new("file", "src/lib.rs").unwrap();
     let target = RuntimeRef::new("file", "src/store.rs").unwrap();
     let commit = RuntimeCommit {
@@ -201,10 +207,13 @@ fn semantic_commit_and_function_receipt_have_identical_evidence_on_mx_kv_and_kv_
 fn assert_mismatched_receipt_leaves_no_semantic_effect(storage: &dyn StorageEngine) {
     let scope = ScopeId::new("project:mismatched-function-receipt").unwrap();
     let mut schema = RuntimeSchemaRegistry::empty(1, "mismatched receipt must not commit");
-    schema.records.insert(
-        RuntimeType::new("receipt-probe").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
+    schema
+        .define_record_table(
+            RuntimeType::new("receipt-probe").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
     let commit = RuntimeCommit {
         scope: scope.clone(),
         at: 200,

@@ -4,26 +4,32 @@ use std::thread;
 
 use rrd_core::{
     DataTransaction, ReadStamp, RuntimeCommit, RuntimeEvent, RuntimeEventSchema,
-    RuntimeGraphSnapshot, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
-    RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+    RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord,
+    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
 };
 use rrd_store::{Error, RrflowKvStore, RrflowMxStore, StorageEngine};
 
 fn schema() -> RuntimeSchemaRegistry {
     let mut registry = RuntimeSchemaRegistry::empty(1, "snapshot test schema");
-    registry.events.insert(
-        RuntimeType::new("pulse").unwrap(),
-        RuntimeEventSchema {
-            subject_required: false,
-            subject_types: Default::default(),
-            properties: BTreeMap::new(),
-            allow_additional_properties: false,
-        },
-    );
-    registry.records.insert(
-        RuntimeType::new("item").unwrap(),
-        RuntimeRecordSchema::default(),
-    );
+    registry
+        .define_event_table(
+            RuntimeType::new("pulse").unwrap(),
+            RuntimeLogicalModel::Event,
+            RuntimeEventSchema {
+                subject_required: false,
+                subject_types: Default::default(),
+                properties: BTreeMap::new(),
+                allow_additional_properties: false,
+            },
+        )
+        .unwrap();
+    registry
+        .define_record_table(
+            RuntimeType::new("item").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
     registry
 }
 
