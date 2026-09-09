@@ -8,7 +8,7 @@ use crate::{
     invalid, sha256_bytes, validate_sha256, AssembleContext, CanonicalId, CorrelationId,
     DataReference, ReasoningActiveCursor, ReasoningEdge, ReasoningRecipe, Result,
     MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS, MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES,
-    MAX_CONTEXT_SCANNED_CHANGES, MAX_CONTEXT_SEEDS, MAX_REASONING_EDGE_CONDITIONS,
+    MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS, MAX_REASONING_EDGE_CONDITIONS,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -220,7 +220,7 @@ pub struct RouteContextBudget {
     pub max_graph_depth: u8,
     pub max_items: u64,
     pub max_output_bytes: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl RouteContextBudget {
@@ -235,9 +235,9 @@ impl RouteContextBudget {
             "route context max_output_bytes",
         )?;
         validate_limit(
-            self.max_scanned_changes,
-            MAX_CONTEXT_SCANNED_CHANGES,
-            "route context max_scanned_changes",
+            self.max_storage_keys,
+            MAX_CONTEXT_STORAGE_KEYS,
+            "route context max_storage_keys",
         )
     }
 
@@ -245,7 +245,7 @@ impl RouteContextBudget {
         self.max_graph_depth <= allowance.max_graph_depth
             && self.max_items <= allowance.max_items
             && self.max_output_bytes <= allowance.max_output_bytes
-            && self.max_scanned_changes <= allowance.max_scanned_changes
+            && self.max_storage_keys <= allowance.max_storage_keys
     }
 }
 
@@ -709,7 +709,7 @@ fn validate_context_decision(
         max_graph_depth: budget.max_graph_depth,
         max_items: budget.max_items,
         max_output_bytes: budget.max_output_bytes,
-        max_scanned_changes: budget.max_scanned_changes,
+        max_storage_keys: budget.max_storage_keys,
     }
     .validate()
 }

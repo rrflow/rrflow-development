@@ -7,8 +7,8 @@
 
 use super::{DurableTraceSpan, TraceIdentity};
 use rrd_core::{
-    digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceBoundary, TraceDataClass,
-    TraceLink, TraceOutcome,
+    digest, Millis, RuntimeProperties, RuntimeValue, ScopeId, TraceAttribute, TraceBoundary,
+    TraceDataClass, TraceLink, TraceOutcome,
 };
 use rrd_query::{BoundQuery, PhysicalPlan, QueryExecution, StampedQueryPipeline};
 pub use rrd_query::{ExecutionBudget, Parameters};
@@ -112,8 +112,8 @@ pub fn execute_traced_query<E: StorageEngine>(
             RuntimeValue::Unsigned(u64::from(QUERY_CONTRACT_VERSION)),
         ),
         (
-            "max_scanned_changes".into(),
-            RuntimeValue::Unsigned(budget.max_scanned_changes as u64),
+            TraceAttribute::MaxStorageKeys.into(),
+            RuntimeValue::Unsigned(budget.max_storage_keys),
         ),
         (
             "max_rows".into(),
@@ -203,7 +203,7 @@ pub fn execute_traced_query<E: StorageEngine>(
             )
         }
     };
-    let bound = match pipeline.bind(&query, parameters) {
+    let bound = match pipeline.bind(&query, parameters, budget) {
         Ok(bound) => bound,
         Err(error) => {
             return fail_query(
@@ -802,20 +802,42 @@ fn physical_storage_attributes(
     }
     if let Some(execution) = execution {
         attributes.insert(
-            "logical_scanned_changes".into(),
-            RuntimeValue::Unsigned(execution.scanned_changes as u64),
+            TraceAttribute::SelectedVersions.into(),
+            RuntimeValue::Unsigned(execution.selected_versions as u64),
         );
         attributes.insert(
-            "stamp_validation".into(),
-            RuntimeValue::String(execution.stamp_validation.clone()),
+            TraceAttribute::ReadPointReads.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.point_reads),
         );
         attributes.insert(
-            "stamp_validation_max_changes".into(),
-            RuntimeValue::Unsigned(execution.stamp_validation_max_changes as u64),
+            TraceAttribute::ReadRangeScans.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.range_scans),
         );
         attributes.insert(
-            "stamp_validation_proof_nodes".into(),
-            RuntimeValue::Unsigned(execution.stamp_validation_proof_nodes as u64),
+            TraceAttribute::KeysExamined.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.keys_examined),
+        );
+        attributes.insert(
+            TraceAttribute::ReadValuesDecoded.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.values_decoded),
+        );
+        attributes.insert(
+            TraceAttribute::DecodedBytes.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.decoded_bytes),
+        );
+        attributes.insert(
+            TraceAttribute::ReadStampValidation.into(),
+            RuntimeValue::String(execution.read_evidence.stamp_validation.method.clone()),
+        );
+        attributes.insert(
+            TraceAttribute::ReadStampValidationChangeReads.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.stamp_validation.change_reads),
+        );
+        attributes.insert(
+            TraceAttribute::ReadStampValidationProofNodes.into(),
+            RuntimeValue::Unsigned(u64::from(
+                execution.read_evidence.stamp_validation.proof_nodes,
+            )),
         );
         attributes.insert(
             "logical_output_bytes".into(),
@@ -848,24 +870,46 @@ fn insert_delta(
 fn execution_attributes(execution: &QueryExecution) -> RuntimeProperties {
     RuntimeProperties::from([
         (
-            "scanned_changes".into(),
-            RuntimeValue::Unsigned(execution.scanned_changes as u64),
+            TraceAttribute::SelectedVersions.into(),
+            RuntimeValue::Unsigned(execution.selected_versions as u64),
         ),
         (
             "returned_rows".into(),
             RuntimeValue::Unsigned(execution.returned_rows as u64),
         ),
         (
-            "stamp_validation".into(),
-            RuntimeValue::String(execution.stamp_validation.clone()),
+            TraceAttribute::ReadPointReads.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.point_reads),
         ),
         (
-            "stamp_validation_max_changes".into(),
-            RuntimeValue::Unsigned(execution.stamp_validation_max_changes as u64),
+            TraceAttribute::ReadRangeScans.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.range_scans),
         ),
         (
-            "stamp_validation_proof_nodes".into(),
-            RuntimeValue::Unsigned(execution.stamp_validation_proof_nodes as u64),
+            TraceAttribute::KeysExamined.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.keys_examined),
+        ),
+        (
+            TraceAttribute::ReadValuesDecoded.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.values_decoded),
+        ),
+        (
+            TraceAttribute::DecodedBytes.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.decoded_bytes),
+        ),
+        (
+            TraceAttribute::ReadStampValidation.into(),
+            RuntimeValue::String(execution.read_evidence.stamp_validation.method.clone()),
+        ),
+        (
+            TraceAttribute::ReadStampValidationChangeReads.into(),
+            RuntimeValue::Unsigned(execution.read_evidence.stamp_validation.change_reads),
+        ),
+        (
+            TraceAttribute::ReadStampValidationProofNodes.into(),
+            RuntimeValue::Unsigned(u64::from(
+                execution.read_evidence.stamp_validation.proof_nodes,
+            )),
         ),
         (
             "output_bytes".into(),

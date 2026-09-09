@@ -331,6 +331,8 @@ impl RrdEngine {
         self.authorize_session_policy(&session, SecurityAction::VectorCollectionDelete, now)?;
         let scope = self.query_scope(&request.scope)?;
         let operation_digest = operation_digest(request)?;
+        let read = self.storage.runtime().read_stamp(&scope)?;
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
         let repository = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone());
         if let Some(receipt) = repository
             .deletion_receipt(idempotency_key.as_str(), &operation_digest)
@@ -340,6 +342,8 @@ impl RrdEngine {
             return Ok(DeleteVectorCollectionResult {
                 deleted_collection: public_vector_collection(&receipt.deleted_entry)?,
                 catalogue_revision: catalogue.revision,
+                selected_versions: direct.selected_versions,
+                read_evidence: direct.read_evidence,
                 idempotent_replay: true,
             });
         }
@@ -360,7 +364,7 @@ impl RrdEngine {
                 request.collection_id
             ))
         })?;
-        self.require_empty_collection(request, &scope, collection)?;
+        self.require_empty_collection(request, &scope, collection, &direct.changes)?;
         require_no_collection_artifacts(self, &scope, &request.collection_id, collection)?;
         let mutation = collection_mutation_context(session_id, context, now);
         let (catalogue, deleted_collection, idempotent_replay) = repository
@@ -374,6 +378,8 @@ impl RrdEngine {
         Ok(DeleteVectorCollectionResult {
             deleted_collection: public_vector_collection(&deleted_collection)?,
             catalogue_revision: catalogue.revision,
+            selected_versions: direct.selected_versions,
+            read_evidence: direct.read_evidence,
             idempotent_replay,
         })
     }
@@ -383,20 +389,10 @@ impl RrdEngine {
         request: &DeleteVectorCollection,
         scope: &ScopeId,
         collection: &rrd_vector::CollectionEntry,
+        changes: &[RuntimeChange],
     ) -> Result<()> {
-        let read = self.storage.runtime().read_stamp(scope)?;
-        let limit = usize::try_from(request.max_scanned_changes).map_err(|_| {
-            ServiceError::Vector("collection delete scan budget exceeds usize".into())
-        })?;
-        let page = self.storage.runtime().read_changes(&read, 0, limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "vector collection delete requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
         let mut latest = BTreeMap::new();
-        for candidate in rrd_vector::candidates_from_changes(&page.changes, scope) {
+        for candidate in rrd_vector::candidates_from_changes(changes, scope) {
             let addressed = candidate.vector.collection.as_ref().is_some_and(|address| {
                 address.collection_id == request.collection_id.as_str()
                     && collection

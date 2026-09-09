@@ -29,7 +29,7 @@
       "contract_version": 1,
       "decided_at_unix_ms": 1800000100001,
       "decision": "select_recipe",
-      "decision_sha256": "13f8f4934ebb3831df709b68ef93ee116e5109f869cb5ffd58a4e01b967f8410",
+      "decision_sha256": "7949af81bb02dcd6c05c4d3d439ebae625b105d35e62752628adaa649369dc76",
       "parameters": {
         "query-intent": {
           "type": "string",
@@ -39,31 +39,31 @@
       "recipe_id": "workspace-retrieval",
       "recipe_revision": 3,
       "request_id": "route-01",
-      "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988"
+      "request_sha256": "2f27f342f0142a4bea635daaa898c951e3d8b97a336ba9fb500f4643afd2cc0f"
     },
     {
       "contract_version": 1,
       "decided_at_unix_ms": 1800000100002,
       "decision": "advance_branch",
-      "decision_sha256": "52585d96ed0b38502d644f143536945feb5185750996f668ac4c9196c5eabd10",
+      "decision_sha256": "cc7cb74c883af6e74f3f58e29dba25a87e2efc0708e28e1e29163a83074ab712",
       "edge_id": "retrieval-satisfied",
       "request_id": "route-01",
-      "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988"
+      "request_sha256": "2f27f342f0142a4bea635daaa898c951e3d8b97a336ba9fb500f4643afd2cc0f"
     },
     {
       "budget": {
         "max_graph_depth": 2,
         "max_items": 32,
         "max_output_bytes": 65536,
-        "max_scanned_changes": 50000
+        "max_storage_keys": 50000
       },
       "contract_version": 1,
       "decided_at_unix_ms": 1800000100003,
       "decision": "request_context",
-      "decision_sha256": "4bed75413d4675ba30c6d18bb514c796796e3d1bff92272708172b008f6eb88c",
+      "decision_sha256": "ae29f7d07472f7d38f4c83db5eb681e75f05c474c7feafb3eb469bebceace6c9",
       "query": "find exported authentication utilities matching the active interface",
       "request_id": "route-01",
-      "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988",
+      "request_sha256": "2f27f342f0142a4bea635daaa898c951e3d8b97a336ba9fb500f4643afd2cc0f",
       "seeds": [
         {
           "id": "src-lib-rs",
@@ -104,7 +104,7 @@
         "max_graph_depth": 4,
         "max_items": 64,
         "max_output_bytes": 131072,
-        "max_scanned_changes": 100000
+        "max_storage_keys": 100000
       },
       "eligible_seeds": [
         {
@@ -147,7 +147,7 @@
         "revision": 3
       }
     ],
-    "request_sha256": "8f95a1b9ec15ef916d15cbee734facef81dcffe38d3fa3014e376b7f8386d988",
+    "request_sha256": "2f27f342f0142a4bea635daaa898c951e3d8b97a336ba9fb500f4643afd2cc0f",
     "requested_at_unix_ms": 1800000100000,
     "signals": [
       {

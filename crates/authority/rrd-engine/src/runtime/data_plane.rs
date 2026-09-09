@@ -16,7 +16,7 @@ use rrd_inference::{
     EmbeddingRequest, EmbeddingSourceReader, ExecutionTarget, PreparedEmbedding,
 };
 use rrd_query::Catalog;
-use rrd_store::StorageEngine;
+use rrd_store::{RuntimeReadBudget, StorageEngine};
 use rrd_vector::{
     AccessPathKind, PreparedVectorSearch, ScoreMetric, SearchExecution, SearchMode, SearchRequest,
     VectorQuery, VectorRuntime,
@@ -637,7 +637,12 @@ fn trace_only_rebase<E: StorageEngine>(
     if rebased.commit_cursor == original.commit_cursor {
         return Ok(rebased);
     }
-    let catalog = Catalog::capture_at(store, original.clone())?;
+    let catalog = Catalog::capture_for_sources_at(
+        store,
+        original.clone(),
+        &[],
+        RuntimeReadBudget::authenticated_history_integrity(original.commit_cursor)?,
+    )?;
     let prior_schema = catalog.schema_at(original.commit_cursor).cloned();
     let mut expected_schema = prior_schema
         .clone()

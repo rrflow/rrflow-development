@@ -194,7 +194,7 @@ pub struct EmbedAndSearchVectors {
     pub top_k: u64,
     #[serde(default)]
     pub mode: VectorSearchMode,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl EmbedAndSearchVectors {
@@ -217,7 +217,7 @@ impl EmbedAndSearchVectors {
             metric: None,
             top_k: self.top_k,
             mode: self.mode,
-            max_scanned_changes: self.max_scanned_changes,
+            max_storage_keys: self.max_storage_keys,
         }
         .validate()
     }

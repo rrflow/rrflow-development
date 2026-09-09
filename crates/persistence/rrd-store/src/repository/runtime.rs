@@ -9,8 +9,8 @@ use crate::access::{
 use crate::keyspaces::{self, Durability};
 use crate::{
     Error, FunctionInvocationReceiptRecord, IndexSourceDelta, Result, RuntimeReadBudget,
-    RuntimeVersionedRead, RuntimeVersionedSource, StorageEngine, VectorSourceAddress,
-    VectorSourceDelta,
+    RuntimeReadEvidence, RuntimeVersionedRead, RuntimeVersionedSource, StorageEngine,
+    VectorSourceAddress, VectorSourceDelta,
 };
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
@@ -24,6 +24,18 @@ use rrd_core::{
 /// the complete prepared plan through that transaction's single commit.
 pub struct RuntimeRepository<'a> {
     storage: &'a dyn StorageEngine,
+}
+
+/// One all-model snapshot and the complete direct-read evidence that produced
+/// its transaction-visible base. For a prospective transaction preview,
+/// `selected_versions` and `read_evidence` describe the authenticated base;
+/// the proposed mutations remain explicit in the caller's transaction.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeDataSnapshotRead {
+    pub read: ReadStamp,
+    pub selected_versions: u64,
+    pub read_evidence: RuntimeReadEvidence,
+    pub snapshot: RuntimeDataSnapshot,
 }
 
 impl<'a> RuntimeRepository<'a> {
@@ -195,7 +207,7 @@ impl<'a> RuntimeRepository<'a> {
         scope: &ScopeId,
         valid_at: Millis,
         max_keys: usize,
-    ) -> Result<(ReadStamp, RuntimeDataSnapshot)> {
+    ) -> Result<RuntimeDataSnapshotRead> {
         let transaction = self.storage.begin_transaction()?;
         let read = read_stamp_with(&*transaction, scope)?;
         let sources = RuntimeVersionedSource::all();
@@ -222,7 +234,12 @@ impl<'a> RuntimeRepository<'a> {
                 read.commit_cursor,
             )?
         };
-        Ok((read, snapshot))
+        Ok(RuntimeDataSnapshotRead {
+            read,
+            selected_versions: selected_version_count(&direct.changes)?,
+            read_evidence: direct.evidence,
+            snapshot,
+        })
     }
 
     pub fn commit(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
@@ -427,7 +444,7 @@ impl<'a> RuntimeRepository<'a> {
         transaction: &DataTransaction,
         valid_at: Millis,
         max_keys: usize,
-    ) -> Result<RuntimeDataSnapshot> {
+    ) -> Result<RuntimeDataSnapshotRead> {
         transaction.validate()?;
         if valid_at == 0 {
             return Err(Error::Substrate(
@@ -452,14 +469,32 @@ impl<'a> RuntimeRepository<'a> {
             })
             .next_back()
             .map(Ok)
-            .unwrap_or_else(|| schema_at_read(&transaction.read, &direct.changes))?;
-        schema.validate()?;
+            .or_else(|| {
+                transaction
+                    .read
+                    .schema_revision
+                    .map(|_| schema_at_read(&transaction.read, &direct.changes))
+            })
+            .transpose()?;
+        if let Some(schema) = &schema {
+            schema.validate()?;
+        } else if !transaction
+            .commit
+            .mutations
+            .iter()
+            .all(|mutation| matches!(mutation, RuntimeMutation::Claim { .. }))
+        {
+            return Err(Error::Substrate(
+                "schema-bound transaction preview requires a schema".into(),
+            ));
+        }
         let prospective_cursor = transaction
             .read
             .commit_cursor
             .checked_add(transaction.commit.mutations.len() as u64)
             .ok_or_else(|| Error::Substrate("transaction preview cursor overflowed".into()))?;
         let commit_id = transaction.commit.digest();
+        let selected_versions = selected_version_count(&direct.changes)?;
         let mut changes = direct.changes;
         let mut previous_digest = transaction.read.head_digest.clone();
         for (ordinal, mutation) in transaction.commit.mutations.iter().cloned().enumerate() {
@@ -475,15 +510,34 @@ impl<'a> RuntimeRepository<'a> {
             previous_digest = Some(change.digest.clone());
             changes.push(change);
         }
-        RuntimeDataSnapshot::from_changes(
-            &changes,
-            &schema,
-            transaction.read.scope.clone(),
-            valid_at,
-            prospective_cursor,
-        )
-        .map_err(Error::from)
+        let snapshot = if let Some(schema) = &schema {
+            RuntimeDataSnapshot::from_changes(
+                &changes,
+                schema,
+                transaction.read.scope.clone(),
+                valid_at,
+                prospective_cursor,
+            )?
+        } else {
+            RuntimeDataSnapshot::from_claim_changes(
+                &changes,
+                transaction.read.scope.clone(),
+                valid_at,
+                prospective_cursor,
+            )?
+        };
+        Ok(RuntimeDataSnapshotRead {
+            read: transaction.read.clone(),
+            selected_versions,
+            read_evidence: direct.evidence,
+            snapshot,
+        })
     }
+}
+
+fn selected_version_count(changes: &[RuntimeChange]) -> Result<u64> {
+    u64::try_from(changes.len())
+        .map_err(|_| Error::Substrate("selected semantic-version count exceeds u64".into()))
 }
 
 fn read_budget(max_keys: usize, operation: &str) -> Result<RuntimeReadBudget> {

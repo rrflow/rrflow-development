@@ -107,7 +107,7 @@ fn request(backend: &RouterBackendDescriptor) -> RouteStepRequest {
                 max_graph_depth: 4,
                 max_items: 64,
                 max_output_bytes: 131_072,
-                max_scanned_changes: 100_000,
+                max_storage_keys: 100_000,
             },
         }),
         allowed_decisions: backend.decisions.clone(),
@@ -173,7 +173,7 @@ fn request_context(request: &RouteStepRequest) -> RouteStepDecision {
             max_graph_depth: 2,
             max_items: 32,
             max_output_bytes: 65_536,
-            max_scanned_changes: 50_000,
+            max_storage_keys: 50_000,
         },
         decided_at_unix_ms: REQUESTED_AT + 3,
         decision_sha256: digest(0),
@@ -273,7 +273,8 @@ fn generated_schema_is_closed_and_exposes_exactly_three_decisions() {
     assert!(!fixture_json.contains("provider"));
     assert!(!fixture_json.contains("model_sha256"));
     assert!(!fixture_json.contains("physical_index"));
-    assert!(!fixture_json.contains("storage_key"));
+    assert!(!fixture_json.contains("storage_backend"));
+    assert!(!fixture_json.contains("keyspace"));
 }
 
 #[test]

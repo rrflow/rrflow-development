@@ -17,6 +17,9 @@ pub struct SchemaVersion {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Catalog {
     pub read: ReadStamp,
+    /// Number of authenticated semantic versions selected before catalogue
+    /// reduction.
+    pub selected_versions: usize,
     pub schemas: Vec<SchemaVersion>,
     pub indexes: IndexCatalogue,
     pub source_watermarks: SourceWatermarks,
@@ -169,7 +172,7 @@ impl SourceWatermarks {
     /// A latest-only watermark is not a valid historical coordinate: a source
     /// may have advanced after the requested cursor. Retaining the cursor
     /// history keeps `KNOWN n` planning and exact-index selection bounded by
-    /// the same transaction-time prefix as authoritative replay.
+    /// the same transaction-time prefix as the direct version read.
     pub fn for_source_at(&self, source: &Source, known_at_cursor: u64) -> u64 {
         let data = match source {
             Source::Record { kind } => historical(
@@ -318,6 +321,7 @@ impl Catalog {
         let versioned = engine
             .runtime()
             .read_versioned(&read, &version_sources, budget)?;
+        let selected_versions = versioned.changes.len();
         let mut source_watermarks = SourceWatermarks::default();
         let mut schemas = Vec::new();
         for change in versioned.changes {
@@ -332,6 +336,7 @@ impl Catalog {
         let indexes = IndexCatalogueRepository::new(engine, read.scope.clone()).load()?;
         Ok(Self {
             read,
+            selected_versions,
             schemas,
             indexes,
             source_watermarks,

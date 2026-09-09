@@ -1,6 +1,6 @@
 use rrd_contract::{
     transaction_operation_sha256, CanonicalId, CorrelationId, DeploymentConformanceCorpus,
-    TransactionMutation,
+    ReadAccessPath, ReadEvidence, TransactionMutation,
 };
 use rrd_core::{
     RuntimeCommit, RuntimeEventSchema, RuntimeMutation, RuntimeProperties, RuntimePropertySchema,
@@ -319,6 +319,15 @@ fn payload(response: &Value) -> &Value {
     &response["outcome"]["payload"]
 }
 
+fn assert_direct_read_evidence(value: &Value, expected_path: ReadAccessPath) {
+    let evidence: ReadEvidence = serde_json::from_value(value.clone()).unwrap();
+    evidence.validate().unwrap();
+    assert!(
+        evidence.paths.iter().any(|path| path.path == expected_path),
+        "missing direct read evidence for {expected_path:?}"
+    );
+}
+
 fn start_root() -> (tempfile::TempDir, PathBuf, RunningServer) {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("instance");
@@ -536,7 +545,7 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title EXPLAIN CONTRACT",
             "parameters": {},
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -797,7 +806,7 @@ fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token_and_lease(
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "parameters": {},
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -920,7 +929,7 @@ fn authenticated_query_exposes_exact_rrflowql_rrd_query_executor_contract() {
             "query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title EXPLAIN CONTRACT",
             "parameters": {},
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 16384,
                 "max_batch_rows": 10
@@ -941,6 +950,11 @@ fn authenticated_query_exposes_exact_rrflowql_rrd_query_executor_contract() {
     assert_eq!(result["plan"]["exact"], true);
     assert_eq!(result["plan"]["candidates"][0]["selected"], true);
     assert_eq!(result["execution"]["returned_rows"], 1);
+    assert!(result["execution"]["selected_versions"].as_u64().unwrap() > 0);
+    assert_direct_read_evidence(
+        &result["execution"]["read_evidence"],
+        ReadAccessPath::RecordVersions,
+    );
     assert_eq!(result["rows"][0]["identity"], "record:document:alpha");
     assert_eq!(result["rows"][0]["values"]["title"]["type"], "string");
     assert_eq!(result["rows"][0]["values"]["title"]["value"], "Alpha");
@@ -1090,7 +1104,7 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
             "parameters": {},
             "after_cursor": 3,
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -1173,7 +1187,7 @@ fn bounded_changefeed_follow_wakes_on_a_commit_and_times_out_at_the_same_cursor(
             "parameters": {},
             "after_cursor": 4,
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -1522,7 +1536,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
         json!({
             "mutations": mutations.clone(),
             "valid_at": u64::MAX,
-            "max_scanned_changes": 100
+            "max_storage_keys": 100
         }),
         Some("prepare-data"),
         None,
@@ -1657,7 +1671,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
                 }
             },
             "top_k": 1,
-            "max_scanned_changes": 100
+            "max_storage_keys": 100
         }),
         None,
         None,
@@ -1681,6 +1695,8 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     assert_eq!(search["hits"][0]["subject"]["id"], "alpha");
     assert_eq!(search["hits"][0]["source_cursor"], 8);
     assert!((search["hits"][0]["score"].as_f64().unwrap() - 1.0).abs() < 1e-9);
+    assert!(search["selected_versions"].as_u64().unwrap() > 0);
+    assert_direct_read_evidence(&search["read_evidence"], ReadAccessPath::VectorVersions);
     let filtered_out = envelope(
         json!({
             "scope": "instance:socket-test",
@@ -1696,7 +1712,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
                 }
             },
             "top_k": 1,
-            "max_scanned_changes": 100
+            "max_storage_keys": 100
         }),
         None,
         None,
@@ -1716,7 +1732,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             "vector_name": "title",
             "valid_at": 100,
             "limit": 1,
-            "max_scanned_changes": 100,
+            "max_storage_keys": 100,
             "filter": {
                 "kind": "condition",
                 "condition": {
@@ -1746,6 +1762,8 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     );
     assert_eq!(point_page["truncated"], false);
     assert!(point_page.get("next_after").is_none());
+    assert!(point_page["selected_versions"].as_u64().unwrap() > 0);
+    assert_direct_read_evidence(&point_page["read_evidence"], ReadAccessPath::VectorVersions);
     let retrieve_points = envelope(
         json!({
             "scope": "instance:socket-test",
@@ -1756,7 +1774,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
                 {"kind": "embedding", "id": "alpha-title"},
                 {"kind": "embedding", "id": "missing-title"}
             ],
-            "max_scanned_changes": 100
+            "max_storage_keys": 100
         }),
         None,
         None,
@@ -1778,6 +1796,11 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
     let point_batch = payload(&retrieved);
     assert_eq!(point_batch["points"][0]["reference"]["id"], "alpha-title");
     assert_eq!(point_batch["missing"][0]["id"], "missing-title");
+    assert!(point_batch["selected_versions"].as_u64().unwrap() > 0);
+    assert_direct_read_evidence(
+        &point_batch["read_evidence"],
+        ReadAccessPath::VectorVersions,
+    );
     let wrong_dimensions = envelope(
         json!({
             "scope": "instance:socket-test",
@@ -1786,7 +1809,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             "vector_name": "title",
             "query": {"kind": "dense", "values": [0.6, 0.8, 0.0]},
             "top_k": 1,
-            "max_scanned_changes": 100
+            "max_storage_keys": 100
         }),
         None,
         None,
@@ -1826,7 +1849,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
                 "query": query,
                 "parameters": {},
                 "budget": {
-                    "max_scanned_changes": 100,
+                    "max_storage_keys": 100,
                     "max_rows": 10,
                     "max_output_bytes": 4096,
                     "max_batch_rows": 10
@@ -1859,7 +1882,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             "parameters": {},
             "after_cursor": 0,
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -1894,7 +1917,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             "definition_query": "FROM record:document AT VALID 100 KNOWN HEAD PROJECT title",
             "unique": false,
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -1965,7 +1988,7 @@ fn data_transaction_atomically_commits_every_public_model_and_replays_after_rest
             "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE title = \"Alpha\" PROJECT title EXPLAIN CONTRACT",
             "parameters": {},
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 4096,
                 "max_batch_rows": 10
@@ -2349,7 +2372,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
             "query": corpus.query.rrflowql,
             "parameters": {},
             "budget": {
-                "max_scanned_changes": 100,
+                "max_storage_keys": 100,
                 "max_rows": 10,
                 "max_output_bytes": 16384,
                 "max_batch_rows": 10
@@ -2392,6 +2415,16 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
     assert_eq!(
         payload(&result)["rows"][0]["values"]["body"]["value"],
         corpus.documents[0].text
+    );
+    assert!(
+        payload(&result)["execution"]["selected_versions"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert_direct_read_evidence(
+        &payload(&result)["execution"]["read_evidence"],
+        ReadAccessPath::RecordVersions,
     );
 
     process.stop();

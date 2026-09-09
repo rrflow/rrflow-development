@@ -37,7 +37,7 @@ fn snapshot(
             &lease.token,
             &ReadDataSnapshot {
                 valid_at,
-                max_scanned_changes: 128,
+                max_storage_keys: 128,
             },
             valid_at,
             &format!("request-query-transaction-read-{suffix}"),

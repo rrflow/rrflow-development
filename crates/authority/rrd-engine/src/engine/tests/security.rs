@@ -983,7 +983,7 @@ fn context_records_authorization_and_denies_unenforced_data_policy_before_snapsh
         max_graph_depth: 1,
         max_items: 8,
         max_output_bytes: 64 * 1024,
-        max_scanned_changes: 16,
+        max_storage_keys: 16,
     };
     let packet = engine
         .assemble_context(
@@ -1014,7 +1014,7 @@ fn context_records_authorization_and_denies_unenforced_data_policy_before_snapsh
         .any(|item| item.identity == "record:document:private-context"));
 
     let mut denied_request = request;
-    denied_request.max_scanned_changes = 1;
+    denied_request.max_storage_keys = 1;
     let denied = engine.assemble_context(
         &restricted_lease.session_id,
         &restricted_lease.token,

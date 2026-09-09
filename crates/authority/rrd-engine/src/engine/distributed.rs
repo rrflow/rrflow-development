@@ -56,22 +56,24 @@ impl RrdEngine {
         &self,
         catalogue: &DistributedAuthorityCatalogue,
         actor: &str,
-        max_scanned_changes: usize,
+        max_storage_keys: usize,
     ) -> Result<PreparedDistributedAuthority> {
         catalogue.validate().map_err(cluster_error)?;
-        validate_replay_limit(max_scanned_changes)?;
+        validate_key_budget(max_storage_keys)?;
         let scope = distributed_scope(&self.instance)?;
         let schema = self.storage.runtime().schema(&scope)?;
         let (read, previous) = if schema.is_some() {
-            let (read, snapshot) = self.storage.runtime().data_snapshot(
+            let snapshot = self.storage.runtime().data_snapshot(
                 &scope,
                 catalogue.updated_at,
-                max_scanned_changes,
+                max_storage_keys,
             )?;
-            let previous =
-                DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, &catalogue.cluster)
-                    .map_err(cluster_error)?;
-            (read, previous)
+            let previous = DistributedAuthorityCatalogue::from_runtime_snapshot(
+                &snapshot.snapshot,
+                &catalogue.cluster,
+            )
+            .map_err(cluster_error)?;
+            (snapshot.read, previous)
         } else {
             (self.storage.runtime().read_stamp(&scope)?, None)
         };
@@ -104,20 +106,24 @@ impl RrdEngine {
         &self,
         cluster: &ClusterId,
         valid_at: u64,
-        max_scanned_changes: usize,
+        max_storage_keys: usize,
     ) -> Result<Option<DistributedAuthorityRead>> {
-        validate_replay_limit(max_scanned_changes)?;
+        validate_key_budget(max_storage_keys)?;
         let scope = distributed_scope(&self.instance)?;
         if self.storage.runtime().schema(&scope)?.is_none() {
             return Ok(None);
         }
-        let (read, snapshot) =
-            self.storage
-                .runtime()
-                .data_snapshot(&scope, valid_at, max_scanned_changes)?;
-        let catalogue = DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, cluster)
-            .map_err(cluster_error)?;
-        Ok(catalogue.map(|catalogue| DistributedAuthorityRead { read, catalogue }))
+        let snapshot = self
+            .storage
+            .runtime()
+            .data_snapshot(&scope, valid_at, max_storage_keys)?;
+        let catalogue =
+            DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot.snapshot, cluster)
+                .map_err(cluster_error)?;
+        Ok(catalogue.map(|catalogue| DistributedAuthorityRead {
+            read: snapshot.read,
+            catalogue,
+        }))
     }
 
     /// Routes through the durable topology revision observed by this engine;
@@ -132,10 +138,10 @@ impl RrdEngine {
         exact_snapshot: Option<&ShardReadStamp>,
         observations: &BTreeMap<NodeId, ReplicaObservation>,
         valid_at: u64,
-        max_scanned_changes: usize,
+        max_storage_keys: usize,
     ) -> Result<DistributedReadRoute> {
         let authority = self
-            .read_distributed_authority(cluster, valid_at, max_scanned_changes)?
+            .read_distributed_authority(cluster, valid_at, max_storage_keys)?
             .ok_or_else(|| {
                 ServiceError::Runtime(format!(
                     "distributed authority for cluster {cluster} was not found"
@@ -166,10 +172,10 @@ fn distributed_scope(instance: &CanonicalId) -> Result<ScopeId> {
         .map_err(|error| ServiceError::Runtime(error.to_string()))
 }
 
-fn validate_replay_limit(max_scanned_changes: usize) -> Result<()> {
-    if max_scanned_changes == 0 {
+fn validate_key_budget(max_storage_keys: usize) -> Result<()> {
+    if max_storage_keys == 0 {
         return Err(ServiceError::Runtime(
-            "distributed authority replay limit must be greater than zero".into(),
+            "distributed authority storage-key budget must be greater than zero".into(),
         ));
     }
     Ok(())

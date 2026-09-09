@@ -2,7 +2,7 @@
 
 package rrd
 
-// OpenAPI SHA-256: 3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0
+// OpenAPI SHA-256: 786e633fb850d9de13d96754d8929618a1bcea9d1184d8efdf02ed819b3e48ef
 
 type OperationID string
 

@@ -57,8 +57,8 @@ struct ContextInput {
     max_items: u64,
     #[serde(default = "default_output_bytes")]
     max_output_bytes: u64,
-    #[serde(default = "default_scanned_changes")]
-    max_scanned_changes: u64,
+    #[serde(default = "default_storage_keys")]
+    max_storage_keys: u64,
 }
 
 impl RuntimeAuthority {
@@ -238,7 +238,7 @@ impl ContextInput {
             max_graph_depth: self.max_graph_depth,
             max_items: self.max_items,
             max_output_bytes: self.max_output_bytes,
-            max_scanned_changes: self.max_scanned_changes,
+            max_storage_keys: self.max_storage_keys,
         }
     }
 }
@@ -293,7 +293,7 @@ const fn default_output_bytes() -> u64 {
     256 * 1024
 }
 
-const fn default_scanned_changes() -> u64 {
+const fn default_storage_keys() -> u64 {
     100_000
 }
 

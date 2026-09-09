@@ -130,7 +130,7 @@ pub enum Command {
         #[arg(long = "parameter")]
         parameters: Vec<String>,
         #[arg(long, default_value_t = 100_000)]
-        max_scanned_changes: usize,
+        max_storage_keys: u64,
         #[arg(long, default_value_t = 10_000)]
         max_rows: usize,
         #[arg(long, default_value_t = 8 * 1024 * 1024)]
@@ -162,7 +162,7 @@ pub enum Command {
         #[arg(long, default_value_t = 256 * 1024)]
         max_output_bytes: u64,
         #[arg(long, default_value_t = 100_000)]
-        max_scanned_changes: u64,
+        max_storage_keys: u64,
     },
     /// Persist or resolve a provider-independent RRFlow seat identity.
     Identity {
@@ -213,7 +213,7 @@ pub enum IdentityAction {
         #[arg(long)]
         valid_at: Option<Millis>,
         #[arg(long, default_value_t = 100_000)]
-        max_scanned_changes: u64,
+        max_storage_keys: u64,
     },
 }
 
@@ -410,7 +410,7 @@ impl Command {
                 scope,
                 ql,
                 parameters,
-                max_scanned_changes,
+                max_storage_keys,
                 max_rows,
                 max_output_bytes,
                 max_batch_rows,
@@ -423,7 +423,7 @@ impl Command {
                     digest::sha256_hex(parameters.join("\0").as_bytes())
                 ),
                 format!("parameter_count={}", parameters.len()),
-                format!("max_scanned_changes={max_scanned_changes}"),
+                format!("max_storage_keys={max_storage_keys}"),
                 format!("max_rows={max_rows}"),
                 format!("max_output_bytes={max_output_bytes}"),
                 format!("max_batch_rows={max_batch_rows}"),
@@ -438,7 +438,7 @@ impl Command {
                 max_graph_depth,
                 max_items,
                 max_output_bytes,
-                max_scanned_changes,
+                max_storage_keys,
             } => vec![
                 format!("root={}", root.display()),
                 format!("scope={}", scope.as_deref().unwrap_or("bound-instance")),
@@ -449,7 +449,7 @@ impl Command {
                 format!("max_graph_depth={max_graph_depth}"),
                 format!("max_items={max_items}"),
                 format!("max_output_bytes={max_output_bytes}"),
-                format!("max_scanned_changes={max_scanned_changes}"),
+                format!("max_storage_keys={max_storage_keys}"),
             ],
             Command::Identity {
                 action:
@@ -482,13 +482,13 @@ impl Command {
                         root,
                         seat,
                         valid_at,
-                        max_scanned_changes,
+                        max_storage_keys,
                     },
             } => vec![
                 format!("root={}", root.display()),
                 format!("seat={seat}"),
                 format!("valid_at={}", valid_at.unwrap_or(0)),
-                format!("max_scanned_changes={max_scanned_changes}"),
+                format!("max_storage_keys={max_storage_keys}"),
             ],
             Command::Storage {
                 action:
@@ -762,7 +762,7 @@ pub fn execute(
             scope,
             ql,
             parameters,
-            max_scanned_changes,
+            max_storage_keys,
             max_rows,
             max_output_bytes,
             max_batch_rows,
@@ -776,7 +776,8 @@ pub fn execute(
             let parameter_json = query_parameter_object(parameters)?;
             let parameters = rrd_engine::query_parameters_from_json(&parameter_json)?;
             let budget = rrd_engine::ExecutionBudget {
-                max_scanned_changes: *max_scanned_changes,
+                max_storage_keys: *max_storage_keys,
+                max_input_rows: usize::try_from(*max_storage_keys)?,
                 max_rows: *max_rows,
                 max_output_bytes: *max_output_bytes,
                 max_batch_rows: *max_batch_rows,
@@ -794,14 +795,17 @@ pub fn execute(
                 serde_json::to_string_pretty(&result)?
             } else {
                 let mut lines = vec![format!(
-                    "plan {} read={} rows={} scanned={} validation={} validation_reads={} proof_nodes={} bytes={} truncated={}",
+                    "plan {} read={} rows={} selected_versions={} keys_examined={} point_reads={} range_scans={} validation={} validation_change_reads={} proof_nodes={} bytes={} truncated={}",
                     result.plan.digest,
                     result.execution.known_at_cursor,
                     result.execution.returned_rows,
-                    result.execution.scanned_changes,
-                    result.execution.stamp_validation,
-                    result.execution.stamp_validation_max_changes,
-                    result.execution.stamp_validation_proof_nodes,
+                    result.execution.selected_versions,
+                    result.execution.read_evidence.keys_examined,
+                    result.execution.read_evidence.point_reads,
+                    result.execution.read_evidence.range_scans,
+                    result.execution.read_evidence.stamp_validation.method,
+                    result.execution.read_evidence.stamp_validation.change_reads,
+                    result.execution.read_evidence.stamp_validation.proof_nodes,
                     result.execution.output_bytes,
                     result.execution.truncated,
                 )];
@@ -832,7 +836,7 @@ pub fn execute(
             max_graph_depth,
             max_items,
             max_output_bytes,
-            max_scanned_changes,
+            max_storage_keys,
         } => {
             verify_instance_store(store, root)?;
             if warp.is_some() && !seeds.is_empty() {
@@ -868,7 +872,7 @@ pub fn execute(
                             max_graph_depth: *max_graph_depth,
                             max_items: *max_items,
                             max_output_bytes: *max_output_bytes,
-                            max_scanned_changes: *max_scanned_changes,
+                            max_storage_keys: *max_storage_keys,
                         },
                         now,
                         "cli-context-warp",
@@ -894,7 +898,7 @@ pub fn execute(
                             max_graph_depth: *max_graph_depth,
                             max_items: *max_items,
                             max_output_bytes: *max_output_bytes,
-                            max_scanned_changes: *max_scanned_changes,
+                            max_storage_keys: *max_storage_keys,
                         },
                         now,
                         "cli-context",
@@ -1049,7 +1053,7 @@ pub fn execute(
                     root,
                     seat,
                     valid_at,
-                    max_scanned_changes,
+                    max_storage_keys,
                 },
         } => {
             verify_instance_store(store, root)?;
@@ -1074,7 +1078,7 @@ pub fn execute(
                     scope: format!("instance:{}", store.instance_id()),
                     seat_id: CanonicalId::new(seat.clone())?,
                     valid_at: valid_at.unwrap_or(now),
-                    max_scanned_changes: *max_scanned_changes,
+                    max_storage_keys: *max_storage_keys,
                 },
                 now,
                 "cli-identity-resolve",

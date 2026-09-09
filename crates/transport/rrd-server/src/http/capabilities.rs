@@ -75,7 +75,9 @@ pub(super) fn capabilities(
                 CanonicalId::new("max-mutations").unwrap(),
                 rrd_contract::MAX_TRANSACTION_CLAIMS as u64,
             )]),
-            limitation: Some(format!("legacy claim-only scope on {backend}")),
+            limitation: Some(format!(
+                "schema-less reasoning-claim transactions on {backend}; schema-bound models use the multi-model transaction contract"
+            )),
         },
         CapabilityDescriptor {
             name: CanonicalId::new("multi-model-transactions").unwrap(),
@@ -105,7 +107,7 @@ pub(super) fn capabilities(
                 ),
             ]),
             limitation: Some(
-                "exact session-scoped rrflowQL/RRD query engine reads; mutating rrflowQL remains open"
+                "exact session-scoped rrflowQL reads over authenticated typed versions with Arrow/DataFusion compute; mutating rrflowQL remains open"
                     .into(),
             ),
         },
@@ -275,8 +277,8 @@ pub(super) fn capabilities(
             status: CapabilityStatus::Experimental,
             limits: BTreeMap::from([
                 (
-                    CanonicalId::new("max-scanned-changes").unwrap(),
-                    rrd_contract::MAX_VECTOR_SEARCH_CHANGES,
+                    CanonicalId::new("max-storage-keys").unwrap(),
+                    rrd_contract::MAX_VECTOR_STORAGE_KEYS,
                 ),
                 (
                     CanonicalId::new("max-top-k").unwrap(),
@@ -284,7 +286,7 @@ pub(super) fn capabilities(
                 ),
             ]),
             limitation: Some(
-                "journaled collection and named-vector administration plus exact canonical dense, sparse, and multi-vector search; point/payload administration, public filters, and persisted HNSW/TurboQuant artifact serving remain open"
+                "named collections, typed payload indexes and filters, direct stamped dense/sparse/multi-vector reads, and persisted HNSW/quantization/TurboQuant artifact serving; release recall-quality gates remain open"
                     .into(),
             ),
         },

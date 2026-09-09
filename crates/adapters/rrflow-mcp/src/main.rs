@@ -147,7 +147,7 @@ fn tools(_authority: &RuntimeAuthority) -> Value {
                 "max_graph_depth":{"type":"integer","minimum":0,"maximum":32,"default":2},
                 "max_items":{"type":"integer","minimum":1,"maximum":512,"default":32},
                 "max_output_bytes":{"type":"integer","minimum":1,"maximum":786432,"default":262144},
-                "max_scanned_changes":{"type":"integer","minimum":1,"maximum":1000000,"default":100000}
+                "max_storage_keys":{"type":"integer","minimum":1,"maximum":1000000,"default":100000}
             }
         },
         "annotations":{"readOnlyHint":true,"destructiveHint":false}

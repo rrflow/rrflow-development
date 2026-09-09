@@ -114,7 +114,7 @@ func TestSessionAndQueryAuthenticationAndEnvelopes(t *testing.T) {
 	}
 	result, err := client.Call(context.Background(), OperationQueryExecute, map[string]any{
 		"scope": "instance:sdk-test", "query": "FROM record:document", "parameters": map[string]any{},
-		"budget": map[string]any{"max_scanned_changes": 100, "max_rows": 10, "max_output_bytes": 4096, "max_batch_rows": 10},
+		"budget": map[string]any{"max_storage_keys": 100, "max_rows": 10, "max_output_bytes": 4096, "max_batch_rows": 10},
 	}, RequestOptions{RequestID: "request-query", OperationID: "operation-query", Session: session})
 	if err != nil {
 		t.Fatal(err)

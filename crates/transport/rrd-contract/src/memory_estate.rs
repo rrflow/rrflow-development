@@ -1,8 +1,8 @@
 use crate::{
     invalid, transaction_operation_sha256, validate_sha256, CanonicalId, ContextPacket,
-    ContextReadStamp, DataReference, Result, TransactionMutation, MAX_CONTEXT_GRAPH_DEPTH,
-    MAX_CONTEXT_ITEMS, MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES,
-    MAX_CONTEXT_SCANNED_CHANGES,
+    ContextReadStamp, DataReference, ReadEvidence, Result, TransactionMutation,
+    MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS, MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES,
+    MAX_CONTEXT_STORAGE_KEYS,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -160,7 +160,7 @@ pub struct ResolveMemoryWarp {
     pub max_graph_depth: u8,
     pub max_items: u64,
     pub max_output_bytes: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl ResolveMemoryWarp {
@@ -182,8 +182,8 @@ impl ResolveMemoryWarp {
         if self.max_output_bytes == 0 || self.max_output_bytes > MAX_CONTEXT_OUTPUT_BYTES {
             return invalid("memory warp max_output_bytes exceeds its bound");
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_CONTEXT_SCANNED_CHANGES {
-            return invalid("memory warp max_scanned_changes exceeds its bound");
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_CONTEXT_STORAGE_KEYS {
+            return invalid("memory warp max_storage_keys exceeds its bound");
         }
         Ok(())
     }
@@ -223,7 +223,7 @@ pub struct ResolveSeatIdentity {
     pub scope: String,
     pub seat_id: CanonicalId,
     pub valid_at: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl ResolveSeatIdentity {
@@ -232,8 +232,8 @@ impl ResolveSeatIdentity {
         if self.valid_at == 0 {
             return invalid("seat resolution valid_at must be greater than zero");
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_CONTEXT_SCANNED_CHANGES {
-            return invalid("seat resolution max_scanned_changes exceeds its bound");
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_CONTEXT_STORAGE_KEYS {
+            return invalid("seat resolution max_storage_keys exceeds its bound");
         }
         Ok(())
     }
@@ -263,6 +263,8 @@ pub struct SeatIdentity {
     pub purpose: String,
     pub representations: Vec<ProviderRepresentation>,
     pub read: ContextReadStamp,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
 }
 
 impl SeatIdentity {
@@ -295,7 +297,8 @@ impl SeatIdentity {
         validate_sha256(
             &self.read.runtime_manifest_sha256,
             "seat read runtime_manifest_sha256",
-        )
+        )?;
+        self.read_evidence.validate()
     }
 }
 

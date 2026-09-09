@@ -6,7 +6,7 @@
       "advance_branch",
       "request_context"
     ],
-    "descriptor_sha256": "21ce8b59c079de8467cdbd06d4a4d162eb4b93b2768b61fb4dc40f9e75432b73",
+    "descriptor_sha256": "d6d7d4081ccc73965dd9a2ca0260d69e32e9e9499d4033e96bdd86d3e63e21a6",
     "id": "reference-router",
     "limits": {
       "maximum_branch_candidates": 16,
@@ -21,11 +21,11 @@
     },
     "model_manifest_id": "reference-router-model",
     "model_manifest_revision": 1,
-    "model_manifest_sha256": "07e19a71bdb3f7d4aa8ed67ffdf72a883f6c2368e739a21ae77a6de3ca5f074c",
+    "model_manifest_sha256": "7eddf347cbbe2ce0407d31c6af5bacf945d35c3ce24faccd8730075d484eb581",
     "revision": 3
   },
   "handshake": {
-    "backend_descriptor_sha256": "21ce8b59c079de8467cdbd06d4a4d162eb4b93b2768b61fb4dc40f9e75432b73",
+    "backend_descriptor_sha256": "d6d7d4081ccc73965dd9a2ca0260d69e32e9e9499d4033e96bdd86d3e63e21a6",
     "backend_id": "reference-router",
     "backend_limits": {
       "maximum_branch_candidates": 16,
@@ -54,12 +54,12 @@
         "sha256": "d0eb34199bd6a856bc7de860c2316b4f4ed74226ed15d3ac79260ce3c310682d"
       },
       "revision": 4,
-      "source_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245"
+      "source_schema_sha256": "d836c30be6a8f38c9f451397e4e107c1b76e873f1075f78c8da68ce1527ecaf1"
     },
-    "handshake_sha256": "c9c7713de0d3e6e524407c78cfe66adcee627ed558de2537db80afd788f419e8",
+    "handshake_sha256": "8f28185cb68de85b0248022f04ccd9d70c01b59c869ff75e471a646031ab6a9e",
     "manifest_id": "reference-router-model",
     "manifest_revision": 1,
-    "manifest_sha256": "07e19a71bdb3f7d4aa8ed67ffdf72a883f6c2368e739a21ae77a6de3ca5f074c",
+    "manifest_sha256": "7eddf347cbbe2ce0407d31c6af5bacf945d35c3ce24faccd8730075d484eb581",
     "model": {
       "encoded_bytes": 25,
       "format": "gguf",
@@ -84,7 +84,7 @@
       "revision": 2,
       "scheme": "grouped-k-quantization"
     },
-    "routing_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245",
+    "routing_schema_sha256": "d836c30be6a8f38c9f451397e4e107c1b76e873f1075f78c8da68ce1527ecaf1",
     "runtime": {
       "abi": "rrflow-router-abi",
       "abi_revision": 1,
@@ -139,10 +139,10 @@
         "sha256": "d0eb34199bd6a856bc7de860c2316b4f4ed74226ed15d3ac79260ce3c310682d"
       },
       "revision": 4,
-      "source_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245"
+      "source_schema_sha256": "d836c30be6a8f38c9f451397e4e107c1b76e873f1075f78c8da68ce1527ecaf1"
     },
     "id": "reference-router-model",
-    "manifest_sha256": "07e19a71bdb3f7d4aa8ed67ffdf72a883f6c2368e739a21ae77a6de3ca5f074c",
+    "manifest_sha256": "7eddf347cbbe2ce0407d31c6af5bacf945d35c3ce24faccd8730075d484eb581",
     "model": {
       "encoded_bytes": 25,
       "format": "gguf",
@@ -169,7 +169,7 @@
     },
     "revision": 1,
     "router_contract_version": 1,
-    "routing_schema_sha256": "59d340cecbc630076bdc1c39c2f389a30902349cb245045b70553f96e94f5245",
+    "routing_schema_sha256": "d836c30be6a8f38c9f451397e4e107c1b76e873f1075f78c8da68ce1527ecaf1",
     "runtime": {
       "abi": "rrflow-router-abi",
       "abi_revision": 1,

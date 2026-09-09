@@ -75,7 +75,7 @@
                   "max_memory_bytes": 67108864,
                   "max_output_bytes": 524288,
                   "max_rows": 10000,
-                  "max_scanned_changes": 100000,
+                  "max_storage_keys": 100000,
                   "max_spill_bytes": 268435456
                 },
                 "parameters": {},

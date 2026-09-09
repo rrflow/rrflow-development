@@ -125,7 +125,7 @@ def test_session_and_query_construct_authenticated_bounded_v1_envelopes() -> Non
                 "query": "FROM record:document",
                 "parameters": {},
                 "budget": {
-                    "max_scanned_changes": 100,
+                    "max_storage_keys": 100,
                     "max_rows": 10,
                     "max_output_bytes": 4_096,
                     "max_batch_rows": 10,

@@ -471,7 +471,7 @@ fn validate_retirement_targets(
         reader,
         &read,
         &sources,
-        RuntimeReadBudget::current_head_integrity(head)?,
+        RuntimeReadBudget::authenticated_history_integrity(head)?,
     )?;
     let schema = schema_at_read(&read, &direct.changes)?;
     let mut snapshots = BTreeMap::new();

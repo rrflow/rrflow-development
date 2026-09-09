@@ -71,16 +71,8 @@ impl RrdEngine {
         }
 
         let read = self.storage.runtime().read_stamp(&scope)?;
-        let scan_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Vector("quantization scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "quantization build requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
-        let candidates = rrd_vector::candidates_from_changes(&page.changes, &scope)
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
+        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
             .into_iter()
             .filter(|candidate| {
                 vector_matches_collection(
@@ -193,6 +185,8 @@ impl RrdEngine {
                             existing.state,
                             lifecycle.revision,
                         )?,
+                        selected_versions: direct.selected_versions,
+                        read_evidence: direct.read_evidence,
                     });
                 }
             }
@@ -213,13 +207,15 @@ impl RrdEngine {
                 publication.state,
                 publication.lifecycle_revision,
             )?,
+            selected_versions: direct.selected_versions,
+            read_evidence: direct.read_evidence,
         })
     }
 
-    /// Compatibility adapter for the historical `ensure_vector_index`
-    /// TurboQuant request. It uses the same ready/activate lifecycle as every
-    /// other quantization method and resumes a matching ready generation after
-    /// an interrupted build instead of creating a second catalogue authority.
+    /// Executes the canonical `ensure_vector_index` TurboQuant branch through
+    /// the same ready/activate lifecycle as every quantization method. A
+    /// matching ready generation resumes after interruption without creating
+    /// a second catalogue authority.
     pub(super) fn ensure_turboquant_index_authorized(
         &self,
         session_id: &CorrelationId,
@@ -233,7 +229,7 @@ impl RrdEngine {
         } = &request.configuration
         else {
             return Err(ServiceError::Vector(
-                "TurboQuant compatibility adapter received another index kind".into(),
+                "TurboQuant index branch received another index kind".into(),
             ));
         };
         let build = BuildVectorQuantizationArtifact {
@@ -245,14 +241,18 @@ impl RrdEngine {
                 seed: *seed,
             },
             filter_properties: filter_properties.clone(),
-            max_scanned_changes: request.max_scanned_changes,
+            max_storage_keys: request.max_storage_keys,
         };
-        let built = self
-            .build_vector_quantization_artifact_authorized(session_id, &build, now, true)?
-            .artifact;
+        let built =
+            self.build_vector_quantization_artifact_authorized(session_id, &build, now, true)?;
+        let selected_versions = built.selected_versions;
+        let read_evidence = built.read_evidence;
+        let built = built.artifact;
         if built.state == VectorQuantizationArtifactState::Active {
             return Ok(EnsureVectorIndexResult {
                 index: public_turboquant_index(&built)?,
+                selected_versions,
+                read_evidence,
                 idempotent_replay: true,
             });
         }
@@ -280,6 +280,8 @@ impl RrdEngine {
         )?;
         Ok(EnsureVectorIndexResult {
             index: public_turboquant_index(&active)?,
+            selected_versions,
+            read_evidence,
             idempotent_replay: false,
         })
     }

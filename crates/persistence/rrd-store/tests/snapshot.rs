@@ -166,7 +166,8 @@ fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
     let data_preview = engine
         .runtime()
         .preview_data_snapshot(&pending, 102, 512)
-        .unwrap();
+        .unwrap()
+        .snapshot;
     assert!(data_preview.contains(
         rrd_core::RuntimeLogicalModel::Relational,
         &RuntimeRef::new("item", "preview-only").unwrap(),
@@ -342,7 +343,8 @@ fn assert_data_transaction_contract(engine: &dyn StorageEngine) {
     let data_view = engine
         .runtime()
         .preview_data_snapshot(&pending, 101, 256)
-        .unwrap();
+        .unwrap()
+        .snapshot;
     assert_eq!(view.read, read);
     assert_eq!(view.prospective_cursor, 2);
     assert_eq!(view.records.len(), 1);

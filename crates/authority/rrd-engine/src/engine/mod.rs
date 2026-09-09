@@ -82,8 +82,8 @@ use rrd_core::{
 };
 use rrd_query::{ComparisonOperator, CursorExpr, Filter, Projection, TimeExpr, ValueExpr};
 use rrd_store::{
-    ControlTransition, MemoryObjectStore, ObjectStoreBox, RrflowKvStore, StorageEngine,
-    StorageProfile,
+    ControlTransition, MemoryObjectStore, ObjectStoreBox, RrflowKvStore, RuntimeDataSnapshotRead,
+    StorageEngine, StorageProfile,
 };
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;

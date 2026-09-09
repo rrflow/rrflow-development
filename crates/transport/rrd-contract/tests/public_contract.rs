@@ -15,15 +15,16 @@ use rrd_contract::{
     NamedVectorDefinition, PollLiveQuery, PreviewTransaction, ProductCapability,
     ProductCapabilityCatalogue, ProductSurface, QueryBudget, QueryExecutionAnalysisSnapshot,
     QueryExecutionSnapshot, QueryIndexKind, QueryPlanCandidate, QueryPlanSnapshot, QueryResult,
-    QueryRowSnapshot, QueryValue, ReadAudit, ReadChangefeed, ReadDataSnapshot, ReadEstate,
-    Readiness, RenewSession, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
-    ResourcePath, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
-    RetireVectorQuantizationArtifact, RetrievalFusion, RetrievalPrefetch, RetrievalQuery,
-    RetrievalResultShape, SearchHybrid, SearchVectors, ServiceCapabilities, SessionEndState,
-    SessionLease, SessionLimits, SessionTermination, SurfaceBinding, SurfaceDisposition,
-    TransactionMutation, TransactionPreview, TransactionState, VectorIndexBuildPolicy,
-    VectorIndexConfiguration, VectorMemoryTier, VectorPayloadCondition, VectorPayloadFilter,
-    VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
+    QueryRowSnapshot, QueryValue, ReadAccessPath, ReadAudit, ReadChangefeed, ReadDataSnapshot,
+    ReadEstate, ReadEvidence, ReadPathEvidence, ReadStampValidationEvidence,
+    ReadStampValidationMethod, Readiness, RenewSession, RequestContext, RequestEnvelope,
+    ResourceId, ResourceKind, ResourcePath, ResponseEnvelope, ResponseOutcome,
+    RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrievalFusion, RetrievalPrefetch,
+    RetrievalQuery, RetrievalResultShape, SearchHybrid, SearchVectors, ServiceCapabilities,
+    SessionEndState, SessionLease, SessionLimits, SessionTermination, SurfaceBinding,
+    SurfaceDisposition, TransactionMutation, TransactionPreview, TransactionState,
+    VectorIndexBuildPolicy, VectorIndexConfiguration, VectorMemoryTier, VectorPayloadCondition,
+    VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
     VectorQuantizationBits, VectorQuantizationMethod, VectorSearchMetric, VectorSearchMode,
     VectorSearchQuery, VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
 };
@@ -486,17 +487,15 @@ fn query_contract_is_transport_neutral_bounded_and_strict() {
             deterministic_order: "identity_ascending".into(),
             authorization_boundary: "scope:instance:project-alpha".into(),
             candidates: vec![QueryPlanCandidate {
-                name: "authoritative_log_scan".into(),
+                name: "versioned_source_read".into(),
                 selected: true,
                 exact: true,
-                reason: "frozen fixture".into(),
+                reason: "direct semantic-version fixture".into(),
             }],
         },
         execution: QueryExecutionSnapshot {
-            scanned_changes: 7,
-            stamp_validation: "full_hash_chain_replay".into(),
-            stamp_validation_max_changes: 7,
-            stamp_validation_proof_nodes: 0,
+            selected_versions: 7,
+            read_evidence: read_evidence(),
             returned_rows: 1,
             output_bytes: 32,
             truncated: false,
@@ -531,18 +530,18 @@ fn query_contract_is_transport_neutral_bounded_and_strict() {
     let mut invalid_budget = request_budget_fixture();
     invalid_budget.max_rows = 0;
     assert!(invalid_budget.validate().is_err());
-    let legacy_budget: QueryBudget = serde_json::from_value(serde_json::json!({
-        "max_scanned_changes": 100,
+    let minimal_budget: QueryBudget = serde_json::from_value(serde_json::json!({
+        "max_storage_keys": 100,
         "max_rows": 10,
         "max_output_bytes": 4096,
         "max_batch_rows": 10
     }))
     .unwrap();
-    assert_eq!(legacy_budget.max_memory_bytes, 64 * 1024 * 1024);
-    assert_eq!(legacy_budget.max_spill_bytes, 256 * 1024 * 1024);
-    assert_eq!(legacy_budget.max_elapsed_ms, 30_000);
-    legacy_budget.validate().unwrap();
-    let mut invalid_memory = legacy_budget;
+    assert_eq!(minimal_budget.max_memory_bytes, 64 * 1024 * 1024);
+    assert_eq!(minimal_budget.max_spill_bytes, 256 * 1024 * 1024);
+    assert_eq!(minimal_budget.max_elapsed_ms, 30_000);
+    minimal_budget.validate().unwrap();
+    let mut invalid_memory = minimal_budget;
     invalid_memory.max_memory_bytes = rrd_contract::MAX_QUERY_MEMORY_BYTES + 1;
     assert!(invalid_memory.validate().is_err());
     let mut invalid_parameter = request.clone();
@@ -586,6 +585,41 @@ fn query_transaction_contract_reuses_typed_mutations_and_is_bounded() {
 
 fn request_budget_fixture() -> QueryBudget {
     QueryBudget::default()
+}
+
+fn read_evidence() -> ReadEvidence {
+    ReadEvidence {
+        contract_version: 1,
+        key_budget: 64,
+        point_reads: 1,
+        range_scans: 1,
+        keys_examined: 2,
+        values_decoded: 1,
+        decoded_bytes: 64,
+        stamp_validation: ReadStampValidationEvidence {
+            method: ReadStampValidationMethod::AuthenticatedCurrentHead,
+            change_reads: 0,
+            proof_nodes: 0,
+        },
+        paths: vec![
+            ReadPathEvidence {
+                path: ReadAccessPath::ReadStamp,
+                point_reads: 1,
+                range_scans: 0,
+                keys_examined: 1,
+                values_decoded: 0,
+                decoded_bytes: 0,
+            },
+            ReadPathEvidence {
+                path: ReadAccessPath::RecordVersions,
+                point_reads: 0,
+                range_scans: 1,
+                keys_examined: 1,
+                values_decoded: 1,
+                decoded_bytes: 64,
+            },
+        ],
+    }
 }
 
 #[test]
@@ -635,7 +669,7 @@ fn query_index_administration_contract_is_bounded_and_strict() {
             filter_properties: vec![CanonicalId::new("tenant").unwrap()],
         },
         build_policy: VectorIndexBuildPolicy::Cpu,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
     .validate()
     .unwrap();
@@ -661,7 +695,7 @@ fn vector_quantization_lifecycle_contract_is_bounded_and_strict() {
             compression: VectorProductCompression::X64,
         },
         filter_properties: vec![CanonicalId::new("tenant").unwrap()],
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     build.validate().unwrap();
     assert_eq!(build.method.maximum_compression_ratio(), 64);
@@ -672,7 +706,7 @@ fn vector_quantization_lifecycle_contract_is_bounded_and_strict() {
         .push(CanonicalId::new("tenant").unwrap());
     assert!(duplicate_filter.validate().is_err());
     let mut unbounded = build.clone();
-    unbounded.max_scanned_changes = 0;
+    unbounded.max_storage_keys = 0;
     assert!(unbounded.validate().is_err());
     let mut unknown = serde_json::to_value(&build).unwrap();
     unknown["always_ram"] = serde_json::json!(true);
@@ -760,7 +794,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
         scope: "instance:project-alpha".into(),
         collection_id: CanonicalId::new("documents").unwrap(),
         valid_at: 42,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
     .validate()
     .unwrap();
@@ -768,7 +802,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
         scope: "instance:project-alpha".into(),
         collection_id: CanonicalId::new("documents").unwrap(),
         valid_at: 0,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
     .validate()
     .is_err());
@@ -784,7 +818,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
             filter_properties: vec![CanonicalId::new("tenant").unwrap()],
         },
         build_policy: VectorIndexBuildPolicy::Cpu,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
     .validate()
     .unwrap();
@@ -808,7 +842,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
         metric: None,
         top_k: 10,
         mode: VectorSearchMode::Exact,
-        max_scanned_changes: 100,
+        max_storage_keys: 100,
     }
     .validate()
     .unwrap();
@@ -828,7 +862,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
             exact_rerank: 20,
             ef_search: 100,
         },
-        max_scanned_changes: 100,
+        max_storage_keys: 100,
     };
     approximate.validate().unwrap();
     SearchHybrid {
@@ -854,7 +888,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
         },
         top_k: 10,
         candidate_k: 20,
-        max_scanned_changes: 100,
+        max_storage_keys: 100,
     }
     .validate()
     .unwrap();
@@ -877,7 +911,7 @@ fn vector_collection_contract_is_named_bounded_and_search_addressable() {
         metric: None,
         top_k: 10,
         mode: VectorSearchMode::Exact,
-        max_scanned_changes: 100,
+        max_storage_keys: 100,
     }
     .validate()
     .is_err());
@@ -1411,7 +1445,7 @@ fn lifecycle_health_and_preview_payloads_are_bounded_and_strict() {
     let preview = PreviewTransaction {
         mutations: vec![mutation.clone()],
         valid_at: Some(100),
-        max_scanned_changes: 100,
+        max_storage_keys: 100,
     };
     preview.validate().unwrap();
     TransactionPreview {
@@ -1425,6 +1459,8 @@ fn lifecycle_health_and_preview_payloads_are_bounded_and_strict() {
             known_at_cursor: 8,
             schema_revision: 1,
             read_manifest_sha256: "0".repeat(64),
+            selected_versions: 0,
+            read_evidence: read_evidence(),
             entries: Vec::new(),
         },
         idempotent_replay: false,
@@ -1573,13 +1609,13 @@ fn data_retirement_targets_are_model_typed_and_event_cursor_addressed() {
     .is_err());
     assert!(ReadDataSnapshot {
         valid_at: 10,
-        max_scanned_changes: 1,
+        max_storage_keys: 1,
     }
     .validate()
     .is_ok());
     assert!(ReadDataSnapshot {
         valid_at: 0,
-        max_scanned_changes: 0,
+        max_storage_keys: 0,
     }
     .validate()
     .is_err());
@@ -1632,7 +1668,7 @@ fn recursive_retrieval_contract_is_strict_bounded_and_multimodal() {
         },
         limit: 2,
         candidate_limit: 4,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     request.validate().unwrap();
     let encoded = serde_json::to_value(&request).unwrap();
@@ -1699,7 +1735,7 @@ fn public_embedding_contract_is_bounded_strict_and_collection_addressed() {
         filter: None,
         top_k: 4,
         mode: VectorSearchMode::Exact,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     request.validate().unwrap();
     let mut invalid = request;

@@ -58,7 +58,11 @@ fn exercise(storage: &dyn StorageEngine) -> (u64, u64, String, usize) {
             ],
         })
         .unwrap();
-    let (_, snapshot) = storage.runtime().data_snapshot(&scope, 11, 128).unwrap();
+    let snapshot = storage
+        .runtime()
+        .data_snapshot(&scope, 11, 128)
+        .unwrap()
+        .snapshot;
     storage.projections().rebuild_current().unwrap();
 
     (

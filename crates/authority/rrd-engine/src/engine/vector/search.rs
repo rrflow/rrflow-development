@@ -86,16 +86,8 @@ impl RrdEngine {
                     rrd_vector::VectorMemoryTier::Cached,
                 )
             };
-        let limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Vector("vector scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime().read_changes(&read, 0, limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "vector exact scan requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
-        let candidates = rrd_vector::candidates_from_changes(&page.changes, &scope)
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
+        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
             .into_iter()
             .filter(|candidate| {
                 collection_address
@@ -246,7 +238,8 @@ impl RrdEngine {
             vector_name: request.vector_name.clone(),
             read_manifest_sha256: read.manifest_id,
             known_at_cursor: read.commit_cursor,
-            scanned_changes: page.validation.change_reads,
+            selected_versions: direct.selected_versions,
+            read_evidence: direct.read_evidence,
             plan_sha256: prepared.plan_digest().into(),
             access_path: CanonicalId::new(access_path)
                 .map_err(|error| ServiceError::Vector(error.to_string()))?,

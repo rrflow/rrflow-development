@@ -200,7 +200,7 @@ fn native_inference_batches_with_provenance_and_searches_at_one_read_stamp() {
                 filter: None,
                 top_k: 1,
                 mode: VectorSearchMode::Exact,
-                max_scanned_changes: 10_000,
+                max_storage_keys: 10_000,
             },
             61,
             "embedding-search-request",

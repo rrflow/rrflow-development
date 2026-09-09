@@ -54,7 +54,7 @@
         }
       ],
       "valid_at": 100,
-      "max_scanned_changes": 1000
+      "max_storage_keys": 1000
     },
     "abort": {},
     "commit_begin": {
@@ -110,7 +110,7 @@
     "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"sdk-conformance\" PROJECT id, title EXPLAIN CONTRACT",
     "parameters": {},
     "budget": {
-      "max_scanned_changes": 1000,
+      "max_storage_keys": 1000,
       "max_rows": 10,
       "max_output_bytes": 4096,
       "max_batch_rows": 10,
@@ -150,7 +150,7 @@
       "mode": {
         "mode": "exact"
       },
-      "max_scanned_changes": 1000
+      "max_storage_keys": 1000
     }
   },
   "changefeed": {

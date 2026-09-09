@@ -1,6 +1,6 @@
 use super::vector::{
     core_vector, internal_vector_filter, internal_vector_query, public_data_ref,
-    validate_collection_query, vector_collection_error,
+    read_vector_versions, validate_collection_query, vector_collection_error,
 };
 use super::*;
 use std::collections::BTreeSet;
@@ -28,6 +28,8 @@ struct RetrievalExecutionContext<'a> {
     vectors: Vec<rrd_vector::VectorCandidate>,
     configurations: BTreeMap<ProjectionId, rrd_vector::NamedVectorConfig>,
     stages: Vec<RetrievalStageEvidence>,
+    selected_versions: u64,
+    read_evidence: Vec<rrd_contract::ReadEvidence>,
 }
 
 impl RrdEngine {
@@ -84,17 +86,9 @@ impl RrdEngine {
                 )));
             }
         }
-        let scan_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Vector("retrieval scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "retrieval query requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
         let vectors =
-            rrd_vector::candidates_from_changes(&page.changes, &scope)
+            rrd_vector::candidates_from_changes(&direct.changes, &scope)
                 .into_iter()
                 .filter(|candidate| {
                     candidate.vector.collection.as_ref().is_some_and(|address| {
@@ -110,6 +104,8 @@ impl RrdEngine {
             vectors,
             configurations: collection.definition.vectors.clone(),
             stages: Vec::new(),
+            selected_versions: direct.selected_versions,
+            read_evidence: vec![direct.read_evidence],
         };
         let candidates = context.execute(&request.query, request.candidate_limit)?;
         let output = context.shape(candidates.values)?;
@@ -122,11 +118,15 @@ impl RrdEngine {
             ))
             .map_err(contract_json)?,
         );
+        let read_evidence =
+            crate::runtime::merge_read_evidence(request.max_storage_keys, context.read_evidence)?;
         Ok(RetrievalQueryResult {
             scope: request.scope.clone(),
             collection_id: request.collection_id.clone(),
             read_manifest_sha256: read.manifest_id,
             known_at_cursor: read.commit_cursor,
+            selected_versions: context.selected_versions,
+            read_evidence,
             query_plan_sha256,
             stages: context.stages,
             output,
@@ -190,7 +190,7 @@ impl RetrievalExecutionContext<'_> {
             metric: None,
             top_k: limit,
             mode,
-            max_scanned_changes: self.request.max_scanned_changes,
+            max_storage_keys: self.request.max_storage_keys,
         };
         let search = self
             .engine
@@ -208,6 +208,9 @@ impl RetrievalExecutionContext<'_> {
                 ))
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
+        let search_exact = search.exact;
+        let search_selected_versions = search.selected_versions;
+        let search_read_evidence = search.read_evidence.clone();
         let mut values = search
             .hits
             .into_iter()
@@ -229,10 +232,11 @@ impl RetrievalExecutionContext<'_> {
             })
             .collect::<Result<Vec<_>>>()?;
         let input = self.vectors.len();
-        self.register_stage("nearest", input, &mut values, search.exact, &vector_request)?;
+        self.register_stage("nearest", input, &mut values, search_exact, &vector_request)?;
+        self.observe_read(search_selected_versions, search_read_evidence)?;
         Ok(QueryCandidates {
             values,
-            exact: search.exact,
+            exact: search_exact,
         })
     }
 
@@ -255,28 +259,26 @@ impl RetrievalExecutionContext<'_> {
         let pipeline =
             rrd_query::StampedQueryPipeline::new(&self.engine.storage, self.read.clone())
                 .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let limit = usize::try_from(limit)
+            .map_err(|_| ServiceError::Query("retrieval keyword limit exceeds usize".into()))?;
+        let max_input_rows = usize::try_from(self.request.max_storage_keys)
+            .map_err(|_| ServiceError::Query("retrieval key budget exceeds usize".into()))?;
+        let budget = rrd_query::ExecutionBudget {
+            max_storage_keys: self.request.max_storage_keys,
+            max_input_rows,
+            max_rows: limit,
+            max_output_bytes: 8 * 1024 * 1024,
+            max_batch_rows: limit.clamp(1, 1_024),
+            ..rrd_query::ExecutionBudget::default()
+        };
         let bound = pipeline
-            .bind(&query, &parameters)
+            .bind(&query, &parameters, &budget)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
         let plan = pipeline
             .plan(&bound)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let limit = usize::try_from(limit)
-            .map_err(|_| ServiceError::Query("retrieval keyword limit exceeds usize".into()))?;
         let execution = pipeline
-            .execute(
-                &plan,
-                &rrd_query::ExecutionBudget {
-                    max_scanned_changes: usize::try_from(self.request.max_scanned_changes)
-                        .map_err(|_| {
-                            ServiceError::Query("retrieval keyword budget exceeds usize".into())
-                        })?,
-                    max_rows: limit,
-                    max_output_bytes: 8 * 1024 * 1024,
-                    max_batch_rows: limit.clamp(1, 1_024),
-                    ..rrd_query::ExecutionBudget::default()
-                },
-            )
+            .execute(&plan, &budget)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
         if execution.truncated
             || execution.read_manifest != self.read.manifest_id
@@ -324,6 +326,12 @@ impl RetrievalExecutionContext<'_> {
         sort_candidates(&mut values);
         values.truncate(limit);
         self.register_stage("keyword", payloads.len(), &mut values, true, &plan.digest)?;
+        let selected_versions = u64::try_from(execution.selected_versions)
+            .map_err(|_| ServiceError::Query("selected keyword versions exceed u64".into()))?;
+        self.observe_read(
+            selected_versions,
+            crate::runtime::public_read_evidence(execution.read_evidence)?,
+        )?;
         Ok(QueryCandidates {
             values,
             exact: true,
@@ -934,6 +942,33 @@ impl RetrievalExecutionContext<'_> {
             plan_sha256,
         });
         Ok(ordinal)
+    }
+
+    fn observe_read(
+        &mut self,
+        selected_versions: u64,
+        evidence: rrd_contract::ReadEvidence,
+    ) -> Result<()> {
+        self.selected_versions = self
+            .selected_versions
+            .checked_add(selected_versions)
+            .ok_or_else(|| ServiceError::Vector("retrieval selected versions overflowed".into()))?;
+        let examined =
+            self.read_evidence
+                .iter()
+                .try_fold(evidence.keys_examined, |total, read| {
+                    total.checked_add(read.keys_examined).ok_or_else(|| {
+                        ServiceError::Vector("retrieval read-key counter overflowed".into())
+                    })
+                })?;
+        if examined > self.request.max_storage_keys {
+            return Err(ServiceError::Vector(format!(
+                "retrieval examined {examined} storage keys, budget allows {}",
+                self.request.max_storage_keys
+            )));
+        }
+        self.read_evidence.push(evidence);
+        Ok(())
     }
 }
 

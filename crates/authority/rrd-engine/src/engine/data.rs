@@ -25,21 +25,26 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = ScopeId::new(format!("instance:{}", self.instance)).map_err(core_contract)?;
-        let replay_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Query("data snapshot replay limit exceeds usize".into()))?;
-        let (read, snapshot) =
+        let key_budget = usize::try_from(request.max_storage_keys)
+            .map_err(|_| ServiceError::Query("data snapshot key budget exceeds usize".into()))?;
+        let snapshot =
             self.storage
                 .runtime()
-                .data_snapshot(&scope, request.valid_at, replay_limit)?;
+                .data_snapshot(&scope, request.valid_at, key_budget)?;
 
-        public_data_snapshot(&read, snapshot)
+        public_data_snapshot(snapshot)
     }
 }
 
 pub(in crate::engine) fn public_data_snapshot(
-    read: &ReadStamp,
-    snapshot: RuntimeDataSnapshot,
+    read: RuntimeDataSnapshotRead,
 ) -> Result<DataSnapshot> {
+    let RuntimeDataSnapshotRead {
+        read,
+        selected_versions,
+        read_evidence,
+        snapshot,
+    } = read;
     let mut entries = Vec::with_capacity(
         snapshot.records.len()
             + snapshot.relations.len()
@@ -123,7 +128,9 @@ pub(in crate::engine) fn public_data_snapshot(
         valid_at: snapshot.valid_at,
         known_at_cursor: snapshot.known_at_cursor,
         schema_revision: snapshot.schema_revision,
-        read_manifest_sha256: read.manifest_id.clone(),
+        read_manifest_sha256: read.manifest_id,
+        selected_versions,
+        read_evidence: crate::runtime::public_read_evidence(read_evidence)?,
         entries,
     })
 }

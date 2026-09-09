@@ -98,16 +98,8 @@ impl RrdEngine {
         }
 
         let read = self.storage.runtime().read_stamp(&scope)?;
-        let scan_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Vector("vector index scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "vector index build requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
-        let candidates = rrd_vector::candidates_from_changes(&page.changes, &scope)
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
+        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
             .into_iter()
             .filter(|candidate| {
                 vector_matches_collection(
@@ -161,6 +153,8 @@ impl RrdEngine {
                         active.descriptor().clone().into(),
                         &request.collection_id,
                         &request.vector_name,
+                        direct.selected_versions,
+                        direct.read_evidence.clone(),
                     )?;
                     if build_policy_satisfied(
                         replay.index.build_evidence.as_ref(),
@@ -245,6 +239,8 @@ impl RrdEngine {
                 &request.collection_id,
                 &request.vector_name,
             )?,
+            selected_versions: direct.selected_versions,
+            read_evidence: direct.read_evidence,
             idempotent_replay: false,
         })
     }
@@ -255,6 +251,8 @@ fn replay_vector_index<E>(
     descriptor: rrd_vector::VectorProjectionDescriptor,
     collection_id: &CanonicalId,
     vector_name: &CanonicalId,
+    selected_versions: u64,
+    read_evidence: rrd_contract::ReadEvidence,
 ) -> Result<EnsureVectorIndexResult>
 where
     E: rrd_store::StorageEngine,
@@ -268,6 +266,8 @@ where
         })?;
     Ok(EnsureVectorIndexResult {
         index: public_vector_index(&entry, collection_id, vector_name)?,
+        selected_versions,
+        read_evidence,
         idempotent_replay: true,
     })
 }

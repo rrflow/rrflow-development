@@ -138,7 +138,7 @@ impl RrdEngine {
                 metric: None,
                 top_k: request.top_k,
                 mode: request.mode,
-                max_scanned_changes: request.max_scanned_changes,
+                max_storage_keys: request.max_storage_keys,
             },
             read,
         )?;

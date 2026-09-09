@@ -1,0 +1,40 @@
+{
+  "contract_version": 1,
+  "key_budget": 64,
+  "point_reads": 7,
+  "range_scans": 1,
+  "keys_examined": 9,
+  "values_decoded": 8,
+  "decoded_bytes": 512,
+  "stamp_validation": {
+    "method": "rfc9162_direct_versions",
+    "change_reads": 2,
+    "proof_nodes": 4
+  },
+  "paths": [
+    {
+      "path": "read_stamp",
+      "point_reads": 5,
+      "range_scans": 0,
+      "keys_examined": 5,
+      "values_decoded": 4,
+      "decoded_bytes": 256
+    },
+    {
+      "path": "record_versions",
+      "point_reads": 0,
+      "range_scans": 1,
+      "keys_examined": 2,
+      "values_decoded": 2,
+      "decoded_bytes": 128
+    },
+    {
+      "path": "accumulator_proof",
+      "point_reads": 2,
+      "range_scans": 0,
+      "keys_examined": 2,
+      "values_decoded": 2,
+      "decoded_bytes": 128
+    }
+  ]
+}

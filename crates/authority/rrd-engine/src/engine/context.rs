@@ -36,7 +36,7 @@ struct GraphEdge {
 type VectorContextOutcome = (Vec<(RuntimeRef, u64)>, bool, usize);
 
 impl RrdEngine {
-    /// Resolves a bounded context packet from the canonical runtime log.
+    /// Resolves a bounded context packet from authenticated semantic versions.
     ///
     /// The caller supplies intent and optional record anchors. The engine
     /// discovers textual properties and graph topology from one temporal
@@ -93,12 +93,17 @@ impl RrdEngine {
             },
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let replay_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Query("context scan budget exceeds usize".into()))?;
-        let (read, snapshot) =
-            self.storage
-                .runtime()
-                .data_snapshot(&scope, request.valid_at, replay_limit)?;
+        let key_budget = usize::try_from(request.max_storage_keys)
+            .map_err(|_| ServiceError::Query("context key budget exceeds usize".into()))?;
+        let RuntimeDataSnapshotRead {
+            read,
+            selected_versions,
+            read_evidence,
+            snapshot,
+        } = self
+            .storage
+            .runtime()
+            .data_snapshot(&scope, request.valid_at, key_budget)?;
         if snapshot.known_at_cursor != read.commit_cursor
             || snapshot.schema_revision != read.schema_revision.unwrap_or(0)
         {
@@ -430,6 +435,8 @@ impl RrdEngine {
             query_sha256: digest::sha256_hex(request.query.as_bytes()),
             read: context_read,
             plan,
+            selected_versions,
+            read_evidence: crate::runtime::public_read_evidence(read_evidence)?,
             items: bounded,
             output_bytes,
             truncated,

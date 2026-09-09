@@ -47,7 +47,7 @@ impl RuntimeReadBudget {
     /// semantic versions visible at one current commit head. This is used by
     /// write-path integrity checks that cannot accept an operator workload
     /// policy. Request/query paths must continue to supply their own budget.
-    pub(crate) fn current_head_integrity(commit_cursor: u64) -> Result<Self> {
+    pub fn authenticated_history_integrity(commit_cursor: u64) -> Result<Self> {
         // Cursor, accumulator state, head digest, scope schema, and scope
         // catalogue revision are the current-stamp point reads.
         const CURRENT_STAMP_POINT_READS: u64 = 5;

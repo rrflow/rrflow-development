@@ -18,4 +18,4 @@ pub use control::ControlRepository;
 pub use function::FunctionCatalogueRepository;
 pub use invocation::InvocationRepository;
 pub use projection::ProjectionRepository;
-pub use runtime::RuntimeRepository;
+pub use runtime::{RuntimeDataSnapshotRead, RuntimeRepository};

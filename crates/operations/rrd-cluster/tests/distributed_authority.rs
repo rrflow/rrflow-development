@@ -188,7 +188,11 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
             .unwrap();
         assert_eq!(commit.mutations.len(), 2);
         engine.runtime().commit(&commit).unwrap();
-        let (_, snapshot) = engine.runtime().data_snapshot(&scope, 100, 10_000).unwrap();
+        let snapshot = engine
+            .runtime()
+            .data_snapshot(&scope, 100, 10_000)
+            .unwrap()
+            .snapshot;
         assert_eq!(
             DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, &cluster)
                 .unwrap()
@@ -215,10 +219,11 @@ fn metadata_catalogue_is_one_schema_governed_rrd_record_and_survives_reopen() {
     }
 
     let reopened = RrflowKvStore::open(&root).unwrap();
-    let (_, snapshot) = reopened
+    let snapshot = reopened
         .runtime()
         .data_snapshot(&scope, 200, 10_000)
-        .unwrap();
+        .unwrap()
+        .snapshot;
     let restored = DistributedAuthorityCatalogue::from_runtime_snapshot(&snapshot, &cluster)
         .unwrap()
         .unwrap();

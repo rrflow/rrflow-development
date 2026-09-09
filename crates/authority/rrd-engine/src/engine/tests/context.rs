@@ -4,7 +4,8 @@ use rrd_contract::{
     ContextPlanStageStatus, DataCatalogueIdentity, DataLogicalModel, DataReference, DataSchemaMode,
     DataSchemaRegistry, DataTableSchema, EmbeddingInput, EmbeddingNetworkPolicy,
     EnsureVectorCollection, GenerateEmbeddings, ListEmbeddingModels, NamedVectorDefinition,
-    QueryValue, VectorEmbeddingModel, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    QueryValue, ReadAccessPath, VectorEmbeddingModel, VectorMemoryTier, VectorSearchMetric,
+    VectorValueKind,
 };
 use std::collections::BTreeMap;
 
@@ -143,7 +144,7 @@ fn context_flows_through_one_engine_stamp_and_survives_reopen() {
         max_graph_depth: 1,
         max_items: 8,
         max_output_bytes: 64 * 1024,
-        max_scanned_changes: 128,
+        max_storage_keys: 128,
     };
     let packet = engine
         .assemble_context(
@@ -156,6 +157,12 @@ fn context_flows_through_one_engine_stamp_and_survives_reopen() {
         )
         .unwrap();
     packet.validate().unwrap();
+    assert_eq!(packet.selected_versions, 5);
+    assert!(packet
+        .read_evidence
+        .paths
+        .iter()
+        .any(|path| path.path == ReadAccessPath::RelationVersions));
     assert_eq!(packet.plan.security_policy_revision, 0);
     assert_eq!(
         packet.plan.authorization_sha256,
@@ -478,7 +485,7 @@ fn context_discovers_matching_local_vector_retrieval_without_caller_wiring() {
                 max_graph_depth: 1,
                 max_items: 8,
                 max_output_bytes: 64 * 1024,
-                max_scanned_changes: 128,
+                max_storage_keys: 128,
             },
             1_200,
             "request-vector-context",
@@ -591,7 +598,7 @@ fn context_reads_active_claims_from_the_same_runtime_snapshot() {
                 max_graph_depth: 1,
                 max_items: 8,
                 max_output_bytes: 64 * 1024,
-                max_scanned_changes: 128,
+                max_storage_keys: 128,
             },
             1_200,
             "request-claim-context",

@@ -45,15 +45,7 @@ impl RrdEngine {
                 ))
             })?;
         let read = self.storage.runtime().read_stamp(&scope)?;
-        let scan_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Vector("vector point scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "vector point scroll requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
         let visibility = rrd_vector::VectorVisibilityRequest {
             scope: scope.clone(),
             read: read.clone(),
@@ -66,7 +58,7 @@ impl RrdEngine {
                 .map(internal_vector_filter)
                 .transpose()?,
         };
-        let addressed = rrd_vector::candidates_from_changes(&page.changes, &scope)
+        let addressed = rrd_vector::candidates_from_changes(&direct.changes, &scope)
             .into_iter()
             .filter(|candidate| {
                 vector_matches_collection(
@@ -99,7 +91,8 @@ impl RrdEngine {
             vector_name: request.vector_name.clone(),
             read_manifest_sha256: read.manifest_id,
             known_at_cursor: read.commit_cursor,
-            scanned_changes: page.validation.change_reads,
+            selected_versions: direct.selected_versions,
+            read_evidence: direct.read_evidence,
             points,
             next_after,
             truncated,
@@ -151,15 +144,7 @@ impl RrdEngine {
                 ))
             })?;
         let read = self.storage.runtime().read_stamp(&scope)?;
-        let scan_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Vector("vector point scan budget exceeds usize".into()))?;
-        let page = self.storage.runtime().read_changes(&read, 0, scan_limit)?;
-        if page.through_cursor < page.head_cursor {
-            return Err(ServiceError::Vector(format!(
-                "vector point retrieve requires more than {} retained changes",
-                request.max_scanned_changes
-            )));
-        }
+        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
         let visibility = rrd_vector::VectorVisibilityRequest {
             scope: scope.clone(),
             read: read.clone(),
@@ -168,7 +153,7 @@ impl RrdEngine {
             embedding_model: config.embedding_model.clone(),
             filter: None,
         };
-        let addressed = rrd_vector::candidates_from_changes(&page.changes, &scope)
+        let addressed = rrd_vector::candidates_from_changes(&direct.changes, &scope)
             .into_iter()
             .filter(|candidate| {
                 vector_matches_collection(
@@ -197,7 +182,8 @@ impl RrdEngine {
             vector_name: request.vector_name.clone(),
             read_manifest_sha256: read.manifest_id,
             known_at_cursor: read.commit_cursor,
-            scanned_changes: page.validation.change_reads,
+            selected_versions: direct.selected_versions,
+            read_evidence: direct.read_evidence,
             points,
             missing,
         })

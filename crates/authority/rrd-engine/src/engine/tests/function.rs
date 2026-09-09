@@ -835,7 +835,7 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
             &lease.token,
             &ReadDataSnapshot {
                 valid_at: 1_200,
-                max_scanned_changes: 100,
+                max_storage_keys: 100,
             },
             1_201,
             "request-binding-snapshot",

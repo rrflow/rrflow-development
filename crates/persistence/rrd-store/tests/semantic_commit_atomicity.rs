@@ -91,7 +91,11 @@ fn commit(storage: &dyn StorageEngine) -> PublicEvidence {
         .runtime()
         .changes_since(0, 16, Some(&scope))
         .unwrap();
-    let (_, snapshot) = storage.runtime().data_snapshot(&scope, 100, 256).unwrap();
+    let snapshot = storage
+        .runtime()
+        .data_snapshot(&scope, 100, 256)
+        .unwrap()
+        .snapshot;
     let deltas = storage.runtime().projection_deltas_since(0, 16).unwrap();
     let outbox = storage.runtime().outbox_since(0, 16).unwrap();
     assert_eq!(deltas, outbox);

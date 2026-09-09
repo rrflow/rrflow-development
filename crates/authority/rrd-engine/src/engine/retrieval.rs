@@ -60,27 +60,26 @@ impl RrdEngine {
         )]);
         let pipeline = rrd_query::StampedQueryPipeline::new(&self.storage, read.clone())
             .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let candidate_limit = usize::try_from(request.candidate_k)
+            .map_err(|_| ServiceError::Query("hybrid candidate_k exceeds usize".into()))?;
+        let max_input_rows = usize::try_from(request.max_storage_keys)
+            .map_err(|_| ServiceError::Query("hybrid key budget exceeds usize".into()))?;
+        let text_budget = rrd_query::ExecutionBudget {
+            max_storage_keys: request.max_storage_keys,
+            max_input_rows,
+            max_rows: candidate_limit,
+            max_output_bytes: 8 * 1024 * 1024,
+            max_batch_rows: candidate_limit.clamp(1, 1_024),
+            ..rrd_query::ExecutionBudget::default()
+        };
         let bound = pipeline
-            .bind(&query, &parameters)
+            .bind(&query, &parameters, &text_budget)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
         let text_plan = pipeline
             .plan(&bound)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
-        let candidate_limit = usize::try_from(request.candidate_k)
-            .map_err(|_| ServiceError::Query("hybrid candidate_k exceeds usize".into()))?;
         let text_execution = pipeline
-            .execute(
-                &text_plan,
-                &rrd_query::ExecutionBudget {
-                    max_scanned_changes: usize::try_from(request.max_scanned_changes).map_err(
-                        |_| ServiceError::Query("hybrid scan budget exceeds usize".into()),
-                    )?,
-                    max_rows: candidate_limit,
-                    max_output_bytes: 8 * 1024 * 1024,
-                    max_batch_rows: candidate_limit.clamp(1, 1_024),
-                    ..rrd_query::ExecutionBudget::default()
-                },
-            )
+            .execute(&text_plan, &text_budget)
             .map_err(|error| ServiceError::Query(error.to_string()))?;
         if text_execution.truncated {
             return Err(ServiceError::Query(
@@ -134,7 +133,7 @@ impl RrdEngine {
             metric: None,
             top_k: request.candidate_k,
             mode: request.vector_mode,
-            max_scanned_changes: request.max_scanned_changes,
+            max_storage_keys: request.max_storage_keys,
         };
         let vector = self.search_vectors_at(&vector_request, read.clone())?;
         if vector.read_manifest_sha256 != read.manifest_id
@@ -229,10 +228,23 @@ impl RrdEngine {
             ))
             .map_err(contract_json)?,
         );
+        let selected_versions = u64::try_from(text_execution.selected_versions)
+            .map_err(|_| ServiceError::Contract("text selected versions exceed u64".into()))?
+            .checked_add(vector.selected_versions)
+            .ok_or_else(|| ServiceError::Contract("hybrid selected versions overflowed".into()))?;
+        let read_evidence = crate::runtime::merge_read_evidence(
+            request.max_storage_keys,
+            [
+                crate::runtime::public_read_evidence(text_execution.read_evidence)?,
+                vector.read_evidence.clone(),
+            ],
+        )?;
         Ok(HybridSearchResult {
             scope: request.scope.clone(),
             read_manifest_sha256: read.manifest_id,
             known_at_cursor: read.commit_cursor,
+            selected_versions,
+            read_evidence,
             text_plan_sha256: text_plan.digest,
             vector_plan_sha256: vector.plan_sha256,
             fusion_plan_sha256,

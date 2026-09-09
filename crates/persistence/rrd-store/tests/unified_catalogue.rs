@@ -503,7 +503,11 @@ fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrd_core::Runtime
     };
     let updated = engine.runtime().commit(&update).unwrap();
     let replacement_event_cursor = cursor + 6;
-    let (_, snapshot) = engine.runtime().data_snapshot(&scope, 103, 4_096).unwrap();
+    let snapshot = engine
+        .runtime()
+        .data_snapshot(&scope, 103, 4_096)
+        .unwrap()
+        .snapshot;
     assert_eq!(snapshot.records.len(), 4);
     assert_eq!(snapshot.relations.len(), 1);
     assert_eq!(snapshot.events.len(), 2);
@@ -568,7 +572,11 @@ fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrd_core::Runtime
             mutations: retirements,
         })
         .unwrap();
-    let (_, empty) = engine.runtime().data_snapshot(&scope, 104, 4_096).unwrap();
+    let empty = engine
+        .runtime()
+        .data_snapshot(&scope, 104, 4_096)
+        .unwrap()
+        .snapshot;
     assert!(empty.records.is_empty());
     assert!(empty.relations.is_empty());
     assert!(empty.events.is_empty());
@@ -577,7 +585,11 @@ fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrd_core::Runtime
     assert!(empty.geo.is_empty());
     assert!(empty.objects.is_empty());
 
-    let (_, historical) = engine.runtime().data_snapshot(&scope, 103, 4_096).unwrap();
+    let historical = engine
+        .runtime()
+        .data_snapshot(&scope, 103, 4_096)
+        .unwrap()
+        .snapshot;
     assert_eq!(historical.records.len(), 4);
     assert_eq!(historical.events.len(), 2);
 
@@ -618,7 +630,11 @@ fn exercise_crud(engine: &dyn StorageEngine) -> (ScopeId, u64, rrd_core::Runtime
     };
     assert!(engine.runtime().commit(&rejected).is_err());
     assert_eq!(engine.runtime().cursor().unwrap(), recreated.last_cursor);
-    let (_, final_snapshot) = engine.runtime().data_snapshot(&scope, 106, 4_096).unwrap();
+    let final_snapshot = engine
+        .runtime()
+        .data_snapshot(&scope, 106, 4_096)
+        .unwrap()
+        .snapshot;
     assert_eq!(final_snapshot.records.len(), 1);
     assert_eq!(
         final_snapshot.records[0].value.properties["revision"],
@@ -650,7 +666,7 @@ fn mixed_model_crud_snapshot_is_exact_after_rrflow_kv_reopen() {
             .runtime()
             .data_snapshot(&scope, 106, 4_096)
             .unwrap()
-            .1,
+            .snapshot,
         expected
     );
 }

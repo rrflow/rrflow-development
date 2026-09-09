@@ -107,6 +107,14 @@ impl RrdEngine {
                 })
             })
             .collect::<Result<Vec<_>>>()?;
+        let selected_versions = u64::try_from(execution.selected_versions)
+            .map_err(|_| ServiceError::Query("selected versions exceed u64".into()))?;
+        let analysis = execution
+            .analysis
+            .as_ref()
+            .map(public_query_analysis)
+            .transpose()?;
+        let read_evidence = crate::runtime::public_read_evidence(execution.read_evidence)?;
         Ok(QueryResult {
             canonical_query: query.canonical(),
             scope: request.scope.clone(),
@@ -133,22 +141,14 @@ impl RrdEngine {
                     .collect(),
             },
             execution: QueryExecutionSnapshot {
-                scanned_changes: u64::try_from(execution.scanned_changes)
-                    .map_err(|_| ServiceError::Query("scanned changes exceed u64".into()))?,
-                stamp_validation: execution.stamp_validation,
-                stamp_validation_max_changes: u64::try_from(execution.stamp_validation_max_changes)
-                    .map_err(|_| ServiceError::Query("stamp evidence exceeds u64".into()))?,
-                stamp_validation_proof_nodes: execution.stamp_validation_proof_nodes,
+                selected_versions,
+                read_evidence,
                 returned_rows: u64::try_from(execution.returned_rows)
                     .map_err(|_| ServiceError::Query("returned rows exceed u64".into()))?,
                 output_bytes: u64::try_from(execution.output_bytes)
                     .map_err(|_| ServiceError::Query("output bytes exceed u64".into()))?,
                 truncated: execution.truncated,
-                analysis: execution
-                    .analysis
-                    .as_ref()
-                    .map(public_query_analysis)
-                    .transpose()?,
+                analysis,
             },
             rows,
         })
@@ -288,6 +288,19 @@ impl RrdEngine {
         let operation_digest = digest::sha256_hex(
             &serde_json::to_vec(request).map_err(|error| ServiceError::Query(error.to_string()))?,
         );
+        let (definition, valid_at) = query_index_definition(request)?;
+        let query_catalogue = rrd_query::Catalog::capture_for_sources(
+            &self.storage,
+            &scope,
+            std::slice::from_ref(&definition.source),
+            rrd_store::RuntimeReadBudget::new(request.budget.max_storage_keys)
+                .map_err(|error| ServiceError::Query(error.to_string()))?,
+        )
+        .map_err(|error| ServiceError::Query(error.to_string()))?;
+        let selected_versions = u64::try_from(query_catalogue.selected_versions)
+            .map_err(|_| ServiceError::Query("selected versions exceed u64".into()))?;
+        let read_evidence =
+            crate::runtime::public_read_evidence(query_catalogue.read_evidence.clone())?;
         let repository = rrd_query::IndexCatalogueRepository::new(&self.storage, scope.clone());
         if let Some(receipt) = repository
             .operation_receipt(idempotency_key.as_str(), &operation_digest)
@@ -299,6 +312,8 @@ impl RrdEngine {
             return Ok(EnsureQueryIndexResult {
                 index: public_query_index(&receipt.entry)?,
                 catalogue_revision: catalogue.revision,
+                selected_versions,
+                read_evidence,
                 idempotent_replay: true,
             });
         }
@@ -313,7 +328,6 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        let (definition, valid_at) = query_index_definition(request)?;
         let preliminary = repository
             .load()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
@@ -337,8 +351,6 @@ impl RrdEngine {
         } else {
             preliminary
         };
-        let query_catalogue = rrd_query::Catalog::capture(&self.storage, &scope)
-            .map_err(|error| ServiceError::Query(error.to_string()))?;
         let source_cursor = query_catalogue.source_cursor(&definition.source);
         let mutation = rrd_query::IndexMutationContext {
             at: now,
@@ -414,6 +426,8 @@ impl RrdEngine {
         Ok(EnsureQueryIndexResult {
             index: public_query_index(&entry)?,
             catalogue_revision: recorded.revision,
+            selected_versions,
+            read_evidence,
             idempotent_replay: false,
         })
     }
@@ -495,9 +509,11 @@ fn public_query_row(row: &rrd_query::QueryRow) -> Result<QueryRowSnapshot> {
 fn query_execution_budget(
     budget: &rrd_contract::QueryBudget,
 ) -> Result<rrd_query::ExecutionBudget> {
+    let max_storage_keys = usize::try_from(budget.max_storage_keys)
+        .map_err(|_| ServiceError::Query("query key budget exceeds usize".into()))?;
     Ok(rrd_query::ExecutionBudget {
-        max_scanned_changes: usize::try_from(budget.max_scanned_changes)
-            .map_err(|_| ServiceError::Query("query scan budget exceeds usize".into()))?,
+        max_storage_keys: budget.max_storage_keys,
+        max_input_rows: max_storage_keys,
         max_rows: usize::try_from(budget.max_rows)
             .map_err(|_| ServiceError::Query("query row budget exceeds usize".into()))?,
         max_output_bytes: usize::try_from(budget.max_output_bytes)

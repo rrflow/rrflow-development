@@ -336,7 +336,7 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
         snapshot(&corpus.current, &current.changes, 250),
         corpus.current_snapshot
     );
-    let (snapshot_read, repository_snapshot) = engine
+    let repository_read = engine
         .runtime()
         .data_snapshot(
             &corpus.current.scope,
@@ -344,8 +344,13 @@ fn assert_direct_reads(engine: &dyn StorageEngine, corpus: &Corpus) -> Vec<Runti
             usize::try_from(READ_BUDGET).unwrap(),
         )
         .unwrap();
-    assert_eq!(snapshot_read, corpus.current);
-    assert_eq!(repository_snapshot, corpus.current_snapshot);
+    assert_eq!(repository_read.read, corpus.current);
+    assert_eq!(repository_read.snapshot, corpus.current_snapshot);
+    assert_eq!(
+        repository_read.selected_versions,
+        u64::try_from(corpus.current_changes.len()).unwrap()
+    );
+    assert_eq!(repository_read.read_evidence, current.evidence);
     assert_eq!(
         (
             retained.evidence.point_reads,

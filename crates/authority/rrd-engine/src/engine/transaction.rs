@@ -538,40 +538,14 @@ impl RrdEngine {
         )?;
         let data_transaction = DataTransaction::new(transaction.read.clone(), commit)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        let replay_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Query("preview replay limit exceeds usize".into()))?;
+        let key_budget = usize::try_from(request.max_storage_keys)
+            .map_err(|_| ServiceError::Query("preview key budget exceeds usize".into()))?;
         let valid_at = request.valid_at.unwrap_or(now);
-        let prospective = if transaction.read.schema_revision.is_none()
-            && data_transaction
-                .commit
-                .mutations
-                .iter()
-                .all(|mutation| matches!(mutation, RuntimeMutation::Claim { .. }))
-        {
-            DataSnapshot {
-                scope: transaction.read.scope.to_string(),
-                valid_at,
-                known_at_cursor: transaction
-                    .read
-                    .commit_cursor
-                    .checked_add(data_transaction.commit.mutations.len() as u64)
-                    .ok_or_else(|| {
-                        ServiceError::Contract("transaction preview cursor overflowed".into())
-                    })?,
-                schema_revision: 0,
-                read_manifest_sha256: transaction.read.manifest_id.clone(),
-                entries: Vec::new(),
-            }
-        } else {
-            public_data_snapshot(
-                &transaction.read,
-                self.storage.runtime().preview_data_snapshot(
-                    &data_transaction,
-                    valid_at,
-                    replay_limit,
-                )?,
-            )?
-        };
+        let prospective = public_data_snapshot(self.storage.runtime().preview_data_snapshot(
+            &data_transaction,
+            valid_at,
+            key_budget,
+        )?)?;
         let preview = TransactionPreview {
             transaction_id: transaction_id.clone(),
             read_cursor: transaction.lease.read_cursor,

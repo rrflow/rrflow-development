@@ -1,4 +1,4 @@
-use crate::{invalid, validate_sha256, DataReference, QueryValue, Result};
+use crate::{invalid, validate_sha256, DataReference, QueryValue, ReadEvidence, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -7,10 +7,10 @@ pub const MAX_CONTEXT_QUERY_BYTES: usize = 64 * 1024;
 pub const MAX_CONTEXT_SEEDS: usize = 256;
 pub const MAX_CONTEXT_ITEMS: u64 = 512;
 pub const MAX_CONTEXT_OUTPUT_BYTES: u64 = 768 * 1024;
-pub const MAX_CONTEXT_SCANNED_CHANGES: u64 = 1_000_000;
+pub const MAX_CONTEXT_STORAGE_KEYS: u64 = 1_000_000;
 pub const MAX_CONTEXT_GRAPH_DEPTH: u8 = 32;
 
-/// One explicit, bounded context request over the canonical runtime data log.
+/// One explicit, bounded context request over canonical semantic versions.
 ///
 /// The caller supplies intent and optional anchors, not storage topology.
 /// Record fields and graph relations are discovered by the engine from the
@@ -26,7 +26,7 @@ pub struct AssembleContext {
     pub max_graph_depth: u8,
     pub max_items: u64,
     pub max_output_bytes: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl AssembleContext {
@@ -52,8 +52,8 @@ impl AssembleContext {
         if self.max_output_bytes == 0 || self.max_output_bytes > MAX_CONTEXT_OUTPUT_BYTES {
             return invalid("context max_output_bytes exceeds its bound");
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_CONTEXT_SCANNED_CHANGES {
-            return invalid("context max_scanned_changes exceeds its bound");
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_CONTEXT_STORAGE_KEYS {
+            return invalid("context max_storage_keys exceeds its bound");
         }
         if self.max_graph_depth > MAX_CONTEXT_GRAPH_DEPTH {
             return invalid("context graph depth exceeds 32");
@@ -304,6 +304,8 @@ pub struct ContextPacket {
     pub query_sha256: String,
     pub read: ContextReadStamp,
     pub plan: ContextPlanSnapshot,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub items: Vec<ContextItem>,
     pub output_bytes: u64,
     pub truncated: bool,
@@ -321,6 +323,7 @@ impl ContextPacket {
         validate_sha256(&self.query_sha256, "query_sha256")?;
         self.read.validate()?;
         self.plan.validate()?;
+        self.read_evidence.validate()?;
         if self.plan.read != self.read {
             return invalid("context plan and packet read stamps differ");
         }
@@ -373,6 +376,8 @@ pub fn context_packet_sha256(packet: &ContextPacket) -> Result<String> {
         &packet.query_sha256,
         &packet.read,
         &packet.plan,
+        packet.selected_versions,
+        &packet.read_evidence,
         &packet.items,
         packet.output_bytes,
         packet.truncated,

@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0
+// OpenAPI SHA-256: 786e633fb850d9de13d96754d8929618a1bcea9d1184d8efdf02ed819b3e48ef
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -7308,7 +7308,7 @@ export interface operations {
                         request_id: string;
                     };
                     /**
-                     * @description One explicit, bounded context request over the canonical runtime data log.
+                     * @description One explicit, bounded context request over canonical semantic versions.
                      *
                      *     The caller supplies intent and optional anchors, not storage topology.
                      *     Record fields and graph relations are discovered by the engine from the
@@ -7322,7 +7322,7 @@ export interface operations {
                         /** Format: uint64 */
                         max_output_bytes: number;
                         /** Format: uint64 */
-                        max_scanned_changes: number;
+                        max_storage_keys: number;
                         query: string;
                         scope: string;
                         /** @default [] */
@@ -7502,7 +7502,58 @@ export interface operations {
                                     /** Format: uint64 */
                                     schema_revision?: number | null;
                                 };
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 truncated: boolean;
                                 /** Format: uint64 */
                                 valid_at: number;
@@ -7662,7 +7713,58 @@ export interface operations {
                                     /** Format: uint64 */
                                     schema_revision?: number | null;
                                 };
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 truncated: boolean;
                                 /** Format: uint64 */
                                 valid_at: number;
@@ -13244,8 +13346,8 @@ export interface operations {
                          *       "max_memory_bytes": 67108864,
                          *       "max_output_bytes": 524288,
                          *       "max_rows": 10000,
-                         *       "max_scanned_changes": 100000,
-                         *       "max_spill_bytes": 268435456
+                         *       "max_spill_bytes": 268435456,
+                         *       "max_storage_keys": 100000
                          *     }
                          */
                         budget?: {
@@ -13265,13 +13367,13 @@ export interface operations {
                             max_output_bytes: number;
                             /** Format: uint64 */
                             max_rows: number;
-                            /** Format: uint64 */
-                            max_scanned_changes: number;
                             /**
                              * Format: uint64
                              * @default 268435456
                              */
                             max_spill_bytes?: number;
+                            /** Format: uint64 */
+                            max_storage_keys: number;
                         };
                         parameters?: {
                             [key: string]: {
@@ -13384,15 +13486,59 @@ export interface operations {
                                     } | null;
                                     /** Format: uint64 */
                                     output_bytes: number;
+                                    /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                    read_evidence: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        key_budget: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        paths: {
+                                            /** Format: uint64 */
+                                            decoded_bytes: number;
+                                            /** Format: uint64 */
+                                            keys_examined: number;
+                                            /**
+                                             * @description The semantic physical path charged during a normal state read.
+                                             * @enum {string}
+                                             */
+                                            path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                            /** Format: uint64 */
+                                            point_reads: number;
+                                            /** Format: uint64 */
+                                            range_scans: number;
+                                            /** Format: uint64 */
+                                            values_decoded: number;
+                                        }[];
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        stamp_validation: {
+                                            /**
+                                             * Format: uint64
+                                             * @description Authenticated log-head/schema changes needed only to prove a retained
+                                             *     historical stamp. This is not the source of normal query rows.
+                                             */
+                                            change_reads: number;
+                                            /**
+                                             * @description The authentication strategy applied to the requested read stamp.
+                                             * @enum {string}
+                                             */
+                                            method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                            /** Format: uint16 */
+                                            proof_nodes: number;
+                                        };
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    };
                                     /** Format: uint64 */
                                     returned_rows: number;
                                     /** Format: uint64 */
-                                    scanned_changes: number;
-                                    stamp_validation: string;
-                                    /** Format: uint64 */
-                                    stamp_validation_max_changes: number;
-                                    /** Format: uint16 */
-                                    stamp_validation_proof_nodes: number;
+                                    selected_versions: number;
                                     truncated: boolean;
                                 };
                                 /** Format: uint64 */
@@ -13530,15 +13676,59 @@ export interface operations {
                                     } | null;
                                     /** Format: uint64 */
                                     output_bytes: number;
+                                    /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                    read_evidence: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        key_budget: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        paths: {
+                                            /** Format: uint64 */
+                                            decoded_bytes: number;
+                                            /** Format: uint64 */
+                                            keys_examined: number;
+                                            /**
+                                             * @description The semantic physical path charged during a normal state read.
+                                             * @enum {string}
+                                             */
+                                            path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                            /** Format: uint64 */
+                                            point_reads: number;
+                                            /** Format: uint64 */
+                                            range_scans: number;
+                                            /** Format: uint64 */
+                                            values_decoded: number;
+                                        }[];
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        stamp_validation: {
+                                            /**
+                                             * Format: uint64
+                                             * @description Authenticated log-head/schema changes needed only to prove a retained
+                                             *     historical stamp. This is not the source of normal query rows.
+                                             */
+                                            change_reads: number;
+                                            /**
+                                             * @description The authentication strategy applied to the requested read stamp.
+                                             * @enum {string}
+                                             */
+                                            method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                            /** Format: uint16 */
+                                            proof_nodes: number;
+                                        };
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    };
                                     /** Format: uint64 */
                                     returned_rows: number;
                                     /** Format: uint64 */
-                                    scanned_changes: number;
-                                    stamp_validation: string;
-                                    /** Format: uint64 */
-                                    stamp_validation_max_changes: number;
-                                    /** Format: uint16 */
-                                    stamp_validation_proof_nodes: number;
+                                    selected_versions: number;
                                     truncated: boolean;
                                 };
                                 /** Format: uint64 */
@@ -13663,8 +13853,8 @@ export interface operations {
                          *       "max_memory_bytes": 67108864,
                          *       "max_output_bytes": 524288,
                          *       "max_rows": 10000,
-                         *       "max_scanned_changes": 100000,
-                         *       "max_spill_bytes": 268435456
+                         *       "max_spill_bytes": 268435456,
+                         *       "max_storage_keys": 100000
                          *     }
                          */
                         budget?: {
@@ -13684,13 +13874,13 @@ export interface operations {
                             max_output_bytes: number;
                             /** Format: uint64 */
                             max_rows: number;
-                            /** Format: uint64 */
-                            max_scanned_changes: number;
                             /**
                              * Format: uint64
                              * @default 268435456
                              */
                             max_spill_bytes?: number;
+                            /** Format: uint64 */
+                            max_storage_keys: number;
                         };
                         definition_query: string;
                         full_text?: {
@@ -13873,6 +14063,57 @@ export interface operations {
                                     state: "building" | "ready" | "quarantined" | "retiring";
                                     unique: boolean;
                                 };
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
+                                /** Format: uint64 */
+                                selected_versions: number;
                             };
                             /** @constant */
                             status: "ok";
@@ -13995,6 +14236,57 @@ export interface operations {
                                     state: "building" | "ready" | "quarantined" | "retiring";
                                     unique: boolean;
                                 };
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
+                                /** Format: uint64 */
+                                selected_versions: number;
                             };
                             /** @constant */
                             status: "ok";
@@ -14341,8 +14633,8 @@ export interface operations {
                          *       "max_memory_bytes": 67108864,
                          *       "max_output_bytes": 524288,
                          *       "max_rows": 10000,
-                         *       "max_scanned_changes": 100000,
-                         *       "max_spill_bytes": 268435456
+                         *       "max_spill_bytes": 268435456,
+                         *       "max_storage_keys": 100000
                          *     }
                          */
                         budget?: {
@@ -14362,13 +14654,13 @@ export interface operations {
                             max_output_bytes: number;
                             /** Format: uint64 */
                             max_rows: number;
-                            /** Format: uint64 */
-                            max_scanned_changes: number;
                             /**
                              * Format: uint64
                              * @default 268435456
                              */
                             max_spill_bytes?: number;
+                            /** Format: uint64 */
+                            max_storage_keys: number;
                         };
                         /** Format: uint64 */
                         max_delta_rows: number;
@@ -15977,8 +16269,8 @@ export interface operations {
                              *       "max_memory_bytes": 67108864,
                              *       "max_output_bytes": 524288,
                              *       "max_rows": 10000,
-                             *       "max_scanned_changes": 100000,
-                             *       "max_spill_bytes": 268435456
+                             *       "max_spill_bytes": 268435456,
+                             *       "max_storage_keys": 100000
                              *     }
                              */
                             budget?: {
@@ -15998,13 +16290,13 @@ export interface operations {
                                 max_output_bytes: number;
                                 /** Format: uint64 */
                                 max_rows: number;
-                                /** Format: uint64 */
-                                max_scanned_changes: number;
                                 /**
                                  * Format: uint64
                                  * @default 268435456
                                  */
                                 max_spill_bytes?: number;
+                                /** Format: uint64 */
+                                max_storage_keys: number;
                             };
                             /** Format: uint64 */
                             max_delta_rows: number;
@@ -17559,7 +17851,7 @@ export interface operations {
                          * Format: uint32
                          * @default 10000
                          */
-                        max_scanned_changes?: number;
+                        max_storage_keys?: number;
                         mutations: ({
                             /** Format: float */
                             confidence?: number | null;
@@ -18457,8 +18749,7 @@ export interface operations {
                         /**
                          * Format: uint64
                          * @description Valid-time coordinate for the prospective read-your-writes snapshot.
-                         *     Omission preserves the pre-G05 request shape and selects the server's
-                         *     single request time.
+                         *     Omission selects the server's single request time.
                          */
                         valid_at?: number | null;
                     };
@@ -20334,10 +20625,61 @@ export interface operations {
                                     }[];
                                     /** Format: uint64 */
                                     known_at_cursor: number;
+                                    /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                    read_evidence: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        key_budget: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        paths: {
+                                            /** Format: uint64 */
+                                            decoded_bytes: number;
+                                            /** Format: uint64 */
+                                            keys_examined: number;
+                                            /**
+                                             * @description The semantic physical path charged during a normal state read.
+                                             * @enum {string}
+                                             */
+                                            path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                            /** Format: uint64 */
+                                            point_reads: number;
+                                            /** Format: uint64 */
+                                            range_scans: number;
+                                            /** Format: uint64 */
+                                            values_decoded: number;
+                                        }[];
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        stamp_validation: {
+                                            /**
+                                             * Format: uint64
+                                             * @description Authenticated log-head/schema changes needed only to prove a retained
+                                             *     historical stamp. This is not the source of normal query rows.
+                                             */
+                                            change_reads: number;
+                                            /**
+                                             * @description The authentication strategy applied to the requested read stamp.
+                                             * @enum {string}
+                                             */
+                                            method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                            /** Format: uint16 */
+                                            proof_nodes: number;
+                                        };
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    };
                                     read_manifest_sha256: string;
                                     /** Format: uint64 */
                                     schema_revision: number;
                                     scope: string;
+                                    /** Format: uint64 */
+                                    selected_versions: number;
                                     /** Format: uint64 */
                                     valid_at: number;
                                 };
@@ -22215,10 +22557,61 @@ export interface operations {
                                     }[];
                                     /** Format: uint64 */
                                     known_at_cursor: number;
+                                    /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                    read_evidence: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        key_budget: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        paths: {
+                                            /** Format: uint64 */
+                                            decoded_bytes: number;
+                                            /** Format: uint64 */
+                                            keys_examined: number;
+                                            /**
+                                             * @description The semantic physical path charged during a normal state read.
+                                             * @enum {string}
+                                             */
+                                            path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                            /** Format: uint64 */
+                                            point_reads: number;
+                                            /** Format: uint64 */
+                                            range_scans: number;
+                                            /** Format: uint64 */
+                                            values_decoded: number;
+                                        }[];
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        stamp_validation: {
+                                            /**
+                                             * Format: uint64
+                                             * @description Authenticated log-head/schema changes needed only to prove a retained
+                                             *     historical stamp. This is not the source of normal query rows.
+                                             */
+                                            change_reads: number;
+                                            /**
+                                             * @description The authentication strategy applied to the requested read stamp.
+                                             * @enum {string}
+                                             */
+                                            method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                            /** Format: uint16 */
+                                            proof_nodes: number;
+                                        };
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    };
                                     read_manifest_sha256: string;
                                     /** Format: uint64 */
                                     schema_revision: number;
                                     scope: string;
+                                    /** Format: uint64 */
+                                    selected_versions: number;
                                     /** Format: uint64 */
                                     valid_at: number;
                                 };
@@ -22805,7 +23198,7 @@ export interface operations {
                          */
                         collection_id: string;
                         /** Format: uint64 */
-                        max_scanned_changes: number;
+                        max_storage_keys: number;
                         references: {
                             /**
                              * @description A canonical public identifier component.
@@ -23040,10 +23433,59 @@ export interface operations {
                                         vectors: number[][];
                                     };
                                 }[];
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 read_manifest_sha256: string;
-                                /** Format: uint64 */
-                                scanned_changes: number;
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -23257,10 +23699,59 @@ export interface operations {
                                         vectors: number[][];
                                     };
                                 }[];
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 read_manifest_sha256: string;
-                                /** Format: uint64 */
-                                scanned_changes: number;
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -23661,7 +24152,7 @@ export interface operations {
                         /** Format: uint64 */
                         limit: number;
                         /** Format: uint64 */
-                        max_scanned_changes: number;
+                        max_storage_keys: number;
                         scope: string;
                         /** Format: uint64 */
                         valid_at: number;
@@ -23880,10 +24371,59 @@ export interface operations {
                                         vectors: number[][];
                                     };
                                 }[];
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 read_manifest_sha256: string;
-                                /** Format: uint64 */
-                                scanned_changes: number;
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 truncated: boolean;
                                 /**
                                  * @description A canonical public identifier component.
@@ -24098,10 +24638,59 @@ export interface operations {
                                         vectors: number[][];
                                     };
                                 }[];
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 read_manifest_sha256: string;
-                                /** Format: uint64 */
-                                scanned_changes: number;
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 truncated: boolean;
                                 /**
                                  * @description A canonical public identifier component.
@@ -24492,7 +25081,7 @@ export interface operations {
                             kind: "not";
                         }) | null;
                         /** Format: uint64 */
-                        max_scanned_changes: number;
+                        max_storage_keys: number;
                         /** @enum {string|null} */
                         metric?: "cosine" | "dot" | "euclidean" | "manhattan" | null;
                         /**
@@ -24641,6 +25230,55 @@ export interface operations {
                                 /** Format: uint64 */
                                 known_at_cursor: number;
                                 plan_sha256: string;
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 read_manifest_sha256: string;
                                 resources: {
                                     /** Format: uint64 */
@@ -24660,9 +25298,9 @@ export interface operations {
                                     /** Format: uint64 */
                                     selected_generation?: number | null;
                                 };
-                                /** Format: uint64 */
-                                scanned_changes: number;
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -24759,6 +25397,55 @@ export interface operations {
                                 /** Format: uint64 */
                                 known_at_cursor: number;
                                 plan_sha256: string;
+                                /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
+                                read_evidence: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint64 */
+                                    decoded_bytes: number;
+                                    /** Format: uint64 */
+                                    key_budget: number;
+                                    /** Format: uint64 */
+                                    keys_examined: number;
+                                    paths: {
+                                        /** Format: uint64 */
+                                        decoded_bytes: number;
+                                        /** Format: uint64 */
+                                        keys_examined: number;
+                                        /**
+                                         * @description The semantic physical path charged during a normal state read.
+                                         * @enum {string}
+                                         */
+                                        path: "read_stamp" | "schema_versions" | "claim_versions" | "record_versions" | "relation_versions" | "event_versions" | "vector_versions" | "series_versions" | "geo_versions" | "object_versions" | "accumulator_proof";
+                                        /** Format: uint64 */
+                                        point_reads: number;
+                                        /** Format: uint64 */
+                                        range_scans: number;
+                                        /** Format: uint64 */
+                                        values_decoded: number;
+                                    }[];
+                                    /** Format: uint64 */
+                                    point_reads: number;
+                                    /** Format: uint64 */
+                                    range_scans: number;
+                                    stamp_validation: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Authenticated log-head/schema changes needed only to prove a retained
+                                         *     historical stamp. This is not the source of normal query rows.
+                                         */
+                                        change_reads: number;
+                                        /**
+                                         * @description The authentication strategy applied to the requested read stamp.
+                                         * @enum {string}
+                                         */
+                                        method: "authenticated_current_head" | "rfc9162_direct_versions";
+                                        /** Format: uint16 */
+                                        proof_nodes: number;
+                                    };
+                                    /** Format: uint64 */
+                                    values_decoded: number;
+                                };
                                 read_manifest_sha256: string;
                                 resources: {
                                     /** Format: uint64 */
@@ -24778,9 +25465,9 @@ export interface operations {
                                     /** Format: uint64 */
                                     selected_generation?: number | null;
                                 };
-                                /** Format: uint64 */
-                                scanned_changes: number;
                                 scope: string;
+                                /** Format: uint64 */
+                                selected_versions: number;
                                 /**
                                  * @description A canonical public identifier component.
                                  *

@@ -15,6 +15,7 @@ mod memory_context;
 mod memory_estate;
 mod model_manifest;
 mod platform;
+mod read;
 mod reasoning_tree;
 mod router;
 mod sdk_conformance;
@@ -46,6 +47,7 @@ pub use diagnostic::{
     DiagnosticSnapshot, DiagnosticSnapshotLease, DiagnosticVectorArtifactCatalogueSnapshot,
     DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot, ReadDiagnosticSnapshot,
     DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION, MAX_DIAGNOSTIC_AUDIT_RECORDS,
+    MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES,
 };
 pub use function::{
     validate_function_value, ExecuteFunction, FunctionArtifact, FunctionArtifactMediaType,
@@ -81,8 +83,7 @@ pub use memory_context::{
     AssembleContext, ContextAccessPath, ContextEvidence, ContextEvidenceKind, ContextItem,
     ContextPacket, ContextPlanSnapshot, ContextPlanStage, ContextPlanStageKind,
     ContextPlanStageStatus, ContextReadStamp, MAX_CONTEXT_GRAPH_DEPTH, MAX_CONTEXT_ITEMS,
-    MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SCANNED_CHANGES,
-    MAX_CONTEXT_SEEDS,
+    MAX_CONTEXT_OUTPUT_BYTES, MAX_CONTEXT_QUERY_BYTES, MAX_CONTEXT_SEEDS, MAX_CONTEXT_STORAGE_KEYS,
 };
 pub use memory_estate::{
     MemoryEstatePlan, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
@@ -100,6 +101,10 @@ pub use model_manifest::{
     ROUTER_MODEL_MANIFEST_CONTRACT_VERSION,
 };
 pub use platform::{PlatformTermDefinition, PlatformTermRole, PLATFORM_TERMS};
+pub use read::{
+    ReadAccessPath, ReadEvidence, ReadPathEvidence, ReadStampValidationEvidence,
+    ReadStampValidationMethod, READ_EVIDENCE_CONTRACT_VERSION,
+};
 pub use reasoning_tree::{
     ReasoningActiveCursor, ReasoningCondition, ReasoningConditionEvaluation,
     ReasoningConditionPredicate, ReasoningCursorAdvance, ReasoningDecisionEvidence, ReasoningEdge,
@@ -152,17 +157,17 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0";
+    "786e633fb850d9de13d96754d8929618a1bcea9d1184d8efdf02ed819b3e48ef";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
 pub const MAX_TRANSACTION_CLAIMS: usize = 4_096;
-pub const MAX_DATA_SNAPSHOT_CHANGES: u32 = 1_000_000;
+pub const MAX_DATA_SNAPSHOT_STORAGE_KEYS: u32 = 1_000_000;
 pub const MAX_VECTOR_DIMENSIONS: usize = 1_048_576;
 pub const MAX_QUERY_BYTES: usize = 64 * 1024;
 pub const MAX_QUERY_PARAMETERS: usize = 128;
 pub const MAX_QUERY_PARAMETER_BYTES: usize = 64 * 1024;
-pub const MAX_QUERY_SCANNED_CHANGES: u64 = 1_000_000;
+pub const MAX_QUERY_STORAGE_KEYS: u64 = 1_000_000;
 pub const MAX_QUERY_ROWS: u64 = 100_000;
 pub const MAX_QUERY_OUTPUT_BYTES: u64 = 768 * 1024;
 pub const MAX_QUERY_BATCH_ROWS: u64 = 1_024;
@@ -173,7 +178,8 @@ pub const MAX_QUERY_TRANSACTION_MUTATIONS: usize = 256;
 pub const MAX_QUERY_TRANSACTION_BINDING_BYTES: usize = 1024 * 1024;
 pub const MAX_LIVE_QUERY_DELTA_ROWS: u64 = 100_000;
 pub const MAX_LIVE_QUERY_WAIT_MS: u64 = 5_000;
-pub const MAX_VECTOR_SEARCH_CHANGES: u64 = 1_000_000;
+pub const MAX_VECTOR_STORAGE_KEYS: u64 = 1_000_000;
+pub const MAX_VECTOR_SEARCH_WORK: u64 = 1_000_000;
 pub const MAX_VECTOR_SEARCH_TOP_K: u64 = 100_000;
 pub const MAX_VECTOR_POINT_PAGE: u64 = 4_096;
 pub const MAX_CHANGEFEED_PAGE: u64 = 4_096;
@@ -204,7 +210,7 @@ pub enum QueryValue {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct QueryBudget {
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
     pub max_rows: u64,
     pub max_output_bytes: u64,
     pub max_batch_rows: u64,
@@ -219,7 +225,7 @@ pub struct QueryBudget {
 impl Default for QueryBudget {
     fn default() -> Self {
         Self {
-            max_scanned_changes: 100_000,
+            max_storage_keys: 100_000,
             max_rows: 10_000,
             max_output_bytes: 512 * 1024,
             max_batch_rows: 256,
@@ -234,9 +240,9 @@ impl QueryBudget {
     pub fn validate(&self) -> Result<()> {
         for (name, value, maximum) in [
             (
-                "max_scanned_changes",
-                self.max_scanned_changes,
-                MAX_QUERY_SCANNED_CHANGES,
+                "max_storage_keys",
+                self.max_storage_keys,
+                MAX_QUERY_STORAGE_KEYS,
             ),
             ("max_rows", self.max_rows, MAX_QUERY_ROWS),
             (
@@ -436,10 +442,8 @@ pub struct QueryRowSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct QueryExecutionSnapshot {
-    pub scanned_changes: u64,
-    pub stamp_validation: String,
-    pub stamp_validation_max_changes: u64,
-    pub stamp_validation_proof_nodes: u16,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub returned_rows: u64,
     pub output_bytes: u64,
     pub truncated: bool,
@@ -752,6 +756,8 @@ pub struct QueryIndexCatalogueSnapshot {
 pub struct EnsureQueryIndexResult {
     pub index: QueryIndexSnapshot,
     pub catalogue_revision: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub idempotent_replay: bool,
 }
 
@@ -1005,7 +1011,7 @@ pub struct DeleteVectorCollection {
     pub scope: String,
     pub collection_id: CanonicalId,
     pub valid_at: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl DeleteVectorCollection {
@@ -1014,9 +1020,9 @@ impl DeleteVectorCollection {
         if self.valid_at == 0 {
             return invalid("vector collection delete valid_at must be greater than zero");
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
-                "vector collection delete max_scanned_changes must be in 1..={MAX_VECTOR_SEARCH_CHANGES}"
+                "vector collection delete max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
             ));
         }
         Ok(())
@@ -1028,6 +1034,8 @@ impl DeleteVectorCollection {
 pub struct DeleteVectorCollectionResult {
     pub deleted_collection: VectorCollectionSnapshot,
     pub catalogue_revision: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub idempotent_replay: bool,
 }
 
@@ -1166,16 +1174,16 @@ pub struct EnsureVectorIndex {
     pub configuration: VectorIndexConfiguration,
     #[serde(default)]
     pub build_policy: VectorIndexBuildPolicy,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl EnsureVectorIndex {
     pub fn validate(&self) -> Result<()> {
         validate_vector_scope(&self.scope)?;
         self.configuration.validate()?;
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
-                "vector index max_scanned_changes must be in 1..={MAX_VECTOR_SEARCH_CHANGES}"
+                "vector index max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
             ));
         }
         Ok(())
@@ -1225,6 +1233,8 @@ pub struct VectorIndexSnapshot {
 #[serde(deny_unknown_fields)]
 pub struct EnsureVectorIndexResult {
     pub index: VectorIndexSnapshot,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub idempotent_replay: bool,
 }
 
@@ -1307,15 +1317,15 @@ pub struct BuildVectorQuantizationArtifact {
     pub method: VectorQuantizationMethod,
     #[serde(default)]
     pub filter_properties: Vec<CanonicalId>,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl BuildVectorQuantizationArtifact {
     pub fn validate(&self) -> Result<()> {
         validate_vector_scope(&self.scope)?;
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
-                "quantization build max_scanned_changes must be in 1..={MAX_VECTOR_SEARCH_CHANGES}"
+                "quantization build max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
             ));
         }
         let unique = self
@@ -1414,6 +1424,8 @@ pub struct VectorQuantizationArtifactSnapshot {
 #[serde(deny_unknown_fields)]
 pub struct BuildVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1572,15 +1584,15 @@ pub struct SearchVectors {
     pub top_k: u64,
     #[serde(default)]
     pub mode: VectorSearchMode,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl SearchVectors {
     pub fn validate(&self) -> Result<()> {
         validate_vector_scope(&self.scope)?;
         let collection_address = self.collection_id.is_some() && self.vector_name.is_some();
-        let legacy_address = self.field.is_some() && self.metric.is_some();
-        if collection_address == legacy_address
+        let field_address = self.field.is_some() && self.metric.is_some();
+        if collection_address == field_address
             || self.collection_id.is_some() != self.vector_name.is_some()
             || self.field.is_some() != self.metric.is_some()
         {
@@ -1607,9 +1619,9 @@ impl SearchVectors {
                 ef_search,
             } => {
                 if exact_rerank < self.top_k
-                    || exact_rerank > MAX_VECTOR_SEARCH_CHANGES
+                    || exact_rerank > MAX_VECTOR_SEARCH_WORK
                     || ef_search < exact_rerank
-                    || ef_search > MAX_VECTOR_SEARCH_CHANGES
+                    || ef_search > MAX_VECTOR_SEARCH_WORK
                 {
                     return invalid(
                         "approximate vector search requires top_k <= exact_rerank <= ef_search within the search bound",
@@ -1617,9 +1629,9 @@ impl SearchVectors {
                 }
             }
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
-                "vector search max_scanned_changes must be in 1..={MAX_VECTOR_SEARCH_CHANGES}"
+                "vector search max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
             ));
         }
         let vector = match &self.query {
@@ -1684,7 +1696,8 @@ pub struct VectorSearchResult {
     pub vector_name: Option<CanonicalId>,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
-    pub scanned_changes: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub plan_sha256: String,
     pub access_path: CanonicalId,
     pub exact: bool,
@@ -1767,7 +1780,7 @@ pub struct SearchHybrid {
     pub fusion: HybridFusion,
     pub top_k: u64,
     pub candidate_k: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl SearchHybrid {
@@ -1802,7 +1815,7 @@ impl SearchHybrid {
             metric: None,
             top_k: self.candidate_k,
             mode: self.vector_mode,
-            max_scanned_changes: self.max_scanned_changes,
+            max_storage_keys: self.max_storage_keys,
         }
         .validate()
     }
@@ -1831,6 +1844,8 @@ pub struct HybridSearchResult {
     pub scope: String,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub text_plan_sha256: String,
     pub vector_plan_sha256: String,
     pub fusion_plan_sha256: String,
@@ -2012,7 +2027,7 @@ impl RetrievalQuery {
                 metric: None,
                 top_k: limit,
                 mode,
-                max_scanned_changes: request.max_scanned_changes,
+                max_storage_keys: request.max_storage_keys,
             }
             .validate()
         };
@@ -2215,7 +2230,7 @@ pub struct ExecuteRetrievalQuery {
     pub result_shape: RetrievalResultShape,
     pub limit: u64,
     pub candidate_limit: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl ExecuteRetrievalQuery {
@@ -2233,8 +2248,8 @@ impl ExecuteRetrievalQuery {
                 "retrieval query requires 1 <= limit <= candidate_limit within the result bound",
             );
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
-            return invalid("retrieval query max_scanned_changes exceeds its bound");
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
+            return invalid("retrieval query max_storage_keys exceeds its bound");
         }
         match self.result_shape {
             RetrievalResultShape::Points => {}
@@ -2269,7 +2284,7 @@ impl ExecuteRetrievalQuery {
         if self
             .candidate_limit
             .checked_mul(nodes as u64)
-            .is_none_or(|work| work > MAX_VECTOR_SEARCH_CHANGES)
+            .is_none_or(|work| work > MAX_VECTOR_SEARCH_WORK)
         {
             return invalid("retrieval query candidate-stage work exceeds its bound");
         }
@@ -2354,6 +2369,8 @@ pub struct RetrievalQueryResult {
     pub collection_id: CanonicalId,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub query_plan_sha256: String,
     pub stages: Vec<RetrievalStageEvidence>,
     pub output: RetrievalOutput,
@@ -2369,7 +2386,7 @@ pub struct ScrollVectorPoints {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub after_reference: Option<DataReference>,
     pub limit: u64,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filter: Option<VectorPayloadFilter>,
 }
@@ -2385,9 +2402,9 @@ impl ScrollVectorPoints {
                 "vector point scroll limit must be in 1..={MAX_VECTOR_POINT_PAGE}"
             ));
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
-                "vector point scroll max_scanned_changes must be in 1..={MAX_VECTOR_SEARCH_CHANGES}"
+                "vector point scroll max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
             ));
         }
         if let Some(filter) = &self.filter {
@@ -2417,7 +2434,8 @@ pub struct VectorPointPage {
     pub vector_name: CanonicalId,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
-    pub scanned_changes: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub points: Vec<VectorPointSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_after: Option<DataReference>,
@@ -2432,7 +2450,7 @@ pub struct RetrieveVectorPoints {
     pub vector_name: CanonicalId,
     pub valid_at: u64,
     pub references: Vec<DataReference>,
-    pub max_scanned_changes: u64,
+    pub max_storage_keys: u64,
 }
 
 impl RetrieveVectorPoints {
@@ -2449,9 +2467,9 @@ impl RetrieveVectorPoints {
         if self.references.iter().collect::<BTreeSet<_>>().len() != self.references.len() {
             return invalid("vector point retrieve references must be unique");
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_VECTOR_SEARCH_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
-                "vector point retrieve max_scanned_changes must be in 1..={MAX_VECTOR_SEARCH_CHANGES}"
+                "vector point retrieve max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"
             ));
         }
         Ok(())
@@ -2466,7 +2484,8 @@ pub struct VectorPointBatch {
     pub vector_name: CanonicalId,
     pub read_manifest_sha256: String,
     pub known_at_cursor: u64,
-    pub scanned_changes: u64,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub points: Vec<VectorPointSnapshot>,
     pub missing: Vec<DataReference>,
 }
@@ -5398,7 +5417,7 @@ pub struct DataSchemaRegistry {
 #[serde(deny_unknown_fields)]
 pub struct ReadDataSnapshot {
     pub valid_at: u64,
-    pub max_scanned_changes: u32,
+    pub max_storage_keys: u32,
 }
 
 impl ReadDataSnapshot {
@@ -5406,9 +5425,9 @@ impl ReadDataSnapshot {
         if self.valid_at == 0 {
             return invalid("data snapshot valid_at must be greater than zero");
         }
-        if self.max_scanned_changes == 0 || self.max_scanned_changes > MAX_DATA_SNAPSHOT_CHANGES {
+        if self.max_storage_keys == 0 || self.max_storage_keys > MAX_DATA_SNAPSHOT_STORAGE_KEYS {
             return invalid(format!(
-                "data snapshot max_scanned_changes must be in 1..={MAX_DATA_SNAPSHOT_CHANGES}"
+                "data snapshot max_storage_keys must be in 1..={MAX_DATA_SNAPSHOT_STORAGE_KEYS}"
             ));
         }
         Ok(())
@@ -5434,6 +5453,8 @@ pub struct DataSnapshot {
     pub known_at_cursor: u64,
     pub schema_revision: u64,
     pub read_manifest_sha256: String,
+    pub selected_versions: u64,
+    pub read_evidence: ReadEvidence,
     pub entries: Vec<DataSnapshotEntry>,
 }
 
@@ -5995,12 +6016,11 @@ pub fn transaction_operation_sha256(mutations: &[TransactionMutation]) -> String
 pub struct PreviewTransaction {
     pub mutations: Vec<TransactionMutation>,
     /// Valid-time coordinate for the prospective read-your-writes snapshot.
-    /// Omission preserves the pre-G05 request shape and selects the server's
-    /// single request time.
+    /// Omission selects the server's single request time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub valid_at: Option<u64>,
     #[serde(default = "default_transaction_preview_changes")]
-    pub max_scanned_changes: u32,
+    pub max_storage_keys: u32,
 }
 
 impl PreviewTransaction {
@@ -6014,11 +6034,11 @@ impl PreviewTransaction {
             mutation.validate()?;
         }
         if self.valid_at == Some(0)
-            || self.max_scanned_changes == 0
-            || self.max_scanned_changes > MAX_DATA_SNAPSHOT_CHANGES
+            || self.max_storage_keys == 0
+            || self.max_storage_keys > MAX_DATA_SNAPSHOT_STORAGE_KEYS
         {
             return invalid(format!(
-                "transaction preview requires a non-zero valid_at when present and max_scanned_changes in 1..={MAX_DATA_SNAPSHOT_CHANGES}"
+                "transaction preview requires a non-zero valid_at when present and max_storage_keys in 1..={MAX_DATA_SNAPSHOT_STORAGE_KEYS}"
             ));
         }
         Ok(())
@@ -6046,7 +6066,7 @@ impl TransactionPreview {
         PreviewTransaction {
             mutations: self.mutations.clone(),
             valid_at: Some(self.prospective.valid_at),
-            max_scanned_changes: MAX_DATA_SNAPSHOT_CHANGES,
+            max_storage_keys: MAX_DATA_SNAPSHOT_STORAGE_KEYS,
         }
         .validate()?;
         if self.prospective.known_at_cursor

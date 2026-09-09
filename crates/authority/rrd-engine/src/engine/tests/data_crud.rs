@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use rrd_contract::{
     DataLogicalModel, DataReference, DataSchemaMode, DataSchemaRegistry, DataTableSchema,
-    DataTarget, QueryValue, ReadDataSnapshot,
+    DataTarget, QueryValue, ReadAccessPath, ReadDataSnapshot,
 };
 
 fn data_ref(kind: &str, value: &str) -> DataReference {
@@ -141,7 +141,7 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
             &lease.token,
             &ReadDataSnapshot {
                 valid_at: 1_100,
-                max_scanned_changes: 64,
+                max_storage_keys: 64,
             },
             1_101,
             "request-data-read-first",
@@ -150,6 +150,18 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
         .unwrap();
     assert_eq!(first.known_at_cursor, 3);
     assert_eq!(first.schema_revision, 1);
+    assert_eq!(first.selected_versions, 3);
+    first.read_evidence.validate().unwrap();
+    assert!(first
+        .read_evidence
+        .paths
+        .iter()
+        .any(|path| path.path == ReadAccessPath::RecordVersions));
+    assert!(first
+        .read_evidence
+        .paths
+        .iter()
+        .any(|path| path.path == ReadAccessPath::EventVersions));
     assert_eq!(first.entries.len(), 2);
     assert!(first
         .entries
@@ -182,7 +194,7 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
             &lease.token,
             &ReadDataSnapshot {
                 valid_at: 1_250,
-                max_scanned_changes: 64,
+                max_storage_keys: 64,
             },
             1_250,
             "request-data-read-update",
@@ -190,6 +202,7 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
         )
         .unwrap();
     assert_eq!(updated.known_at_cursor, 6);
+    assert_eq!(updated.selected_versions, 6);
     assert_eq!(updated.entries.len(), 2);
     assert!(updated
         .entries
@@ -223,7 +236,7 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
             &lease.token,
             &ReadDataSnapshot {
                 valid_at: 1_300,
-                max_scanned_changes: 64,
+                max_storage_keys: 64,
             },
             1_301,
             "request-data-read-retired",
@@ -231,6 +244,7 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
         )
         .unwrap();
     assert!(retired.entries.is_empty());
+    assert_eq!(retired.selected_versions, 8);
 
     drop(engine);
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
@@ -248,7 +262,7 @@ fn public_engine_reads_updates_event_corrections_and_retirements_at_one_stamp() 
             &lease.token,
             &ReadDataSnapshot {
                 valid_at: 1_300,
-                max_scanned_changes: 64,
+                max_storage_keys: 64,
             },
             1_302,
             "request-data-read-reopen",

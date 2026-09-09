@@ -2,7 +2,7 @@ use crate::{
     invalid, AuditPage, CanonicalId, ChangefeedPage, DataObjectReceipt, DataProperties,
     DataSchemaRegistry, EstateSnapshot, ProductCapabilityCatalogue, QueryIndexCatalogueSnapshot,
     Readiness, ResourceId, VectorCollectionCatalogueSnapshot, MAX_CHANGEFEED_PAGE,
-    MAX_MESSAGE_BYTES, MAX_QUERY_SCANNED_CHANGES,
+    MAX_MESSAGE_BYTES,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,7 @@ use sha2::{Digest, Sha256};
 
 pub const DIAGNOSTIC_SNAPSHOT_FORMAT_VERSION: u16 = 1;
 pub const MAX_DIAGNOSTIC_AUDIT_RECORDS: u16 = 1_024;
+pub const MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES: u64 = 1_000_000;
 
 /// Coordinates a bounded diagnostic read. Cursors are explicit so a client can
 /// resume without asking RRD to infer history from UI state.
@@ -42,10 +43,10 @@ impl ReadDiagnosticSnapshot {
             ));
         }
         if self.runtime_max_scanned_changes == 0
-            || self.runtime_max_scanned_changes > MAX_QUERY_SCANNED_CHANGES
+            || self.runtime_max_scanned_changes > MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES
         {
             return invalid(format!(
-                "diagnostic runtime_max_scanned_changes must be in 1..={MAX_QUERY_SCANNED_CHANGES}"
+                "diagnostic runtime_max_scanned_changes must be in 1..={MAX_DIAGNOSTIC_RUNTIME_SCANNED_CHANGES}"
             ));
         }
         if self

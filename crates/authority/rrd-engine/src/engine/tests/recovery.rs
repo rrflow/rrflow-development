@@ -117,7 +117,7 @@ fn durable_prepare_reopens_without_republishing_or_rejournaling() {
     let request = PreviewTransaction {
         mutations: vec![mutation("prepared")],
         valid_at: Some(1_000),
-        max_scanned_changes: 10,
+        max_storage_keys: 10,
     };
     let context = mutation_context(&id("prepare-key"), "request-prepare", "operation-prepare");
     let first = service

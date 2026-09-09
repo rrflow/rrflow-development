@@ -9,6 +9,7 @@ pub mod data_plane;
 pub mod instance;
 pub mod operator_knowledge;
 pub mod query;
+mod read_evidence;
 pub mod trace;
 pub mod vector_catalog;
 pub mod vector_residency;
@@ -32,6 +33,7 @@ pub use query::{
     execute_traced_query, query_parameters_from_json, ExecutionBudget, Parameters,
     TracedQueryExecution,
 };
+pub(crate) use read_evidence::{merge_read_evidence, public_read_evidence};
 pub use trace::{
     install_runtime_trace_contract, record_runtime_trace, DurableTraceSpan, TraceIdentity,
 };

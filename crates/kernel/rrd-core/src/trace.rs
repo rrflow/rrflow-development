@@ -430,11 +430,19 @@ pub enum TraceAttribute {
     CacheStatus,
     InputItems,
     InputBytes,
+    MaxStorageKeys,
     OutputItems,
     OutputBytes,
+    SelectedVersions,
     KeysExamined,
     PagesExamined,
     RowsExamined,
+    ReadPointReads,
+    ReadRangeScans,
+    ReadValuesDecoded,
+    ReadStampValidation,
+    ReadStampValidationChangeReads,
+    ReadStampValidationProofNodes,
     GraphSteps,
     CandidatesExamined,
     MappedBytes,
@@ -480,11 +488,19 @@ impl TraceAttribute {
         Self::CacheStatus,
         Self::InputItems,
         Self::InputBytes,
+        Self::MaxStorageKeys,
         Self::OutputItems,
         Self::OutputBytes,
+        Self::SelectedVersions,
         Self::KeysExamined,
         Self::PagesExamined,
         Self::RowsExamined,
+        Self::ReadPointReads,
+        Self::ReadRangeScans,
+        Self::ReadValuesDecoded,
+        Self::ReadStampValidation,
+        Self::ReadStampValidationChangeReads,
+        Self::ReadStampValidationProofNodes,
         Self::GraphSteps,
         Self::CandidatesExamined,
         Self::MappedBytes,
@@ -530,11 +546,19 @@ impl TraceAttribute {
             Self::CacheStatus => "cache_status",
             Self::InputItems => "input_items",
             Self::InputBytes => "input_bytes",
+            Self::MaxStorageKeys => "max_storage_keys",
             Self::OutputItems => "output_items",
             Self::OutputBytes => "output_bytes",
+            Self::SelectedVersions => "selected_versions",
             Self::KeysExamined => "keys_examined",
             Self::PagesExamined => "pages_examined",
             Self::RowsExamined => "rows_examined",
+            Self::ReadPointReads => "read_point_reads",
+            Self::ReadRangeScans => "read_range_scans",
+            Self::ReadValuesDecoded => "read_values_decoded",
+            Self::ReadStampValidation => "read_stamp_validation",
+            Self::ReadStampValidationChangeReads => "read_stamp_validation_change_reads",
+            Self::ReadStampValidationProofNodes => "read_stamp_validation_proof_nodes",
             Self::GraphSteps => "graph_steps",
             Self::CandidatesExamined => "candidates_examined",
             Self::MappedBytes => "mapped_bytes",
@@ -1585,13 +1609,11 @@ const DIRECT_CONVERGENCE_ATTRIBUTE_NAMES: &[&str] = &[
     "lifecycle_state",
     "logical_operator_count",
     "logical_output_bytes",
-    "logical_scanned_changes",
     "maintenance_write_stalls_delta",
     "manifest_digest",
     "manifest_generation",
     "max_output_bytes",
     "max_rows",
-    "max_scanned_changes",
     "media_type_digest",
     "memtable_bytes",
     "memtable_max_versions",
@@ -1642,7 +1664,6 @@ const DIRECT_CONVERGENCE_ATTRIBUTE_NAMES: &[&str] = &[
     "required_source_cursor",
     "result_count",
     "returned_rows",
-    "scanned_changes",
     "schema_revision",
     "segment_bytes",
     "segment_count",
@@ -1675,9 +1696,6 @@ const DIRECT_CONVERGENCE_ATTRIBUTE_NAMES: &[&str] = &[
     "source_revision_digest",
     "source_type",
     "stable_revision_present",
-    "stamp_validation",
-    "stamp_validation_max_changes",
-    "stamp_validation_proof_nodes",
     "target_digest",
     "target_node",
     "top_k",
@@ -1752,6 +1770,7 @@ fn validate_canonical_attribute_value(
         | TraceAttribute::CacheStatus
         | TraceAttribute::FailedStage
         | TraceAttribute::ErrorClass
+        | TraceAttribute::ReadStampValidation
         | TraceAttribute::VerificationStatus
         | TraceAttribute::PropagationStatus => {
             let RuntimeValue::String(value) = value else {
@@ -1779,11 +1798,18 @@ fn validate_canonical_attribute_value(
         TraceAttribute::Attempt
         | TraceAttribute::InputItems
         | TraceAttribute::InputBytes
+        | TraceAttribute::MaxStorageKeys
         | TraceAttribute::OutputItems
         | TraceAttribute::OutputBytes
+        | TraceAttribute::SelectedVersions
         | TraceAttribute::KeysExamined
         | TraceAttribute::PagesExamined
         | TraceAttribute::RowsExamined
+        | TraceAttribute::ReadPointReads
+        | TraceAttribute::ReadRangeScans
+        | TraceAttribute::ReadValuesDecoded
+        | TraceAttribute::ReadStampValidationChangeReads
+        | TraceAttribute::ReadStampValidationProofNodes
         | TraceAttribute::GraphSteps
         | TraceAttribute::CandidatesExamined
         | TraceAttribute::MappedBytes
@@ -1897,6 +1923,7 @@ mod tests {
             | TraceAttribute::CacheStatus
             | TraceAttribute::FailedStage
             | TraceAttribute::ErrorClass
+            | TraceAttribute::ReadStampValidation
             | TraceAttribute::VerificationStatus
             | TraceAttribute::PropagationStatus => RuntimeValue::String("verified_value".into()),
             TraceAttribute::Selected
@@ -1907,11 +1934,18 @@ mod tests {
             TraceAttribute::Attempt
             | TraceAttribute::InputItems
             | TraceAttribute::InputBytes
+            | TraceAttribute::MaxStorageKeys
             | TraceAttribute::OutputItems
             | TraceAttribute::OutputBytes
+            | TraceAttribute::SelectedVersions
             | TraceAttribute::KeysExamined
             | TraceAttribute::PagesExamined
             | TraceAttribute::RowsExamined
+            | TraceAttribute::ReadPointReads
+            | TraceAttribute::ReadRangeScans
+            | TraceAttribute::ReadValuesDecoded
+            | TraceAttribute::ReadStampValidationChangeReads
+            | TraceAttribute::ReadStampValidationProofNodes
             | TraceAttribute::GraphSteps
             | TraceAttribute::CandidatesExamined
             | TraceAttribute::MappedBytes

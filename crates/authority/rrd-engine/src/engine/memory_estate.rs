@@ -148,7 +148,7 @@ impl RrdEngine {
                 max_graph_depth: request.max_graph_depth,
                 max_items: request.max_items,
                 max_output_bytes: request.max_output_bytes,
-                max_scanned_changes: request.max_scanned_changes,
+                max_storage_keys: request.max_storage_keys,
             },
             authorization.as_ref(),
         )?;
@@ -191,12 +191,17 @@ impl RrdEngine {
             operation_id,
         )?;
         let scope = self.query_scope(&request.scope)?;
-        let replay_limit = usize::try_from(request.max_scanned_changes)
-            .map_err(|_| ServiceError::Query("seat scan budget exceeds usize".into()))?;
-        let (read, snapshot) =
-            self.storage
-                .runtime()
-                .data_snapshot(&scope, request.valid_at, replay_limit)?;
+        let key_budget = usize::try_from(request.max_storage_keys)
+            .map_err(|_| ServiceError::Query("seat key budget exceeds usize".into()))?;
+        let RuntimeDataSnapshotRead {
+            read,
+            selected_versions,
+            read_evidence,
+            snapshot,
+        } = self
+            .storage
+            .runtime()
+            .data_snapshot(&scope, request.valid_at, key_budget)?;
         if snapshot.known_at_cursor != read.commit_cursor
             || snapshot.schema_revision != read.schema_revision.unwrap_or(0)
         {
@@ -264,6 +269,8 @@ impl RrdEngine {
                 schema_revision: read.schema_revision,
                 catalogue_revision: read.catalog_revision,
             },
+            selected_versions,
+            read_evidence: crate::runtime::public_read_evidence(read_evidence)?,
         };
         identity
             .validate()

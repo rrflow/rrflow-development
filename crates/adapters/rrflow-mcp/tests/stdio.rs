@@ -65,7 +65,7 @@ fn stdio_context_flows_through_the_single_engine_operation() {
         serde_json::json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}),
         serde_json::json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
         serde_json::json!({"jsonrpc":"2.0","id":2,"method":"tools/list"}),
-        serde_json::json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rrflow_context","arguments":{"query":"authentication recovery","valid_at":200,"max_items":8,"max_output_bytes":16384,"max_scanned_changes":100}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"rrflow_context","arguments":{"query":"authentication recovery","valid_at":200,"max_items":8,"max_output_bytes":16384,"max_storage_keys":100}}}),
         serde_json::json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"obsolete_tool","arguments":{}}}),
     ] {
         serde_json::to_writer(child.stdin.as_mut().unwrap(), &request).unwrap();

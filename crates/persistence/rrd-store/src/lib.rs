@@ -74,7 +74,7 @@ pub use projection::{
 };
 pub use repository::{
     ClaimRepository, ControlRepository, FunctionCatalogueRepository, InvocationRepository,
-    ProjectionRepository, RuntimeRepository,
+    ProjectionRepository, RuntimeDataSnapshotRead, RuntimeRepository,
 };
 pub use rrd_core::{
     DataTransaction, DataTransactionView, ReadStamp, RetentionPin, RetentionPinId,

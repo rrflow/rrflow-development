@@ -9,7 +9,7 @@ use rrd_contract::{
     transaction_operation_sha256, AbortTransaction, AssembleContext, BeginTransaction, CanonicalId,
     CloseSubscription, CommitTransaction, ContextEvidenceKind, CreateSession,
     DeploymentConformanceCorpus, DeploymentMode, ErrorCode, ExecuteQuery, ExportAudit,
-    OpenSubscription, PreviewTransaction, QueryBudget, ReadAudit, ReadChangefeed,
+    OpenSubscription, PreviewTransaction, QueryBudget, ReadAccessPath, ReadAudit, ReadChangefeed,
     ReadDiagnosticSnapshot, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
     ResourcePath, SessionLimits, SubscriptionAcknowledgement, SubscriptionDelivery,
     SubscriptionResume, SubscriptionStream, TransactionMutation, WebSocketCancel,
@@ -245,6 +245,14 @@ async fn assert_client_deployment_corpus(
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, corpus.expected_ids);
+    assert!(result.execution.selected_versions > 0);
+    result.execution.read_evidence.validate().unwrap();
+    assert!(result
+        .execution
+        .read_evidence
+        .paths
+        .iter()
+        .any(|path| path.path == ReadAccessPath::RecordVersions));
     assert_eq!(
         result.rows[0].values["body"],
         rrd_contract::QueryValue::String(corpus.documents[0].text.clone())
@@ -850,7 +858,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
                 max_graph_depth: 2,
                 max_items: 16,
                 max_output_bytes: 16_384,
-                max_scanned_changes: 1_024,
+                max_storage_keys: 1_024,
             },
             RequestOptions::read("request-context", "operation-context").unwrap(),
         )
@@ -864,13 +872,20 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
                 .evidence
                 .iter()
                 .any(|evidence| evidence.kind == ContextEvidenceKind::Text)));
+    assert!(context.selected_versions > 0);
+    context.read_evidence.validate().unwrap();
+    assert!(context
+        .read_evidence
+        .paths
+        .iter()
+        .any(|path| path.path == ReadAccessPath::RecordVersions));
     let query_request = ExecuteQuery {
         scope: "instance:sdk-test".into(),
         query: "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title EXPLAIN CONTRACT"
             .into(),
         parameters: BTreeMap::new(),
         budget: QueryBudget {
-            max_scanned_changes: 100,
+            max_storage_keys: 100,
             max_rows: 10,
             max_output_bytes: 4_096,
             max_batch_rows: 10,
@@ -887,6 +902,14 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .unwrap();
     assert_eq!(query.rows.len(), 1);
     assert_eq!(query.rows[0].identity, "record:document:alpha");
+    assert!(query.execution.selected_versions > 0);
+    query.execution.read_evidence.validate().unwrap();
+    assert!(query
+        .execution
+        .read_evidence
+        .paths
+        .iter()
+        .any(|path| path.path == ReadAccessPath::RecordVersions));
     let expired = client
         .execute_query(
             &session,
@@ -924,7 +947,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
                     confidence: Some(0.9),
                 }],
                 valid_at: Some(100),
-                max_scanned_changes: 100,
+                max_storage_keys: 100,
             },
             RequestOptions::mutation("request-preview", "operation-preview", "prepare-preview")
                 .unwrap(),

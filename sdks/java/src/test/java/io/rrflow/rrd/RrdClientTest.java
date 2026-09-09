@@ -100,7 +100,7 @@ final class RrdClientTest {
                             "query", "FROM record:document",
                             "parameters", Map.of(),
                             "budget", Map.of(
-                                    "max_scanned_changes", 100,
+                                    "max_storage_keys", 100,
                                     "max_rows", 10,
                                     "max_output_bytes", 4096,
                                     "max_batch_rows", 10)),

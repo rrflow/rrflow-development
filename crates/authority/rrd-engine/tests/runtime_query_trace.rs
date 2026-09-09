@@ -149,7 +149,7 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
     let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv);
     assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.execution.known_at_cursor, 3);
-    assert_eq!(memory_result.execution.scanned_changes, 3);
+    assert_eq!(memory_result.execution.selected_versions, 2);
     assert_eq!(memory_result.execution.returned_rows, 1);
     assert_eq!(
         memory_result.execution.batches[0].rows[0].identity,
@@ -221,19 +221,19 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
         .all(|trace| !trace.encoded.contains("operator-secret")));
     assert_eq!(
         memory_traces[4].attributes["selected_paths"],
-        RuntimeValue::List(vec![RuntimeValue::String("authoritative_log_scan".into())])
+        RuntimeValue::List(vec![RuntimeValue::String("versioned_source_read".into())])
     );
     assert_eq!(
         memory_traces[8].attributes["returned_rows"],
         RuntimeValue::Unsigned(1)
     );
     assert_eq!(
-        memory_traces[8].attributes["stamp_validation"],
-        RuntimeValue::String("full_hash_chain_replay".into())
+        memory_traces[8].attributes["read_stamp_validation"],
+        RuntimeValue::String("rfc9162_direct_versions".into())
     );
     assert_eq!(
-        memory_traces[8].attributes["stamp_validation_max_changes"],
-        RuntimeValue::Unsigned(3)
+        memory_traces[8].attributes["read_values_decoded"],
+        RuntimeValue::Unsigned(16)
     );
     assert_eq!(
         memory_traces[7].attributes["backend"],
@@ -278,8 +278,8 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
         .attributes
         .contains_key("compaction_target_segment_bytes"));
     assert_eq!(
-        rrflow_kv_traces[7].attributes["stamp_validation"],
-        RuntimeValue::String("full_hash_chain_replay".into())
+        rrflow_kv_traces[7].attributes["read_stamp_validation"],
+        RuntimeValue::String("rfc9162_direct_versions".into())
     );
 }
 
@@ -313,7 +313,7 @@ fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
     let budget_store = RrflowMxStore::new();
     fixture(&budget_store);
     let budget = ExecutionBudget {
-        max_scanned_changes: 1,
+        max_input_rows: 1,
         ..ExecutionBudget::default()
     };
     let error = execute_traced_query(
@@ -326,7 +326,10 @@ fn parse_and_budget_failures_finish_the_active_tree_with_typed_evidence() {
         100,
     )
     .unwrap_err();
-    assert!(error.to_string().contains("budget allows 1"));
+    assert!(
+        error.to_string().contains("budget allows 1"),
+        "unexpected budget failure: {error}"
+    );
     let budget_traces = trace_views(&budget_store);
     assert_eq!(budget_traces.len(), 10);
     assert_eq!(budget_traces[7].outcome, "denied");

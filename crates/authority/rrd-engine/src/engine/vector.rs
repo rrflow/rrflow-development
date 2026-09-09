@@ -13,6 +13,32 @@ pub(in crate::engine) use collection::{
 pub(in crate::engine) use points::public_data_ref;
 pub(in crate::engine) use search::{internal_vector_filter, internal_vector_query};
 
+pub(in crate::engine) struct DirectVectorRead {
+    pub changes: Vec<RuntimeChange>,
+    pub selected_versions: u64,
+    pub read_evidence: rrd_contract::ReadEvidence,
+}
+
+pub(in crate::engine) fn read_vector_versions(
+    engine: &RrdEngine,
+    read: &ReadStamp,
+    max_storage_keys: u64,
+) -> Result<DirectVectorRead> {
+    let direct = engine.storage.runtime().read_versioned(
+        read,
+        &[rrd_store::RuntimeVersionedSource::Vectors { kind: None }],
+        rrd_store::RuntimeReadBudget::new(max_storage_keys)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?,
+    )?;
+    let selected_versions = u64::try_from(direct.changes.len())
+        .map_err(|_| ServiceError::Vector("selected vector versions exceed u64".into()))?;
+    Ok(DirectVectorRead {
+        changes: direct.changes,
+        selected_versions,
+        read_evidence: crate::runtime::public_read_evidence(direct.evidence)?,
+    })
+}
+
 pub(in crate::engine) fn core_vector(error: rrd_core::Error) -> ServiceError {
     ServiceError::Vector(error.to_string())
 }

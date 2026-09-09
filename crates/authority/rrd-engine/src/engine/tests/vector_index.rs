@@ -7,17 +7,32 @@ use rrd_contract::{
     DeleteVectorCollection, DeleteVectorPayloadIndex, EnsureQueryIndex, EnsureVectorIndex,
     EnsureVectorPayloadIndex, ExecuteRetrievalQuery, HybridFusion, ListVectorCollections,
     ListVectorPayloadIndexes, ListVectorQuantizationArtifacts, QueryBudget, QueryIndexKind,
-    QueryValue, RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrievalContextPair,
-    RetrievalFusion, RetrievalOutput, RetrievalPrefetch, RetrievalQuery,
-    RetrievalRecommendStrategy, RetrievalRerankStage, RetrievalResultShape, RetrievalVectorExample,
-    RetrieveVectorPoints, SearchHybrid, SearchVectors, VectorEmbeddingModel,
-    VectorIndexBuildPolicy, VectorIndexBuildTarget, VectorIndexConfiguration,
-    VectorIndexDifferentialStatus, VectorIndexMaintenanceMode, VectorPayloadCondition,
-    VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
-    VectorQuantizationArtifactState, VectorQuantizationBits, VectorQuantizationMethod,
-    VectorSearchMode, VectorSearchQuery,
+    QueryValue, ReadAccessPath, ReadEvidence, RestoreInstanceBackup,
+    RetireVectorQuantizationArtifact, RetrievalContextPair, RetrievalFusion, RetrievalOutput,
+    RetrievalPrefetch, RetrievalQuery, RetrievalRecommendStrategy, RetrievalRerankStage,
+    RetrievalResultShape, RetrievalVectorExample, RetrieveVectorPoints, SearchHybrid,
+    SearchVectors, VectorEmbeddingModel, VectorIndexBuildPolicy, VectorIndexBuildTarget,
+    VectorIndexConfiguration, VectorIndexDifferentialStatus, VectorIndexMaintenanceMode,
+    VectorPayloadCondition, VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator,
+    VectorProductCompression, VectorQuantizationArtifactState, VectorQuantizationBits,
+    VectorQuantizationMethod, VectorSearchMode, VectorSearchQuery,
 };
 use std::collections::BTreeMap;
+
+fn assert_direct_read_evidence(
+    selected_versions: u64,
+    evidence: &ReadEvidence,
+    expected_paths: &[ReadAccessPath],
+) {
+    assert!(selected_versions > 0);
+    evidence.validate().unwrap();
+    for expected in expected_paths {
+        assert!(
+            evidence.paths.iter().any(|path| path.path == *expected),
+            "missing direct read evidence for {expected:?}"
+        );
+    }
+}
 
 fn reference(kind: &str, id: &str) -> DataReference {
     DataReference {
@@ -103,7 +118,7 @@ fn index_request() -> EnsureVectorIndex {
             filter_properties: Vec::new(),
         },
         build_policy: VectorIndexBuildPolicy::Cpu,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
 }
 
@@ -118,7 +133,7 @@ fn turboquant_request() -> EnsureVectorIndex {
             filter_properties: Vec::new(),
         },
         build_policy: VectorIndexBuildPolicy::Cpu,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
 }
 
@@ -136,7 +151,7 @@ fn search_request(mode: VectorSearchMode) -> SearchVectors {
         metric: None,
         top_k: 1,
         mode,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
 }
 
@@ -769,7 +784,7 @@ fn quantization_build(method: VectorQuantizationMethod) -> BuildVectorQuantizati
         vector_name: CanonicalId::new("body").unwrap(),
         method,
         filter_properties: Vec::new(),
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
 }
 
@@ -785,7 +800,7 @@ fn quantization_search(values: Vec<f32>, mode: VectorSearchMode) -> SearchVector
         metric: None,
         top_k: 1,
         mode,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     }
 }
 
@@ -945,8 +960,8 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
         .unwrap();
     assert_eq!(exact_before.access_path.as_str(), "exact_scan");
 
-    // The compatibility ensure route resumes the already-built ready
-    // TurboQuant generation and activates it through the same lifecycle. It
+    // The unified ensure route resumes the already-built ready TurboQuant
+    // generation and activates it through the same lifecycle. It
     // must not publish a fifth artifact through the generic vector catalogue.
     let lifecycle_turbo = EnsureVectorIndex {
         scope: format!("instance:{}", instance()),
@@ -958,7 +973,7 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
             filter_properties: Vec::new(),
         },
         build_policy: VectorIndexBuildPolicy::Cpu,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     let resumed = engine
         .ensure_vector_index(
@@ -1200,7 +1215,7 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
                 },
             },
             document_mutation("alpha", "rrflow durable reasoning"),
-            document_mutation("beta", "legacy unrelated storage"),
+            document_mutation("beta", "unrelated storage"),
             document_mutation("gamma", "rrflow graph context"),
             vector_mutation("alpha", vec![1.0, 0.0]),
             vector_mutation("beta", vec![0.0, 1.0]),
@@ -1227,6 +1242,11 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
     );
     assert_eq!(first.index.maintenance.indexed_delta_vectors, 3);
     assert!(!first.idempotent_replay);
+    assert_direct_read_evidence(
+        first.selected_versions,
+        &first.read_evidence,
+        &[ReadAccessPath::VectorVersions],
+    );
 
     let replay = engine
         .ensure_vector_index(
@@ -1258,6 +1278,11 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
     assert_eq!(before_restart.access_path.as_str(), "hnsw");
     assert!(!before_restart.exact);
     assert_eq!(before_restart.hits[0].reference.id.as_str(), "alpha");
+    assert_direct_read_evidence(
+        before_restart.selected_versions,
+        &before_restart.read_evidence,
+        &[ReadAccessPath::VectorVersions],
+    );
     drop(engine);
 
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
@@ -1401,8 +1426,9 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
         turboquant.index.object_sha256
     );
     let scope = reopened.query_scope(&turboquant_request().scope).unwrap();
-    let legacy_entries = crate::vector_artifact_catalog_entries(&reopened.storage, &scope).unwrap();
-    assert!(legacy_entries
+    let generic_entries =
+        crate::vector_artifact_catalog_entries(&reopened.storage, &scope).unwrap();
+    assert!(generic_entries
         .iter()
         .all(|entry| entry.kind != rrd_vector::VectorArtifactKind::TurboQuant));
 
@@ -1485,7 +1511,7 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
         },
         top_k: 3,
         candidate_k: 4,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     let hybrid = reopened
         .search_hybrid(
@@ -1505,6 +1531,11 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
     assert_eq!(hybrid.hits[0].vector_rank, Some(2));
     assert_eq!(hybrid.read_manifest_sha256.len(), 64);
     assert_eq!(hybrid.fusion_plan_sha256.len(), 64);
+    assert_direct_read_evidence(
+        hybrid.selected_versions,
+        &hybrid.read_evidence,
+        &[ReadAccessPath::ReadStamp, ReadAccessPath::VectorVersions],
+    );
     drop(reopened);
 
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
@@ -1821,7 +1852,7 @@ fn collection_filtered_hnsw_overlays_retirement_and_protects_payload_index() {
             filter_properties: vec![CanonicalId::new("bucket").unwrap()],
         },
         build_policy: VectorIndexBuildPolicy::Cpu,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     engine
         .ensure_vector_index(
@@ -1856,7 +1887,7 @@ fn collection_filtered_hnsw_overlays_retirement_and_protects_payload_index() {
             exact_rerank: 2,
             ef_search: 2,
         },
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     let filtered = engine
         .search_vectors(
@@ -2194,7 +2225,7 @@ fn collection_point_and_payload_index_administration_is_atomic_and_restart_safe(
             scope: collection_request.scope.clone(),
             collection_id: collection_request.collection_id.clone(),
             valid_at: 1,
-            max_scanned_changes: 10_000,
+            max_storage_keys: 10_000,
         },
         &mutation_context(
             &id("delete-live-collection"),
@@ -2236,7 +2267,7 @@ fn collection_point_and_payload_index_administration_is_atomic_and_restart_safe(
                     vector_name: CanonicalId::new(vector_name).unwrap(),
                     valid_at: 1,
                     references: vec![reference],
-                    max_scanned_changes: 10_000,
+                    max_storage_keys: 10_000,
                 },
                 510,
                 "request-retrieve-reopened",
@@ -2245,6 +2276,11 @@ fn collection_point_and_payload_index_administration_is_atomic_and_restart_safe(
             .unwrap();
         assert_eq!(retrieved.points.len(), 1);
         assert_eq!(retrieved.points[0].payload, payload);
+        assert_direct_read_evidence(
+            retrieved.selected_versions,
+            &retrieved.read_evidence,
+            &[ReadAccessPath::VectorVersions],
+        );
     }
 
     commit_vectors(
@@ -2284,7 +2320,7 @@ fn collection_point_and_payload_index_administration_is_atomic_and_restart_safe(
         scope: collection_request.scope.clone(),
         collection_id: collection_request.collection_id.clone(),
         valid_at: 2,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     let delete_context = mutation_context(
         &id("delete-empty-collection"),
@@ -2473,7 +2509,7 @@ fn vector_administration_uses_distinct_deny_by_default_actions() {
         vector_name: CanonicalId::new("dense").unwrap(),
         method: VectorQuantizationMethod::Scalar,
         filter_properties: Vec::new(),
-        max_scanned_changes: 10,
+        max_storage_keys: 10,
     };
     assert!(matches!(
         engine.build_vector_quantization_artifact(
@@ -2561,7 +2597,7 @@ fn vector_administration_uses_distinct_deny_by_default_actions() {
         result_shape: RetrievalResultShape::Points,
         limit: 1,
         candidate_limit: 1,
-        max_scanned_changes: 10,
+        max_storage_keys: 10,
     };
     assert!(matches!(
         engine.execute_retrieval_query(
@@ -2645,7 +2681,7 @@ fn vector_administration_uses_distinct_deny_by_default_actions() {
                 scope,
                 collection_id,
                 valid_at: 1,
-                max_scanned_changes: 10,
+                max_storage_keys: 10,
             },
             &mutation_context(
                 &id("limited-delete-collection"),
@@ -2983,7 +3019,7 @@ fn unified_retrieval_algebra_executes_multimodal_late_interaction_and_analytics(
         result_shape: RetrievalResultShape::Points,
         limit: 3,
         candidate_limit: 3,
-        max_scanned_changes: 10_000,
+        max_storage_keys: 10_000,
     };
     let points = engine
         .execute_retrieval_query(
@@ -3016,6 +3052,11 @@ fn unified_retrieval_algebra_executes_multimodal_late_interaction_and_analytics(
         .stages
         .iter()
         .any(|stage| stage.kind.as_str() == "mmr"));
+    assert_direct_read_evidence(
+        points.selected_versions,
+        &points.read_evidence,
+        &[ReadAccessPath::ReadStamp, ReadAccessPath::VectorVersions],
+    );
 
     let example = |id: &str| RetrievalVectorExample::Reference {
         reference: reference("embedding", &format!("{id}-dense")),
@@ -3072,7 +3113,7 @@ fn unified_retrieval_algebra_executes_multimodal_late_interaction_and_analytics(
                     result_shape: RetrievalResultShape::Points,
                     limit: 2,
                     candidate_limit: 3,
-                    max_scanned_changes: 10_000,
+                    max_storage_keys: 10_000,
                 },
                 410 + ordinal as u64,
                 &format!("request-explore-{ordinal}"),
@@ -3115,7 +3156,7 @@ fn unified_retrieval_algebra_executes_multimodal_late_interaction_and_analytics(
                     result_shape,
                     limit: 2,
                     candidate_limit: 3,
-                    max_scanned_changes: 10_000,
+                    max_storage_keys: 10_000,
                 },
                 420 + ordinal as u64,
                 &format!("request-shape-{ordinal}"),
