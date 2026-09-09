@@ -2,11 +2,15 @@ use crate::access::runtime_state::{
     authenticated_point_page, change_page, checked_key, get, get_json, read_sequence,
     read_stamp_with, scan_space, scan_space_from, validate_read_stamp,
 };
-use crate::access::{index_source_deltas, prepare_semantic_commit, vector_source_deltas};
+use crate::access::{
+    index_source_deltas, prepare_semantic_commit, read_versioned as read_versioned_access,
+    vector_source_deltas,
+};
 use crate::keyspaces::{self, Durability};
 use crate::{
-    Error, FunctionInvocationReceiptRecord, IndexSourceDelta, Result, StorageEngine,
-    VectorSourceAddress, VectorSourceDelta,
+    Error, FunctionInvocationReceiptRecord, IndexSourceDelta, Result, RuntimeReadBudget,
+    RuntimeVersionedRead, RuntimeVersionedSource, StorageEngine, VectorSourceAddress,
+    VectorSourceDelta,
 };
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
@@ -44,6 +48,20 @@ impl<'a> RuntimeRepository<'a> {
     pub fn read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
         let transaction = self.storage.begin_transaction()?;
         read_stamp_with(&*transaction, scope)
+    }
+
+    /// Reads authenticated semantic versions through typed, budgeted ranges.
+    /// This is the direct-access contract adopted by normal repository and
+    /// query paths in the following C-04 packages; explicit log APIs remain
+    /// separate.
+    pub fn read_versioned(
+        &self,
+        read: &ReadStamp,
+        sources: &[RuntimeVersionedSource],
+        budget: RuntimeReadBudget,
+    ) -> Result<RuntimeVersionedRead> {
+        let transaction = self.storage.begin_transaction()?;
+        read_versioned_access(&*transaction, read, sources, budget)
     }
 
     pub fn open_snapshot(
@@ -148,12 +166,16 @@ impl<'a> RuntimeRepository<'a> {
         let validation = validate_read_stamp(&*transaction, read)?;
         if limit == 1 && after < read.commit_cursor && read.accumulator_root.is_some() {
             let mut page = authenticated_point_page(&*transaction, read, after + 1)?;
-            if validation.method == "full_hash_chain_replay" {
-                page.validation.method = "full_hash_chain_replay_then_rfc9162_inclusion".into();
+            if validation.method != "authenticated_current_head" {
                 page.validation.change_reads = page
                     .validation
                     .change_reads
                     .saturating_add(validation.change_reads);
+                page.validation.proof_nodes = page
+                    .validation
+                    .proof_nodes
+                    .saturating_add(validation.proof_nodes);
+                page.validation.method = format!("{}_then_rfc9162_inclusion", validation.method);
             }
             return Ok(page);
         }

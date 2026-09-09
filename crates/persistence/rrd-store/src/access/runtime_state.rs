@@ -173,23 +173,19 @@ pub(crate) fn read_stamp_with(
     .transpose()
     .map_err(|error| Error::CorruptWatermark(error.to_string()))?
     .filter(|digest| !digest.is_empty());
-    match load_accumulator(reader, commit_cursor)? {
-        Some(accumulator) => ReadStamp::authenticated(
-            scope.clone(),
-            schema_revision,
-            catalog_revision,
-            commit_cursor,
-            head_digest,
-            accumulator.root,
-        ),
-        None => ReadStamp::new(
-            scope.clone(),
-            schema_revision,
-            catalog_revision,
-            commit_cursor,
-            head_digest,
-        ),
-    }
+    let accumulator = load_accumulator(reader, commit_cursor)?.ok_or_else(|| {
+        Error::Substrate(format!(
+            "runtime accumulator is absent at non-empty cursor {commit_cursor}"
+        ))
+    })?;
+    ReadStamp::authenticated(
+        scope.clone(),
+        schema_revision,
+        catalog_revision,
+        commit_cursor,
+        head_digest,
+        accumulator.root,
+    )
     .map_err(Error::from)
 }
 
@@ -235,6 +231,16 @@ pub(crate) fn validate_read_stamp(
             0,
         ));
     }
+    let root = read
+        .accumulator_root
+        .as_deref()
+        .ok_or_else(|| Error::ReadStampMismatch(read.manifest_id.clone()))?;
+    let accumulator =
+        RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
+            read_accumulator_node(reader, level, index)
+        })?;
+    let mut change_reads = 0_u64;
+    let mut proof_nodes = 0_usize;
     let retained_head = if read.commit_cursor == 0 {
         None
     } else {
@@ -244,40 +250,87 @@ pub(crate) fn validate_read_stamp(
             &keyspaces::runtime_change_key(read.commit_cursor),
         )?
         .ok_or_else(|| Error::ReadStampUnavailable(read.manifest_id.clone()))?;
-        if !change.verify_digest() {
+        if change.cursor != read.commit_cursor || !change.verify_digest() {
             return Err(Error::Substrate(format!(
-                "runtime change {} failed digest verification",
+                "runtime change {} failed cursor/digest verification",
                 read.commit_cursor
             )));
         }
-        Some(change.digest)
-    };
-    let page = change_page(reader, read.commit_cursor, 0, usize::MAX, Some(&read.scope))?;
-    let schema_revision = page
-        .changes
-        .iter()
-        .filter_map(|change| match &change.mutation {
-            RuntimeMutation::Schema { registry } => Some(registry.revision),
-            _ => None,
-        })
-        .next_back();
-    let catalog_revision = read_sequence(reader, &keyspaces::catalog_revision_key(&read.scope))?;
-    if let Some(root) = read.accumulator_root.as_deref() {
-        RuntimeLogAccumulator::from_nodes(read.commit_cursor, root, |level, index| {
+        let proof = accumulator.inclusion_proof(read.commit_cursor - 1, |level, index| {
             read_accumulator_node(reader, level, index)
         })?;
+        proof_nodes = proof_nodes.saturating_add(proof.path.len());
+        proof.verify_change(&change, root)?;
+        change_reads = change_reads.saturating_add(1);
+        Some(change)
+    };
+    let schema_change = schema_version_at(reader, &read.scope, read.commit_cursor)?;
+    let schema_revision = schema_change
+        .as_ref()
+        .and_then(|change| match &change.mutation {
+            RuntimeMutation::Schema { registry } => Some(registry.revision),
+            _ => None,
+        });
+    if let Some(change) = &schema_change {
+        change_reads = change_reads.saturating_add(1);
+        let head_already_proved = retained_head
+            .as_ref()
+            .is_some_and(|head| head.cursor == change.cursor && head.digest == change.digest);
+        if !head_already_proved {
+            let proof = accumulator.inclusion_proof(change.cursor - 1, |level, index| {
+                read_accumulator_node(reader, level, index)
+            })?;
+            proof_nodes = proof_nodes.saturating_add(proof.path.len());
+            proof.verify_change(change, root)?;
+        }
     }
+    let catalog_revision = read_sequence(reader, &keyspaces::catalog_revision_key(&read.scope))?;
     if read.catalog_revision != catalog_revision
-        || read.head_digest != retained_head
+        || read.head_digest != retained_head.as_ref().map(|change| change.digest.clone())
         || read.schema_revision != schema_revision
     {
         return Err(Error::ReadStampMismatch(read.manifest_id.clone()));
     }
     Ok(RuntimeReadValidation::new(
-        "full_hash_chain_replay",
-        read.commit_cursor,
-        0,
+        "rfc9162_direct_versions",
+        change_reads,
+        proof_nodes,
     ))
+}
+
+pub(crate) fn schema_version_at(
+    reader: &(impl AccessRead + ?Sized),
+    scope: &ScopeId,
+    at_cursor: u64,
+) -> Result<Option<RuntimeChange>> {
+    if at_cursor == 0 {
+        return Ok(None);
+    }
+    let prefix = keyspaces::runtime_scope_prefix(keyspaces::RUNTIME_SCHEMA_VERSIONS, scope);
+    let start = keyspaces::runtime_schema_version_key(scope, at_cursor);
+    let Some((stored_key, bytes)) = scan_space_bounded_from(
+        reader,
+        keyspaces::RUNTIME_SCHEMA_VERSIONS,
+        &prefix,
+        &start,
+        1,
+    )?
+    .into_iter()
+    .next() else {
+        return Ok(None);
+    };
+    let change: RuntimeChange = serde_json::from_slice(&bytes)?;
+    if change.scope != *scope
+        || change.cursor > at_cursor
+        || !change.verify_digest()
+        || !matches!(change.mutation, RuntimeMutation::Schema { .. })
+        || stored_key != keyspaces::runtime_schema_version_key(scope, change.cursor)
+    {
+        return Err(Error::Substrate(format!(
+            "schema version key is invalid for scope {scope} at cursor {at_cursor}"
+        )));
+    }
+    Ok(Some(change))
 }
 
 pub(crate) fn accumulator_with(
@@ -364,7 +417,7 @@ pub(crate) fn authenticated_point_page(
     })
 }
 
-fn read_accumulator_node(
+pub(crate) fn read_accumulator_node(
     reader: &(impl AccessRead + ?Sized),
     level: u8,
     index: u64,

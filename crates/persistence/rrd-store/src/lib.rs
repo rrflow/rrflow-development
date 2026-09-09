@@ -33,11 +33,13 @@ pub use access::{
     FunctionArtifactMediaTypeRecord, FunctionArtifactRecord, FunctionCatalogueHeadRecord,
     FunctionCatalogueMembershipRecord, FunctionCataloguePublication, FunctionCatalogueSnapshot,
     FunctionDefinitionRecord, FunctionInvocationReceiptRecord, IndexCommitBindingDefinition,
-    IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow, SemanticCommitPlan,
-    TransactionFunctionBindingRecord, VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
+    IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow, RuntimeReadAccessPath,
+    RuntimeReadBudget, RuntimeReadEvidence, RuntimeReadPathEvidence, RuntimeVersionedRead,
+    RuntimeVersionedSource, SemanticCommitPlan, TransactionFunctionBindingRecord,
+    VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
     FUNCTION_CATALOGUE_STATE_FORMAT_VERSION, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,
-    VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
+    RUNTIME_VERSIONED_READ_CONTRACT_VERSION, VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
 };
 pub use archive::{
     export_logical_archive, export_logical_archive_with_progress, inspect_logical_archive,

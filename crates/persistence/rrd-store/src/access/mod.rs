@@ -9,6 +9,7 @@ mod index;
 pub(crate) mod runtime_state;
 mod semantic_commit;
 mod vector;
+mod versioned_read;
 
 pub(crate) use function::{
     encode_function_invocation_receipts, put_standalone_function_receipt, validate_coordinate,
@@ -35,4 +36,9 @@ pub(crate) use vector::{
 pub use vector::{
     VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
     VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
+};
+pub(crate) use versioned_read::read_versioned;
+pub use versioned_read::{
+    RuntimeReadAccessPath, RuntimeReadBudget, RuntimeReadEvidence, RuntimeReadPathEvidence,
+    RuntimeVersionedRead, RuntimeVersionedSource, RUNTIME_VERSIONED_READ_CONTRACT_VERSION,
 };

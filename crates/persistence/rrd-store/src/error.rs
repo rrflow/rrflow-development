@@ -55,6 +55,8 @@ pub enum Error {
     ReadStampUnavailable(String),
     /// A stamped transaction read does not match the retained hash/schema state.
     ReadStampMismatch(String),
+    /// A direct semantic read would examine more keys than its declared bound.
+    RuntimeReadBudgetExceeded { limit: u64, observed: u64 },
     /// Object-tier I/O or capability error.
     Object(String),
     /// A transport-classified remote failure that the bounded object retry
@@ -132,6 +134,10 @@ impl fmt::Display for Error {
             Error::ReadStampMismatch(id) => {
                 write!(f, "runtime read stamp does not match retained state: {id}")
             }
+            Error::RuntimeReadBudgetExceeded { limit, observed } => write!(
+                f,
+                "runtime versioned read exceeded key budget {limit}: observed {observed}"
+            ),
             Error::Object(message) => write!(f, "object store: {message}"),
             Error::RemoteObjectTransient(message) => {
                 write!(f, "transient remote object store: {message}")

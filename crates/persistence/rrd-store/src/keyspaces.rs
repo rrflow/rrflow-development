@@ -10,8 +10,8 @@ use crate::key_codec::{
     CatalogueSubfamily, DecodedKeyPart, KeyAddress, KeyCodec, KeyFamily, KeyPart,
 };
 use rrd_core::{
-    Millis, Predicate, ProjectionFamily, ProjectionId, ProjectionWork, Reader, RuntimeRef,
-    RuntimeRelation, RuntimeValue, ScopeId, Subject,
+    Millis, Predicate, ProjectionFamily, ProjectionId, ProjectionWork, Reader, RuntimeEvent,
+    RuntimeRef, RuntimeRelation, RuntimeValue, ScopeId, Subject,
 };
 
 pub(crate) use crate::key_codec::APPLICATION_FORMAT as RRFLOW_KV_FORMAT;
@@ -31,10 +31,12 @@ pub(crate) enum Space {
     FunctionCatalogueHeads,
     Projections,
     RuntimeChanges,
+    RuntimeClaimVersions,
     RuntimeRecords,
     RuntimeRecordVersions,
     RuntimeRelations,
     RuntimeRelationVersions,
+    RuntimeEventVersions,
     RuntimeOutgoingEdges,
     RuntimeOutgoingEdgeVersions,
     RuntimeIncomingEdges,
@@ -42,8 +44,11 @@ pub(crate) enum Space {
     RuntimeVectors,
     RuntimeVectorVersions,
     RuntimeSeries,
+    RuntimeSeriesVersions,
     RuntimeGeo,
+    RuntimeGeoVersions,
     RuntimeObjects,
+    RuntimeObjectVersions,
     RuntimeProjectionDeltas,
     RuntimeIndexSourceDeltas,
     RuntimeVectorSourceDeltas,
@@ -56,6 +61,7 @@ pub(crate) enum Space {
     RuntimeAudit,
     RuntimeCommits,
     RuntimeSchemas,
+    RuntimeSchemaVersions,
     RuntimeSnapshots,
 }
 
@@ -71,10 +77,12 @@ pub(crate) const FUNCTION_CATALOGUE_MEMBERSHIPS: Space = Space::FunctionCatalogu
 pub(crate) const FUNCTION_CATALOGUE_HEADS: Space = Space::FunctionCatalogueHeads;
 pub(crate) const PROJECTIONS: Space = Space::Projections;
 pub(crate) const RUNTIME_CHANGES: Space = Space::RuntimeChanges;
+pub(crate) const RUNTIME_CLAIM_VERSIONS: Space = Space::RuntimeClaimVersions;
 pub(crate) const RUNTIME_RECORDS: Space = Space::RuntimeRecords;
 pub(crate) const RUNTIME_RECORD_VERSIONS: Space = Space::RuntimeRecordVersions;
 pub(crate) const RUNTIME_RELATIONS: Space = Space::RuntimeRelations;
 pub(crate) const RUNTIME_RELATION_VERSIONS: Space = Space::RuntimeRelationVersions;
+pub(crate) const RUNTIME_EVENT_VERSIONS: Space = Space::RuntimeEventVersions;
 pub(crate) const RUNTIME_OUTGOING_EDGES: Space = Space::RuntimeOutgoingEdges;
 pub(crate) const RUNTIME_OUTGOING_EDGE_VERSIONS: Space = Space::RuntimeOutgoingEdgeVersions;
 pub(crate) const RUNTIME_INCOMING_EDGES: Space = Space::RuntimeIncomingEdges;
@@ -82,8 +90,11 @@ pub(crate) const RUNTIME_INCOMING_EDGE_VERSIONS: Space = Space::RuntimeIncomingE
 pub(crate) const RUNTIME_VECTORS: Space = Space::RuntimeVectors;
 pub(crate) const RUNTIME_VECTOR_VERSIONS: Space = Space::RuntimeVectorVersions;
 pub(crate) const RUNTIME_SERIES: Space = Space::RuntimeSeries;
+pub(crate) const RUNTIME_SERIES_VERSIONS: Space = Space::RuntimeSeriesVersions;
 pub(crate) const RUNTIME_GEO: Space = Space::RuntimeGeo;
+pub(crate) const RUNTIME_GEO_VERSIONS: Space = Space::RuntimeGeoVersions;
 pub(crate) const RUNTIME_OBJECTS: Space = Space::RuntimeObjects;
+pub(crate) const RUNTIME_OBJECT_VERSIONS: Space = Space::RuntimeObjectVersions;
 pub(crate) const RUNTIME_PROJECTION_DELTAS: Space = Space::RuntimeProjectionDeltas;
 pub(crate) const RUNTIME_INDEX_SOURCE_DELTAS: Space = Space::RuntimeIndexSourceDeltas;
 pub(crate) const RUNTIME_VECTOR_SOURCE_DELTAS: Space = Space::RuntimeVectorSourceDeltas;
@@ -96,6 +107,7 @@ pub(crate) const RUNTIME_OUTBOX: Space = Space::RuntimeOutbox;
 pub(crate) const RUNTIME_AUDIT: Space = Space::RuntimeAudit;
 pub(crate) const RUNTIME_COMMITS: Space = Space::RuntimeCommits;
 pub(crate) const RUNTIME_SCHEMAS: Space = Space::RuntimeSchemas;
+pub(crate) const RUNTIME_SCHEMA_VERSIONS: Space = Space::RuntimeSchemaVersions;
 pub(crate) const RUNTIME_SNAPSHOTS: Space = Space::RuntimeSnapshots;
 
 impl Space {
@@ -103,8 +115,12 @@ impl Space {
         match self {
             Self::Claims
             | Self::SequenceIndex
+            | Self::RuntimeClaimVersions
             | Self::RuntimeRecordVersions
-            | Self::RuntimeRelationVersions => KeyFamily::Temporal,
+            | Self::RuntimeRelationVersions
+            | Self::RuntimeSeriesVersions
+            | Self::RuntimeGeoVersions
+            | Self::RuntimeObjectVersions => KeyFamily::Temporal,
             Self::Access | Self::RuntimeAudit => KeyFamily::Audit,
             Self::System => KeyFamily::System,
             Self::Invocations
@@ -114,6 +130,7 @@ impl Space {
             | Self::FunctionCatalogueMemberships
             | Self::FunctionCatalogueHeads
             | Self::RuntimeSchemas
+            | Self::RuntimeSchemaVersions
             | Self::RuntimeSnapshots
             | Self::RuntimeIndexBindings
             | Self::RuntimeIndexBindingVersions
@@ -122,7 +139,7 @@ impl Space {
             | Self::RuntimeProjectionDeltas
             | Self::RuntimeIndexSourceDeltas
             | Self::RuntimeVectorSourceDeltas => KeyFamily::ProjectionDelta,
-            Self::RuntimeChanges => KeyFamily::EngineEvent,
+            Self::RuntimeChanges | Self::RuntimeEventVersions => KeyFamily::EngineEvent,
             Self::RuntimeRecords
             | Self::RuntimeRelations
             | Self::RuntimeSeries
@@ -148,6 +165,10 @@ impl Space {
             Self::SequenceIndex => 0x02,
             Self::RuntimeRecordVersions => 0x03,
             Self::RuntimeRelationVersions => 0x04,
+            Self::RuntimeClaimVersions => 0x05,
+            Self::RuntimeSeriesVersions => 0x06,
+            Self::RuntimeGeoVersions => 0x07,
+            Self::RuntimeObjectVersions => 0x08,
             Self::Access => 0x01,
             Self::System => 0x01,
             // This is the canonical catalogue receipt subfamily, not a second
@@ -162,6 +183,7 @@ impl Space {
             Self::FunctionCatalogueHeads => CatalogueSubfamily::Head as u8,
             Self::RuntimeSchemas => 0x20,
             Self::RuntimeSnapshots => 0x21,
+            Self::RuntimeSchemaVersions => 0x22,
             Self::RuntimeIndexBindings => 0x30,
             Self::RuntimeIndexBindingVersions => 0x31,
             Self::RuntimeIndexBindingSets => 0x32,
@@ -170,6 +192,7 @@ impl Space {
             Self::RuntimeIndexSourceDeltas => 0x03,
             Self::RuntimeVectorSourceDeltas => 0x04,
             Self::RuntimeChanges => 0x01,
+            Self::RuntimeEventVersions => 0x02,
             Self::RuntimeRecords => 0x01,
             Self::RuntimeRelations => 0x02,
             Self::RuntimeSeries => 0x03,
@@ -433,6 +456,10 @@ pub(crate) fn runtime_change_key(cursor: u64) -> Vec<u8> {
     encode(RUNTIME_CHANGES, &[KeyPart::U64(cursor)])
 }
 
+pub(crate) fn runtime_event_reference(event: &RuntimeEvent, cursor: u64) -> Result<RuntimeRef> {
+    RuntimeRef::new(event.kind.as_str(), format!("cursor:{cursor}")).map_err(Error::from)
+}
+
 pub(crate) fn runtime_identity_key(
     space: Space,
     scope: &ScopeId,
@@ -466,7 +493,12 @@ pub(crate) fn runtime_version_key(
 ) -> Vec<u8> {
     debug_assert!(matches!(
         space,
-        Space::RuntimeRecordVersions | Space::RuntimeRelationVersions
+        Space::RuntimeRecordVersions
+            | Space::RuntimeRelationVersions
+            | Space::RuntimeEventVersions
+            | Space::RuntimeSeriesVersions
+            | Space::RuntimeGeoVersions
+            | Space::RuntimeObjectVersions
     ));
     encode(
         space,
@@ -476,6 +508,55 @@ pub(crate) fn runtime_version_key(
             KeyPart::Text(reference.id.as_str()),
             KeyPart::DescU64(effective_at),
             KeyPart::DescU64(cursor),
+        ],
+    )
+}
+
+pub(crate) fn runtime_kind_prefix(
+    space: Space,
+    scope: &ScopeId,
+    kind: &rrd_core::RuntimeType,
+) -> Vec<u8> {
+    debug_assert!(matches!(
+        space,
+        Space::RuntimeRecordVersions
+            | Space::RuntimeRelationVersions
+            | Space::RuntimeEventVersions
+            | Space::RuntimeVectorVersions
+            | Space::RuntimeSeriesVersions
+            | Space::RuntimeGeoVersions
+            | Space::RuntimeObjectVersions
+    ));
+    encode(
+        space,
+        &[KeyPart::Text(scope.as_str()), KeyPart::Text(kind.as_str())],
+    )
+}
+
+pub(crate) fn runtime_claim_version_key(
+    scope: &ScopeId,
+    claim: &rrd_core::Claim,
+    cursor: u64,
+) -> Vec<u8> {
+    encode(
+        RUNTIME_CLAIM_VERSIONS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(claim.predicate.as_str()),
+            KeyPart::Text(claim.subject.as_str()),
+            KeyPart::DescU64(claim.valid_from),
+            KeyPart::DescU64(claim.tx_time),
+            KeyPart::DescU64(cursor),
+        ],
+    )
+}
+
+pub(crate) fn runtime_claim_predicate_prefix(scope: &ScopeId, predicate: &Predicate) -> Vec<u8> {
+    encode(
+        RUNTIME_CLAIM_VERSIONS,
+        &[
+            KeyPart::Text(scope.as_str()),
+            KeyPart::Text(predicate.as_str()),
         ],
     )
 }
@@ -813,6 +894,13 @@ pub(crate) fn runtime_schema_key(scope: &ScopeId) -> Vec<u8> {
     encode(RUNTIME_SCHEMAS, &[KeyPart::Text(scope.as_str())])
 }
 
+pub(crate) fn runtime_schema_version_key(scope: &ScopeId, cursor: u64) -> Vec<u8> {
+    encode(
+        RUNTIME_SCHEMA_VERSIONS,
+        &[KeyPart::Text(scope.as_str()), KeyPart::DescU64(cursor)],
+    )
+}
+
 pub(crate) fn runtime_snapshot_key(id: &str) -> Vec<u8> {
     encode(RUNTIME_SNAPSHOTS, &[KeyPart::Text(id)])
 }
@@ -926,11 +1014,24 @@ mod tests {
     use super::*;
     use crate::key_codec::prefix_end;
 
+    const DIRECT_VERSION_KEY_FIXTURE: &str =
+        include_str!("../fixtures/rrflow-kv-direct-version-keys-v1.hex");
+
     fn sp(subject: &str, predicate: &str) -> (Subject, Predicate) {
         (
             Subject::new(subject).unwrap(),
             Predicate::new(predicate).unwrap(),
         )
+    }
+
+    fn hex(bytes: &[u8]) -> String {
+        const DIGITS: &[u8; 16] = b"0123456789abcdef";
+        let mut encoded = String::with_capacity(bytes.len() * 2);
+        for byte in bytes {
+            encoded.push(DIGITS[usize::from(byte >> 4)] as char);
+            encoded.push(DIGITS[usize::from(byte & 0x0f)] as char);
+        }
+        encoded
     }
 
     #[test]
@@ -948,10 +1049,12 @@ mod tests {
             FUNCTION_CATALOGUE_HEADS,
             PROJECTIONS,
             RUNTIME_CHANGES,
+            RUNTIME_CLAIM_VERSIONS,
             RUNTIME_RECORDS,
             RUNTIME_RECORD_VERSIONS,
             RUNTIME_RELATIONS,
             RUNTIME_RELATION_VERSIONS,
+            RUNTIME_EVENT_VERSIONS,
             RUNTIME_OUTGOING_EDGES,
             RUNTIME_OUTGOING_EDGE_VERSIONS,
             RUNTIME_INCOMING_EDGES,
@@ -959,8 +1062,11 @@ mod tests {
             RUNTIME_VECTORS,
             RUNTIME_VECTOR_VERSIONS,
             RUNTIME_SERIES,
+            RUNTIME_SERIES_VERSIONS,
             RUNTIME_GEO,
+            RUNTIME_GEO_VERSIONS,
             RUNTIME_OBJECTS,
+            RUNTIME_OBJECT_VERSIONS,
             RUNTIME_PROJECTION_DELTAS,
             RUNTIME_INDEX_SOURCE_DELTAS,
             RUNTIME_VECTOR_SOURCE_DELTAS,
@@ -973,6 +1079,7 @@ mod tests {
             RUNTIME_AUDIT,
             RUNTIME_COMMITS,
             RUNTIME_SCHEMAS,
+            RUNTIME_SCHEMA_VERSIONS,
             RUNTIME_SNAPSHOTS,
         ];
         let mut coordinates = spaces
@@ -1101,6 +1208,102 @@ mod tests {
                 8,
             )
         );
+    }
+
+    #[test]
+    fn every_direct_version_family_is_scope_bound_and_newest_first() {
+        let scope = ScopeId::new("project:direct-version-keys").unwrap();
+        let other = ScopeId::new("project:direct-version-keys-other").unwrap();
+        let reference = RuntimeRef::new("document", "alpha").unwrap();
+        for space in [
+            RUNTIME_RECORD_VERSIONS,
+            RUNTIME_RELATION_VERSIONS,
+            RUNTIME_EVENT_VERSIONS,
+            RUNTIME_SERIES_VERSIONS,
+            RUNTIME_GEO_VERSIONS,
+            RUNTIME_OBJECT_VERSIONS,
+        ] {
+            let newer = runtime_version_key(space, &scope, &reference, 200, 9);
+            let older = runtime_version_key(space, &scope, &reference, 100, 8);
+            assert!(newer < older);
+            assert!(newer.starts_with(&runtime_kind_prefix(space, &scope, &reference.kind)));
+            assert!(!newer.starts_with(&runtime_scope_prefix(space, &other)));
+        }
+
+        let claim = rrd_core::Claim::new(
+            Subject::new("document:alpha").unwrap(),
+            Predicate::new("status").unwrap(),
+            "ready",
+            100,
+            200,
+            rrd_core::Producer {
+                actor: "test:direct-version-keys".into(),
+                on_behalf_of: None,
+                session: None,
+            },
+        );
+        let claim_key = runtime_claim_version_key(&scope, &claim, 9);
+        assert!(claim_key.starts_with(&runtime_claim_predicate_prefix(&scope, &claim.predicate)));
+        assert!(!claim_key.starts_with(&runtime_scope_prefix(RUNTIME_CLAIM_VERSIONS, &other)));
+        assert!(runtime_schema_version_key(&scope, 9) < runtime_schema_version_key(&scope, 8));
+        assert!(runtime_schema_version_key(&scope, 9)
+            .starts_with(&runtime_scope_prefix(RUNTIME_SCHEMA_VERSIONS, &scope)));
+    }
+
+    #[test]
+    fn direct_version_key_shapes_match_the_frozen_fixture() {
+        let scope = ScopeId::new("project:version-fixture").unwrap();
+        let reference = RuntimeRef::new("document", "alpha").unwrap();
+        let claim = rrd_core::Claim::new(
+            Subject::new("document:alpha").unwrap(),
+            Predicate::new("status").unwrap(),
+            "ready",
+            100,
+            200,
+            rrd_core::Producer {
+                actor: "test:version-fixture".into(),
+                on_behalf_of: None,
+                session: None,
+            },
+        );
+        let entries = [
+            ("schema", runtime_schema_version_key(&scope, 1)),
+            ("claim", runtime_claim_version_key(&scope, &claim, 2)),
+            (
+                "record",
+                runtime_version_key(RUNTIME_RECORD_VERSIONS, &scope, &reference, 100, 3),
+            ),
+            (
+                "relation",
+                runtime_version_key(RUNTIME_RELATION_VERSIONS, &scope, &reference, 100, 4),
+            ),
+            (
+                "event",
+                runtime_version_key(RUNTIME_EVENT_VERSIONS, &scope, &reference, 100, 5),
+            ),
+            (
+                "vector",
+                runtime_vector_version_key(&scope, &reference, 100, 6),
+            ),
+            (
+                "series",
+                runtime_version_key(RUNTIME_SERIES_VERSIONS, &scope, &reference, 100, 7),
+            ),
+            (
+                "geo",
+                runtime_version_key(RUNTIME_GEO_VERSIONS, &scope, &reference, 100, 8),
+            ),
+            (
+                "object",
+                runtime_version_key(RUNTIME_OBJECT_VERSIONS, &scope, &reference, 100, 9),
+            ),
+        ];
+        let actual = entries
+            .into_iter()
+            .map(|(label, key)| format!("{label} {}", hex(&key)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(actual, DIRECT_VERSION_KEY_FIXTURE.trim_end());
     }
 
     #[test]

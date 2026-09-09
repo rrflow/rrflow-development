@@ -148,7 +148,7 @@ fn assert_historical_authenticated_point_read(engine: &dyn StorageEngine) {
     assert_eq!(point.changes.len(), 1);
     assert_eq!(
         point.validation.method,
-        "full_hash_chain_replay_then_rfc9162_inclusion"
+        "rfc9162_direct_versions_then_rfc9162_inclusion"
     );
     assert_eq!(point.validation.change_reads, 3);
 
