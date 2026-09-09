@@ -58,25 +58,26 @@ establish Qdrant equivalence.
 
 ## Current persistent path
 
-`RrdEngine::search_vectors_at` currently reads retained runtime changes from
-cursor zero up to the captured stamp and reconstructs canonical vector
-candidates in memory. It then reconstructs the serving catalogue from durable
-artifact records, verifies content-addressed objects and descriptors, applies
-memory-tier admission, and installs selected artifacts into a process-local
-`VectorRuntime` for the request.
+`RrdEngine::search_vectors_at` captures one authenticated `ReadStamp`, selects
+canonical vector versions through the direct bounded semantic-version access
+path, and materializes the selected candidates in memory. It then reconstructs
+the serving catalogue from durable artifact records, verifies
+content-addressed objects and descriptors, applies memory-tier admission, and
+installs selected artifacts into a process-local `VectorRuntime` for the
+request.
 
 Artifact descriptors and object references are persisted through engine-owned
 runtime state, and restart tests prove verified HNSW reopen and retirement
 overlay behavior. Compact exact and quantized codecs support mapped reads;
 the current exact JSON segment and HNSW JSON artifact do not. The vector
-artifact catalogue also still accepts an older catalogue contract version.
-That reader is pre-release inventory for C-05/J-01 removal, not a 1.0
-compatibility promise.
+artifact catalogue accepts only contract v2 and computes one identity digest
+that includes its optional build evidence. Pre-1.0 catalogue entries fail
+validation before artifact decoding or engine replay.
 
 Consequently, a successful HNSW query today is a real approximate traversal
-and exact rerank, but it still pays a broad runtime-history scan and
-process-local canonical-candidate reconstruction before planning. It is not
-the final rrflowKV-native incremental vector path, and it does not exchange
+and exact rerank, but it still pays process-local canonical-candidate
+materialization and runtime-catalogue reconstruction before planning. It is
+not the final rrflowKV-native incremental vector path, and it does not exchange
 stamped Arrow batches with DataFusion.
 
 ## Evidence and remaining gates
@@ -97,8 +98,9 @@ The retained 10,000-by-128 local observation remains raw evidence at
 It is not a cross-system or production performance claim.
 
 Gate C-04 has replaced normal whole-log candidate reconstruction with direct
-versioned reads. Gate C-05 must remove the older catalogue reader and its
-separate digest branch. Gate E-04
+versioned reads. Gate C-05e has removed the older artifact-catalogue reader and
+its separate digest branch; C-05 remains open for the other successful
+pre-release shapes recorded in its whole-executable audit. Gate E-04
 must atomically maintain canonical vectors and index deltas, prove immutable
 HNSW plus exact overlay after crash/reopen, and satisfy fixed recall and
 filtering gates. Gate F-03 must make vector candidate generation and RRF native

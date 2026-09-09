@@ -11,7 +11,6 @@ use rrd_core::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-const LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 1;
 pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;
 pub const VECTOR_ARTIFACT_RECORD_TYPE: &str = "vector_artifact";
 
@@ -115,17 +114,8 @@ impl VectorArtifactCatalogEntry {
     }
 
     fn validate_components(&self) -> Result<()> {
-        if !matches!(
-            self.contract_version,
-            LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION | VECTOR_ARTIFACT_CATALOG_VERSION
-        ) || self.catalog_revision == 0
-        {
+        if self.contract_version != VECTOR_ARTIFACT_CATALOG_VERSION || self.catalog_revision == 0 {
             return invalid("vector artifact catalog version and revision must be valid");
-        }
-        if self.contract_version == LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION
-            && self.build_evidence.is_some()
-        {
-            return invalid("legacy vector artifact catalog entries cannot contain build evidence");
         }
         self.descriptor.validate()?;
         if self.descriptor.stamp().state != ProjectionState::Ready {
@@ -195,26 +185,15 @@ impl VectorArtifactCatalogEntry {
     }
 
     fn identity_bytes(&self) -> Result<Vec<u8>> {
-        let encoded = if self.contract_version == LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION {
-            serde_json::to_vec(&(
-                self.contract_version,
-                self.catalog_revision,
-                self.kind,
-                &self.descriptor,
-                &self.object,
-                self.published_at,
-            ))
-        } else {
-            serde_json::to_vec(&(
-                self.contract_version,
-                self.catalog_revision,
-                self.kind,
-                &self.descriptor,
-                &self.object,
-                self.published_at,
-                &self.build_evidence,
-            ))
-        };
+        let encoded = serde_json::to_vec(&(
+            self.contract_version,
+            self.catalog_revision,
+            self.kind,
+            &self.descriptor,
+            &self.object,
+            self.published_at,
+            &self.build_evidence,
+        ));
         encoded.map_err(|error| rrd_core::Error::InvalidRuntime {
             reason: format!("vector artifact catalog identity cannot be encoded: {error}"),
         })
@@ -459,7 +438,7 @@ impl VectorCatalog {
 mod tests {
     use super::*;
     use crate::{ScoreMetric, VectorSegmentConfig};
-    use rrd_core::{ScopeId, DATA_RUNTIME_CONTRACT_VERSION};
+    use rrd_core::{ObjectReceipt, ScopeId, DATA_RUNTIME_CONTRACT_VERSION};
     use std::collections::BTreeSet;
 
     fn segment(id: &str, generation: u64, cursor: u64) -> SegmentDescriptor {
@@ -492,6 +471,41 @@ mod tests {
             minimum_cursor: 0,
             candidate_versions: cursor as usize,
         }
+    }
+
+    fn artifact_entry() -> VectorArtifactCatalogEntry {
+        let descriptor = VectorProjectionDescriptor::from(segment("vector:body", 1, 1));
+        let subject = VectorArtifactCatalogEntry::record_reference(&descriptor).unwrap();
+        let bytes = b"current vector artifact";
+        let object_key = ObjectReference::canonical_key(&digest::sha256_hex(bytes)).unwrap();
+        let object = ObjectReference::for_bytes(
+            "vector-artifact",
+            Some(subject),
+            VectorArtifactKind::ExactSegment.media_type(),
+            bytes,
+            ObjectReceipt {
+                backend: "memory".into(),
+                key: object_key,
+                version: None,
+                etag: None,
+            },
+        )
+        .unwrap();
+        VectorArtifactCatalogEntry::new(1, VectorArtifactKind::ExactSegment, descriptor, object, 1)
+            .unwrap()
+    }
+
+    #[test]
+    fn pre_1_0_vector_artifact_catalogue_entries_are_rejected() {
+        let mut entry = artifact_entry();
+        entry.contract_version = 1;
+        entry.entry_digest = digest::sha256_hex(&entry.identity_bytes().unwrap());
+
+        assert!(entry
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("version"));
     }
 
     #[test]

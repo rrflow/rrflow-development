@@ -413,9 +413,16 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
             .join("crates/persistence/rrd-lsm/src/segment.rs"),
     )
     .expect("segment source must be readable");
+    let vector_catalog = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/compute/rrd-vector/src/catalog.rs"),
+    )
+    .expect("vector artifact catalog source must be readable");
     assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
     assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 2;"));
     assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 3;"));
+    assert!(vector_catalog.contains("pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;"));
     for (name, source) in [
         ("batch", batch.as_str()),
         ("manifest", manifest.as_str()),
@@ -433,6 +440,10 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
             );
         }
     }
+    assert!(
+        !vector_catalog.contains("LEGACY_VECTOR_ARTIFACT_CATALOG_VERSION"),
+        "the alpha executable revived the pre-1.0 vector artifact catalogue reader"
+    );
 }
 
 #[test]

@@ -103,9 +103,11 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **C-05d**, direct removal of the successful
-pre-release schema and vector representations found by the whole-executable
-audit after C-05c. C-01's physical-key package, C-02's shared
+The next executable item is **C-05f**, requiring the canonical runtime schema
+table map and removing the caller-selected missing-table model fallback found
+by the whole-executable audit after C-05c. C-05e has already removed vector
+artifact catalogue v1 and its alternate identity digest. C-01's physical-key
+package, C-02's shared
 transaction/repository package, C-03's effect-complete semantic mutation
 batch, C-04's direct current/temporal read package, C-05's lower physical
 reader/dependency packages, and every Gate B contract package are complete.
@@ -974,7 +976,7 @@ C-05 accepted convergence evidence and audit correction (gate remains open):
   fixtures are removed. Negative tests reject omission of every named field;
   one fresh estate/backup/recovery corpus is identical on rrflowMX, rrflowKV,
   and rrflowKV reopen. This accepts the evidence required to close POAM-018.
-- C-05c, in the reviewed change containing this record, removes the unused
+- C-05c at `cd1bf495ece3c6698cde1cca413bfbe7be55588c` removes the unused
   `rrflow-cli` development dependency on `rrd-lsm` and adds an executable
   architecture guard over dependency kind, optionality, and feature
   resolution. The independently installable alpha has exactly one required
@@ -983,21 +985,27 @@ C-05 accepted convergence evidence and audit correction (gate remains open):
   `object-transfer` contracts. The guard also pins the sole current batch v2,
   manifest v2, and segment v3 readers and rejects revival of retired reader or
   backend names.
-- All three packages pass their focused and owning suites, all 25 workspace
+- C-05e, in the reviewed change containing this record, removes the successful
+  vector artifact catalogue v1 validation branch and its shorter identity
+  tuple. One current v2 tuple includes build evidence, and an internally
+  digest-consistent v1 entry fails before artifact decoding or engine replay.
+  Current v2 publication remains identical on rrflowMX and rrflowKV, and the
+  rrflowKV catalogue still reopens before missing artifact bytes fail closed.
+- C-05a through C-05c and C-05e pass their focused and owning suites, all 25 workspace
   architecture guards, the complete default workspace all-target test and
   strict Clippy matrices, and the repository inventory, documentation,
   generated-surface, workflow, version, formatting, and diff policies. Exact
   commands, counts, source probes, and scope exclusions are recorded in the
-  C-05a through C-05c execution journals.
+  C-05a through C-05e execution journals.
 - C-05c closes only the independently installable alpha's physical dependency
   and reader slice. The first C-06 owner read then followed every active C-05
   reference and found compiled successful pre-release paths above that slice:
   vector artifact catalogue v1 beside v2; missing-table schema derivation and
   caller-selected snapshot model fallback; missing vector collection
   addresses; and suppression of the second vector/TurboQuant catalogue during
-  runtime reconstruction. The C-05d correction journal records the discovery,
-  reopens this checkbox, and blocks C-06 until direct-removal packages close
-  the complete inventory.
+  runtime reconstruction. C-05e removes the first item. The C-05d correction
+  journal records the complete discovery, keeps this checkbox open, and blocks
+  C-06 until direct-removal packages close the remaining inventory.
 - The optional post-alpha OpenRaft implementation still contains direct cluster
   openers and remains visible under POAM-023; it is neither enabled nor
   qualified by the alpha composition and cannot enter a release until a new
