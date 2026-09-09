@@ -96,8 +96,9 @@ The retained 10,000-by-128 local observation remains raw evidence at
 [`docs/evidence/m5-vector-local-10000x128.json`](../../evidence/m5-vector-local-10000x128.json).
 It is not a cross-system or production performance claim.
 
-Gate C-04 must replace whole-log candidate reconstruction with direct
-versioned reads. Gate C-05 must remove the older catalogue reader. Gate E-04
+Gate C-04 has replaced normal whole-log candidate reconstruction with direct
+versioned reads. Gate C-05 must remove the older catalogue reader and its
+separate digest branch. Gate E-04
 must atomically maintain canonical vectors and index deltas, prove immutable
 HNSW plus exact overlay after crash/reopen, and satisfy fixed recall and
 filtering gates. Gate F-03 must make vector candidate generation and RRF native

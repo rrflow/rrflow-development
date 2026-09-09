@@ -57,15 +57,16 @@ state. It is not the final native point/range read path.
 ## Required 1.0 convergence
 
 The current Rust type still accepts an empty explicit `tables` map and derives
-strict record, relation, and event entries from older specialized maps. That
-pre-release derivation is implementation inventory, not an RRFlow 1.0
-compatibility promise. Gate C-05 must remove it and every alternate format
-reader from the 1.0 executable after the canonical format tests exist.
+strict record, relation, and event entries from older specialized maps.
+`RuntimeDataSnapshot` then permits caller-selected model fallback when that map
+is empty. Those pre-release branches are implementation inventory, not an
+RRFlow 1.0 compatibility promise. Gate C-05 must require the canonical table
+map, remove both fallback branches, and reject the omitted shape.
 
-Gate C-03 must commit records, both graph adjacency directions, synchronous
-index changes, the runtime entry, and durable projection deltas as one
-physical batch. Gate C-04 must replace whole-log snapshot reconstruction with
-versioned keys at one `ReadStamp`. Gates E and F must then make native graph,
+Gate C-03 already commits records, both graph adjacency directions,
+synchronous index changes, the runtime entry, and durable projection deltas as
+one physical batch. Gate C-04 already replaced normal whole-log snapshot
+reconstruction with versioned keys at one `ReadStamp`. Gates E and F must make native graph,
 scalar, BM25, vector, and Arrow/DataFusion paths consume that same catalogue
 and stamp. Until those gates pass, the logical catalogue is real and
 persistent, but it is not proof that RRFlow's multimodal storage and recall

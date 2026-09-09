@@ -11,7 +11,8 @@ Current comparison mechanics and evidence limitations are owned by the
 [benchmark-harness reference](rrflowkv-benchmark-harness.md).
 The [roadmap](../../roadmap/rrflow-1.0.md) owns the replacement and removal
 work. [POAM-002](../../poam/rrflow-1.0-alpha.md) keeps the physical-layout
-deficiency open; POAM-003 records the accepted active-alpha reader closure.
+deficiency open; POAM-003 retains the accepted lower physical-reader closure
+while tracking successful pre-release representations above that boundary.
 
 ## Current and target boundary
 
@@ -34,12 +35,12 @@ The active physical readers now accept exactly mutation batch v2, manifest v2,
 and segment v3. Pre-1.0 batch v1, manifest v1, and segment v1/v2 bytes are
 retained only as negative inputs that must return an explicit unsupported-format
 error before any alternate decoder runs. The Fjall store, backend selector,
-and migration executor are absent. Gate C-05's complete active-alpha audit
-proves that `rrd-store` owns the only required production dependency on
-`rrd-lsm`; the only other declaration is the disabled optional OpenRaft
-adapter tracked by POAM-023 and excluded from the single-node alpha. This
-record does not turn any rejected format or post-alpha implementation into a
-product requirement.
+and migration executor are absent. Gate C-05c proves that `rrd-store` owns the
+only required production dependency on `rrd-lsm`; the only other declaration
+is the disabled optional OpenRaft adapter tracked by POAM-023 and excluded from
+the single-node alpha. C-05 remains open for successful pre-release semantic
+readers above these physical bytes. This record does not turn any rejected
+format or post-alpha implementation into a product requirement.
 
 ## Implemented object set
 
@@ -367,10 +368,11 @@ source-delta, rrflowMX/rrflowKV differential, exact-key failure-boundary, and
 rrflowKV-reopen evidence. C-03 is accepted by the canonical roadmap; that does
 not qualify Gate E's bounded read paths/materializers or Gate C-06's physical
 format. The remaining lower-level tests prove only the present object format.
-C-05's whole-alpha-executable source, dependency, opener, and current-reader
-closure evidence is recorded in its three execution journals; the optional
-post-alpha cluster implementation remains unqualified under POAM-023. C-06
-requires new vectors, property and crash tests, and fixed-hardware comparison
-for the hybrid Arrow-compatible target. Gate F requires streamed
+C-05's lower source, dependency, opener, and physical-reader closure evidence
+is recorded in its first three execution journals; C-05d records why the gate
+remains open for upper semantic shapes, and the optional post-alpha cluster
+implementation remains unqualified under POAM-023. C-06 requires new vectors,
+property and crash tests, and fixed-hardware comparison for the hybrid
+Arrow-compatible target. Gate F requires streamed
 projection/predicate/budget counters through DataFusion. Passing this suite
 cannot close any of those gates by itself.

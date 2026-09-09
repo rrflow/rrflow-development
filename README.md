@@ -130,17 +130,17 @@ also complete: current and temporal state is selected through authenticated,
 budgeted semantic-version point/range reads at one `ReadStamp`; normal query,
 vector, retrieval, context, memory, and inference paths no longer reconstruct
 state from the runtime change log; and exact rrflowMX/rrflowKV, rrflowKV
-reopen, physical-counter, and source-closure evidence passes. C-05 is also
-complete for the independently installable single-node alpha: the only
-required production dependency on the physical `rrd-lsm` substrate is through
-`rrd-store`, and the current batch, manifest, and segment readers reject every
-retired format. The unavailable post-alpha OpenRaft implementation remains an
-explicit POA&M item and is not part of the alpha composition. The next
-executable package is the
-[C-06 hybrid immutable segment format](docs/roadmap/rrflow-1.0-execution-map.md#c-06--hybrid-immutable-segment-format).
-This is a single-reader foundation, not proof of hybrid Arrow pages, native
-graph/BM25/vector access paths, DataFusion streaming, or persistent
-reasoning/recall.
+reopen, physical-counter, and source-closure evidence passes. C-05 has removed
+the retired physical readers and proved that the only required production
+dependency on `rrd-lsm` is through `rrd-store`. A subsequent whole-executable
+audit found successful pre-release schema and vector shapes above that
+physical boundary, so C-05 remains open and C-06 has not begun. The unavailable
+post-alpha OpenRaft implementation also remains an explicit POA&M item and is
+not part of the alpha composition. The next executable package is
+[C-05d whole-executable old-shape convergence](docs/roadmap/rrflow-1.0-execution-map.md#c-05d-whole-executable-old-shape-audit-correction-plan-journal).
+This is a single-physical-reader foundation, not proof of one final executable
+shape, hybrid Arrow pages, native graph/BM25/vector access paths, DataFusion
+streaming, or persistent reasoning/recall.
 
 ## Knowledge warp points
 
