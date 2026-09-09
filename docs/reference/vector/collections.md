@@ -27,9 +27,9 @@ when loaded; corruption fails closed.
 This is engine-owned persistent control state, but it is not yet the final
 ordered rrflowKV key layout or an atomic physical projection of the logical
 schema catalogue. C-03 already commits each canonical vector and its source
-delta atomically. C-05h must remove the remaining second vector catalogue;
-Gates E and F own native indexed and analytical consumption of the surviving
-authority.
+delta atomically. C-05 removes generic quantized publication and the duplicate
+TurboQuant request/reconstruction path; Gates E and F own native indexed and
+analytical consumption of the surviving source and lifecycle authorities.
 
 ## Point mutation and reads
 
@@ -64,9 +64,9 @@ Gate E must prove the persistent lookup structure, incremental maintenance,
 filtered recall, and reopen behavior.
 
 Collection deletion scans the current vector history within an explicit
-budget, rejects live or future points, and rejects active HNSW, TurboQuant, or
-quantization artifacts. The caller must first retire points and governed
-artifacts. Historical runtime changes remain intact.
+budget, rejects live or future points, and rejects active HNSW or ready/active
+quantization artifacts, including TurboQuant. The caller must first retire
+points and governed artifacts. Historical runtime changes remain intact.
 
 ## Verified boundary and required convergence
 

@@ -130,27 +130,23 @@ also complete: current and temporal state is selected through authenticated,
 budgeted semantic-version point/range reads at one `ReadStamp`; normal query,
 vector, retrieval, context, memory, and inference paths no longer reconstruct
 state from the runtime change log; and exact rrflowMX/rrflowKV, rrflowKV
-reopen, physical-counter, and source-closure evidence passes. C-05 has removed
-the retired physical readers and proved that the only required production
-dependency on `rrd-lsm` is through `rrd-store`. Three bounded packages
-from the subsequent whole-executable audit now reject vector artifact catalogue
-v1, require one explicit nonempty logical table map on every schema, and remove
-caller-selected snapshot model inference. Every specialized record, relation,
-and event schema now resolves through that same table authority; the public
-contract and generated client projections also require the map. Every persisted
-vector now requires a canonical collection plus named-vector address across the
-public contract, kernel, inference, rrflowMX/rrflowKV source deltas, commit
-identity, and derived exact/HNSW/quantized/TurboQuant artifacts. Omitted
-addresses and empty physical address parts fail closed. The second
-vector/TurboQuant catalogue remains a successful pre-release shape above that
-physical boundary, so C-05 remains open and C-06 has not begun. The unavailable
-post-alpha OpenRaft implementation also remains an explicit POA&M item and is
-not part of the alpha composition. The next executable package is C-05h,
-removing that second catalogue and its suppression path identified by the
-[C-05d whole-executable audit](docs/roadmap/rrflow-1.0-execution-map.md#c-05d-whole-executable-old-shape-audit-correction-plan-journal).
-This is a single-physical-reader foundation, not proof of one final executable
-shape, hybrid Arrow pages, native graph/BM25/vector access paths, DataFusion
-streaming, or persistent reasoning/recall.
+reopen, physical-counter, and source-closure evidence passes. C-05 is complete
+for the single-node alpha composition: retired physical readers are absent;
+`rrd-store` is the only required production owner of `rrd-lsm`; schemas require
+one explicit logical table map; and every persisted vector requires its
+canonical collection plus named-vector address. The generic vector artifact
+catalogue now admits only exact/compact and HNSW projections. Scalar, product,
+binary, and TurboQuant artifacts enter the same serving planner only through
+their explicit build/activate/retire quantization lifecycle; the duplicate
+TurboQuant `ensure_vector_index` request, generic publication, replay
+suppression, and successful fixtures are gone. The complete default workspace
+test and strict Clippy matrices pass after that convergence. The unavailable
+post-alpha OpenRaft implementation remains an explicit POA&M item and is not
+part of the alpha composition. C-06 is next: replace the current row-record
+immutable segment with the ordered key/version spine plus Arrow-compatible
+column pages. This is one accepted pre-release executable shape, not proof of
+the C-06 hybrid format, native graph/BM25/vector access paths, streamed
+DataFusion, turnkey installation, or persistent reasoning/recall.
 
 ## Knowledge warp points
 

@@ -732,16 +732,14 @@ fn require_no_collection_artifacts(
     let entries = crate::vector_artifact_catalog_entries(&engine.storage, scope)
         .map_err(|error| ServiceError::Vector(error.to_string()))?;
     for vector in collection.definition.vectors.values() {
-        for kind in ["hnsw", "turboquant"] {
-            let expected = format!("{kind}-{collection_id}-{}", vector.name);
-            if entries
-                .iter()
-                .any(|entry| entry.descriptor.stamp().id.as_str() == expected)
-            {
-                return Err(ServiceError::Vector(format!(
-                    "vector collection {collection_id} still owns active {kind} artifacts; retire them before deletion"
-                )));
-            }
+        let expected = format!("hnsw-{collection_id}-{}", vector.name);
+        if entries
+            .iter()
+            .any(|entry| entry.descriptor.stamp().id.as_str() == expected)
+        {
+            return Err(ServiceError::Vector(format!(
+                "vector collection {collection_id} still owns an active HNSW artifact; retire it before deletion"
+            )));
         }
     }
     let quantization = crate::quantization_artifact_catalogue(&engine.storage, scope)
@@ -767,26 +765,19 @@ fn require_payload_index_not_in_use(
     let entries = crate::vector_artifact_catalog_entries(&engine.storage, scope)
         .map_err(|error| ServiceError::Vector(error.to_string()))?;
     for vector in collection.definition.vectors.values() {
-        for kind in ["hnsw", "turboquant"] {
-            let expected = format!("{kind}-{collection_id}-{}", vector.name);
-            let Some(entry) = entries
-                .iter()
-                .find(|entry| entry.descriptor.stamp().id.as_str() == expected)
+        let kind = "hnsw";
+        let expected = format!("{kind}-{collection_id}-{}", vector.name);
+        if let Some(entry) = entries
+            .iter()
+            .find(|entry| entry.descriptor.stamp().id.as_str() == expected)
+        {
+            let rrd_vector::VectorProjectionDescriptor::Hnsw { descriptor } = &entry.descriptor
             else {
-                continue;
+                return Err(ServiceError::Vector(
+                    "generic vector index catalogue contains a non-HNSW named index".into(),
+                ));
             };
-            let properties = match &entry.descriptor {
-                rrd_vector::VectorProjectionDescriptor::Hnsw { descriptor } => {
-                    &descriptor.filter_properties
-                }
-                rrd_vector::VectorProjectionDescriptor::TurboQuant { descriptor } => {
-                    &descriptor.filter_properties
-                }
-                rrd_vector::VectorProjectionDescriptor::Quantized { descriptor } => {
-                    &descriptor.filter_properties
-                }
-                rrd_vector::VectorProjectionDescriptor::ExactSegment { .. } => continue,
-            };
+            let properties = &descriptor.filter_properties;
             if properties.contains(field) {
                 return Err(ServiceError::Vector(format!(
                     "payload index {field} is required by active {kind} artifact {}; retire or replace the artifact before deletion",

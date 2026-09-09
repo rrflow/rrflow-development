@@ -40,17 +40,6 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        if matches!(
-            &request.configuration,
-            VectorIndexConfiguration::TurboQuant { .. }
-        ) {
-            if request.build_policy != VectorIndexBuildPolicy::Cpu {
-                return Err(ServiceError::Vector(
-                    "TurboQuant does not support the HNSW GPU build policy".into(),
-                ));
-            }
-            return self.ensure_turboquant_index_authorized(session_id, request, now);
-        }
         let scope = self.query_scope(&request.scope)?;
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
             .load()
@@ -76,9 +65,6 @@ impl RrdEngine {
             })?;
         let filter_properties = match &request.configuration {
             VectorIndexConfiguration::Hnsw {
-                filter_properties, ..
-            }
-            | VectorIndexConfiguration::TurboQuant {
                 filter_properties, ..
             } => filter_properties,
         };
@@ -117,10 +103,7 @@ impl RrdEngine {
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
         let mut runtime = crate::reopen_vector_runtime(&data, &scope, candidates.clone())
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        let index_kind = match &request.configuration {
-            VectorIndexConfiguration::Hnsw { .. } => "hnsw",
-            VectorIndexConfiguration::TurboQuant { .. } => "turboquant",
-        };
+        let index_kind = "hnsw";
         let index_id = CanonicalId::new(format!(
             "{index_kind}-{}-{}",
             request.collection_id, request.vector_name
@@ -286,12 +269,7 @@ fn hnsw_config(
         max_level,
         seed,
         filter_properties,
-    } = &request.configuration
-    else {
-        return Err(ServiceError::Vector(
-            "HNSW configuration helper received another index kind".into(),
-        ));
-    };
+    } = &request.configuration;
     Ok(rrd_vector::HnswConfig {
         id,
         scope,
@@ -319,40 +297,31 @@ fn build_index_artifact(
     source_cursor: u64,
     candidates: Vec<rrd_vector::VectorCandidate>,
 ) -> Result<(rrd_vector::VectorArtifact, rrd_vector::HnswBuildEvidence)> {
-    match &request.configuration {
-        VectorIndexConfiguration::Hnsw { .. } => {
-            let policy = match &request.build_policy {
-                VectorIndexBuildPolicy::Cpu => rrd_vector::HnswBuildPolicy::CpuOnly,
-                VectorIndexBuildPolicy::PreferGpu {
-                    backend_id,
-                    allow_cpu_fallback,
-                } => rrd_vector::HnswBuildPolicy::Prefer {
-                    backend_id: backend_id.as_str().into(),
-                    allow_cpu_fallback: *allow_cpu_fallback,
-                },
-                VectorIndexBuildPolicy::RequireGpu { backend_id } => {
-                    rrd_vector::HnswBuildPolicy::Require {
-                        backend_id: backend_id.as_str().into(),
-                    }
-                }
-            };
-            let outcome = accelerators
-                .lock()
-                .map_err(|_| ServiceError::Storage("HNSW accelerator lock is poisoned".into()))?
-                .build(
-                    hnsw_config(request, vector, scope, id)?,
-                    generation,
-                    source_cursor,
-                    candidates,
-                    policy,
-                )
-                .map_err(core_vector)?;
-            Ok((outcome.artifact.into(), outcome.evidence))
-        }
-        VectorIndexConfiguration::TurboQuant { .. } => Err(ServiceError::Vector(
-            "TurboQuant must use the engine quantization lifecycle".into(),
-        )),
-    }
+    let policy = match &request.build_policy {
+        VectorIndexBuildPolicy::Cpu => rrd_vector::HnswBuildPolicy::CpuOnly,
+        VectorIndexBuildPolicy::PreferGpu {
+            backend_id,
+            allow_cpu_fallback,
+        } => rrd_vector::HnswBuildPolicy::Prefer {
+            backend_id: backend_id.as_str().into(),
+            allow_cpu_fallback: *allow_cpu_fallback,
+        },
+        VectorIndexBuildPolicy::RequireGpu { backend_id } => rrd_vector::HnswBuildPolicy::Require {
+            backend_id: backend_id.as_str().into(),
+        },
+    };
+    let outcome = accelerators
+        .lock()
+        .map_err(|_| ServiceError::Storage("HNSW accelerator lock is poisoned".into()))?
+        .build(
+            hnsw_config(request, vector, scope, id)?,
+            generation,
+            source_cursor,
+            candidates,
+            policy,
+        )
+        .map_err(core_vector)?;
+    Ok((outcome.artifact.into(), outcome.evidence))
 }
 
 fn build_policy_satisfied(
@@ -388,94 +357,35 @@ fn public_vector_index(
     collection_id: &CanonicalId,
     vector_name: &CanonicalId,
 ) -> Result<VectorIndexSnapshot> {
-    let (
-        stamp,
-        kind,
-        indexed_vectors,
-        packed_vector_bytes,
-        full_precision_vector_bytes,
-        maintenance,
-    ) = match &entry.descriptor {
-        rrd_vector::VectorProjectionDescriptor::Hnsw { descriptor } => (
-            &descriptor.stamp,
-            "hnsw",
-            descriptor.nodes,
-            None,
-            None,
-            VectorIndexMaintenanceSnapshot {
-                mode: match descriptor.maintenance {
-                    rrd_vector::HnswMaintenanceKind::FullBuild => {
-                        VectorIndexMaintenanceMode::FullBuild
-                    }
-                    rrd_vector::HnswMaintenanceKind::Incremental => {
-                        VectorIndexMaintenanceMode::Incremental
-                    }
-                },
-                previous_generation: descriptor.previous_generation,
-                indexed_delta_vectors: u64::try_from(descriptor.indexed_delta_vectors)
-                    .map_err(|_| ServiceError::Vector("HNSW delta count exceeds u64".into()))?,
-            },
-        ),
-        rrd_vector::VectorProjectionDescriptor::TurboQuant { descriptor } => (
-            &descriptor.stamp,
-            "turboquant",
-            descriptor.candidate_versions,
-            Some(descriptor.packed_vector_bytes),
-            Some(descriptor.full_precision_vector_bytes),
-            VectorIndexMaintenanceSnapshot {
-                mode: VectorIndexMaintenanceMode::FullBuild,
-                previous_generation: None,
-                indexed_delta_vectors: u64::try_from(descriptor.candidate_versions).map_err(
-                    |_| ServiceError::Vector("TurboQuant delta count exceeds u64".into()),
-                )?,
-            },
-        ),
-        rrd_vector::VectorProjectionDescriptor::Quantized { descriptor } => (
-            &descriptor.stamp,
-            descriptor.method.as_str(),
-            descriptor.candidate_versions,
-            Some(descriptor.packed_vector_bytes),
-            Some(descriptor.full_precision_vector_bytes),
-            VectorIndexMaintenanceSnapshot {
-                mode: VectorIndexMaintenanceMode::FullBuild,
-                previous_generation: None,
-                indexed_delta_vectors: u64::try_from(descriptor.candidate_versions).map_err(
-                    |_| ServiceError::Vector("quantized delta count exceeds u64".into()),
-                )?,
-            },
-        ),
-        rrd_vector::VectorProjectionDescriptor::ExactSegment { .. } => {
-            return Err(ServiceError::Vector(
-                "vector index catalog entry is not an approximate index".into(),
-            ));
-        }
+    let rrd_vector::VectorProjectionDescriptor::Hnsw { descriptor } = &entry.descriptor else {
+        return Err(ServiceError::Vector(
+            "generic named vector index is not an HNSW artifact".into(),
+        ));
     };
-    let indexed_vectors = u64::try_from(indexed_vectors)
+    let stamp = &descriptor.stamp;
+    let indexed_vectors = u64::try_from(descriptor.nodes)
         .map_err(|_| ServiceError::Vector("vector index count exceeds u64".into()))?;
-    let packed_vector_bytes = packed_vector_bytes
-        .map(|value| {
-            u64::try_from(value)
-                .map_err(|_| ServiceError::Vector("packed vector bytes exceed u64".into()))
-        })
-        .transpose()?;
-    let full_precision_vector_bytes = full_precision_vector_bytes
-        .map(|value| {
-            u64::try_from(value)
-                .map_err(|_| ServiceError::Vector("full-precision vector bytes exceed u64".into()))
-        })
-        .transpose()?;
+    let maintenance = VectorIndexMaintenanceSnapshot {
+        mode: match descriptor.maintenance {
+            rrd_vector::HnswMaintenanceKind::FullBuild => VectorIndexMaintenanceMode::FullBuild,
+            rrd_vector::HnswMaintenanceKind::Incremental => VectorIndexMaintenanceMode::Incremental,
+        },
+        previous_generation: descriptor.previous_generation,
+        indexed_delta_vectors: u64::try_from(descriptor.indexed_delta_vectors)
+            .map_err(|_| ServiceError::Vector("HNSW delta count exceeds u64".into()))?,
+    };
     Ok(VectorIndexSnapshot {
         index_id: CanonicalId::new(stamp.id.as_str())
             .map_err(|error| ServiceError::Vector(error.to_string()))?,
         collection_id: collection_id.clone(),
         vector_name: vector_name.clone(),
-        kind: CanonicalId::new(kind).map_err(|error| ServiceError::Vector(error.to_string()))?,
+        kind: CanonicalId::new("hnsw").map_err(|error| ServiceError::Vector(error.to_string()))?,
         generation: stamp.generation,
         source_cursor: stamp.source_cursor,
         indexed_vectors,
         maintenance,
-        packed_vector_bytes,
-        full_precision_vector_bytes,
+        packed_vector_bytes: None,
+        full_precision_vector_bytes: None,
         build_evidence: entry
             .build_evidence
             .as_ref()

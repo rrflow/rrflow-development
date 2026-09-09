@@ -25,8 +25,8 @@ use rrd_contract::{
     SurfaceBinding, SurfaceDisposition, TransactionMutation, TransactionPreview, TransactionState,
     VectorIndexBuildPolicy, VectorIndexConfiguration, VectorMemoryTier, VectorPayloadCondition,
     VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
-    VectorQuantizationBits, VectorQuantizationMethod, VectorSearchMetric, VectorSearchMode,
-    VectorSearchQuery, VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
+    VectorQuantizationMethod, VectorSearchMetric, VectorSearchMode, VectorSearchQuery,
+    VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -678,20 +678,22 @@ fn query_index_administration_contract_is_bounded_and_strict() {
     }
     .validate()
     .unwrap();
-    EnsureVectorIndex {
-        scope: "instance:project-alpha".into(),
-        collection_id: CanonicalId::new("documents").unwrap(),
-        vector_name: CanonicalId::new("title").unwrap(),
-        configuration: VectorIndexConfiguration::TurboQuant {
-            bits: VectorQuantizationBits::Bits2,
-            seed: 11,
-            filter_properties: vec![CanonicalId::new("tenant").unwrap()],
-        },
-        build_policy: VectorIndexBuildPolicy::Cpu,
-        max_storage_keys: 10_000,
-    }
-    .validate()
-    .unwrap();
+    assert!(
+        serde_json::from_value::<EnsureVectorIndex>(serde_json::json!({
+            "scope": "instance:project-alpha",
+            "collection_id": "documents",
+            "vector_name": "title",
+            "configuration": {
+                "kind": "turbo_quant",
+                "bits": "bits2",
+                "seed": 11,
+                "filter_properties": ["tenant"]
+            },
+            "build_policy": {"kind": "cpu"},
+            "max_storage_keys": 10000
+        }))
+        .is_err()
+    );
     ListQueryIndexes {
         scope: "instance:project-alpha".into(),
     }

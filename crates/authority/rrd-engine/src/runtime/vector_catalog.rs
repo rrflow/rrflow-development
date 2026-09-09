@@ -322,27 +322,24 @@ where
     for entry in entries {
         let expected_revision = runtime.catalog().revision;
         runtime.replay_catalog_descriptor(expected_revision, entry.descriptor.clone())?;
-        if entry.kind != rrd_vector::VectorArtifactKind::TurboQuant {
-            let key = (
-                entry.descriptor.stamp().id.clone(),
-                entry.descriptor.stamp().generation,
-            );
-            if bindings
-                .insert(
-                    key,
-                    VectorArtifactBinding {
-                        kind: entry.kind,
-                        descriptor: entry.descriptor,
-                        object: entry.object,
-                    },
-                )
-                .is_some()
-            {
-                return Err("duplicate vector artifact residency binding".into());
-            }
+        let key = (
+            entry.descriptor.stamp().id.clone(),
+            entry.descriptor.stamp().generation,
+        );
+        if bindings
+            .insert(
+                key,
+                VectorArtifactBinding {
+                    kind: entry.kind,
+                    descriptor: entry.descriptor,
+                    object: entry.object,
+                },
+            )
+            .is_some()
+        {
+            return Err("duplicate vector artifact residency binding".into());
         }
     }
-    runtime.suppress_legacy_turboquant();
     // The durable event stream contains every generation so replay can prove
     // the exact catalogue revision and retirement chain. Serving residency,
     // however, must never expose those retired bodies: retain only the
@@ -354,7 +351,7 @@ where
     });
     let quantization = quantization_artifact_catalogue(data.engine(), scope)?;
     for entry in quantization.active_entries() {
-        runtime.restore_active_descriptor(entry.descriptor.clone())?;
+        runtime.restore_quantization_lifecycle_active_descriptor(entry.descriptor.clone())?;
         let key = (
             entry.descriptor.stamp().id.clone(),
             entry.descriptor.stamp().generation,

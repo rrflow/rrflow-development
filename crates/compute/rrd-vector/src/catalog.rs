@@ -1,8 +1,7 @@
 use crate::contract::invalid;
 use crate::{
-    CandidatePath, HnswBuildEvidence, HnswDescriptor, QuantizationMethod, QuantizedDescriptor,
-    SegmentDescriptor, TurboQuantDescriptor, VectorArtifact, VectorArtifactKind,
-    EXACT_SCAN_PROJECTION_ID,
+    CandidatePath, HnswBuildEvidence, HnswDescriptor, QuantizedDescriptor, SegmentDescriptor,
+    TurboQuantDescriptor, VectorArtifact, VectorArtifactKind, EXACT_SCAN_PROJECTION_ID,
 };
 use rrd_core::{
     digest, ObjectReference, ProjectionId, ProjectionStamp, ProjectionState, Result, RuntimeRef,
@@ -121,29 +120,29 @@ impl VectorArtifactCatalogEntry {
         if self.descriptor.stamp().state != ProjectionState::Ready {
             return invalid("cataloged vector artifact must be ready");
         }
-        let kind_matches = match (&self.descriptor, self.kind) {
+        if matches!(
+            self.descriptor,
+            VectorProjectionDescriptor::Quantized { .. }
+                | VectorProjectionDescriptor::TurboQuant { .. }
+        ) || matches!(
+            self.kind,
+            VectorArtifactKind::ScalarQuantized
+                | VectorArtifactKind::ProductQuantized
+                | VectorArtifactKind::BinaryQuantized
+                | VectorArtifactKind::TurboQuant
+        ) {
+            return invalid("quantized vector artifacts must use the quantization lifecycle");
+        }
+        let kind_matches = matches!(
+            (&self.descriptor, self.kind),
             (
                 VectorProjectionDescriptor::ExactSegment { .. },
                 VectorArtifactKind::ExactSegment | VectorArtifactKind::CompactDense,
+            ) | (
+                VectorProjectionDescriptor::Hnsw { .. },
+                VectorArtifactKind::Hnsw
             )
-            | (VectorProjectionDescriptor::Hnsw { .. }, VectorArtifactKind::Hnsw)
-            | (VectorProjectionDescriptor::TurboQuant { .. }, VectorArtifactKind::TurboQuant) => {
-                true
-            }
-            (
-                VectorProjectionDescriptor::Quantized { descriptor },
-                VectorArtifactKind::ScalarQuantized,
-            ) => descriptor.method == QuantizationMethod::Scalar,
-            (
-                VectorProjectionDescriptor::Quantized { descriptor },
-                VectorArtifactKind::ProductQuantized,
-            ) => matches!(descriptor.method, QuantizationMethod::Product { .. }),
-            (
-                VectorProjectionDescriptor::Quantized { descriptor },
-                VectorArtifactKind::BinaryQuantized,
-            ) => descriptor.method == QuantizationMethod::Binary,
-            _ => false,
-        };
+        );
         if !kind_matches {
             return invalid("vector artifact codec kind differs from its projection descriptor");
         }
@@ -307,18 +306,26 @@ pub struct VectorCatalog {
 }
 
 impl VectorCatalog {
-    /// Restores one lifecycle-selected active artifact into a fresh serving
-    /// view. Unlike `publish`, the durable lifecycle has already validated the
-    /// generation chain, so restart may legitimately restore generation N
-    /// without replaying retired artifact bodies 1..N-1. Lifecycle restoration
-    /// is revision-neutral: `revision` belongs exclusively to the legacy vector
-    /// projection catalogue and cannot be advanced by another durable authority.
-    pub fn restore_active(
+    /// Restores one quantization-lifecycle-selected active artifact into a
+    /// fresh serving view. Unlike `publish`, the durable lifecycle has already
+    /// validated the generation chain, so restart may legitimately restore
+    /// generation N without replaying retired artifact bodies 1..N-1.
+    /// Restoration is revision-neutral: `revision` belongs exclusively to the
+    /// generic vector projection catalogue and cannot be advanced by another
+    /// durable authority.
+    pub fn restore_quantization_lifecycle_active(
         &mut self,
         descriptor: impl Into<VectorProjectionDescriptor>,
     ) -> Result<u64> {
         let descriptor = descriptor.into();
         descriptor.validate()?;
+        if !matches!(
+            descriptor,
+            VectorProjectionDescriptor::Quantized { .. }
+                | VectorProjectionDescriptor::TurboQuant { .. }
+        ) {
+            return invalid("quantization lifecycle restoration accepts only quantized artifacts");
+        }
         if descriptor.stamp().state != ProjectionState::Ready
             || descriptor.stamp().id.as_str() == EXACT_SCAN_PROJECTION_ID
             || self.entries.contains_key(&descriptor.stamp().id)
@@ -338,6 +345,13 @@ impl VectorCatalog {
         self.expect_revision(expected_revision)?;
         let descriptor = descriptor.into();
         descriptor.validate()?;
+        if matches!(
+            descriptor,
+            VectorProjectionDescriptor::Quantized { .. }
+                | VectorProjectionDescriptor::TurboQuant { .. }
+        ) {
+            return invalid("quantized vector artifacts must use the quantization lifecycle");
+        }
         if descriptor.stamp().id.as_str() == EXACT_SCAN_PROJECTION_ID {
             return invalid("vector projection uses the reserved exact-scan identity");
         }
@@ -493,6 +507,65 @@ mod tests {
         .unwrap();
         VectorArtifactCatalogEntry::new(1, VectorArtifactKind::ExactSegment, descriptor, object, 1)
             .unwrap()
+    }
+
+    fn turboquant_descriptor() -> VectorProjectionDescriptor {
+        VectorProjectionDescriptor::TurboQuant {
+            descriptor: TurboQuantDescriptor {
+                stamp: ProjectionStamp {
+                    contract_version: DATA_RUNTIME_CONTRACT_VERSION,
+                    id: ProjectionId::new("quant-turbo:body").unwrap(),
+                    generation: 1,
+                    source_cursor: 1,
+                    config_digest: "11".repeat(32),
+                    artifact_digest: "22".repeat(32),
+                    state: ProjectionState::Ready,
+                },
+                scope: ScopeId::new("instance:catalog").unwrap(),
+                field: "body".into(),
+                dimensions: 2,
+                metric: ScoreMetric::Dot,
+                bits: crate::TurboQuantBits::Bits2,
+                seed: 7,
+                embedding_model: None,
+                filter_properties: BTreeSet::new(),
+                minimum_cursor: 0,
+                candidate_versions: 1,
+                packed_vector_bytes: 1,
+                full_precision_vector_bytes: 8,
+            },
+        }
+    }
+
+    #[test]
+    fn generic_catalogue_rejects_turboquant_artifacts() {
+        let descriptor = turboquant_descriptor();
+        let subject = VectorArtifactCatalogEntry::record_reference(&descriptor).unwrap();
+        let bytes = b"generic TurboQuant bytes must never become authoritative";
+        let object = ObjectReference::for_bytes(
+            "vector-artifact",
+            Some(subject),
+            VectorArtifactKind::TurboQuant.media_type(),
+            bytes,
+            ObjectReceipt {
+                backend: "memory".into(),
+                key: ObjectReference::canonical_key(&digest::sha256_hex(bytes)).unwrap(),
+                version: None,
+                etag: None,
+            },
+        )
+        .unwrap();
+
+        let error = VectorArtifactCatalogEntry::new(
+            1,
+            VectorArtifactKind::TurboQuant,
+            descriptor,
+            object,
+            1,
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("quantization lifecycle"));
     }
 
     #[test]

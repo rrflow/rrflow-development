@@ -608,6 +608,81 @@ fn vector_writes_require_one_canonical_collection_address() {
 }
 
 #[test]
+fn vector_projection_lifecycle_has_no_duplicate_turboquant_authority() {
+    let metadata = workspace_metadata();
+    let vector_runtime = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/compute/rrd-vector/src/runtime.rs"),
+    )
+    .expect("vector runtime source must be readable");
+    let engine_runtime = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/authority/rrd-engine/src/runtime/vector_catalog.rs"),
+    )
+    .expect("engine vector reconstruction source must be readable");
+    let quantization = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/authority/rrd-engine/src/engine/vector/quantization.rs"),
+    )
+    .expect("engine quantization source must be readable");
+    let contract = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/transport/rrd-contract/src/lib.rs"),
+    )
+    .expect("public contract source must be readable");
+    let collection = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/authority/rrd-engine/src/engine/vector/collection.rs"),
+    )
+    .expect("engine vector collection source must be readable");
+
+    let suppression = ["suppress_legacy_", "turboquant"].concat();
+    let ensure_adapter = ["ensure_", "turboquant_index_authorized"].concat();
+    assert!(
+        !vector_runtime.contains(&suppression) && !engine_runtime.contains(&suppression),
+        "vector reconstruction regained a post-replay TurboQuant suppression path"
+    );
+    assert!(
+        !quantization.contains(&ensure_adapter),
+        "TurboQuant regained an alternate ensure_vector_index adapter"
+    );
+    let index_configuration = contract
+        .split_once("pub enum VectorIndexConfiguration")
+        .expect("public vector index configuration must exist")
+        .1
+        .split_once("impl VectorIndexConfiguration")
+        .expect("public vector index configuration must precede validation")
+        .0;
+    assert!(
+        !index_configuration.contains("TurboQuant"),
+        "generic vector index configuration regained TurboQuant"
+    );
+    for function in [
+        "fn require_no_collection_artifacts",
+        "fn require_payload_index_not_in_use",
+    ] {
+        let generic_catalogue_branch = collection
+            .split_once(function)
+            .expect("vector collection protection function must exist")
+            .1
+            .split_once("let quantization =")
+            .expect("generic protection must precede quantization lifecycle protection")
+            .0;
+        assert!(
+            !generic_catalogue_branch
+                .to_ascii_lowercase()
+                .contains("turboquant"),
+            "generic vector catalogue protection regained a TurboQuant branch"
+        );
+    }
+}
+
+#[test]
 fn storage_semantics_use_repositories_over_one_transaction_port() {
     let metadata = workspace_metadata();
     let store_source = metadata.root.join("crates/persistence/rrd-store/src");

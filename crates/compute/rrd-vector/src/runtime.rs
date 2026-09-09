@@ -294,16 +294,21 @@ impl VectorRuntime {
         Ok(revision)
     }
 
-    /// Installs the one generation selected by an already-validated durable
-    /// lifecycle catalogue during restart.
-    pub fn restore_active(&mut self, artifact: impl Into<VectorArtifact>) -> Result<u64> {
+    /// Installs the one generation selected by the already-validated durable
+    /// quantization lifecycle during restart.
+    pub fn restore_quantization_lifecycle_active(
+        &mut self,
+        artifact: impl Into<VectorArtifact>,
+    ) -> Result<u64> {
         let artifact = artifact.into();
         let descriptor = artifact.descriptor();
         let key = (descriptor.stamp().id.clone(), descriptor.stamp().generation);
         if self.artifacts.contains_key(&key) {
             return invalid("restored vector artifact generation is already installed");
         }
-        let revision = self.catalog.restore_active(descriptor)?;
+        let revision = self
+            .catalog
+            .restore_quantization_lifecycle_active(descriptor)?;
         self.artifacts.insert(key, Arc::new(artifact));
         Ok(revision)
     }
@@ -319,12 +324,14 @@ impl VectorRuntime {
         self.catalog.publish(expected_revision, descriptor)
     }
 
-    /// Restores one lifecycle-selected descriptor without loading bytes.
-    pub fn restore_active_descriptor(
+    /// Restores one quantization-lifecycle-selected descriptor without loading
+    /// bytes.
+    pub fn restore_quantization_lifecycle_active_descriptor(
         &mut self,
         descriptor: VectorProjectionDescriptor,
     ) -> Result<u64> {
-        self.catalog.restore_active(descriptor)
+        self.catalog
+            .restore_quantization_lifecycle_active(descriptor)
     }
 
     /// Installs bytes selected by a physical residency authority without
@@ -356,31 +363,6 @@ impl VectorRuntime {
         self.artifacts
             .remove(&(id.clone(), descriptor.stamp().generation));
         true
-    }
-
-    /// Removes TurboQuant projections reconstructed from the retired generic
-    /// vector-artifact catalogue. Their durable records remain readable for
-    /// migration and audit, but only the quantization lifecycle may install a
-    /// TurboQuant serving view.
-    pub fn suppress_legacy_turboquant(&mut self) -> usize {
-        let ids = self
-            .catalog
-            .entries
-            .iter()
-            .filter_map(|(id, descriptor)| {
-                matches!(descriptor, VectorProjectionDescriptor::TurboQuant { .. })
-                    .then_some(id.clone())
-            })
-            .collect::<Vec<_>>();
-        for id in &ids {
-            self.catalog.entries.remove(id);
-        }
-        self.catalog.retired.retain(|descriptor| {
-            !matches!(descriptor, VectorProjectionDescriptor::TurboQuant { .. })
-        });
-        self.artifacts
-            .retain(|_, artifact| !matches!(artifact.as_ref(), VectorArtifact::TurboQuant(_)));
-        ids.len()
     }
 
     pub fn quarantine(
@@ -892,7 +874,9 @@ mod tests {
             values,
         )
         .unwrap();
-        runtime.publish(0, artifact).unwrap();
+        runtime
+            .restore_quantization_lifecycle_active(artifact)
+            .unwrap();
         let execution = runtime
             .search(
                 &request(scope, SearchMode::RequireApproximate { exact_rerank: 2 }),
@@ -905,7 +889,39 @@ mod tests {
     }
 
     #[test]
-    fn lifecycle_restore_is_revision_neutral_and_legacy_turbo_is_suppressed() {
+    fn generic_publication_rejects_turboquant() {
+        let scope = ScopeId::new("instance:turbo-generic-denial").unwrap();
+        let values = vec![
+            candidate(&scope, 1, "a", vec![1.0, 0.0]),
+            candidate(&scope, 2, "b", vec![0.0, 1.0]),
+        ];
+        let mut runtime = VectorRuntime::new(values.clone()).unwrap();
+        let artifact = TurboQuantSegment::build(
+            TurboQuantSegmentConfig {
+                id: ProjectionId::new("quant-turbo:generic-denial").unwrap(),
+                scope,
+                field: "body".into(),
+                dimensions: 2,
+                metric: ScoreMetric::Dot,
+                bits: TurboQuantBits::Bits2,
+                seed: 17,
+                embedding_model: None,
+                filter_properties: BTreeSet::new(),
+            },
+            1,
+            2,
+            values,
+        )
+        .unwrap();
+
+        let error = runtime.publish(0, artifact).unwrap_err().to_string();
+        assert!(error.contains("quantization lifecycle"));
+        assert_eq!(runtime.catalog().revision, 0);
+        assert!(runtime.catalog().entries.is_empty());
+    }
+
+    #[test]
+    fn lifecycle_restore_is_revision_neutral_and_generic_turbo_is_rejected() {
         let scope = ScopeId::new("instance:quantization-authority").unwrap();
         let values = vec![
             candidate(&scope, 1, "a", vec![1.0, 0.0]),
@@ -932,9 +948,9 @@ mod tests {
         )
         .unwrap();
         assert_eq!(runtime.publish(0, hnsw).unwrap(), 1);
-        let legacy = TurboQuantSegment::build(
+        let rejected_generic = TurboQuantSegment::build(
             TurboQuantSegmentConfig {
-                id: ProjectionId::new("vector:legacy-turbo:authority").unwrap(),
+                id: ProjectionId::new("vector:generic-turbo:authority").unwrap(),
                 scope: scope.clone(),
                 field: "body".into(),
                 dimensions: 2,
@@ -949,8 +965,8 @@ mod tests {
             values.clone(),
         )
         .unwrap();
-        assert_eq!(runtime.publish(1, legacy).unwrap(), 2);
-        assert_eq!(runtime.suppress_legacy_turboquant(), 1);
+        assert!(runtime.publish(1, rejected_generic).is_err());
+        assert_eq!(runtime.catalog().revision, 1);
 
         let lifecycle = TurboQuantSegment::build(
             TurboQuantSegmentConfig {
@@ -969,8 +985,13 @@ mod tests {
             values.clone(),
         )
         .unwrap();
-        assert_eq!(runtime.restore_active(lifecycle).unwrap(), 2);
-        assert_eq!(runtime.catalog().revision, 2);
+        assert_eq!(
+            runtime
+                .restore_quantization_lifecycle_active(lifecycle)
+                .unwrap(),
+            1
+        );
+        assert_eq!(runtime.catalog().revision, 1);
 
         let exact = ImmutableVectorSegment::build(
             VectorSegmentConfig {
@@ -987,6 +1008,6 @@ mod tests {
             values,
         )
         .unwrap();
-        assert_eq!(runtime.publish(2, exact).unwrap(), 3);
+        assert_eq!(runtime.publish(1, exact).unwrap(), 2);
     }
 }

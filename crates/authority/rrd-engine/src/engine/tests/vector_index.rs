@@ -155,21 +155,6 @@ fn index_request() -> EnsureVectorIndex {
     }
 }
 
-fn turboquant_request() -> EnsureVectorIndex {
-    EnsureVectorIndex {
-        scope: format!("instance:{}", instance()),
-        collection_id: CanonicalId::new("documents").unwrap(),
-        vector_name: CanonicalId::new("body").unwrap(),
-        configuration: VectorIndexConfiguration::TurboQuant {
-            bits: VectorQuantizationBits::Bits2,
-            seed: 23,
-            filter_properties: Vec::new(),
-        },
-        build_policy: VectorIndexBuildPolicy::Cpu,
-        max_storage_keys: 10_000,
-    }
-}
-
 fn search_request(mode: VectorSearchMode) -> SearchVectors {
     SearchVectors {
         scope: format!("instance:{}", instance()),
@@ -969,46 +954,32 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
         .unwrap();
     assert_eq!(exact_before.access_path.as_str(), "exact_scan");
 
-    // The unified ensure route resumes the already-built ready TurboQuant
-    // generation and activates it through the same lifecycle. It
-    // must not publish a fifth artifact through the generic vector catalogue.
-    let lifecycle_turbo = EnsureVectorIndex {
-        scope: format!("instance:{}", instance()),
-        collection_id: CanonicalId::new("documents").unwrap(),
-        vector_name: CanonicalId::new("body").unwrap(),
-        configuration: VectorIndexConfiguration::TurboQuant {
-            bits: VectorQuantizationBits::Bits1,
-            seed: 91,
-            filter_properties: Vec::new(),
-        },
-        build_policy: VectorIndexBuildPolicy::Cpu,
-        max_storage_keys: 10_000,
-    };
-    let resumed = engine
-        .ensure_vector_index(
+    // TurboQuant has the same explicit build/activate lifecycle as every other
+    // quantization method. It never enters the generic HNSW index contract or
+    // catalogue.
+    let activated_turbo = engine
+        .activate_vector_quantization_artifact(
             &lease.session_id,
             &lease.token,
-            &lifecycle_turbo,
+            &ActivateVectorQuantizationArtifact {
+                scope: format!("instance:{}", instance()),
+                artifact_id: built[3].artifact_id.clone(),
+                generation: built[3].generation,
+            },
             452,
-            "request-quantization-resume-turbo",
-            "operation-quantization-resume-turbo",
+            "request-quantization-activate-turbo",
+            "operation-quantization-activate-turbo",
         )
         .unwrap();
-    assert_eq!(resumed.index.generation, built[3].generation);
-    assert_eq!(resumed.index.object_sha256, built[3].object_sha256);
-    assert!(!resumed.idempotent_replay);
-    let resumed_replay = engine
-        .ensure_vector_index(
-            &lease.session_id,
-            &lease.token,
-            &lifecycle_turbo,
-            453,
-            "request-quantization-resume-turbo-replay",
-            "operation-quantization-resume-turbo-replay",
-        )
-        .unwrap();
-    assert_eq!(resumed_replay.index, resumed.index);
-    assert!(resumed_replay.idempotent_replay);
+    assert_eq!(
+        activated_turbo.artifact.state,
+        VectorQuantizationArtifactState::Active
+    );
+    assert_eq!(activated_turbo.artifact.generation, built[3].generation);
+    assert_eq!(
+        activated_turbo.artifact.object_sha256,
+        built[3].object_sha256
+    );
 
     for (ordinal, artifact) in built.iter().take(3).enumerate() {
         engine
@@ -1372,42 +1343,56 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
         .unwrap();
     assert_eq!(after_rebuild.access_path.as_str(), "hnsw");
 
-    let turboquant = reopened
-        .ensure_vector_index(
+    let turboquant_build = reopened
+        .build_vector_quantization_artifact(
             &lease.session_id,
             &lease.token,
-            &turboquant_request(),
+            &quantization_build(VectorQuantizationMethod::TurboQuant {
+                bits: VectorQuantizationBits::Bits2,
+                seed: 23,
+            }),
             850,
-            "request-turboquant-1",
-            "operation-turboquant-1",
+            "request-turboquant-build",
+            "operation-turboquant-build",
         )
         .unwrap();
-    assert_eq!(turboquant.index.kind.as_str(), "turboquant");
-    assert_eq!(turboquant.index.generation, 1);
-    assert_eq!(turboquant.index.indexed_vectors, 4);
-    assert!(
-        turboquant.index.packed_vector_bytes.unwrap()
-            < turboquant.index.full_precision_vector_bytes.unwrap()
+    assert_eq!(
+        turboquant_build.artifact.method,
+        VectorQuantizationMethod::TurboQuant {
+            bits: VectorQuantizationBits::Bits2,
+            seed: 23,
+        }
     );
-    assert!(!turboquant.idempotent_replay);
-    let turboquant_replay = reopened
-        .ensure_vector_index(
+    assert_eq!(turboquant_build.artifact.generation, 1);
+    assert_eq!(turboquant_build.artifact.indexed_vectors, 4);
+    assert!(
+        turboquant_build.artifact.packed_vector_bytes
+            < turboquant_build.artifact.full_precision_vector_bytes
+    );
+    let turboquant = reopened
+        .activate_vector_quantization_artifact(
             &lease.session_id,
             &lease.token,
-            &turboquant_request(),
+            &ActivateVectorQuantizationArtifact {
+                scope: format!("instance:{}", instance()),
+                artifact_id: turboquant_build.artifact.artifact_id.clone(),
+                generation: turboquant_build.artifact.generation,
+            },
             851,
-            "request-turboquant-replay",
-            "operation-turboquant-replay",
+            "request-turboquant-activate",
+            "operation-turboquant-activate",
         )
         .unwrap();
-    assert_eq!(turboquant_replay.index, turboquant.index);
-    assert!(turboquant_replay.idempotent_replay);
+    assert_eq!(
+        turboquant.artifact.state,
+        VectorQuantizationArtifactState::Active
+    );
     let turboquant_lifecycle = reopened
         .list_vector_quantization_artifacts(
             &lease.session_id,
             &lease.token,
             &ListVectorQuantizationArtifacts {
-                scope: turboquant_request().scope,
+                scope: format!("instance:{}", instance()),
                 collection_id: Some(CanonicalId::new("documents").unwrap()),
                 vector_name: Some(CanonicalId::new("body").unwrap()),
                 max_artifacts: 10,
@@ -1424,9 +1409,11 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
     );
     assert_eq!(
         turboquant_lifecycle.artifacts[0].object_sha256,
-        turboquant.index.object_sha256
+        turboquant.artifact.object_sha256
     );
-    let scope = reopened.query_scope(&turboquant_request().scope).unwrap();
+    let scope = reopened
+        .query_scope(&format!("instance:{}", instance()))
+        .unwrap();
     let generic_entries =
         crate::vector_artifact_catalog_entries(&reopened.storage, &scope).unwrap();
     assert!(generic_entries
@@ -1619,17 +1606,37 @@ fn application_backup_restores_turboquant_payload_before_instance_activation() {
             vector_mutation("beta", vec![0.0, 1.0]),
         ],
     );
-    let index = engine
-        .ensure_vector_index(
+    let built = engine
+        .build_vector_quantization_artifact(
             &lease.session_id,
             &lease.token,
-            &turboquant_request(),
+            &quantization_build(VectorQuantizationMethod::TurboQuant {
+                bits: VectorQuantizationBits::Bits2,
+                seed: 23,
+            }),
             400,
-            "request-backup-turboquant",
-            "operation-backup-turboquant",
+            "request-backup-turboquant-build",
+            "operation-backup-turboquant-build",
         )
         .unwrap();
-    assert_eq!(index.index.kind.as_str(), "turboquant");
+    let active = engine
+        .activate_vector_quantization_artifact(
+            &lease.session_id,
+            &lease.token,
+            &ActivateVectorQuantizationArtifact {
+                scope: format!("instance:{}", instance()),
+                artifact_id: built.artifact.artifact_id,
+                generation: built.artifact.generation,
+            },
+            401,
+            "request-backup-turboquant-activate",
+            "operation-backup-turboquant-activate",
+        )
+        .unwrap();
+    assert_eq!(
+        active.artifact.state,
+        VectorQuantizationArtifactState::Active
+    );
 
     let backup = engine
         .create_instance_backup(

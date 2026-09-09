@@ -33,7 +33,7 @@ Roadmap completion currently stands at:
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 5 / 5 |
-| C | sole hybrid persistent rrflowKV substrate | 4 / 7 |
+| C | sole hybrid persistent rrflowKV substrate | 5 / 7 |
 | D | per-project install, configuration, and attunement | 0 / 10 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
 | F | streamed Arrow/DataFusion analytical execution | 0 / 5 |
@@ -103,13 +103,15 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **C-05h**, removing the second vector catalogue and
-the TurboQuant suppression reconstruction path. C-05e removed vector artifact
-catalogue v1 and its alternate identity digest; C-05f requires one explicit
-nonempty schema table map and removes all missing-table model inference; C-05g
-requires every persisted vector, inference job, source delta, commit identity,
-and derived artifact to carry its canonical collection plus named-vector
-address. C-01's physical-key
+The next executable item is **C-06**, replacing row-record immutable segments
+with the hybrid ordered key/version spine plus Arrow-compatible column pages.
+C-05e removed vector artifact catalogue v1 and its alternate identity digest;
+C-05f requires one explicit nonempty schema table map and removes all
+missing-table model inference; C-05g requires every persisted vector,
+inference job, source delta, commit identity, and derived artifact to carry its
+canonical collection plus named-vector address; and C-05h removes generic
+quantized publication, the TurboQuant ensure adapter, and reconstruction-time
+suppression while retaining the explicit quantization lifecycle. C-01's physical-key
 package, C-02's shared
 transaction/repository package, C-03's effect-complete semantic mutation
 batch, C-04's direct current/temporal read package, C-05's lower physical
@@ -812,7 +814,7 @@ golden vectors without importing Rust internals.
 | [x] | C-02 | Expose the minimal snapshot transaction primitives required by the semantic store: point read, bounded range scan, put, delete, commit, rollback, and conflict. | `rrd-lsm`, `rrd-store` | rrflowKV and rrflowMX conformance suites agree on read-your-writes, repeatable reads, range ordering, and write conflicts. |
 | [x] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
 | [x] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
-| [ ] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
+| [x] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
 | [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property tests, exact differential reads, selective-scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all read, decoded, decompressed, copied, allocated, and cached bytes are reported. Family-specific page or cache policy is retained only when the declared workload improves without correctness or other-family regression. |
 | [ ] | C-07 | Prove WAL recovery, manifest recovery, bounded maintenance and write backpressure, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, sustained-write/maintenance/RSS runs, and repeated reopen suite pass with no lost acknowledged write, unbounded write-buffer growth, dangling mapped buffer, or exposed partial batch. |
 
@@ -964,7 +966,7 @@ C-04 evidence (2026-09-09):
   installation/attunement, routines/skills, Connectome, deployment,
   optimization, and release proof remain open.
 
-C-05 accepted convergence evidence and audit correction (gate remains open):
+C-05 accepted convergence evidence and audit correction (2026-09-09):
 
 - C-05a at `b8f07c97775d4440df728bceb261a1128c4d816a` removes the
   pre-1.0 batch, manifest, and segment decoders and the nonempty
@@ -1011,28 +1013,36 @@ C-05 accepted convergence evidence and audit correction (gate remains open):
   key encoding, and collection/name changes produce distinct commit and source
   identities. Search/list filters remain optional query selectors and are not
   persisted identity.
-- C-05a through C-05c, C-05e through C-05g pass their focused and owning suites, all 27 workspace
+- C-05h, in the reviewed change containing this record, makes the generic
+  artifact catalogue exact/compact/HNSW-only and makes quantization lifecycle
+  restoration explicit and revision-neutral. Generic scalar/product/binary/
+  TurboQuant publication fails closed; the public TurboQuant
+  `ensure_vector_index` shape no longer decodes; runtime reconstruction has no
+  TurboQuant suppression branch; and only an active lifecycle generation
+  enters the shared planner. Explicit build/activate/search/reopen/retire,
+  HNSW, hybrid RRF, memory-tier, and application-backup behavior remains.
+- C-05a through C-05c and C-05e through C-05h pass their focused and owning suites, all 28 workspace
   architecture guards, the complete default workspace all-target test and
   strict Clippy matrices, and the repository inventory, documentation,
   generated-surface, workflow, version, formatting, and diff policies. Exact
   commands, counts, source probes, and scope exclusions are recorded in the
-  C-05a through C-05g execution journals.
+  C-05a through C-05h execution journals.
 - C-05c closes only the independently installable alpha's physical dependency
   and reader slice. The first C-06 owner read then followed every active C-05
   reference and found compiled successful pre-release paths above that slice:
   vector artifact catalogue v1 beside v2; missing-table schema derivation and
   caller-selected snapshot model fallback; missing vector collection
   addresses; and suppression of the second vector/TurboQuant catalogue during
-  runtime reconstruction. C-05e removes the first item, C-05f removes the
-  second, and C-05g removes the third. The C-05d correction
-  journal records the complete discovery, keeps this checkbox open, and blocks
-  C-06 until direct-removal packages close the remaining inventory.
+  runtime reconstruction. C-05e through C-05h directly remove those four
+  items. The C-05d correction journal remains the audit trail that prevented
+  lower physical closure from being mistaken for whole-executable closure.
 - The optional post-alpha OpenRaft implementation still contains direct cluster
   openers and remains visible under POAM-023; it is neither enabled nor
   qualified by the alpha composition and cannot enter a release until a new
-  distributed gate accepts it. C-05d and later bounded packages must remove
-  the confirmed default-executable residues without aliases or compatibility
-  readers before the hybrid ordered-spine/Arrow-page work begins.
+  distributed gate accepts it. The accepted single-node executable has no
+  remaining confirmed C-05 alternate reader, store, migration, missing-
+  authority shape, duplicate vector publication path, or suppression shim.
+  C-06 may now begin the hybrid ordered-spine/Arrow-page work.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.

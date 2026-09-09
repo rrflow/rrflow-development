@@ -22,7 +22,7 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        self.build_vector_quantization_artifact_authorized(session_id, request, now, false)
+        self.build_vector_quantization_artifact_authorized(session_id, request, now)
     }
 
     fn build_vector_quantization_artifact_authorized(
@@ -30,7 +30,6 @@ impl RrdEngine {
         session_id: &CorrelationId,
         request: &BuildVectorQuantizationArtifact,
         now: u64,
-        reuse_matching: bool,
     ) -> Result<BuildVectorQuantizationArtifactResult> {
         let scope = self.query_scope(&request.scope)?;
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
@@ -154,43 +153,6 @@ impl RrdEngine {
                 .map_err(core_vector)?
             }
         };
-        if reuse_matching {
-            let newest_generation = lifecycle
-                .artifacts
-                .keys()
-                .filter(|(id, _)| id == &artifact_id)
-                .map(|(_, generation)| *generation)
-                .max();
-            if let Some(generation) = newest_generation {
-                let existing = &lifecycle.artifacts[&(artifact_id.clone(), generation)];
-                let desired = artifact.descriptor();
-                let existing_stamp = existing.entry.descriptor.stamp();
-                let desired_stamp = desired.stamp();
-                let activation_eligible = match existing.state {
-                    rrd_vector::QuantizationArtifactState::Active => true,
-                    rrd_vector::QuantizationArtifactState::Ready => lifecycle
-                        .active
-                        .get(&artifact_id)
-                        .is_none_or(|active| generation > *active),
-                    rrd_vector::QuantizationArtifactState::Retired => false,
-                };
-                if activation_eligible
-                    && existing.entry.kind == artifact.kind()
-                    && existing_stamp.config_digest == desired_stamp.config_digest
-                    && existing_stamp.source_cursor == desired_stamp.source_cursor
-                {
-                    return Ok(BuildVectorQuantizationArtifactResult {
-                        artifact: public_quantization_artifact(
-                            &existing.entry,
-                            existing.state,
-                            lifecycle.revision,
-                        )?,
-                        selected_versions: direct.selected_versions,
-                        read_evidence: direct.read_evidence,
-                    });
-                }
-            }
-        }
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
         let publication = crate::build_traced_quantization_artifact(
             &data,
@@ -209,80 +171,6 @@ impl RrdEngine {
             )?,
             selected_versions: direct.selected_versions,
             read_evidence: direct.read_evidence,
-        })
-    }
-
-    /// Executes the canonical `ensure_vector_index` TurboQuant branch through
-    /// the same ready/activate lifecycle as every quantization method. A
-    /// matching ready generation resumes after interruption without creating
-    /// a second catalogue authority.
-    pub(super) fn ensure_turboquant_index_authorized(
-        &self,
-        session_id: &CorrelationId,
-        request: &EnsureVectorIndex,
-        now: u64,
-    ) -> Result<EnsureVectorIndexResult> {
-        let VectorIndexConfiguration::TurboQuant {
-            bits,
-            seed,
-            filter_properties,
-        } = &request.configuration
-        else {
-            return Err(ServiceError::Vector(
-                "TurboQuant index branch received another index kind".into(),
-            ));
-        };
-        let build = BuildVectorQuantizationArtifact {
-            scope: request.scope.clone(),
-            collection_id: request.collection_id.clone(),
-            vector_name: request.vector_name.clone(),
-            method: VectorQuantizationMethod::TurboQuant {
-                bits: *bits,
-                seed: *seed,
-            },
-            filter_properties: filter_properties.clone(),
-            max_storage_keys: request.max_storage_keys,
-        };
-        let built =
-            self.build_vector_quantization_artifact_authorized(session_id, &build, now, true)?;
-        let selected_versions = built.selected_versions;
-        let read_evidence = built.read_evidence;
-        let built = built.artifact;
-        if built.state == VectorQuantizationArtifactState::Active {
-            return Ok(EnsureVectorIndexResult {
-                index: public_turboquant_index(&built)?,
-                selected_versions,
-                read_evidence,
-                idempotent_replay: true,
-            });
-        }
-        if built.state != VectorQuantizationArtifactState::Ready {
-            return Err(ServiceError::Vector(
-                "TurboQuant ensure cannot activate a retired artifact".into(),
-            ));
-        }
-        let scope = self.query_scope(&request.scope)?;
-        let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
-        let transition = crate::transition_traced_quantization_artifact(
-            &data,
-            &scope,
-            &ProjectionId::new(built.artifact_id.as_str()).map_err(core_vector)?,
-            built.generation,
-            rrd_vector::QuantizationLifecycleAction::Activate,
-            &format!("session:{}", session_id.as_str()),
-            now,
-        )
-        .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        let active = public_quantization_artifact(
-            &transition.entry,
-            transition.state,
-            transition.lifecycle_revision,
-        )?;
-        Ok(EnsureVectorIndexResult {
-            index: public_turboquant_index(&active)?,
-            selected_versions,
-            read_evidence,
-            idempotent_replay: false,
         })
     }
 
@@ -542,39 +430,5 @@ fn public_quantization_artifact(
         object_length: entry.object.length,
         built_at_unix_ms: entry.built_at,
         lifecycle_revision,
-    })
-}
-
-fn public_turboquant_index(
-    artifact: &VectorQuantizationArtifactSnapshot,
-) -> Result<VectorIndexSnapshot> {
-    if !matches!(artifact.method, VectorQuantizationMethod::TurboQuant { .. })
-        || artifact.state != VectorQuantizationArtifactState::Active
-    {
-        return Err(ServiceError::Vector(
-            "TurboQuant index snapshot requires one active lifecycle artifact".into(),
-        ));
-    }
-    Ok(VectorIndexSnapshot {
-        index_id: artifact.artifact_id.clone(),
-        collection_id: artifact.collection_id.clone(),
-        vector_name: artifact.vector_name.clone(),
-        kind: CanonicalId::new("turboquant")
-            .map_err(|error| ServiceError::Vector(error.to_string()))?,
-        generation: artifact.generation,
-        source_cursor: artifact.source_cursor,
-        indexed_vectors: artifact.indexed_vectors,
-        maintenance: VectorIndexMaintenanceSnapshot {
-            mode: VectorIndexMaintenanceMode::FullBuild,
-            previous_generation: None,
-            indexed_delta_vectors: artifact.indexed_vectors,
-        },
-        packed_vector_bytes: Some(artifact.packed_vector_bytes),
-        full_precision_vector_bytes: Some(artifact.full_precision_vector_bytes),
-        build_evidence: None,
-        configuration_sha256: artifact.configuration_sha256.clone(),
-        artifact_sha256: artifact.artifact_sha256.clone(),
-        object_sha256: artifact.object_sha256.clone(),
-        catalogue_revision: artifact.lifecycle_revision,
     })
 }

@@ -73,11 +73,14 @@ from cursor zero and reconstructs all collection candidates before encoding a
 new full artifact. There is no native changed-vector input or incremental
 quantized-segment maintenance yet.
 
-The code also still exposes TurboQuant through the older
-`ensure_vector_index` request as an adapter into the canonical lifecycle. That
-adapter is pre-release convergence debt, not a compatibility promise. C-05 and
-J-01 must remove the alternate request path so build/activate/retire is the
-only quantization lifecycle in the 1.0 executable.
+The generic vector-index request now configures HNSW only. Scalar, product,
+binary, and TurboQuant artifacts can be constructed only through the explicit
+quantization build operation and can serve only after explicit activation.
+Generic catalogue construction and runtime publication reject quantized
+descriptors, and restart installs only the active lifecycle generation through
+an explicitly lifecycle-named, revision-neutral planner restoration. There is
+no TurboQuant `ensure_vector_index` adapter or reconstruction-time suppression
+path.
 
 ## Evidence and remaining gates
 
@@ -89,7 +92,8 @@ debug-host observation is
 [`docs/evidence/g04-w04-quantization-local-512x64.json`](../../evidence/g04-w04-quantization-local-512x64.json);
 it is not a release SLO or Qdrant-equivalence claim.
 
-Gate C-04 must provide bounded direct canonical vector/delta reads. Gate E-04
+Gate C-04 provides bounded direct canonical vector reads, and C-05 leaves one
+quantization authority. Gate E-04
 must make index deltas atomic with point commits and prove rebuild/reopen under
 failure. Gate F-03 must execute quantized candidate generation and exact
 reranking inside the stamped Arrow operator pipeline. H-04 must prove every

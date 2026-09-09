@@ -1050,12 +1050,6 @@ pub enum VectorIndexConfiguration {
         #[serde(default)]
         filter_properties: Vec<CanonicalId>,
     },
-    TurboQuant {
-        bits: VectorQuantizationBits,
-        seed: u64,
-        #[serde(default)]
-        filter_properties: Vec<CanonicalId>,
-    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1090,18 +1084,6 @@ impl VectorIndexConfiguration {
                     .collect::<BTreeSet<_>>();
                 if unique.len() != filter_properties.len() {
                     return invalid("HNSW filter properties must be unique");
-                }
-                Ok(())
-            }
-            Self::TurboQuant {
-                filter_properties, ..
-            } => {
-                let unique = filter_properties
-                    .iter()
-                    .map(CanonicalId::as_str)
-                    .collect::<BTreeSet<_>>();
-                if unique.len() != filter_properties.len() {
-                    return invalid("TurboQuant filter properties must be unique");
                 }
                 Ok(())
             }

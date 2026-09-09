@@ -67,12 +67,15 @@ installs selected artifacts into a process-local `VectorRuntime` for the
 request.
 
 Artifact descriptors and object references are persisted through engine-owned
-runtime state, and restart tests prove verified HNSW reopen and retirement
-overlay behavior. Compact exact and quantized codecs support mapped reads;
-the current exact JSON segment and HNSW JSON artifact do not. The vector
-artifact catalogue accepts only contract v2 and computes one identity digest
-that includes its optional build evidence. Pre-1.0 catalogue entries fail
-validation before artifact decoding or engine replay.
+runtime state, and restart tests prove verified HNSW and active-quantization
+reopen plus retirement-overlay behavior. Compact exact and quantized codecs
+support mapped reads; the current exact JSON segment and HNSW JSON artifact do
+not. The generic vector artifact catalogue accepts only exact/compact/HNSW
+contract-v2 entries and computes one identity digest that includes optional
+HNSW build evidence. Quantized and TurboQuant artifacts use their separate
+build/activate/retire lifecycle and join only the shared process-local planner.
+Pre-1.0 or generic-quantized catalogue entries fail before artifact decoding
+or engine replay.
 
 Consequently, a successful HNSW query today is a real approximate traversal
 and exact rerank, but it still pays process-local canonical-candidate
@@ -98,11 +101,10 @@ The retained 10,000-by-128 local observation remains raw evidence at
 It is not a cross-system or production performance claim.
 
 Gate C-04 has replaced normal whole-log candidate reconstruction with direct
-versioned reads. Gate C-05e has removed the older artifact-catalogue reader and
-its separate digest branch; C-05g requires the canonical collection plus
-named-vector address on every persisted candidate, commit identity, source
-delta, and derived artifact. C-05 remains open for the second vector/TurboQuant
-catalogue recorded in its whole-executable audit. Gate E-04
+versioned reads. Gate C-05 has removed the older artifact-catalogue reader and
+separate digest branch, requires the canonical collection plus named-vector
+address on every persisted candidate, and removes the duplicate generic
+quantized/TurboQuant publication, request, and suppression paths. Gate E-04
 must atomically maintain canonical vectors and index deltas, prove immutable
 HNSW plus exact overlay after crash/reopen, and satisfy fixed recall and
 filtering gates. Gate F-03 must make vector candidate generation and RRF native
