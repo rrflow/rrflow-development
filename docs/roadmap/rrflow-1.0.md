@@ -116,8 +116,7 @@ package, C-02's shared
 transaction/repository package, C-03's effect-complete semantic mutation
 batch, C-04's direct current/temporal read package, C-05's lower physical
 reader/dependency packages, and every Gate B contract package are complete.
-C-05 itself remains open until every compiled alternate reader is gone; C-06
-has not begun.
+C-05 is accepted for the single-node alpha composition; C-06 has not begun.
 A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
