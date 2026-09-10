@@ -27,28 +27,182 @@ sequence remains in the
 
 ## How to execute this map
 
-For every work package:
-
-1. Verify every prerequisite in the roadmap's executable dependency spine is
-   complete and the worktree contains no unexplained changes.
-2. Read every listed file in full. Resolve every listed symbol against the
-   current revision. If a symbol moved, update this map in a documentation-only
-   commit before changing behavior.
-3. Run the package's characterization test before editing. A pre-existing
-   failure is recorded as the package baseline; it is not hidden or repaired
-   by unrelated work.
-4. Change only the listed files. A newly discovered required file pauses the
-   package until this map and the JSONL inventory are reviewed and updated.
-5. Run the smallest named test first, then the owning package suite, then the
-   dependency-direction and documentation checks. Stop on the first failure.
-6. Commit one package. Update a roadmap checkbox only when that gate's exact
-   acceptance evidence exists in the same reviewed change.
-
 Line numbers are deliberately not used as long-lived anchors because they
 become false after the first edit. The JSONL freezes the complete baseline line
 span and digest; this map names semantic symbols, modules, and intended target
 paths. Together they cover every line without pretending a stale line number
 is an architectural contract.
+
+### Codebase-grounded change-authoring routine
+
+This is the mandatory repository engineering procedure for one bounded change.
+It is not an RRFlow runtime `Routine`, `Trigger`, `EngineEvent`, hook, skill,
+provider lifecycle, or alternate planning authority. A code-bearing or
+structural package starts with a written change brief and ends with the
+completed checklist in its evidence journal. A checklist held only in chat or
+private reasoning does not exist for review, resumption, or later rrflowDB
+import.
+
+#### 1. Establish the exact implementation baseline
+
+1. Record the starting commit and tree, branch, resolved development remote,
+   worktree status, staged and unstaged diff, and dependency-lock state. Do not
+   overwrite or absorb unexplained user work.
+2. Enter through `README.md`, then read the relevant objective, roadmap gate,
+   POA&M row, architecture owner, reference contract, and package section in
+   this map. These owners define intent; current code defines only the observed
+   starting behavior.
+3. Enumerate the current source, test, fixture, manifest, generated surface,
+   caller, and consumer paths with repository search. Read every in-scope file
+   completely, including existing comments and tests. Record complete paths
+   and baseline digests rather than claiming that a search hit or excerpt was
+   reviewed.
+4. Resolve every planned symbol and dependency against that revision. Run the
+   smallest existing characterization test before editing. A failing baseline
+   is recorded unchanged; an absent oracle becomes the first test change.
+5. If a required path, behavior, dependency, or owner is missing from this map
+   or the JSONL inventory, stop and update the traceability plan before code.
+
+#### 2. Bind one alpha-relevant package
+
+The change brief names one measurable alpha outcome or prerequisite, one
+roadmap package, and one observable behavior. It states current behavior,
+target behavior, authority boundary, inputs and outputs, invariants, failure
+semantics, exact files and symbols, behavior intentionally unchanged, and the
+acceptance oracle. Any removal, move, merge, or rewrite also maps reusable
+behavior and tests to its one destination before editing.
+
+Keep the package as the smallest coherent change that can be reviewed and
+tested with its actual use. Do not mix a behavior change with unrelated
+formatting, speculative scaffolding, opportunistic renames, or a broad cleanup.
+No empty interface, unused abstraction, or compile-only stub counts as forward
+progress. A documentation or enforcement correction can improve delivery
+integrity, but it cannot claim an engine gate or alpha outcome without the
+owner's named runtime evidence.
+
+This sizing rule follows Google's primary engineering guidance that a change
+should be one self-contained idea with its related tests and enough surrounding
+context for review. Rust APIs additionally prefer types that exclude invalid
+states and explicit validation at boundaries. The sources inform procedure;
+they do not override RRFlow authority:
+
+- [Google small-change guidance](https://google.github.io/eng-practices/review/developer/small-cls.html);
+- [Google whole-change code-review guidance](https://google.github.io/eng-practices/review/reviewer/looking-for.html); and
+- [Rust API dependability guidelines](https://rust-lang.github.io/api-guidelines/dependability.html).
+
+#### 3. Make and record the research decision
+
+Record `required` or `not required` before implementation. Research is required
+when the package depends on a changing third-party API, safety/durability/
+security protocol, algorithm whose failure semantics are not already owned,
+upstream source adaptation, or a performance/superiority claim. Prefer a
+versioned specification, official documentation, paper, or exact upstream
+source symbol over commentary.
+
+For each retained mechanism, record source revision/date, useful behavior,
+algorithm and failure semantics, rejected assumptions, RRFlow destination,
+provenance obligations, and the independent semantic/fault/resource/reopen
+proof. Never copy a crate tree, public compatibility model, hardcoded policy,
+or hidden runtime. When research is not required, record the existing contract
+and implementation evidence that make the change self-contained.
+
+#### 4. Design the edit and its failure oracle
+
+List the edit sequence before changing code: contract or test oracle, owning
+implementation, direct callers, generated projections, owner documentation,
+and final inventory. Name the narrow command expected to fail first and why,
+then the owning and cross-boundary commands that must pass. Intermediate
+compiler or test failures may remain visible while the sequence is being
+aligned; record failures that expose an incorrect assumption. Do not silence,
+paper over, or rename the error. A commit that retains an error must be
+explicitly permitted by the owning work package, record the exact failure and
+downstream effect, and cannot advance roadmap status.
+
+#### 5. Decide trace, resource, and debugging evidence
+
+Every package records one of `add`, `preserve`, or `not applicable` for each
+row below. `Not applicable` requires a concrete reason.
+
+| Changed behavior | Evidence required in the same package |
+|---|---|
+| authentication, authorization, semantic mutation, persistence, recovery, asynchronous causation, or delivery | canonical durable start/result evidence, typed links, denial/error/cancel outcome, and the exact commit/read coordinates from the [trace contract](../architecture/engine-data-flow.md#trace-and-observability-flow) |
+| rrflowKV, graph, lexical, vector, rrflowQL, Arrow/DataFusion, inference, or context work | bounded physical counters for the work actually performed, declared resource limits, and failure evidence; DataFusion operators expose their plan metrics but those remain diagnostic input to RRFlow's governed evidence |
+| a performance-sensitive algorithm, cache, copy/borrow path, codec, or planner decision | deterministic corpus, exact comparator/fallback, input/output/work counters, and reproducible benchmark or differential method before any performance claim |
+| pure type, documentation, test, or behavior-preserving refactor | preserve existing evidence or explain why no runtime operation changed; compilation alone still is not proof |
+
+Operation names come from `TraceOperation`; identities and causation use typed
+`TraceLink`s; bounded measurements use `TraceAttribute`. Never create dynamic
+span names or persist raw prompts, paths, query text, errors, stack traces,
+credentials, or other protected/high-cardinality content. Diagnostic Rust
+`tracing`, optional OpenTelemetry export, DataFusion `ExecutionPlan::metrics`,
+`EXPLAIN`, logs, and profilers help debug; none establishes durable state or
+completion. Failure injection and inspection backdoors stay test-only and
+deterministic. OpenTelemetry's trace model and error guidance support the
+span/event/link distinction, while DataFusion documents operator rows, bytes,
+and elapsed-compute metrics:
+
+- [OpenTelemetry trace concepts](https://opentelemetry.io/docs/concepts/signals/traces/);
+- [OpenTelemetry error recording](https://opentelemetry.io/docs/specs/semconv/general/recording-errors/); and
+- [DataFusion operator metrics](https://datafusion.apache.org/user-guide/metrics.html).
+
+#### 6. Author at the canonical boundary
+
+Implement through the frozen dependency direction and existing owner. Validate
+external input at the boundary with closed types and explicit errors; do not
+add permissive defaults, hidden global state, provider-specific state, direct
+storage access around `RrdEngine`, or a second query/index/lifecycle path.
+Keep modules cohesive by responsibility, authority, and lifetime rather than
+an arbitrary line count. Name files and symbols with the canonical vocabulary.
+Public APIs document purpose, invariants, errors, ownership/lifetimes, and
+resource behavior. Internal comments explain non-obvious reasons, safety or
+format invariants, and failure semantics—not a line-by-line paraphrase.
+
+Add the real caller and relevant unit, integration, differential, fault, or
+reopen proof with the behavior. Avoid dead scaffolding and abstractions for a
+hypothetical future. Refactor only what the package must change; any larger
+structural cleanup becomes a separately mapped package.
+
+#### 7. Review the complete result, then verify outward
+
+After formatting, reread every changed hand-authored file in full and inspect
+the complete staged and unstaged diff. Search for duplicate authorities,
+retired names, bypasses, shims, unchecked defaults, lint suppressions, raw
+sensitive diagnostics, unbounded allocations/work, dead code, and stale owner
+claims. Regenerate affected deterministic artifacts; never hand-edit generated
+output.
+
+Run the first-failure oracle, then the smallest changed behavior, owning package
+suite, direct consumer/cross-boundary test, architecture and documentation
+policy, and only the risk-relevant wider matrix below. Tests prove only the
+behavior they exercise. A mock, compile, emitted event, or generated parity
+check cannot substitute for semantic, crash/reopen, resource, or real-process
+evidence required by the owner.
+
+#### 8. Journal, commit, and hand off one package
+
+Complete the evidence template before commit. Stage the candidate paths so the
+deterministic inventory sees the exact tree, regenerate and review it, then
+re-stage and verify it. Record every passed, failed, and unrun command; retain
+known errors and their owners; update the POA&M only for a verified deficiency;
+and change a roadmap checkbox only when its exact acceptance evidence exists.
+Commit one package. Before pushing, resolve and record the remote URL, ref, and
+exact revision; incremental work goes only to the private development remote.
+
+#### Required change checklist
+
+- [ ] Exact commit, tree, branch, remote, worktree, diff, and lock baseline are recorded.
+- [ ] One objective/prerequisite, roadmap package, owner, behavior, and stop condition are bound.
+- [ ] Every in-scope source, test, fixture, caller, contract, and owner record was enumerated and read in full.
+- [ ] Current behavior and its smallest characterization or first-failure oracle are recorded.
+- [ ] Any removal or rewrite has implementation-requirements traceability before code changes.
+- [ ] Research is recorded as required/not required; retained mechanisms have primary-source provenance and RRFlow mapping.
+- [ ] Exact files, symbols, edit order, unchanged behavior, and acceptance commands are planned before implementation.
+- [ ] Trace, resource, and debugging evidence is recorded as add/preserve/not applicable with a reason.
+- [ ] Implementation uses canonical naming, authority, dependency direction, validation, errors, bounds, and cohesive modules.
+- [ ] Tests exercise the real behavior and required denial, differential, fault, resource, and reopen boundaries.
+- [ ] Every changed hand-authored file and the complete diff were reread; generated artifacts were regenerated, not edited.
+- [ ] Narrow, owning, cross-boundary, policy, and risk-relevant wider results are recorded without overclaiming.
+- [ ] Remaining errors, unrun checks, POA&M effect, roadmap effect, commit, and development push are explicit.
 
 ### Pre-release consolidation protocol
 
@@ -2937,6 +3091,32 @@ remaining known errors: GitHub reported one 65.15 MiB Biome binary in prior reac
 roadmap checkbox changed: no
 ```
 
+#### Repository change-authoring routine evidence journal
+
+```text
+gate/package: repository change-authoring routine / provider-neutral codebase-grounded planning, review, observability decision, and evidence enforcement; documentation/CI package only
+alpha outcome or prerequisite advanced: improves execution integrity for every remaining package but does not implement or complete an engine gate or alpha outcome; C-06b remains the next behavior package
+starting revision/tree/branch/remote/worktree: commit 4d20c5cf14a719f5cfda9c21de339f292767b578; tree 2a88a7b9cf65b12b975ad3b0c45aa6ecbf4a124e; branch agent/connectome-temporal-runtime-visualizer tracking development/main; development resolves to https://github.com/rrflow/rrflow-development.git at 4d20c5cf14a719f5cfda9c21de339f292767b578; official origin resolves to https://github.com/rrflow/rrflow.git and its agent branch remains 63bc2331fcbc5c71aaa123cd44aedeb65d5c7b65; starting worktree and diff were empty and Cargo.lock was unchanged
+baseline files/digests: README.md=b931ed75dd361f3aba2e6d4c2f6ca12b1b4573f9326dbd5c53e186a62d236d8a; AGENTS.md=96a096517669752e2574cac144e4d6adcdb3a70e70a90d5adef8f661e4b7d8e7; execution map=5181546315f44876483b18d8d5e9f0e10aa97cf1058910e657c7408e6ac3ee5d; documentation checker=4c5c68232b14083974da27828440e25aeb51f2d6d42a7fa0381d9e6e2b88caa4
+change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions): the existing repository rules required full reads, journals, narrow-first tests, and traceability but did not make one complete pre-edit change brief, research decision, trace/resource/debug decision, code-quality review, or auditable checklist mandatory. Keep README as portal, AGENTS.md as instruction entry, this map as execution procedure/evidence owner, and the existing documentation checker as enforcement. Change only those boundaries plus the deterministic inventory. Do not add a guide tree, runtime Routine/Trigger/hook/skill, roadmap authority, engine behavior, dependency, version, or generated interface. Stop on any conflicting owner, broken link, nondeterministic inventory, or policy failure
+files read in full: README.md; AGENTS.md; docs/README.md; docs/reference/README.md; docs/reference/agent-bootstrap.md; docs/operations/ci.md; scripts/ci/check_documentation.py; the immediately preceding C-06a package read the complete execution-map baseline, and this package reread its complete current governing, traceability, C-06, run-checklist, evidence-template, and changed sections plus the full resulting diff; engine-data-flow trace/observability, instrumentation-ownership, and context-path evidence sections; execution-inventory generator classification/generation/validation sections; relevant checked-in CI workflow commands
+research decision and primary-source/adaptation record: required for the general engineering and observability procedure, not for RRFlow architecture. Official Google engineering-practices guidance supports one self-contained change, related tests, whole-file/system review, and separation of broad refactors; Rust API guidelines support invalid-state exclusion and boundary validation; OpenTelemetry specifications support bounded span/event/link and error semantics; current Apache DataFusion documentation exposes per-operator row/byte/elapsed-compute metrics and narrow-to-wide testing. Sources were reviewed on 2026-09-10 and linked in the routine. No source code, upstream topology, API, compatibility model, or lifecycle was copied
+trace/resource/debug decision (add/preserve/not applicable, with reason): runtime trace=not applicable because no runtime operation changed; resource evidence=not applicable because no compute/storage path changed; debugging evidence=add at repository-policy level through an expected-failure mutation proving the checker rejects a missing README routine warp, followed by positive policy validation. The routine preserves the closed TraceOperation/TraceLink/TraceAttribute authority and requires every later package to record add/preserve/not-applicable rather than defer instrumentation
+first-failure or characterization oracle and result: before editing, documentation policy passed with 90 document statuses and 88 classified coordinates and the inventory check passed 909 records. After the checker change, temporarily removing only the README routine fragment caused the exact expected exit 1, `documentation-policy: README.md does not route the change-authoring routine`; restoring it returned the policy to exit 0
+files changed/created/deleted/moved: changed README.md, AGENTS.md, this execution map, and scripts/ci/check_documentation.py; regenerated docs/roadmap/rrflow-1.0-file-plan.jsonl after the final journal. No file was created, deleted, moved, renamed, or archived
+contract or behavior changed: every code-bearing or structural package must now persist a pre-edit change brief and completed checklist covering exact baseline, authority, full-file/current-symbol review, characterization, traceability, research, edit sequence, observability/debugging, canonical authoring, real tests, full result review, verification, remaining errors, and development handoff. README routes the procedure, AGENTS requires it without copying it, and documentation policy rejects removal of either warp, the owning routine sections, or the expanded evidence fields. This remains repository procedure and creates no runtime lifecycle authority
+smallest test command and result: expected-failure documentation-policy mutation rejected the missing README warp exactly; restored `python3 scripts/ci/check_documentation.py` passed
+owning package command and result: `ruff check scripts/ci/check_documentation.py` passed; all 11 `scripts/knowledge/test_export.py` tests passed; deterministic inventory generation and recheck pass with 909 current/generated/planned records
+cross-boundary command and result: generated-surface parity passes 33 HTTP operations at OpenAPI SHA-256 1d18655aa6e670abd7319c3984dfc36b8ed50c280ce8afb62322a5e062b14cc6; workflow policy passes 3 workflows, 7 substantive jobs, 5 cohesive engine suites, 20 default-feature packages, and 5 optional-feature packages; version policy retains 1.0.0; Cargo formatting and diff integrity pass
+failure/crash/differential evidence: one deliberate documentation-policy denial is recorded above. No runtime, persistence, crash, reopen, query, index, inference, transport, or deployment behavior changed, so inventing such evidence would overclaim this package
+full-file reread and diff review: every changed short owner/policy file was reread completely after editing; the execution map's previously read complete baseline was reconciled with every changed/current affected section and the complete diff. Searches and diff review found no new runtime authority, compatibility/legacy lane, provider hook, dependency, version change, roadmap-status claim, or unplanned file
+change checklist: baseline=complete; authority=complete; scope=complete; full reads=complete through exact baseline plus complete delta for the execution map; oracle=complete; traceability=not applicable because no implementation moved/rewrote; research=complete; edit plan=complete; observability=complete; implementation=complete; tests=complete; reread=complete; verification=complete; handoff=complete subject to recording the resulting commit and development ref in the final handoff
+not run and reason: no Cargo package test, Clippy, workspace compile/test, SDK conformance, persistence/crash matrix, benchmark, install, daemon, Connectome, signed-bundle, or deployment test was run; this package changes documentation policy only and cannot qualify those behaviors
+remaining known errors: the engine remains pre-alpha. C-06 still needs selective projected page scans, property/fuzz and mixed-family evidence, configurable budgets, mapped-generation lifetime proof, and measured compression/value-placement/filter/cache decisions. C-07 and Gates D through J remain open, including turnkey binaries/install/attunement, native graph/BM25/vector paths, streamed stamped Arrow/DataFusion execution, persisted reasoning/recall, runtime routines/skills, every public-surface proof, and Connectome conformance
+commit/development push evidence: the result is the commit containing this entry; before handoff its exact revision is pushed only to refs/heads/main at https://github.com/rrflow/rrflow-development.git and verified there. No official-repository ref, tag, binary, artifact, or release is changed
+roadmap checkbox changed: no; no POA&M status changed
+```
+
 ## Repository-wide run checklist
 
 Run the narrow command named by the package first. The widening sequence is:
@@ -2977,17 +3157,25 @@ Every completed package records:
 
 ```text
 gate/package:
-revision:
+alpha outcome or prerequisite advanced:
+starting revision/tree/branch/remote/worktree:
 baseline files/digests:
+change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions):
 files read in full:
+research decision and primary-source/adaptation record:
+trace/resource/debug decision (add/preserve/not applicable, with reason):
+first-failure or characterization oracle and result:
 files changed/created/deleted/moved:
 contract or behavior changed:
 smallest test command and result:
 owning package command and result:
 cross-boundary command and result:
 failure/crash/differential evidence:
+full-file reread and diff review:
+change checklist: baseline; authority; scope; full reads; oracle; traceability; research; edit plan; observability; implementation; tests; reread; verification; handoff
 not run and reason:
 remaining known errors:
+commit/development push evidence:
 roadmap checkbox changed: yes/no
 ```
 

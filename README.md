@@ -76,6 +76,7 @@ definition; this portal does not reproduce those bodies.
 | Engine events, triggers, routines, skills, and host-event adapters | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
 | Current rrflowKV bytes and removable format readers | [rrflowKV current physical format](docs/reference/storage/rrflowkv-current-format.md) |
 | Canonical target source tree and dependency direction | [Frozen target source tree](docs/roadmap/rrflow-1.0-execution-map.md#frozen-target-source-tree) |
+| Plan, author, instrument, verify, and journal one bounded code change | [Codebase-grounded change-authoring routine](docs/roadmap/rrflow-1.0-execution-map.md#codebase-grounded-change-authoring-routine) |
 | Repository verification sequence | [Repository-wide run checklist](docs/roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist) and [RRFlow CI operations](docs/operations/ci.md) |
 | Repository work instructions | [`AGENTS.md`](AGENTS.md) |
 

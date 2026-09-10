@@ -20,6 +20,7 @@ if KNOWLEDGE_EXPORT_SPEC is None or KNOWLEDGE_EXPORT_SPEC.loader is None:
 KNOWLEDGE_EXPORT = importlib.util.module_from_spec(KNOWLEDGE_EXPORT_SPEC)
 KNOWLEDGE_EXPORT_SPEC.loader.exec_module(KNOWLEDGE_EXPORT)
 README = ROOT / "README.md"
+AGENTS = ROOT / "AGENTS.md"
 DOCS_INDEX = ROOT / "docs" / "README.md"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 EXECUTION_MAP = ROOT / "docs" / "roadmap" / "rrflow-1.0-execution-map.md"
@@ -322,6 +323,16 @@ def main() -> int:
     if "## RRFlow 1.0 execution checklist" in readme:
         failures.append("README.md duplicates the detailed RRFlow 1.0 roadmap")
 
+    change_routine_link = (
+        "docs/roadmap/rrflow-1.0-execution-map.md"
+        "#codebase-grounded-change-authoring-routine"
+    )
+    if change_routine_link not in readme:
+        failures.append("README.md does not route the change-authoring routine")
+    agents = AGENTS.read_text(encoding="utf-8")
+    if change_routine_link not in agents:
+        failures.append("AGENTS.md does not require the change-authoring routine")
+
     failures.extend(knowledge_package_drift_failures(ROOT))
 
     docs_index = DOCS_INDEX.read_text(encoding="utf-8")
@@ -494,6 +505,8 @@ def main() -> int:
     execution_map = EXECUTION_MAP.read_text(encoding="utf-8")
     for required_section in (
         "## How to execute this map",
+        "### Codebase-grounded change-authoring routine",
+        "#### Required change checklist",
         "## Product terms versus implementation packages",
         "## Frozen target source tree",
         "## Target runtime flows",
@@ -509,6 +522,21 @@ def main() -> int:
         failures.append("the execution map does not link its exhaustive file plan")
     if not EXECUTION_FILE_PLAN.is_file():
         failures.append("the exhaustive RRFlow 1.0 file plan is absent")
+    for required_evidence_field in (
+        "alpha outcome or prerequisite advanced:",
+        "change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions):",
+        "research decision and primary-source/adaptation record:",
+        "trace/resource/debug decision (add/preserve/not applicable, with reason):",
+        "first-failure or characterization oracle and result:",
+        "full-file reread and diff review:",
+        "change checklist:",
+        "commit/development push evidence:",
+    ):
+        if required_evidence_field not in execution_map:
+            failures.append(
+                "the execution-map evidence template lacks "
+                f"{required_evidence_field}"
+            )
 
     convergence_research = SYSTEM_CONVERGENCE_RESEARCH.read_text(encoding="utf-8")
     for required_section in (
