@@ -382,9 +382,12 @@ bytes.
 ### Installation and incremental attunement
 
 ```text
-acquire signed default bundle -> verify complete manifest -> deny network
-       -> preview install -> resolve bundle-resident template/profile/stubs
-       -> explicit apply -> create locator/identity/estate through RrdEngine
+acquire native signed bundle -> verify manifest/SBOM/provenance/platform signature
+       -> install plan (pure) -> resolve bundle-resident template/profile/stubs
+       -> review exact digest/actions/permissions/budgets/removal ownership
+       -> install apply -> create-new staged rrflowKV through RrdEngine
+       -> commit installed binding + seat + security + checkpoint + audit
+       -> publish data root + minimal locator -> authenticated ready
        -> persist attunement job
        -> authorize bounded metadata/content enumeration
        -> pure deterministic inventory proposal
@@ -400,18 +403,42 @@ committed project change set -> determine affected phases only
        -> bounded resumable phase work (never a blanket reinstall loop)
 ```
 
+### Installed verification and repair
+
+```text
+installed locator -> offline read-only inspect -> quick/full verify report + digest
+       ├─ healthy -> no mutation
+       ├─ torn final WAL frame -> repair plan -> offline lease + CoW/copy candidate
+       │                          -> exact candidate truncation -> full verify
+       │                          -> atomic locator publication + retained prior root + receipt
+       ├─ stale/corrupt derived projection -> repair plan
+       │                          -> candidate rebuild from canonical source cursor
+       │                          -> exact-oracle/full verify -> atomic locator publication
+       └─ canonical/unknown corruption -> fail closed
+                                  -> restore authenticated backup to absent root
+                                  -> verify -> explicit publication plan
+                                  └─ or labeled non-authoritative salvage
+```
+
+Normal open replays valid state but never creates an estate or repairs bytes.
+Verify is offline and never mutates. Repair is offline, changes only an absent
+candidate named by the reviewed digest, and never edits the live root in place.
+Restore never overlays the live root. Uninstall removes only unchanged
+RRFlow-owned integration, retains data/backups, and reports `RETAINED` rather
+than falsely reporting absent bytes.
+
 ## Current implementation inventory and exact disposition
 
 | Boundary | Current code that is real | Required convergence |
 |---|---|---|
 | `rrd-core` | canonical IDs, scopes, runtime values/mutations, read stamps, bitemporal values, reasoning-tree contract, trace links; physical key encoding is absent after C-01 | keep semantic types storage-independent; add only event primitives proven generic |
-| `rrd-lsm` | WAL, version chains, snapshots, manifest/CURRENT, segment v4 ordered key/version spines and Arrow-layout pages, authenticated configurable row-group writer budgets, page cache/ownership counters, compaction, snapshot bundles, I/O tiers, failure injection | complete C-06 selective projection, property/fuzz, mixed-family, and measured physical-policy evidence; prove C-07 crash/lifetime safety |
-| `rrd-store` | `RrflowKvStore`, `RrflowMxStore`, `StorageEngine`, the C-01 `RRKV0001` typed ordered key codec, runtime commits, current projections, archives/backups/object tiers, and absolute rrflowKV diagnostic workloads | narrow the broad trait; make semantic batch/index maintenance atomic; add direct stamped reads; never restore a backend selector |
+| `rrd-lsm` | WAL, version chains, snapshots, manifest/CURRENT, segment v4 ordered key/version spines and Arrow-layout pages, authenticated configurable row-group writer budgets, page cache/ownership counters, compaction, snapshot bundles, I/O tiers, failure injection, and explicit torn-tail repair | complete C-06 selective projection, property/fuzz, mixed-family, and measured physical-policy evidence; add mutation-free inspection; prove C-07 crash/lifetime safety; expose repair only beneath D-11 engine plans |
+| `rrd-store` | `RrflowKvStore`, `RrflowMxStore`, `StorageEngine`, the C-01 `RRKV0001` typed ordered key codec, runtime commits, current projections, archives/backups/object tiers, and absolute rrflowKV diagnostic workloads; `RrflowKvStore::open` currently creates absent storage and reconciles checkpoints | split create-new/open-existing/read-only inspect; keep semantic/index maintenance atomic and direct stamped; add semantic integrity/rebuild beneath D-11; never restore a backend selector or repair-on-open |
 | `rrd-query` | rrflowQL parser/binder/plan, B-05 schema-derived GraphQL lowering into the same bound query, index catalogue, BM25 implementation, DataFusion execution, spill pool, and live polling | replace eager `Vec<QueryRow>` and `MemorySource`; add streaming provider/pushdown/native operators; replace two-snapshot live diff |
 | `rrd-vector` | exact oracle, immutable segments, HNSW, filtered planning, catalogues, compact dense artifacts, quantization, and accelerator code | bind all artifacts to canonical source cursors; persist atomic deltas; exact-rerank; remove alternate TurboQuant catalogue paths; benchmark codecs before retaining them |
 | `rrd-inference` | provider-neutral embedding jobs/backends, optional local FastEmbed, and B-03's exact manifest/handshake/byte pre-load admission | retain that admission seam; add the separate `RouterBackend` only at G-01; LFG remains an outward adapter |
-| `RrdEngine` | one opening/composition authority, security/session/query/data/vector/context/retrieval/subscription/function operations; current security bootstrap is nevertheless a static rrflowKV path opener used by separate CLI and Kubernetes initialization flows | absorb cold-start security into the digest-bound `initialize_instance` action; add persisted attunement/routing/events/routines/skills; make all paths use the final transaction/index/provider contracts; do not add transport imports |
-| transport/adapters/SDKs | catalogue-derived HTTP/OpenAPI, durable subscriptions, a Rust client implementing 28 of 33 HTTP operations plus the bounded B-04 multiplexed socket, and TypeScript, synchronous Python, context-aware synchronous Go, synchronous Java, and asynchronous .NET generic calls over all 33 HTTP descriptors with partial runtime enforcement and no qualified socket/remote/package surface, plus MCP and CLI | split clients by accepted responsibility; close operation/validation/secret/retry/cancellation/frame/resolver/package/browser/interpreter/toolchain/concurrency gaps; retain the frozen multiplexed WebSocket contract and freeze GraphQL lowering; make missing harness configuration fail or explicitly skip; prove every surface only against the same installed engine semantics after storage/query behavior exists |
+| `RrdEngine` | one opening/composition authority, security/session/query/data/vector/context/retrieval/subscription/function/backup operations; current security bootstrap is nevertheless a static rrflowKV path opener used by separate CLI and Kubernetes initialization flows, and no install/verify/repair coordinator exists | absorb cold-start security into exact-plan `initialize_instance`; add installed binding/lifecycle, verifier and repair coordination, then persisted attunement/routing/events/routines/skills; make all state changes use final transaction/index contracts; do not import transport implementations |
+| transport/adapters/SDKs | catalogue-derived HTTP/OpenAPI, durable subscriptions, separate server/MCP binaries, a public CLI without install/serve/verify/repair/version, a checkout supervisor/doctor, and six partially conforming SDKs | make `rrflow`/`rrflow.exe` the primary composition; link server/MCP libraries; remove checkout readiness and standalone initialization after parity; close operation/validation/secret/retry/cancellation/frame/resolver/package/browser/interpreter/toolchain/concurrency gaps; prove every surface against the same installed engine semantics |
 | estate/operations | substantial desired/observed, process, backup, recovery, and operator-source foundations; estate state currently uses a public direct-store repository and monolithic JSON control value; `rrd-maintenance` is an unused standalone direct-store state-machine draft | preserve the fenced reconciliation/recovery semantics while making estate values pure and commits engine-owned; reconcile the overlapping operational hierarchy; converge reusable maintenance validation into generic routines; remove both private storage authorities rather than wrapping them |
 | `rrd-cluster` | useful placement/stamp/consistency/transfer/reshard contracts, OpenRaft storage and TLS mechanics, bounded snapshot/artifact transfer, telemetry, simulation, and one-host tests; current code also owns parallel IDs/topology/schema, opens storage directly, accepts raw commits, persists private JSON transfer state, and is failing against the current rrflowKV application format | retain the safety semantics through pure contracts and injected distributed execution ports beneath `RrdEngine`; remove the parallel authorities and old-format paths directly; keep `clustered_server` unavailable until a later roadmap amendment schedules and accepts independent-host full-engine qualification |
 | `rrd-kubernetes` | namespaced structural CRD, deterministic five-resource rendering, digest-pinned image validation, retained one-replica StatefulSet/PVC, restricted container settings, PDB/NetworkPolicy, server-side apply, status/finalizer controller, checked manifests, and four local tests; current code also invents desired RRFlow state, runs two parallel bootstrap paths, force-takes fields, equates TCP/ready replica with application readiness, watches cluster-wide, and deletes without engine intent/receipt proof | preserve the useful Kubernetes mechanics in planned `rrflow-kubernetes`, an outward adapter consuming sealed engine install/effect plans and returning bounded observations/receipts; use standard conditions, authenticated readiness, explicit field ownership, engine-fenced deletion/retention, and real API-server/clean-install/full-engine evidence; remove the old operations package with no forwarding crate |
@@ -466,19 +493,19 @@ must disappear. A capability is not accounted for unless all three views agree.
 | Current package and fully read module root(s) | Normal first-party dependencies | Current public/root surface | Required direct disposition |
 |---|---|---|---|
 | `rrd-core` — `crates/kernel/rrd-core/src/lib.rs` | none | `authenticated_log`, `claim`, `data`, `digest`, `error`, `ident`, `reasoning_tree`, `reference`, `runtime`, `schema`, `temporal`, and `trace`; re-exported claim, data, reasoning, transaction/read-stamp, schema, temporal, and trace types | Keep storage-independent semantic vocabulary in the kernel. Physical key encoding is absent after C-01; preserve only explicit semantic identities and causal evidence. |
-| `rrd-lsm` — `crates/persistence/rrd-lsm/src/lib.rs` | `rrd-core` | `Database`, `Snapshot`, `WriteBatch`, WAL/recovery receipts, MVCC memtable values, manifest/CURRENT, v4 hybrid `Segment`, page-cache/I/O/ownership statistics, compaction, and snapshot bundles | Remain the sole rrflowKV physical implementation below the narrowed port. C-06a directly replaces v3 row blocks with the ordered spine and Arrow-layout page foundation; complete selective provider projection and measured physical policy before C-06 acceptance, then prove C-07 crash/lifetime safety. |
-| `rrd-store` — `crates/persistence/rrd-store/src/lib.rs`; `src/bin/durability-child.rs` | `rrd-core`, `rrd-lsm` | `StorageEngine`, `StorageProfile`, `RrflowMxStore`, `RrflowKvStore`, the private `RRKV0001` key codec and semantic key constructors, runtime access/commit helpers, projection/control/invocation records, archives/backups, object tiers, S3 adapter, physical counters, and the conflicting public `Trigger` | Retain one MX/KV semantic port and the direct profile names; C-01's application-key format is frozen. Narrow the port in C-02 and make C-03 mutations/index/event/audit effects atomic. Remove or rename storage-level vocabulary that claims later engine trigger authority; keep backup/object mechanics below engine-owned plans. |
+| `rrd-lsm` — `crates/persistence/rrd-lsm/src/lib.rs` | `rrd-core` | `Database`, `Snapshot`, `WriteBatch`, WAL/recovery receipts, MVCC memtable values, manifest/CURRENT, v4 hybrid `Segment`, page-cache/I/O/ownership statistics, compaction, snapshot bundles, and the narrowly safe torn-final-frame repair primitive | Remain the sole rrflowKV physical implementation below the narrowed port. C-06 completes selective provider projection and measured physical policy. D-01b adds mutation-free inspection without using `ManifestStore::open`; C-07 proves crash/lifetime safety through the installed composition; D-11 permits physical repair only through a digest-bound offline engine plan. |
+| `rrd-store` — `crates/persistence/rrd-store/src/lib.rs`; `src/bin/durability-child.rs` | `rrd-core`, `rrd-lsm` | `StorageEngine`, `StorageProfile`, `RrflowMxStore`, create-or-open `RrflowKvStore::open`, the private `RRKV0001` key codec and semantic key constructors, runtime access/commit helpers, projection/control/invocation records, archives/backups, object tiers, S3 adapter, physical counters, and the conflicting public `Trigger` | Retain one MX/KV semantic port and the direct profile names. D-01b splits create-new, open-existing, and read-only inspection so normal open cannot install, reconcile, or repair absent/corrupt state. Keep backup/object mechanics beneath installed engine plans; D-11 adds semantic verification/rebuild and removes arbitrary-root operational entry points. |
 | `rrd-query` — `crates/compute/rrd-query/src/lib.rs` | `rrd-core`, `rrd-store` | rrflowQL syntax/binding/plans, B-05 catalogue-derived GraphQL-to-`Query` lowering, `QueryExecution`, eager `QueryRow`/`QueryBatch`, `ArrowSnapshot` and row conversion, `execute_snapshot` DataFusion execution, BM25, index catalogue, live polling, and `StampedQueryPipeline` | Keep one rrflowQL compute subsystem. Replace eager snapshot/materialization and polling paths with C-04/F-01 stamped streaming, native pushdown/operators, bounded DataFusion execution, and one resource ledger; indexes converge through Gate E. GraphQL remains ingress-only and receives no resolver or store dependency. |
 | `rrd-vector` — `crates/compute/rrd-vector/src/lib.rs` | `rrd-core`, `rrd-store` | exact scoring/oracles, collection/catalogue and payload indexes, immutable/compact/quantized/TurboQuant segments, HNSW, filter/planner/runtime, accelerator admission, quantization lifecycle, and alternate catalogue paths | Keep one RRFlow vector index subsystem under engine transactions. Preserve exact-oracle, filtering, HNSW, quantization, and measured accelerator behavior; remove competing catalogue/artifact paths after E-04/E-05 evidence. |
 | `rrd-inference` — `crates/compute/rrd-inference/src/lib.rs` | `rrd-contract`, `rrd-core` | provider-neutral `EmbeddingModelSpec`, backend descriptor/registry/trait, source reader, jobs, resource/trust/network controls, coordinator, prepared embedding, feature-hash reference backend, optional local FastEmbed backend, and opaque B-03 router-model pre-load admission over public manifest/handshake contracts | Retain deterministic embedding and model admission as non-authoritative compute accepted through `RrdEngine`; add the separate model-neutral `RouterBackend` implementation at G-01 rather than overloading embedding or creating early dispatch. |
 | `rrd-contract` — `crates/transport/rrd-contract/src/{lib,websocket}.rs`; `src/bin/rrd-contract-export.rs` | none | transport-neutral attunement, capability, diagnostic, function, inference, knowledge, context, seat/provider representation, platform, reasoning-tree, router, SDK-conformance, transaction/data/query/index/vector/retrieval/subscription plus closed multiplexed WebSocket, backup/audit/estate, endpoint/OpenAPI, identity, deployment, session, and error envelopes | Remain implementation-free public vocabulary. A-07 directly resolves `AutomationCatalogue`/`FunctionTrigger*`, `MemoryEstate*`, `DeploymentMode`, the `rrd` wire name, topology/resource grammar, and alternate successful fields; generated surfaces change from this one contract. B-04's frame state is transport-local and adds no engine authority. |
 | `rrd-client` — `crates/transport/rrd-client/src/{lib,client,endpoint,error,operation,retry,session,subscription,transport}.rs` | `rrd-contract` | `RrdClient`, `ClientConfig`, `RequestOptions`, credential-private and redacted `Session`, `RrdWebSocket`, 28 typed HTTP operation methods, HTTP/mTLS carriage, bounded multiplexed request/cancel/subscription state, exact ACK/reconnect, and client errors | Remain a pure public Rust SDK. A-07.1b completed the direct responsibility split and public session-secret boundary. B-04 completed the closed socket protocol and Rust carriage. H-04/H-07 bind all 33 operations and close the remaining validation, secret-wrapper, retry/certainty, actual operation cancellation, trace, resolver, generated-SDK, and package-conformance gaps. |
-| `rrd-server` — `crates/transport/rrd-server/src/lib.rs`; `src/main.rs` | `rrd-contract`, `rrd-engine` | `RrdHttpServer`, HTTP errors, JWT and mutual-TLS configuration; the binary additionally owns the conflicting `initialize` command, instance discovery, physical paths, caller clock, readiness files, and shutdown files | Keep only HTTP/WebSocket hosting over an installed `RrdEngine`. Move cold start to D-01, engine time to the composition boundary, and readiness/control to authenticated receipts; remove path/marker/lifecycle authority. |
+| `rrd-server` — `crates/transport/rrd-server/src/lib.rs`; `src/main.rs` | `rrd-contract`, `rrd-engine` | `RrdHttpServer`, HTTP errors, JWT and mutual-TLS configuration; the separate binary additionally owns the conflicting `initialize` command, instance discovery, physical paths, caller clock, readiness files, and shutdown files | Keep HTTP/WebSocket hosting as a library over an installed `RrdEngine`. D-01e links it behind `rrflow serve`/`ready`, moves cold start to the engine install operation, and removes default separate-binary, path, marker, and lifecycle authority after real-process parity. |
 | `rrd-security` — `crates/authority/rrd-security/src/lib.rs` | `rrd-contract`, `rrd-core`, `rrd-store` | principal/role/grant/data-policy/JWT/identity types, authorization decisions, audit records, `SecurityState`, and the direct-store `SecurityRepository` | Preserve pure validation, deny-by-default decisions, verifier-only credentials, and audit semantics; C-03/D-01 move all state and effects through one stamped `RrdEngine` transaction and remove `SecurityRepository` storage authority. |
 | `rrd-estate` — `crates/authority/rrd-estate/src/lib.rs`; `src/commands/rrd-deployment-catalog.rs` | `rrd-contract`, `rrd-core`, `rrd-store` | monolithic `EstateDocument`/`EstateRepository`, desired/observed operations, leases/receipts, authority hierarchy, local authorization, local process catalogue/driver, backup/recovery jobs, and reconcilers | Preserve domain validation, fencing, prepared-effect receipts, backup, and recovery invariants. Make estate types pure, persist native records/relations through `RrdEngine`, merge duplicate topology/security concepts, and move host process effects to one outward adapter with no forwarding crate. |
 | `rrd-engine` — `crates/authority/rrd-engine/src/lib.rs` | `rrd-cluster`, `rrd-contract`, `rrd-core`, `rrd-estate`, `rrd-inference`, `rrd-operator-knowledge`, `rrd-query`, `rrd-security`, `rrd-store`, `rrd-vector` | `RrdEngine`, `RrdOperation`, authorized invocation/session/security/query/data/vector/context/retrieval/function/estate/distributed operations, capability catalogue, offline edge types, operator facade, and runtime exports | Remain the only composition, authorization, transaction, routing, and persistence authority. Absorb every direct-store authority through narrow injected ports; do not import transports or let compute/adapters commit independently. |
-| `rrflow-cli` — `crates/adapters/rrflow-cli/src/main.rs` plus `src/bin/{rrd-backup-controller,rrd-estate-admin,rrd-estate-controller,rrd-recovery-controller,rrd-security-bootstrap}.rs` | `rrd-client`, `rrd-contract`, `rrd-engine` | binary-only `rrflow` command tree, development supervisor, direct embedded opener, operator invocation recording, and five standalone controller/bootstrap binaries | Retain one installed operator adapter over public/engine operations. D-01 adds preview/apply install; remove standalone bootstrap/controllers, default `.rrflow/rrd`, caller-authored identity/time, and supervisor lifecycle state after canonical evidence exists. |
-| `rrflow-mcp` — `crates/adapters/rrflow-mcp/src/main.rs` | `rrd-client`, `rrd-contract`, `rrd-engine` | binary-only MCP discovery/initialize/ping/tools surface and `rrflow_context`; private embedded-or-daemon `RuntimeAuthority` | Remain a provider-neutral outward adapter. It may translate MCP to the same installed operations but cannot own storage, reasoning lifecycle, attunement, identity, or completion truth; H-04/H-07 prove remote and embedded parity. |
+| `rrflow-cli` — `crates/adapters/rrflow-cli/src/main.rs` plus `src/bin/{rrd-backup-controller,rrd-estate-admin,rrd-estate-controller,rrd-recovery-controller,rrd-security-bootstrap}.rs` | `rrd-client`, `rrd-contract`, `rrd-engine` | binary-only `rrflow` command tree with no install/serve/ready/verify/repair/version command, checkout development supervisor, direct embedded opener, operator invocation recording, and five standalone controller/bootstrap binaries | Become the thin primary `rrflow`/`rrflow.exe` composition root over public/engine lifecycle operations. D-01 adds install plan/apply, version, serve, authenticated ready, and baseline verify; D-11 adds full verify/repair/backup/restore/salvage/uninstall. Remove standalone bootstrap/controllers, caller-selected roots/time, create-on-open behavior, and supervisor/doctor lifecycle state after replacement proof. |
+| `rrflow-mcp` — `crates/adapters/rrflow-mcp/src/main.rs` | `rrd-client`, `rrd-contract`, `rrd-engine` | separate binary-only MCP discovery/initialize/ping/tools surface and `rrflow_context`; private embedded-or-daemon `RuntimeAuthority` | Remain a provider-neutral outward adapter. D-01e first exposes reusable library composition behind `rrflow mcp`; the default separate binary is removed after parity. It cannot own storage, reasoning lifecycle, attunement, identity, or completion truth; H-04/H-07 prove remote and embedded parity. |
 | `rrflow-edge` — `crates/adapters/rrflow-edge/src/main.rs` | `rrd-engine` | binary-only offline `build` and `query` commands over `OfflineEdgeIndex` | Retain only a deterministic derived/offline artifact profile with provenance and resource evidence. It never becomes another authoritative database or deployment mode. |
 | `rrd-cluster` — `crates/operations/rrd-cluster/src/lib.rs`; `src/bin/rrd-cluster-node.rs` | `rrd-core`, `rrd-lsm`, `rrd-store` | placement/consistency/transfer/authority/telemetry/simulation contracts plus optional OpenRaft storage/transport and a process node; currently also direct storage, topology, mutation, transfer-state, and trace authority | Preserve safety contracts behind an injected engine proposal/apply port; remove direct opens, raw commits, private state/formats, and duplicate identities. Distributed availability is outside the first alpha until a later gate qualifies the full engine on independent hosts. |
 | `rrd-kubernetes` — `crates/operations/rrd-kubernetes/src/lib.rs`; `src/main.rs`; `src/bin/rrd-kubernetes-crd.rs` | `rrd-contract`, `rrd-core` | `RrdInstance` CRD/spec/status, resource renderer, `controller` module, finalizer/status/apply mechanics, operator and CRD binaries | Preserve Kubernetes mechanics in the outward `rrflow-kubernetes` adapter. Consume sealed install/effect plans and return observations/receipts; remove bootstrap, caller-time/path, desired-state, TCP-readiness, force-apply, and eager-deletion authority. |
@@ -518,7 +545,8 @@ cannot account for them:
 | Durable seat identity, provider representation, and routing attribution | `rrd-contract/src/memory_estate.rs`; `rrd-engine/src/engine/memory_estate.rs`; `rrd-engine/src/operator.rs`; `rrd-core/src/claim.rs`; `rrflow-cli/src/command.rs` | `rrd-engine/src/engine/tests/memory_estate.rs`; `rrflow-cli/tests/operator_surface.rs::identity_bind_resolve_and_readme_warp_share_the_persistent_engine`; `rrd-contract/tests/router_contract.rs`; claim/store golden and grounding tests | Preserve subject-digest redaction, temporal provider-to-seat representation, unrepresented denial, replacement, persistent reopen, and warp-to-context behavior. Rename the ambiguous `MemoryEstate*` surface directly; make D-01 install the specialization-selected seat without a generic Clyffy default; bind the authenticated provider identity, visible representation edge, seat, policy, route packet, proposal, mutation, audit, and trace at one coordinate; reject arbitrary producer actor strings as identity; replace broad snapshot resolution with canonical native access. | A-07, C-03, D-01, G-01 through G-05, H-01, H-04, H-05, J-01 |
 | Context projection maintenance draft | `rrd-maintenance/src/lib.rs` | no focused package test and no caller outside the package; the exhaustive preservation/disposition matrix is owned by `docs/reference/context/context-maintenance.md` | Preserve source-cut inventory/accounting, proposal and evidence completeness, review attribution, optimistic conflicts, digest lineage, atomic publication, generation ownership, observation, and compensating rollback through new generic-routine acceptance tests. Replace the direct `StorageEngine`, private scope/event/repository, cursor-zero replay, JSON-wrapper records, fixed seven-stage lifecycle, hardcoded classes/reduction/token policy, and package-local API with generic I-03 routine state and authorized `RrdEngine` operations; remove the standalone crate only after every preserved/generalized matrix row is covered, with no wrapper. | A-07, C-03, C-04, H-02, H-05, I-01, I-03, J-01 |
 | Governed functions and proposed-transaction bindings | `rrd-contract/src/{function,lib}.rs`; `rrd-engine/src/engine/function/{mod,catalogue,execution,runtime_profile,javascript,webassembly,transaction_binding}.rs`; `rrd-engine/src/engine/{transaction,security,mod}.rs`; `rrd-engine/src/capabilities.rs`; `rrd-engine/Cargo.toml`; `rrd-store/src/{keyspaces,engine,lib,rrflow_kv}.rs`; `rrd-store/src/access/{function,semantic_commit}.rs`; `rrd-store/src/repository/{function,runtime}.rs`; locked `rquickjs`/`wasmi` versions in `Cargo.lock` | `rrd-contract::function::tests`; `rrd-contract/tests/function_contract.rs` plus its golden fixture; `rrd-engine::engine::tests::function`; `rrd-engine/tests/function_conformance.rs` plus the shared profile fixture; `rrd-store/src/rrflow_kv.rs` physical fault case; `rrd-store/tests/{semantic_commit_atomicity,native_index_commit}.rs`; `rrd-lsm/tests/failure_matrix.rs`. Accepted C-03 replaces the private control record with content-addressed binary artifacts, individually addressed immutable definitions/bindings, digest-only membership revisions, one CAS head, and commit-bound receipts. Public maxima and the exact full publication closure fit one batch; every semantic key recovers all-or-none at prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement boundaries; corrupt runtime substitution fails closed; and lost-acknowledgement recovery performs no second guest execution. | Retain C-03's closed schemas, typed/content-addressed state, physically satisfiable limits, build-bound receipts, and complete atomic fault/reopen evidence. C-04 supplies direct stamped reads; later gates supply complete effect authorization/trace identity, supported-target runtime qualification, offline install, outward conformance, triggers, routines, and skills. Keep JSON sandboxes separate from vectorized rrflowQL/DataFusion functions. | A-07, C-01 through C-04, D-01, F-03, H-04, H-05, I-01, I-02, I-06, J-01 through J-05 |
-| Installation, attunement, and explicit automation | `rrd-contract/src/attunement.rs`; the distinct governed-function boundary under `rrd-engine/src/engine/function/`; `rrflow-cli/src/{command,dev}.rs` | `rrd-contract/tests/attunement_contract.rs`; `rrd-engine/src/engine/tests/{function,deployment_conformance,lifecycle,recovery}.rs`; `rrflow-cli/tests/operator_surface.rs` | Build bundle-resident preview/apply, installed credential references, persisted phase jobs, incremental project specialization, canonical events, resumable routines, digest-bound skills, and optional host translators under the one `RrdEngine` authority. Governed functions remain a subordinate capability and do not supply an automation runtime. Estate provisioning and local authorization remain traced in their dedicated estate/security rows rather than duplicated here. | A-07, D, H-04, I, J-01, J-03, J-05 |
+| Installed lifecycle, attunement, and explicit automation | `rrd-contract/src/attunement.rs` currently combines a three-kind install plan with attunement; `rrflow-cli/src/{command,dev,dev/supervisor}.rs`; `rrd-server/src/main.rs`; `rrd-engine/src/{runtime/instance,engine/security_bootstrap}.rs`; `rrd-store/src/rrflow_kv.rs`; the distinct governed-function boundary under `rrd-engine/src/engine/function/` | `rrd-contract/tests/attunement_contract.rs`; `rrd-engine/src/engine/tests/{function,deployment_conformance,lifecycle,recovery}.rs`; `rrd-engine/tests/{runtime_instance,engine_authority}.rs`; `rrflow-cli/tests/{operator_surface,security_bootstrap}.rs`; server/MCP process tests; no single-primary-binary installation corpus exists | Move installation/lifecycle vocabulary directly into `rrd-contract/src/lifecycle.rs` with typed path/action/precondition/receipt state; leave phase computation in `attunement.rs`. Build bundle-resident plan/apply, explicit create/open/inspect storage, installed credential references, one primary executable, authenticated readiness, verification, persisted phase jobs, incremental specialization, canonical events, resumable routines, digest-bound skills, and optional host translators under `RrdEngine`. Governed functions remain subordinate and do not supply an automation runtime. | A-07, C-07, D-01 through D-11, H-04, I, J-01 through J-05 |
+| Integrity verification, backup, restore, repair, salvage, and uninstall | `rrd-lsm/src/{database,manifest,wal,snapshot_bundle}.rs`; `rrd-store/src/{rrflow_kv,backup,object,projection}.rs`; `rrd-engine/src/engine/backup.rs`; `rrflow-cli/src/{command,bin/rrd-backup-controller,bin/rrd-recovery-controller}.rs` | LSM WAL/manifest/failure/snapshot tests; store archive/backup/object/projection tests; engine backup/recovery tests; CLI backup-controller tests. Current proof covers narrow primitives but no read-only whole-estate verifier, repair plan, installed-root authorization, restore publication, salvage label, or uninstall ownership corpus | Preserve complete-frame corruption denial, exact torn-tail classification, authenticated catalogue/object closure, restore-to-new-root, projection quarantine/reset, prepared/effect receipts, and crash evidence. Add offline read-only physical/semantic inspection, deterministic repair plan/apply against an absent reflink/clone or fully accounted candidate, atomic publication with the prior root retained/quarantined, installed engine resolution, exact source-cursor projection rebuild, absent-target restore/publication, explicitly non-authoritative salvage, and ownership-safe uninstall with `RETAINED` state. Remove arbitrary-root controller paths after public binary parity; never guess canonical state. | C-07, D-01, D-11, E-01 through E-05, F-01 through F-05, J-01 through J-05 |
 | Project command discovery, installed capability bindings, and external activities | `rrd-contract/src/function.rs`; `rrd-engine/src/engine/function/`; `rrd-core/src/{runtime,trace}.rs`; `rrd-engine/src/runtime/trace.rs`; `rrd-estate/src/local_process.rs`; `rrflow-cli/src/dev/supervisor.rs`; `rrflow-eval/src/main.rs` | function contract/golden/unit/profile-conformance tests; engine lifecycle/trace tests; local-process characterization; CLI supervisor tests; no command-capability, discovery, activity, adapter, or command cross-profile conformance test exists | Retain the bounded function sandbox under function-only names, durable causal trace evidence, and the useful no-shell/path/identity/timeout/effect-gap process safety. Keep provider CLI invocation confined to evaluation. Add pure discovered-fact/candidate/binding/activity/observation/receipt contracts; deterministic discovery; engine-owned prepared dispatch, accepted receipt, reconciliation, and re-inventory; and one outward local activity adapter. Distinguish authenticated direct-process argv from package-script closures that may invoke a shell; deny incomplete closures, ambient authority, adapter-authored completion, and direct storage/query/index access. | A-07, C-03, C-04, D-03, D-06, H-05, I-01, I-03, I-06, I-07, J-01 through J-05 |
 | Installed project, estate, instance, environment, and physical topology | `rrd-engine/src/runtime/{instance,mod}.rs`; `rrd-contract/src/{platform,lib}.rs`; `rrd-estate/src/authority.rs`; `rrd-server/src/{main,http/server}.rs`; `rrd-cluster/src/{lib,contract}.rs` | `rrd-engine/tests/runtime_instance.rs`; `rrd-contract/tests/platform_terminology.rs`; `rrd-estate/tests/authority_catalogue.rs`; `rrd-cluster/tests/contracts.rs`; initialization callers inventoried across server, CLI, MCP, Rust client fixtures, and engine tests | Preserve canonical IDs, strict format/input rejection, exact-root containment, foreign-store denial, digest validation, desired/observed and cluster placement/snapshot/transfer safety. Replace the three competing hierarchies with one project ↔ estate ↔ instance relationship graph, operation-specific resource paths, a minimal D-01 locator, and one engine-persisted installed-estate binding shared by rrflowMX and rrflowKV. Remove startup-created manifests, historical word-order authority, private JSON binding, and duplicate operational topology with no compatibility reader. | A-07, B-04, C-02, C-03, D-01 through D-03, D-06, H-04, H-07, J-01, J-03, J-05 |
 | Distributed placement, consensus, consistency, replica recovery, transport, and qualification | `rrd-cluster/src/{contract,authority,artifact_transfer,artifact_trace,openraft_adapter,transport,node_runtime,sim,telemetry}.rs`; `rrd-cluster/src/bin/rrd-cluster-node.rs`; `rrd-engine/src/engine/distributed.rs`; `rrd-engine/src/runtime/cluster_transfer.rs` | every `rrd-cluster/tests/{contracts,distributed_authority,artifact_transfer,model_check,simulation,openraft_storage,openraft_snapshot_file,openraft_cluster,openraft_transport,openraft_process}.rs`; `rrd-engine/tests/{distributed_data_plane,runtime_cluster_transfer_trace}.rs`; current full-package failure and hang retained in the distributed reference | Preserve epoch/quorum/failure-domain validation, read modes/stamps/vectors, route evidence, idempotency, Raft log/vote/snapshot safety, authenticated bounded transport, resumable digest-checked artifact closure, admission/telemetry, and replayable faults. Replace loose cluster/tenant/table/scope identity, monolithic JSON catalogue/schema, direct storage/object opening, raw probe/runtime-commit ingress, private transfer-session authority, cursor-zero replay, old/defaulted formats, synthetic trace names, and one-host evidence presented as engine conformance. Replicate only an engine-compiled effect-complete proposal and apply it through an injected engine-owned rrflowKV port; run the complete graph/BM25/vector/RRF/reasoning/Arrow/DataFusion corpus on independent hosts. The first alpha remains single-node; a later roadmap amendment must schedule clustered availability. | A-07, C-01 through C-07, D-01, D-06, E, F, H-04, H-05, H-07, J; later distributed gate required |
@@ -555,8 +583,11 @@ survives the owning gate.
 | `RrflowKvStore`, `RrflowMxStore`, `StorageProfile` | current concrete names; preserve direct naming and verify every caller uses them | A-07 |
 | `rrd-contract::DeploymentMode`, `ServiceCapabilities::deployment_mode`, `RrdEngine::deployment_mode`, TLS-derived server mode, generated SDK projections, and `rrd-deployment-conformance-v1.json` | preserve closed validation/serialization, MX durability denial, KV writer exclusion/reopen, current DataFusion invocation, real socket/child-process behavior, TLS identity checks, and deterministic edge-artifact reads only as narrow characterization; split deployment form, storage profile, endpoint presentation, and security facts in planned `rrd-contract/src/deployment.rs`, supply the installed descriptor from the composition root, remove all root/TLS/location inference and speculative artifact/cluster values, regenerate SDKs with no old field, and replace the seed fixture's overclaimed conformance with layered semantic/durability/form/endpoint/cluster/artifact corpora | A-07, B-04, C-02 through C-04, D-01, E, F, G-04, G-05, H-01 through H-05, H-07, J |
 | `.rrflow/instance.toml`, `InstanceManifest`, `InstanceMode`, `ProjectAuthorityBinding`, `RrdEngine::{open_project_store,open_bound,bind_project_authority}`, `rrd-server initialize`, and startup/test `ensure_dedicated*` callers | preserve strict version/unknown-field rejection, canonical IDs, create-new publication, exact-root and store containment, digest checking, foreign-store denial, and no silent rebind; replace the manifest/private JSON control value with the sole D-01 `.rrflow/config.toml` locator plus an engine-persisted installed-estate binding shared by rrflowMX and rrflowKV, route fixtures through that contract, and remove every initializer/reader/export with no alias or compatibility path | A-07, C-02, C-03, D-01 through D-03, H-04, J-01, J-03, J-05 |
+| `RrflowKvStore::open` create-or-open behavior, `Database::open`, mutating `ManifestStore::open`, open-time checkpoint reconciliation, and any caller that treats an absent path as an installed database | preserve strict manifest/segment/WAL validation, writer exclusion, direct recovery, checkpoint safety, physical counters, and close/reopen behavior; introduce explicit `create_new` for the D-01 cold-start transaction, `open_existing` for normal operation, and a separate mutation-free inspector that creates no directory/lock/checkpoint and performs no repair. Remove create-on-open and update every successful caller/fixture directly; absence or partial installation must fail closed | C-07, D-01, D-11, F-01, J-01 through J-03, J-05 |
 | `RrdEngine::bootstrap_security_store`, `engine/security_bootstrap.rs`, `SecurityBootstrapOutcome`, `rrd-security-bootstrap`, its absolute-path/caller-time manifest, `security-bootstrap.json`, CLI supervisor invocation, and Kubernetes init-container invocation | preserve only strict input decoding, bounded regular-file reads, unique identity/state validation, verifier-only persistence, atomic policy-plus-audit initialization, exact replay, drift denial, and listener separation. Reimplement those invariants inside D-01 `initialize_instance` over an exclusive fresh-target lease, engine clock, exact reviewed action digest, typed credential verifier, capability-scoped/versioned secret port, prepared delivery receipts, and one installed-binding/policy/checkpoint/audit transaction; prove every crash and file/provider race, then delete every listed symbol, binary, document shape, caller, and success fixture with no alias or reader | A-07, C-02, C-03, D-01, D-02, H-05, J-01 through J-03, J-05 |
 | `LocalProcessDriver`, `LocalDeploymentCatalog`, `rrd-deployment-catalog`, `rrd-estate-controller`, `rrflow-cli::dev::supervisor`, `supervisor.json`, process-record JSON, and ready/shutdown marker-file authority | preserve only typed no-shell arguments, strict path bounds, authenticated PID/start/image identity, child reaping, bounded graceful/forced stop, retained data, and effect-gap replay; implement them once in the outward local-process adapter over an immutable installed/fenced plan and typed engine receipt, close the artifact-digest-to-executed-image race, authenticate readiness/control, bound/redact diagnostics and resources, then delete every listed implementation/state/binary/shape with no wrapper | A-07, C-02, C-03, D-01, D-02, H-04, H-05, J-01 through J-03, J-05 |
+| `rrflow dev doctor` source/supervisor readiness, `rrflow dev up` checkout-local companion builds, missing public `install`/`serve`/`ready`/`verify`/`repair`/`version`, and default standalone `rrd-server`/`rrflow-mcp` process requirements | preserve only bounded argument parsing, child/process safety that remains necessary for an optional outward adapter, real HTTP/WebSocket/MCP protocol behavior, and existing process-test faults. D-01 links server/MCP implementations as libraries behind the one primary `rrflow`/`rrflow.exe`, makes readiness an authenticated engine operation, proves installation/commit/reopen through that artifact, then removes the successful checkout-supervisor/doctor and default companion-binary paths with no aliases | D-01, H-04, H-07, J-01 through J-05 |
+| standalone `rrd-backup-controller` and `rrd-recovery-controller`, arbitrary storage/catalogue/state roots, direct store openers, caller-selected policy/key/time, and any repair/restore result not bound to the installed estate | preserve authenticated logical/application backup catalogue closure, immutable-object verification/quarantine, restore-to-new-root, recovery-point/policy/effect receipts, idempotency, and fault tests. D-11 routes plan/verify/apply through installed identity plus `RrdEngine`, distinguishes repair/restore/salvage, rebuilds derived projections only from canonical source cursors, and removes standalone/arbitrary-root successful paths after equivalent public-command evidence | C-07, D-01, D-11, E-01 through E-05, F-01 through F-05, J-01 through J-05 |
 | `rrd-kubernetes`, `RrdInstanceSpec` as desired RRFlow authority, `RrdInstancePhase`, `rrd-server initialize`, separate `rrd-security-bootstrap` init, caller bootstrap time, unconditional SSA `.force()`, TCP-only readiness, cluster-wide default watch, and eager five-resource finalizer deletion | preserve only the closed CRD/admission, deterministic render, digest-pinned image, one retained RWO StatefulSet, restricted container, owner/PDB/NetworkPolicy, and no-controller-Secret-read foundations; implement them in outward `rrflow-kubernetes` over sealed D-01 bootstrap and engine-prepared effect plans, standard Kubernetes conditions, explicit field ownership/conflict, authenticated application readiness, engine-accepted observations/receipts, fenced retention/deletion, and a complete real-cluster RRFlow corpus; then delete the old operations package and every listed successful shape with no forwarding crate or conversion reader | A-07, B-04, C-02, C-03, D-01, D-02, E, F, G-04, G-05, H-01 through H-05, H-07, J-01 through J-05 |
 | `rrd-contract::PLATFORM_TERMS`, generic `ResourcePath` ordering, historical vocabulary order test, `EstateAuthorityResourceKind`, `rrd-estate::AuthorityResourceKind`, and separate cluster identity/scope strings | preserve bounded typed identifiers, duplicate rejection, strict parent checks where canonical, desired/observed and receipt lineage, and cluster placement/snapshot/transfer invariants; freeze one project/estate/instance topology and operation-specific resource grammar, split job/health/secret/security/cluster concepts into their sole owners, unify identity binding, and remove active dependence on the historical table and duplicate catalogue | A-07, B-04, C-03, D-01, D-02, H-04, H-07, J-01 |
 | `DistributedAuthorityCatalogue`, `RrdRaftStore`, `rrd-cluster-node`, raw `RrdRaftOperation::{Probe,RuntimeCommit}`, `transfer-sessions-v1`, `cluster.*` traces, and direct cluster `StorageEngine`/`rrd_lsm`/object access | preserve the exact safety behavior enumerated by the distributed contract and its characterization tests; replace the catalogue with typed engine-owned placement state and pure proposals, make consensus an injected `RrdEngine` execution port over the sole current rrflowKV format, accept only engine-compiled authorized commit proposals, persist transfer jobs/receipts through the engine while retaining bounded local staging, consume installed identity/credentials, and rename traces through A-07; remove every listed bypass/shape with no wrapper before any cluster value is advertised | A-07, C-01 through C-07, D-01, D-06, E, F, H-04, H-05, H-07, J-01 through J-05; later distributed gate required |
@@ -2739,65 +2770,123 @@ dangle.
 
 ### D-01 — previewable project bootstrap
 
-Create `rrd-engine/src/engine/install.rs`, `rrflow-cli/src/install.rs`, and the
-CLI install conformance test before adding the `install` dispatch to
-`rrflow-cli/src/command.rs`. The versioned template manifest and files under
-`rrflow-cli/templates/project-v1/` own minimal `.rrflow/config.toml`, estate
-identity, native rrflowKV placement, attunement profile, `AGENTS.md`, and
-supported forwarding-only provider files. The specialization manifest selects
-the primary seat and allowed provider-representation candidates. The generic
-template has no hardcoded persona or provider; this repository's specialization
-selects Clyffy explicitly. During development, inputs are
-embedded in the CLI or resolved relative to an explicitly supplied, locally
-verified candidate-bundle root; J-03 assembles the complete release candidate
-and J-05 signs the reproducible distribution. Apply has no download or
-sibling-discovery branch. The bundle manifest also accounts for every embedded
-function runtime/build, sealed built-in registry entry, default portable
-function artifact, schema, and golden vector; D-01 installs only the generic
-inactive foundation, while I-06 owns optional project function/binding
-activation. `AGENTS.md` is the one instruction body. Existing
-user files are never overwritten without an exact previewed action and
-explicit apply.
+D-01 is the first walking-product gate after C-06. It is executed in the six
+bounded packages below; no package may claim D-01 until D-01f passes.
 
-`InstallationActionKind::InitializeInstance` is the only cold-start security
-operation. Its input digest covers the exact installed topology, storage
-profile, initial principals/roles/grants, typed credential-verifier policy,
-credential generation or opaque source/sink descriptor, validity/rotation
-policy, and bundle/configuration/specialization digests. Preview is pure: it
-does not open a store, read or generate a secret, contact a provider, or start
-RRD. Apply acquires an exclusive create-new installation lease, proves the
-target has no installed binding/security/canonical state, uses an engine clock,
-and commits installed binding, security state, action checkpoint, audit,
-initial seat definition, outbox/commit evidence, and cursor in one `RrdEngine`
-transaction. Provider representation is activated only from an approved
-binding and stores neither credential nor plaintext provider subject. Once an
-installed binding exists, cold start remains unavailable even if policy is
-missing or damaged.
+#### D-01a — lifecycle contract and bundle plan
 
-Secrets are references or planned generation actions, not values. The engine
-accepts a bounded secret capability from an injected adapter, never an
-absolute path. A file adapter opens a normalized relative entry below an open
-capability root and validates the opened handle; Kubernetes link/mode behavior
-and Windows ACL behavior remain adapter-specific conformance. Generated API
-keys use the OS cryptographic random source and a previewed create-new sink.
-Raw buffers are zeroized after delivery and typed-verifier creation and never
-enter canonical data, arguments, environment, logs, traces, errors, or stdout.
-External delivery uses prepared/effect/observation/receipt state so replay
-cannot generate or deliver another credential.
+Create `rrd-contract/src/lifecycle.rs` and move the current installation types
+out of `attunement.rs` directly, leaving attunement phases/jobs in their own
+module. Replace the fixed three-kind `InstallationActionKind` list with closed,
+typed plan actions for create-new storage, engine initialization, managed
+directory/file/edit publication, credential delivery, locator publication,
+inactive adapter candidates, attunement-job creation, verification, and exact
+removal ownership. Add project-path preconditions, before/after digests,
+permissions, resource estimates, bundle/configuration/template/specialization
+identities, action dependencies, retry certainty, and result receipts. Add the
+installed lifecycle state and baseline verification report vocabulary without
+provider, filesystem implementation, secret bytes, or engine dependencies.
 
-Empty-project and existing-application-project golden fixtures run with
-network denied and sibling paths absent and prove pure preview, exact apply,
-user-file preservation, one credential outcome, authentication, and rrflowKV
-close/reopen. A boundary matrix interrupts before and after credential
-prepare/delivery, engine commit, locator publication, attunement-job creation,
-acknowledgement, and cleanup. Negative cases cover changed plan/source
-revision, partial state, stale lease, pre-existing sink, path/link/mount
-replacement, Unix mode, Windows ACL, Kubernetes projection, already-installed
-cold start, plaintext accounting, and listener readiness. Only after this
-behavior passes may an executable installation guide be added. The current
-`RrdEngine::bootstrap_security_store`, `rrd-security-bootstrap` binary,
-`security-bootstrap.json`, CLI supervisor path, Kubernetes init path, and old
-success fixtures are removed in the same direct-convergence package.
+The first-failure oracle is the current valid three-action plan: it must fail
+the replacement closed-schema golden because it cannot account for templates,
+credentials, managed edits, bindings, verification, or uninstall ownership.
+Update the public contract, OpenAPI/generated surfaces, and every constructor
+in one package; retain no decoder or alias for the current shape.
+
+#### D-01b — explicit create, open, and read-only inspection
+
+Create `rrd-lsm/src/inspection.rs` and `rrd-store/src/integrity.rs`. Split
+`RrflowKvStore::open` into `create_new` and `open_existing`; normal open of an
+absent/empty/partial root fails. The physical inspector opens existing files
+read-only, takes no writer lock that creates or edits bytes, creates no
+directory, truncates no WAL tail, publishes no manifest/checkpoint, performs no
+GC/compaction, and reports locator-independent physical facts and limits. The
+store inspector adds application-format and minimal semantic-head checks but
+does not rebuild projections. Migrate all callers and success fixtures in the
+same package so create-on-open disappears rather than becoming a compatibility
+wrapper.
+
+Characterization first snapshots every current create/open/reopen/failure
+caller. Mutation-denial tests hash the complete target tree before and after
+absent, healthy, torn-tail, corrupt-frame, corrupt-manifest, and locked-writer
+inspection. C-06 physical behavior remains unchanged.
+
+#### D-01c — engine-owned staged installation
+
+Create `rrd-engine/src/engine/install.rs` plus focused tests. Resolve the
+project and bundle only from typed capabilities. Pure planning reads no secret,
+creates no store or file, starts no process, invokes no project capability, and
+is byte-identical over unchanged inputs. Apply revalidates every precondition,
+acquires a create-new lease, initializes plan-addressed staged rrflowKV state,
+and commits installed binding, initial seat, security policy, exact checkpoint,
+audit, outbox, and commit evidence through one `RrdEngine` transaction.
+
+Secrets are generation/source actions plus opaque sink capabilities, never
+plan values or arbitrary paths. Generated bytes use the OS cryptographic source,
+are zeroized after typed-verifier creation and create-new delivery, and never
+enter logs, traces, errors, arguments, environment, canonical state, or stdout.
+Prepared/effect/observation/receipt records make every interruption resumable
+without a second credential/policy/estate. A committed installed binding makes
+cold start permanently unavailable even if later state is damaged.
+
+#### D-01d — bundle-resident templates and CLI plan/apply
+
+Create `rrflow-cli/src/install.rs`,
+`rrflow-cli/templates/project-v1/manifest.toml`, the referenced template files,
+and `rrflow-cli/tests/installed_lifecycle.rs`; then add `install
+plan|apply|status` to `command.rs`. Development inputs are embedded or resolved
+below an explicitly supplied verified candidate-bundle root. Apply has no
+download, registry, sibling-discovery, or ambient-host fallback.
+
+The generic template has no persona/provider default. A selected specialization
+names the primary seat and allowed provider-representation candidates; this
+repository's specialization explicitly selects Clyffy. `AGENTS.md` is the one
+instruction body. Create it only when absent; an existing instruction file is
+changed solely through an explicitly accepted, digest-bound RRFlow-managed
+region. Forwarding provider files copy no rules. Uninstall ownership metadata
+is emitted with every managed create/edit. Functions, triggers, routines,
+skills, generators, harnesses, project databases, models, and meshes remain
+inactive candidates until their owning later gate authorizes activation.
+
+#### D-01e — one executable serves and proves readiness
+
+Convert `rrd-server` and `rrflow-mcp` binary-only composition into reusable
+library entry points and link them through `rrflow-cli`. Add `version`, `serve`,
+`ready`, `verify --level quick`, and `mcp` to the primary command tree. The
+default operator runs `rrflow` or `rrflow.exe`; it does not build/discover a
+companion executable. `serve` opens only an installed binding. `ready` performs
+an authenticated challenge-bound engine operation and returns project/estate/
+instance, binary/bundle, policy, storage-profile, commit/read-stamp, and
+subsystem coordinates. Quick verify invokes D-01b inspection and changes no
+bytes.
+
+Retain protocol behavior and process fault tests. A PID, port, TCP connection,
+marker file, source topology, separate binary, or successful compile is an
+explicit negative readiness fixture.
+
+#### D-01f — direct convergence and walking-product proof
+
+After D-01a through D-01e evidence passes, remove
+`RrdEngine::bootstrap_security_store`, `engine/security_bootstrap.rs`,
+`rrd-security-bootstrap`, `security-bootstrap.json`, `.rrflow/instance.toml`,
+`InstanceManifest`, `ProjectAuthorityBinding`, `rrd-server initialize`, startup
+`ensure_dedicated*`, `rrflow-cli::dev::supervisor`, its private JSON/markers,
+and successful old-shape fixtures. Remove default standalone server/MCP binary
+targets only after their behavior passes through the primary binary; retain an
+optional artifact only if its need, manifest entry, and independent conformance
+are explicit.
+
+The acceptance corpus runs from a natively built candidate with network denied
+and sibling paths absent. Empty and existing projects prove deterministic plan,
+no-write preview, exact apply, user-file preservation, one credential result,
+authentication, readiness, one commit/query, close/reopen, and byte-stable
+quick verification. Interrupt before/after staging, credential prepare/delivery,
+engine commit, durable publication, locator publication, attunement-job
+creation, acknowledgement, and cleanup. Reject changed plan/bundle/project,
+partial state, stale lease, pre-existing sink, path/link/mount replacement,
+Unix mode, Windows ACL, unsupported format, missing binding, and repeated cold
+start. Exact trace/resource evidence covers every action and publication/fsync
+boundary. D-01 changes from unchecked only after all of this passes.
 
 ### D-02 — persisted job executor
 
@@ -2881,6 +2970,69 @@ mounts are input descriptors. The per-instance upper layer owns every mutable
 RRFlow byte. Measure logical, allocated, compressed, WAL, segment, cache, and
 snapshot sizes separately. Restore verifies digest, instance identity, and
 commit boundary before serving.
+
+### D-11 — installed verification, repair, restore, salvage, and uninstall
+
+D-11 begins only after D-01, C-07, and the E/F primitives needed by its selected
+projection checks are accepted. It is split into four packages:
+
+1. **D-11a, full verifier:** extend D-01b with complete reachable manifest/WAL/
+   segment/page/object checks, MVCC ordering, semantic record/link/unique-index
+   invariants, reciprocal graph directions, projection source coordinates,
+   backup closure, exact-oracle samples, bounded work accounting, and one
+   read-only engine report. Hash-before/after tests prove zero mutation.
+2. **D-11b, repair plan/apply:** create `rrd-engine/src/engine/repair.rs` and
+   `rrflow-cli/src/repair.rs`. Plan is pure and deterministic. Apply requires
+   the exact digest, installed identity, an exclusive offline lease, a
+   pre-repair authenticated snapshot plus an absent filesystem clone/reflink or
+   fully accounted copy, exact preconditions, engine audit/receipt, and full
+   post-verify before a same-filesystem atomic locator publication. The old
+   root remains retained or quarantined. Initial permitted actions are
+   proven torn-final-WAL truncation,
+   unreachable temporary/orphan cleanup, source-cursor projection rebuild, and
+   durable install/attunement receipt reconciliation. Complete-frame or
+   canonical semantic corruption never admits guessed/reset state.
+3. **D-11c, backup and restore:** expose engine-authenticated `backup
+   create|list|verify` and `restore plan|apply`; retain current archive,
+   catalogue, object, and restore-to-new-root behavior, but resolve paths and
+   identities through the installed lifecycle. Restore writes an absent staging
+   root, verifies/rebuilds it, and requires a separate publication plan; it
+   never overlays the live estate.
+4. **D-11d, salvage and uninstall:** salvage writes only an absent,
+   non-authoritative export with omissions/uncertainty and cannot self-publish.
+   `uninstall plan|apply` stops authenticated RRFlow-owned services and removes
+   only unchanged managed files/regions; it retains rrflowDB/backups, records
+   `RETAINED`, and never deletes project, external database, provider, mesh,
+   generator, or harness state. A destructive purge remains absent until
+   separately designed.
+
+Only after public-command parity passes may
+`rrd-backup-controller`, `rrd-recovery-controller`, their arbitrary-root
+entrypoints, and successful direct-controller fixtures be removed. No wrapper,
+alias, hidden repair-on-open, or alternate recovery authority remains.
+
+#### D-01/D-11 installed-lifecycle research and execution-plan evidence journal
+
+```text
+gate/package: pre-implementation planning prerequisite for D-01 and D-11 / single-executable installation, operation, verification, repair, restore, salvage, uninstall, and native artifact proof; documentation and deterministic inventory only; neither gate is implemented or checked
+starting revision/tree/branch/remotes/worktree: commit 4963666a63a73a43d514c30b2fc2079bcea903a0; tree 50dd0e38072136c56c063a72a94eb6b3244d37b9; branch agent/connectome-temporal-runtime-visualizer at development/main; development=https://github.com/rrflow/rrflow-development.git; official origin=https://github.com/rrflow/rrflow.git; the starting worktree was clean
+baseline files/digests: README.md=18b7caf5762d0c6f72c88f7b6c64ff4c63a6b46acdea01e29cce0f2adf2170d4; alpha objective=a1a77abe2633443ea266c71174755f8816f1143248e715d557eda080eaaec9d7; canonical roadmap=549a8cf5a86e212d6439c591800712256cd235f87fe8e1b307ade2daf35b68d2; execution map=96628a336f90478e534990ad9d24700f2aa555961a96f4259e9f98c7ec5011c2; POA&M=ad01b9070b76ef7b5d7d5ecf8bd2b754fc01d3fd66fe356210f3b440f84c6486; research index=68a6d51983fa10095b069ad0a7c23b26731aaf4578caa42a8eee12c2baabcbd5; deployment index=ab1e3196ebf22f52494f31f137d2717a475aeb210b44f82605df81dec7589c12
+files read in full before editing: AGENTS.md and README.md; docs/objectives/rrflow-1.0-alpha.md; complete docs/roadmap/rrflow-1.0.md and docs/roadmap/rrflow-1.0-execution-map.md; complete docs/poam/rrflow-1.0-alpha.md; docs/architecture/{system-overview,instance-topology,engine-data-flow}.md; docs/decisions/0001-single-engine-authority.md; docs/reference/agent-bootstrap.md; docs/reference/security/authority.md; docs/reference/deployment/{README,modes,local-process-driver}.md; docs/reference/storage/logical-archive.md; docs/operations/ci.md and relevant documentation indexes. Complete implementation reads covered root, rrflow-cli, and rrd-server Cargo manifests; rrflow-cli src/{main,command,dev}.rs, src/dev/supervisor.rs, and src/bin/{rrd-security-bootstrap,rrd-backup-controller,rrd-recovery-controller}.rs; rrd-server src/main.rs; rrd-contract src/attunement.rs; rrd-engine src/engine/{security_bootstrap,backup}.rs, src/runtime/instance.rs, and src/operator.rs; rrd-store src/{rrflow_kv,backup}.rs; and rrd-lsm src/{lib,database,manifest,wal}.rs. The complete 1,775-line deterministic inventory generator and both new supporting records were read after editing
+primary-source research disposition: reviewed official SurrealDB single-executable install/start guidance, Qdrant snapshot/recovery behavior, SQLite integrity/recovery separation, PostgreSQL's offline last-resort WAL-reset warnings, Rust native Windows MSVC support, GitHub artifact/SBOM attestations, cargo-dist archive/checksum capability, and Microsoft SignTool. The cited research record maps only useful lifecycle/failure semantics to RRFlow; no upstream command tree, source, crate layout, data model, compatibility layer, or runtime is copied
+starting executable evidence: cargo build --release --locked -p rrflow-cli -p rrd-server -p rrflow-mcp passed and produced three dynamically linked unstripped x86-64 Linux ELF files in the configured shared Cargo target: rrflow 114824720 bytes sha256 7af08a5d41d7d63700b2ecfafd86245228def18d90088158e173fc28c1f64aa0; rrd-server 125967960 bytes sha256 c48e34b313a65bcbbdb6f96027c0bc8a493b8c6ed431f82e9d0ddc107e510c3a; rrflow-mcp 16291024 bytes sha256 bc9b7f508a3d47d9d1e0c34885a63c4eb3e9c2736d32844a869bcd845e82de0f. The installed Rust target list contained only x86_64-unknown-linux-gnu; no Windows executable was built or run
+first-failure and debugging evidence: release rrflow --help has no install, serve, ready, verify, repair, restore, or version operation; rrflow init --help fails as an unrecognized subcommand even though rrd-server instructs that command; rrflow dev doctor --json reported ready=true with 17 passed and 0 blocked from source/tool/supervisor checks despite the absent installed lifecycle. Source inspection then proved RrflowKvStore::open can create an absent store and reconcile checkpoints, ManifestStore::open creates directories and a read-write create-capable lock file, Database::open recovers into a writable WAL, and standalone backup/recovery controllers accept arbitrary roots. These are recorded as POAM-006, POAM-013, and POAM-025 rather than hidden by a compile result
+change brief and authority: keep README as a small product/status/warp portal, the objective as measurable outcomes, the roadmap as dependency/status authority, the POA&M as deficiency owner, this map as exact packages/evidence, one deployment reference as the target lifecycle contract, and one research record as cited evidence. Finish active C-06, execute D-01 as six bounded walking-product packages, qualify C-07 through that installed composition, and complete D-11 after native E/F projection primitives exist. Do not create a second roadmap, supervisor lifecycle, database authority, migration lane, provider hook, external prerequisite, or compatibility shim
+installed lifecycle decision: distribution acquisition and project installation are separate; the default operator surface is one rrflow/rrflow.exe; install planning is pure and digest-bound; apply uses create-new staged rrflowKV plus one engine-owned installed/security/seat/checkpoint/audit commit; normal open is open-existing; `.rrflow/rrd/roots/<storage-root-id>/` holds distinct install, repair, and restore roots while the bounded `.rrflow/config.toml` locator selects exactly one active root and publication receipt; verify is offline and byte-stable; repair changes only an absent same-filesystem reflink/clone or fully accounted candidate, fully verifies it, then durably replaces only the locator while retaining/quarantining the prior root; restore targets absent state; cross-device or non-atomic publication fails before mutation; salvage is non-authoritative; uninstall removes only unchanged RRFlow-owned integration and reports RETAINED because alpha has no purge
+trace, resource, and debugging decision: this documentation package emits no runtime span and changes no runtime resource behavior. D-01/D-11 now require one correlated public-operation trace with plan/action/bundle/installed identities, state/effect/publication/fsync receipts, safe-retry classification, and redacted bounded failures. Plans must account for files, permissions, allocated/read/copied bytes, time, credentials without plaintext, candidate-copy worst case, and verification omissions. PID/port/marker/source/compile checks are explicit negative readiness fixtures
+implementation-requirements traceability changed before future rewrites: the live package inventory and direct-convergence matrix now map create-on-open, mutating manifest/open recovery, standalone security bootstrap, checkout supervisor/doctor, separate default server/MCP binaries, nonexistent init instruction, arbitrary-root backup/recovery controllers, current torn-tail primitive, backup/object verification, and their useful safety/fault tests to D-01b through D-01f, C-07, and D-11a through D-11d. Deletion remains forbidden until equal-or-stronger installed-binary, failure, resource, reopen, and authorization proof passes
+files changed/created/deleted/moved: changed README.md, docs/objectives/rrflow-1.0-alpha.md, docs/poam/rrflow-1.0-alpha.md, docs/reference/README.md, docs/reference/deployment/README.md, docs/research/README.md, docs/roadmap/rrflow-1.0.md, this execution map, and scripts/ci/build_execution_inventory.py; created docs/reference/deployment/installed-lifecycle.md and docs/research/rrflow-installation-repair-and-distribution-research.md; regenerated docs/roadmap/rrflow-1.0-file-plan.jsonl. No implementation, test, fixture, dependency, lockfile, public operation, SDK surface, version, binary, artifact, runtime state, user data, or official-repository ref was changed, deleted, moved, renamed, or promoted
+surfaced validation failures and corrections: the first documentation-policy run rejected the new lifecycle record because its status lacked the required active classification; it was corrected to active target contract without implying implementation. The first deterministic-inventory check rejected the new unchecked D-11 gate because no file owned it; explicit lifecycle/integrity/repair/CLI/conformance paths were assigned before regeneration. Final review found and corrected an ordering sentence that called D-01 next while C-06 remains active, and an uninstall state that claimed ABSENT while retaining data; RETAINED and exact reinstallation semantics now agree. Repair was tightened from in-place mutation after a snapshot to mutation of an absent, resource-accounted candidate followed by verification and atomic publication
+focused and owning proof: deterministic inventory generation wrote and its check accepted 919 current/generated/planned path records; documentation policy passed 92 statuses, 90 classified coordinates, parent indexes, and local links; all 11 knowledge-export tests passed; Ruff accepted the changed generator; generated-surface parity retained 33 HTTP operations at OpenAPI SHA-256 1d18655aa6e670abd7319c3984dfc36b8ed50c280ce8afb62322a5e062b14cc6; workflow policy passed 3 workflows, 7 substantive jobs, 5 cohesive engine suites, 20 default-feature packages, and 5 optional-feature packages; version policy retained 1.0.0; Cargo formatting and diff integrity passed. These qualify this documentation/inventory package only
+checks not run and reason: no Cargo unit/workspace suite, SDK conformance, native Windows/macOS build, clean-machine installation, actual install/serve/ready/verify/repair/restore/uninstall, persistence fault matrix, graph/BM25/vector/RRF, streamed DataFusion, attunement, reasoning/context, Connectome, benchmark, signed bundle, or official promotion is run or claimed because this package changes only planning, ownership, traceability, research, and deterministic inventory. The Linux release build is baseline inventory, not qualification
+remaining known errors: C-06 remains active; the public binary still has no installed lifecycle; no rrflow.exe exists; open remains create-capable/mutating; readiness remains checkout-oriented; full verifier/repair coordinator and safe candidate publication do not exist; native graph/BM25/vector and streamed rrflowKV-to-Arrow/DataFusion remain open; attunement execution, reasoning/context, routines/skills, Connectome, release qualification, and every alpha outcome remain unchecked. After C-06, D-01a is the exact next implementation package
+commit/development push evidence: the result is the commit containing this entry; before handoff its exact revision will be pushed only to refs/heads/main at https://github.com/rrflow/rrflow-development.git and verified there. No official-repository ref, tag, binary, artifact, or release is changed
+roadmap checkbox changed: no; Gate D remains 0/11, Gate C remains 5/7 with C-06 active, every alpha outcome remains unchecked, and D-01/D-11 remain target contracts rather than implementation evidence
+```
 
 ## Gate E work packages
 
@@ -3128,13 +3280,16 @@ and the owner decision. Force pushes and history rewrites are prohibited.
   and stale generated outputs; run strict repository searches.
 - J-02: run unit, property, fuzz corpus, differential, crash/reopen, ENOSPC,
   security, budget, adapter, SDK, and real-process tests; retain failures.
-- J-03: use `scripts/release/assemble.py` to build a complete manifest-verified
-  release-candidate bundle from tracked inputs, then use
-  `scripts/release/qualify.py` to install it into an empty fixture and this
-  repository with outbound network denied, sibling repositories hidden, and no
-  external database service; attune, query fast/heavy paths, close/reopen, and
-  rerun incrementally. This gate qualifies candidate contents and behavior;
-  J-05 owns reproducibility, signing, and final clean-machine verification.
+- J-03: use `scripts/release/assemble.py` to build complete manifest-verified
+  native release-candidate bundles from tracked inputs, then use
+  `scripts/release/qualify.py` on native Linux, Windows, and macOS runners. Each
+  runner uses only the candidate's `rrflow` or `rrflow.exe` to install an empty
+  fixture and this repository with outbound network denied, sibling repositories
+  hidden, and no compiler or external database service; prove version,
+  plan/apply, serve, authenticated readiness, attunement, fast/heavy query,
+  close/reopen, verify, repair/restore rehearsal, and incremental rerun. This
+  gate qualifies candidate contents and behavior; J-05 owns reproducibility,
+  signing, and final clean-machine verification.
 - J-04: publish fixed-hardware raw results for storage, graph, BM25,
   exact/HNSW, DataFusion, context, LFG, memory, and disk. Use
   `scripts/release/compare_deployment.py` for a pinned official
@@ -3149,17 +3304,22 @@ and the owner decision. Force pushes and history rewrites are prohibited.
   interference and sustained/long-duration maintenance rather than promoting a
   short local microbenchmark.
 - J-05: use `scripts/release/assemble.py` and `scripts/release/verify.py` to
-  produce and verify one signed reproducible default distribution containing
-  all default-distribution first-party executables and linked engine
-  capabilities, schemas/goldens, SDKs, project/attunement templates, default
-  configuration/profile, required local model/runtime artifacts, SBOM/licenses,
-  backup/restore evidence, provenance, and operator runbook. Freeze the
+  produce and verify reproducible signed platform distributions whose primary
+  operator executable is `rrflow` on Linux/macOS and `rrflow.exe` on Windows.
+  The executable contains or the manifest binds every default engine capability,
+  schema/golden, SDK, project/attunement template, configuration/profile,
+  required local model/runtime artifact, SBOM/licence, backup/restore tool,
+  provenance record, and operator runbook. Publish archive and executable
+  checksums, build/SBOM attestations, complete installed-byte and dynamic-runtime
+  inventories, and native platform signatures including Windows Authenticode.
+  Freeze the
   manifest shape in `fixtures/release/distribution-manifest-v1.json` and test
   assembly, tamper rejection, completeness, and offline qualification in
   `scripts/release/test_distribution.py`. Verify every installed byte and run
-  the complete install/readiness/commit/reopen check on a clean machine without
-  a compiler, source checkout, sibling repository, local cache, package
-  registry, external database/query/vector service, or outbound network.
+  version/install/serve/ready/commit/query/context/reopen/verify/repair/restore/
+  uninstall through the primary executable on a clean native machine without a
+  compiler, source checkout, sibling repository, local cache, package registry,
+  external database/query/vector service, or outbound network.
 
 #### Development repository separation journal
 

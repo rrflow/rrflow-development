@@ -36,6 +36,13 @@ receives a separate full review and link-preserving classification.
 | HelixDB | labeled property graph, node, edge, label, property, index, query, workspace, project, cluster | [introduction](https://docs.helix-db.com/database/helix-db/start-here/introduction), [data model](https://docs.helix-db.com/database/helix-db/core-concepts/data-model), [run modes](https://docs.helix-db.com/database/helix-db/start-here/run-modes), [repository](https://github.com/HelixDB/helix-db) | No peer capability inventory exists yet. |
 | SurrealDB | query/document transaction pipeline, ordered keys, temporal graph, indexes, live/changefeed, permissions, RPC/MCP, installation | [`v3.2.4` release](https://surrealdb.com/releases/3.2), [pinned source](https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102), [architecture](https://surrealdb.com/docs/learn/data-models/architecture) | [`surrealdb-capability-inventory.md`](surrealdb-capability-inventory.md) |
 
+## Cross-system lifecycle research
+
+- [`rrflow-installation-repair-and-distribution-research.md`](rrflow-installation-repair-and-distribution-research.md)
+  compares primary database and release-tool lifecycle guidance with the
+  current checkout and records the evidence behind RRFlow's single-executable,
+  plan/apply, verification, repair, restore, salvage, and artifact target.
+
 The pinned SurrealDB reference explicitly rejects its namespace → database →
 table/record hierarchy as RRFlow authority. `estate` is an RRFlow-owned term;
 the accepted project ↔ estate ↔ instance topology remains defined only by the

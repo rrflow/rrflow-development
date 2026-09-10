@@ -24,6 +24,7 @@ release-ready.
 | Understand the product, components, and boundaries | [RRFlow system overview](docs/architecture/system-overview.md) |
 | Understand project, estate, RRD instance, environment, deployment, and physical placement | [RRFlow instance topology](docs/architecture/instance-topology.md) |
 | Select and prove deployment form, storage profile, and endpoint presentation independently | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
+| Install, serve, verify, repair, restore, and remove one project estate through the shipped binary | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md) |
 | Deploy one installed RRD instance through Kubernetes without creating another authority | [RRFlow Kubernetes deployment adapter](docs/reference/deployment/kubernetes-operator.md) |
 | Understand the unavailable distributed target and disposition of current cluster code | [RRFlow distributed cluster contract](docs/reference/distributed/cluster-contract.md) |
 | Follow writes, persistence, reads, Arrow/DataFusion, and context end to end | [RRFlow engine data flow](docs/architecture/engine-data-flow.md) |
@@ -51,6 +52,7 @@ definition; this portal does not reproduce those bodies.
 | rrflowQL fast and analytical paths over stamped Arrow/DataFusion work | [Query and analytical boundary](docs/architecture/system-overview.md#query-and-analytical-boundary) |
 | Authentication, authorization, read stamps, compute, mutation, and evidence | [Security boundary](docs/architecture/system-overview.md#security-boundary) |
 | Repository-contained source and an offline-verifiable default distribution | [Source and distribution boundary](docs/architecture/system-overview.md#source-and-distribution-boundary) |
+| One primary `rrflow`/`rrflow.exe` lifecycle with no checkout-only readiness path | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md#product-boundary) |
 | Exact semantic write and durable rrflowKV commit sequence | [Write and commit flow](docs/architecture/engine-data-flow.md#write-and-commit-flow) |
 | Hybrid immutable storage and measured conditional zero-copy | [rrflowKV physical target](docs/architecture/engine-data-flow.md#rrflowkv-physical-target) and [conditional zero-copy](docs/architecture/engine-data-flow.md#conditional-zero-copy) |
 | One bounded, deterministic, provider-neutral context operation | [Context assembly contract](docs/architecture/engine-data-flow.md#context-assembly-contract) |
@@ -62,6 +64,7 @@ definition; this portal does not reproduce those bodies.
 | Operation or surface | Owning record or gate |
 |---|---|
 | New/existing-project installation, specialization, and attunement | [Provider-neutral agent bootstrap](docs/reference/agent-bootstrap.md#installation-and-attunement) and [roadmap Gate D](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
+| Binary acquisition, install plan/apply, serve/readiness, verify, repair, backup/restore, salvage, and uninstall | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md) and [roadmap D-01/D-11](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
 | Deterministic project-tree snapshot and incremental refresh | [Project-tree inventory flow](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) and [roadmap D-03/D-04](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
 | Governed in-engine functions and proposed-transaction bindings | [RRFlow governed functions](docs/reference/automation/functions.md) and [roadmap A-07/C/I](docs/roadmap/rrflow-1.0.md#executable-dependency-spine) |
 | Discovered project commands, installed capability bindings, and external activities | [Project command capability contract](docs/reference/automation/project-command-capabilities.md), [roadmap D-06](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate), and [roadmap I-03](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
@@ -152,6 +155,17 @@ the measured compression/value-placement/cache decision. This is not yet
 proof of the complete hybrid format, native graph/BM25/vector access paths,
 streamed DataFusion, turnkey installation, or persistent reasoning/recall.
 
+The executable baseline is not an installed product. A locked Linux release
+build emits separate `rrflow`, `rrd-server`, and `rrflow-mcp` ELF files; the
+public `rrflow` command has no install, serve, authenticated ready, verify,
+repair, or version operation; and checkout-oriented `dev doctor` can report
+READY without proving any of them. No native Windows `rrflow.exe` has been
+built or run. D-01 owns the first single-executable walking lifecycle, D-11
+owns complete repair/restore/uninstall, and Gate J owns native signed platform
+distributions. See the
+[installed lifecycle](docs/reference/deployment/installed-lifecycle.md) and
+[POA&M](docs/poam/rrflow-1.0-alpha.md).
+
 ## Knowledge warp points
 
 The checkout is RRFlow's bootstrap memory until authorized import and durable
@@ -164,6 +178,7 @@ one repository fallback; the linked record owns the content.
 | Master system overview | [`rrflow://rrflow-instance/data/architecture/system-overview`](rrflow://rrflow-instance/data/architecture/system-overview) | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) |
 | Project, estate, instance, and deployment topology | [`rrflow://rrflow-instance/data/architecture/instance-topology`](rrflow://rrflow-instance/data/architecture/instance-topology) | [`docs/architecture/instance-topology.md`](docs/architecture/instance-topology.md) |
 | Deployment profiles and cross-profile conformance | [`rrflow://rrflow-instance/data/reference/deployment/modes`](rrflow://rrflow-instance/data/reference/deployment/modes) | [`docs/reference/deployment/modes.md`](docs/reference/deployment/modes.md) |
+| Installed product lifecycle | [`rrflow://rrflow-instance/data/reference/deployment/installed-lifecycle`](rrflow://rrflow-instance/data/reference/deployment/installed-lifecycle) | [`docs/reference/deployment/installed-lifecycle.md`](docs/reference/deployment/installed-lifecycle.md) |
 | Kubernetes deployment adapter | [`rrflow://rrflow-instance/data/reference/deployment/kubernetes-operator`](rrflow://rrflow-instance/data/reference/deployment/kubernetes-operator) | [`docs/reference/deployment/kubernetes-operator.md`](docs/reference/deployment/kubernetes-operator.md) |
 | Distributed cluster contract | [`rrflow://rrflow-instance/data/reference/distributed/cluster-contract`](rrflow://rrflow-instance/data/reference/distributed/cluster-contract) | [`docs/reference/distributed/cluster-contract.md`](docs/reference/distributed/cluster-contract.md) |
 | Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |

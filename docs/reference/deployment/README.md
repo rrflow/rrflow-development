@@ -10,6 +10,7 @@ engine, database, query planner, or configuration authority.
 
 | Subject | Durable warp | Checkout record | State |
 |---|---|---|---|
+| Installed product lifecycle | [`rrflow://rrflow-instance/data/reference/deployment/installed-lifecycle`](rrflow://rrflow-instance/data/reference/deployment/installed-lifecycle) | [`installed-lifecycle.md`](installed-lifecycle.md) | target single-executable acquisition, install, readiness, verification, repair, restore, salvage, uninstall, and platform-artifact contract; implementation remains open |
 | Deployment profiles | [`rrflow://rrflow-instance/data/reference/deployment/modes`](rrflow://rrflow-instance/data/reference/deployment/modes) | [`modes.md`](modes.md) | accepted independent deployment-form, storage-profile, and endpoint-presentation classification; implementation convergence remains open |
 | Offline edge artifact CLI | [`rrflow://rrflow-instance/data/reference/deployment/edge`](rrflow://rrflow-instance/data/reference/deployment/edge) | [`edge.md`](edge.md) | narrow executable artifact proof; not a persistent project estate or release installer |
 | Local RRD process adapter | [`rrflow://rrflow-instance/data/reference/deployment/local-process-driver`](rrflow://rrflow-instance/data/reference/deployment/local-process-driver) | [`local-process-driver.md`](local-process-driver.md) | target launch/readiness/shutdown contract; current implementation requires direct convergence |
