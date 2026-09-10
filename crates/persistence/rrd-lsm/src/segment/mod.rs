@@ -260,6 +260,12 @@ struct KeySpine {
     sequences: Arc<LoadedPage>,
 }
 
+struct LoadedValueColumns {
+    validity: Arc<LoadedPage>,
+    offsets: Arc<LoadedPage>,
+    values: Arc<LoadedPage>,
+}
+
 struct LoadedRowGroup {
     spine: KeySpine,
     validity: Arc<LoadedPage>,
@@ -582,17 +588,24 @@ impl Segment {
             if end.is_some_and(|end| descriptor.first_key.as_slice() >= end) {
                 break;
             }
-            let group = self.load_row_group(index)?;
+            let spine = self.load_key_spine(index)?;
+            let mut values = None;
             for row in 0..descriptor.row_count as usize {
-                let key = key_at(&group.spine, row)?;
+                let key = key_at(&spine, row)?;
                 if key < start || end.is_some_and(|end| key >= end) {
                     continue;
                 }
-                let sequence = sequence_at(&group.spine, row)?;
+                let sequence = sequence_at(&spine, row)?;
                 if sequence <= read_sequence {
+                    let value = if values.is_none() {
+                        values = Some(self.load_value_columns(index)?);
+                        values.as_ref().expect("value columns are loaded")
+                    } else {
+                        values.as_ref().expect("value columns are loaded")
+                    };
                     let version = SegmentVersion {
                         sequence,
-                        value: value_from_loaded(&group, row)?.map(Box::<[u8]>::from),
+                        value: value_from_columns(value, row)?.map(Box::<[u8]>::from),
                     };
                     if grouped
                         .get(key)
@@ -640,9 +653,10 @@ impl Segment {
         }
         for index in selected_groups {
             let descriptor = &self.row_groups[index];
-            let group = self.load_row_group(index)?;
+            let spine = self.load_key_spine(index)?;
+            let mut values = None;
             for row in 0..descriptor.row_count as usize {
-                let key = key_at(&group.spine, row)?;
+                let key = key_at(&spine, row)?;
                 let after_start = ranges.partition_point(|(start, _)| start.as_slice() <= key);
                 let Some(range_index) = after_start.checked_sub(1) else {
                     continue;
@@ -650,11 +664,17 @@ impl Segment {
                 if key >= ranges[range_index].1.as_slice() {
                     continue;
                 }
-                let sequence = sequence_at(&group.spine, row)?;
+                let sequence = sequence_at(&spine, row)?;
                 if sequence <= read_sequence {
+                    let value = if values.is_none() {
+                        values = Some(self.load_value_columns(index)?);
+                        values.as_ref().expect("value columns are loaded")
+                    } else {
+                        values.as_ref().expect("value columns are loaded")
+                    };
                     let version = SegmentVersion {
                         sequence,
-                        value: value_from_loaded(&group, row)?.map(Box::<[u8]>::from),
+                        value: value_from_columns(value, row)?.map(Box::<[u8]>::from),
                     };
                     if grouped
                         .get(key)
@@ -826,6 +846,17 @@ impl Segment {
             cache.maybe_rebuild_order();
         }
         Ok(loaded)
+    }
+
+    fn load_value_columns(&self, row_group: usize) -> Result<LoadedValueColumns> {
+        let _descriptor = self.row_groups.get(row_group).ok_or_else(|| {
+            Error::InvalidSegment("row-group index is outside the segment".into())
+        })?;
+        Ok(LoadedValueColumns {
+            validity: self.load_page(row_group, PageKind::ValueValidity)?,
+            offsets: self.load_page(row_group, PageKind::ValueOffsets)?,
+            values: self.load_page(row_group, PageKind::ValueData)?,
+        })
     }
 
     fn validate_all_pages(&self) -> Result<Vec<RowGroupFilter>> {
@@ -1177,6 +1208,17 @@ fn value_from_loaded(group: &LoadedRowGroup, row: usize) -> Result<Option<&[u8]>
     )?))
 }
 
+fn value_from_columns(columns: &LoadedValueColumns, row: usize) -> Result<Option<&[u8]>> {
+    if !valid_at(columns.validity.buffer.as_slice(), row)? {
+        return Ok(None);
+    }
+    Ok(Some(binary_at(
+        columns.offsets.buffer.as_slice(),
+        columns.values.buffer.as_slice(),
+        row,
+    )?))
+}
+
 fn valid_at(validity: &[u8], row: usize) -> Result<bool> {
     let byte = validity
         .get(row / 8)
@@ -1298,4 +1340,89 @@ fn file_equals_bytes(path: &Path, expected: &[u8]) -> Result<bool> {
 
 fn invalid<T>(reason: impl Into<String>) -> Result<T> {
     Err(Error::InvalidSegment(reason.into()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Durability, Mutation, WalWriter, WriteBatch};
+
+    fn two_key_sample_memtable() -> Memtable {
+        let directory = tempfile::tempdir().unwrap();
+        let wal_path = directory.path().join("span.wal");
+        let mut wal = WalWriter::create(&wal_path).unwrap();
+        let operations = vec![
+            Mutation::Put {
+                key: b"key:100".to_vec(),
+                value: b"alpha".to_vec(),
+            },
+            Mutation::Put {
+                key: b"key:200".to_vec(),
+                value: b"beta".to_vec(),
+            },
+        ];
+        wal.append_write_batch(
+            &WriteBatch::new(operations).unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+        drop(wal);
+
+        let recovery = crate::recover(&wal_path).unwrap();
+        Memtable::recover(&recovery.batches).unwrap()
+    }
+
+    #[test]
+    fn visible_scan_with_no_matching_keys_loads_only_spine_pages() {
+        let directory = tempfile::tempdir().unwrap();
+        let segments = directory.path().join("segments");
+        let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
+        let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
+        let table = two_key_sample_memtable();
+        let (segment, _path) =
+            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
+                .unwrap();
+
+        assert_eq!(segment.row_group_count(), 1);
+
+        let before = super::page_cache_stats(&cache);
+        let visible = segment
+            .visible_from(
+                b"key:150",
+                Some(b"key:160"),
+                segment.descriptor.maximum_sequence,
+            )
+            .unwrap();
+        let after = super::page_cache_stats(&cache);
+        let row_groups = u64::try_from(segment.row_group_count()).unwrap_or_default();
+
+        assert!(visible.is_empty());
+        assert_eq!(before.loads + 3 * row_groups, after.loads);
+    }
+
+    #[test]
+    fn visible_scan_with_matching_keys_loads_value_columns() {
+        let directory = tempfile::tempdir().unwrap();
+        let segments = directory.path().join("segments");
+        let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
+        let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
+        let table = two_key_sample_memtable();
+        let (segment, _path) =
+            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
+                .unwrap();
+
+        let before = super::page_cache_stats(&cache);
+        let visible = segment
+            .visible_from(
+                b"key:150",
+                Some(b"key:250"),
+                segment.descriptor.maximum_sequence,
+            )
+            .unwrap();
+        let after = super::page_cache_stats(&cache);
+        let row_groups = u64::try_from(segment.row_group_count()).unwrap_or_default();
+
+        assert_eq!(visible.len(), 1);
+        assert_eq!(before.loads + 6 * row_groups, after.loads);
+    }
 }
