@@ -1,11 +1,12 @@
 # rrflowKV current physical format
 
-**Status:** active implementation reference for the single current typed application-key and pre-alpha row-segment formats; the row format is not the accepted RRFlow 1.0 target
+**Status:** active implementation reference for the single current typed application-key and hybrid immutable-segment formats; C-06 remains partial until the evidence listed below passes
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`
 **Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-store` and `rrd-lsm`
 
 This record describes the bytes the current checkout can create or read. It is
-not the [accepted rrflowKV architecture](../../architecture/engine-data-flow.md),
+not the accepted RRFlow 1.0 target. The target architecture is owned by the
+[engine data-flow record](../../architecture/engine-data-flow.md); this file
 does not own release status, and makes no performance or competitive claim.
 Current comparison mechanics and evidence limitations are owned by the
 [benchmark-harness reference](rrflowkv-benchmark-harness.md).
@@ -19,29 +20,29 @@ whole-executable pre-release-shape convergence.
 The current application-key format is the C-01 `RRKV0001` typed ordered tuple
 grammar. All live `RrflowKvStore` key construction and decoding uses it, and a
 store whose manifest does not authenticate that application identity is
-rejected. The current immutable format below those keys remains a checksummed,
-block-indexed, LZ4-compressed row-record segment. It is not an Arrow-native
-segment and cannot be described as zero-copy input to DataFusion. Current query
-adapters may materialize rows and allocate Arrow arrays.
+rejected. The mutable path remains a write-optimized WAL plus MVCC memtable.
+Flush now transforms that sorted mutable state into segment v4: an ordered
+key/version spine and six Arrow-layout buffers per row group. Point, range,
+snapshot, CAS, recovery, and compaction reads use those buffers directly and do
+not invoke DataFusion.
 
-The accepted target is one hybrid rrflowKV persistence authority with a
-write-optimized WAL and MVCC memtable plus immutable ordered key/version state
-and Arrow-compatible column pages pinned by the same manifest. That target is
-specified only by the engine data-flow record and is delivered by roadmap
-Gate C-06. When C-06 changes the physical format, its accepted format material
-replaces this body in place and the pre-alpha format detail is removed.
+This is the first C-06 implementation slice, not completion of C-06 and not a
+claim that query output is zero-copy. The segment owns Arrow-compatible buffer
+layout and safe mapped-buffer ownership. A later C-06 slice must expose a
+selective projection stream to `rrd-store`; Gate F must consume that stream
+through a stamped `TableProvider`/`ExecutionPlan` and prove actual
+`RecordBatch` borrowing, pushdown, cancellation, and resource bounds. Current
+semantic values can still be JSON bytes inside the value-data page, and current
+query adapters can still decode values and allocate result arrays.
 
-The active physical readers now accept exactly mutation batch v2, manifest v2,
-and segment v3. Pre-1.0 batch v1, manifest v1, and segment v1/v2 bytes are
-retained only as negative inputs that must return an explicit unsupported-format
-error before any alternate decoder runs. The Fjall store, backend selector,
-and migration executor are absent. Gate C-05c proves that `rrd-store` owns the
-only required production dependency on `rrd-lsm`; the only other declaration
-is the disabled optional OpenRaft adapter tracked by POAM-023 and excluded from
-the single-node alpha. C-05 also rejects the audited successful pre-release
-schema/vector shapes above these bytes and removes duplicate generic
-quantization publication. This record does not turn any rejected format or
-post-alpha implementation into a product requirement.
+The active physical readers accept exactly mutation batch v2, manifest v3, and
+segment v4. Batch v1, manifest v1, and segment v1/v2/v3 bytes are negative
+inputs that return an explicit unsupported-format error before an alternate
+decoder can run. There is no row-segment compatibility reader, Fjall store,
+backend selector, or migration executor. The disabled optional OpenRaft
+adapter remains tracked by POAM-023 and excluded from the single-node alpha.
+This record does not turn any rejected format or post-alpha implementation into
+a product requirement.
 
 ## Implemented object set
 
@@ -53,9 +54,9 @@ otherwise.
 | Application keys | `RRKV0001` | Typed ordered family/address/tuple spine for every `RrflowKvStore` key | [`key_codec.rs`](../../../crates/persistence/rrd-store/src/key_codec.rs) and [`keyspaces.rs`](../../../crates/persistence/rrd-store/src/keyspaces.rs) |
 | WAL | 1 | Ordered atomic-batch frames and durability boundary | [`wal.rs`](../../../crates/persistence/rrd-lsm/src/wal.rs) |
 | Mutation batch | 2 | Canonical put/delete payload inside one WAL frame | [`batch.rs`](../../../crates/persistence/rrd-lsm/src/batch.rs) |
-| Manifest | 2 | Immutable reachable-state inventory and sequence boundary | [`manifest.rs`](../../../crates/persistence/rrd-lsm/src/manifest.rs) |
+| Manifest | 3 | Immutable reachable-state inventory, sequence boundary, and authenticated segment schema/codec/page-format identities | [`manifest.rs`](../../../crates/persistence/rrd-lsm/src/manifest.rs) |
 | `CURRENT` and checkpoint controls | 1 | Authenticated manifest and retention pointers | [`manifest.rs`](../../../crates/persistence/rrd-lsm/src/manifest.rs) |
-| Immutable segment | 3 | LZ4-compressed row-record blocks plus block index | [`segment.rs`](../../../crates/persistence/rrd-lsm/src/segment.rs) |
+| Immutable segment | 4 | Ordered key/version spine plus aligned Arrow-layout column pages and row-group index | [`segment/mod.rs`](../../../crates/persistence/rrd-lsm/src/segment/mod.rs) and [`segment/format.rs`](../../../crates/persistence/rrd-lsm/src/segment/format.rs) |
 | Physical snapshot bundle | 1 | Authenticated flush-bounded manifest closure | [`snapshot_bundle.rs`](../../../crates/persistence/rrd-lsm/src/snapshot_bundle.rs) |
 
 Current default and hard bounds are implementation policy, not values for
@@ -69,7 +70,7 @@ callers to duplicate:
 | Mutation operations per batch | 1,000,000 | `MAX_OPERATIONS` |
 | Key/value bytes | 1 MiB / 8 MiB | batch and segment validators |
 | Segment bytes / segment-index bytes | 1 GiB / 64 MiB | segment validator |
-| Row-block target / decoded block cache | 4 KiB / 4 MiB | segment writer and database default |
+| Row-group target / maximum rows / immutable page cache | 64 KiB / 2,048 / 4 MiB | segment writer and database default |
 | Snapshot bundle bytes / segments | 1 GiB / 1,000,000 | snapshot-bundle validator |
 
 Before a new batch crosses either mutable threshold, the single writer runs
@@ -144,8 +145,10 @@ temporal version plus source-specific pointer delta in the same semantic
 batch. BM25 term dictionaries/postings, exact-vector access, TurboQuant, and
 HNSW generations are not constructed here; Gates E-03 and E-04 consume the
 committed deltas and must prove their independent publication and exact
-fallback behavior. These current values remain JSON row encodings inside the
-v3 row segment and do not qualify the C-06 Arrow-compatible target.
+fallback behavior. These semantic values remain encoded value bytes within
+the v4 Arrow-layout buffers. A columnar physical envelope does not by itself
+qualify their native access paths, candidate generation, recall, or exact
+fallback behavior.
 
 Catalogue subfamilies separately address function artifacts, definitions,
 transaction bindings, membership revisions, the compare-and-swap head, and
@@ -235,12 +238,13 @@ is calculated. Each descriptor authenticates content identity, key and
 sequence ranges, entry count, and byte count. L0 may overlap; higher levels
 must contain ordered, non-overlapping key ranges.
 
-Manifest v2 may carry one non-zero opaque `application_format`. `rrd-store`
-binds the eight ASCII bytes `RRKV0001` as a big-endian `u64`. Unknown, absent,
-or superseded application identities fail closed, and physical snapshot
-installation requires an identical source and target identity. Cross-format
-movement is not an alpha requirement; the final 1.0 tests create the accepted
-format directly.
+Manifest v3 may carry one non-zero opaque `application_format`. `rrd-store`
+binds the eight ASCII bytes `RRKV0001` as a big-endian `u64`. Every reachable
+segment descriptor additionally authenticates segment format v4 plus the
+current schema, key-codec, and page-format SHA-256 identities. Unknown, absent,
+or different identities fail closed, and physical snapshot installation
+requires an identical source and target identity. Cross-format movement is not
+an alpha requirement; the final 1.0 tests create the accepted format directly.
 
 Publication holds the operating-system writer lock, validates the expected
 `CURRENT`, generation, and parent, writes and synchronizes immutable manifest
@@ -251,34 +255,78 @@ explicit, and garbage collection uses the checkpoint inventory rather than
 filename inference.
 
 The manifest-v1 JSON is a negative fixture and returns `UnsupportedVersion`;
-no v1 manifest digest or state reader is present. No superseded
+no v1/v2 manifest state reader is present. No superseded
 application-key reader remains after C-01. These removals still do not qualify
-the C-06 physical target.
+the remaining C-06 evidence.
 
-## Immutable row segment v3
+## Hybrid immutable segment v4
 
-A v3 segment contains a fixed 64-byte `RRDSEG03` header, independently
-compressed LZ4 row-record blocks, a bounded `RRDIX003` index, and a 64-byte
-lowercase ASCII SHA-256 footer over all preceding physical bytes. Records are
-not split between blocks; one record may exceed the 4 KiB target within the
-1 MiB key and 8 MiB value bounds.
+A v4 segment contains a fixed 256-byte `RRDSEG04` header, 64-byte-aligned page
+payloads, a bounded `RRDIX004` row-group index, and a 64-byte lowercase ASCII
+SHA-256 footer over every preceding physical byte. Segment and page integers
+are little-endian because the page values are Arrow-compatible native buffers;
+the `RRKV0001` ordered key grammar above remains byte-order-preserving and is
+not re-encoded by this layer.
 
-Each index entry records physical offset and length, decoded length, entry
-count, last key, and the SHA-256 digest of its compressed block. Offsets must
-cover the data region exactly and last keys must be non-decreasing. Open
-validates the outer digest and blocks; runtime reads recheck the selected
-compressed-block digest before decoding.
+Flush emits rows in `(key ascending, sequence ascending)` order and never
+splits the complete version chain for one key across row groups. The default
+target is 64 KiB and 2,048 rows, but one key's chain may exceed either target
+within the 1 MiB key and 8 MiB value bounds. Each row group owns exactly six
+plain, currently uncompressed buffers:
 
-The implementation derives a Bloom filter from authenticated block contents.
-It is acceleration state, not persistence truth: a negative may skip a block,
-while a positive still executes exact MVCC comparison. All segments in one
-database share a bounded decoded-block LRU. Blocks larger than its configured
-capacity may be decoded for a caller but are not retained.
+| Page | Arrow-compatible representation | Point-read role |
+|---|---|---|
+| key offsets | `(rows + 1)` little-endian signed 64-bit offsets | key-spine binary search |
+| key data | concatenated non-empty key bytes | key-spine comparison |
+| sequences | `rows` little-endian unsigned 64-bit values | MVCC visibility |
+| value validity | Arrow least-significant-bit-first validity bitmap | tombstone detection |
+| value offsets | `(rows + 1)` little-endian signed 64-bit offsets | selected value range |
+| value data | concatenated non-null value bytes | selected value payload |
 
-Constructed v1 uncompressed and v2 single-compressed-block inputs return
-`UnsupportedVersion` at every segment open and snapshot-validation boundary.
-No v1/v2 segment reader is present. The current v3 row layout remains scheduled
-for direct replacement by C-06.
+Every 96-byte page descriptor pins page/column/buffer/logical/physical type,
+plain encoding, no-compression metadata, row interval, null count, aligned
+offset, physical and logical byte lengths, minimum/maximum statistics, and a
+SHA-256 digest. The row-group descriptor pins its strict key range. Standalone
+and newly written segment admission, plus snapshot-byte validation, validate
+the outer digest, framing, schema/codec/page identities, every page digest,
+Arrow offset/validity shape, key/sequence ordering, statistics, and segment
+counts. Normal manifest-based reopen authenticates the complete file digest
+and metadata against the manifest but deliberately installs conservative
+filters instead of reading every data page during segment open. Runtime page
+loads authenticate and validate each selected page, so tampering after open
+fails closed. Higher-layer checkpoint reconciliation can still issue semantic
+reads during `RrflowKvStore` startup; C-06 must measure and separate that work
+from segment admission and query-time I/O.
+
+Point lookup first selects a row group by authenticated key bounds and a
+derived conservative Bloom filter, then reads only key offsets/data/sequences
+and, for a live match, value validity/offsets/data. Range and compaction scans
+read the required complete row groups. The Bloom filter is process-local
+acceleration state rather than persistence truth: a negative can skip page I/O,
+while a positive still executes exact key and MVCC comparison.
+
+All segments in one database share a byte-bounded immutable page LRU. Its
+evidence separates `loads`, `bytes_read`, `bytes_decoded`, `bytes_borrowed`,
+`bytes_allocated`, `bytes_copied`, and `bytes_decompressed`, plus cache and
+filter counters. In explicit mmap mode, an aligned uncompressed page is exposed
+as an `arrow_buffer::Buffer` borrowing the mapping; its allocation owner holds
+the `Arc<Mmap>` for the buffer lifetime. Bounded and io_uring paths allocate an
+aligned Arrow buffer and read into it. Snapshot-byte validation copies into an
+Arrow-owned buffer because the envelope does not promise alignment or a stable
+mapped owner. Returned point values are still copied into owned `Vec<u8>`.
+Therefore only the page-buffer load is currently borrow-eligible; end-to-end
+zero-copy query output is not claimed.
+
+Encoding/compression metadata is explicit but only `plain` plus `none` is
+accepted today. Adaptive compression, key/value separation, persisted filters,
+family grouping, selective provider projection, and cache admission are C-06
+candidates that require comparative workload evidence before adoption. A
+WiscKey-style value log is not assumed: it must beat stationary value pages on
+RRFlow update, compaction, recovery, garbage-collection, scan, and mixed-family
+corpora without weakening snapshot reachability.
+
+Segment v1/v2/v3 inputs return `UnsupportedVersion` at every file-open and
+snapshot-validation boundary. No reader or migration path for them remains.
 
 ## Flush, compaction, snapshots, and garbage collection
 
@@ -319,14 +367,18 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 3. `current_publication_is_ordered_content_addressed_and_compare_and_swap`
    proves stale publication cannot move `CURRENT` and accepted publication
    names the authenticated immutable manifest.
-4. `v3_rejects_authenticated_length_flags_and_block_corruption` corrupts v3
-   header/index/block fields and proves the reader fails closed.
+4. `v4_rejects_authenticated_length_flags_and_page_corruption` corrupts v4
+   header/index/page fields and proves the reader fails closed.
 5. `physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes`
    exports, installs, reopens, verifies the same state, and continues the
    sequence after the imported boundary.
-6. `mmap_and_bounded_reads_are_identical_and_measured_separately_from_cache`
-   compares current row-segment I/O paths. It does not prove Arrow buffer
-   borrowing or zero-copy DataFusion execution.
+6. `mmap_and_bounded_reads_are_identical_and_measure_page_ownership` proves
+   identical results while mmap reports borrowed bytes and bounded/io_uring
+   reports allocated bytes. It does not prove zero-copy DataFusion output.
+7. `versions_remain_exact_when_one_key_exceeds_the_row_group_target` proves the
+   writer does not split a key's MVCC chain at a row-group target.
+8. `v4_bytes_match_the_checked_in_format_vector` freezes the complete current
+   segment bytes independently of the snapshot envelope.
 
 ## Frozen vectors
 
@@ -336,7 +388,8 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 - [`batch-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v1.hex) — rejection input only
 - [`batch-v2.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v2.hex)
 - [`manifest-v1.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v1.json) — rejection input only
-- [`manifest-v2.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v2.json)
+- [`manifest-v3.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v3.json)
+- [`segment-v4.hex`](../../../crates/persistence/rrd-lsm/fixtures/segment-v4.hex)
 - [`snapshot-bundle-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex)
 
 Changing current pre-alpha bytes requires changing the explicit version and
@@ -356,7 +409,9 @@ cargo test -p rrd-lsm --test failure_matrix --locked
 cargo test -p rrd-lsm --test mvcc batch_codec_is_canonical_strict_and_frozen -- --exact
 cargo test -p rrd-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_truncates_it -- --exact
 cargo test -p rrd-lsm --test manifest current_publication_is_ordered_content_addressed_and_compare_and_swap -- --exact
-cargo test -p rrd-lsm --test segment v3_rejects_authenticated_length_flags_and_block_corruption -- --exact
+cargo test -p rrd-lsm --test segment v4_bytes_match_the_checked_in_format_vector -- --exact
+cargo test -p rrd-lsm --test segment v4_rejects_authenticated_length_flags_and_page_corruption -- --exact
+cargo test -p rrd-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
 cargo test -p rrd-lsm --test snapshot_bundle physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes -- --exact
 cargo test -p rrd-lsm
 ```
@@ -373,8 +428,11 @@ C-05's lower source, dependency, opener, physical-reader, and upper-shape
 closure evidence is recorded in its execution journals; C-05d records the
 audit correction that forced C-05e through C-05h before the gate could close.
 The optional post-alpha cluster implementation remains unqualified under
-POAM-023. C-06 requires new vectors,
-property and crash tests, and fixed-hardware comparison for the hybrid
-Arrow-compatible target. Gate F requires streamed
-projection/predicate/budget counters through DataFusion. Passing this suite
-cannot close any of those gates by itself.
+POAM-023. The v4 segment vector, direct MVCC comparisons, and ownership
+counters are now concrete C-06 evidence. C-06 remains open for property/fuzz
+differential coverage, a selective projected-page interface and counters,
+mixed-family interference, configurable row-group budgets, persisted-filter
+or open-cost resolution, and fixed-hardware compression/value-placement/cache
+comparisons. Gate F separately requires a stamped streamed DataFusion provider
+with projection/predicate/budget evidence. Passing this suite cannot close
+those remaining gates by itself.

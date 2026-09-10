@@ -268,6 +268,7 @@ fn corruption_and_truncation_are_denied_before_manifest_publication() {
     assert_eq!(target.snapshot().sequence, 0);
 
     let mut pre_1_0_segment = SnapshotBundle::decode(&encoded).unwrap();
+    pre_1_0_segment.segments[0].bytes[..8].copy_from_slice(b"RRDSEG02");
     pre_1_0_segment.segments[0].bytes[8..10].copy_from_slice(&2u16.to_be_bytes());
     assert!(matches!(
         pre_1_0_segment.validate(),

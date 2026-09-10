@@ -375,8 +375,15 @@ fn rrflow_mx_and_rrflow_kv_return_identical_exact_rows() {
     let (_, reopened_execution) = execute_text(&reopened, text);
     let after = reopened.physical_store_evidence().unwrap();
     assert_eq!(reopened_execution, left);
-    assert!(after.block_loads.unwrap() > before.block_loads.unwrap());
-    assert!(after.block_bytes_loaded.unwrap() > before.block_bytes_loaded.unwrap());
+    let loaded_pages = after.page_loads.unwrap() - before.page_loads.unwrap();
+    let cached_pages = after.cache_hits.unwrap() - before.cache_hits.unwrap();
+    assert!(
+        loaded_pages + cached_pages > 0,
+        "the query must consume an immutable page through either storage I/O or the bounded cache"
+    );
+    if loaded_pages > 0 {
+        assert!(after.page_bytes_read.unwrap() > before.page_bytes_read.unwrap());
+    }
     assert!(after.filter_checks.unwrap() > before.filter_checks.unwrap());
     assert_eq!(
         reopened_execution

@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-pub const MANIFEST_FORMAT_VERSION: u16 = 2;
+pub const MANIFEST_FORMAT_VERSION: u16 = 3;
 const MANIFEST_CONTROL_FORMAT_VERSION: u16 = 1;
 const CURRENT_FILE: &str = "CURRENT";
 const MANIFEST_DIRECTORY: &str = "manifests";
@@ -18,6 +18,14 @@ static POINTER_TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
 pub struct SegmentDescriptor {
     pub id: String,
     pub level: u8,
+    #[serde(default)]
+    pub format_version: u16,
+    #[serde(default)]
+    pub schema_digest: String,
+    #[serde(default)]
+    pub key_codec_digest: String,
+    #[serde(default)]
+    pub page_format_digest: String,
     pub first_key: Vec<u8>,
     pub last_key: Vec<u8>,
     pub minimum_sequence: u64,
@@ -33,6 +41,36 @@ impl SegmentDescriptor {
             return Err(Error::InvalidManifest(
                 "segment identity and checksum must be content-addressed SHA-256 values".into(),
             ));
+        }
+        if self.format_version != crate::SEGMENT_FORMAT_VERSION {
+            return Err(Error::InvalidManifest(format!(
+                "segment {} uses unsupported physical format {}",
+                self.id, self.format_version
+            )));
+        }
+        for (name, actual, expected) in [
+            (
+                "schema",
+                self.schema_digest.as_str(),
+                crate::SEGMENT_SCHEMA_DIGEST,
+            ),
+            (
+                "key codec",
+                self.key_codec_digest.as_str(),
+                crate::SEGMENT_KEY_CODEC_DIGEST,
+            ),
+            (
+                "page format",
+                self.page_format_digest.as_str(),
+                crate::SEGMENT_PAGE_FORMAT_DIGEST,
+            ),
+        ] {
+            if !is_sha256(actual) || actual != expected {
+                return Err(Error::InvalidManifest(format!(
+                    "segment {} has an unknown {name} digest",
+                    self.id
+                )));
+            }
         }
         if self.first_key > self.last_key {
             return Err(Error::InvalidManifest(format!(

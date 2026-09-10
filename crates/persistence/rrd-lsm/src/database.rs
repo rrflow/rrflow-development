@@ -1,5 +1,5 @@
 use crate::io::{IoContext, SharedIoContext};
-use crate::segment::{block_cache_stats, new_block_cache, SharedBlockCache};
+use crate::segment::{new_page_cache, page_cache_stats, SharedPageCache};
 use crate::wal::replay_from;
 use crate::{
     recover_from, AppendReceipt, Checkpoint, Durability, Error, Manifest, ManifestStore, Memtable,
@@ -91,7 +91,7 @@ impl CompactionPolicy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DatabaseOptions {
-    pub block_cache_bytes: usize,
+    pub page_cache_bytes: usize,
     pub segment_io: SegmentIoPolicy,
     pub maintenance: MaintenancePolicy,
     pub compaction: CompactionPolicy,
@@ -100,7 +100,7 @@ pub struct DatabaseOptions {
 impl Default for DatabaseOptions {
     fn default() -> Self {
         Self {
-            block_cache_bytes: crate::DEFAULT_BLOCK_CACHE_BYTES,
+            page_cache_bytes: crate::DEFAULT_PAGE_CACHE_BYTES,
             segment_io: SegmentIoPolicy::default(),
             maintenance: MaintenancePolicy::default(),
             compaction: CompactionPolicy::default(),
@@ -277,7 +277,7 @@ pub struct Database {
     wal: WalWriter,
     memtable: Memtable,
     segments: Vec<Segment>,
-    block_cache: SharedBlockCache,
+    page_cache: SharedPageCache,
     segment_io: SharedIoContext,
     maintenance: MaintenancePolicy,
     compaction: CompactionPolicy,
@@ -292,11 +292,11 @@ impl Database {
         Self::create_with_options(root, DatabaseOptions::default())
     }
 
-    pub fn create_with_block_cache(root: &Path, block_cache_bytes: usize) -> Result<Self> {
+    pub fn create_with_page_cache(root: &Path, page_cache_bytes: usize) -> Result<Self> {
         Self::create_with_options(
             root,
             DatabaseOptions {
-                block_cache_bytes,
+                page_cache_bytes,
                 ..DatabaseOptions::default()
             },
         )
@@ -351,7 +351,7 @@ impl Database {
             wal,
             memtable: Memtable::default(),
             segments: Vec::new(),
-            block_cache: new_block_cache(options.block_cache_bytes),
+            page_cache: new_page_cache(options.page_cache_bytes),
             segment_io,
             maintenance: options.maintenance,
             compaction: options.compaction,
@@ -366,11 +366,11 @@ impl Database {
         Self::open_with_options(root, DatabaseOptions::default())
     }
 
-    pub fn open_with_block_cache(root: &Path, block_cache_bytes: usize) -> Result<Self> {
+    pub fn open_with_page_cache(root: &Path, page_cache_bytes: usize) -> Result<Self> {
         Self::open_with_options(
             root,
             DatabaseOptions {
-                block_cache_bytes,
+                page_cache_bytes,
                 ..DatabaseOptions::default()
             },
         )
@@ -386,7 +386,7 @@ impl Database {
             .current()?
             .ok_or_else(|| Error::InvalidManifest("database has no CURRENT manifest".into()))?;
         let manifest_ms = manifest_started.elapsed().as_millis() as u64;
-        let block_cache = new_block_cache(options.block_cache_bytes);
+        let page_cache = new_page_cache(options.page_cache_bytes);
         let segment_bytes = manifest
             .segments
             .iter()
@@ -400,7 +400,7 @@ impl Database {
                     .join(SEGMENT_DIRECTORY)
                     .join(format!("{}.seg", expected.id)),
                 expected,
-                Arc::clone(&block_cache),
+                Arc::clone(&page_cache),
                 Arc::clone(&segment_io),
             )?;
             if &segment.descriptor != expected {
@@ -448,7 +448,7 @@ impl Database {
             wal,
             memtable,
             segments,
-            block_cache,
+            page_cache,
             segment_io,
             maintenance: options.maintenance,
             compaction: options.compaction,
@@ -849,7 +849,7 @@ impl Database {
         let (segment, _) = Segment::write_from_memtable_with_cache(
             &self.root.join(SEGMENT_DIRECTORY),
             &self.memtable,
-            Arc::clone(&self.block_cache),
+            Arc::clone(&self.page_cache),
             Arc::clone(&self.segment_io),
         )?;
         inject_failure(failure, FlushBoundary::SegmentSynced)?;
@@ -1037,7 +1037,7 @@ impl Database {
                 &segment_directory,
                 descriptor,
                 &bytes,
-                Arc::clone(&self.block_cache),
+                Arc::clone(&self.page_cache),
                 Arc::clone(&self.segment_io),
             )?);
         }
@@ -1127,7 +1127,7 @@ impl Database {
                 &segment_directory,
                 &bundled.descriptor,
                 &bundled.bytes,
-                Arc::clone(&self.block_cache),
+                Arc::clone(&self.page_cache),
                 Arc::clone(&self.segment_io),
             )?);
         }
@@ -1568,7 +1568,7 @@ impl Database {
         let (mut segment, _) = Segment::write_from_memtable_with_cache(
             &self.root.join(SEGMENT_DIRECTORY),
             &table,
-            Arc::clone(&self.block_cache),
+            Arc::clone(&self.page_cache),
             Arc::clone(&self.segment_io),
         )?;
         segment.descriptor.level = target_level;
@@ -1626,7 +1626,7 @@ impl Database {
         // The active memtable always contains sequences newer than every
         // published segment. A visible value (including a tombstone) is
         // therefore authoritative for this snapshot and lets hot runtime keys
-        // avoid immutable-block I/O entirely.
+        // avoid immutable-page I/O entirely.
         if let Some(version) = self.memtable.get_version(key, snapshot.sequence) {
             return Ok(version.value.as_deref().map(<[u8]>::to_vec));
         }
@@ -1728,7 +1728,7 @@ impl Database {
     }
 
     /// Scans sorted, disjoint half-open key ranges at one snapshot. Immutable
-    /// segments are visited once so ranges sharing a compressed block share
+    /// segments are visited once so ranges sharing a row group share
     /// one authenticated read and decode.
     pub fn scan_ranges(
         &self,
@@ -1833,9 +1833,9 @@ impl Database {
         self.wal_payload_bytes
     }
 
-    /// Current shared immutable-block residency and effectiveness counters.
-    pub fn block_cache_stats(&self) -> crate::BlockCacheStats {
-        block_cache_stats(&self.block_cache)
+    /// Current shared immutable-page residency and effectiveness counters.
+    pub fn page_cache_stats(&self) -> crate::PageCacheStats {
+        page_cache_stats(&self.page_cache)
     }
 
     pub fn segment_io_stats(&self) -> SegmentIoStats {

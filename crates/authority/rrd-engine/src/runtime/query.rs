@@ -671,21 +671,39 @@ fn physical_storage_attributes(
             );
             insert_delta(
                 &mut attributes,
-                "block_loads_delta",
-                before.block_loads,
-                after.block_loads,
+                "page_bytes_read_delta",
+                before.page_bytes_read,
+                after.page_bytes_read,
             );
             insert_delta(
                 &mut attributes,
-                "block_bytes_loaded_delta",
-                before.block_bytes_loaded,
-                after.block_bytes_loaded,
+                "page_bytes_decoded_delta",
+                before.page_bytes_decoded,
+                after.page_bytes_decoded,
             );
             insert_delta(
                 &mut attributes,
-                "block_bytes_decoded_delta",
-                before.block_bytes_decoded,
-                after.block_bytes_decoded,
+                "page_bytes_borrowed_delta",
+                before.page_bytes_borrowed,
+                after.page_bytes_borrowed,
+            );
+            insert_delta(
+                &mut attributes,
+                "page_bytes_allocated_delta",
+                before.page_bytes_allocated,
+                after.page_bytes_allocated,
+            );
+            insert_delta(
+                &mut attributes,
+                "page_bytes_copied_delta",
+                before.page_bytes_copied,
+                after.page_bytes_copied,
+            );
+            insert_delta(
+                &mut attributes,
+                "page_bytes_decompressed_delta",
+                before.page_bytes_decompressed,
+                after.page_bytes_decompressed,
             );
             insert_delta(
                 &mut attributes,
@@ -732,12 +750,6 @@ fn physical_storage_attributes(
                     RuntimeValue::String(reason.clone()),
                 );
             }
-            insert_delta(
-                &mut attributes,
-                "segment_io_reads_delta",
-                before.segment_io_read_operations,
-                after.segment_io_read_operations,
-            );
             insert_delta(
                 &mut attributes,
                 "segment_io_mmap_reads_delta",

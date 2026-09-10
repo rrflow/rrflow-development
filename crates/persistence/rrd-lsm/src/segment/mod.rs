@@ -1,0 +1,1301 @@
+mod format;
+
+use self::format::{
+    encode, parse_metadata, require_current_format, sha256_hex, PageDescriptor, PageKind,
+    ParsedMetadata, RowGroupDescriptor, FOOTER_BYTES, INDEX_HEADER_BYTES, MAX_KEY_BYTES,
+    MAX_SEGMENT_BYTES, MAX_VALUE_BYTES, SEGMENT_HEADER_BYTES,
+};
+use crate::io::{IoContext, SelectedIo, SharedIoContext};
+use crate::{Error, Memtable, Result, SegmentDescriptor, SegmentIoPolicy, VersionedValue};
+use arrow_buffer::{alloc::Allocation, Buffer, MutableBuffer};
+use memmap2::{Mmap, MmapOptions};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap};
+use std::fmt;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::ptr::NonNull;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
+pub use self::format::{
+    DEFAULT_ROW_GROUP_MAX_ROWS, DEFAULT_ROW_GROUP_TARGET_BYTES, SEGMENT_FORMAT_VERSION,
+    SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST, SEGMENT_SCHEMA_DIGEST,
+};
+
+pub const DEFAULT_PAGE_CACHE_BYTES: usize = 4 * 1024 * 1024;
+const COPY_BUFFER_BYTES: usize = 64 * 1024;
+static TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
+static CACHE_ID: AtomicU64 = AtomicU64::new(1);
+
+/// Process-local immutable-page cache evidence. Counters distinguish physical
+/// page reads from bytes borrowed, allocated, copied, or decompressed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PageCacheStats {
+    pub capacity_bytes: usize,
+    pub resident_bytes: usize,
+    pub entries: usize,
+    pub hits: u64,
+    pub misses: u64,
+    pub evictions: u64,
+    pub loads: u64,
+    pub bytes_read: u64,
+    pub bytes_decoded: u64,
+    pub bytes_borrowed: u64,
+    pub bytes_allocated: u64,
+    pub bytes_copied: u64,
+    pub bytes_decompressed: u64,
+    pub filter_checks: u64,
+    pub filter_negatives: u64,
+}
+
+#[derive(Debug)]
+pub(crate) struct PageCache {
+    capacity_bytes: usize,
+    resident_bytes: usize,
+    values: HashMap<(u64, usize), CacheEntry>,
+    order: BinaryHeap<Reverse<(u64, (u64, usize))>>,
+    clock: u64,
+    hits: u64,
+    misses: u64,
+    evictions: u64,
+    loads: u64,
+    bytes_read: u64,
+    bytes_decoded: u64,
+    bytes_borrowed: u64,
+    bytes_allocated: u64,
+    bytes_copied: u64,
+    bytes_decompressed: u64,
+    filter_checks: u64,
+    filter_negatives: u64,
+}
+
+#[derive(Debug)]
+struct CacheEntry {
+    value: Arc<LoadedPage>,
+    last_used: u64,
+}
+
+pub(crate) type SharedPageCache = Arc<Mutex<PageCache>>;
+
+pub(crate) fn new_page_cache(capacity_bytes: usize) -> SharedPageCache {
+    Arc::new(Mutex::new(PageCache {
+        capacity_bytes,
+        resident_bytes: 0,
+        values: HashMap::new(),
+        order: BinaryHeap::new(),
+        clock: 0,
+        hits: 0,
+        misses: 0,
+        evictions: 0,
+        loads: 0,
+        bytes_read: 0,
+        bytes_decoded: 0,
+        bytes_borrowed: 0,
+        bytes_allocated: 0,
+        bytes_copied: 0,
+        bytes_decompressed: 0,
+        filter_checks: 0,
+        filter_negatives: 0,
+    }))
+}
+
+pub(crate) fn page_cache_stats(cache: &SharedPageCache) -> PageCacheStats {
+    let cache = cache
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    PageCacheStats {
+        capacity_bytes: cache.capacity_bytes,
+        resident_bytes: cache.resident_bytes,
+        entries: cache.values.len(),
+        hits: cache.hits,
+        misses: cache.misses,
+        evictions: cache.evictions,
+        loads: cache.loads,
+        bytes_read: cache.bytes_read,
+        bytes_decoded: cache.bytes_decoded,
+        bytes_borrowed: cache.bytes_borrowed,
+        bytes_allocated: cache.bytes_allocated,
+        bytes_copied: cache.bytes_copied,
+        bytes_decompressed: cache.bytes_decompressed,
+        filter_checks: cache.filter_checks,
+        filter_negatives: cache.filter_negatives,
+    }
+}
+
+fn record_filter_probe(cache: &SharedPageCache, negative: bool) -> Result<()> {
+    let mut cache = cache
+        .lock()
+        .map_err(|_| Error::InvalidSegment("immutable page cache lock poisoned".into()))?;
+    cache.filter_checks = cache.filter_checks.saturating_add(1);
+    if negative {
+        cache.filter_negatives = cache.filter_negatives.saturating_add(1);
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+enum PageSource {
+    File {
+        file: Arc<File>,
+        selected: SelectedIo,
+        io: SharedIoContext,
+    },
+    Mapped {
+        bytes: Arc<Mmap>,
+        io: SharedIoContext,
+    },
+    Bytes(Arc<Vec<u8>>),
+}
+
+#[derive(Debug)]
+struct LoadedPage {
+    buffer: Buffer,
+    borrowed: bool,
+    allocated_bytes: usize,
+    copied_bytes: usize,
+}
+
+impl LoadedPage {
+    fn resident_bytes(&self) -> usize {
+        self.buffer.len().max(1)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct RowGroupFilter {
+    bits: Vec<u64>,
+}
+
+impl RowGroupFilter {
+    const HASH_FUNCTIONS: usize = 7;
+    const BITS_PER_ENTRY: usize = 10;
+
+    fn new(entries: u64) -> Self {
+        let entries = usize::try_from(entries).expect("validated row count fits usize");
+        let bits = entries
+            .saturating_mul(Self::BITS_PER_ENTRY)
+            .max(u64::BITS as usize);
+        Self {
+            bits: vec![0; bits.div_ceil(u64::BITS as usize)],
+        }
+    }
+
+    fn allow_all() -> Self {
+        Self { bits: Vec::new() }
+    }
+
+    fn insert(&mut self, key: &[u8]) {
+        for bit in self.positions(key) {
+            self.bits[bit / u64::BITS as usize] |= 1u64 << (bit % u64::BITS as usize);
+        }
+    }
+
+    fn may_contain(&self, key: &[u8]) -> bool {
+        self.bits.is_empty()
+            || self.positions(key).into_iter().all(|bit| {
+                self.bits[bit / u64::BITS as usize] & (1u64 << (bit % u64::BITS as usize)) != 0
+            })
+    }
+
+    fn positions(&self, key: &[u8]) -> [usize; Self::HASH_FUNCTIONS] {
+        let bit_count = self.bits.len() * u64::BITS as usize;
+        let first = filter_hash(key, 0xcbf2_9ce4_8422_2325);
+        let second = filter_hash(key, 0x9e37_79b9_7f4a_7c15) | 1;
+        std::array::from_fn(|index| {
+            first.wrapping_add((index as u64).wrapping_mul(second)) as usize % bit_count
+        })
+    }
+}
+
+fn filter_hash(key: &[u8], seed: u64) -> u64 {
+    let mut hash = seed;
+    for byte in key {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+    hash ^ (hash >> 33)
+}
+
+pub struct Segment {
+    pub descriptor: SegmentDescriptor,
+    source: PageSource,
+    row_groups: Vec<RowGroupDescriptor>,
+    filters: Vec<RowGroupFilter>,
+    cache: SharedPageCache,
+    cache_id: u64,
+}
+
+impl fmt::Debug for Segment {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Segment")
+            .field("descriptor", &self.descriptor)
+            .field("row_group_count", &self.row_group_count())
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SegmentVersion {
+    pub sequence: u64,
+    pub value: Option<Box<[u8]>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SegmentRecord {
+    pub key: Vec<u8>,
+    pub version: VersionedValue,
+}
+
+struct KeySpine {
+    offsets: Arc<LoadedPage>,
+    data: Arc<LoadedPage>,
+    sequences: Arc<LoadedPage>,
+}
+
+struct LoadedRowGroup {
+    spine: KeySpine,
+    validity: Arc<LoadedPage>,
+    value_offsets: Arc<LoadedPage>,
+    values: Arc<LoadedPage>,
+}
+
+pub(crate) struct SegmentRecordCursor<'a> {
+    segment: &'a Segment,
+    row_group_index: usize,
+    row_index: usize,
+    loaded: Option<LoadedRowGroup>,
+}
+
+impl Segment {
+    pub fn write_from_memtable(directory: &Path, table: &Memtable) -> Result<(Self, PathBuf)> {
+        Self::write_from_memtable_with_cache(
+            directory,
+            table,
+            new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
+            IoContext::new(SegmentIoPolicy::default())?,
+        )
+    }
+
+    pub(crate) fn write_from_memtable_with_cache(
+        directory: &Path,
+        table: &Memtable,
+        cache: SharedPageCache,
+        io: SharedIoContext,
+    ) -> Result<(Self, PathBuf)> {
+        let encoded = encode(table)?;
+        let path = directory.join(format!("{}.seg", encoded.checksum));
+        std::fs::create_dir_all(directory)?;
+        if path.exists() {
+            let segment = Self::open_with_cache_and_io(&path, cache, io)?;
+            if segment.descriptor.id != encoded.checksum {
+                return invalid("existing content-addressed segment has another identity");
+            }
+            return Ok((segment, path));
+        }
+        let temporary = directory.join(format!(
+            ".{}.{}.{}.tmp",
+            encoded.checksum,
+            std::process::id(),
+            TEMPORARY_ID.fetch_add(1, Ordering::Relaxed)
+        ));
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        if let Err(error) = (|| -> std::io::Result<()> {
+            file.write_all(&encoded.bytes)?;
+            file.sync_all()?;
+            crate::publish_rename(directory, &temporary, &path)
+        })() {
+            let _ = std::fs::remove_file(&temporary);
+            return Err(Error::Io(error));
+        }
+        Ok((Self::open_with_cache_and_io(&path, cache, io)?, path))
+    }
+
+    pub fn open(path: &Path) -> Result<Self> {
+        Self::open_with_cache_and_io(
+            path,
+            new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
+            IoContext::new(SegmentIoPolicy::default())?,
+        )
+    }
+
+    pub(crate) fn open_with_cache_and_io(
+        path: &Path,
+        cache: SharedPageCache,
+        io: SharedIoContext,
+    ) -> Result<Self> {
+        let physical_bytes = validate_physical_file(path)?;
+        let total_started = Instant::now();
+        let verify_started = Instant::now();
+        let checksum = verify_file_digest(path, physical_bytes)?;
+        let verify_ms = verify_started.elapsed().as_millis() as u64;
+        let mut file = File::open(path)?;
+        let metadata_started = Instant::now();
+        let metadata = parse_metadata(&mut file, physical_bytes, checksum)?;
+        let metadata_ms = metadata_started.elapsed().as_millis() as u64;
+        let source_started = Instant::now();
+        let source = open_page_source(file, io)?;
+        let source_ms = source_started.elapsed().as_millis() as u64;
+        let row_group_count = metadata.row_groups.len();
+        let mut segment = build_segment(metadata, source, cache, false)?;
+        segment.filters = segment.validate_all_pages()?;
+        tracing::debug!(
+            target: "rrd_lsm::open",
+            path = %path.display(),
+            physical_bytes,
+            row_group_count,
+            verify_ms,
+            metadata_ms,
+            source_ms,
+            total_ms = total_started.elapsed().as_millis() as u64,
+            "immutable v4 columnar segment open phases completed"
+        );
+        Ok(segment)
+    }
+
+    pub(crate) fn open_expected_with_cache_and_io(
+        path: &Path,
+        expected: &SegmentDescriptor,
+        cache: SharedPageCache,
+        io: SharedIoContext,
+    ) -> Result<Self> {
+        let physical_bytes = validate_physical_file(path)?;
+        if physical_bytes != expected.bytes {
+            return invalid("segment physical size differs from its manifest descriptor");
+        }
+        let checksum = verify_file_digest(path, physical_bytes)?;
+        if checksum != expected.checksum || checksum != expected.id {
+            return invalid("segment content digest differs from its manifest descriptor");
+        }
+        let mut file = File::open(path)?;
+        let metadata = parse_metadata(&mut file, physical_bytes, checksum)?;
+        let source = open_page_source(file, io)?;
+        let mut segment = build_segment(metadata, source, cache, true)?;
+        segment.descriptor.level = expected.level;
+        if &segment.descriptor != expected {
+            return invalid("v4 segment differs from its manifest descriptor");
+        }
+        Ok(segment)
+    }
+
+    pub(crate) fn validate_snapshot_bytes(
+        expected: &SegmentDescriptor,
+        bytes: &[u8],
+    ) -> Result<Self> {
+        Self::validate_snapshot_owned(expected, bytes.to_vec())
+    }
+
+    pub(crate) fn validate_snapshot_owned(
+        expected: &SegmentDescriptor,
+        bytes: Vec<u8>,
+    ) -> Result<Self> {
+        if bytes.len() as u64 > MAX_SEGMENT_BYTES {
+            return invalid("snapshot segment exceeds the 1 GiB physical safety limit");
+        }
+        require_current_format(&bytes)?;
+        let content_end = bytes
+            .len()
+            .checked_sub(FOOTER_BYTES)
+            .ok_or_else(|| Error::InvalidSegment("v4 snapshot footer underflow".into()))?;
+        let footer = std::str::from_utf8(&bytes[content_end..])
+            .map_err(|_| Error::InvalidSegment("segment footer is not ASCII".into()))?;
+        let checksum = sha256_hex(&bytes[..content_end]);
+        if footer != checksum {
+            return invalid("segment content checksum does not match");
+        }
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let metadata = parse_metadata(&mut cursor, bytes.len() as u64, checksum)?;
+        let mut segment = build_segment(
+            metadata,
+            PageSource::Bytes(Arc::new(bytes)),
+            new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
+            false,
+        )?;
+        segment.filters = segment.validate_all_pages()?;
+        segment.descriptor.level = expected.level;
+        if &segment.descriptor != expected {
+            return invalid(format!(
+                "snapshot segment {} differs from its descriptor",
+                expected.id
+            ));
+        }
+        Ok(segment)
+    }
+
+    pub(crate) fn install_snapshot_bytes_with_cache(
+        directory: &Path,
+        expected: &SegmentDescriptor,
+        bytes: &[u8],
+        cache: SharedPageCache,
+        io: SharedIoContext,
+    ) -> Result<Self> {
+        Self::validate_snapshot_bytes(expected, bytes)?;
+        std::fs::create_dir_all(directory)?;
+        let path = directory.join(format!("{}.seg", expected.id));
+        if path.exists() {
+            let existing = Self::open_expected_with_cache_and_io(&path, expected, cache, io)?;
+            if !file_equals_bytes(&path, bytes)? {
+                return invalid(format!(
+                    "existing snapshot segment {} has different bytes",
+                    expected.id
+                ));
+            }
+            return Ok(existing);
+        }
+        let temporary = directory.join(format!(
+            ".{}.{}.{}.snapshot.tmp",
+            expected.id,
+            std::process::id(),
+            TEMPORARY_ID.fetch_add(1, Ordering::Relaxed)
+        ));
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        if let Err(error) = (|| -> std::io::Result<()> {
+            file.write_all(bytes)?;
+            file.sync_all()?;
+            crate::publish_rename(directory, &temporary, &path)
+        })() {
+            let _ = std::fs::remove_file(&temporary);
+            return Err(Error::Io(error));
+        }
+        Self::open_expected_with_cache_and_io(&path, expected, cache, io)
+    }
+
+    pub fn get(&self, key: &[u8], read_sequence: u64) -> Result<Option<Vec<u8>>> {
+        Ok(self
+            .get_version(key, read_sequence)?
+            .and_then(|version| version.value.map(|value| value.into_vec())))
+    }
+
+    pub(crate) fn get_version(
+        &self,
+        key: &[u8],
+        read_sequence: u64,
+    ) -> Result<Option<SegmentVersion>> {
+        if key < self.descriptor.first_key.as_slice()
+            || key > self.descriptor.last_key.as_slice()
+            || read_sequence < self.descriptor.minimum_sequence
+        {
+            return Ok(None);
+        }
+        let index = self
+            .row_groups
+            .partition_point(|group| group.last_key.as_slice() < key);
+        let Some(group) = self.row_groups.get(index) else {
+            return Ok(None);
+        };
+        if key < group.first_key.as_slice() {
+            return Ok(None);
+        }
+        let negative = !self.filters[index].may_contain(key);
+        record_filter_probe(&self.cache, negative)?;
+        if negative {
+            return Ok(None);
+        }
+        let spine = self.load_key_spine(index)?;
+        let mut row = lower_bound(&spine, group.row_count as usize, key)?;
+        let mut selected = None;
+        while row < group.row_count as usize {
+            let actual = key_at(&spine, row)?;
+            if actual != key {
+                break;
+            }
+            let sequence = sequence_at(&spine, row)?;
+            if sequence <= read_sequence {
+                selected = Some((row, sequence));
+            }
+            row += 1;
+        }
+        let Some((row, sequence)) = selected else {
+            return Ok(None);
+        };
+        Ok(Some(SegmentVersion {
+            sequence,
+            value: self.value_at(index, row)?.map(Box::<[u8]>::from),
+        }))
+    }
+
+    pub(crate) fn get_versions(
+        &self,
+        keys: &[&[u8]],
+        read_sequence: u64,
+    ) -> Result<Vec<Option<SegmentVersion>>> {
+        keys.iter()
+            .map(|key| self.get_version(key, read_sequence))
+            .collect()
+    }
+
+    pub fn scan(
+        &self,
+        start: &[u8],
+        end: Option<&[u8]>,
+        read_sequence: u64,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        Ok(self
+            .visible_from(start, end, read_sequence)?
+            .into_iter()
+            .filter_map(|(key, version)| version.value.map(|value| (key, value.into_vec())))
+            .collect())
+    }
+
+    pub fn visible_versions(&self, read_sequence: u64) -> Result<Vec<(Vec<u8>, VersionedValue)>> {
+        self.visible_from(&[], None, read_sequence)
+    }
+
+    pub(crate) fn record_cursor(&self) -> SegmentRecordCursor<'_> {
+        SegmentRecordCursor {
+            segment: self,
+            row_group_index: 0,
+            row_index: 0,
+            loaded: None,
+        }
+    }
+
+    pub fn row_group_count(&self) -> usize {
+        self.row_groups.len()
+    }
+
+    pub(crate) fn visible_from(
+        &self,
+        start: &[u8],
+        end: Option<&[u8]>,
+        read_sequence: u64,
+    ) -> Result<Vec<(Vec<u8>, VersionedValue)>> {
+        let mut grouped = BTreeMap::<Vec<u8>, SegmentVersion>::new();
+        let first = self
+            .row_groups
+            .partition_point(|group| group.last_key.as_slice() < start);
+        for index in first..self.row_groups.len() {
+            let descriptor = &self.row_groups[index];
+            if end.is_some_and(|end| descriptor.first_key.as_slice() >= end) {
+                break;
+            }
+            let group = self.load_row_group(index)?;
+            for row in 0..descriptor.row_count as usize {
+                let key = key_at(&group.spine, row)?;
+                if key < start || end.is_some_and(|end| key >= end) {
+                    continue;
+                }
+                let sequence = sequence_at(&group.spine, row)?;
+                if sequence <= read_sequence {
+                    let version = SegmentVersion {
+                        sequence,
+                        value: value_from_loaded(&group, row)?.map(Box::<[u8]>::from),
+                    };
+                    if grouped
+                        .get(key)
+                        .is_none_or(|prior| sequence > prior.sequence)
+                    {
+                        grouped.insert(key.to_vec(), version);
+                    }
+                }
+            }
+        }
+        Ok(grouped
+            .into_iter()
+            .map(|(key, version)| {
+                (
+                    key,
+                    VersionedValue {
+                        sequence: version.sequence,
+                        value: version.value,
+                    },
+                )
+            })
+            .collect())
+    }
+
+    pub(crate) fn visible_ranges(
+        &self,
+        ranges: &[(Vec<u8>, Vec<u8>)],
+        read_sequence: u64,
+    ) -> Result<Vec<(Vec<u8>, VersionedValue)>> {
+        if ranges.is_empty() || read_sequence < self.descriptor.minimum_sequence {
+            return Ok(Vec::new());
+        }
+        let mut grouped = BTreeMap::<Vec<u8>, SegmentVersion>::new();
+        let mut selected_groups = BTreeSet::new();
+        for (start, end) in ranges {
+            let first = self
+                .row_groups
+                .partition_point(|group| group.last_key.as_slice() < start.as_slice());
+            for (index, group) in self.row_groups.iter().enumerate().skip(first) {
+                if group.first_key.as_slice() >= end.as_slice() {
+                    break;
+                }
+                selected_groups.insert(index);
+            }
+        }
+        for index in selected_groups {
+            let descriptor = &self.row_groups[index];
+            let group = self.load_row_group(index)?;
+            for row in 0..descriptor.row_count as usize {
+                let key = key_at(&group.spine, row)?;
+                let after_start = ranges.partition_point(|(start, _)| start.as_slice() <= key);
+                let Some(range_index) = after_start.checked_sub(1) else {
+                    continue;
+                };
+                if key >= ranges[range_index].1.as_slice() {
+                    continue;
+                }
+                let sequence = sequence_at(&group.spine, row)?;
+                if sequence <= read_sequence {
+                    let version = SegmentVersion {
+                        sequence,
+                        value: value_from_loaded(&group, row)?.map(Box::<[u8]>::from),
+                    };
+                    if grouped
+                        .get(key)
+                        .is_none_or(|prior| sequence > prior.sequence)
+                    {
+                        grouped.insert(key.to_vec(), version);
+                    }
+                }
+            }
+        }
+        Ok(grouped
+            .into_iter()
+            .map(|(key, version)| {
+                (
+                    key,
+                    VersionedValue {
+                        sequence: version.sequence,
+                        value: version.value,
+                    },
+                )
+            })
+            .collect())
+    }
+
+    fn load_key_spine(&self, row_group: usize) -> Result<KeySpine> {
+        Ok(KeySpine {
+            offsets: self.load_page(row_group, PageKind::KeyOffsets)?,
+            data: self.load_page(row_group, PageKind::KeyData)?,
+            sequences: self.load_page(row_group, PageKind::SequenceValues)?,
+        })
+    }
+
+    fn load_row_group(&self, row_group: usize) -> Result<LoadedRowGroup> {
+        Ok(LoadedRowGroup {
+            spine: self.load_key_spine(row_group)?,
+            validity: self.load_page(row_group, PageKind::ValueValidity)?,
+            value_offsets: self.load_page(row_group, PageKind::ValueOffsets)?,
+            values: self.load_page(row_group, PageKind::ValueData)?,
+        })
+    }
+
+    fn read_row_group_uncached(&self, row_group: usize) -> Result<LoadedRowGroup> {
+        let descriptor = self.row_groups.get(row_group).ok_or_else(|| {
+            Error::InvalidSegment("row-group index is outside the segment".into())
+        })?;
+        Ok(LoadedRowGroup {
+            spine: KeySpine {
+                offsets: Arc::new(read_page(
+                    &self.source,
+                    descriptor.page(PageKind::KeyOffsets),
+                )?),
+                data: Arc::new(read_page(&self.source, descriptor.page(PageKind::KeyData))?),
+                sequences: Arc::new(read_page(
+                    &self.source,
+                    descriptor.page(PageKind::SequenceValues),
+                )?),
+            },
+            validity: Arc::new(read_page(
+                &self.source,
+                descriptor.page(PageKind::ValueValidity),
+            )?),
+            value_offsets: Arc::new(read_page(
+                &self.source,
+                descriptor.page(PageKind::ValueOffsets),
+            )?),
+            values: Arc::new(read_page(
+                &self.source,
+                descriptor.page(PageKind::ValueData),
+            )?),
+        })
+    }
+
+    fn value_at(&self, row_group: usize, row: usize) -> Result<Option<Vec<u8>>> {
+        let validity = self.load_page(row_group, PageKind::ValueValidity)?;
+        if !valid_at(validity.buffer.as_slice(), row)? {
+            return Ok(None);
+        }
+        let offsets = self.load_page(row_group, PageKind::ValueOffsets)?;
+        let values = self.load_page(row_group, PageKind::ValueData)?;
+        Ok(Some(
+            binary_at(offsets.buffer.as_slice(), values.buffer.as_slice(), row)?.to_vec(),
+        ))
+    }
+
+    fn load_page(&self, row_group: usize, kind: PageKind) -> Result<Arc<LoadedPage>> {
+        let ordinal = row_group
+            .checked_mul(format::PAGES_PER_ROW_GROUP)
+            .and_then(|value| value.checked_add(kind as usize - 1))
+            .ok_or_else(|| Error::InvalidSegment("v4 page cache ordinal overflow".into()))?;
+        let key = (self.cache_id, ordinal);
+        {
+            let mut cache = self
+                .cache
+                .lock()
+                .map_err(|_| Error::InvalidSegment("immutable page cache lock poisoned".into()))?;
+            if cache.values.contains_key(&key) {
+                cache.hits = cache.hits.saturating_add(1);
+                cache.touch(key);
+                let value = Arc::clone(&cache.values[&key].value);
+                cache.maybe_rebuild_order();
+                return Ok(value);
+            }
+            cache.misses = cache.misses.saturating_add(1);
+        }
+        let descriptor = self
+            .row_groups
+            .get(row_group)
+            .ok_or_else(|| Error::InvalidSegment("row-group index is outside the segment".into()))?
+            .page(kind);
+        let loaded = Arc::new(read_page(&self.source, descriptor)?);
+        let resident_bytes = loaded.resident_bytes();
+        let mut cache = self
+            .cache
+            .lock()
+            .map_err(|_| Error::InvalidSegment("immutable page cache lock poisoned".into()))?;
+        cache.loads = cache.loads.saturating_add(1);
+        cache.bytes_read = cache
+            .bytes_read
+            .saturating_add(descriptor.physical_bytes as u64);
+        cache.bytes_decoded = cache
+            .bytes_decoded
+            .saturating_add(descriptor.logical_bytes as u64);
+        cache.bytes_allocated = cache
+            .bytes_allocated
+            .saturating_add(loaded.allocated_bytes as u64);
+        cache.bytes_copied = cache
+            .bytes_copied
+            .saturating_add(loaded.copied_bytes as u64);
+        if loaded.borrowed {
+            cache.bytes_borrowed = cache
+                .bytes_borrowed
+                .saturating_add(descriptor.logical_bytes as u64);
+        }
+        if cache.values.contains_key(&key) {
+            cache.touch(key);
+            let value = Arc::clone(&cache.values[&key].value);
+            cache.maybe_rebuild_order();
+            return Ok(value);
+        }
+        if resident_bytes <= cache.capacity_bytes {
+            while cache.resident_bytes.saturating_add(resident_bytes) > cache.capacity_bytes {
+                let Some(Reverse((stamp, oldest))) = cache.order.pop() else {
+                    break;
+                };
+                if cache
+                    .values
+                    .get(&oldest)
+                    .is_some_and(|entry| entry.last_used != stamp)
+                {
+                    continue;
+                }
+                if let Some(removed) = cache.values.remove(&oldest) {
+                    cache.resident_bytes = cache
+                        .resident_bytes
+                        .saturating_sub(removed.value.resident_bytes());
+                    cache.evictions = cache.evictions.saturating_add(1);
+                }
+            }
+            cache.resident_bytes = cache.resident_bytes.saturating_add(resident_bytes);
+            let stamp = cache.next_stamp();
+            cache.values.insert(
+                key,
+                CacheEntry {
+                    value: Arc::clone(&loaded),
+                    last_used: stamp,
+                },
+            );
+            cache.order.push(Reverse((stamp, key)));
+            cache.maybe_rebuild_order();
+        }
+        Ok(loaded)
+    }
+
+    fn validate_all_pages(&self) -> Result<Vec<RowGroupFilter>> {
+        let mut filters = Vec::with_capacity(self.row_groups.len());
+        let mut previous: Option<(Vec<u8>, u64)> = None;
+        let mut observed_rows = 0u64;
+        let mut observed_minimum = u64::MAX;
+        let mut observed_maximum = 0u64;
+        for (index, descriptor) in self.row_groups.iter().enumerate() {
+            let group = self.read_row_group_uncached(index)?;
+            validate_offsets(
+                group.spine.offsets.buffer.as_slice(),
+                group.spine.data.buffer.as_slice(),
+                descriptor.row_count as usize,
+                MAX_KEY_BYTES,
+                false,
+            )?;
+            validate_offsets(
+                group.value_offsets.buffer.as_slice(),
+                group.values.buffer.as_slice(),
+                descriptor.row_count as usize,
+                MAX_VALUE_BYTES,
+                true,
+            )?;
+            validate_validity(
+                group.validity.buffer.as_slice(),
+                descriptor.row_count as usize,
+            )?;
+            let mut filter = RowGroupFilter::new(u64::from(descriptor.row_count));
+            let mut actual_first = None;
+            let mut actual_last = None;
+            let mut null_count = 0u32;
+            let mut key_min = u64::MAX;
+            let mut key_max = 0u64;
+            let mut value_min = u64::MAX;
+            let mut value_max = 0u64;
+            let mut sequence_min = u64::MAX;
+            let mut sequence_max = 0u64;
+            for row in 0..descriptor.row_count as usize {
+                let key = key_at(&group.spine, row)?;
+                let sequence = sequence_at(&group.spine, row)?;
+                if sequence == 0
+                    || sequence < self.descriptor.minimum_sequence
+                    || sequence > self.descriptor.maximum_sequence
+                    || previous
+                        .as_ref()
+                        .is_some_and(|(prior_key, prior_sequence)| {
+                            key < prior_key.as_slice()
+                                || (key == prior_key.as_slice() && sequence <= *prior_sequence)
+                        })
+                {
+                    return invalid("v4 spine is not in canonical key/sequence order");
+                }
+                previous = Some((key.to_vec(), sequence));
+                filter.insert(key);
+                actual_first.get_or_insert_with(|| key.to_vec());
+                actual_last = Some(key.to_vec());
+                key_min = key_min.min(key.len() as u64);
+                key_max = key_max.max(key.len() as u64);
+                sequence_min = sequence_min.min(sequence);
+                sequence_max = sequence_max.max(sequence);
+                observed_minimum = observed_minimum.min(sequence);
+                observed_maximum = observed_maximum.max(sequence);
+                match value_from_loaded(&group, row)? {
+                    Some(value) => {
+                        value_min = value_min.min(value.len() as u64);
+                        value_max = value_max.max(value.len() as u64);
+                    }
+                    None => {
+                        null_count = null_count.saturating_add(1);
+                        value_min = 0;
+                    }
+                }
+            }
+            if actual_first.as_deref() != Some(descriptor.first_key.as_slice())
+                || actual_last.as_deref() != Some(descriptor.last_key.as_slice())
+                || descriptor.page(PageKind::KeyOffsets).statistic_min != key_min
+                || descriptor.page(PageKind::KeyOffsets).statistic_max != key_max
+                || descriptor.page(PageKind::SequenceValues).statistic_min != sequence_min
+                || descriptor.page(PageKind::SequenceValues).statistic_max != sequence_max
+                || descriptor.page(PageKind::ValueValidity).null_count != null_count
+                || descriptor.page(PageKind::ValueOffsets).statistic_min != value_min
+                || descriptor.page(PageKind::ValueOffsets).statistic_max != value_max
+            {
+                return invalid("v4 page statistics or row-group bounds disagree with data");
+            }
+            observed_rows = observed_rows
+                .checked_add(u64::from(descriptor.row_count))
+                .ok_or_else(|| Error::InvalidSegment("v4 observed row count overflow".into()))?;
+            filters.push(filter);
+        }
+        if observed_rows != self.descriptor.entries
+            || observed_minimum != self.descriptor.minimum_sequence
+            || observed_maximum != self.descriptor.maximum_sequence
+        {
+            return invalid("v4 header counts or sequence range disagree with pages");
+        }
+        Ok(filters)
+    }
+}
+
+impl SegmentRecordCursor<'_> {
+    pub(crate) fn next_record(&mut self) -> Result<Option<SegmentRecord>> {
+        loop {
+            if self.row_group_index >= self.segment.row_groups.len() {
+                return Ok(None);
+            }
+            if self.loaded.is_none() {
+                self.loaded = Some(self.segment.load_row_group(self.row_group_index)?);
+                self.row_index = 0;
+            }
+            let descriptor = &self.segment.row_groups[self.row_group_index];
+            if self.row_index < descriptor.row_count as usize {
+                let loaded = self.loaded.as_ref().expect("row group was loaded");
+                let row = self.row_index;
+                self.row_index += 1;
+                return Ok(Some(SegmentRecord {
+                    key: key_at(&loaded.spine, row)?.to_vec(),
+                    version: VersionedValue {
+                        sequence: sequence_at(&loaded.spine, row)?,
+                        value: value_from_loaded(loaded, row)?.map(Box::<[u8]>::from),
+                    },
+                }));
+            }
+            self.row_group_index += 1;
+            self.loaded = None;
+        }
+    }
+}
+
+impl PageCache {
+    fn next_stamp(&mut self) -> u64 {
+        self.clock = self.clock.wrapping_add(1);
+        if self.clock == 0 {
+            self.renumber();
+        }
+        self.clock
+    }
+
+    fn touch(&mut self, key: (u64, usize)) {
+        let stamp = self.next_stamp();
+        self.values
+            .get_mut(&key)
+            .expect("cache key was checked")
+            .last_used = stamp;
+        self.order.push(Reverse((stamp, key)));
+    }
+
+    fn maybe_rebuild_order(&mut self) {
+        if self.order.len() > self.values.len().saturating_mul(2).max(32) {
+            self.rebuild_order();
+        }
+    }
+
+    fn rebuild_order(&mut self) {
+        self.order = self
+            .values
+            .iter()
+            .map(|(key, entry)| Reverse((entry.last_used, *key)))
+            .collect();
+    }
+
+    fn renumber(&mut self) {
+        let mut ordered = self
+            .values
+            .iter()
+            .map(|(key, entry)| (entry.last_used, *key))
+            .collect::<Vec<_>>();
+        ordered.sort_unstable();
+        for (index, (_, key)) in ordered.into_iter().enumerate() {
+            self.values
+                .get_mut(&key)
+                .expect("cache key exists")
+                .last_used = u64::try_from(index + 1).expect("cache size fits u64");
+        }
+        self.clock = u64::try_from(self.values.len()).expect("cache size fits u64");
+        self.rebuild_order();
+    }
+}
+
+fn build_segment(
+    metadata: ParsedMetadata,
+    source: PageSource,
+    cache: SharedPageCache,
+    conservative_filters: bool,
+) -> Result<Segment> {
+    let filters = metadata
+        .row_groups
+        .iter()
+        .map(|group| {
+            if conservative_filters {
+                RowGroupFilter::allow_all()
+            } else {
+                RowGroupFilter::new(u64::from(group.row_count))
+            }
+        })
+        .collect();
+    Ok(Segment {
+        descriptor: metadata.descriptor,
+        source,
+        row_groups: metadata.row_groups,
+        filters,
+        cache,
+        cache_id: CACHE_ID.fetch_add(1, Ordering::Relaxed),
+    })
+}
+
+fn validate_physical_file(path: &Path) -> Result<u64> {
+    let physical_bytes = std::fs::metadata(path)?.len();
+    if physical_bytes > MAX_SEGMENT_BYTES {
+        return invalid("segment exceeds the 1 GiB physical safety limit");
+    }
+    let mut file = File::open(path)?;
+    let mut prefix = [0; 10];
+    file.read_exact(&mut prefix)
+        .map_err(|_| Error::InvalidSegment("segment has no complete format header".into()))?;
+    require_current_format(&prefix)?;
+    if physical_bytes < (SEGMENT_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES) as u64 {
+        return invalid("segment is shorter than its framing");
+    }
+    Ok(physical_bytes)
+}
+
+fn open_page_source(file: File, io: SharedIoContext) -> Result<PageSource> {
+    let selected = io.file_backend()?;
+    if selected == SelectedIo::Mmap {
+        let mapped = unsafe { MmapOptions::new().map(&file) };
+        match mapped {
+            Ok(bytes) => {
+                io.record_segment(SelectedIo::Mmap);
+                return Ok(PageSource::Mapped {
+                    bytes: Arc::new(bytes),
+                    io,
+                });
+            }
+            Err(error) if io.policy().allow_fallback => {
+                io.record_fallback(&format!("mmap failed: {error}"));
+            }
+            Err(error) => return Err(Error::Io(error)),
+        }
+    }
+    let selected = if selected == SelectedIo::Mmap {
+        SelectedIo::Bounded
+    } else {
+        selected
+    };
+    io.record_segment(selected);
+    Ok(PageSource::File {
+        file: Arc::new(file),
+        selected,
+        io,
+    })
+}
+
+fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedPage> {
+    let start = usize::try_from(descriptor.offset)
+        .map_err(|_| Error::InvalidSegment("v4 page offset exceeds usize".into()))?;
+    let end = start
+        .checked_add(descriptor.physical_bytes)
+        .ok_or_else(|| Error::InvalidSegment("v4 page range overflow".into()))?;
+    let (buffer, borrowed, allocated_bytes, copied_bytes) = match source {
+        PageSource::File { file, selected, io } => {
+            let mut bytes = MutableBuffer::new(descriptor.physical_bytes);
+            bytes.resize(descriptor.physical_bytes, 0);
+            io.read_exact_at(*selected, file, descriptor.offset, bytes.as_slice_mut())?;
+            let allocated = bytes.len();
+            (Buffer::from(bytes), false, allocated, 0)
+        }
+        PageSource::Mapped { bytes, io } => {
+            let slice = bytes
+                .get(start..end)
+                .ok_or_else(|| Error::InvalidSegment("v4 mapped page range is absent".into()))?;
+            io.record_read(SelectedIo::Mmap, slice.len());
+            (borrow_mmap(bytes, start, slice.len())?, true, 0, 0)
+        }
+        PageSource::Bytes(bytes) => {
+            let slice = bytes
+                .get(start..end)
+                .ok_or_else(|| Error::InvalidSegment("v4 snapshot page range is absent".into()))?;
+            (Buffer::from(slice), false, slice.len(), slice.len())
+        }
+    };
+    if ring::digest::digest(&ring::digest::SHA256, buffer.as_slice()).as_ref() != descriptor.digest
+    {
+        return invalid("v4 page checksum does not match");
+    }
+    Ok(LoadedPage {
+        buffer,
+        borrowed,
+        allocated_bytes,
+        copied_bytes,
+    })
+}
+
+fn borrow_mmap(bytes: &Arc<Mmap>, start: usize, length: usize) -> Result<Buffer> {
+    if length == 0 {
+        return Ok(Buffer::default());
+    }
+    let pointer = unsafe { bytes.as_ptr().add(start) as *mut u8 };
+    let pointer = NonNull::new(pointer)
+        .ok_or_else(|| Error::InvalidSegment("v4 mapped page has a null pointer".into()))?;
+    let owner: Arc<dyn Allocation> = Arc::clone(bytes) as Arc<dyn Allocation>;
+    Ok(unsafe { Buffer::from_custom_allocation(pointer, length, owner) })
+}
+
+fn lower_bound(spine: &KeySpine, rows: usize, key: &[u8]) -> Result<usize> {
+    let mut left = 0;
+    let mut right = rows;
+    while left < right {
+        let middle = left + (right - left) / 2;
+        if key_at(spine, middle)? < key {
+            left = middle + 1;
+        } else {
+            right = middle;
+        }
+    }
+    Ok(left)
+}
+
+fn key_at(spine: &KeySpine, row: usize) -> Result<&[u8]> {
+    binary_at(
+        spine.offsets.buffer.as_slice(),
+        spine.data.buffer.as_slice(),
+        row,
+    )
+}
+
+fn sequence_at(spine: &KeySpine, row: usize) -> Result<u64> {
+    let offset = row
+        .checked_mul(8)
+        .ok_or_else(|| Error::InvalidSegment("v4 sequence offset overflow".into()))?;
+    let bytes = spine
+        .sequences
+        .buffer
+        .as_slice()
+        .get(offset..offset + 8)
+        .ok_or_else(|| Error::InvalidSegment("v4 sequence row is absent".into()))?;
+    Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
+}
+
+fn value_from_loaded(group: &LoadedRowGroup, row: usize) -> Result<Option<&[u8]>> {
+    if !valid_at(group.validity.buffer.as_slice(), row)? {
+        return Ok(None);
+    }
+    Ok(Some(binary_at(
+        group.value_offsets.buffer.as_slice(),
+        group.values.buffer.as_slice(),
+        row,
+    )?))
+}
+
+fn valid_at(validity: &[u8], row: usize) -> Result<bool> {
+    let byte = validity
+        .get(row / 8)
+        .ok_or_else(|| Error::InvalidSegment("v4 validity row is absent".into()))?;
+    Ok(byte & (1 << (row % 8)) != 0)
+}
+
+fn binary_at<'a>(offsets: &[u8], data: &'a [u8], row: usize) -> Result<&'a [u8]> {
+    let start = offset_at(offsets, row)?;
+    let end = offset_at(offsets, row + 1)?;
+    if start > end || end > data.len() {
+        return invalid("v4 Arrow binary offsets are not monotonic or in bounds");
+    }
+    Ok(&data[start..end])
+}
+
+fn offset_at(offsets: &[u8], index: usize) -> Result<usize> {
+    let offset = index
+        .checked_mul(8)
+        .ok_or_else(|| Error::InvalidSegment("v4 Arrow offset index overflow".into()))?;
+    let bytes = offsets
+        .get(offset..offset + 8)
+        .ok_or_else(|| Error::InvalidSegment("v4 Arrow offset is absent".into()))?;
+    let value = i64::from_le_bytes(bytes.try_into().unwrap());
+    usize::try_from(value)
+        .map_err(|_| Error::InvalidSegment("v4 Arrow offset is negative or too large".into()))
+}
+
+fn validate_offsets(
+    offsets: &[u8],
+    data: &[u8],
+    rows: usize,
+    maximum_item_bytes: usize,
+    allow_empty: bool,
+) -> Result<()> {
+    if offsets.len() != (rows + 1).saturating_mul(8) || offset_at(offsets, 0)? != 0 {
+        return invalid("v4 Arrow binary offset page has the wrong shape");
+    }
+    for row in 0..rows {
+        let start = offset_at(offsets, row)?;
+        let end = offset_at(offsets, row + 1)?;
+        if start > end
+            || end > data.len()
+            || end - start > maximum_item_bytes
+            || (!allow_empty && start == end)
+        {
+            return invalid("v4 Arrow binary offsets violate item bounds");
+        }
+    }
+    if offset_at(offsets, rows)? != data.len() {
+        return invalid("v4 Arrow binary offsets do not terminate at the data length");
+    }
+    Ok(())
+}
+
+fn validate_validity(validity: &[u8], rows: usize) -> Result<()> {
+    if validity.len() != rows.div_ceil(8) {
+        return invalid("v4 Arrow validity bitmap has the wrong length");
+    }
+    let used = rows % 8;
+    if used != 0 && validity.last().is_some_and(|byte| byte >> used != 0) {
+        return invalid("v4 Arrow validity bitmap has non-zero padding bits");
+    }
+    Ok(())
+}
+
+fn verify_file_digest(path: &Path, physical_bytes: u64) -> Result<String> {
+    let content_bytes = physical_bytes
+        .checked_sub(FOOTER_BYTES as u64)
+        .ok_or_else(|| Error::InvalidSegment("segment footer underflow".into()))?;
+    let mut file = File::open(path)?;
+    let mut hasher = ring::digest::Context::new(&ring::digest::SHA256);
+    let mut buffer = vec![0; COPY_BUFFER_BYTES];
+    let mut remaining = content_bytes;
+    while remaining > 0 {
+        let take = usize::try_from(remaining.min(buffer.len() as u64)).unwrap();
+        file.read_exact(&mut buffer[..take])?;
+        hasher.update(&buffer[..take]);
+        remaining -= take as u64;
+    }
+    let mut footer = [0; FOOTER_BYTES];
+    file.read_exact(&mut footer)?;
+    let expected = std::str::from_utf8(&footer)
+        .map_err(|_| Error::InvalidSegment("segment footer is not ASCII".into()))?;
+    let actual = digest_hex(hasher.finish().as_ref());
+    if expected != actual {
+        return invalid("segment content checksum does not match");
+    }
+    Ok(actual)
+}
+
+fn digest_hex(digest: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut encoded = Vec::with_capacity(digest.len() * 2);
+    for byte in digest {
+        encoded.push(HEX[(byte >> 4) as usize]);
+        encoded.push(HEX[(byte & 0x0f) as usize]);
+    }
+    String::from_utf8(encoded).expect("hex digest is ASCII")
+}
+
+fn file_equals_bytes(path: &Path, expected: &[u8]) -> Result<bool> {
+    if std::fs::metadata(path)?.len() != expected.len() as u64 {
+        return Ok(false);
+    }
+    let mut file = File::open(path)?;
+    let mut buffer = vec![0; COPY_BUFFER_BYTES];
+    let mut cursor = 0;
+    while cursor < expected.len() {
+        let end = cursor.saturating_add(buffer.len()).min(expected.len());
+        file.read_exact(&mut buffer[..end - cursor])?;
+        if buffer[..end - cursor] != expected[cursor..end] {
+            return Ok(false);
+        }
+        cursor = end;
+    }
+    Ok(true)
+}
+
+fn invalid<T>(reason: impl Into<String>) -> Result<T> {
+    Err(Error::InvalidSegment(reason.into()))
+}

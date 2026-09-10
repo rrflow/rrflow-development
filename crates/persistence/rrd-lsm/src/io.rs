@@ -8,8 +8,9 @@ pub const DEFAULT_SEGMENT_IO_REQUEST_BYTES: usize = 16 * 1024 * 1024;
 const MIN_SEGMENT_IO_REQUEST_BYTES: usize = 4 * 1024;
 const MAX_SEGMENT_IO_REQUEST_BYTES: usize = 64 * 1024 * 1024;
 
-/// Physical access policy for immutable V3 segment blocks. Canonical decoding,
-/// checksums, and the decoded block cache remain identical for every mode.
+/// Physical access policy for immutable v4 segment pages. Page checksums,
+/// Arrow-layout validation, and read-stamp semantics are identical in every
+/// mode; only page acquisition differs.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SegmentIoMode {
@@ -213,7 +214,7 @@ impl IoContext {
     ) -> Result<()> {
         if output.len() > self.policy.max_request_bytes {
             return Err(Error::InvalidSegment(format!(
-                "segment block requests {} bytes beyond the configured {} byte I/O bound",
+                "segment page requests {} bytes beyond the configured {} byte I/O bound",
                 output.len(),
                 self.policy.max_request_bytes
             )));

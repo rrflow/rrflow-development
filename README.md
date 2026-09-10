@@ -142,10 +142,12 @@ TurboQuant `ensure_vector_index` request, generic publication, replay
 suppression, and successful fixtures are gone. The complete default workspace
 test and strict Clippy matrices pass after that convergence. The unavailable
 post-alpha OpenRaft implementation remains an explicit POA&M item and is not
-part of the alpha composition. C-06 is next: replace the current row-record
-immutable segment with the ordered key/version spine plus Arrow-compatible
-column pages. This is one accepted pre-release executable shape, not proof of
-the C-06 hybrid format, native graph/BM25/vector access paths, streamed
+part of the alpha composition. C-06 is active: segment v4 now supplies the
+ordered key/version spine, six Arrow-layout page buffers, authenticated format
+identities, and measured mapped-versus-allocated ownership. C-06 remains open
+for selective projection, property/fuzz and mixed-family evidence, and the
+measured compression/value-placement/cache decision. This is not yet proof of
+the complete hybrid format, native graph/BM25/vector access paths, streamed
 DataFusion, turnkey installation, or persistent reasoning/recall.
 
 ## Knowledge warp points

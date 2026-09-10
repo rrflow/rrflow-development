@@ -18,7 +18,7 @@ files, symbols, tests, and stop conditions; they cannot change checklist status.
 
 | Release | Durable warp | Checkout record | State |
 |---|---|---|---|
-| RRFlow 1.0 | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`rrflow-1.0.md`](rrflow-1.0.md) | pre-alpha; Gate A 7/7 and Gate B 3/5 complete; B-04 next |
+| RRFlow 1.0 | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`rrflow-1.0.md`](rrflow-1.0.md) | pre-alpha; Gates A and B complete, Gate C 5/7; C-06 active and partial |
 
 | Supporting record | Durable warp | Checkout record | Authority |
 |---|---|---|---|

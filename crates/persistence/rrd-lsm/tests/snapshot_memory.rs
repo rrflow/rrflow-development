@@ -68,11 +68,11 @@ fn file_snapshot_export_does_not_grow_with_the_whole_bundle() {
 }
 
 #[test]
-fn disk_resident_reopen_and_reads_are_bounded_by_the_block_cache() {
+fn disk_resident_reopen_and_reads_are_bounded_by_the_page_cache() {
     if let Some(path) = std::env::var_os("RRFLOW_SEGMENT_MEMORY_CHILD") {
         let baseline = resident_bytes();
         let database =
-            Database::open_with_block_cache(std::path::Path::new(&path), READ_CACHE_BYTES).unwrap();
+            Database::open_with_page_cache(std::path::Path::new(&path), READ_CACHE_BYTES).unwrap();
         let snapshot = database.snapshot();
         for index in 0..SEGMENTS {
             assert!(database
@@ -81,7 +81,7 @@ fn disk_resident_reopen_and_reads_are_bounded_by_the_block_cache() {
                 .is_some());
         }
         let growth = resident_bytes().saturating_sub(baseline);
-        let stats = database.block_cache_stats();
+        let stats = database.page_cache_stats();
         assert!(stats.resident_bytes <= READ_CACHE_BYTES);
         assert!(stats.evictions > 0);
         assert!(
@@ -96,7 +96,7 @@ fn disk_resident_reopen_and_reads_are_bounded_by_the_block_cache() {
     populate_large_segments(directory.path());
     let output = std::process::Command::new(std::env::current_exe().unwrap())
         .arg("--exact")
-        .arg("disk_resident_reopen_and_reads_are_bounded_by_the_block_cache")
+        .arg("disk_resident_reopen_and_reads_are_bounded_by_the_page_cache")
         .arg("--nocapture")
         .env("RRFLOW_SEGMENT_MEMORY_CHILD", directory.path())
         .output()

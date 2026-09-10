@@ -27,7 +27,7 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
     let database = Database::open_with_options(
         root,
         DatabaseOptions {
-            block_cache_bytes: CACHE_BYTES,
+            page_cache_bytes: CACHE_BYTES,
             segment_io: SegmentIoPolicy {
                 mode,
                 allow_fallback: true,
@@ -47,8 +47,20 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
                 .unwrap()
         })
         .collect();
-    let cache = database.block_cache_stats();
+    let cache = database.page_cache_stats();
     assert!(cache.resident_bytes <= CACHE_BYTES);
+    match mode {
+        SegmentIoMode::Mmap => {
+            assert!(cache.bytes_borrowed > 0);
+            assert_eq!(cache.bytes_allocated, 0);
+            assert_eq!(cache.bytes_copied, 0);
+        }
+        SegmentIoMode::Bounded | SegmentIoMode::IoUring | SegmentIoMode::Auto => {
+            assert_eq!(cache.bytes_borrowed, 0);
+            assert!(cache.bytes_allocated > 0);
+        }
+    }
+    assert_eq!(cache.bytes_decompressed, 0);
     let stats = database.segment_io_stats();
     assert_eq!(stats.configured_max_request_bytes, REQUEST_BYTES);
     assert!(stats.read_operations > 0);
@@ -58,7 +70,7 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
 }
 
 #[test]
-fn mmap_and_bounded_reads_are_identical_and_measured_separately_from_cache() {
+fn mmap_and_bounded_reads_are_identical_and_measure_page_ownership() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("native");
     write_fixture(&root);

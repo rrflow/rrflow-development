@@ -315,7 +315,7 @@ impl StorageEngine for RrflowKvStore {
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
         let database = self.lock()?;
         let manifest = database.manifest();
-        let cache = database.block_cache_stats();
+        let cache = database.page_cache_stats();
         let segment_io = database.segment_io_stats();
         let maintenance = database.maintenance_policy();
         let compaction = database.compaction_policy();
@@ -363,9 +363,13 @@ impl StorageEngine for RrflowKvStore {
             cache_hits: Some(cache.hits),
             cache_misses: Some(cache.misses),
             cache_evictions: Some(cache.evictions),
-            block_loads: Some(cache.loads),
-            block_bytes_loaded: Some(cache.bytes_loaded),
-            block_bytes_decoded: Some(cache.bytes_decoded),
+            page_loads: Some(cache.loads),
+            page_bytes_read: Some(cache.bytes_read),
+            page_bytes_decoded: Some(cache.bytes_decoded),
+            page_bytes_borrowed: Some(cache.bytes_borrowed),
+            page_bytes_allocated: Some(cache.bytes_allocated),
+            page_bytes_copied: Some(cache.bytes_copied),
+            page_bytes_decompressed: Some(cache.bytes_decompressed),
             filter_checks: Some(cache.filter_checks),
             filter_negatives: Some(cache.filter_negatives),
             segment_io_requested_mode: Some(segment_io.requested_mode.as_str().into()),

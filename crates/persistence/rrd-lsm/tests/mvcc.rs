@@ -424,10 +424,10 @@ fn batch_point_reads_match_individual_reads_across_segments_memtable_and_snapsho
 }
 
 #[test]
-fn hot_memtable_point_reads_bypass_immutable_blocks_without_changing_mvcc_results() {
+fn hot_memtable_point_reads_bypass_immutable_pages_without_changing_mvcc_results() {
     let parent = tempfile::tempdir().unwrap();
     let root = parent.path().join("native");
-    let mut database = Database::create_with_block_cache(&root, 64 * 1024).unwrap();
+    let mut database = Database::create_with_page_cache(&root, 64 * 1024).unwrap();
     database
         .write_owned(
             WriteBatch::new(vec![
@@ -477,7 +477,7 @@ fn hot_memtable_point_reads_bypass_immutable_blocks_without_changing_mvcc_result
         b"hot:status".to_vec(),
     ];
 
-    let before = database.block_cache_stats();
+    let before = database.page_cache_stats();
     assert_eq!(
         database.get(b"hot:status", current).unwrap(),
         Some(b"ready".to_vec())
@@ -492,7 +492,7 @@ fn hot_memtable_point_reads_bypass_immutable_blocks_without_changing_mvcc_result
             Some(b"ready".to_vec()),
         ]
     );
-    let after_hot_reads = database.block_cache_stats();
+    let after_hot_reads = database.page_cache_stats();
     assert_eq!(after_hot_reads.misses, before.misses);
     assert_eq!(after_hot_reads.hits, before.hits);
 
@@ -504,7 +504,7 @@ fn hot_memtable_point_reads_bypass_immutable_blocks_without_changing_mvcc_result
         database.get(b"hot:lease", historical).unwrap(),
         Some(b"active".to_vec())
     );
-    assert!(database.block_cache_stats().misses > after_hot_reads.misses);
+    assert!(database.page_cache_stats().misses > after_hot_reads.misses);
 }
 
 #[test]
@@ -565,7 +565,7 @@ fn bounded_memtable_scan_preserves_mvcc_tombstones_over_segments() {
 }
 
 #[test]
-fn disjoint_multi_range_scan_matches_individual_scans_and_loads_shared_blocks_once() {
+fn disjoint_multi_range_scan_matches_individual_scans_and_loads_shared_pages_once() {
     let parent = tempfile::tempdir().unwrap();
     let root = parent.path().join("native");
     let mut database = Database::create(&root).unwrap();
@@ -606,12 +606,16 @@ fn disjoint_multi_range_scan_matches_individual_scans_and_loads_shared_blocks_on
 
     drop(database);
     let database = Database::open(&root).unwrap();
-    let before = database.block_cache_stats();
+    let before = database.page_cache_stats();
     let actual = database.scan_ranges(&ranges, database.snapshot()).unwrap();
-    let after = database.block_cache_stats();
+    let after = database.page_cache_stats();
 
     assert_eq!(actual, expected);
-    assert_eq!(after.loads - before.loads, 1);
+    assert_eq!(
+        after.loads - before.loads,
+        6,
+        "one intersecting row group's six Arrow-layout pages are loaded once"
+    );
     assert!(database
         .scan_ranges(
             &[

@@ -4472,10 +4472,10 @@ dependencies = [
 name = "rrd-lsm"
 version = "1.0.0"
 dependencies = [
+ "arrow-buffer",
  "crc32c",
  "io-uring",
  "libc",
- "lz4_flex",
  "memmap2",
  "ring",
  "rrd-core",

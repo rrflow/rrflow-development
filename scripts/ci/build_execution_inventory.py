@@ -214,7 +214,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "C-07",
         "F-01",
     ),
-    "crates/persistence/rrd-lsm/src/segment.rs": (
+    "crates/persistence/rrd-lsm/src/segment/mod.rs": (
         "C-04",
         "C-05",
         "C-06",
@@ -222,6 +222,14 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-01",
         "F-02",
         "F-05",
+        "J-04",
+    ),
+    "crates/persistence/rrd-lsm/src/segment/format.rs": (
+        "C-05",
+        "C-06",
+        "C-07",
+        "F-01",
+        "F-02",
         "J-04",
     ),
     "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07"),
@@ -588,7 +596,6 @@ REMOVE_OR_REWRITE = {
     "deploy/kubernetes/example-rrdinstance.json": "regenerate from the accepted install/effect projection and a verified release candidate; remove the placeholder bootstrap shape",
     "deploy/kubernetes/operator-rbac.json": "regenerate as a namespace-scoped least-privilege default with explicit client selection and negative Secret evidence",
     "deploy/kubernetes/rrdinstances.rrflow.io-crd.json": "regenerate from the sole rrflow-kubernetes projection schema with standard conditions and no earlier-shape reader",
-    "crates/persistence/rrd-lsm/src/segment.rs": "split into the planned segment modules while replacing row-only and pre-1.0 decoding paths",
     "crates/compute/rrd-query/src/execute.rs": "decompose eager loading into native access operators and a streaming DataFusion execution boundary",
     "crates/compute/rrd-query/src/arrow.rs": "replace Vec<QueryRow>-to-Arrow snapshot materialization with stamped page/batch adapters",
     "crates/compute/rrd-query/src/live.rs": "replace two-snapshot diffing with commit-impact evaluation",

@@ -93,8 +93,9 @@ pub use manifest::{
 };
 pub use memtable::{Memtable, MemtableProfile, VersionedValue};
 pub use segment::{
-    BlockCacheStats, Segment, DEFAULT_BLOCK_CACHE_BYTES, SEGMENT_BLOCK_TARGET_BYTES,
-    SEGMENT_FORMAT_VERSION,
+    PageCacheStats, Segment, DEFAULT_PAGE_CACHE_BYTES, DEFAULT_ROW_GROUP_MAX_ROWS,
+    DEFAULT_ROW_GROUP_TARGET_BYTES, SEGMENT_FORMAT_VERSION, SEGMENT_KEY_CODEC_DIGEST,
+    SEGMENT_PAGE_FORMAT_DIGEST, SEGMENT_SCHEMA_DIGEST,
 };
 pub use snapshot_bundle::{
     SnapshotBundle, SnapshotBundleFile, SnapshotExportBoundary, SnapshotSegment,

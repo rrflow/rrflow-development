@@ -252,13 +252,22 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
     );
     assert!(rrflow_kv_traces[7]
         .attributes
-        .contains_key("block_bytes_loaded_delta"));
+        .contains_key("page_bytes_read_delta"));
+    assert!(rrflow_kv_traces[7]
+        .attributes
+        .contains_key("page_bytes_borrowed_delta"));
+    assert!(rrflow_kv_traces[7]
+        .attributes
+        .contains_key("page_bytes_allocated_delta"));
     assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_requested_mode"));
     assert!(rrflow_kv_traces[7]
         .attributes
-        .contains_key("segment_io_reads_delta"));
+        .contains_key("segment_io_mmap_reads_delta"));
+    assert!(rrflow_kv_traces[7]
+        .attributes
+        .contains_key("segment_io_bounded_reads_delta"));
     assert!(rrflow_kv_traces[7]
         .attributes
         .contains_key("segment_io_bytes_read_delta"));

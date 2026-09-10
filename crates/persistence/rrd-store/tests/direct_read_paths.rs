@@ -506,13 +506,23 @@ fn rrflow_mx_and_rrflow_kv_direct_versions_match_the_exact_oracle_and_reopen() {
         kv.flush(300).unwrap();
         corpus
     };
-    let reopened = RrflowKvStore::open(&path).unwrap();
+    // Opening reconciles snapshot checkpoints and can legitimately warm every
+    // page in this compact fixture. Disable retention so the direct-read
+    // assertion measures the read itself rather than a prior cache fill.
+    let reopened = RrflowKvStore::open_with_options(
+        &path,
+        rrd_lsm::DatabaseOptions {
+            page_cache_bytes: 0,
+            ..rrd_lsm::DatabaseOptions::default()
+        },
+    )
+    .unwrap();
     let before = reopened.physical_store_evidence().unwrap();
     let kv_evidence = assert_direct_reads(&reopened, &kv_corpus);
     let after = reopened.physical_store_evidence().unwrap();
 
     assert_eq!(mx_evidence, kv_evidence);
-    assert!(after.block_loads.unwrap() > before.block_loads.unwrap());
-    assert!(after.block_bytes_loaded.unwrap() > before.block_bytes_loaded.unwrap());
+    assert!(after.page_loads.unwrap() > before.page_loads.unwrap());
+    assert!(after.page_bytes_read.unwrap() > before.page_bytes_read.unwrap());
     assert!(after.filter_checks.unwrap() > before.filter_checks.unwrap());
 }

@@ -10,11 +10,11 @@ description = "Native RRD storage engine: versioned WAL, MVCC, segments, and man
 rrd-core = { path = "../../kernel/rrd-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-lz4_flex = { version = "=0.14.0", default-features = false, features = ["std", "safe-encode", "safe-decode"] }
 crc32c = "=0.6.8"
 ring = "=0.17.14"
 memmap2 = "=0.9.11"
 tracing = { workspace = true }
+arrow-buffer = "=59.2.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "=0.2.189"

@@ -18,15 +18,15 @@ unfinished DevForge placement and hibernation system.
 | Layer | Canonical role | Current implementation |
 |---|---|---|
 | rrflowKV mutable state | Low-latency WAL-backed MVCC writes and the active memtable | Implemented locally; every acknowledged authoritative batch is synchronized before the mutable state is exposed |
-| rrflowKV immutable state | Manifest-addressed sorted segments, compaction input, and retained snapshot state | Implemented locally as checksummed LZ4 row-record blocks; not Arrow-compatible pages |
-| rrflowKV decoded block cache | Process-local reuse of decoded immutable blocks | Implemented as a byte-bounded shared LRU with explicit hit, miss, load, eviction, and residency counters |
+| rrflowKV immutable state | Manifest-addressed sorted segments, compaction input, and retained snapshot state | Implemented locally as segment v4 ordered key/version spines plus aligned Arrow-layout pages; DataFusion provider integration and C-06 optimization evidence remain open |
+| rrflowKV immutable page cache | Process-local reuse of authenticated immutable pages | Implemented as a byte-bounded shared LRU with separate hit, miss, load, eviction, residency, read, decode, borrow, allocation, copy, and decompression counters |
 | Immutable application objects | Content-addressed source artifacts and multimodal payload bytes referenced by canonical records | Memory and local adapters implemented; provider-neutral S3 port implemented without a production transport |
 | Vector artifact residency | Process-local pinned, cached, or cold opening of immutable vector artifacts | Implemented separately under the [vector residency contract](../vector/memory-tiers.md); never canonical state |
 | Physical snapshot transfer | Authenticated manifest closure used to move or restore one rrflowKV image | Local file/bundle export and installation implemented; no hibernation coordinator or configured cold destination |
 | DevForge filesystem placement | Shared immutable tool/model lower layer plus per-estate writable workspace and rrflowKV upper layer | Roadmap target only; it is not implemented by rrflowKV segment I/O |
 
 The process-local cache is intentionally custom and specific to authenticated
-segment blocks. Moka is not a dependency of RRFlow, Arrow, or DataFusion and is
+segment pages. Moka is not a dependency of RRFlow, Arrow, or DataFusion and is
 not needed to describe this storage contract. Any later cache substitution
 requires measured eviction, admission, memory, and stale-generation evidence;
 it cannot change logical results.
@@ -34,7 +34,7 @@ it cannot change logical results.
 ## Implemented local immutable-segment I/O
 
 `DatabaseOptions::segment_io` selects `auto`, `mmap`, `io_uring`, or `bounded`
-for local immutable segment blocks:
+for local immutable segment pages:
 
 - `auto` probes Linux io_uring setup and `IORING_OP_READ`, then uses bounded
   positional reads when the runtime cannot admit the ring;
@@ -45,19 +45,21 @@ for local immutable segment blocks:
   when configured; and
 - every non-mmap request is capped by `max_request_bytes`.
 
-All modes authenticate the same content-addressed segment and compressed-block
-digests, apply the same MVCC visibility rules, and decode through the same
-shared block cache. `SegmentIoStats` reports the requested/selected route,
+All modes authenticate the same content-addressed segment and per-page digests,
+apply the same MVCC visibility rules, and load through the same shared page
+cache. `SegmentIoStats` reports the requested/selected route,
 fallback reason/count, per-route read operations, bytes, and peak request.
-`BlockCacheStats` separately reports capacity, resident bytes, loads, decoded
-bytes, hits, misses, evictions, and filter outcomes.
+`PageCacheStats` separately reports capacity, resident bytes, loads, read,
+decoded, borrowed, allocated, copied, and decompressed bytes, hits, misses,
+evictions, and filter outcomes.
 
-These are local access modes, not persistence tiers. mmap does not make the
-current row format zero-copy Arrow data: the selected compressed bytes are
-copied into a buffer, authenticated, decompressed, parsed into record offsets,
-and materialized for higher layers. The
-[current-format record](rrflowkv-current-format.md) owns the exact pre-alpha
-physical format and its C-06 replacement boundary.
+These are local access modes, not persistence tiers. With explicit mmap, an
+aligned uncompressed v4 page can back an `arrow_buffer::Buffer` while an owned
+mapping lease preserves its lifetime. Bounded and io_uring paths allocate an
+aligned buffer; snapshot-envelope validation copies. Point values and current
+query results can still allocate. The [current-format
+record](rrflowkv-current-format.md) owns the exact eligibility boundary and
+remaining C-06 work; no end-to-end zero-copy DataFusion claim exists yet.
 
 ## Implemented portable immutable bytes
 
@@ -105,8 +107,9 @@ upper layer.
 ## Current executable evidence
 
 `crates/persistence/rrd-lsm/tests/tiered_io.rs` proves exact read equality
-between mmap and bounded modes, byte/request/cache accounting, and actual
-io_uring or an explicit measured fallback on the executing kernel. Segment,
+between mmap and bounded modes, distinct borrowed-versus-allocated page
+evidence, byte/request/cache accounting, and actual io_uring or an explicit
+measured fallback on the executing kernel. Segment,
 snapshot, failure-matrix, and snapshot-memory suites prove current local
 authentication, bounded transfer, crash ordering, and install behavior. The
 S3-port tests use an in-memory conformance client.

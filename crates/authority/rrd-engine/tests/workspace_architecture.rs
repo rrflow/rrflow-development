@@ -407,12 +407,19 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
             .join("crates/persistence/rrd-lsm/src/manifest.rs"),
     )
     .expect("manifest source must be readable");
-    let segment = fs::read_to_string(
+    let segment_module = fs::read_to_string(
         metadata
             .root
-            .join("crates/persistence/rrd-lsm/src/segment.rs"),
+            .join("crates/persistence/rrd-lsm/src/segment/mod.rs"),
     )
-    .expect("segment source must be readable");
+    .expect("segment module source must be readable");
+    let segment_format = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/persistence/rrd-lsm/src/segment/format.rs"),
+    )
+    .expect("segment format source must be readable");
+    let segment = format!("{segment_module}\n{segment_format}");
     let vector_catalog = fs::read_to_string(
         metadata
             .root
@@ -420,8 +427,8 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
     )
     .expect("vector artifact catalog source must be readable");
     assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
-    assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 2;"));
-    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 3;"));
+    assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 3;"));
+    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 4;"));
     assert!(vector_catalog.contains("pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;"));
     for (name, source) in [
         ("batch", batch.as_str()),

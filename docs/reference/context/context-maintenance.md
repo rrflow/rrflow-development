@@ -56,6 +56,15 @@ versioned estate policy or attuned specialization. The engine does not hardcode
 a universal document taxonomy, review cadence, token-reduction percentage, or
 deletion quota.
 
+Age, last verified access, repeated successful contribution, contradictory
+evidence, provenance, and a policy-selected retention model may be inputs to a
+priority or retirement proposal. An Ebbinghaus-style score is therefore an
+optional policy feature, never a compaction verdict. Legal/retention holds,
+immutable audit evidence, current project truth, and recovery dependencies are
+evaluated before a proposal can be accepted. `RrdEngine` commits the resulting
+versioned disposition explicitly; only then may ordinary compaction reclaim a
+now-unreachable physical version.
+
 A context projection is derived acceleration state. Its identity binds the
 source stamp, parent generation, policy and builder revisions, selected source
 identities and digests, ordering, estimated and measured bytes/tokens, and

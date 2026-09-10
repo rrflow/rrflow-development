@@ -4,6 +4,10 @@ fn segment(id: &str, first: &[u8], last: &[u8], minimum: u64, maximum: u64) -> S
     SegmentDescriptor {
         id: id.into(),
         level: 0,
+        format_version: rrd_lsm::SEGMENT_FORMAT_VERSION,
+        schema_digest: rrd_lsm::SEGMENT_SCHEMA_DIGEST.into(),
+        key_codec_digest: rrd_lsm::SEGMENT_KEY_CODEC_DIGEST.into(),
+        page_format_digest: rrd_lsm::SEGMENT_PAGE_FORMAT_DIGEST.into(),
         first_key: first.into(),
         last_key: last.into(),
         minimum_sequence: minimum,
@@ -60,7 +64,7 @@ fn manifest_identity_is_stable_and_segment_order_is_canonical() {
     let actual = format!("{}\n", serde_json::to_string_pretty(&left).unwrap());
     assert_eq!(left.format_version, MANIFEST_FORMAT_VERSION);
     assert_eq!(left.application_format, None);
-    let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/manifest-v2.json");
+    let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/manifest-v3.json");
     if std::env::var_os("RRFLOW_UPDATE_GOLDENS").is_some() {
         std::fs::create_dir_all(format!("{}/fixtures", env!("CARGO_MANIFEST_DIR"))).unwrap();
         std::fs::write(fixture, &actual).unwrap();

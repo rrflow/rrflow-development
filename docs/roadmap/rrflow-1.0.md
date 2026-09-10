@@ -103,8 +103,13 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The next executable item is **C-06**, replacing row-record immutable segments
-with the hybrid ordered key/version spine plus Arrow-compatible column pages.
+The active executable item is **C-06**. Its first bounded slice has replaced
+row-record immutable segments with segment v4's ordered key/version spine plus
+six Arrow-layout page buffers, manifest-authenticated format identities, safe
+mmap ownership, and page-level physical counters. C-06 remains unchecked while
+its selective provider interface, property/fuzz differential corpus,
+mixed-family interference, compression/value-placement decision, configurable
+budgets, and comparative evidence remain open.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -116,7 +121,7 @@ package, C-02's shared
 transaction/repository package, C-03's effect-complete semantic mutation
 batch, C-04's direct current/temporal read package, C-05's lower physical
 reader/dependency packages, and every Gate B contract package are complete.
-C-05 is accepted for the single-node alpha composition; C-06 has not begun.
+C-05 is accepted for the single-node alpha composition; C-06 is in progress.
 A-07 is
 complete: A-07.0 mapped current requirements to code and evidence; A-07.1a
 through A-07.1h directly converged package/type/path vocabulary, SDK
@@ -814,7 +819,7 @@ golden vectors without importing Rust internals.
 | [x] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
 | [x] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [x] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
-| [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property tests, exact differential reads, selective-scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all read, decoded, decompressed, copied, allocated, and cached bytes are reported. Family-specific page or cache policy is retained only when the declared workload improves without correctness or other-family regression. |
+| [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. The current v4 slice provides the common uncompressed page contract; compression, key/value separation, persisted filters, family grouping, and cache policy remain measured choices rather than assumed architecture. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property/fuzz tests, exact differential reads, selective projection/scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all read, decoded, decompressed, copied, allocated, cached, and open-validation bytes are reported. Compare common pages against adaptive per-page codecs and, where value size/update workloads justify it, WiscKey-style separated values; retain a specialization only when its declared workload improves without correctness, recovery, GC, snapshot, or other-family regression. |
 | [ ] | C-07 | Prove WAL recovery, manifest recovery, bounded maintenance and write backpressure, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, sustained-write/maintenance/RSS runs, and repeated reopen suite pass with no lost acknowledged write, unbounded write-buffer growth, dangling mapped buffer, or exposed partial batch. |
 
 C-01 evidence (2026-09-08):
@@ -1043,6 +1048,36 @@ C-05 accepted convergence evidence and audit correction (2026-09-09):
   authority shape, duplicate vector publication path, or suppression shim.
   C-06 may now begin the hybrid ordered-spine/Arrow-page work.
 
+C-06 progress evidence (2026-09-10; gate remains open):
+
+- `rrd-lsm` now writes and exclusively reads segment v4. Flush preserves one
+  sorted `(key, sequence)` MVCC spine and emits Arrow-compatible key offsets,
+  key data, sequence values, value validity, value offsets, and value data for
+  each row group. A key's complete version chain is never split by the target
+  byte or row budget. Point, range, compaction, and snapshot reads use the
+  physical pages without invoking DataFusion.
+- Manifest v3 authenticates each reachable segment's physical version, schema
+  digest, key-codec digest, and page-format digest. Segment v1/v2/v3 and
+  manifest v1/v2 have no accepted reader or migration path. The complete v4
+  bytes and manifest v3 bytes are checked-in vectors.
+- Every page is 64-byte aligned and independently authenticated. Explicit mmap
+  returns an Arrow buffer whose allocation owner pins the mapping; bounded and
+  io_uring reads allocate aligned Arrow buffers; snapshot-envelope validation
+  copies. Page evidence distinguishes read, decoded, borrowed, allocated,
+  copied, decompressed, cached, and filter activity. No end-to-end DataFusion
+  zero-copy claim is made.
+- Exact point/range/MVCC comparisons, a version chain larger than one row-group
+  target, page corruption, post-open tampering, cache bounds, mmap/bounded/
+  io_uring ownership, snapshot, and compaction suites exercise this slice. Two
+  implementation failures surfaced and were fixed: all-tombstone groups need
+  a full Arrow validity bitmap, and compaction outputs must derive their actual
+  maximum sequence instead of inheriting an unrelated durable watermark.
+- C-06 is not accepted. Remaining evidence is a property/fuzz differential
+  corpus, provider-facing selective projection without open-time hidden I/O,
+  configurable row-group budgets, mixed semantic-family interference, and
+  fixed-hardware comparison of no compression against adaptive page codecs,
+  optional value separation, persisted filters, and page-cache policies.
+
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.
 
@@ -1072,8 +1107,8 @@ database service.
 |---|---|---|---|---|
 | [ ] | E-01 | Replace graph reconstruction and linear relation scans with temporal outgoing/incoming adjacency prefix scans. | `rrd-store`, `rrd-query` | Directed/typed/depth-bounded traversal matches the exact graph oracle and physical evidence scales with visited edges, not estate size. |
 | [ ] | E-02 | Persist scalar and unique indexes transactionally with record mutations. | `rrd-store`, `rrd-query` | Insert/update/retire/conflict/reopen differential proves index and authoritative record cannot drift. |
-| [ ] | E-03 | Persist incremental BM25 dictionary, document statistics, postings, positions, and tombstones at a declared source cursor. | `rrd-query`, `rrd-store` | Incremental results equal a full exact rebuild across update/delete/reopen/corruption fixtures. |
-| [ ] | E-04 | Commit canonical vectors with an atomic index delta; search immutable HNSW generation plus exact delta overlay and exact-rerank final candidates. | `rrd-vector`, `rrd-store`, `rrd-engine` | Exact oracle, recall@k, filtered search, update/delete, stale generation, reopen, and interrupted-build tests pass. |
+| [ ] | E-03 | Persist incremental BM25 dictionary, document statistics, postings, positions, and tombstones at a declared source cursor. Select posting-partition codecs from measured raw/bit-packed, partitioned Elias-Fano, and PFOR candidates; codec choice is authenticated metadata and cannot change lexical semantics. | `rrd-query`, `rrd-store` | Incremental results equal a full exact rebuild across update/delete/reopen/corruption fixtures; adversarial sparse/dense/clustered postings prove exact seek/iteration while bytes, decode work, latency, and update/compaction amplification justify each retained codec. |
+| [ ] | E-04 | Commit canonical vectors with an atomic index delta; search an immutable HNSW generation plus exact delta overlay and exact-rerank final candidates. Evaluate TurboQuant_prod (MSE quantizer plus one-bit QJL residual) as an authenticated candidate representation and evaluate an LSM-VEC-style disk graph only after the exact/HNSW baseline exists; neither is an assumed default. | `rrd-vector`, `rrd-store`, `rrd-engine` | Exact oracle, recall@k, estimator error/bias, filtered search, update/delete, stale generation, reopen, interrupted-build, build/compaction amplification, RSS, and latency tests pass on declared RRFlow corpora. Approximate candidates never become authoritative results and exact reranking/fallback remains available. |
 | [ ] | E-05 | Add cost/selectivity estimates choosing point, range, scalar, BM25, exact-vector, or HNSW access without caller-selected internals. | `rrd-query` | Stable explain plans and adversarial fixtures prove correctness fallback when statistics or projections are absent/stale. |
 
 Gate E exits only when graph, lexical, scalar, and vector routes are real

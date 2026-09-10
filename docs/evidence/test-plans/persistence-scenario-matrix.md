@@ -1,6 +1,6 @@
 # RRFlow persistence, reasoning, and recall scenario matrix
 
-**Status:** active acceptance test plan; C-01 through C-03 are accepted, while C-04 through C-07, E, and F remain open
+**Status:** active acceptance test plan; C-01 through C-05 are accepted, C-06 is partially implemented but open, and C-07, E, and F remain open
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/test-plan/persistence-reasoning-recall`
 **Owner:** executable persistence-to-context scenarios and their evidence state
 
@@ -17,7 +17,8 @@ implementation instructions.
 |---|---|
 | Characterization | The named test exists and protects useful current behavior. It can expose work that a rewrite must preserve, but cannot close a target gate by itself. |
 | Planned | The owning roadmap gate requires the scenario, but its accepted implementation and evidence do not exist yet. |
-| Accepted | The owning roadmap row cites retained output at an exact revision. C-01 through C-03 currently have this state. |
+| Partial | Useful implementation and focused evidence exist, but one or more observations required by the owning roadmap row remain absent. |
+| Accepted | The owning roadmap row cites retained output at an exact revision. C-01 through C-05 currently have this state. |
 
 Every scenario runs at least one test in its own process with zero failures and
 no hidden retry. A filtered-out invocation is not a pass. Failure artifacts and
@@ -31,15 +32,15 @@ These tests are real and valuable. Their limitations are equally important.
 
 | ID | Existing test | Behavior protected | Why it is not target completion |
 |---|---|---|---|
-| CHAR-01 | `crates/persistence/rrd-store/tests/rrflow_kv_open.rs::missing_paths_create_rrflow_kv_and_reopen_by_authenticated_marker` | A missing root initializes rrflowKV, persists a claim, and reopens through `CURRENT`. | Does not reject every pre-1.0 batch, manifest, and segment reader required by C-05. |
+| CHAR-01 | `crates/persistence/rrd-store/tests/rrflow_kv_open.rs::missing_paths_create_rrflow_kv_and_reopen_by_authenticated_marker` | A missing root initializes rrflowKV, persists a claim, and reopens through `CURRENT`. | C-05's separate source/negative-format corpus now proves reader closure; this one test still does not qualify installation, full semantic recovery, or C-06/C-07. |
 | CHAR-02 | `crates/persistence/rrd-store/tests/unified_data.rs::unified_transaction_and_evidence_match_across_storage_profiles` | rrflowMX and rrflowKV agree on one transaction containing claims, records, relations, events, dense vectors, series, geo, and immutable-object references. | This broad semantic characterization does not itself prove C-04 bounded direct reads or the C-06 hybrid immutable format; C-03's native fan-out is proven by its separate accepted corpus. |
 | CHAR-03 | `crates/persistence/rrd-store/tests/unified_data.rs::rrflow_kv_unified_evidence_survives_reopen_and_retry` | The rrflowKV commit outcome, projection outbox, audit stamp, immutable payload reference, and idempotent retry survive reopen. | This test does not inject each C-03 physical boundary; the accepted `rrflow_kv` semantic fault case supplies that separate evidence. |
 | CHAR-04 | `crates/authority/rrd-engine/src/engine/tests/recovery.rs::commit_reopens_replays_and_does_not_duplicate_claims` | `RrdEngine` session and transaction state reopens and exact commit retry does not duplicate a claim or journal transition. | Protects current transaction recovery, not future reasoning-tree or attunement-job persistence. |
 | CHAR-05 | `crates/persistence/rrd-store/tests/bitemporal.rs::a_correction_at_the_same_valid_from_preserves_the_claim_it_corrects` | Transaction-time corrections retain superseded valid-time state. | The normal query path can still reconstruct history from the runtime log instead of bounded version-key reads. |
-| CHAR-06 | `crates/persistence/rrd-store/tests/snapshot.rs::{retained_prefix_proofs_survive_later_commits_on_all_engines,rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry}` | Authenticated read stamps behave the same on rrflowMX/rrflowKV, and durable leases pin rrflowKV manifests. | The proof method currently performs full hash-chain replay, and no Arrow-page lifetime exists to pin. |
+| CHAR-06 | `crates/persistence/rrd-store/tests/snapshot.rs::{retained_prefix_proofs_survive_later_commits_on_all_engines,rrflow_kv_snapshot_leases_pin_physical_manifests_until_release_or_expiry}` | Authenticated read stamps behave the same on rrflowMX/rrflowKV, and durable leases pin rrflowKV manifests. | C-04 removed normal full-log reconstruction and v4 pages now exist, but this test does not hold a borrowed Arrow page across compaction/reclamation; C-07 still owns that lifetime proof. |
 | CHAR-07 | `crates/compute/rrd-query/tests/index_catalogue.rs::rrflow_kv_catalogue_reopens_and_invalid_fields_fail_before_control_state_changes` | A query-index definition and artifact reopen; invalid definitions do not change catalogue state. | The artifact is a rebuildable projection over eager rows, not a C-03/E transactional native index. |
 | CHAR-08 | `crates/compute/rrd-query/tests/live_query.rs::semantic_deltas_are_identical_across_every_engine` | rrflowMX and rrflowKV produce identical bounded semantic add/update/remove results. | The implementation compares two materialized snapshots; H-03 still requires commit-impact deltas. |
-| CHAR-09 | `crates/authority/rrd-engine/src/engine/tests/vector_index.rs::persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness` | HNSW, TurboQuant, BM25/vector fusion, exact overlay, staleness handling, and deterministic replay survive reopen. | Candidate discovery can scan the runtime log, BM25/HNSW are separate projection paths, and this test still exercises a compatibility-named TurboQuant ensure route scheduled for direct convergence. |
+| CHAR-09 | `crates/authority/rrd-engine/src/engine/tests/vector_index.rs::persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness` | HNSW, explicit-lifecycle TurboQuant, BM25/vector fusion, exact overlay, staleness handling, and deterministic replay survive reopen. | C-05 removed the duplicate TurboQuant publication/ensure path, but BM25/HNSW remain separate projection paths rather than E/F's planner-selected stamped native operators. |
 | CHAR-10 | `crates/authority/rrd-engine/src/engine/tests/vector_index.rs::unified_retrieval_algebra_executes_multimodal_late_interaction_and_analytics` | Dense, sparse, named image, and multi-vector MaxSim branches compose through nested RRF, exact/model rerank, score boost, MMR, grouping, facets, matrix output, and reopen. | Fusion and result shaping are eager in-memory engine work; there is no graph leaf, persisted reasoning-tree execution, or one native Arrow/DataFusion physical plan. |
 | CHAR-11 | `crates/authority/rrd-engine/src/engine/tests/vector_index.rs::application_backup_restores_turboquant_payload_before_instance_activation` | An engine-authorized application backup restores canonical state, catalogue state, and required immutable TurboQuant bytes before a restored root is opened. | Backup/recovery is not the online index or DataFusion path and does not retain derived Arrow, BM25, or HNSW pages. |
 | CHAR-12 | `crates/persistence/rrd-store/tests/{logical_archive,logical_archive_resilience,backup_catalogue}.rs` | Stable-cut logical replay, every typed runtime family, interruption resume, corruption denial, and the optional object/catalogue closure are tested. | Projections are explicitly rebuild-required; invocation telemetry, leases, and physical storage pages are excluded. |
@@ -52,8 +53,9 @@ compatibility reader or migration executor.
 
 ## Required persistent-substrate proof
 
-C-01 through C-03 are `Accepted` by the owning roadmap. C-04 through C-07
-remain `Planned`; later tests cannot substitute for their named observations.
+C-01 through C-05 are `Accepted` by the owning roadmap. C-06 is `Partial` and
+C-07 remains `Planned`; later tests cannot substitute for their named
+observations.
 
 | Gate | Scenario | Planned test owner | Required observation |
 |---|---|---|---|
@@ -62,7 +64,7 @@ remain `Planned`; later tests cannot substitute for their named observations.
 | C-03 | One semantic write batch | `crates/persistence/rrd-store/src/rrflow_kv.rs::tests::rrflow_kv_multi_family_transaction_recovers_all_or_none_at_every_wal_boundary`; `crates/persistence/rrd-store/tests/{semantic_commit_atomicity,native_index_commit}.rs`; `crates/authority/rrd-engine/src/engine/tests/function.rs` | Accepted: record/version, relation, both adjacency directions, scalar and unique entries, scalar/unique/BM25 source deltas, current and temporal vector state plus its source delta, runtime state, projection/outbox, audit, cursor/outcome, and function receipt are compared as one exact key closure across prepared, WAL-appended, WAL-synced, visible-before-acknowledgement, retry, and reopen cases; catalogue maxima fit one batch and recovery does not re-execute a durable receipt. |
 | C-04 | Direct versioned access | `crates/persistence/rrd-store/tests/direct_read_paths.rs` | Current, valid-time, transaction-time, record, relation, vector, and runtime reads touch bounded ordered ranges at one `ReadStamp`; normal execution performs no cursor-zero reconstruction. |
 | C-05 | One accepted physical reader | `crates/persistence/rrd-store/tests/rrflow_kv_open.rs`; `crates/persistence/rrd-lsm` format tests | Dependency/symbol searches find no alternate store, selector, upgrader, or migration executor; old batch/manifest/segment bytes fail with one unsupported-format error. |
-| C-06 | Hybrid immutable generation | `crates/persistence/rrd-lsm/tests/hybrid_segment.rs` | A sorted memtable flushes to one ordered key/version spine plus typed Arrow-compatible pages; point reads use the spine, projected scans read only selected pages, and exact results equal the memtable oracle. |
+| C-06 | Hybrid immutable generation | `crates/persistence/rrd-lsm/tests/{segment,tiered_io,mvcc,compaction,snapshot_bundle}.rs`; provider projection test still planned | Partial: a sorted memtable flushes to one ordered key/version spine plus six typed Arrow-layout buffers, point/range/MVCC results match exact state, current bytes are frozen, prior formats fail, and mmap versus allocated ownership is measured. Still required: property/fuzz differential, provider-facing selective projection and open-I/O counters, configurable budgets, mixed-family interference, and measured compression/value-placement/filter/cache choices. |
 | C-07 | Recovery and buffer lifetime | `crates/persistence/rrd-lsm/tests/mapped_page_lifetime.rs`; existing failure/maintenance suites | WAL/manifest/compaction/reopen, ENOSPC, short write, checksum, torn pointer, and orphan cases lose no acknowledged batch; a pinned Arrow buffer remains valid after old-generation reclamation; maintenance/backpressure stays bounded. |
 
 ## Required native graph and recall proof
@@ -71,8 +73,8 @@ remain `Planned`; later tests cannot substitute for their named observations.
 |---|---|---|---|
 | E-01 | Temporal graph traversal | `crates/compute/rrd-query/tests/native_operators.rs`; `crates/persistence/rrd-store/tests/direct_read_paths.rs` | Directed, typed, valid/known-time, depth/step-bounded traversal equals the exact graph oracle and scans in/out adjacency proportional to visited edges. |
 | E-02 | Scalar and unique indexes | `crates/persistence/rrd-store/tests/semantic_commit_atomicity.rs`; `crates/compute/rrd-query/tests/native_operators.rs` | Insert/update/retire/conflict/reopen cannot expose an index-record mismatch; unique denial is checked against the prospective transaction. |
-| E-03 | Incremental BM25 | `crates/compute/rrd-query/tests/native_operators.rs` | Dictionary, document length/statistics, postings, positions, and tombstones advance from one source cursor; update/delete/reopen equals a clean exact rebuild. |
-| E-04 | Native vector candidate path | existing `crates/compute/rrd-vector/tests/` exact/HNSW/quantization suites plus `crates/compute/rrd-query/tests/native_operators.rs` | Canonical vector and index delta commit together; immutable HNSW plus exact delta overlay, payload filtering, and final exact rerank meet declared recall across update/delete/stale/reopen/interrupted-build cases. |
+| E-03 | Incremental BM25 | `crates/compute/rrd-query/tests/native_operators.rs` | Dictionary, document length/statistics, postings, positions, and tombstones advance from one source cursor; update/delete/reopen equals a clean exact rebuild. Raw/bit-packed, partitioned Elias-Fano, and PFOR candidates retain exact seek/iteration and are selected per partition only from measured bytes and decode work. |
+| E-04 | Native vector candidate path | existing `crates/compute/rrd-vector/tests/` exact/HNSW/quantization suites plus `crates/compute/rrd-query/tests/native_operators.rs` | Canonical vector and index delta commit together; immutable HNSW plus exact delta overlay, payload filtering, and final exact rerank meet declared recall across update/delete/stale/reopen/interrupted-build cases. TurboQuant_prod and any LSM-VEC-style disk navigation remain candidate representations until estimator bias/error, recall, I/O, RSS, and amplification beat the accepted exact/HNSW baseline without weakening fallback. |
 | E-05 | Engine-selected access | `crates/compute/rrd-query/tests/native_operators.rs` | Stable explain plans choose point, range, scalar, BM25, exact vector, or HNSW from stamped statistics; absent/stale projections fall back correctly, and callers cannot select storage internals. |
 
 ## Required Arrow/DataFusion proof

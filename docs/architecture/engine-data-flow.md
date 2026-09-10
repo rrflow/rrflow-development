@@ -141,11 +141,14 @@ for high-frequency writes, current state, CAS, and bounded range reads. A
 stamped analytical scan merges the visible memtable delta with immutable
 segment pages before returning a batch.
 
-The checkout has not reached that layout. Its
+The first C-06 slice has reached the common immutable-page foundation. Its
 [current physical-format reference](../reference/storage/rrflowkv-current-format.md)
-records the implemented v3 LZ4 row-block segments, frozen bytes, recovery
-rules, single current readers, and explicit rejection of pre-1.0 formats without
-promoting the row layout into target architecture.
+records segment v4's ordered spine, six Arrow-layout buffers, authenticated
+format identities, page ownership/copy counters, frozen bytes, and explicit
+rejection of earlier segments. C-06 remains open because selective provider
+projection, property/fuzz differential evidence, mixed-family interference,
+configurable row-group budgets, persisted-filter/open-cost resolution, and the
+measured compression/value-placement/cache decision are not complete.
 
 ## Conditional zero-copy
 
@@ -169,6 +172,47 @@ pool-owned buffers. Every physical plan therefore reports:
 The release claim is measured conditional zero-copy for eligible pages, never
 "zero parsing, zero allocation" for every query. Apache Arrow likewise notes
 that IPC reads can allocate when compression or other conditions require it.
+
+## Evidence-gated physical and recall mechanisms
+
+RRFlow adopts mechanisms by observed behavior at one canonical boundary, not
+by importing an upstream product topology or treating a paper result as a
+default. The following candidates are useful, but each remains subordinate to
+the exact transaction, stamp, authorization, and fallback contracts above.
+
+| Mechanism | Canonical RRFlow use | Required decision evidence |
+|---|---|---|
+| WiscKey-style key/value separation | Optional rrflowKV placement for large, rewrite-heavy value pages while the ordered key/version spine retains authenticated pointers | Compare stationary page values and a value log on ingestion, read amplification, compaction bytes, snapshot pinning, crash recovery, GC, orphan reclamation, range scans, and mixed semantic families. A pointer can never outlive or escape its manifest closure. |
+| Adaptive page compression | Per-page encoding selected during immutable generation; plain/uncompressed remains a valid current encoding | Compare codecs per page kind and workload using physical/logical bytes, encode/decode CPU, page reads, allocations/copies, point/range/DataFusion latency, compaction amplification, and cache interference. Compression makes a page ineligible for direct mapped borrowing until decoded. |
+| Partitioned Elias-Fano and PFOR | Candidate authenticated codecs for immutable BM25 DocID, frequency, and position partitions | Exact seek/iteration must match the raw posting oracle across sparse, dense, clustered, update, tombstone, compaction, corruption, and reopen corpora. Select per partition from measured bytes and decode work; neither codec is globally mandated. |
+| TurboQuant_prod | Candidate vector projection using an MSE quantizer plus a one-bit QJL residual to estimate inner products; exact canonical vectors remain authoritative | Measure estimator error and bias, recall@k, filtered recall, exact-rerank work, RSS, build/update/compaction cost, hardware paths, stale/corrupt behavior, and reopen on declared RRFlow embedding corpora. No universal quality-neutral or scale claim is allowed. |
+| LSM-VEC-style disk graph organization | Later candidate for immutable disk-resident ANN navigation after the exact/HNSW generation and delta overlay are correct | Compare recall, tail latency, random I/O, memory residency, construction/merge amplification, update/delete behavior, and recovery against the accepted exact/HNSW baseline. It is not required merely because rrflowKV is an LSM. |
+
+These mechanisms do not create separate databases. Graph adjacency, BM25
+postings, canonical vectors, approximate generations, reasoning state, and
+governance evidence remain typed families inside one rrflowDB estate and one
+`RrdEngine` transaction/read-stamp authority. rrflowQL chooses eligible access
+paths; DataFusion consumes streams and computes but never publishes canonical
+state.
+
+Working, semantic, and episodic memory are policy classifications over those
+records, not independent keyspaces or storage authorities. Access frequency,
+age, outcome evidence, provenance, legal/retention holds, and project policy
+may inform a versioned priority or retirement proposal. Only an authorized
+`RrdEngine` operation can accept that proposal. Compaction may reclaim a
+version only after accepted retention state makes it unreachable; a
+compaction filter cannot decide that a memory is semantically false or
+deletable from an Ebbinghaus score alone.
+
+A prompt or reasoning-round boundary is likewise not a durability command.
+Authoritative WAL acknowledgment follows the declared durability policy;
+ordinary bounded maintenance decides flush/compaction. Committed projection
+deltas schedule incremental BM25/vector/graph work. No request forces a full
+flush, global term-statistics rebuild, vector retraining, or graph rewrite.
+DataFusion planning declares projection/filter/limit support without storage
+I/O; actual page reads begin when its execution stream is polled, and batch
+size comes from the request memory/work budget rather than a hardcoded row
+count.
 
 ## Read and query flow
 
@@ -1011,8 +1055,8 @@ compile cannot substitute for this proof.
 
 | Concern | Present checkout | Required target |
 |---|---|---|
-| rrflowKV writes and hot reads | Checksummed WAL frames, mutable MVCC version chains, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, block filters, a byte-bounded decoded-block cache, physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04 transaction and direct-read behavior while C-06/C-07 replace the immutable format and qualify its lifetime/recovery behavior; F-05 decides the final cache from measurements. |
-| rrflowKV immutable storage | One batch-v2, manifest-v2, and segment-v3 read path over LZ4-compressed row-record blocks with block indexes, compaction, and recovery; pre-1.0 batch/manifest/segment bytes fail unsupported before alternate decoding. C-05 proves one required physical dependency path, one explicit schema-table authority, one required vector address, and no duplicate generic quantized publication or replay-suppression path. | C-06 must replace row blocks with the ordered key/version spine plus Arrow-compatible column pages; C-07 must qualify recovery, maintenance, and mapped-buffer lifetime. |
+| rrflowKV writes and hot reads | Checksummed WAL frames, mutable MVCC version chains, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, derived row-group filters, a byte-bounded immutable-page cache, ownership/copy physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04 behavior while C-06 completes selective projection and measured physical policy; C-07 qualifies recovery, maintenance, and mapped-buffer lifetime; F-05 decides final cache admission from measurements. |
+| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v4 read path. Segment v4 stores a strict ordered key/version spine in six aligned Arrow-layout buffers per row group; descriptors authenticate types, encoding/compression metadata, bounds, statistics, and page digests. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3 fail unsupported before alternate decoding. | C-06 must add property/fuzz differential, selective projected-page streaming and open-I/O evidence, configurable grouping, mixed-family interference, and comparative compression/value-placement/filter/cache decisions. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime. |
 | Transactions, identity, and audit | C-02 supplies one snapshot-isolation point/range/write transaction and one set of repositories for rrflowMX and rrflowKV. Accepted C-03 publishes record/relation temporal state, both adjacency directions, schema-bound scalar/unique changes, BM25/vector source deltas, generic projection work, runtime entry, prepared governed-function receipts and proposals, semantic audit, outbox, cursor, and outcome through one plan. Exact semantic-key comparison passes at prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement failures; catalogue maxima fit one physical batch; corrupt runtime substitution fails closed; and lost-acknowledgement recovery consumes the durable receipt without guest re-execution. | H-04/H-05 must complete same-stamp effect authorization plus identity/trace parity across embedded and transport paths. |
 | Arrow conversion | Materialized `QueryRow` values are converted into newly allocated typed Arrow arrays. | Stream eligible segment buffers and bounded decoded/memtable overlays through a stamped provider. |
 | DataFusion | Real bounded execution over the materialized Arrow snapshot. | Push projection/predicate/limit into rrflowKV and compose native graph/BM25/vector operators at one stamp. |
@@ -1049,6 +1093,20 @@ system's authority:
   both zero-copy-capable reads and cases requiring allocation.
 - [DataFusion custom providers](https://datafusion.apache.org/library-user-guide/custom-table-providers.html)
   separate planning-time pushdown declarations from execution-time streams.
+- [WiscKey](https://www.usenix.org/conference/fast16/technical-sessions/presentation/lu)
+  demonstrates key/value separation's write-amplification opportunity and its
+  value-log garbage-collection tradeoff; RRFlow retains it only after its own
+  manifest/snapshot/workload evidence.
+- [Techniques for Inverted Index Compression](https://pages.di.unipi.it/pibiri/papers/inverted_index_compression.pdf)
+  surveys Elias-Fano and frame-of-reference families and informs per-partition
+  posting-codec evaluation; RRFlow freezes its own representation and oracle.
+- [TurboQuant](https://arxiv.org/abs/2504.19874) defines the production
+  estimator as an MSE quantizer plus a one-bit QJL residual; RRFlow treats it
+  as a derived candidate followed by exact scoring, not canonical vector
+  truth.
+- [LSM-VEC](https://arxiv.org/abs/2505.17152) motivates an LSM-managed
+  disk-resident proximity graph; RRFlow evaluates that organization only after
+  its exact/HNSW baseline and update/recovery corpus exist.
 - [OpenTelemetry tracing](https://opentelemetry.io/docs/specs/otel/trace/api/)
   and [database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/database-spans/)
   inform low-cardinality spans, attributes, events, links, and status;
