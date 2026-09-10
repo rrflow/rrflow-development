@@ -1,4 +1,5 @@
 use rrd_lsm::{CompactionPolicy, Database, DatabaseOptions, Durability, Mutation, WriteBatch};
+use std::collections::BTreeSet;
 
 fn batch(operations: Vec<Mutation>) -> WriteBatch {
     WriteBatch::new(operations).unwrap()
@@ -15,6 +16,90 @@ fn delete(key: &str) -> Mutation {
     Mutation::Delete {
         key: key.as_bytes().to_vec(),
     }
+}
+
+#[test]
+fn pinned_transaction_reads_survive_compaction_garbage_collect_cycles() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("database");
+    let mut database = Database::create_with_options(
+        &root,
+        DatabaseOptions {
+            compaction: CompactionPolicy {
+                l0_compaction_trigger: 2,
+                ..CompactionPolicy::default()
+            },
+            ..DatabaseOptions::default()
+        },
+    )
+    .unwrap();
+
+    database
+        .write(
+            &batch(vec![put("shared", "old")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(10).unwrap();
+
+    let historical = database.begin_transaction().unwrap();
+    database
+        .write(
+            &batch(vec![put("shared", "new")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(20).unwrap();
+    database
+        .write(
+            &batch(vec![put("other", "fresh")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(30).unwrap();
+
+    let before_compaction = database
+        .manifest()
+        .segments
+        .iter()
+        .map(|segment| segment.id.clone())
+        .collect::<BTreeSet<_>>();
+    assert!(before_compaction.len() >= 2);
+
+    let outcome = database.compact(&[], 40).unwrap().unwrap();
+    assert!(outcome.input_segments >= 2);
+    assert!(outcome.output_segments >= 1);
+
+    let after_compaction = database
+        .manifest()
+        .segments
+        .iter()
+        .map(|segment| segment.id.clone())
+        .collect::<BTreeSet<_>>();
+    assert!(!after_compaction.is_empty());
+
+    assert_eq!(
+        historical.get(&database, b"shared").unwrap(),
+        Some(b"old".to_vec())
+    );
+    let gc = database.garbage_collect().unwrap();
+    let removed_expected = before_compaction
+        .difference(&after_compaction)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|segment| segment.as_str())
+        .collect::<Vec<_>>();
+    assert!(
+        removed_expected
+            .iter()
+            .all(|segment| gc.removed_segments.contains(&format!("{segment}.seg"))),
+        "expected every pre-compaction segment not in current manifest to be deleted"
+    );
+    assert_eq!(
+        historical.get(&database, b"shared").unwrap(),
+        Some(b"old".to_vec())
+    );
+    historical.rollback().unwrap();
 }
 
 #[test]
