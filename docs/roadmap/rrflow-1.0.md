@@ -108,8 +108,8 @@ row-record immutable segments with segment v4's ordered key/version spine plus
 six Arrow-layout page buffers, manifest-authenticated format identities, safe
 mmap ownership, and page-level physical counters. C-06 remains unchecked while
 its selective provider interface, property/fuzz differential corpus,
-mixed-family interference, compression/value-placement decision, configurable
-budgets, and comparative evidence remain open.
+mixed-family interference, compression/value-placement decision, and
+comparative evidence remain open.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -1066,6 +1066,11 @@ C-06 progress evidence (2026-09-10; gate remains open):
   copies. Page evidence distinguishes read, decoded, borrowed, allocated,
   copied, decompressed, cached, and filter activity. No end-to-end DataFusion
   zero-copy claim is made.
+- `DatabaseOptions::segment_row_group_budget` now supplies validated byte and
+  row targets to every new flush and compaction output. Each segment
+  authenticates those targets in its header, so historical generations remain
+  self-describing when future writer configuration changes; the checked-in
+  default-format vector remains byte-identical.
 - Exact point/range/MVCC comparisons, a version chain larger than one row-group
   target, page corruption, post-open tampering, cache bounds, mmap/bounded/
   io_uring ownership, snapshot, and compaction suites exercise this slice. Two
@@ -1074,8 +1079,8 @@ C-06 progress evidence (2026-09-10; gate remains open):
   maximum sequence instead of inheriting an unrelated durable watermark.
 - C-06 is not accepted. Remaining evidence is a property/fuzz differential
   corpus, provider-facing selective projection without open-time hidden I/O,
-  configurable row-group budgets, mixed semantic-family interference, and
-  fixed-hardware comparison of no compression against adaptive page codecs,
+  mixed semantic-family interference, and fixed-hardware comparison of no
+  compression against adaptive page codecs,
   optional value separation, persisted filters, and page-cache policies.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and

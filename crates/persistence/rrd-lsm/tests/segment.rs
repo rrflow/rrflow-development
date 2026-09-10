@@ -1,4 +1,7 @@
-use rrd_lsm::{Durability, Error, Memtable, Mutation, Segment, WalWriter, WriteBatch};
+use rrd_lsm::{
+    Database, DatabaseOptions, Durability, Error, Memtable, Mutation, Segment,
+    SegmentRowGroupBudget, WalWriter, WriteBatch,
+};
 use std::io::{Seek, SeekFrom, Write};
 
 fn table() -> Memtable {
@@ -317,6 +320,217 @@ fn versions_remain_exact_when_one_key_exceeds_the_row_group_target() {
                 .unwrap(),
             Some(vec![(sequence - 1) as u8; 1024])
         );
+    }
+}
+
+#[test]
+fn configured_row_group_row_budget_applies_to_flush_compaction_and_reopen() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("database");
+    let budget = SegmentRowGroupBudget {
+        max_rows: 2,
+        target_bytes: 1024 * 1024,
+    };
+    let options = DatabaseOptions {
+        segment_row_group_budget: budget,
+        ..DatabaseOptions::default()
+    };
+    let mut database = Database::create_with_options(&root, options).unwrap();
+    assert_eq!(database.segment_row_group_budget(), budget);
+
+    let first = (0..6)
+        .map(|index| Mutation::Put {
+            key: format!("key:{index:02}").into_bytes(),
+            value: format!("first:{index}").into_bytes(),
+        })
+        .collect();
+    database
+        .write_owned(WriteBatch::new(first).unwrap(), Durability::Authoritative)
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+
+    let first_descriptor = database.manifest().segments[0].clone();
+    let first_segment = Segment::open(
+        &root
+            .join("segments")
+            .join(format!("{}.seg", first_descriptor.id)),
+    )
+    .unwrap();
+    assert_eq!(first_segment.row_group_budget(), budget);
+    assert_eq!(first_segment.row_group_count(), 3);
+
+    let second = (0..6)
+        .map(|index| Mutation::Put {
+            key: format!("key:{index:02}").into_bytes(),
+            value: format!("second:{index}").into_bytes(),
+        })
+        .collect();
+    database
+        .write_owned(WriteBatch::new(second).unwrap(), Durability::Authoritative)
+        .unwrap();
+    database.flush_memtable(2).unwrap();
+    let snapshot = database.snapshot();
+    let outcome = database.compact(&[], 3).unwrap().unwrap();
+    assert_eq!(outcome.output_segments, 1);
+
+    let compacted_descriptor = database.manifest().segments[0].clone();
+    let compacted = Segment::open(
+        &root
+            .join("segments")
+            .join(format!("{}.seg", compacted_descriptor.id)),
+    )
+    .unwrap();
+    assert_eq!(compacted.row_group_budget(), budget);
+    assert_eq!(compacted.row_group_count(), 3);
+    assert_eq!(
+        database.get(b"key:03", snapshot).unwrap(),
+        Some(b"second:3".to_vec())
+    );
+
+    drop(database);
+    let reopened = Database::open_with_options(&root, options).unwrap();
+    assert_eq!(reopened.segment_row_group_budget(), budget);
+    assert_eq!(
+        reopened.get(b"key:03", snapshot).unwrap(),
+        Some(b"second:3".to_vec())
+    );
+    drop(reopened);
+
+    let reopened_with_new_writer_defaults = Database::open(&root).unwrap();
+    assert_eq!(
+        reopened_with_new_writer_defaults.segment_row_group_budget(),
+        SegmentRowGroupBudget::default()
+    );
+    assert_eq!(
+        reopened_with_new_writer_defaults
+            .get(b"key:03", snapshot)
+            .unwrap(),
+        Some(b"second:3".to_vec())
+    );
+}
+
+#[test]
+fn configured_row_group_byte_budget_splits_only_at_key_boundaries() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("database");
+    let budget = SegmentRowGroupBudget {
+        max_rows: 100,
+        target_bytes: 256,
+    };
+    let mut database = Database::create_with_options(
+        &root,
+        DatabaseOptions {
+            segment_row_group_budget: budget,
+            ..DatabaseOptions::default()
+        },
+    )
+    .unwrap();
+    let operations = (0u8..4)
+        .flat_map(|index| {
+            [0u8, 1].map(move |version| Mutation::Put {
+                key: format!("key:{index:02}").into_bytes(),
+                value: vec![index * 2 + version; 96],
+            })
+        })
+        .collect();
+    database
+        .write_owned(
+            WriteBatch::new(operations).unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+
+    let descriptor = database.manifest().segments[0].clone();
+    let segment =
+        Segment::open(&root.join("segments").join(format!("{}.seg", descriptor.id))).unwrap();
+    assert_eq!(segment.row_group_budget(), budget);
+    assert_eq!(segment.row_group_count(), 4);
+    for sequence in 1..=8 {
+        for index in 0u8..4 {
+            let key = format!("key:{index:02}");
+            let first_sequence = u64::from(index) * 2 + 1;
+            let expected = if sequence < first_sequence {
+                None
+            } else {
+                let version = u8::from(sequence > first_sequence);
+                Some(vec![index * 2 + version; 96])
+            };
+            assert_eq!(
+                segment.get(key.as_bytes(), sequence).unwrap(),
+                expected,
+                "key {key} at sequence {sequence}"
+            );
+        }
+    }
+}
+
+#[test]
+fn invalid_configured_and_authenticated_row_group_budgets_fail_closed() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut invalid_budgets = vec![
+        (
+            "zero-rows",
+            SegmentRowGroupBudget {
+                max_rows: 0,
+                target_bytes: 1024,
+            },
+        ),
+        (
+            "zero-bytes",
+            SegmentRowGroupBudget {
+                max_rows: 1,
+                target_bytes: 0,
+            },
+        ),
+        (
+            "over-segment-bytes",
+            SegmentRowGroupBudget {
+                max_rows: 1,
+                target_bytes: 1024 * 1024 * 1024 + 1,
+            },
+        ),
+    ];
+    if let Ok(max_rows) = usize::try_from(u64::from(u32::MAX) + 1) {
+        invalid_budgets.push((
+            "unrepresentable-rows",
+            SegmentRowGroupBudget {
+                max_rows,
+                target_bytes: 1024,
+            },
+        ));
+    }
+    for (name, budget) in invalid_budgets {
+        let root = directory.path().join(name);
+        let result = Database::create_with_options(
+            &root,
+            DatabaseOptions {
+                segment_row_group_budget: budget,
+                ..DatabaseOptions::default()
+            },
+        );
+        assert!(matches!(result, Err(Error::InvalidConfiguration(_))));
+        assert!(!root.exists(), "invalid options must not create storage");
+    }
+
+    let segments = directory.path().join("segments");
+    let (_, path) = Segment::write_from_memtable(&segments, &table()).unwrap();
+    let original = std::fs::read(path).unwrap();
+    for (name, field, value) in [
+        ("zero-authenticated-bytes", 160, 0),
+        ("zero-authenticated-rows", 168, 0),
+        ("over-authenticated-bytes", 160, 1024 * 1024 * 1024 + 1),
+        ("over-authenticated-rows", 168, u64::from(u32::MAX) + 1),
+    ] {
+        let mut bytes = original.clone();
+        bytes[field..field + 8].copy_from_slice(&value.to_le_bytes());
+        rewrite_checksum(&mut bytes);
+        let path = directory.path().join(format!("{name}.seg"));
+        std::fs::write(&path, bytes).unwrap();
+        assert!(matches!(
+            Segment::open(&path),
+            Err(Error::InvalidSegment(_))
+        ));
     }
 }
 

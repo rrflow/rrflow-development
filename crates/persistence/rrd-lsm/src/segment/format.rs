@@ -1,4 +1,5 @@
 use crate::{Error, Memtable, Result, SegmentDescriptor, VersionedValue};
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, SeekFrom};
 
 pub const SEGMENT_FORMAT_VERSION: u16 = 4;
@@ -28,6 +29,40 @@ pub const SEGMENT_KEY_CODEC_DIGEST: &str =
     "542c8fdcc2419e2b8de3b54d85e4d1fc168d4c8705acceaa1b196883a20938da";
 pub const SEGMENT_PAGE_FORMAT_DIGEST: &str =
     "4992b28a9b9c8087d0290a6d57f3037da50d95e653baa87484df61fe748be151";
+
+/// Soft limits used when a mutable key/version table is transformed into
+/// immutable Arrow-layout row groups. A complete version chain for one key is
+/// indivisible and may therefore exceed either limit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SegmentRowGroupBudget {
+    pub max_rows: usize,
+    pub target_bytes: usize,
+}
+
+impl Default for SegmentRowGroupBudget {
+    fn default() -> Self {
+        Self {
+            max_rows: DEFAULT_ROW_GROUP_MAX_ROWS,
+            target_bytes: DEFAULT_ROW_GROUP_TARGET_BYTES,
+        }
+    }
+}
+
+impl SegmentRowGroupBudget {
+    pub(crate) fn validate(self) -> Result<Self> {
+        let target_bytes = u64::try_from(self.target_bytes).ok();
+        if self.max_rows == 0
+            || self.max_rows > u32::MAX as usize
+            || self.target_bytes == 0
+            || target_bytes.is_none_or(|bytes| bytes > MAX_SEGMENT_BYTES)
+        {
+            return Err(Error::InvalidConfiguration(
+                "segment row-group target bytes must fit within the segment limit and max rows must fit u32; both must be non-zero".into(),
+            ));
+        }
+        Ok(self)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -148,6 +183,7 @@ pub(super) struct EncodedSegment {
 
 pub(super) struct ParsedMetadata {
     pub descriptor: SegmentDescriptor,
+    pub row_group_budget: SegmentRowGroupBudget,
     pub row_groups: Vec<RowGroupDescriptor>,
 }
 
@@ -234,7 +270,11 @@ impl RowGroupBuilder {
     }
 }
 
-pub(super) fn encode(table: &Memtable) -> Result<EncodedSegment> {
+pub(super) fn encode(
+    table: &Memtable,
+    row_group_budget: SegmentRowGroupBudget,
+) -> Result<EncodedSegment> {
+    let row_group_budget = row_group_budget.validate()?;
     if table.version_count() == 0 {
         return invalid("cannot write an empty segment");
     }
@@ -264,9 +304,9 @@ pub(super) fn encode(table: &Memtable) -> Result<EncodedSegment> {
                 .ok_or_else(|| Error::InvalidSegment("v4 row-group estimate overflow".into()))
         })?;
         if current.rows() > 0
-            && (current.rows().saturating_add(versions.len()) > DEFAULT_ROW_GROUP_MAX_ROWS
+            && (current.rows().saturating_add(versions.len()) > row_group_budget.max_rows
                 || current.estimated_bytes().saturating_add(key_bytes)
-                    > DEFAULT_ROW_GROUP_TARGET_BYTES)
+                    > row_group_budget.target_bytes)
         {
             let next = current
                 .row_start
@@ -412,8 +452,8 @@ pub(super) fn encode(table: &Memtable) -> Result<EncodedSegment> {
     output[64..96].copy_from_slice(&decode_fixed_digest(SEGMENT_SCHEMA_DIGEST));
     output[96..128].copy_from_slice(&decode_fixed_digest(SEGMENT_KEY_CODEC_DIGEST));
     output[128..160].copy_from_slice(&decode_fixed_digest(SEGMENT_PAGE_FORMAT_DIGEST));
-    output[160..168].copy_from_slice(&(DEFAULT_ROW_GROUP_TARGET_BYTES as u64).to_le_bytes());
-    output[168..176].copy_from_slice(&(DEFAULT_ROW_GROUP_MAX_ROWS as u64).to_le_bytes());
+    output[160..168].copy_from_slice(&(row_group_budget.target_bytes as u64).to_le_bytes());
+    output[168..176].copy_from_slice(&(row_group_budget.max_rows as u64).to_le_bytes());
 
     let checksum = sha256_hex(&output);
     output.extend_from_slice(checksum.as_bytes());
@@ -450,6 +490,7 @@ pub(super) fn parse_metadata(
     let index_offset = read_u64(&header, 48)?;
     let index_bytes = usize::try_from(read_u64(&header, 56)?)
         .map_err(|_| Error::InvalidSegment("v4 index length exceeds usize".into()))?;
+    let row_group_budget = decode_row_group_budget(&header)?;
     let content_end = physical_bytes - FOOTER_BYTES as u64;
     if entries == 0
         || minimum_sequence == 0
@@ -459,8 +500,6 @@ pub(super) fn parse_metadata(
         || index_offset % PAGE_ALIGNMENT as u64 != 0
         || !(INDEX_HEADER_BYTES..=MAX_INDEX_BYTES).contains(&index_bytes)
         || index_offset.checked_add(index_bytes as u64) != Some(content_end)
-        || read_u64(&header, 160)? as usize != DEFAULT_ROW_GROUP_TARGET_BYTES
-        || read_u64(&header, 168)? as usize != DEFAULT_ROW_GROUP_MAX_ROWS
     {
         return invalid("v4 segment header contract is invalid");
     }
@@ -587,7 +626,26 @@ pub(super) fn parse_metadata(
             bytes: physical_bytes,
             checksum,
         },
+        row_group_budget,
         row_groups,
+    })
+}
+
+fn decode_row_group_budget(header: &[u8]) -> Result<SegmentRowGroupBudget> {
+    let target_bytes = usize::try_from(read_u64(header, 160)?)
+        .map_err(|_| Error::InvalidSegment("v4 row-group byte target exceeds usize".into()))?;
+    let max_rows = usize::try_from(read_u64(header, 168)?)
+        .map_err(|_| Error::InvalidSegment("v4 row-group row limit exceeds usize".into()))?;
+    if target_bytes == 0
+        || target_bytes as u64 > MAX_SEGMENT_BYTES
+        || max_rows == 0
+        || max_rows > u32::MAX as usize
+    {
+        return invalid("v4 segment row-group budget is invalid");
+    }
+    Ok(SegmentRowGroupBudget {
+        max_rows,
+        target_bytes,
     })
 }
 

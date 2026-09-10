@@ -145,10 +145,12 @@ The first C-06 slice has reached the common immutable-page foundation. Its
 [current physical-format reference](../reference/storage/rrflowkv-current-format.md)
 records segment v4's ordered spine, six Arrow-layout buffers, authenticated
 format identities, page ownership/copy counters, frozen bytes, and explicit
-rejection of earlier segments. C-06 remains open because selective provider
-projection, property/fuzz differential evidence, mixed-family interference,
-configurable row-group budgets, persisted-filter/open-cost resolution, and the
-measured compression/value-placement/cache decision are not complete.
+rejection of earlier segments. Validated row/byte targets now govern new flush
+and compaction outputs and remain authenticated per segment so older
+generations are self-describing when the writer configuration changes. C-06
+remains open because selective provider projection, property/fuzz differential
+evidence, mixed-family interference, persisted-filter/open-cost resolution,
+and the measured compression/value-placement/cache decision are not complete.
 
 ## Conditional zero-copy
 
@@ -1056,7 +1058,7 @@ compile cannot substitute for this proof.
 | Concern | Present checkout | Required target |
 |---|---|---|
 | rrflowKV writes and hot reads | Checksummed WAL frames, mutable MVCC version chains, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, derived row-group filters, a byte-bounded immutable-page cache, ownership/copy physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04 behavior while C-06 completes selective projection and measured physical policy; C-07 qualifies recovery, maintenance, and mapped-buffer lifetime; F-05 decides final cache admission from measurements. |
-| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v4 read path. Segment v4 stores a strict ordered key/version spine in six aligned Arrow-layout buffers per row group; descriptors authenticate types, encoding/compression metadata, bounds, statistics, and page digests. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3 fail unsupported before alternate decoding. | C-06 must add property/fuzz differential, selective projected-page streaming and open-I/O evidence, configurable grouping, mixed-family interference, and comparative compression/value-placement/filter/cache decisions. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime. |
+| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v4 read path. Segment v4 stores a strict ordered key/version spine in six aligned Arrow-layout buffers per row group; validated configurable row/byte targets apply to flush and compaction and are authenticated in each segment. Descriptors authenticate types, encoding/compression metadata, bounds, statistics, and page digests. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3 fail unsupported before alternate decoding. | C-06 must add property/fuzz differential, selective projected-page streaming and open-I/O evidence, mixed-family interference, and comparative compression/value-placement/filter/cache decisions. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime. |
 | Transactions, identity, and audit | C-02 supplies one snapshot-isolation point/range/write transaction and one set of repositories for rrflowMX and rrflowKV. Accepted C-03 publishes record/relation temporal state, both adjacency directions, schema-bound scalar/unique changes, BM25/vector source deltas, generic projection work, runtime entry, prepared governed-function receipts and proposals, semantic audit, outbox, cursor, and outcome through one plan. Exact semantic-key comparison passes at prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement failures; catalogue maxima fit one physical batch; corrupt runtime substitution fails closed; and lost-acknowledgement recovery consumes the durable receipt without guest re-execution. | H-04/H-05 must complete same-stamp effect authorization plus identity/trace parity across embedded and transport paths. |
 | Arrow conversion | Materialized `QueryRow` values are converted into newly allocated typed Arrow arrays. | Stream eligible segment buffers and bounded decoded/memtable overlays through a stamped provider. |
 | DataFusion | Real bounded execution over the materialized Arrow snapshot. | Push projection/predicate/limit into rrflowKV and compose native graph/BM25/vector operators at one stamp. |

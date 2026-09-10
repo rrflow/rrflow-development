@@ -3,8 +3,9 @@ use crate::segment::{new_page_cache, page_cache_stats, SharedPageCache};
 use crate::wal::replay_from;
 use crate::{
     recover_from, AppendReceipt, Checkpoint, Durability, Error, Manifest, ManifestStore, Memtable,
-    Result, Segment, SegmentIoPolicy, SegmentIoStats, SnapshotBundle, SnapshotBundleFile,
-    SnapshotExportBoundary, SnapshotSegment, VersionedValue, WalWriter, WriteBatch,
+    Result, Segment, SegmentIoPolicy, SegmentIoStats, SegmentRowGroupBudget, SnapshotBundle,
+    SnapshotBundleFile, SnapshotExportBoundary, SnapshotSegment, VersionedValue, WalWriter,
+    WriteBatch,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -93,6 +94,7 @@ impl CompactionPolicy {
 pub struct DatabaseOptions {
     pub page_cache_bytes: usize,
     pub segment_io: SegmentIoPolicy,
+    pub segment_row_group_budget: SegmentRowGroupBudget,
     pub maintenance: MaintenancePolicy,
     pub compaction: CompactionPolicy,
 }
@@ -102,6 +104,7 @@ impl Default for DatabaseOptions {
         Self {
             page_cache_bytes: crate::DEFAULT_PAGE_CACHE_BYTES,
             segment_io: SegmentIoPolicy::default(),
+            segment_row_group_budget: SegmentRowGroupBudget::default(),
             maintenance: MaintenancePolicy::default(),
             compaction: CompactionPolicy::default(),
         }
@@ -111,6 +114,7 @@ impl Default for DatabaseOptions {
 impl DatabaseOptions {
     fn validate(self) -> Result<Self> {
         self.segment_io.validate()?;
+        self.segment_row_group_budget.validate()?;
         self.maintenance.validate()?;
         self.compaction.validate()?;
         Ok(self)
@@ -279,6 +283,7 @@ pub struct Database {
     segments: Vec<Segment>,
     page_cache: SharedPageCache,
     segment_io: SharedIoContext,
+    segment_row_group_budget: SegmentRowGroupBudget,
     maintenance: MaintenancePolicy,
     compaction: CompactionPolicy,
     maintenance_stats: MaintenanceStats,
@@ -353,6 +358,7 @@ impl Database {
             segments: Vec::new(),
             page_cache: new_page_cache(options.page_cache_bytes),
             segment_io,
+            segment_row_group_budget: options.segment_row_group_budget,
             maintenance: options.maintenance,
             compaction: options.compaction,
             maintenance_stats: MaintenanceStats::default(),
@@ -438,6 +444,8 @@ impl Database {
             segments_ms,
             wal_recovery_ms,
             wal_payload_bytes,
+            row_group_target_bytes = options.segment_row_group_budget.target_bytes,
+            row_group_max_rows = options.segment_row_group_budget.max_rows,
             total_ms = total_started.elapsed().as_millis() as u64,
             "rrflowKV LSM open phases completed"
         );
@@ -450,6 +458,7 @@ impl Database {
             segments,
             page_cache,
             segment_io,
+            segment_row_group_budget: options.segment_row_group_budget,
             maintenance: options.maintenance,
             compaction: options.compaction,
             maintenance_stats,
@@ -849,6 +858,7 @@ impl Database {
         let (segment, _) = Segment::write_from_memtable_with_cache(
             &self.root.join(SEGMENT_DIRECTORY),
             &self.memtable,
+            self.segment_row_group_budget,
             Arc::clone(&self.page_cache),
             Arc::clone(&self.segment_io),
         )?;
@@ -1568,6 +1578,7 @@ impl Database {
         let (mut segment, _) = Segment::write_from_memtable_with_cache(
             &self.root.join(SEGMENT_DIRECTORY),
             &table,
+            self.segment_row_group_budget,
             Arc::clone(&self.page_cache),
             Arc::clone(&self.segment_io),
         )?;
@@ -1811,6 +1822,10 @@ impl Database {
 
     pub fn compaction_policy(&self) -> CompactionPolicy {
         self.compaction
+    }
+
+    pub fn segment_row_group_budget(&self) -> SegmentRowGroupBudget {
+        self.segment_row_group_budget
     }
 
     pub fn l0_segment_count(&self) -> usize {

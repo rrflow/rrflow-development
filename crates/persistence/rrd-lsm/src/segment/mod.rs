@@ -21,8 +21,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 pub use self::format::{
-    DEFAULT_ROW_GROUP_MAX_ROWS, DEFAULT_ROW_GROUP_TARGET_BYTES, SEGMENT_FORMAT_VERSION,
-    SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST, SEGMENT_SCHEMA_DIGEST,
+    SegmentRowGroupBudget, DEFAULT_ROW_GROUP_MAX_ROWS, DEFAULT_ROW_GROUP_TARGET_BYTES,
+    SEGMENT_FORMAT_VERSION, SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST,
+    SEGMENT_SCHEMA_DIGEST,
 };
 
 pub const DEFAULT_PAGE_CACHE_BYTES: usize = 4 * 1024 * 1024;
@@ -225,6 +226,7 @@ fn filter_hash(key: &[u8], seed: u64) -> u64 {
 
 pub struct Segment {
     pub descriptor: SegmentDescriptor,
+    row_group_budget: SegmentRowGroupBudget,
     source: PageSource,
     row_groups: Vec<RowGroupDescriptor>,
     filters: Vec<RowGroupFilter>,
@@ -237,6 +239,7 @@ impl fmt::Debug for Segment {
         formatter
             .debug_struct("Segment")
             .field("descriptor", &self.descriptor)
+            .field("row_group_budget", &self.row_group_budget)
             .field("row_group_count", &self.row_group_count())
             .finish()
     }
@@ -285,6 +288,7 @@ impl Segment {
         Self::write_from_memtable_with_cache(
             directory,
             table,
+            SegmentRowGroupBudget::default(),
             new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
             IoContext::new(SegmentIoPolicy::default())?,
         )
@@ -293,10 +297,11 @@ impl Segment {
     pub(crate) fn write_from_memtable_with_cache(
         directory: &Path,
         table: &Memtable,
+        row_group_budget: SegmentRowGroupBudget,
         cache: SharedPageCache,
         io: SharedIoContext,
     ) -> Result<(Self, PathBuf)> {
-        let encoded = encode(table)?;
+        let encoded = encode(table, row_group_budget)?;
         let path = directory.join(format!("{}.seg", encoded.checksum));
         std::fs::create_dir_all(directory)?;
         if path.exists() {
@@ -353,6 +358,7 @@ impl Segment {
         let source = open_page_source(file, io)?;
         let source_ms = source_started.elapsed().as_millis() as u64;
         let row_group_count = metadata.row_groups.len();
+        let row_group_budget = metadata.row_group_budget;
         let mut segment = build_segment(metadata, source, cache, false)?;
         segment.filters = segment.validate_all_pages()?;
         tracing::debug!(
@@ -360,6 +366,8 @@ impl Segment {
             path = %path.display(),
             physical_bytes,
             row_group_count,
+            row_group_target_bytes = row_group_budget.target_bytes,
+            row_group_max_rows = row_group_budget.max_rows,
             verify_ms,
             metadata_ms,
             source_ms,
@@ -573,6 +581,13 @@ impl Segment {
         self.row_groups.len()
     }
 
+    /// Returns the authenticated writer budget carried by this immutable
+    /// segment. Historical segments remain self-describing when the configured
+    /// budget for future flushes changes.
+    pub fn row_group_budget(&self) -> SegmentRowGroupBudget {
+        self.row_group_budget
+    }
+
     pub(crate) fn visible_from(
         &self,
         start: &[u8],
@@ -597,11 +612,9 @@ impl Segment {
                 }
                 let sequence = sequence_at(&spine, row)?;
                 if sequence <= read_sequence {
-                    let value = if values.is_none() {
-                        values = Some(self.load_value_columns(index)?);
-                        values.as_ref().expect("value columns are loaded")
-                    } else {
-                        values.as_ref().expect("value columns are loaded")
+                    let value = match values.as_ref() {
+                        Some(value) => value,
+                        None => values.insert(self.load_value_columns(index)?),
                     };
                     let version = SegmentVersion {
                         sequence,
@@ -666,11 +679,9 @@ impl Segment {
                 }
                 let sequence = sequence_at(&spine, row)?;
                 if sequence <= read_sequence {
-                    let value = if values.is_none() {
-                        values = Some(self.load_value_columns(index)?);
-                        values.as_ref().expect("value columns are loaded")
-                    } else {
-                        values.as_ref().expect("value columns are loaded")
+                    let value = match values.as_ref() {
+                        Some(value) => value,
+                        None => values.insert(self.load_value_columns(index)?),
                     };
                     let version = SegmentVersion {
                         sequence,
@@ -1056,6 +1067,7 @@ fn build_segment(
         .collect();
     Ok(Segment {
         descriptor: metadata.descriptor,
+        row_group_budget: metadata.row_group_budget,
         source,
         row_groups: metadata.row_groups,
         filters,
@@ -1451,9 +1463,14 @@ mod tests {
         let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
         let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
         let table = two_key_sample_memtable();
-        let (segment, _path) =
-            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
-                .unwrap();
+        let (segment, _path) = Segment::write_from_memtable_with_cache(
+            &segments,
+            &table,
+            SegmentRowGroupBudget::default(),
+            Arc::clone(&cache),
+            io,
+        )
+        .unwrap();
 
         assert_eq!(segment.row_group_count(), 1);
 
@@ -1479,9 +1496,14 @@ mod tests {
         let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
         let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
         let table = two_key_sample_memtable();
-        let (segment, _path) =
-            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
-                .unwrap();
+        let (segment, _path) = Segment::write_from_memtable_with_cache(
+            &segments,
+            &table,
+            SegmentRowGroupBudget::default(),
+            Arc::clone(&cache),
+            io,
+        )
+        .unwrap();
 
         let before = super::page_cache_stats(&cache);
         let visible = segment
@@ -1505,9 +1527,14 @@ mod tests {
         let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
         let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
         let table = mixed_family_memtable();
-        let (segment, _path) =
-            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
-                .unwrap();
+        let (segment, _path) = Segment::write_from_memtable_with_cache(
+            &segments,
+            &table,
+            SegmentRowGroupBudget::default(),
+            Arc::clone(&cache),
+            io,
+        )
+        .unwrap();
 
         let queries = [
             (b"".as_ref(), None),
@@ -1533,9 +1560,14 @@ mod tests {
         let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
         let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
         let table = mixed_family_memtable();
-        let (segment, _path) =
-            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
-                .unwrap();
+        let (segment, _path) = Segment::write_from_memtable_with_cache(
+            &segments,
+            &table,
+            SegmentRowGroupBudget::default(),
+            Arc::clone(&cache),
+            io,
+        )
+        .unwrap();
 
         let ranges = vec![
             (b"ctl:".to_vec(), b"doc:".to_vec()),

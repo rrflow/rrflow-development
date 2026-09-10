@@ -70,7 +70,7 @@ callers to duplicate:
 | Mutation operations per batch | 1,000,000 | `MAX_OPERATIONS` |
 | Key/value bytes | 1 MiB / 8 MiB | batch and segment validators |
 | Segment bytes / segment-index bytes | 1 GiB / 64 MiB | segment validator |
-| Row-group target / maximum rows / immutable page cache | 64 KiB / 2,048 / 4 MiB | segment writer and database default |
+| Row-group target / maximum rows / immutable page cache | 64 KiB / 2,048 / 4 MiB | configurable `SegmentRowGroupBudget` and database defaults |
 | Snapshot bundle bytes / segments | 1 GiB / 1,000,000 | snapshot-bundle validator |
 
 Before a new batch crosses either mutable threshold, the single writer runs
@@ -269,10 +269,16 @@ the `RRKV0001` ordered key grammar above remains byte-order-preserving and is
 not re-encoded by this layer.
 
 Flush emits rows in `(key ascending, sequence ascending)` order and never
-splits the complete version chain for one key across row groups. The default
-target is 64 KiB and 2,048 rows, but one key's chain may exceed either target
-within the 1 MiB key and 8 MiB value bounds. Each row group owns exactly six
-plain, currently uncompressed buffers:
+splits the complete version chain for one key across row groups.
+`DatabaseOptions::segment_row_group_budget` configures the soft byte and row
+targets used by both flush and compaction; the defaults are 64 KiB and 2,048
+rows. Both values must be non-zero, the byte target cannot exceed the 1 GiB
+segment limit, and the row target must fit `u32`; invalid configuration fails
+before creating storage. Each segment authenticates its selected targets in
+the v4 header, so historical segments remain self-describing if a later open
+selects different targets for future writes. One key's chain may exceed either
+target within the 1 MiB key and 8 MiB value bounds. Each row group owns exactly
+six plain, currently uncompressed buffers:
 
 | Page | Arrow-compatible representation | Point-read role |
 |---|---|---|
@@ -428,11 +434,11 @@ C-05's lower source, dependency, opener, physical-reader, and upper-shape
 closure evidence is recorded in its execution journals; C-05d records the
 audit correction that forced C-05e through C-05h before the gate could close.
 The optional post-alpha cluster implementation remains unqualified under
-POAM-023. The v4 segment vector, direct MVCC comparisons, and ownership
-counters are now concrete C-06 evidence. C-06 remains open for property/fuzz
-differential coverage, a selective projected-page interface and counters,
-mixed-family interference, configurable row-group budgets, persisted-filter
-or open-cost resolution, and fixed-hardware compression/value-placement/cache
-comparisons. Gate F separately requires a stamped streamed DataFusion provider
+POAM-023. The v4 segment vector, direct MVCC comparisons, configurable
+authenticated row-group targets, and ownership counters are now concrete C-06
+evidence. C-06 remains open for property/fuzz differential coverage, a
+selective projected-page interface and counters, mixed-family interference,
+persisted-filter or open-cost resolution, and fixed-hardware
+compression/value-placement/cache comparisons. Gate F separately requires a stamped streamed DataFusion provider
 with projection/predicate/budget evidence. Passing this suite cannot close
 those remaining gates by itself.
