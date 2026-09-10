@@ -149,10 +149,12 @@ post-alpha OpenRaft implementation remains an explicit POA&M item and is not
 part of the alpha composition. C-06 is active: segment v4 now supplies the
 ordered key/version spine, six Arrow-layout page buffers, authenticated format
 identities, measured mapped-versus-allocated ownership, and authenticated
-configurable row-group targets applied by flush and compaction. C-06 remains
-open for selective projection, property/fuzz and mixed-family evidence, and
-the measured compression/value-placement/cache decision. This is not yet
-proof of the complete hybrid format, native graph/BM25/vector access paths,
+configurable row-group targets applied by flush and compaction. A generated
+mixed-family MVCC corpus now checks exact reads across flush, reopen, protected
+compaction, and a second reopen, while malformed segment bytes fail closed.
+C-06 remains open for selective projection, broader adversarial/fuzz evidence,
+and measured compression/value-placement/filter/cache decisions. This is not
+yet proof of the complete hybrid format, native graph/BM25/vector access paths,
 streamed DataFusion, turnkey installation, or persistent reasoning/recall.
 
 The executable baseline is not an installed product. A locked Linux release

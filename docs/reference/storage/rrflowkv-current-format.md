@@ -417,6 +417,7 @@ cargo test -p rrd-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_
 cargo test -p rrd-lsm --test manifest current_publication_is_ordered_content_addressed_and_compare_and_swap -- --exact
 cargo test -p rrd-lsm --test segment v4_bytes_match_the_checked_in_format_vector -- --exact
 cargo test -p rrd-lsm --test segment v4_rejects_authenticated_length_flags_and_page_corruption -- --exact
+cargo test -p rrd-lsm --test hybrid_segment --locked
 cargo test -p rrd-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
 cargo test -p rrd-lsm --test snapshot_bundle physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes -- --exact
 cargo test -p rrd-lsm
@@ -434,11 +435,12 @@ C-05's lower source, dependency, opener, physical-reader, and upper-shape
 closure evidence is recorded in its execution journals; C-05d records the
 audit correction that forced C-05e through C-05h before the gate could close.
 The optional post-alpha cluster implementation remains unqualified under
-POAM-023. The v4 segment vector, direct MVCC comparisons, configurable
-authenticated row-group targets, and ownership counters are now concrete C-06
-evidence. C-06 remains open for property/fuzz differential coverage, a
-selective projected-page interface and counters, mixed-family interference,
-persisted-filter or open-cost resolution, and fixed-hardware
-compression/value-placement/cache comparisons. Gate F separately requires a stamped streamed DataFusion provider
+POAM-023. The v4 segment vector, fixed and generated mixed-family MVCC
+comparisons, configurable authenticated row-group targets, malformed-byte
+denial, and ownership counters are now concrete C-06 evidence. C-06 remains
+open for broader adversarial/fuzz coverage, a selective projected-page
+interface with separated segment-open/store-reconciliation/query counters,
+persisted-filter or open-cost resolution, and fixed-hardware compression,
+value-placement, mixed-workload, and cache comparisons. Gate F separately requires a stamped streamed DataFusion provider
 with projection/predicate/budget evidence. Passing this suite cannot close
 those remaining gates by itself.

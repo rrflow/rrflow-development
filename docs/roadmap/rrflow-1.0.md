@@ -112,10 +112,11 @@ Wave 8.
 The active executable item is **C-06**. Its first bounded slice has replaced
 row-record immutable segments with segment v4's ordered key/version spine plus
 six Arrow-layout page buffers, manifest-authenticated format identities, safe
-mmap ownership, and page-level physical counters. C-06 remains unchecked while
-its selective provider interface, property/fuzz differential corpus,
-mixed-family interference, compression/value-placement decision, and
-comparative evidence remain open.
+mmap ownership, page-level physical counters, and a generated mixed-family
+MVCC/reopen/compaction differential with malformed-byte rejection. C-06 remains
+unchecked while its selective provider interface, broader adversarial/fuzz
+coverage, compression/value-placement/filter/cache decisions, and comparative
+evidence remain open.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -1087,10 +1088,18 @@ C-06 progress evidence (2026-09-10; gate remains open):
   implementation failures surfaced and were fixed: all-tombstone groups need
   a full Arrow validity bitmap, and compaction outputs must derive their actual
   maximum sequence instead of inheriting an unrelated durable watermark.
-- C-06 is not accepted. Remaining evidence is a property/fuzz differential
-  corpus, provider-facing selective projection without open-time hidden I/O,
-  mixed semantic-family interference, and fixed-hardware comparison of no
-  compression against adaptive page codecs,
+- `hybrid_segment.rs` now runs four fixed-seed histories (384 generated
+  mutations) across control, graph-edge, record, lexical-term, and vector key
+  families. An independent ordered model checks point, batched-point, full,
+  bounded, and disjoint multi-range reads at every committed snapshot before
+  and after reopen, then at protected snapshots after pruning compaction and a
+  second reopen. Four row/byte budgets remain authenticated, reopen performs no
+  semantic-page reads before a query, and 75 deterministic malformed or
+  truncated segment files fail closed without a parser panic.
+- C-06 is not accepted. Remaining evidence is broader adversarial/fuzz
+  coverage, provider-facing selective projection with separated segment-open,
+  store-reconciliation, and query I/O, and fixed-hardware comparison of no
+  compression against adaptive page codecs and mixed-family workloads,
   optional value separation, persisted filters, and page-cache policies.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
