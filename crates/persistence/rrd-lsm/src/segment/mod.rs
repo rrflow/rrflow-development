@@ -1346,6 +1346,7 @@ fn invalid<T>(reason: impl Into<String>) -> Result<T> {
 mod tests {
     use super::*;
     use crate::{Durability, Mutation, WalWriter, WriteBatch};
+    use std::collections::BTreeMap;
 
     fn two_key_sample_memtable() -> Memtable {
         let directory = tempfile::tempdir().unwrap();
@@ -1370,6 +1371,77 @@ mod tests {
 
         let recovery = crate::recover(&wal_path).unwrap();
         Memtable::recover(&recovery.batches).unwrap()
+    }
+
+    fn mixed_family_memtable() -> Memtable {
+        let mut versions = BTreeMap::<Vec<u8>, Vec<VersionedValue>>::new();
+        versions.insert(
+            b"ctl:alpha".to_vec(),
+            vec![
+                VersionedValue {
+                    sequence: 1,
+                    value: Some(b"ctl-v1".as_ref().into()),
+                },
+                VersionedValue {
+                    sequence: 7,
+                    value: None,
+                },
+            ],
+        );
+        versions.insert(
+            b"doc:alpha".to_vec(),
+            vec![VersionedValue {
+                sequence: 2,
+                value: Some(b"doc-v1".as_ref().into()),
+            }],
+        );
+        versions.insert(
+            b"doc:beta".to_vec(),
+            vec![
+                VersionedValue {
+                    sequence: 3,
+                    value: None,
+                },
+                VersionedValue {
+                    sequence: 5,
+                    value: Some(b"doc-v2".as_ref().into()),
+                },
+            ],
+        );
+        versions.insert(
+            b"edge:alpha".to_vec(),
+            vec![VersionedValue {
+                sequence: 4,
+                value: Some(b"edge-v1".as_ref().into()),
+            }],
+        );
+        versions.insert(
+            b"vec:alpha".to_vec(),
+            vec![VersionedValue {
+                sequence: 6,
+                value: Some(b"vec-v1".as_ref().into()),
+            }],
+        );
+        Memtable::from_versions(versions, 7).unwrap()
+    }
+
+    fn visible_ranges_oracle(
+        table: &Memtable,
+        ranges: &[(Vec<u8>, Vec<u8>)],
+        read_sequence: u64,
+    ) -> Vec<(Vec<u8>, VersionedValue)> {
+        table
+            .visible_versions(read_sequence)
+            .into_iter()
+            .filter_map(|(key, version)| {
+                ranges
+                    .iter()
+                    .find(|(start, end)| {
+                        key.as_slice() >= start.as_slice() && key.as_slice() < end.as_slice()
+                    })
+                    .map(|_| (key, version))
+            })
+            .collect()
     }
 
     #[test]
@@ -1424,5 +1496,57 @@ mod tests {
 
         assert_eq!(visible.len(), 1);
         assert_eq!(before.loads + 6 * row_groups, after.loads);
+    }
+
+    #[test]
+    fn visible_scan_matches_memtable_visibility_across_ranges_and_sequences() {
+        let directory = tempfile::tempdir().unwrap();
+        let segments = directory.path().join("segments");
+        let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
+        let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
+        let table = mixed_family_memtable();
+        let (segment, _path) =
+            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
+                .unwrap();
+
+        let queries = [
+            (b"".as_ref(), None),
+            (b"ctl:".as_ref(), Some(b"doc:".as_ref())),
+            (b"doc:".as_ref(), Some(b"edge:".as_ref())),
+            (b"edge:".as_ref(), Some(b"vec:".as_ref())),
+            (b"vec:".as_ref(), Some(b"zzz".as_ref())),
+        ];
+
+        for read_sequence in 0..=table.maximum_sequence() {
+            for (start, end) in queries {
+                let expected = table.visible_from(start, end, read_sequence);
+                let actual = segment.visible_from(start, end, read_sequence).unwrap();
+                assert_eq!(actual, expected, "sequence {read_sequence}");
+            }
+        }
+    }
+
+    #[test]
+    fn visible_ranges_match_memtable_oracle_for_mixed_families() {
+        let directory = tempfile::tempdir().unwrap();
+        let segments = directory.path().join("segments");
+        let cache = new_page_cache(DEFAULT_PAGE_CACHE_BYTES);
+        let io = IoContext::new(SegmentIoPolicy::default()).unwrap();
+        let table = mixed_family_memtable();
+        let (segment, _path) =
+            Segment::write_from_memtable_with_cache(&segments, &table, Arc::clone(&cache), io)
+                .unwrap();
+
+        let ranges = vec![
+            (b"ctl:".to_vec(), b"doc:".to_vec()),
+            (b"edge:".to_vec(), b"vec:".to_vec()),
+            (b"vec:".to_vec(), b"zzz".to_vec()),
+        ];
+
+        for read_sequence in 0..=table.maximum_sequence() {
+            let expected = visible_ranges_oracle(&table, &ranges, read_sequence);
+            let actual = segment.visible_ranges(&ranges, read_sequence).unwrap();
+            assert_eq!(actual, expected, "sequence {read_sequence}");
+        }
     }
 }
