@@ -173,6 +173,7 @@ PACKAGE_GATES: dict[str, tuple[str, ...]] = {
 }
 
 FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
+    "Cargo.toml": ("H-05", "J-01", "J-02", "J-03", "J-04", "J-05"),
     "crates/kernel/rrd-core/src/claim.rs": (
         "C-03",
         "G-02",
@@ -660,7 +661,62 @@ C04_DIRECT_READ_PATHS = {
     "sdks/typescript/tests/client.test.ts",
 }
 
+H05_OBSERVABILITY_PATHS = {
+    "crates/adapters/rrflow-cli/Cargo.toml",
+    "crates/adapters/rrflow-cli/src/command.rs",
+    "crates/adapters/rrflow-cli/src/main.rs",
+    "crates/compute/rrd-query/src/fusion.rs",
+    "crates/evaluation/rrflow-eval/Cargo.toml",
+    "crates/evaluation/rrflow-eval/src/main.rs",
+    "crates/transport/rrd-client/Cargo.toml",
+    "crates/transport/rrd-client/src/client.rs",
+    "crates/transport/rrd-client/src/lib.rs",
+    "crates/transport/rrd-client/src/operation.rs",
+    "crates/transport/rrd-client/src/transport.rs",
+    "crates/transport/rrd-client/tests/real_server.rs",
+    "crates/transport/rrd-contract/Cargo.toml",
+    "crates/transport/rrd-contract/src/diagnostic.rs",
+    "crates/transport/rrd-contract/src/lib.rs",
+    "crates/transport/rrd-contract/tests/public_contract.rs",
+}
+
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {
+    "crates/kernel/rrd-core/src/telemetry.rs": ("H-05",),
+    "crates/kernel/rrd-core/tests/telemetry_contract.rs": ("H-05", "J-02"),
+    "crates/transport/rrd-contract/src/observability.rs": ("H-05",),
+    "crates/transport/rrd-contract/fixtures/observability-v1.json": ("H-05",),
+    "crates/transport/rrd-contract/tests/observability_contract.rs": (
+        "H-05",
+        "J-02",
+    ),
+    "crates/authority/rrd-engine/src/engine/observability/mod.rs": ("H-05",),
+    "crates/authority/rrd-engine/src/engine/observability/trace.rs": ("H-05",),
+    "crates/authority/rrd-engine/src/engine/observability/metrics.rs": ("H-05",),
+    "crates/authority/rrd-engine/src/engine/observability/capture.rs": ("H-05",),
+    "crates/authority/rrd-engine/tests/observability_conformance.rs": (
+        "H-05",
+        "J-02",
+    ),
+    "crates/transport/rrd-server/src/observability.rs": ("H-05",),
+    "crates/transport/rrd-server/src/http/trace_context.rs": ("H-05",),
+    "crates/transport/rrd-server/tests/observability_process.rs": (
+        "H-05",
+        "J-02",
+    ),
+    "crates/transport/rrd-client/src/trace_context.rs": ("H-05",),
+    "crates/adapters/rrflow-cli/src/diagnostics.rs": ("D-01", "H-05", "J-03"),
+    "crates/adapters/rrflow-cli/tests/diagnostic_identity.rs": (
+        "D-01",
+        "H-05",
+        "J-02",
+        "J-03",
+    ),
+    "crates/evaluation/rrflow-eval/src/latency.rs": ("H-05", "J-04"),
+    "crates/evaluation/rrflow-eval/tests/latency_evidence.rs": (
+        "H-05",
+        "J-02",
+        "J-04",
+    ),
     "crates/transport/rrd-contract/src/read.rs": ("C-04", "F-04", "H-04", "H-05"),
     "crates/transport/rrd-contract/fixtures/read-evidence-v1.json": (
         "C-04",
@@ -1573,7 +1629,10 @@ def planned_gates(path: str) -> tuple[str, ...]:
         gates = ("A-06", "A-07", "J-01", "J-02", "J-05")
     else:
         gates = ("A-07", "J-01", "J-05")
-    additions = ("C-04",) if path in C04_DIRECT_READ_PATHS else ()
+    additions = (
+        *(("C-04",) if path in C04_DIRECT_READ_PATHS else ()),
+        *(("H-05",) if path in H05_OBSERVABILITY_PATHS else ()),
+    )
     return tuple(dict.fromkeys((*gates, *additions)))
 
 

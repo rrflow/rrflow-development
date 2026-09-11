@@ -58,6 +58,36 @@ names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
 all 20 implementation packages into separate product checks.
 
+## Presubmit and change-evidence boundary
+
+Repository presubmit is not an RRFlow runtime hook. It cannot create an engine
+event, trigger a persisted routine, resolve a skill, mutate an estate, or claim
+that an effect completed. Gate I owns those future runtime capabilities.
+
+The portable development control has three layers:
+
+1. the checked-in commands and policy scripts are the reproducible presubmit;
+2. candidate CI runs those exact controls and reduces them to
+   `pipeline / ci-gate`; and
+3. repository branch policy makes the pull request and stable check
+   non-bypassable when the GitHub account tier supports that control.
+
+A developer may run the
+[repository checklist](../roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist)
+locally before publishing, but the local run is convenience and early feedback,
+not authority. RRFlow deliberately has no installed Git/editor/provider hook:
+client Git hooks are not distributed by clone, can be skipped, and would create
+the exact provider-owned lifecycle behavior prohibited by `AGENTS.md`.
+
+The current documentation policy machine-checks the owner chain, required
+change-authoring procedure/evidence fields, active-record classification,
+knowledge-package determinism, and local links. The execution inventory checks
+every current/generated/planned path. These controls can prove that the
+procedure and journal surface remain present; they do not yet prove that every
+pull-request path is covered by one machine-readable change package. That
+remaining presubmit-binding gap is tracked in POAM-027 rather than described as
+implemented.
+
 ## Repository workflow policy
 
 `scripts/ci/check_workflow.py` discovers every checked-in `.yml` and `.yaml`
@@ -90,6 +120,35 @@ owns those executable shapes and their limitations. Hosted runner output lacks
 the fixed hardware, complete provenance, full governed engine flow, and
 quality/failure corpus required by J-04; scheduling and artifact upload cannot
 turn it into performance or competitive evidence.
+
+## Diagnostic, performance, and fault lanes
+
+The
+[engine observability contract](../architecture/engine-data-flow.md#runtime-modes-build-profiles-and-build-identity)
+defines one semantic engine with release, optimized-diagnostic,
+runtime-analysis, sanitizer, and benchmark modes. None of those modes is
+currently a qualified RRFlow binary merely because Cargo can compile the
+workspace.
+
+Candidate CI stays bounded to deterministic correctness and repository policy.
+Additional lanes enter the required gate only with an owning roadmap package,
+declared target/support matrix, time/resource budget, retained failure
+artifacts, and a false-negative analysis:
+
+| Lane | Required use | Gate/evidence boundary |
+|---|---|---|
+| optimized diagnostic parity | Prove release and diagnostic profiles have identical feature closure, formats, operations, results, receipts, and resource limits; symbols/configuration may differ. | H-05, J-03, J-05 |
+| deterministic fault/reopen | Inject WAL/manifest/segment/page, sync, acknowledgement, process-kill, ENOSPC, and corruption boundaries; verify exact state after reopen from a recorded seed/schedule. | C-07, D-11, J-02 |
+| Loom | Explore bounded concurrent schedules around transaction, cache, publication, and cancellation primitives. | owning C-through-I package, J-02 |
+| Miri/sanitizers | Detect supported undefined-behavior, address/leak, and race classes on deliberately bounded targets. | owning package, J-02 |
+| Tokio Console/profiler | Diagnose scheduler, resource, lock, allocation, CPU, and I/O stalls only after ordinary correlated evidence identifies a reproducible case. | runtime-analysis; never conformance by itself |
+| fixed-hardware benchmark | Retain raw histograms, failed samples, quality/correctness results, resource use, build identity, workload, and machine/filesystem/device provenance. | J-04 only |
+
+Hosted runner benchmarks and ad hoc `cargo bench` output remain diagnostics.
+They cannot support a latency, scalability, zero-copy, resource, or competitor
+claim. The J-04 harness must use the canonical latency boundary and diagnostic
+capture bundle, separate success/error and cold/warm behavior, and preserve
+p50/p95/p99/p99.9 distributions rather than averages.
 
 ## Runner trust boundary
 
@@ -175,12 +234,25 @@ must remain GitHub-hosted.
 
 ## Repository enforcement
 
-After the first physical proof succeeds, protect `main` with these invariants:
+After the first physical proof succeeds and the hosting tier exposes the
+control, protect `main` with these invariants:
 
 - pull requests and the stable `pipeline / ci-gate` check are required;
 - merge queue or an up-to-date branch is required;
 - force pushes and deletion are denied; and
 - Actions must require immutable full-SHA references.
+
+This is an external control and needs external evidence. On 2026-09-11,
+read-only GitHub API requests for both repository rulesets and `main` branch
+protection on private `rrflow/rrflow-development` returned HTTP 403 with the
+message that GitHub Pro or public visibility is required. Therefore the
+checkout does **not** currently claim that `pipeline / ci-gate`, pull requests,
+reviews, deletion denial, or force-push denial is enforced. Do not compensate
+with a local hook, make the repository public, or push to the official
+promotion repository. Enable an eligible private-repository plan or equivalent
+organization control, then record the exact repository, rule/protection
+identity, required check name, protected ref, API response, and verification
+attempt in this record and the package journal.
 
 The repository CI-policy check rejects candidate trigger duplication, unsafe
 fork routing, unpinned actions, service or runner images, persisted checkout

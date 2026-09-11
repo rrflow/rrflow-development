@@ -4,8 +4,8 @@
 **Coordinate:** `rrflow://rrflow-instance/data/research/rrflow-system-convergence`
 **Owner:** primary-source evidence for the RRFlow 1.0 execution map
 **Audience:** RRFlow owner and engineers executing the 1.0 pre-release gates
-**Date:** 2026-09-07
-**Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, deterministic project-tree inventory, installation/attunement, provider-neutral agent context, explicit automation, and external project data adapters
+**Date:** 2026-09-11
+**Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, deterministic project-tree inventory, installation/attunement, provider-neutral agent context, explicit automation, external project data adapters, and production observability/diagnostic/fault evidence
 **Assumptions:** one RRFlow instance per project/environment; `RrdEngine` is the sole semantic, authorization, and mutation authority; version remains `1.0.0`; current code is inventory until the roadmap's behavioral evidence passes; the repository owner reports separate source-use rights for SurrealDB and Qdrant, whose legal scope is not adjudicated by this technical record
 
 ## Direct answer
@@ -338,6 +338,127 @@ the complete graph/BM25/vector/Arrow/DataFusion/context path. A-07 freezes the
 mapping; each owning gate converges its names and instrumentation; H-05 proves
 the final causal chain and redaction.
 
+### Production observability, diagnostic builds, and latency evidence
+
+The industry pattern is not a separate debug engine. Libraries instrument
+work; the process binary installs subscribers and exporters; an optimized
+diagnostic build retains the same product features and execution semantics as
+the release build while preserving symbols and enabling runtime-selected
+diagnostics. Rust `tracing` explicitly separates instrumentation from the
+subscriber that records it, and Cargo custom profiles can inherit release
+optimization while changing debug information and stripping independently.
+Tokio Console is valuable for task/resource/waker diagnosis, but it requires
+experimental Tokio instrumentation and therefore belongs in an explicitly
+non-conformance diagnostic lane rather than the default release claim.
+[^obs-1] [^obs-2] [^obs-3]
+
+OpenTelemetry supplies a coherent signal model rather than three unrelated
+logging systems. Trace and span IDs correlate logs with spans; metric exemplars
+can carry the trace/span coordinates for a sampled observation; and resource
+attributes identify the same service/build across signals. The database span
+conventions deliberately keep `db.query.summary` low-cardinality, treat query
+text as sensitive, and make parameter capture opt-in. RRFlow should apply the
+same rule to rrflowQL, prompts, context, source paths, model output, credentials,
+and external payloads: static operation names plus bounded attributes and
+digests by default, with protected content absent rather than merely hidden in
+the UI. [^obs-4] [^obs-5] [^obs-6]
+
+Metrics need a separate contract from durable trace attributes. Google SRE's
+four golden signals are latency, traffic, errors, and saturation, and its SLO
+guidance warns that averages hide tail behavior. Prometheus histograms can be
+aggregated across processes whereas client-computed summary quantiles cannot.
+OpenTelemetry additionally requires an explicit cardinality limit and overflow
+handling; its exponential histogram is appropriate for database latency that
+spans microseconds through seconds. RRFlow therefore needs histograms, counters,
+and gauges with a closed low-cardinality attribute set; it must report success
+and failure latency separately and retain raw distributions for p50, p95, p99,
+and p99.9 analysis. [^obs-7] [^obs-8] [^obs-9]
+
+The useful database precedent is stage-level work accounting. DataFusion
+already exposes each physical operator's `elapsed_compute`, output rows,
+batches, and bytes through `ExecutionPlan::metrics` and `EXPLAIN ANALYZE`.
+RocksDB's opt-in `PerfContext` and `IOStatsContext` split logical database work
+from filesystem work and expose cache, block-read, key-comparison, seek, WAL,
+flush, and compaction costs for the current operation. Qdrant exposes health,
+readiness, Prometheus metrics, and a separate detailed telemetry endpoint;
+SurrealDB exposes logs, metrics, and traces through OpenTelemetry-compatible
+configuration. RRFlow should absorb these operational properties into one
+native evidence path, not copy their endpoint or source topology and not let
+DataFusion or an exporter become transaction authority. [^obs-10] [^obs-11]
+[^obs-12] [^obs-13]
+
+Latency evidence must define the clocked boundary before it reports a number.
+For a public request the end-to-end boundary is accepted ingress through final
+response byte or durable acknowledgement; each child span measures only its
+own stage. Runs separate cold and warm cache, rrflowMX and rrflowKV, success and
+failure, request class, input-size band, concurrency, and durability policy.
+They bind the exact binary/build identity, corpus, seed, hardware, filesystem,
+device, configuration digest, warm-up, sample count, and failed samples.
+Coordinated-omission-safe load generation or correction is required whenever a
+closed-loop client could otherwise hide pauses. HdrHistogram is a practical
+reference representation because it covers a wide dynamic range and documents
+coordinated-omission correction; it is not required as an RRFlow dependency.
+[^obs-14]
+
+Debuggability also requires destructive-boundary testing, not just spans.
+FoundationDB demonstrates deterministic simulation with recorded seeds and
+injected network/disk/process faults. RocksDB's stress practice combines
+randomized operations, reopen verification, kill testing, white-box I/O
+failure points, and sanitizer variants. In Rust, Loom can explore bounded
+concurrent schedules, Miri detects classes of undefined behavior, and the
+compiler supplies sanitizer builds; their documented limitations mean none is
+a substitute for real-process crash/reopen, ENOSPC, corruption, and sustained
+load tests. Every retained failure must identify its seed/input, exact build,
+fault point, and post-reopen verification result. [^obs-15] [^obs-16]
+[^obs-17] [^obs-18] [^obs-19]
+
+Repository controls and runtime automation are different systems. Git states
+that client hooks are not copied by clone, so a pre-commit hook cannot be the
+project's authority. The portable pattern is a checked-in deterministic
+presubmit command, executed by CI, reduced to one required status check, and
+made non-bypassable with protected-branch/ruleset policy when the hosting tier
+supports it. GitHub rulesets can require pull requests, reviews, status checks,
+and block force pushes, but that external setting must be queried and recorded;
+workflow YAML cannot prove it. This repository's 2026-09-11 API probe returned
+HTTP 403 for both rulesets and branch protection on the private development
+repository, so server-side enforcement is currently unproven. That gap cannot
+be papered over with an editor/provider hook or confused with Gate I's future
+engine events, triggers, routines, and skills. [^obs-20] [^obs-21]
+
+Finally, diagnostic output is evidence only when it is reproducible and bound
+to the artifact that emitted it. A capture bundle should include build commit
+and tree, target, toolchain, profile, feature closure, schema/key/page format
+identities, sanitized configuration digest, workload/seed/fault manifest,
+traces, metric snapshot, DataFusion physical plan and operator metrics,
+rrflowKV physical counters, process CPU/RSS/I/O, clock source, and explicit
+omissions. Release artifacts later bind those identities to SBOM and SLSA
+provenance. A bundle never contains plaintext secrets, prompts, source bodies,
+raw query parameters, unrestricted paths, vectors, or hidden chain-of-thought.
+[^obs-22]
+
+[^obs-1]: [`tracing` crate documentation](https://docs.rs/tracing/latest/tracing/), instrumentation/subscriber separation and disabled-span behavior.
+[^obs-2]: [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html), inheritable custom profiles and independent debug/strip/optimization controls.
+[^obs-3]: [Tokio tracing next steps](https://tokio.rs/tokio/topics/tracing-next-steps) and [`console-subscriber` builder](https://docs.rs/console-subscriber/latest/console_subscriber/struct.Builder.html), async-runtime diagnostics and prerequisites.
+[^obs-4]: [OpenTelemetry logs data model](https://opentelemetry.io/docs/specs/otel/logs/), trace/log correlation and resource context.
+[^obs-5]: [OpenTelemetry metrics data model](https://opentelemetry.io/docs/specs/otel/metrics/data-model/), exemplars and trace/span association.
+[^obs-6]: [OpenTelemetry database client spans](https://opentelemetry.io/docs/specs/semconv/db/database-spans/), low-cardinality summaries and sensitive query-data rules.
+[^obs-7]: [Google SRE: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/), four golden signals and successful/failed latency separation.
+[^obs-8]: [Google SRE: Service Level Objectives](https://sre.google/sre-book/service-level-objectives/), tail distributions and standardized indicator definitions.
+[^obs-9]: [Prometheus histogram and summary practices](https://prometheus.io/docs/practices/histograms/) and [OpenTelemetry Metrics SDK](https://opentelemetry.io/docs/specs/otel/metrics/sdk/), aggregation, cardinality limits, and exponential histograms.
+[^obs-10]: [DataFusion `EXPLAIN` and operator metrics](https://datafusion.apache.org/user-guide/explain-usage.html) and [metric definitions](https://datafusion.apache.org/user-guide/metrics.html), physical-plan evidence.
+[^obs-11]: [RocksDB Perf Context and I/O Stats Context](https://github.com/facebook/rocksdb/wiki/Perf-Context-and-IO-Stats-Context), scoped logical and physical work counters.
+[^obs-12]: [Qdrant monitoring](https://qdrant.tech/documentation/operations/monitoring/), health/readiness, metrics, and telemetry surfaces.
+[^obs-13]: [SurrealDB observability](https://surrealdb.com/docs/manage/observability), coordinated logs, metrics, traces, Prometheus, and OTLP export.
+[^obs-14]: [HdrHistogram](https://github.com/HdrHistogram/HdrHistogram), high-dynamic-range recording and coordinated-omission correction support.
+[^obs-15]: [FoundationDB testing](https://apple.github.io/foundationdb/testing.html) and [client testing](https://apple.github.io/foundationdb/client-testing.html), deterministic simulation, seed replay, and fault injection.
+[^obs-16]: [RocksDB stress tests](https://github.com/facebook/rocksdb/wiki/Stress-test), randomized, crash, white-box, verification, and sanitizer practices.
+[^obs-17]: [Loom](https://github.com/tokio-rs/loom), bounded concurrency permutation testing and limitations.
+[^obs-18]: [Miri](https://github.com/rust-lang/miri), undefined-behavior detection scope and limitations.
+[^obs-19]: [Rust sanitizers](https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html), compiler-supported instrumentation modes.
+[^obs-20]: [Git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), including the non-propagation of client-side hooks.
+[^obs-21]: [GitHub repository rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets), pull-request, review, status-check, and force-push controls.
+[^obs-22]: [SLSA provenance v1.2](https://slsa.dev/spec/v1.2/provenance), artifact-to-build provenance model.
+
 ### Vector, filtering, and fusion
 
 The HNSW paper establishes the approximate multi-layer navigable graph design;
@@ -402,6 +523,7 @@ machine verification rather than a bare successful local build.
 | DataFusion is integrated | query execution uses DataFusion, `MemorySource`, spill pool, timeout, and output limits | real rrflowKV streaming provider, pushdown, cross-operator resource accounting | F-01, F-02, F-04 |
 | native graph/BM25/vector are real | graph traversal, BM25 code, exact vector oracle, HNSW, catalogues, and planner exist | persistent incremental access paths and same-stamp native physical operators | E-01..E-05, F-03 |
 | causal traces are durable | bounded trace contract, typed links, atomic runtime-log persistence, MX/KV equivalence, conflict retry, and crash-visible incomplete spans exist | one authorized engine emission path, W3C ingress/egress propagation, canonical low-cardinality names, per-gate physical evidence, export/redaction, and complete context-flow correlation | A-07, C..I, H-05, J-02 |
+| production diagnostics are reproducible | selected binaries install Rust `tracing` subscribers; rrflowKV and DataFusion expose scattered local counters | optimized diagnostic profile with release-semantic parity; build identity; closed metric instruments/attributes; latency protocol; correlated log/trace/metric export; overhead/cardinality/self-telemetry limits; sanitized capture bundle; deterministic fault and profiler lanes | C-06/C-07, F-04, H-05, J-02, J-04, J-05 |
 | dynamic context works | engine context/retrieval functions and RRF helpers exist | planner-selected eligible avenues with selected/skipped evidence, pure RRF, versioned feedback | H-01, H-02 |
 | live delivery works | durable subscriptions and WebSocket delivery exist | commit-impact predicate deltas; current semantic live query reruns two snapshots | H-03 |
 | install/attunement works | strict B-01 plan/job/checkpoint contracts and the canonical eleven phases exist | installer, persisted engine executor, deterministic project-tree snapshot/change-set, pure attunement compute crate, and phase-by-phase real fixtures | D-01..D-10 |
@@ -440,6 +562,26 @@ machine verification rather than a bare successful local build.
 | Trace spans, parentage, events, links, attributes, and status | Tracing API | OpenTelemetry | stable API, accessed 2026-09-07 | https://opentelemetry.io/docs/specs/otel/trace/api/ | Official specification |
 | Low-cardinality database operation names and bounded query evidence | Semantic conventions for database client spans | OpenTelemetry | stable unless noted, accessed 2026-09-07 | https://opentelemetry.io/docs/specs/semconv/db/database-spans/ | Official specification |
 | Cross-process trace propagation | Trace Context | W3C | Recommendation, accessed 2026-09-07 | https://www.w3.org/TR/trace-context/ | Web standard |
+| Trace/log/resource correlation | Logs Data Model | OpenTelemetry | stable specification, accessed 2026-09-11 | https://opentelemetry.io/docs/specs/otel/logs/ | Official specification |
+| Metric exemplars and stream identity | Metrics Data Model | OpenTelemetry | stable specification, accessed 2026-09-11 | https://opentelemetry.io/docs/specs/otel/metrics/data-model/ | Official specification |
+| Metric cardinality limits and exponential histograms | Metrics SDK | OpenTelemetry | stable specification, accessed 2026-09-11 | https://opentelemetry.io/docs/specs/otel/metrics/sdk/ | Official specification |
+| Rust instrumentation/subscriber boundary | `tracing` | Tokio contributors / docs.rs | 0.1.41, accessed 2026-09-11 | https://docs.rs/tracing/latest/tracing/ | Official crate documentation |
+| Release-semantic diagnostic profiles | Profiles | Rust Cargo | 1.98.0 documentation, accessed 2026-09-11 | https://doc.rust-lang.org/cargo/reference/profiles.html | Official documentation |
+| Asynchronous runtime diagnostics | Tracing next steps | Tokio project | accessed 2026-09-11 | https://tokio.rs/tokio/topics/tracing-next-steps | Official documentation; Tokio Console is a non-conformance diagnostic lane |
+| Golden signals and latency separation | Monitoring Distributed Systems | Google SRE | accessed 2026-09-11 | https://sre.google/sre-book/monitoring-distributed-systems/ | First-party SRE guidance |
+| Tail-latency/SLO measurement | Service Level Objectives | Google SRE | accessed 2026-09-11 | https://sre.google/sre-book/service-level-objectives/ | First-party SRE guidance |
+| Aggregatable latency histograms | Histograms and summaries | Prometheus project | accessed 2026-09-11 | https://prometheus.io/docs/practices/histograms/ | Official documentation |
+| DataFusion physical operator evidence | `EXPLAIN` and metrics | Apache DataFusion | 55.0.0 user guide, accessed 2026-09-11 | https://datafusion.apache.org/user-guide/explain-usage.html | Official documentation; matches the pinned workspace release |
+| Per-operation storage/IO diagnostics | Perf Context and IO Stats Context | RocksDB project | accessed 2026-09-11 | https://github.com/facebook/rocksdb/wiki/Perf-Context-and-IO-Stats-Context | Official project documentation |
+| Vector-service monitoring precedent | Monitoring | Qdrant | accessed 2026-09-11 | https://qdrant.tech/documentation/operations/monitoring/ | Official documentation |
+| Multi-signal database observability precedent | Observability | SurrealDB | accessed 2026-09-11 | https://surrealdb.com/docs/manage/observability | Official documentation |
+| Deterministic database failure simulation | Testing and client testing | FoundationDB | accessed 2026-09-11 | https://apple.github.io/foundationdb/testing.html | Official documentation |
+| Randomized/crash/white-box database testing | Stress test | RocksDB project | accessed 2026-09-11 | https://github.com/facebook/rocksdb/wiki/Stress-test | Official project documentation |
+| Bounded Rust concurrency exploration | Loom | Tokio contributors | main, accessed 2026-09-11 | https://github.com/tokio-rs/loom | Primary source/documentation |
+| Rust undefined-behavior detection | Miri | Rust project | main, accessed 2026-09-11 | https://github.com/rust-lang/miri | Primary source/documentation |
+| Rust sanitizer builds | Sanitizer compiler flag | Rust project | beta unstable book, accessed 2026-09-11 | https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html | Official documentation; verification-only lane |
+| Non-portability of client hooks | Git Hooks | Git project | 2nd edition, accessed 2026-09-11 | https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks | Official project book |
+| Server-side pull-request/status enforcement | Available rules for rulesets | GitHub | accessed 2026-09-11 | https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets | Official documentation; unavailable for the current private-repository tier during this audit |
 | Unified transactional data models | Architecture | SurrealDB | accessed 2026-09-05 | https://surrealdb.com/docs/learn/data-models/architecture | Official documentation |
 | One modular database core | Core source tree | SurrealDB | v3.2.4, commit `93ab219d69f09d8f999851b0359c80ebe6726102`, repinned 2026-09-08 | https://github.com/surrealdb/surrealdb/tree/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src | Primary source |
 | Directional graph adjacency keys | Graph-key module | SurrealDB | v3.2.4, commit `93ab219d69f09d8f999851b0359c80ebe6726102`, repinned 2026-09-08 | https://github.com/surrealdb/surrealdb/blob/93ab219d69f09d8f999851b0359c80ebe6726102/surrealdb/core/src/key/graph/mod.rs | Primary source; RRFlow does not adopt upstream historical decoding |

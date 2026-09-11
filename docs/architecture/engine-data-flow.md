@@ -588,6 +588,194 @@ Durable events are never sampled. Diagnostic spans may be filtered, sampled,
 dropped, or unavailable and therefore cannot establish a commit, job/phase,
 projection, trigger, routine step, delivery acknowledgement, or verification.
 
+### Runtime modes, build profiles, and build identity
+
+RRFlow has one engine and one semantic feature closure. Diagnostic capability
+does not justify a second engine, storage format, executor, lifecycle, or
+successful behavior. The build/runtime matrix is:
+
+| Mode | Purpose | Semantic standing |
+|---|---|---|
+| Cargo `dev` and `test` | Fast iteration, assertions, unit/property/integration tests. | Correctness evidence only; never latency or release evidence. |
+| `release` | Optimized candidate and shipped default. Diagnostics default to the bounded normal policy. | Required for release behavior and performance qualification. |
+| `diagnostic` | Inherits release optimization and the exact release feature closure while retaining symbols/line tables. Runtime configuration may raise span detail, enable scoped physical counters, and emit a sanitized capture bundle. | May reproduce release behavior only after an automated parity test proves the operation catalogue, build inputs, feature closure, formats, results, receipts, and resource limits equal release. |
+| `runtime-analysis` | Diagnostic profile plus Tokio task/resource instrumentation or an attached profiler. | Explicitly non-conformance because extra scheduler/profiler instrumentation can alter timing. |
+| `loom`, `miri`, and sanitizer builds | Bounded concurrency-state exploration and memory/undefined-behavior detection. | Verification-only; each tool's supported target and limitations are recorded. |
+| `benchmark` | Release-derived fixed-workload binary and harness with diagnostics at the declared level. | Comparison evidence only with the J-04 provenance and latency protocol below. |
+
+The diagnostic profile may change debug information, symbol stripping, and
+diagnostic configuration. It cannot enable an alternate query, storage, index,
+reasoning, authorization, model, or adapter implementation. Expensive
+per-operation counters use runtime-scoped levels (`off`, `normal`, `detailed`,
+`profile`) and bounded sampling; the default hot path performs only the
+measurements admitted by `normal`. Tokio Console and profiler attachment are
+`runtime-analysis`, never a silent property of the release binary.
+
+Every executable and capture reports a machine-readable build identity:
+
+- RRFlow version, source commit and tree digest, and clean/dirty status;
+- Rust toolchain, target triple, Cargo profile, panic strategy, and complete
+  first-party feature closure;
+- executable digest and, for a distribution, bundle/manifest identity;
+- public operation-catalogue, schema, ordered-key, WAL, manifest, segment/page,
+  and vector/index format identities; and
+- sanitized effective-configuration and policy digests.
+
+The version remains `1.0.0` throughout pre-release convergence; the source,
+format, and configuration coordinates distinguish builds without inventing
+version progress. A dirty or incompletely identified binary may aid local
+debugging but cannot produce release or comparison evidence.
+
+### Metric instruments and cardinality
+
+Durable trace attributes describe one governed operation. Metrics aggregate
+many operations and therefore use a smaller closed vocabulary. Canonical
+instrument names use dotted OpenTelemetry form; a Prometheus exporter may
+translate separators but cannot create another catalogue. The initial
+catalogue is:
+
+| Instrument | Kind and unit | Meaning |
+|---|---|---|
+| `rrflow.operation.duration` | Histogram, `s` | Wall duration of one exact operation boundary, recorded once with terminal outcome. |
+| `rrflow.operation.count` | Monotonic counter, `{operation}` | Accepted terminal operations; denials, cancellations, and errors remain distinct outcomes. |
+| `rrflow.operation.inflight` | Up/down counter, `{operation}` | Currently admitted operations, including queued time until terminal release. |
+| `rrflow.queue.depth` | Observable gauge, `{item}` | Bounded executor, maintenance, delivery, model, spill, and telemetry queue occupancy. |
+| `rrflow.queue.wait` | Histogram, `s` | Admission-to-execution delay separate from compute time. |
+| `rrflow.kv.keys.examined` / `rrflow.kv.pages.examined` | Monotonic counters, `{item}` | Physical KV work attributable to point/range/page operations. |
+| `rrflow.kv.bytes` | Monotonic counter, `By` | Read, mapped, decoded, decompressed, borrowed, copied, allocated, WAL, flush, compaction, and spill byte work, distinguished only by bounded `rrflow.work.kind`. |
+| `rrflow.kv.cache.requests` | Monotonic counter, `{request}` | Hit, miss, admission rejection, and eviction outcomes for a named bounded cache class. |
+| `rrflow.query.rows` | Monotonic counter, `{row}` | Examined and emitted rows for rrflowQL/native/DataFusion execution. |
+| `rrflow.query.graph.steps` | Monotonic counter, `{step}` | Traversed eligible graph edges/vertices. |
+| `rrflow.query.candidates` | Monotonic counter, `{candidate}` | Lexical, vector, fusion, and exact-rerank candidate work by bounded access path. |
+| `rrflow.datafusion.memory.usage` | Observable gauge, `By` | Current DataFusion pool reservation by bounded pool class. |
+| `rrflow.datafusion.memory.peak` | Histogram, `By` | Peak pool reservation observed for one terminal query execution. |
+| `rrflow.datafusion.spill` | Monotonic counter, `By` | Spill bytes read/written by bounded work kind. |
+| `rrflow.context.bytes` | Histogram, `By` | Authorized context input/output, selected, skipped, truncated, and compacted byte volume. |
+| `rrflow.context.tokens` | Histogram, `{token}` | Authorized context input/output, selected, skipped, truncated, and compacted token volume where the tokenizer identity is bound to trace/build evidence. |
+| `rrflow.delivery.backlog` | Observable gauge, `{item}` | Unacknowledged bounded delivery items by stream class. |
+| `rrflow.process.memory` | Observable gauge, `By` | Process RSS and allocator-owned bytes where the platform can identify them. |
+| `rrflow.process.cpu.time` | Monotonic counter, `s` | User/system CPU time for saturation and benchmark accounting. |
+| `rrflow.telemetry.dropped` / `rrflow.telemetry.export.errors` | Monotonic counters, `{item}` | Diagnostic queue overflow, sampling, encode/export failure, and exporter rejection. |
+
+Every metric point uses only the applicable subset of these attributes:
+`rrflow.boundary`, `rrflow.operation`, `rrflow.outcome`,
+`rrflow.storage.profile`, `rrflow.access.path`, `rrflow.work.kind`,
+`rrflow.queue.kind`, `rrflow.cache.kind`, and bounded `error.type`. Values come
+from closed catalogues at the instrumenting site. Estate, project, actor,
+session, request, trace, span, query, record, file/path, provider, model,
+collection, index generation, routine/job, error message, and user-supplied
+values are prohibited metric attributes. Those identities belong in protected
+trace links/log fields or build/capture manifests.
+
+The metrics SDK enforces a configurable finite cardinality limit with a default
+of 2,000 points per instrument per collection cycle and an explicit overflow
+point. Exporters have bounded queues and timeouts. Export backpressure drops
+diagnostic data and increments self-telemetry; it never blocks, rolls back, or
+relabels authoritative engine work. Telemetry-internal failures are rate-
+limited and cannot recursively generate unbounded telemetry.
+
+Latency uses an aggregatable histogram. Exponential histograms are preferred
+where the selected OpenTelemetry/Prometheus path preserves them; an explicit-
+bucket fallback must cover the declared microsecond-through-minute operating
+range and is versioned as diagnostic configuration. Trace exemplars associate
+selected samples with trace/span IDs without putting those IDs on every metric
+series.
+
+DataFusion's per-operator `elapsed_compute`, output-row, output-batch, and
+output-byte values are collected at query completion or cancellation and
+attached to the corresponding `rrflow.datafusion.*` diagnostic stage. They do
+not replace server wall time, queue wait, storage I/O, or the `RrdEngine` result.
+rrflowKV's detailed per-operation counters similarly reset at an admitted
+operation boundary and roll into aggregate metrics only after terminal capture;
+background flush/compaction work uses its own causal span and operation name.
+
+### Latency measurement contract
+
+No latency statement is valid without naming its boundary. RRFlow uses a
+monotonic clock for durations and wall-clock timestamps only for correlation:
+
+| Boundary | Start | Stop |
+|---|---|---|
+| client end to end | immediately before transport send | after the complete response is received and validated, or terminal transport failure |
+| server request | first bounded application-frame/envelope processing | final response byte handed to transport, durable acknowledgement emitted, or terminal denial/error/cancellation |
+| engine operation | admitted authenticated operation invocation | typed result/receipt/denial returned to the transport adapter |
+| durable commit | commit validation begins | durability policy is satisfied and the commit receipt is constructed, or commit fails |
+| query execution | admitted stamped physical plan begins | last batch is consumed, cancellation completes, budget denies, or execution fails |
+| stage | named stage begins after its queue wait | stage output/error is handed to its parent |
+
+Server and engine measurements cannot include an unbounded request-body read;
+ingress frame admission has its own bounded span. Client latency is the only
+claim that includes network and client decoding. Retries expose each attempt
+and one logical-call duration; attempt time is not summed and reported as a
+single successful server operation.
+
+Operational dashboards separate successful, denied, cancelled, and failed
+latency and show traffic, error rate, inflight/queue saturation, resource use,
+and p50/p95/p99/p99.9 distributions. An average alone is non-evidence. A
+benchmark additionally separates cold/warm cache, rrflowMX/rrflowKV, durability
+policy, request class, input-size band, concurrency, and access path. It records
+the build identity, configuration, corpus digest, seed, hardware, filesystem,
+device, clock source, warm-up, offered-load model, sample count, failures, and
+raw histogram. Open-loop scheduling or coordinated-omission correction is
+required when a closed-loop driver could hide stalls. Comparative claims use
+identical correctness/quality requirements and retain failed samples.
+
+### Diagnostic capture and failure workflow
+
+RRFlow distinguishes an authenticated diagnostic snapshot from observability.
+The existing `ReadDiagnosticSnapshot`/`DiagnosticSnapshot` contract is a
+bounded, stamped view of canonical and projected engine state for an operator
+or Connectome. Observability is the non-authoritative signal and capture system
+described here. It may bind a diagnostic-snapshot receipt or invoke that
+existing operation through `RrdEngine`; it cannot duplicate the snapshot
+schema, replay the runtime log independently, or open repositories/storage to
+assemble a second view.
+
+Normal logs are structured, bounded, and correlated with trace/span/request
+coordinates. Raw prompts, source bodies, query parameters, vector values,
+credentials, headers, paths, model output, hidden reasoning, and error messages
+are excluded by default. A future protected content-capture capability must be
+separately authorized, encrypted, time/size bounded, audited, and absent from
+the signed default; `profile` does not imply content capture.
+
+An H-05 diagnostic capture is a manifest-verified bundle containing:
+
+1. the exact build and distribution identity above;
+2. sanitized effective configuration/policy digests and declared omissions;
+3. the workload, seed, fault point, timing boundaries, and resource budgets;
+4. correlated redacted trace/log export and a metric snapshot;
+5. rrflowQL logical and physical plan digests, DataFusion plan/operator metrics,
+   and rrflowKV logical/I/O/cache/WAL/flush/compaction counters;
+6. process CPU, RSS/allocator, file-descriptor, disk-byte, and queue evidence
+   available on the target platform; and
+7. typed terminal results, receipts, crash/reopen verification, and artifact
+   digests without canonical data bodies.
+
+Capture writes through a bounded outward diagnostic sink. It cannot open
+storage, query canonical state outside an authorized diagnostic operation,
+decide readiness, repair data, advance a job/routine, or prove an effect by its
+own presence. OTLP push, Prometheus scrape, JSON log, and local capture-file
+support are adapters over the same instruments and redaction policy, disabled
+unless explicitly configured. A failed exporter leaves engine state unchanged
+and makes the diagnostic omission visible through self-telemetry.
+
+The verification matrix combines complementary lanes:
+
+- deterministic unit/property/differential tests with exact oracles;
+- recorded-seed randomized state machines and bounded Loom schedules;
+- WAL/manifest/segment/page corruption, torn write, write rejection, ENOSPC,
+  fsync uncertainty, process kill, close/reopen, and post-reopen verification;
+- Miri and supported Address/Leak/Thread/UndefinedBehavior sanitizer targets;
+- sustained mixed OLTP/OLAP/index/maintenance load with memory, queue, and tail-
+  latency evidence; and
+- optimized diagnostic reproduction plus profiler/Tokio Console analysis when
+  ordinary evidence cannot locate the delay.
+
+Every failure artifact binds its input or seed, build identity, target,
+configuration, fault schedule, last authoritative stamp/receipt, and reopen
+result. A nondeterministic symptom is retained and narrowed; it is never
+converted into a passing test by increasing timeouts or deleting assertions.
+
 ### Direct-convergence trace inventory
 
 The current runtime still uses the following exact operation names. Kernel

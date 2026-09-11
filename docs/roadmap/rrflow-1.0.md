@@ -1179,6 +1179,39 @@ and can steer a persisted tree without direct storage or planner authority.
 | [ ] | H-06 | Implement the separate [Connectome client contract](../reference/client/connectome.md) completely on catalogue-derived public RRD operations. The client validates exact endpoint, transport, protocol, instance, deployment, catalogue, session, resource, stamp, cursor, evidence, completeness, and receipt coordinates; renders only engine-issued state/plans/traces/trees/context/deltas/proposals; and contains no alternate storage, query, retrieval, reasoning, attunement, automation, diagnostics, control, provider, or presentation authority. | separate Connectome repository | A clean Connectome artifact consumes the generated public-contract/SDK digest and runs against D-01-installed rrflowMX and rrflowKV processes. HTTP bootstrap, authenticated session, multiplexed WebSocket resume/ACK/backpressure, graph/BM25/vector/RRF/Arrow/DataFusion/context/reasoning evidence, previewed mutations, denial/uncertainty/cancellation, restart, multi-instance isolation, credential redaction, bounded rendering, and accessibility pass with correlated identities/stamps/digests/traces. Mocks, screenshots, builds, and open ports remain non-qualifying. |
 | [ ] | H-07 | Resolve loopback or Zuul Zero/shippin.ai mesh-reached network endpoint candidates through an outward transport adapter, carrying the expected RRD instance and transport-security identities independently of reachability. Re-negotiate liveness, readiness, protocol, instance, catalogue digest, and authentication after rotation; no resolver initializes RRFlow or selects storage. | `rrd-client`, mesh adapter | Laptop/phone/devspace fixture proves bounded resolution, TLS identity, exact instance/capability negotiation, endpoint rotation, stale/foreign/offline denial, and no mesh-owned database, authorization, installation, or lifecycle state. |
 
+H-05 is executed as five bounded packages rather than one late observability
+rewrite:
+
+1. **H-05a — build and signal identity:** add the closed metric contract,
+   release-semantic diagnostic Cargo profile, machine-readable build identity,
+   runtime diagnostic levels, and automated release/diagnostic feature,
+   catalogue, format, result, receipt, and limit parity. This prerequisite must
+   exist before D-01 qualifies installed binaries or later packages emit new
+   signal families.
+2. **H-05b — causal context:** replace direct-store trace emission with one
+   `RrdEngine` path and implement bounded W3C ingress/egress continuation,
+   asynchronous links, terminal outcomes, crash-visible incomplete starts, and
+   cross-request isolation.
+3. **H-05c — correlated diagnostics:** project the same operation catalogue to
+   structured logs, OpenTelemetry traces, aggregatable histograms/counters/
+   gauges, trace exemplars, bounded queues/cardinality, and exporter
+   self-telemetry. Diagnostic loss never changes authoritative state.
+4. **H-05d — physical path coverage:** complete stage/work/resource evidence
+   with the owning C-through-I behavior for rrflowKV, graph, BM25, vector/
+   TurboQuant candidates, rrflowQL/DataFusion, context, LFG, routines,
+   attunement, commit, and delivery. DataFusion metrics are inputs to RRFlow
+   evidence, not another authority.
+5. **H-05e — capture and proof:** add the sanitized manifest-bound diagnostic
+   bundle and fixed corpus for propagation, redaction, exporter failure,
+   overhead/cardinality, deterministic faults, crash/reopen, repeated/missing
+   work, release/diagnostic parity, and the complete prompt-to-delivery chain.
+
+The exact instruments, allowed dimensions, build modes, timing boundaries,
+capture contents, and fault lanes are owned by the
+[engine data-flow architecture](../architecture/engine-data-flow.md#runtime-modes-build-profiles-and-build-identity).
+No average-only report, development-profile timing, unbound debug log, or
+passing exporter test qualifies H-05.
+
 Gate H exits only after one prompt can be followed from ingress through LFG or
 analytical routing, storage/index work, fused context, mutation, live delivery,
 and Connectome using correlated evidence from one engine.
@@ -1222,9 +1255,9 @@ decision. A force push or history rewrite is never a release mechanism.
 | Done | ID | Required change | Owning boundary | Acceptance evidence |
 |---|---|---|---|---|
 | [ ] | J-01 | Remove every superseded pre-release entrypoint, format/catalogue reader, missing-field fallback, backend selector, migration executor, editor/provider-owned automatic hook, duplicate source of truth, transitional alias, and stale generated artifact. | workspace | Strict warning/dependency/terminology searches, negative format fixtures, and all-target builds prove only the accepted RRFlow 1.0 surfaces remain and superseded RRFlow state fails closed. |
-| [ ] | J-02 | Run unit, property, fuzz corpus, differential, crash/reopen, storage-full, security denial, resource-budget, adapter, and real-process suites. | workspace | Release evidence records commands, versions, passed/failed counts, and retained failure artifacts. |
+| [ ] | J-02 | Run unit, property, fuzz corpus, differential, recorded-seed state-machine, bounded concurrency-schedule, Miri/supported-sanitizer, crash/reopen, storage-full, security denial, resource-budget, exporter-failure, adapter, release/diagnostic-parity, and real-process suites. | workspace | Release evidence records exact build identity, commands/tool versions/targets, seeds and fault schedules, passed/failed/skipped counts, declared tool limitations, post-reopen verification, and retained failure artifacts. |
 | [ ] | J-03 | Assemble complete manifest-verified native release-candidate bundles from tracked inputs; use only each bundle's primary `rrflow`/`rrflow.exe` to install and attune an empty fixture and this existing repository; then restart, verify, and repeat representative fast/heavy queries. | release harness | On native Linux, Windows, and macOS qualification runners, with outbound network denied, sibling repositories absent, and no compiler or external database/query/vector service, both estates reach authenticated readiness and verify with stable digests; unchanged rerun is incremental; the repair and restore rehearsal passes; and no checkout helper or manual database repair is needed. This qualifies contents and behavior before J-05 signs the reproducible default distribution. |
-| [ ] | J-04 | Publish fixed-hardware rrflowKV, graph, BM25, exact/HNSW, DataFusion, context, LFG, end-to-end, and clean-rollout benchmarks against pinned declared baselines. | evaluation harness | Revision-bound raw data, hardware/toolchain/filesystem provenance, configuration, warmup, concurrency, percentiles, failures, long-duration RSS, logical/apparent/allocated bytes, mixed-family interference, recall/quality metrics, and a SurrealDB/Qdrant deployment matrix report artifact and installed bytes, required commands, elapsed time, services, ports, configuration, secrets, readiness, and persistent readback. No ease or superiority claim is allowed until like-for-like evidence passes. |
+| [ ] | J-04 | Publish fixed-hardware rrflowKV, graph, BM25, exact/HNSW, DataFusion, context, LFG, end-to-end, and clean-rollout benchmarks against pinned declared baselines. | evaluation harness | Revision-bound raw histograms name the exact client/server/engine/stage timing boundary and retain failed samples; evidence records build identity, hardware/toolchain/filesystem/device/clock provenance, configuration, corpus/seed, offered-load model, warmup, cache state, concurrency, p50/p95/p99/p99.9, success/error separation, long-duration RSS/CPU/I/O/queue saturation, logical/apparent/allocated bytes, mixed-family interference, recall/quality metrics, and a SurrealDB/Qdrant deployment matrix with artifact and installed bytes, commands, elapsed time, services, ports, configuration, secrets, readiness, and persistent readback. Closed-loop tests correct coordinated omission. No ease or superiority claim is allowed until like-for-like correctness/quality evidence passes. |
 | [ ] | J-05 | Produce reproducible signed default distributions whose one primary operator executable is `rrflow` on Linux/macOS and `rrflow.exe` on Windows, containing or manifest-binding every default engine capability, SDK, schema/golden, project/attunement template, configuration/profile, required local inference asset, SBOM/licence, artifact verifier, backup/restore tool, and runbook. Publish archive/executable checksums, a complete RRFlow byte manifest, build provenance/SBOM attestations, and the native platform signature required by the supported target, including Authenticode for Windows. | release tooling | After artifact acquisition, a clean native supported machine with no compiler, source checkout, sibling repository, repository-local cache, package registry, external database/query/vector service, or outbound network uses only the primary executable to run version, install plan/apply, serve, authenticated ready, commit/query/context, close/reopen, quick/full verify, repair rehearsal, backup/restore, and ownership-safe uninstall; every installed byte and runtime dependency resolves from the signed manifest. |
 
 RRFlow 1.0 is releasable only when every Gate J item and every prerequisite is

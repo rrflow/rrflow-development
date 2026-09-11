@@ -4,7 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/execution-map/rrflow-1.0`
 **Owner:** file, symbol, dependency, test, and stop-condition mapping for the canonical RRFlow 1.0 roadmap
 **File baseline:** generated inventory committed with this map
-**Reviewed:** 2026-09-08
+**Reviewed:** 2026-09-11
 
 The canonical [RRFlow 1.0 roadmap](rrflow-1.0.md) owns dependency order,
 checkboxes, and accepted completion evidence. This record turns each unchecked
@@ -127,7 +127,7 @@ row below. `Not applicable` requires a concrete reason.
 |---|---|
 | authentication, authorization, semantic mutation, persistence, recovery, asynchronous causation, or delivery | canonical durable start/result evidence, typed links, denial/error/cancel outcome, and the exact commit/read coordinates from the [trace contract](../architecture/engine-data-flow.md#trace-and-observability-flow) |
 | rrflowKV, graph, lexical, vector, rrflowQL, Arrow/DataFusion, inference, or context work | bounded physical counters for the work actually performed, declared resource limits, and failure evidence; DataFusion operators expose their plan metrics but those remain diagnostic input to RRFlow's governed evidence |
-| a performance-sensitive algorithm, cache, copy/borrow path, codec, or planner decision | deterministic corpus, exact comparator/fallback, input/output/work counters, and reproducible benchmark or differential method before any performance claim |
+| a performance-sensitive algorithm, cache, copy/borrow path, codec, planner decision, queue, or external operation | deterministic corpus, exact comparator/fallback, input/output/work counters, named monotonic-clock boundary, success/error and cold/warm separation, raw aggregatable latency distribution, and reproducible benchmark or differential method before any performance claim |
 | pure type, documentation, test, or behavior-preserving refactor | preserve existing evidence or explain why no runtime operation changed; compilation alone still is not proof |
 
 Operation names come from `TraceOperation`; identities and causation use typed
@@ -144,6 +144,19 @@ and elapsed-compute metrics:
 - [OpenTelemetry trace concepts](https://opentelemetry.io/docs/concepts/signals/traces/);
 - [OpenTelemetry error recording](https://opentelemetry.io/docs/specs/semconv/general/recording-errors/); and
 - [DataFusion operator metrics](https://datafusion.apache.org/user-guide/metrics.html).
+
+The canonical metric names, dimensions, latency clocks, diagnostic modes, and
+capture contents come from the
+[observability contract](../architecture/engine-data-flow.md#runtime-modes-build-profiles-and-build-identity).
+A new measurement must map to that closed catalogue in the same package or stop
+for an owner update. Project/estate/actor/request/query/record/path/provider/
+model identities never become metric dimensions. A performance result from a
+Cargo development build, average-only timer, unbound log, unknown cache state,
+or closed-loop load generator without coordinated-omission handling is not
+evidence. A diagnostic profile must inherit release semantics and pass explicit
+parity; Tokio Console, sanitizer, Miri, Loom, and profiler modes remain named
+verification lanes with recorded limitations rather than silent release
+features.
 
 #### 6. Author at the canonical boundary
 
@@ -198,6 +211,7 @@ exact revision; incremental work goes only to the private development remote.
 - [ ] Research is recorded as required/not required; retained mechanisms have primary-source provenance and RRFlow mapping.
 - [ ] Exact files, symbols, edit order, unchanged behavior, and acceptance commands are planned before implementation.
 - [ ] Trace, resource, and debugging evidence is recorded as add/preserve/not applicable with a reason.
+- [ ] Any metric, latency, debug build, profiler, or capture change uses the closed signal/build contract, bounded cardinality/redaction, exact clock boundary, release-semantic parity, and self-telemetry appropriate to its owning gate.
 - [ ] Implementation uses canonical naming, authority, dependency direction, validation, errors, bounds, and cohesive modules.
 - [ ] Tests exercise the real behavior and required denial, differential, fault, resource, and reopen boundaries.
 - [ ] Every changed hand-authored file and the complete diff were reread; generated artifacts were regenerated, not edited.
@@ -3214,8 +3228,96 @@ storage path is allowed.
   catalogue/definition/artifact/runtime identities, output digest, and receipt
   through every supported surface; do not advertise an engine-only method as
   an outward binding.
-- H-05: correlate ingress, auth, plan, KV, graph, BM25, HNSW, DataFusion, LFG,
-  commit, attunement, and delivery spans; redact before export.
+- H-05a — build and signal identity: add the release-inheriting `diagnostic`
+  profile to root `Cargo.toml`; update
+  `rrd-core/{Cargo.toml,src/lib.rs}` and add the dependency-free closed instrument,
+  attribute, unit, outcome, storage-profile, access-path, diagnostic-level,
+  and build-identity vocabulary in `rrd-core/src/telemetry.rs`; expose only
+  bounded public configuration/build/capture schemas through
+  `rrd-contract/src/observability.rs`,
+  `rrd-contract/fixtures/observability-v1.json`, and
+  `rrd-contract/tests/observability_contract.rs`, with
+  `rrd-contract/{Cargo.toml,src/lib.rs}` as its only composition roots;
+  keep the dependency-free
+  vocabulary contract in `rrd-core/tests/telemetry_contract.rs`. These schemas
+  must not duplicate the existing stamped `ReadDiagnosticSnapshot`/
+  `DiagnosticSnapshot` state-view contract in
+  `rrd-contract/src/diagnostic.rs`. Generate
+  build inputs from explicit release-tooling values with a visibly
+  unqualified local fallback; do not execute Git at runtime or infer identity
+  from a version string. Add release/diagnostic parity tests for feature
+  closure, operation catalogue, schema/key/WAL/manifest/segment/vector format
+  identities, results, receipts, limits, and candidate capability output.
+  Symbols and diagnostic defaults may differ; engine behavior may not. D-01
+  uses this identity in `rrflow version`, readiness, verification, and the
+  installed manifest through `rrflow-cli/src/diagnostics.rs`, wired only by
+  `rrflow-cli/{Cargo.toml,src/main.rs,src/command.rs}`; bind the parity oracle
+  in `rrflow-cli/tests/diagnostic_identity.rs`. A profile definition or
+  successful build alone does not complete H-05a.
+- H-05b — causal context and one emission path: replace
+  `rrd-engine/src/runtime/trace.rs` direct `StorageEngine` commits with an
+  internal authorized engine operation in
+  `rrd-engine/src/engine/observability/trace.rs`; converge the remaining
+  producer names with their owning behavior instead of aliasing them. Add
+  strict W3C parse/continue/create/inject logic at the common RRD ingress and
+  outward adapter boundaries in
+  `rrd-server/src/http/trace_context.rs` and
+  `rrd-client/src/trace_context.rs`, wired through the existing server and
+  `rrd-client/{Cargo.toml,src/lib.rs,src/client.rs,src/operation.rs,src/transport.rs}`
+  composition paths. Use
+  `rrd-server/{Cargo.toml,src/lib.rs,src/main.rs,src/http/{mod,router}.rs}`
+  as the server composition roots and extend `rrd-client/tests/real_server.rs`
+  with bounded invalid-header handling,
+  asynchronous causal links, attempt/logical-call separation, crash-visible
+  unmatched starts, and cross-request isolation. Extend kernel, engine,
+  server, client, MCP, and cross-surface trace corpora, including
+  `rrd-engine/tests/observability_conformance.rs` and
+  `rrd-server/tests/observability_process.rs`; never persist raw `tracestate`
+  or let sampling suppress durable evidence.
+- H-05c — correlated diagnostic projection: add a neutral bounded diagnostic
+  sink port beneath `RrdEngine` in
+  `rrd-engine/src/engine/observability/{mod,metrics}.rs` and implement the
+  `tracing`/OpenTelemetry/log/metric adapters in
+  `rrd-server/src/observability.rs` at the composed process boundary, not in
+  rrflowKV or DataFusion. Emit the exact instrument catalogue, trace exemplars,
+  exporter queue/cardinality/time limits, overflow point, and self-telemetry. OTLP,
+  Prometheus, structured stderr, and local capture are configuration-selected
+  projections of the same signals; no exporter may open storage, block a
+  commit, establish readiness/completion, or emit sensitive payloads. Test
+  exporter absence, rejection, timeout, queue overflow, recursive error
+  suppression, redaction, and bounded `off|normal|detailed|profile` overhead.
+- H-05d — physical path coverage: each C-through-I implementation package
+  adds its canonical stage evidence and aggregate observations before its own
+  behavior is accepted. rrflowKV records scoped logical/I/O/cache/WAL/flush/
+  compaction work; native graph/BM25/vector/TurboQuant work records examined
+  paths/candidates and exact fallback; rrflowQL imports DataFusion
+  `ExecutionPlan::metrics` through `rrd-query/src/fusion.rs` without treating
+  them as wall time or state; context
+  records selection/skips/RRF/truncation/compaction; LFG, attunement, routines,
+  commit, and delivery retain their own attempts, queues, outcomes, and causal
+  coordinates. Tests reject dynamic metric dimensions and missing/duplicate
+  terminal accounting.
+- H-05e — diagnostic capture and full-chain proof: implement the bounded
+  capture operation through `rrd-engine/src/engine/observability/capture.rs`
+  and the D-01 primary `rrflow diagnostics capture` surface in
+  `rrflow-cli/src/diagnostics.rs`; extend `rrflow-eval` through
+  `rrflow-eval/src/latency.rs` and
+  `rrflow-eval/tests/latency_evidence.rs` with the canonical monotonic-clock
+  workload/result manifest, wired through
+  `rrflow-eval/{Cargo.toml,src/main.rs}`. Capture may invoke the existing
+  authenticated diagnostic-snapshot operation through `RrdEngine` and bind
+  its receipt; it cannot replay the runtime log or open a repository/storage
+  handle itself.
+  The bundle binds build/configuration/workload/seed/fault identities,
+  correlated redacted logs/traces/metrics, rrflowKV counters, rrflowQL plans,
+  DataFusion operator metrics, process CPU/RSS/I/O/queues, exact receipts,
+  omissions, crash/reopen result, and artifact digests. Fixed corpora prove
+  client/server/engine/stage timing boundaries, success/error and cold/warm
+  separation, raw p50/p95/p99/p99.9 histograms, coordinated-omission handling,
+  cardinality/overhead bounds, exporter failure, deterministic fault replay,
+  repeated/missing work detection, and one complete prompt-to-delivery chain.
+  Raw prompts, source, paths, query parameters, vectors, credentials, model
+  output, hidden reasoning, and errors remain absent by default.
 - H-06: keep Connectome in its separate repository and use only public RRD
   health/capability/session/query/trace/subscription operations.
 - H-07: create an endpoint-candidate resolver and mesh transport adapter after
@@ -3388,6 +3490,32 @@ not run and reason: no Cargo package test, Clippy, workspace compile/test, SDK c
 remaining known errors: the engine remains pre-alpha. C-06 still needs selective projected page scans, property/fuzz and mixed-family evidence, configurable budgets, mapped-generation lifetime proof, and measured compression/value-placement/filter/cache decisions. C-07 and Gates D through J remain open, including turnkey binaries/install/attunement, native graph/BM25/vector paths, streamed stamped Arrow/DataFusion execution, persisted reasoning/recall, runtime routines/skills, every public-surface proof, and Connectome conformance
 commit/development push evidence: the result is the commit containing this entry; before handoff its exact revision is pushed only to refs/heads/main at https://github.com/rrflow/rrflow-development.git and verified there. No official-repository ref, tag, binary, artifact, or release is changed
 roadmap checkbox changed: no; no POA&M status changed
+```
+
+#### Observability, diagnostic-build, and latency-evidence planning journal
+
+```text
+gate/package: H-05/J-02/J-04 planning prerequisite / research-backed observability, diagnostic-build, latency, fault-debugging, and repository-enforcement contract; documentation and deterministic policy only; no engine gate is implemented or checked
+alpha outcome or prerequisite advanced: fixes the executable plan for proving one RRFlow causal path and future native binaries; it does not add an exporter, metric instrument, diagnostic binary, runtime trace propagation, storage/index/DataFusion behavior, or alpha readiness
+starting revision/tree/branch/remote/worktree: commit 400636de19045c0a3efb48d64e00a7ddeb8845d4; tree 7ecb35c132b921a85b74a6e0a693ae3761a5df92; branch agent/connectome-temporal-runtime-visualizer exactly at development/main; development resolves to https://github.com/rrflow/rrflow-development.git and official origin resolves to https://github.com/rrflow/rrflow.git; starting worktree and diff were empty
+baseline files/digests: README.md=63cea4c628ef8e25188556e0ecce8132fce243a56bc93e8b7c3d1cf16e0faebd; AGENTS.md=c248609d22016cc73dfba30a0cc50ecad1ecd2b39a312d7a275dead3aa9063b7; engine data flow=d419d8f927d9374816b1a818bde70ee15eed65335ffb2505e39282f072f188df; CI operations=58387218f498a2fc554d96a70a27198995bdc2dbea0ee92644eaae5ce509e4e0; convergence research=a1432f1be03e0869a468e0983f33bb7f26a10822d31d244e6aadf672110e38c8; canonical roadmap=1012a06a89f7f349da8e15cb7d0da07ed8ccf8c875ef9255184c2c904ea73c31; execution map=662cc01efeb4b912003861249cb1063bec7cc7dd28ec037482189cfda0a7590a; POA&M=09a0117a495f9dd2849c739cfe6c75a3e6daf2b5bfc079e38035cecb08dcf80d; documentation checker=b04c73be3b3d80d027e5d46d45521a59c310467c4d844a277fc0523973f67395; workflow checker=129a9ab5c1465fad4dd4a45a39ce2ef92b2cb43cc2f92b3930dce89413f83241; candidate caller=489b9e60da94adb6b6cf65348674013634181985b4820fd61fc5363813d9b54b; reusable CI=0da34e22a5aebf5e2d66d53e00c77f08ffae959727ca9c052a10706dea47cd68
+change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions): current durable trace vocabulary is useful but has no exact metric catalogue, latency boundary, build/diagnostic profile semantics, cardinality/overhead rule, capture bundle, fault-debug matrix, or H-05 package order; current CI describes a required GitHub check but cannot prove protection and the private repository tier returned HTTP 403 for both rulesets and branch-protection APIs. Keep engine-data-flow as causal/observability owner, operations/ci as checked-in and external-enforcement owner, the convergence research record as the cited source ledger, the roadmap as status/dependency owner, the POA&M as verified-gap owner, and this file as execution/evidence owner. Change only those records, the existing documentation and generated-inventory policies/generators, and the generated inventory. Do not add a local Git/editor/provider hook, runtime trigger/routine/skill, exporter, dependency, build profile, binary, second telemetry authority, version change, benchmark claim, or roadmap completion. Stop on a conflicting owner, an unbounded/high-cardinality instrument, a debug mode that changes engine semantics, a telemetry path able to establish state, a sensitive payload default, an untracked planned path, or any status overclaim
+files read in full: AGENTS.md and README.md; Cargo.toml; docs/operations/ci.md; docs/research/rrflow-system-convergence-architecture-research.md; docs/architecture/engine-data-flow.md; docs/poam/rrflow-1.0-alpha.md; canonical roadmap including C, F, G, H, I, and J; execution-map governing routine, runtime flow, traceability, C-06, D, G-J, run-checklist, evidence-template, stop-condition, and current journal sections against its previously read complete baseline; .github/workflows/{ci,ci-reusable}.yml; .github/CODEOWNERS; scripts/ci/{build_execution_inventory,check_documentation,check_workflow}.py; `rrd-contract/src/diagnostic.rs`, `rrd-engine/src/engine/diagnostic.rs`, and `rrd-engine/src/runtime/trace.rs`; repository-wide instrumentation/dependency/profile searches, all current Rust tracing entry points identified by those searches, and the current DataFusion `fusion.rs` physical-metric import path
+research decision and primary-source/adaptation record: required and complete. The bounded research used official OpenTelemetry/W3C specifications, Apache DataFusion 55 documentation matching the locked workspace release, Rust Cargo/tracing/Tokio documentation, RocksDB/Qdrant/SurrealDB operational references, Google SRE and Prometheus measurement guidance, FoundationDB/RocksDB fault-test practice, Loom/Miri/Rust sanitizer documentation, Git/GitHub enforcement documentation, and SLSA provenance. The cited convergence record maps only signal, failure, measurement, and enforcement semantics into RRFlow; it copies no upstream source, public compatibility surface, topology, storage authority, or hidden runtime
+trace/resource/debug decision (add/preserve/not applicable, with reason): runtime trace behavior=preserve because this package changes no engine operation; contract=add exact one-causal-chain, signal, metric, latency, cardinality, redaction, overhead, build identity, diagnostic capture, and fault-debug requirements; repository enforcement=extend the already checked-in documentation policy so removal of the required owner sections fails candidate CI. Client-side Git hooks remain prohibited as authority because they are not cloned and can be bypassed; this checkout has no configured `core.hooksPath` and no executable file in `.git/hooks`. Runtime triggers/routines/skills remain separate Gate-I engine capabilities
+first-failure or characterization oracle and result: current-code searches found no workspace Cargo profile, OpenTelemetry/Prometheus runtime dependency, metric exporter, or metric instrument catalogue; latency fields are scattered rather than one definition; Rust tracing subscribers exist only at selected binary/adaptor edges; DataFusion imports only local physical-plan/operator/spill metrics and RRFlow has no governed import/export contract. GitHub API probes against private rrflow/rrflow-development returned HTTP 403 for both repository rulesets and main-branch protection, stating the feature requires GitHub Pro or a public repository. The first inventory check after documentation edits correctly failed drift; after generation it exposed a second defect: all newly named H-05 implementation paths were absent from `PLANNED_PATHS`. Work stopped, the complete generator was read, and the paths/gates were added. Generated-diff review then caught a displaced pre-existing J-01 assignment on root Cargo.toml; the override was corrected to preserve J-01 while adding H-05/J-02/J-03/J-04. Existing-path review then found both the separate stamped `DiagnosticSnapshot` state-view boundary and missing H-05 assignments for the current contract/client/CLI/evaluation/DataFusion composition paths. The plan now preserves that state-view authority, forbids capture from replaying/opening storage independently, names each composition root, and adds rather than replaces their gate assignments. Regeneration increased the inventory from 919 to 937 records. Non-bypassable server-side enforcement remains unproven and explicit
+files changed/created/deleted/moved: changed docs/architecture/engine-data-flow.md, docs/operations/ci.md, docs/poam/rrflow-1.0-alpha.md, docs/research/rrflow-system-convergence-architecture-research.md, docs/roadmap/rrflow-1.0.md, this execution map, scripts/ci/check_documentation.py, and scripts/ci/build_execution_inventory.py; regenerated docs/roadmap/rrflow-1.0-file-plan.jsonl. No file was created, deleted, moved, renamed, or archived
+contract or behavior changed: the engine architecture now owns an exact release/diagnostic/runtime-analysis/fault/benchmark mode matrix, machine-readable build identity, closed metric catalogue/dimensions, bounded cardinality/export failure semantics, latency clocks and evidence protocol, sanitized capture bundle, and failure workflow. It explicitly preserves the existing authenticated `DiagnosticSnapshot` as the sole stamped state view while observability remains a non-authoritative signal/capture projection. H-05 is ordered as five path-specific packages; J-02/J-04 require fault, parity, raw tail-latency, resource, and provenance evidence. POAM-026 records the missing runtime implementation and POAM-027 records the missing change-package/server enforcement. Documentation policy now rejects removal or renaming of the exact owner sections/packages/POA&M rows and removal of the canonical latency, telemetry-loss, cardinality, coordinated-omission, or state-view-separation requirements; it also distinguishes footnotes from reference links. The generated inventory now binds root Cargo.toml, 16 current H-05 composition/state-view paths, and 18 planned H-05 implementation/fixture/test paths without losing earlier assignments. No engine, build profile, binary, exporter, runtime signal, persistence, index, DataFusion execution, hook, trigger, routine, or skill behavior changed
+smallest test command and result: two deliberate documentation-policy mutations were rejected at exit 1: suffixing the exact architecture heading produced `the engine data-flow observability owner lacks ### Metric instruments and cardinality`; renaming the roadmap's H-05a item produced `the roadmap lacks observability package H-05a`. Both files were restored and the policy returned to exit 0
+owning package command and result: `ruff check` and `ruff format --check` pass for both changed Python policies; `python3 scripts/ci/check_documentation.py` passes with 92 document statuses and 90 classified coordinates; inventory generation and recheck pass with 937 current/generated/planned records, including all 18 H-05 planned paths and the 16 explicit current composition/state-view paths
+cross-boundary command and result: generated-surface parity passes 33 HTTP operations at OpenAPI SHA-256 1d18655aa6e670abd7319c3984dfc36b8ed50c280ce8afb62322a5e062b14cc6; workflow policy passes 3 workflows, 7 substantive jobs, 5 cohesive engine suites, 20 default-feature packages, and 5 optional-feature packages; version policy retains 1.0.0; all 11 knowledge-export tests pass; Cargo formatting and diff integrity pass
+failure/crash/differential evidence: the two deterministic policy denials and generated-inventory drift/missing-path stop are recorded above. No runtime, persistence, crash, reopen, query, index, inference, transport, or deployment behavior changed, so no runtime failure evidence is claimed
+full-file reread and diff review: every changed hand-authored owner/policy had its complete baseline read before editing and its complete changed delta reread after editing; the complete inventory generator was read when the missing-path stop surfaced; the generated JSONL was regenerated and sampled against exact Cargo/kernel/contract/engine/evaluation records. Final searches and diff review found no second telemetry/storage/lifecycle authority, client/provider hook, compatibility/legacy lane, sensitive default payload, external runtime dependency, version change, false gate completion, or unexplained file
+change checklist: baseline=complete; authority=complete; scope=complete; full reads=complete; oracle=complete; traceability=not applicable because no implementation is moved or rewritten; research=complete; edit plan=complete; observability=complete at contract/planning scope only; implementation=complete for this documentation/policy/inventory package and explicitly open for H-05 runtime work; tests=complete; reread=complete; verification=complete; handoff=complete subject to recording the resulting commit and verified development ref
+not run and reason: no Cargo package test, Clippy, workspace compile/test, SDK conformance, persistence/crash matrix, benchmark, install, daemon, native binary, Connectome, signed-bundle, or deployment test was run; this package changes documentation, deterministic documentation policy, and generated planning inventory only and cannot qualify those behaviors
+remaining known errors: the engine remains pre-alpha; POAM-026 is unimplemented and POAM-027 lacks both the machine-readable diff/journal binder and eligible private-repository enforcement. C-06 still needs selective projected page scans and its full property/fuzz/resource/copy/compression evidence; C-07 and Gates D through J remain open, including turnkey `rrflow`/`rrflow.exe`, install/repair/attunement, native graph/BM25/vector/TurboQuant paths, stamped streaming rrflowQL/DataFusion execution, persisted context/reasoning/recall, runtime routines/skills, every public-surface proof, and Connectome conformance
+commit/development push evidence: pending; no push may target official origin
+roadmap checkbox changed: no; planned POA&M addition records a deficiency without closing one
 ```
 
 ## Repository-wide run checklist

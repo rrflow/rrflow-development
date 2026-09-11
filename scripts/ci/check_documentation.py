@@ -36,6 +36,7 @@ SINGLE_ENGINE_DECISION = ROOT / "docs" / "decisions" / "0001-single-engine-autho
 SYSTEM_CONVERGENCE_RESEARCH = (
     ROOT / "docs" / "research" / "rrflow-system-convergence-architecture-research.md"
 )
+CI_OPERATIONS = ROOT / "docs" / "operations" / "ci.md"
 RRFLOWKV_CURRENT_FORMAT = (
     ROOT / "docs" / "reference" / "storage" / "rrflowkv-current-format.md"
 )
@@ -51,7 +52,10 @@ HISTORICAL_LSM_MIGRATION = ROOT / "docs" / "history" / "rrd-lsm-migration.md"
 STATUS = re.compile(r"(?im)^(?:\*\*)?Status(?:\*\*)?:\s*\S")
 LEGACY_MILESTONE = re.compile(r"\b(?:F\d|G\d{2}-W\d+|M\d|Q\d)\b")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
-REFERENCE_LINK = re.compile(r"(?m)^\[[^\]\n]+\]:\s*(\S+)")
+# Footnote definitions may contain prose and inline links after the colon; they
+# are not Markdown reference-link targets. Inline links inside them are checked
+# independently by ``INLINE_LINK``.
+REFERENCE_LINK = re.compile(r"(?m)^\[(?!\^)[^\]\n]+\]:\s*(\S+)")
 MARKDOWN_HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
@@ -143,6 +147,11 @@ def markdown_anchors(source: str) -> set[str]:
         counts[base] = ordinal + 1
         anchors.add(base if ordinal == 0 else f"{base}-{ordinal}")
     return anchors
+
+
+def has_exact_heading(source: str, heading: str) -> bool:
+    """Reject a renamed or suffixed owner heading instead of substring matches."""
+    return re.search(rf"(?m)^{re.escape(heading)}\s*$", source) is not None
 
 
 def knowledge_package_integrity_failures(
@@ -462,6 +471,30 @@ def main() -> int:
         failures.append("the engine data-flow owner has no context contract")
     if "## Conditional zero-copy" not in engine_data_flow:
         failures.append("the engine data-flow owner has no physical copy boundary")
+    for required_section in (
+        "### Runtime modes, build profiles, and build identity",
+        "### Metric instruments and cardinality",
+        "### Latency measurement contract",
+        "### Diagnostic capture and failure workflow",
+    ):
+        if not has_exact_heading(engine_data_flow, required_section):
+            failures.append(
+                f"the engine data-flow observability owner lacks {required_section}"
+            )
+    for required_fragment, label in (
+        ("rrflow.operation.duration", "canonical operation latency instrument"),
+        ("rrflow.telemetry.dropped", "telemetry-loss self-observation"),
+        ("2,000 points per instrument", "finite default metric cardinality"),
+        ("p50/p95/p99/p99.9", "tail-latency evidence"),
+        ("coordinated-omission", "load-test stall accounting"),
+        (
+            "RRFlow distinguishes an authenticated diagnostic snapshot from observability",
+            "diagnostic-state/observability separation",
+        ),
+        ("cannot duplicate the snapshot", "single diagnostic state-view authority"),
+    ):
+        if required_fragment not in engine_data_flow:
+            failures.append(f"the engine data-flow owner lacks {label}")
     if "rrflow://rrflow-instance/data/architecture/engine-data-flow" not in (
         engine_data_flow
     ):
@@ -501,6 +534,11 @@ def main() -> int:
         failures.append("the roadmap has no incremental knowledge-bootstrap sequence")
     if "rrflow-1.0-execution-map.md" not in roadmap:
         failures.append("the roadmap does not link its supporting code execution map")
+    for required_package in ("H-05a", "H-05b", "H-05c", "H-05d", "H-05e"):
+        if not re.search(rf"(?m)^\d+\. \*\*{re.escape(required_package)} —", roadmap):
+            failures.append(
+                f"the roadmap lacks observability package {required_package}"
+            )
 
     execution_map = EXECUTION_MAP.read_text(encoding="utf-8")
     for required_section in (
@@ -534,21 +572,42 @@ def main() -> int:
     ):
         if required_evidence_field not in execution_map:
             failures.append(
-                "the execution-map evidence template lacks "
-                f"{required_evidence_field}"
+                f"the execution-map evidence template lacks {required_evidence_field}"
+            )
+    for required_package in ("H-05a", "H-05b", "H-05c", "H-05d", "H-05e"):
+        if not re.search(rf"(?m)^- {re.escape(required_package)} —", execution_map):
+            failures.append(
+                f"the execution map lacks observability package {required_package}"
             )
 
     convergence_research = SYSTEM_CONVERGENCE_RESEARCH.read_text(encoding="utf-8")
     for required_section in (
         "## Direct answer",
         "## Evidence reconciliation",
+        "### Production observability, diagnostic builds, and latency evidence",
         "## Current-code gap matrix",
         "## Decisions and exclusions",
         "## Claim-to-source ledger",
         "## Research limitations and stop condition",
     ):
-        if required_section not in convergence_research:
+        if not has_exact_heading(convergence_research, required_section):
             failures.append(f"the system-convergence research lacks {required_section}")
+
+    ci_operations = CI_OPERATIONS.read_text(encoding="utf-8")
+    for required_section in (
+        "## Candidate chain",
+        "## Presubmit and change-evidence boundary",
+        "## Repository workflow policy",
+        "## Diagnostic, performance, and fault lanes",
+        "## Repository enforcement",
+    ):
+        if not has_exact_heading(ci_operations, required_section):
+            failures.append(f"the CI operations owner lacks {required_section}")
+    if "POAM-027" not in ci_operations:
+        failures.append("the CI operations owner does not disclose the presubmit gap")
+    for deficiency in ("POAM-026", "POAM-027"):
+        if not re.search(rf"(?m)^\| {re.escape(deficiency)} \|", poam):
+            failures.append(f"the POA&M lacks verified observability gap {deficiency}")
 
     terminology_owners = {
         README: readme,
