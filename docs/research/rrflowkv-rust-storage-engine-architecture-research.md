@@ -8,8 +8,10 @@ later governed configuration workflow
 **Audience:** RRFlow owner and engineers implementing the 1.0 pre-release
 **Researched:** 2026-09-12
 **Repository baseline:** `6de083f9cdf9a4ffe4a6904199745b49304d8fe5`
-**Implementation update:** C-06g candidate adds the bounded pinned projected
-reader and phase evidence described below; C-06 remains open
+**Implementation update:** C-06g adds the bounded pinned projected reader;
+C-06h adds finite adversarial qualification; segment v5 integrates the first
+C-06i retained policy as authenticated persisted row-group filters. C-06
+remains open for the other measured physical-policy decisions and qualification
 **Assumptions:** RRFlow remains one independently installable Rust product;
 `RrdEngine` remains the sole authorization and transaction authority;
 rrflowKV is the persistent substrate; rrflowMX is the volatile conformance
@@ -22,7 +24,8 @@ Yes: RRFlow can build a Rust-native storage engine that reaches RocksDB-class
 quality for its declared workload. The current repository is not starting from
 zero. It already contains a checksummed WAL, atomic batches, MVCC sequence
 visibility, write-conflict detection, manifest/CURRENT publication,
-checksummed immutable segment-v4 files, Arrow-compatible column pages,
+checksummed immutable segment-v5 files, Arrow-compatible column pages,
+authenticated persisted row-group filters,
 snapshots, a bounded pinned projected stream, compaction, garbage collection,
 snapshot bundles, page caching, multiple I/O modes, phase-scoped physical
 counters, deterministic differential tests, and real process-kill recovery
@@ -157,7 +160,7 @@ code is implementation inventory until its owning roadmap evidence passes.
 | `crates/persistence/rrd-lsm/src/memtable.rs` | sequence-version chains, tombstones, visible-version selection, sorted keys |
 | `crates/persistence/rrd-lsm/src/transaction.rs` | snapshot sequence capture and write/write conflict validation |
 | `crates/persistence/rrd-lsm/src/manifest.rs` | content-addressed manifests, checksummed CURRENT pointer, publication ordering, checkpoints and reachability |
-| `crates/persistence/rrd-lsm/src/segment/format.rs` | authenticated segment-v4 metadata, row groups, page descriptors, 64-byte alignment, format/schema/key/page identities |
+| `crates/persistence/rrd-lsm/src/segment/format.rs` | authenticated segment-v5 metadata, row groups, persisted membership filters, page descriptors, 64-byte alignment, format/schema/key/page identities |
 | `crates/persistence/rrd-lsm/src/segment/mod.rs` | mmap/bounded/io_uring page sources, checksummed page acquisition, page cache, table reads and frozen bytes |
 | `crates/persistence/rrd-lsm/src/database.rs` | single-writer composition, write preparation, flush/publication ordering, compaction, snapshot install, GC |
 | `crates/persistence/rrd-lsm/src/snapshot_bundle.rs` | portable checksummed snapshot closure and restore validation |
@@ -178,7 +181,7 @@ code is implementation inventory until its owning roadmap evidence passes.
 | `IoContext` | one mutex around one io_uring instance and synchronous calls; C-06g reports the backend that actually served a read after fallback | later compare bounded per-device queues/pools and cancellation based on measurements |
 | `ManifestStore::load` | full immutable-file digest verification on normal open can scale with total bytes; WAL closure is simpler than mature version tracking | separate fast authenticated metadata open from full verify; track complete version/WAL closure and retain full verification as an explicit operation |
 | WAL lifecycle | one straightforward log path; no group commit, fragmentation policy, log inventory/recycling, or retained-log accounting | preserve correctness first; add version-bound WAL inventory and benchmarked group commit only after installed lifecycle works |
-| immutable table policy | no compression, persisted filters, or value separation | C-06i compares adaptive page codecs, persisted filters, and WiscKey-style value separation; retain only measured wins |
+| immutable table policy | persisted row-group filters are integrated; no compression or value separation | C-06i separately integrates only measured wins for adaptive page codecs/cache policy; value separation remains rejected from model-only evidence |
 | operator surface | no primary-binary table/WAL/manifest inspect and full verify/repair flow | D-01 creates read-only inspect/verify; C-07/D-11 close full verification and recovery policy |
 
 The current `Database` file is too broad for long-term ownership, but splitting
@@ -531,6 +534,28 @@ hot set but still lacks integrated concurrency, generation, and lifetime
 evidence. Value separation remains rejected because a byte model cannot answer
 its recovery and garbage-collection obligations.
 
+### Persisted-filter adaptation
+
+The retained behavior is now adapted into RRFlow segment v5 rather than copied
+from an upstream format. One implementation in `segment/format.rs` owns the
+ten-bit/seven-probe hash policy, sizing, encoding, parsing, and membership
+operation. Each authenticated row-group index entry stores the unique-key count
+and exact derived little-endian filter words. Normal manifest reopen parses
+those bounded metadata bytes without reading semantic pages. Standalone
+admission and snapshot validation rebuild the words from decoded unique keys
+and reject any mismatch even when a mutated file has a recomputed outer
+checksum. Versions 1 through 4 remain direct rejection inputs; there is no
+compatibility reader or migration lane.
+
+The fixed integration workload measures the production v5 encoder and normal
+rrflowKV reopen. It requires nonzero persisted filter count/bytes, zero
+semantic-page work during open, zero member false negatives, and fewer miss-path
+page loads than filter checks while exact present, tombstone, snapshot, flush,
+compaction, and reopen semantics remain unchanged. The production filter does
+not participate in range exclusion or establish semantic presence. LZ4,
+Zstandard, segmented-LRU, and value placement remain outside this integration
+slice; the historical candidate result does not silently activate them.
+
 ## Execution order
 
 The canonical roadmap order is the authority:
@@ -539,7 +564,8 @@ The canonical roadmap order is the authority:
    (implemented candidate; recorded in the execution journal);
 2. C-06h: property/fuzz/adversarial and mixed-family correctness (implemented
    candidate with stable, stress, and bounded sanitizer evidence);
-3. C-06i: measured compression, value-placement, filter and cache decisions;
+3. C-06i: persisted filter integrated; compression, value-placement, mixed-
+   workload, and cache decisions remain separately gated;
 4. D-01: real `rrflow`/`rrflow.exe` install plan/apply, create/open/inspect,
    serve, authenticated ready, commit, close/reopen and baseline verify;
 5. C-07: recovery, background maintenance, backpressure, ENOSPC and sustained

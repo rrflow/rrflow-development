@@ -15,12 +15,13 @@ The canonical roadmap is accompanied by a subordinate
 [code execution map](rrflow-1.0-execution-map.md) and its generated
 [whole-repository file plan](rrflow-1.0-file-plan.jsonl). These records map
 files, symbols, tests, and stop conditions; they cannot change checklist status.
-The active C-06i retained-policy package has a completed
+The active C-06i retained-policy package is bound by the
+[persisted-filter integration plan](c06i-rrflowkv-persisted-filter-integration-engineering-plan.md).
+It directly replaces segment v4 with v5 and integrates the first selected
+policy under the existing transaction and format authority. The completed
 [physical-policy selection plan](c06i-rrflowkv-physical-policy-selection-engineering-plan.md)
-that binds its candidate screen, measured decisions, and production handoff.
-Authenticated persisted row-group filters are the first separately planned
-integration slice; codec placement and cache policy still require integrated
-trials. The completed C-06h
+remains the measured input; codec placement and cache policy still require
+separate integrated trials. The completed C-06h
 [adversarial qualification plan](c06h-rrflowkv-adversarial-qualification-engineering-plan.md)
 and C-06g
 [projected-read plan](c06g-rrflowkv-projected-read-engineering-plan.md) remain
@@ -34,6 +35,7 @@ status.
 | Supporting record | Durable warp | Checkout record | Authority |
 |---|---|---|---|
 | RRFlow 1.0 code execution map | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | file/symbol work packages only; roadmap checkboxes remain canonical |
-| C-06i rrflowKV physical-policy selection plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection) | [`c06i-rrflowkv-physical-policy-selection-engineering-plan.md`](c06i-rrflowkv-physical-policy-selection-engineering-plan.md) | candidate screen complete; authenticated-filter integration is next; no production-policy or C-06 completion claim |
+| C-06i rrflowKV persisted-filter integration plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration) | [`c06i-rrflowkv-persisted-filter-integration-engineering-plan.md`](c06i-rrflowkv-persisted-filter-integration-engineering-plan.md) | active machine-bound production slice; no compression/cache/value-placement or C-06 completion claim |
+| C-06i rrflowKV physical-policy selection plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection) | [`c06i-rrflowkv-physical-policy-selection-engineering-plan.md`](c06i-rrflowkv-physical-policy-selection-engineering-plan.md) | completed candidate-screen evidence and retained-policy handoff |
 | C-06h rrflowKV adversarial qualification plan | [`rrflow://rrflow-instance/data/work-package/c-06h-rrflowkv-adversarial-qualification`](rrflow://rrflow-instance/data/work-package/c-06h-rrflowkv-adversarial-qualification) | [`c06h-rrflowkv-adversarial-qualification-engineering-plan.md`](c06h-rrflowkv-adversarial-qualification-engineering-plan.md) | completed supporting package history |
 | C-06g rrflowKV projected-read engineering plan | [`rrflow://rrflow-instance/data/work-package/c-06g-rrflowkv-projected-read`](rrflow://rrflow-instance/data/work-package/c-06g-rrflowkv-projected-read) | [`c06g-rrflowkv-projected-read-engineering-plan.md`](c06g-rrflowkv-projected-read-engineering-plan.md) | completed supporting package history |

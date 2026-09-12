@@ -1,6 +1,6 @@
 # C-06i rrflowKV physical-policy selection engineering plan
 
-**Status:** active retained-policy integration; candidate screen complete
+**Status:** historical; completed supporting candidate screen
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection`
 **Owner:** C-06i implementation order, measurement rules, and retained-policy handoff
 
@@ -60,9 +60,11 @@ point misses/s. These are source-bound diagnostics on one loaded host with
 uncontrolled device cache, not release, cross-platform, end-to-end reasoning,
 or competitor evidence.
 
-The next package must implement the authenticated persisted row-group filter
-as the smallest production slice and measure actual miss-I/O reduction without
-changing semantic reads, MVCC, recovery, snapshots, or garbage collection.
+The separately machine-bound
+[persisted-filter integration package](c06i-rrflowkv-persisted-filter-integration-engineering-plan.md)
+implements the authenticated persisted row-group filter as the smallest
+production slice and measures actual miss-I/O reduction without changing
+semantic reads, MVCC, recovery, snapshots, or garbage collection.
 LZ4/Zstandard placement and segmented-LRU replacement remain later, separately
 bound integrated trials. No value-log work advances from this result.
 

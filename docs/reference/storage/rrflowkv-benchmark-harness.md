@@ -16,7 +16,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 |---|---|---|
 | Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
 | AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
-| Physical-policy candidate screen | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Measures exact segment-v4 page bodies under none/LZ4/Zstandard, a serialized row-group Bloom candidate, exact-byte LRU/segmented-LRU traces, a model-only value-placement candidate, and real create/flush/reopen point misses. It selects separately planned work and changes no production bytes. |
+| Physical-policy and filter-integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Measures exact segment-v5 page bodies under none/LZ4/Zstandard, verifies the production persisted row-group Bloom filters and normal reopen I/O, compares exact-byte LRU/segmented-LRU traces, and retains value placement as a model only. Only the filter is integrated; the other policies remain separately gated. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
@@ -65,12 +65,12 @@ deterministic expected value.
 Embedding-shaped bytes exercise payload size and access locality only. This is
 not HNSW, exact-vector, semantic-quality, or RRF evidence.
 
-## Physical-policy candidate protocol
+## Physical-policy and filter-integration protocol
 
 The C-06i executable is an optimized, feature-gated developer tool. Its child
 builds one deterministic MVCC corpus spanning audit, inbound/outbound edge,
 record, runtime, scalar, term, and vector families. It sends that corpus
-through the real `Memtable` and segment-v4 encoder, then consumes the encoder's
+through the real `Memtable` and segment-v5 encoder, then consumes the encoder's
 parsed page descriptors rather than maintaining another format parser.
 
 Every exact page body is round-tripped through no compression, LZ4, and
@@ -78,16 +78,17 @@ Zstandard level 1. The result reports raw codec bytes and CPU separately from
 an adaptive stored-byte result that counts framing and leaves an individual
 page raw unless it saves at least 12.5%. A codec advances only with exact
 round trips and at least 12.5% aggregate adaptive savings. This screen does not
-choose hot/cold level placement or write a codec discriminator into segment v4.
+choose hot/cold level placement or write a codec discriminator into segment v5.
 
-For each parsed row group, the program extracts exact unique keys and builds,
-serializes, reopens, and probes a ten-bit/seven-hash Bloom candidate. Zero
-member false negatives and no more than 2% observed false positives are
-required to advance. A separate integrated characterization creates, flushes,
-drops, and normally reopens the same corpus through `Database`, then verifies
-absent and present/tombstoned reads while recording filter and page-I/O
-counters. The isolated filter result is never labelled current database
-behavior.
+For each parsed row group, the program extracts exact unique keys and probes the
+production ten-bit/seven-hash Bloom words parsed from the authenticated v5
+index. Zero member false negatives and no more than 2% observed false positives
+are required. The integrated characterization creates, flushes, drops, and
+normally reopens the same corpus through `Database`; requires nonzero persisted
+filter count/bytes and zero semantic-page open operations; then measures absent
+point reads before separately verifying bounded present/tombstoned samples.
+Filter checks/negatives and miss-path page I/O therefore describe the actual
+reopened implementation rather than a parallel candidate codec.
 
 The cache comparison replays identical real page identities and byte weights
 through exact-byte LRU and segmented-LRU simulators: repeated hot access, a
@@ -112,11 +113,12 @@ load. It also records the actual warm-up and retained-child exit codes and
 checked operation/s and point-miss/s distributions. `--allow-dirty` permits
 only explicitly ineligible diagnostic output.
 
-The checked-in candidate artifact is bound to clean revision `f7257fa`. It
-advances authenticated persisted row-group filters as the first production
-experiment, while codec placement and segmented-LRU require separate
-integrated trials and value separation remains rejected. The raw artifact,
-not this summary, owns the exact host, timings, counters, and digests.
+The historical candidate artifact is bound to clean revision `f7257fa`. It
+selected authenticated persisted row-group filters as the first production
+experiment. The separate persisted-filter artifact records the v5 integration;
+codec placement and segmented-LRU still require separate integrated trials and
+value separation remains rejected. The raw artifacts, not this summary, own
+their exact host, timings, counters, and digests.
 
 ## Lifecycle measurements
 
@@ -150,10 +152,10 @@ bind:
 4. the end-to-end governed reasoning/recall workloads and quality metrics
    required by the release gates.
 
-The C-06i artifact closes the listed source/host provenance gaps only for its
-candidate screen. It still discloses uncontrolled device cache and host load,
-lacks cross-platform and complete end-to-end workloads, and is never release
-evidence.
+The C-06i artifacts close the listed source/host provenance gaps only for their
+candidate and filter-integration scopes. They still disclose uncontrolled
+device cache and host load, lack cross-platform and complete end-to-end
+workloads, and are never release evidence.
 
 The scheduled workflow uses `ubuntu-latest`; its artifacts are useful regression
 diagnostics, not fixed-hardware release evidence. The
@@ -181,8 +183,8 @@ cargo run --release --locked -p rrd-store --example ai_hotset_benchmark -- \
   --output target/rrflow-kv-ai-metadata-fanout-embedding-f32.json
 ```
 
-Run the C-06i fixed-machine candidate screen from a clean implementation
-revision:
+Run the current C-06i fixed-machine persisted-filter integration proof from a
+clean implementation revision:
 
 ```bash
 cargo run --release --locked -p rrd-lsm \
@@ -195,7 +197,7 @@ cargo run --release --locked -p rrd-lsm \
   --value-bytes 512 \
   --misses 16384 \
   --cache-bytes 1048576 \
-  --output docs/evidence/c06i-rrflowkv-physical-policy-linux-x86_64.json
+  --output docs/evidence/c06i-rrflowkv-persisted-filter-linux-x86_64.json
 ```
 
 Use `--allow-dirty` only for implementation smoke runs. Such output records the

@@ -5,8 +5,8 @@ mod reader;
 
 use self::format::{
     encode, parse_metadata, require_current_format, sha256_hex, PageDescriptor, PageKind,
-    ParsedMetadata, RowGroupDescriptor, FOOTER_BYTES, INDEX_HEADER_BYTES, MAX_KEY_BYTES,
-    MAX_SEGMENT_BYTES, MAX_VALUE_BYTES, SEGMENT_HEADER_BYTES,
+    ParsedMetadata, RowGroupDescriptor, RowGroupFilter, FOOTER_BYTES, INDEX_HEADER_BYTES,
+    MAX_KEY_BYTES, MAX_SEGMENT_BYTES, MAX_VALUE_BYTES, SEGMENT_HEADER_BYTES,
 };
 use crate::io::{IoContext, SelectedIo, SharedIoContext};
 use crate::{Error, Memtable, Result, SegmentDescriptor, SegmentIoPolicy, VersionedValue};
@@ -47,7 +47,7 @@ pub use self::reader::{
 };
 
 pub const DEFAULT_PAGE_CACHE_BYTES: usize = 4 * 1024 * 1024;
-pub const SEGMENT_OPEN_EVIDENCE_VERSION: u16 = 1;
+pub const SEGMENT_OPEN_EVIDENCE_VERSION: u16 = 2;
 const COPY_BUFFER_BYTES: usize = 64 * 1024;
 static TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
 static CACHE_ID: AtomicU64 = AtomicU64::new(1);
@@ -87,6 +87,8 @@ pub struct SegmentOpenEvidence {
     pub full_checksum_bytes: u64,
     pub metadata_operations: u64,
     pub metadata_bytes: u64,
+    pub persisted_filter_count: u64,
+    pub persisted_filter_bytes: u64,
     pub semantic_page_operations: u64,
     pub semantic_page_bytes: u64,
 }
@@ -103,6 +105,8 @@ impl Default for SegmentOpenEvidence {
             full_checksum_bytes: 0,
             metadata_operations: 0,
             metadata_bytes: 0,
+            persisted_filter_count: 0,
+            persisted_filter_bytes: 0,
             semantic_page_operations: 0,
             semantic_page_bytes: 0,
         }
@@ -144,6 +148,14 @@ impl SegmentOpenEvidence {
         } else {
             (0, 0)
         };
+        let persisted_filter_count = u64::try_from(metadata.row_groups.len())
+            .map_err(|_| Error::InvalidSegment("persisted filter count exceeds u64".into()))?;
+        let persisted_filter_bytes =
+            metadata.row_groups.iter().try_fold(0u64, |total, group| {
+                total
+                    .checked_add(group.filter.byte_len() as u64)
+                    .ok_or_else(|| Error::InvalidSegment("persisted filter bytes overflow".into()))
+            })?;
         Ok(Self {
             contract_version: SEGMENT_OPEN_EVIDENCE_VERSION,
             segment_count: 1,
@@ -154,6 +166,8 @@ impl SegmentOpenEvidence {
             full_checksum_bytes: physical_bytes,
             metadata_operations: 1,
             metadata_bytes,
+            persisted_filter_count,
+            persisted_filter_bytes,
             semantic_page_operations,
             semantic_page_bytes,
         })
@@ -208,6 +222,16 @@ impl SegmentOpenEvidence {
                 &mut self.metadata_bytes,
                 other.metadata_bytes,
                 "metadata bytes",
+            ),
+            (
+                &mut self.persisted_filter_count,
+                other.persisted_filter_count,
+                "persisted filter count",
+            ),
+            (
+                &mut self.persisted_filter_bytes,
+                other.persisted_filter_bytes,
+                "persisted filter bytes",
             ),
             (
                 &mut self.semantic_page_operations,
@@ -356,71 +380,11 @@ pub(super) struct PageLoadEvidence {
     pub copied_bytes: u64,
 }
 
-#[derive(Debug, Clone)]
-struct RowGroupFilter {
-    bits: Vec<u64>,
-}
-
-impl RowGroupFilter {
-    const HASH_FUNCTIONS: usize = 7;
-    const BITS_PER_ENTRY: usize = 10;
-
-    fn new(entries: u64) -> Self {
-        let entries = usize::try_from(entries).expect("validated row count fits usize");
-        let bits = entries
-            .saturating_mul(Self::BITS_PER_ENTRY)
-            .max(u64::BITS as usize);
-        Self {
-            bits: vec![0; bits.div_ceil(u64::BITS as usize)],
-        }
-    }
-
-    fn allow_all() -> Self {
-        Self { bits: Vec::new() }
-    }
-
-    fn insert(&mut self, key: &[u8]) {
-        for bit in self.positions(key) {
-            self.bits[bit / u64::BITS as usize] |= 1u64 << (bit % u64::BITS as usize);
-        }
-    }
-
-    fn may_contain(&self, key: &[u8]) -> bool {
-        self.bits.is_empty()
-            || self.positions(key).into_iter().all(|bit| {
-                self.bits[bit / u64::BITS as usize] & (1u64 << (bit % u64::BITS as usize)) != 0
-            })
-    }
-
-    fn positions(&self, key: &[u8]) -> [usize; Self::HASH_FUNCTIONS] {
-        let bit_count = self.bits.len() * u64::BITS as usize;
-        let first = filter_hash(key, 0xcbf2_9ce4_8422_2325);
-        let second = filter_hash(key, 0x9e37_79b9_7f4a_7c15) | 1;
-        std::array::from_fn(|index| {
-            first.wrapping_add((index as u64).wrapping_mul(second)) as usize % bit_count
-        })
-    }
-}
-
-fn filter_hash(key: &[u8], seed: u64) -> u64 {
-    let mut hash = seed;
-    for byte in key {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    hash ^= hash >> 33;
-    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
-    hash ^= hash >> 33;
-    hash = hash.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
-    hash ^ (hash >> 33)
-}
-
 pub struct Segment {
     pub descriptor: SegmentDescriptor,
     row_group_budget: SegmentRowGroupBudget,
     source: PageSource,
     row_groups: Vec<RowGroupDescriptor>,
-    filters: Vec<RowGroupFilter>,
     cache: SharedPageCache,
     cache_id: u64,
     open_evidence: SegmentOpenEvidence,
@@ -553,8 +517,8 @@ impl Segment {
         let source_ms = source_started.elapsed().as_millis() as u64;
         let row_group_count = metadata.row_groups.len();
         let row_group_budget = metadata.row_group_budget;
-        let mut segment = build_segment(metadata, source, cache, false, open_evidence)?;
-        segment.filters = segment.validate_all_pages()?;
+        let segment = build_segment(metadata, source, cache, open_evidence)?;
+        segment.validate_all_pages()?;
         tracing::debug!(
             target: "rrd_lsm::open",
             path = %path.display(),
@@ -562,11 +526,13 @@ impl Segment {
             row_group_count,
             row_group_target_bytes = row_group_budget.target_bytes,
             row_group_max_rows = row_group_budget.max_rows,
+            persisted_filter_count = segment.open_evidence.persisted_filter_count,
+            persisted_filter_bytes = segment.open_evidence.persisted_filter_bytes,
             verify_ms,
             metadata_ms,
             source_ms,
             total_ms = total_started.elapsed().as_millis() as u64,
-            "immutable v4 columnar segment open phases completed"
+            "immutable v5 columnar segment open phases completed"
         );
         Ok(segment)
     }
@@ -589,10 +555,10 @@ impl Segment {
         let metadata = parse_metadata(&mut file, physical_bytes, checksum)?;
         let open_evidence = SegmentOpenEvidence::for_metadata(physical_bytes, &metadata, false)?;
         let source = open_page_source(file, io)?;
-        let mut segment = build_segment(metadata, source, cache, true, open_evidence)?;
+        let mut segment = build_segment(metadata, source, cache, open_evidence)?;
         segment.descriptor.level = expected.level;
         if &segment.descriptor != expected {
-            return invalid("v4 segment differs from its manifest descriptor");
+            return invalid("v5 segment differs from its manifest descriptor");
         }
         Ok(segment)
     }
@@ -615,7 +581,7 @@ impl Segment {
         let content_end = bytes
             .len()
             .checked_sub(FOOTER_BYTES)
-            .ok_or_else(|| Error::InvalidSegment("v4 snapshot footer underflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v5 snapshot footer underflow".into()))?;
         let footer = std::str::from_utf8(&bytes[content_end..])
             .map_err(|_| Error::InvalidSegment("segment footer is not ASCII".into()))?;
         let checksum = sha256_hex(&bytes[..content_end]);
@@ -628,10 +594,9 @@ impl Segment {
             metadata,
             PageSource::Bytes(Arc::new(bytes)),
             new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
-            false,
             SegmentOpenEvidence::default(),
         )?;
-        segment.filters = segment.validate_all_pages()?;
+        segment.validate_all_pages()?;
         segment.descriptor.level = expected.level;
         if &segment.descriptor != expected {
             return invalid(format!(
@@ -709,7 +674,7 @@ impl Segment {
         if key < group.first_key.as_slice() {
             return Ok(None);
         }
-        let negative = !self.filters[index].may_contain(key);
+        let negative = !group.filter.may_contain(key);
         record_filter_probe(&self.cache, negative)?;
         if negative {
             return Ok(None);
@@ -983,7 +948,7 @@ impl Segment {
         let ordinal = row_group
             .checked_mul(format::PAGES_PER_ROW_GROUP)
             .and_then(|value| value.checked_add(kind as usize - 1))
-            .ok_or_else(|| Error::InvalidSegment("v4 page cache ordinal overflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v5 page cache ordinal overflow".into()))?;
         let key = (self.cache_id, ordinal);
         {
             let mut cache = self
@@ -1107,8 +1072,7 @@ impl Segment {
         })
     }
 
-    fn validate_all_pages(&self) -> Result<Vec<RowGroupFilter>> {
-        let mut filters = Vec::with_capacity(self.row_groups.len());
+    fn validate_all_pages(&self) -> Result<()> {
         let mut previous: Option<(Vec<u8>, u64)> = None;
         let mut observed_rows = 0u64;
         let mut observed_minimum = u64::MAX;
@@ -1133,7 +1097,9 @@ impl Segment {
                 group.validity.buffer.as_slice(),
                 descriptor.row_count as usize,
             )?;
-            let mut filter = RowGroupFilter::new(u64::from(descriptor.row_count));
+            let mut filter = RowGroupFilter::new(descriptor.unique_key_count)?;
+            let mut unique_key_count = 0u32;
+            let mut previous_group_key: Option<Vec<u8>> = None;
             let mut actual_first = None;
             let mut actual_last = None;
             let mut null_count = 0u32;
@@ -1156,10 +1122,16 @@ impl Segment {
                                 || (key == prior_key.as_slice() && sequence <= *prior_sequence)
                         })
                 {
-                    return invalid("v4 spine is not in canonical key/sequence order");
+                    return invalid("v5 spine is not in canonical key/sequence order");
                 }
                 previous = Some((key.to_vec(), sequence));
-                filter.insert(key);
+                if previous_group_key.as_deref() != Some(key) {
+                    filter.insert(key);
+                    unique_key_count = unique_key_count.checked_add(1).ok_or_else(|| {
+                        Error::InvalidSegment("v5 unique-key validation count overflow".into())
+                    })?;
+                    previous_group_key = Some(key.to_vec());
+                }
                 actual_first.get_or_insert_with(|| key.to_vec());
                 actual_last = Some(key.to_vec());
                 key_min = key_min.min(key.len() as u64);
@@ -1189,20 +1161,22 @@ impl Segment {
                 || descriptor.page(PageKind::ValueOffsets).statistic_min != value_min
                 || descriptor.page(PageKind::ValueOffsets).statistic_max != value_max
             {
-                return invalid("v4 page statistics or row-group bounds disagree with data");
+                return invalid("v5 page statistics or row-group bounds disagree with data");
+            }
+            if unique_key_count != descriptor.unique_key_count || filter != descriptor.filter {
+                return invalid("v5 persisted row-group filter disagrees with decoded keys");
             }
             observed_rows = observed_rows
                 .checked_add(u64::from(descriptor.row_count))
-                .ok_or_else(|| Error::InvalidSegment("v4 observed row count overflow".into()))?;
-            filters.push(filter);
+                .ok_or_else(|| Error::InvalidSegment("v5 observed row count overflow".into()))?;
         }
         if observed_rows != self.descriptor.entries
             || observed_minimum != self.descriptor.minimum_sequence
             || observed_maximum != self.descriptor.maximum_sequence
         {
-            return invalid("v4 header counts or sequence range disagree with pages");
+            return invalid("v5 header counts or sequence range disagree with pages");
         }
-        Ok(filters)
+        Ok(())
     }
 }
 
@@ -1289,26 +1263,13 @@ fn build_segment(
     metadata: ParsedMetadata,
     source: PageSource,
     cache: SharedPageCache,
-    conservative_filters: bool,
     open_evidence: SegmentOpenEvidence,
 ) -> Result<Segment> {
-    let filters = metadata
-        .row_groups
-        .iter()
-        .map(|group| {
-            if conservative_filters {
-                RowGroupFilter::allow_all()
-            } else {
-                RowGroupFilter::new(u64::from(group.row_count))
-            }
-        })
-        .collect();
     Ok(Segment {
         descriptor: metadata.descriptor,
         row_group_budget: metadata.row_group_budget,
         source,
         row_groups: metadata.row_groups,
-        filters,
         cache,
         cache_id: CACHE_ID.fetch_add(1, Ordering::Relaxed),
         open_evidence,
@@ -1364,10 +1325,10 @@ fn open_page_source(file: File, io: SharedIoContext) -> Result<PageSource> {
 
 fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedPage> {
     let start = usize::try_from(descriptor.offset)
-        .map_err(|_| Error::InvalidSegment("v4 page offset exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 page offset exceeds usize".into()))?;
     let end = start
         .checked_add(descriptor.physical_bytes)
-        .ok_or_else(|| Error::InvalidSegment("v4 page range overflow".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 page range overflow".into()))?;
     let (buffer, borrowed, allocated_bytes, copied_bytes, actual_io) = match source {
         PageSource::File { file, selected, io } => {
             let mut bytes = MutableBuffer::new(descriptor.physical_bytes);
@@ -1381,7 +1342,7 @@ fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedP
         PageSource::Mapped { bytes, io } => {
             let slice = bytes
                 .get(start..end)
-                .ok_or_else(|| Error::InvalidSegment("v4 mapped page range is absent".into()))?;
+                .ok_or_else(|| Error::InvalidSegment("v5 mapped page range is absent".into()))?;
             io.record_read(SelectedIo::Mmap, slice.len());
             (
                 borrow_mmap(bytes, start, slice.len())?,
@@ -1394,7 +1355,7 @@ fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedP
         PageSource::Bytes(bytes) => {
             let slice = bytes
                 .get(start..end)
-                .ok_or_else(|| Error::InvalidSegment("v4 snapshot page range is absent".into()))?;
+                .ok_or_else(|| Error::InvalidSegment("v5 snapshot page range is absent".into()))?;
             let buffer = Buffer::from(slice);
             let allocated = buffer.capacity();
             (buffer, false, allocated, slice.len(), None)
@@ -1402,7 +1363,7 @@ fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedP
     };
     if ring::digest::digest(&ring::digest::SHA256, buffer.as_slice()).as_ref() != descriptor.digest
     {
-        return invalid("v4 page checksum does not match");
+        return invalid("v5 page checksum does not match");
     }
     Ok(LoadedPage {
         buffer,
@@ -1419,7 +1380,7 @@ fn borrow_mmap(bytes: &Arc<Mmap>, start: usize, length: usize) -> Result<Buffer>
     }
     let pointer = unsafe { bytes.as_ptr().add(start) as *mut u8 };
     let pointer = NonNull::new(pointer)
-        .ok_or_else(|| Error::InvalidSegment("v4 mapped page has a null pointer".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 mapped page has a null pointer".into()))?;
     let owner: Arc<dyn Allocation> = Arc::clone(bytes) as Arc<dyn Allocation>;
     Ok(unsafe { Buffer::from_custom_allocation(pointer, length, owner) })
 }
@@ -1449,13 +1410,13 @@ fn key_at(spine: &KeySpine, row: usize) -> Result<&[u8]> {
 fn sequence_at(spine: &KeySpine, row: usize) -> Result<u64> {
     let offset = row
         .checked_mul(8)
-        .ok_or_else(|| Error::InvalidSegment("v4 sequence offset overflow".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 sequence offset overflow".into()))?;
     let bytes = spine
         .sequences
         .buffer
         .as_slice()
         .get(offset..offset + 8)
-        .ok_or_else(|| Error::InvalidSegment("v4 sequence row is absent".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 sequence row is absent".into()))?;
     Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
 }
 
@@ -1484,7 +1445,7 @@ fn value_from_columns(columns: &LoadedValueColumns, row: usize) -> Result<Option
 fn valid_at(validity: &[u8], row: usize) -> Result<bool> {
     let byte = validity
         .get(row / 8)
-        .ok_or_else(|| Error::InvalidSegment("v4 validity row is absent".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 validity row is absent".into()))?;
     Ok(byte & (1 << (row % 8)) != 0)
 }
 
@@ -1492,7 +1453,7 @@ fn binary_at<'a>(offsets: &[u8], data: &'a [u8], row: usize) -> Result<&'a [u8]>
     let start = offset_at(offsets, row)?;
     let end = offset_at(offsets, row + 1)?;
     if start > end || end > data.len() {
-        return invalid("v4 Arrow binary offsets are not monotonic or in bounds");
+        return invalid("v5 Arrow binary offsets are not monotonic or in bounds");
     }
     Ok(&data[start..end])
 }
@@ -1500,13 +1461,13 @@ fn binary_at<'a>(offsets: &[u8], data: &'a [u8], row: usize) -> Result<&'a [u8]>
 fn offset_at(offsets: &[u8], index: usize) -> Result<usize> {
     let offset = index
         .checked_mul(8)
-        .ok_or_else(|| Error::InvalidSegment("v4 Arrow offset index overflow".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 Arrow offset index overflow".into()))?;
     let bytes = offsets
         .get(offset..offset + 8)
-        .ok_or_else(|| Error::InvalidSegment("v4 Arrow offset is absent".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 Arrow offset is absent".into()))?;
     let value = i64::from_le_bytes(bytes.try_into().unwrap());
     usize::try_from(value)
-        .map_err(|_| Error::InvalidSegment("v4 Arrow offset is negative or too large".into()))
+        .map_err(|_| Error::InvalidSegment("v5 Arrow offset is negative or too large".into()))
 }
 
 fn validate_offsets(
@@ -1517,7 +1478,7 @@ fn validate_offsets(
     allow_empty: bool,
 ) -> Result<()> {
     if offsets.len() != (rows + 1).saturating_mul(8) || offset_at(offsets, 0)? != 0 {
-        return invalid("v4 Arrow binary offset page has the wrong shape");
+        return invalid("v5 Arrow binary offset page has the wrong shape");
     }
     for row in 0..rows {
         let start = offset_at(offsets, row)?;
@@ -1527,22 +1488,22 @@ fn validate_offsets(
             || end - start > maximum_item_bytes
             || (!allow_empty && start == end)
         {
-            return invalid("v4 Arrow binary offsets violate item bounds");
+            return invalid("v5 Arrow binary offsets violate item bounds");
         }
     }
     if offset_at(offsets, rows)? != data.len() {
-        return invalid("v4 Arrow binary offsets do not terminate at the data length");
+        return invalid("v5 Arrow binary offsets do not terminate at the data length");
     }
     Ok(())
 }
 
 fn validate_validity(validity: &[u8], rows: usize) -> Result<()> {
     if validity.len() != rows.div_ceil(8) {
-        return invalid("v4 Arrow validity bitmap has the wrong length");
+        return invalid("v5 Arrow validity bitmap has the wrong length");
     }
     let used = rows % 8;
     if used != 0 && validity.last().is_some_and(|byte| byte >> used != 0) {
-        return invalid("v4 Arrow validity bitmap has non-zero padding bits");
+        return invalid("v5 Arrow validity bitmap has non-zero padding bits");
     }
     Ok(())
 }

@@ -144,9 +144,10 @@ segment pages before returning a batch.
 The completed C-06a through C-06f slices reached the common immutable-page
 foundation. Its
 [current physical-format reference](../reference/storage/rrflowkv-current-format.md)
-records segment v4's ordered spine, six Arrow-layout buffers, authenticated
-format identities, page ownership/copy counters, frozen bytes, and explicit
-rejection of earlier segments. Validated row/byte targets now govern new flush
+records segment v5's ordered spine, six Arrow-layout buffers, authenticated
+persisted row-group filters, format identities, page ownership/copy counters,
+frozen bytes, and explicit rejection of earlier segments. Validated row/byte
+targets now govern new flush
 and compaction outputs and remain authenticated per segment so older
 generations are self-describing when the writer configuration changes. A
 generated mixed-family MVCC corpus now proves exact point/range behavior through
@@ -179,10 +180,13 @@ checkpoint reconciliation; none of these diagnostics becomes database truth.
 
 This is a synchronous physical storage stream, not the F-01 DataFusion
 provider. It emits owned general-MVCC merge batches; it does not claim an Arrow
-`RecordBatch`, asynchronous backpressure, filter/limit pushdown, or end-to-end
-zero-copy. C-06 remains open for C-06h adversarial/property/fuzz qualification
-and C-06i persisted-filter plus measured compression, value-placement, mixed-
-workload, and cache decisions.
+`RecordBatch`, asynchronous backpressure, predicate/limit pushdown, or end-to-
+end zero-copy. C-06h adds finite adversarial/property/fuzz qualification.
+Segment v5 now authenticates each row group's persisted membership filter;
+normal reopen parses it with zero semantic-page reads, definite point misses
+can skip key pages, and positive answers still execute exact MVCC lookup. C-06
+remains open for measured compression, value-placement, mixed-workload, and
+cache integration/qualification.
 
 ## Conditional zero-copy
 
@@ -1277,8 +1281,8 @@ compile cannot substitute for this proof.
 
 | Concern | Present checkout | Required target |
 |---|---|---|
-| rrflowKV writes and hot reads | Checksummed WAL frames, copy-on-write-capable mutable MVCC generations, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, derived row-group filters, a byte-bounded immutable-page cache, ownership/copy physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04/C-06g behavior while C-06h/C-06i close qualification and measured physical policy; C-07 qualifies installed-path recovery, maintenance, and mapped-buffer lifetime; F-05 decides final cache admission from measurements. |
-| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v4 read path. Segment v4 stores a strict ordered key/version spine in six aligned Arrow-layout buffers per row group; validated configurable row/byte targets apply to flush and compaction and are authenticated in each segment. Descriptors authenticate types, encoding/compression metadata, bounds, statistics, and page digests. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3 fail unsupported before alternate decoding. C-06g provides a bounded projected stream over one owned sequence/manifest/memtable/segment generation, selective key/validity/value page acquisition, exact global MVCC merge, tombstone suppression, Arrow-compatible output buffers, active-manifest GC retention, and separate segment-open/startup-reconciliation/query evidence. | C-06h must add broader adversarial/property/fuzz/fault coverage; C-06i must make comparative compression/value-placement/persisted-filter/cache decisions under mixed workloads. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime through the installed composition. |
+| rrflowKV writes and hot reads | Checksummed WAL frames, copy-on-write-capable mutable MVCC generations, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, persisted row-group filters, a byte-bounded immutable-page cache, ownership/filter/copy physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04/C-06g behavior while the rest of C-06i closes measured physical policy; C-07 qualifies installed-path recovery, maintenance, and mapped-buffer lifetime; F-05 decides final cache admission from measurements. |
+| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v5 read path. Segment v5 stores a strict ordered key/version spine in six aligned Arrow-layout buffers plus one authenticated membership filter per row group; validated configurable row/byte targets apply to flush and compaction and are authenticated in each segment. Descriptors authenticate types, encoding/compression metadata, bounds, statistics, page digests, unique-key counts, and canonical filter words. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3/v4 fail unsupported before alternate decoding. C-06g provides a bounded projected stream over one owned sequence/manifest/memtable/segment generation, selective key/validity/value page acquisition, exact global MVCC merge, tombstone suppression, Arrow-compatible output buffers, active-manifest GC retention, and separate segment-open/startup-reconciliation/query evidence. C-06h adds finite adversarial/property/fuzz/fault coverage; the first C-06i production slice proves filter canonicality, metadata-only reopen, and miss pruning. | C-06i must still make and qualify compression/value-placement/mixed-workload/cache decisions. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime through the installed composition. |
 | Transactions, identity, and audit | C-02 supplies one snapshot-isolation point/range/write transaction and one set of repositories for rrflowMX and rrflowKV. Accepted C-03 publishes record/relation temporal state, both adjacency directions, schema-bound scalar/unique changes, BM25/vector source deltas, generic projection work, runtime entry, prepared governed-function receipts and proposals, semantic audit, outbox, cursor, and outcome through one plan. Exact semantic-key comparison passes at prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement failures; catalogue maxima fit one physical batch; corrupt runtime substitution fails closed; and lost-acknowledgement recovery consumes the durable receipt without guest re-execution. | H-04/H-05 must complete same-stamp effect authorization plus identity/trace parity across embedded and transport paths. |
 | Arrow conversion | C-06g emits bounded Arrow-compatible key and optional value offset/data buffers from a projected physical stream, but rrflowQL still converts materialized `QueryRow` values into newly allocated typed Arrow arrays. | Adapt eligible segment buffers and bounded decoded/memtable overlays into `RecordBatch` streams through one stamped provider; measure every borrow and copy. |
 | DataFusion | Real bounded execution over the materialized Arrow snapshot; it does not yet consume the C-06g storage stream. | Push projection/predicate/limit through the provider into rrflowKV and compose native graph/BM25/vector operators at one stamp. |

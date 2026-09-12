@@ -9,10 +9,10 @@
     {
       "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "level": 0,
-      "format_version": 4,
+      "format_version": 5,
       "schema_digest": "7f9ffd70086074178df404606f44560f7d04546ff21ae49e802935563e5c8861",
       "key_codec_digest": "542c8fdcc2419e2b8de3b54d85e4d1fc168d4c8705acceaa1b196883a20938da",
-      "page_format_digest": "4992b28a9b9c8087d0290a6d57f3037da50d95e653baa87484df61fe748be151",
+      "page_format_digest": "1034adf043151e3b1d6ebad40ad4e54d83f7d47351277bbb3321a1cdf481da61",
       "first_key": [
         97
       ],
@@ -28,10 +28,10 @@
     {
       "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "level": 0,
-      "format_version": 4,
+      "format_version": 5,
       "schema_digest": "7f9ffd70086074178df404606f44560f7d04546ff21ae49e802935563e5c8861",
       "key_codec_digest": "542c8fdcc2419e2b8de3b54d85e4d1fc168d4c8705acceaa1b196883a20938da",
-      "page_format_digest": "4992b28a9b9c8087d0290a6d57f3037da50d95e653baa87484df61fe748be151",
+      "page_format_digest": "1034adf043151e3b1d6ebad40ad4e54d83f7d47351277bbb3321a1cdf481da61",
       "first_key": [
         109
       ],
@@ -45,5 +45,5 @@
       "checksum": "2222222222222222222222222222222222222222222222222222222222222222"
     }
   ],
-  "digest": "417ec94c5ff7492023ea9b03301a881bb962fed5ff05482f48ae7b1e78c17b46"
+  "digest": "1dc2d9543877c369e0cf9d087758e72141c74ee280ad7f50c9d23bce9bc1cb95"
 }

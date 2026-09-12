@@ -1296,8 +1296,8 @@ fn deterministic_malformed_segment_bytes_are_rejected_without_panics() {
             .map(|_| generator.next_u64() as u8)
             .collect::<Vec<_>>();
         if case % 3 == 0 {
-            bytes[..8].copy_from_slice(b"RRDSEG04");
-            bytes[8..10].copy_from_slice(&4u16.to_le_bytes());
+            bytes[..8].copy_from_slice(b"RRDSEG05");
+            bytes[8..10].copy_from_slice(&5u16.to_le_bytes());
         }
         let path = malformed_root.join(format!("generated-{case:02}.seg"));
         std::fs::write(&path, bytes).unwrap();

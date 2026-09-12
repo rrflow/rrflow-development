@@ -146,10 +146,14 @@ TurboQuant `ensure_vector_index` request, generic publication, replay
 suppression, and successful fixtures are gone. The complete default workspace
 test and strict Clippy matrices pass after that convergence. The unavailable
 post-alpha OpenRaft implementation remains an explicit POA&M item and is not
-part of the alpha composition. C-06 is active: segment v4 supplies the ordered
+part of the alpha composition. C-06 is active: segment v5 supplies the ordered
 key/version spine, six Arrow-layout page buffers, authenticated format
 identities, measured mapped-versus-allocated ownership, and authenticated
-configurable row-group targets applied by flush and compaction. C-06g now adds
+configurable row-group targets applied by flush and compaction. Persisted,
+authenticated row-group Bloom filters now survive normal reopen without
+semantic-page reads, prune definite point misses before key-page acquisition,
+and remain acceleration metadata: positives still use the exact MVCC spine.
+C-06g adds
 a synchronous bounded projected storage stream over an owned sequence,
 manifest, memtable, and segment generation. It selects key-spine pages first,
 resolves one MVCC winner, suppresses winning tombstones, defers value pages by
@@ -159,8 +163,8 @@ validation and rrflowKV startup reconciliation. Fixed and generated mixed-
 family histories match the independent oracle through reopen and protected
 compaction. C-06h now adds deterministic independent-model, stress, fault,
 lifetime, and coverage-guided sanitizer qualification over that stream. C-06
-remains open for C-06i measured compression, value-placement, persisted-
-filter, mixed-workload, and cache decisions. This is not a DataFusion
+remains open for C-06i measured compression, value-placement, mixed-workload,
+and cache integration/qualification. This is not a DataFusion
 `RecordBatch` provider, native graph/BM25/vector access, turnkey installation,
 or persistent reasoning/recall proof.
 

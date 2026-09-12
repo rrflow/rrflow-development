@@ -1,12 +1,17 @@
-//! Feature-gated C-06i measurements over rrflowKV's real segment-v4 encoder.
+//! Feature-gated C-06i measurements over rrflowKV's real segment-v5 encoder.
 //!
-//! Nothing in this module is a production storage policy. It exists to make
-//! codec, persisted-filter, cache-admission, and value-placement decisions
-//! reproducible before any candidate is allowed to change durable bytes.
+//! Nothing in this module owns production storage policy. It verifies the
+//! canonical persisted filter and keeps codec, cache-admission, and
+//! value-placement decisions reproducible before another candidate changes
+//! durable bytes.
 
 #[cfg(test)]
+use super::format::RowGroupFilter;
+#[cfg(test)]
 use super::format::FOOTER_BYTES;
-use super::format::{encode, parse_metadata, sha256_hex, PageKind};
+use super::format::{
+    encode, parse_metadata, sha256_hex, PageKind, FILTER_BITS_PER_KEY, FILTER_HASH_FUNCTIONS,
+};
 use crate::{
     Database, DatabaseOptions, Durability, Error, Memtable, Mutation, Result,
     SegmentRowGroupBudget, WriteBatch, SEGMENT_FORMAT_VERSION,
@@ -18,7 +23,7 @@ use std::io::Cursor;
 use std::path::Path;
 use std::time::Instant;
 
-pub const PHYSICAL_POLICY_EVIDENCE_VERSION: u16 = 1;
+pub const PHYSICAL_POLICY_EVIDENCE_VERSION: u16 = 2;
 
 const FAMILY_PREFIXES: [(&str, &[u8]); 8] = [
     ("audit", b"audit/"),
@@ -30,9 +35,6 @@ const FAMILY_PREFIXES: [(&str, &[u8]); 8] = [
     ("term", b"term/"),
     ("vector", b"vector/"),
 ];
-const FILTER_MAGIC: &[u8; 8] = b"RRBF0001";
-const FILTER_HASH_FUNCTIONS: usize = 7;
-const FILTER_BITS_PER_KEY: usize = 10;
 const FILTER_FALSE_POSITIVE_LIMIT_PPM: u64 = 20_000;
 const ADAPTIVE_CODEC_MINIMUM_SAVINGS_BPS: u64 = 1_250;
 const ADAPTIVE_CODEC_FRAME_BYTES: usize = 8;
@@ -126,7 +128,7 @@ pub struct FilterObservation {
     pub absent_queries: u64,
     pub false_positives: u64,
     pub false_positive_parts_per_million: u64,
-    pub passes_candidate_threshold: bool,
+    pub passes_policy_threshold: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -172,6 +174,10 @@ pub struct FamilyObservation {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReopenedPointMissObservation {
     pub integrated_rrflowkv: bool,
+    pub open_persisted_filter_count: u64,
+    pub open_persisted_filter_bytes: u64,
+    pub open_semantic_page_operations: u64,
+    pub open_semantic_page_bytes: u64,
     pub misses_verified: u64,
     pub hit_samples_verified: u64,
     pub elapsed_nanoseconds: u64,
@@ -203,7 +209,7 @@ pub struct PhysicalPolicyTrial {
     pub elapsed_nanoseconds: u64,
     pub peak_rss_bytes: Option<u64>,
     pub codecs: Vec<CodecObservation>,
-    pub persisted_filter_candidate: FilterObservation,
+    pub persisted_row_group_filter: FilterObservation,
     pub cache_candidates: Vec<CachePolicyObservation>,
     pub value_placement_candidate: ValuePlacementObservation,
     pub families: Vec<FamilyObservation>,
@@ -238,11 +244,6 @@ struct CodecAccumulator {
     selected_pages: u64,
     encode_nanoseconds: u64,
     decode_nanoseconds: u64,
-}
-
-#[derive(Debug, Clone)]
-struct CandidateFilter {
-    bits: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -314,21 +315,26 @@ pub fn run_physical_policy_trial(
     })?;
 
     let codecs = observe_codecs(&pages)?;
-    let persisted_filter_candidate = observe_filters(&encoded.bytes, &metadata.row_groups, config)?;
+    let persisted_row_group_filter = observe_filters(&encoded.bytes, &metadata.row_groups, config)?;
     let cache_candidates = observe_caches(&pages, config.cache_bytes)?;
     let value_placement_candidate = observe_value_placement(&table)?;
     let families = observe_families(&pages)?;
     let reopened_point_miss = observe_reopened_database(root, config, &corpus)?;
+    validate_persisted_filter_integration(
+        metadata.row_groups.len(),
+        &persisted_row_group_filter,
+        &reopened_point_miss,
+    )?;
     let decisions = decide_candidates(
         &codecs,
-        &persisted_filter_candidate,
+        &persisted_row_group_filter,
         &cache_candidates,
         &value_placement_candidate,
     );
 
     Ok(PhysicalPolicyTrial {
         evidence_version: PHYSICAL_POLICY_EVIDENCE_VERSION,
-        evidence_scope: "c06i-candidate-screen-not-production-policy".into(),
+        evidence_scope: "c06i-persisted-row-group-filter-integration".into(),
         config,
         corpus_digest: corpus.digest,
         operation_count,
@@ -341,14 +347,14 @@ pub fn run_physical_policy_trial(
         elapsed_nanoseconds: started.elapsed().as_nanos().try_into().unwrap_or(u64::MAX),
         peak_rss_bytes: peak_rss_bytes(),
         codecs,
-        persisted_filter_candidate,
+        persisted_row_group_filter,
         cache_candidates,
         value_placement_candidate,
         families,
         reopened_point_miss,
         decisions,
         limitations: vec![
-            "codec/filter/cache candidates are isolated measurements over real v4 page bodies; segment v4 still writes none of them".into(),
+            "the persisted row-group filter is integrated in segment v5; codec and cache observations remain unintegrated candidates".into(),
             "value placement is a byte model only and lacks pointer publication, recovery, snapshot, corruption, range-read, and garbage-collection proof".into(),
             "one machine and one deterministic corpus cannot establish release latency, all-workload policy, or competitor superiority".into(),
             "operating-system device cache and competing host load are recorded but not controlled by this executable".into(),
@@ -481,7 +487,8 @@ fn extract_pages(
                 .to_vec();
             if descriptor.physical_bytes != descriptor.logical_bytes {
                 return Err(Error::InvalidSegment(
-                    "segment v4 candidate screen expected current uncompressed pages".into(),
+                    "segment v5 physical-policy evidence expected current uncompressed pages"
+                        .into(),
                 ));
             }
             pages.push(PageSample {
@@ -646,15 +653,18 @@ fn observe_filters(
     let mut false_positives = 0u64;
     for group in row_groups {
         let keys = keys_for_group(encoded, group)?;
-        let filter = CandidateFilter::from_keys(&keys);
-        let persisted = filter.encode()?;
-        let reopened = CandidateFilter::decode(&persisted)?;
+        if keys.len() as u32 != group.unique_key_count {
+            return Err(Error::InvalidSegment(
+                "persisted filter unique-key count disagrees with key pages".into(),
+            ));
+        }
+        let filter = &group.filter;
         filters += 1;
         unique_keys = unique_keys.saturating_add(keys.len() as u64);
-        serialized_bytes = serialized_bytes.saturating_add(persisted.len() as u64);
+        serialized_bytes = serialized_bytes.saturating_add(filter.byte_len() as u64);
         for key in &keys {
             member_queries += 1;
-            if !reopened.may_contain(key) {
+            if !filter.may_contain(key) {
                 member_false_negatives += 1;
             }
         }
@@ -669,7 +679,7 @@ fn observe_filters(
                 ));
             }
             absent_queries += 1;
-            if reopened.may_contain(&absent) {
+            if filter.may_contain(&absent) {
                 false_positives += 1;
             }
         }
@@ -679,7 +689,7 @@ fn observe_filters(
         .checked_div(absent_queries)
         .unwrap_or(0);
     Ok(FilterObservation {
-        format: "candidate-rrbf0001-not-segment-v4".into(),
+        format: "segment-v5-row-group-bloom-v1".into(),
         filters,
         unique_keys,
         serialized_bytes,
@@ -690,9 +700,34 @@ fn observe_filters(
         absent_queries,
         false_positives,
         false_positive_parts_per_million,
-        passes_candidate_threshold: member_false_negatives == 0
+        passes_policy_threshold: member_false_negatives == 0
             && false_positive_parts_per_million <= FILTER_FALSE_POSITIVE_LIMIT_PPM,
     })
+}
+
+fn validate_persisted_filter_integration(
+    row_group_count: usize,
+    filter: &FilterObservation,
+    reopened: &ReopenedPointMissObservation,
+) -> Result<()> {
+    let row_group_count = u64::try_from(row_group_count)
+        .map_err(|_| Error::InvalidSegment("row-group count exceeds u64".into()))?;
+    if filter.filters != row_group_count
+        || filter.member_false_negatives != 0
+        || !filter.passes_policy_threshold
+        || reopened.open_persisted_filter_count != filter.filters
+        || reopened.open_persisted_filter_bytes != filter.serialized_bytes
+        || reopened.open_semantic_page_operations != 0
+        || reopened.open_semantic_page_bytes != 0
+        || reopened.filter_checks == 0
+        || reopened.filter_negatives == 0
+        || reopened.page_loads >= reopened.filter_checks
+    {
+        return Err(Error::InvalidSegment(
+            "persisted row-group filter integration evidence failed".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn keys_for_group(
@@ -757,103 +792,6 @@ fn decode_offset(bytes: &[u8], index: usize) -> Result<usize> {
         .expect("fixed offset width was checked");
     usize::try_from(i64::from_le_bytes(raw))
         .map_err(|_| Error::InvalidSegment("offset is negative or exceeds usize".into()))
-}
-
-impl CandidateFilter {
-    fn from_keys(keys: &[Vec<u8>]) -> Self {
-        let bit_count = keys
-            .len()
-            .saturating_mul(FILTER_BITS_PER_KEY)
-            .max(u64::BITS as usize);
-        let mut filter = Self {
-            bits: vec![0; bit_count.div_ceil(u64::BITS as usize)],
-        };
-        for key in keys {
-            filter.insert(key);
-        }
-        filter
-    }
-
-    fn insert(&mut self, key: &[u8]) {
-        for position in filter_positions(key, self.bits.len() * u64::BITS as usize) {
-            self.bits[position / u64::BITS as usize] |= 1u64 << (position % u64::BITS as usize);
-        }
-    }
-
-    fn may_contain(&self, key: &[u8]) -> bool {
-        filter_positions(key, self.bits.len() * u64::BITS as usize)
-            .into_iter()
-            .all(|position| {
-                self.bits[position / u64::BITS as usize] & (1u64 << (position % u64::BITS as usize))
-                    != 0
-            })
-    }
-
-    fn encode(&self) -> Result<Vec<u8>> {
-        let word_count = u32::try_from(self.bits.len())
-            .map_err(|_| Error::InvalidSegment("candidate filter word count exceeds u32".into()))?;
-        let mut output = Vec::with_capacity(16 + self.bits.len() * 8);
-        output.extend_from_slice(FILTER_MAGIC);
-        output.extend_from_slice(&word_count.to_le_bytes());
-        output.push(FILTER_HASH_FUNCTIONS as u8);
-        output.extend_from_slice(&[0; 3]);
-        for word in &self.bits {
-            output.extend_from_slice(&word.to_le_bytes());
-        }
-        Ok(output)
-    }
-
-    fn decode(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 16 || bytes.get(..8) != Some(FILTER_MAGIC.as_slice()) {
-            return Err(Error::InvalidSegment(
-                "candidate filter framing is invalid".into(),
-            ));
-        }
-        let word_count = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) as usize;
-        if bytes[12] as usize != FILTER_HASH_FUNCTIONS || bytes[13..16] != [0; 3] {
-            return Err(Error::InvalidSegment(
-                "candidate filter parameters are unsupported".into(),
-            ));
-        }
-        let expected = 16usize
-            .checked_add(word_count.checked_mul(8).ok_or_else(|| {
-                Error::InvalidSegment("candidate filter byte count overflow".into())
-            })?)
-            .ok_or_else(|| Error::InvalidSegment("candidate filter length overflow".into()))?;
-        if bytes.len() != expected || word_count == 0 {
-            return Err(Error::InvalidSegment(
-                "candidate filter length is invalid".into(),
-            ));
-        }
-        let bits = bytes[16..]
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .map(|chunk| u64::from_le_bytes(*chunk))
-            .collect();
-        Ok(Self { bits })
-    }
-}
-
-fn filter_positions(key: &[u8], bit_count: usize) -> [usize; FILTER_HASH_FUNCTIONS] {
-    let first = filter_hash(key, 0xcbf2_9ce4_8422_2325);
-    let second = filter_hash(key, 0x9e37_79b9_7f4a_7c15) | 1;
-    std::array::from_fn(|index| {
-        first.wrapping_add((index as u64).wrapping_mul(second)) as usize % bit_count
-    })
-}
-
-fn filter_hash(key: &[u8], seed: u64) -> u64 {
-    let mut hash = seed;
-    for byte in key {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    hash ^= hash >> 33;
-    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
-    hash ^= hash >> 33;
-    hash = hash.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
-    hash ^ (hash >> 33)
 }
 
 fn observe_caches(pages: &[PageSample], capacity: usize) -> Result<Vec<CachePolicyObservation>> {
@@ -1250,6 +1188,7 @@ fn observe_reopened_database(
             "normal reopen changed the candidate corpus snapshot".into(),
         ));
     }
+    let open = database.segment_open_evidence().clone();
     let before = database.page_cache_stats();
     let started = Instant::now();
     for probe in 0..config.point_misses {
@@ -1263,6 +1202,7 @@ fn observe_reopened_database(
         }
     }
     let elapsed_nanoseconds = started.elapsed().as_nanos().try_into().unwrap_or(u64::MAX);
+    let after_misses = database.page_cache_stats();
     let mut hit_samples_verified = 0u64;
     for (key, expected) in corpus.expected_latest.iter().take(128) {
         if database.get(key, snapshot)? != *expected {
@@ -1272,26 +1212,33 @@ fn observe_reopened_database(
         }
         hit_samples_verified += 1;
     }
-    let after = database.page_cache_stats();
     Ok(ReopenedPointMissObservation {
         integrated_rrflowkv: true,
+        open_persisted_filter_count: open.persisted_filter_count,
+        open_persisted_filter_bytes: open.persisted_filter_bytes,
+        open_semantic_page_operations: open.semantic_page_operations,
+        open_semantic_page_bytes: open.semantic_page_bytes,
         misses_verified: config.point_misses as u64,
         hit_samples_verified,
         elapsed_nanoseconds,
         segment_physical_bytes,
-        filter_checks: after.filter_checks.saturating_sub(before.filter_checks),
-        filter_negatives: after
+        filter_checks: after_misses
+            .filter_checks
+            .saturating_sub(before.filter_checks),
+        filter_negatives: after_misses
             .filter_negatives
             .saturating_sub(before.filter_negatives),
-        page_cache_hits: after.hits.saturating_sub(before.hits),
-        page_cache_misses: after.misses.saturating_sub(before.misses),
-        page_loads: after.loads.saturating_sub(before.loads),
-        bytes_read: after.bytes_read.saturating_sub(before.bytes_read),
-        bytes_decoded: after.bytes_decoded.saturating_sub(before.bytes_decoded),
-        bytes_decompressed: after
+        page_cache_hits: after_misses.hits.saturating_sub(before.hits),
+        page_cache_misses: after_misses.misses.saturating_sub(before.misses),
+        page_loads: after_misses.loads.saturating_sub(before.loads),
+        bytes_read: after_misses.bytes_read.saturating_sub(before.bytes_read),
+        bytes_decoded: after_misses
+            .bytes_decoded
+            .saturating_sub(before.bytes_decoded),
+        bytes_decompressed: after_misses
             .bytes_decompressed
             .saturating_sub(before.bytes_decompressed),
-        final_cache_resident_bytes: after.resident_bytes as u64,
+        final_cache_resident_bytes: after_misses.resident_bytes as u64,
     })
 }
 
@@ -1317,14 +1264,14 @@ fn decide_candidates(
     }
     decisions.push(CandidateDecision {
         candidate: "persisted-row-group-bloom".into(),
-        decision: if filter.passes_candidate_threshold {
-            "advance"
+        decision: if filter.passes_policy_threshold {
+            "integrated"
         } else {
-            "reject"
+            "integrated-policy-failed"
         }
         .into(),
         reason: format!(
-            "member_false_negatives={}, false_positive_ppm={}, limit_ppm={}, serialized_bytes={}",
+            "segment_v5=true, member_false_negatives={}, false_positive_ppm={}, limit_ppm={}, serialized_bytes={}",
             filter.member_false_negatives,
             filter.false_positive_parts_per_million,
             FILTER_FALSE_POSITIVE_LIMIT_PPM,
@@ -1402,7 +1349,7 @@ mod tests {
     }
 
     #[test]
-    fn physical_policy_lab_is_deterministic_and_keeps_candidates_non_production() {
+    fn physical_policy_lab_is_deterministic_and_keeps_unintegrated_candidates_non_production() {
         let first_root = tempfile::tempdir().unwrap();
         let second_root = tempfile::tempdir().unwrap();
         let first = run_physical_policy_trial(first_root.path(), small_config()).unwrap();
@@ -1414,15 +1361,30 @@ mod tests {
         assert_eq!(first.page_count, second.page_count);
         assert_eq!(first.segment_physical_bytes, second.segment_physical_bytes);
         assert!(first.codecs.iter().all(|codec| codec.round_trip_exact));
-        assert_eq!(first.persisted_filter_candidate.member_false_negatives, 0);
+        assert_eq!(first.persisted_row_group_filter.member_false_negatives, 0);
+        assert!(first.persisted_row_group_filter.passes_policy_threshold);
         assert!(first
             .cache_candidates
             .iter()
             .all(|cache| cache.semantic_identity_exact && cache.exact_capacity_respected));
         assert!(!first.value_placement_candidate.production_retainable);
-        assert_eq!(first.reopened_point_miss.filter_negatives, 0);
+        assert!(first.reopened_point_miss.open_persisted_filter_count > 0);
+        assert!(first.reopened_point_miss.open_persisted_filter_bytes > 0);
+        assert_eq!(first.reopened_point_miss.open_semantic_page_operations, 0);
+        assert_eq!(first.reopened_point_miss.open_semantic_page_bytes, 0);
+        assert!(first.reopened_point_miss.filter_negatives > 0);
         assert!(first.reopened_point_miss.filter_checks > 0);
-        assert_eq!(first.segment_format_version, 4);
+        assert!(first.reopened_point_miss.page_loads < first.reopened_point_miss.filter_checks);
+        assert_eq!(first.segment_format_version, 5);
+
+        let mut invalid_reopen = first.reopened_point_miss.clone();
+        invalid_reopen.open_semantic_page_operations = 1;
+        assert!(validate_persisted_filter_integration(
+            first.row_group_count as usize,
+            &first.persisted_row_group_filter,
+            &invalid_reopen,
+        )
+        .is_err());
     }
 
     #[test]
@@ -1448,15 +1410,20 @@ mod tests {
     }
 
     #[test]
-    fn candidate_filter_round_trip_has_no_member_false_negatives() {
+    fn canonical_filter_has_no_member_false_negatives() {
         let keys = (0..128)
             .map(|index| format!("record/{index:08x}").into_bytes())
             .collect::<Vec<_>>();
-        let filter = CandidateFilter::from_keys(&keys);
-        let encoded = filter.encode().unwrap();
-        let decoded = CandidateFilter::decode(&encoded).unwrap();
-        assert!(keys.iter().all(|key| decoded.may_contain(key)));
-        assert!(CandidateFilter::decode(&encoded[..encoded.len() - 1]).is_err());
+        let mut filter = RowGroupFilter::new(keys.len() as u32).unwrap();
+        for key in &keys {
+            filter.insert(key);
+        }
+        assert!(keys.iter().all(|key| filter.may_contain(key)));
+        assert_eq!(
+            RowGroupFilter::from_words(keys.len() as u32, filter.words().to_vec()).unwrap(),
+            filter
+        );
+        assert!(RowGroupFilter::from_words(keys.len() as u32, Vec::new()).is_err());
     }
 
     #[test]

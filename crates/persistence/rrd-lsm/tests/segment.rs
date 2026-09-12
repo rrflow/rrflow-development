@@ -67,7 +67,7 @@ fn immutable_segment_preserves_mvcc_reads_and_content_identity() {
 }
 
 #[test]
-fn v4_bytes_match_the_checked_in_format_vector() {
+fn v5_bytes_match_the_checked_in_format_vector() {
     let directory = tempfile::tempdir().unwrap();
     let (_, path) =
         Segment::write_from_memtable(&directory.path().join("segments"), &table()).unwrap();
@@ -76,7 +76,7 @@ fn v4_bytes_match_the_checked_in_format_vector() {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/segment-v4.hex");
+    let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/segment-v5.hex");
     if std::env::var_os("RRFLOW_UPDATE_GOLDENS").is_some() {
         std::fs::write(fixture, format!("{actual}\n")).unwrap();
     }
@@ -146,8 +146,8 @@ fn sparse_segment_matches_the_memtable_for_point_range_and_mvcc_reads() {
     let (segment, path) =
         Segment::write_from_memtable(&directory.path().join("segments"), &table).unwrap();
     assert!(segment.row_group_count() >= 2);
-    assert_eq!(&std::fs::read(&path).unwrap()[..8], b"RRDSEG04");
-    assert_eq!(segment.descriptor.format_version, 4);
+    assert_eq!(&std::fs::read(&path).unwrap()[..8], b"RRDSEG05");
+    assert_eq!(segment.descriptor.format_version, 5);
     assert_eq!(
         segment.descriptor.schema_digest,
         rrd_lsm::SEGMENT_SCHEMA_DIGEST
@@ -182,7 +182,7 @@ fn rewrite_checksum(bytes: &mut Vec<u8>) {
 }
 
 #[test]
-fn v4_rejects_authenticated_length_flags_and_page_corruption() {
+fn v5_rejects_authenticated_length_flags_and_page_corruption() {
     let directory = tempfile::tempdir().unwrap();
     let segments = directory.path().join("segments");
     let (_, path) = Segment::write_from_memtable(&segments, &table()).unwrap();
@@ -253,12 +253,68 @@ fn v4_rejects_authenticated_length_flags_and_page_corruption() {
     ));
 }
 
-fn pre_1_0_segment(version: u16) -> Vec<u8> {
+fn first_filter_offset(bytes: &[u8]) -> usize {
+    let index_offset = u64::from_le_bytes(bytes[48..56].try_into().unwrap()) as usize;
+    let group_header = index_offset + 32;
+    let first_key_bytes = u32::from_le_bytes(
+        bytes[group_header + 12..group_header + 16]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let last_key_bytes = u32::from_le_bytes(
+        bytes[group_header + 16..group_header + 20]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    group_header + 32 + first_key_bytes + last_key_bytes + 6 * 96
+}
+
+#[test]
+fn v5_rejects_authenticated_filter_corruption() {
+    let directory = tempfile::tempdir().unwrap();
+    let (_, path) =
+        Segment::write_from_memtable(&directory.path().join("segments"), &table()).unwrap();
+    let original = std::fs::read(path).unwrap();
+    let index_offset = u64::from_le_bytes(original[48..56].try_into().unwrap()) as usize;
+    let group_header = index_offset + 32;
+
+    let cases = [
+        ("unknown-filter-format", index_offset + 18, 2u8),
+        ("nonzero-index-reserved", index_offset + 21, 1u8),
+        ("zero-unique-keys", group_header + 24, 0u8),
+        ("wrong-filter-words", group_header + 28, 2u8),
+    ];
+    for (name, offset, replacement) in cases {
+        let mut bytes = original.clone();
+        bytes[offset] = replacement;
+        rewrite_checksum(&mut bytes);
+        let path = directory.path().join(format!("{name}.seg"));
+        std::fs::write(&path, bytes).unwrap();
+        assert!(matches!(
+            Segment::open(&path),
+            Err(Error::InvalidSegment(_))
+        ));
+    }
+
+    let mut changed_words = original;
+    let filter_offset = first_filter_offset(&changed_words);
+    changed_words[filter_offset] ^= 0x01;
+    rewrite_checksum(&mut changed_words);
+    let changed_words_path = directory.path().join("changed-filter-words.seg");
+    std::fs::write(&changed_words_path, changed_words).unwrap();
+    assert!(matches!(
+        Segment::open(&changed_words_path),
+        Err(Error::InvalidSegment(_))
+    ));
+}
+
+fn superseded_segment_prefix(version: u16) -> Vec<u8> {
     let magic = match version {
         1 => b"RRDSEG01".as_slice(),
         2 => b"RRDSEG02".as_slice(),
         3 => b"RRDSEG03".as_slice(),
-        _ => unreachable!("test constructs only pre-1.0 formats"),
+        4 => b"RRDSEG04".as_slice(),
+        _ => unreachable!("test constructs only superseded pre-release formats"),
     };
     let mut bytes = magic.to_vec();
     bytes.extend_from_slice(&version.to_le_bytes());
@@ -266,11 +322,11 @@ fn pre_1_0_segment(version: u16) -> Vec<u8> {
 }
 
 #[test]
-fn pre_1_0_and_unknown_segment_formats_are_rejected() {
+fn superseded_and_unknown_segment_formats_are_rejected() {
     let directory = tempfile::tempdir().unwrap();
-    for version in [1, 2, 3] {
+    for version in [1, 2, 3, 4] {
         let path = directory.path().join(format!("format-{version}.seg"));
-        std::fs::write(&path, pre_1_0_segment(version)).unwrap();
+        std::fs::write(&path, superseded_segment_prefix(version)).unwrap();
         assert!(matches!(
             Segment::open(&path),
             Err(Error::UnsupportedVersion {
@@ -283,14 +339,14 @@ fn pre_1_0_and_unknown_segment_formats_are_rejected() {
     let segments = directory.path().join("segments");
     let (_, current) = Segment::write_from_memtable(&segments, &table()).unwrap();
     let mut bytes = std::fs::read(current).unwrap();
-    bytes[8..10].copy_from_slice(&5u16.to_le_bytes());
-    let unknown = directory.path().join("format-5.seg");
+    bytes[8..10].copy_from_slice(&6u16.to_le_bytes());
+    let unknown = directory.path().join("format-6.seg");
     std::fs::write(&unknown, bytes).unwrap();
     assert!(matches!(
         Segment::open(&unknown),
         Err(Error::UnsupportedVersion {
             object: "segment",
-            version: 5
+            version: 6
         })
     ));
 }
@@ -535,9 +591,16 @@ fn invalid_configured_and_authenticated_row_group_budgets_fail_closed() {
 }
 
 #[test]
-fn authenticated_row_group_filters_skip_negative_point_read_io() {
+fn persisted_row_group_filters_prune_reopened_point_misses() {
     let directory = tempfile::tempdir().unwrap();
-    let mut database = rrd_lsm::Database::create(directory.path()).unwrap();
+    let options = DatabaseOptions {
+        segment_row_group_budget: SegmentRowGroupBudget {
+            max_rows: 32,
+            target_bytes: 1024 * 1024,
+        },
+        ..DatabaseOptions::default()
+    };
+    let mut database = Database::create_with_options(directory.path(), options).unwrap();
     let operations = (0..200)
         .map(|index| Mutation::Put {
             key: format!("key:{:04}", index * 2).into_bytes(),
@@ -550,37 +613,53 @@ fn authenticated_row_group_filters_skip_negative_point_read_io() {
             Durability::Authoritative,
         )
         .unwrap();
+    database
+        .write_owned(
+            WriteBatch::new(vec![Mutation::Delete {
+                key: b"key:0000".to_vec(),
+            }])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
     database.flush_memtable(1).unwrap();
     let snapshot = database.snapshot();
-    let before = database.page_cache_stats();
+    drop(database);
 
-    let mut rejected = false;
+    let reopened = Database::open_with_options(directory.path(), options).unwrap();
+    let open = reopened.segment_open_evidence();
+    assert!(open.persisted_filter_count > 0);
+    assert!(open.persisted_filter_bytes > 0);
+    assert_eq!(open.semantic_page_operations, 0);
+    assert_eq!(open.semantic_page_bytes, 0);
+    let before_present = reopened.page_cache_stats();
+    assert_eq!(
+        reopened.get(b"key:0002", snapshot).unwrap(),
+        Some(vec![1; 128])
+    );
+    assert_eq!(reopened.get(b"key:0000", snapshot).unwrap(), None);
+    let after_present = reopened.page_cache_stats();
+    assert!(after_present.loads > before_present.loads);
+    drop(reopened);
+
+    let reopened = Database::open_with_options(directory.path(), options).unwrap();
+    let before = reopened.page_cache_stats();
+
     for index in 0..200 {
         let missing = format!("key:{:04}", index * 2 + 1);
-        assert_eq!(database.get(missing.as_bytes(), snapshot).unwrap(), None);
-        let after = database.page_cache_stats();
-        if after.filter_negatives > before.filter_negatives {
-            assert_eq!(after.loads, before.loads);
-            rejected = true;
-            break;
-        }
+        assert_eq!(reopened.get(missing.as_bytes(), snapshot).unwrap(), None);
     }
-    assert!(
-        rejected,
-        "expected at least one deterministic negative filter hit"
-    );
-
-    assert_eq!(
-        database.get(b"key:0000", snapshot).unwrap(),
-        Some(vec![0; 128])
-    );
-    let after_present = database.page_cache_stats();
-    assert!(after_present.filter_checks > before.filter_checks);
-    assert!(after_present.loads > before.loads);
+    let after = reopened.page_cache_stats();
+    let checks = after.filter_checks - before.filter_checks;
+    let negatives = after.filter_negatives - before.filter_negatives;
+    let loads = after.loads - before.loads;
+    assert!(checks > 0 && checks <= 199);
+    assert!(negatives > 0);
+    assert!(loads < checks);
 }
 
 #[test]
-fn an_open_v4_segment_detects_later_page_tampering_on_read() {
+fn an_open_v5_segment_detects_later_page_tampering_on_read() {
     let directory = tempfile::tempdir().unwrap();
     let segments = directory.path().join("segments");
     let (segment, path) = Segment::write_from_memtable(&segments, &table()).unwrap();

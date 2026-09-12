@@ -110,16 +110,19 @@ correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
 The active executable item is **C-06**. Its completed slices have replaced
-row-record immutable segments with segment v4's ordered key/version spine plus
-six Arrow-layout page buffers, manifest-authenticated format identities, safe
-mmap ownership, page-level physical counters, and a generated mixed-family
+row-record immutable segments with segment v5's ordered key/version spine,
+six Arrow-layout page buffers, and authenticated persisted membership filters,
+with manifest-authenticated format identities, safe mmap ownership, page/filter
+physical counters, and a generated mixed-family
 MVCC/reopen/compaction differential with malformed-byte rejection. C-06g adds
 the pinned, bounded, selective projected storage stream and separates
 segment-open, startup-reconciliation, and query evidence. C-06h now adds
 stable independent-model histories, deterministic all-boundary faults, stress
 replay, cancellation/resource cases, and two coverage-guided sanitizer
-targets. C-06 remains unchecked while C-06i revision-bound physical-policy
-measurements remain open.
+targets. The first C-06i production slice now prunes definite point misses after
+metadata-only reopen while exact positives still use the MVCC spine. C-06
+remains unchecked while compression, value-placement, mixed-workload, and cache
+integration/qualification remain open.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -833,7 +836,7 @@ golden vectors without importing Rust internals.
 | [x] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
 | [x] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [x] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
-| [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. The current v4 slice provides the common uncompressed page contract; compression, key/value separation, persisted filters, family grouping, and cache policy remain measured choices rather than assumed architecture. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property/fuzz tests, exact differential reads, selective projection/scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all read, decoded, decompressed, copied, allocated, cached, and open-validation bytes are reported. Compare common pages against adaptive per-page codecs and, where value size/update workloads justify it, WiscKey-style separated values; retain a specialization only when its declared workload improves without correctness, recovery, GC, snapshot, or other-family regression. |
+| [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, authenticated persisted membership filters, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. The current v5 slice provides the common uncompressed page contract and canonical row-group filters; compression, key/value separation, family grouping, and cache policy remain measured choices rather than assumed architecture. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property/fuzz tests, exact differential reads, authenticated filter-corruption and reopen-I/O tests, selective projection/scan counters, mixed-family interference tests, and comparative benchmarks prove the new layout; eligible uncompressed/aligned pages borrow buffers while all filter, read, decoded, decompressed, copied, allocated, cached, and open-validation bytes are reported. Compare common pages against adaptive per-page codecs and, where value size/update workloads justify it, WiscKey-style separated values; retain a specialization only when its declared workload improves without correctness, recovery, GC, snapshot, or other-family regression. |
 | [ ] | C-07 | Prove WAL recovery, manifest recovery, bounded maintenance and write backpressure, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, sustained-write/maintenance/RSS runs, and repeated reopen suite pass with no lost acknowledged write, unbounded write-buffer growth, dangling mapped buffer, or exposed partial batch. |
 
 C-01 evidence (2026-09-08):
@@ -1064,7 +1067,8 @@ C-05 accepted convergence evidence and audit correction (2026-09-09):
 
 C-06 progress evidence (2026-09-10; gate remains open):
 
-- `rrd-lsm` now writes and exclusively reads segment v4. Flush preserves one
+- C-06a through C-06f established the now-superseded segment-v4 proof. At that
+  revision, `rrd-lsm` wrote and exclusively read v4. Flush preserved one
   sorted `(key, sequence)` MVCC spine and emits Arrow-compatible key offsets,
   key data, sequence values, value validity, value offsets, and value data for
   each row group. A key's complete version chain is never split by the target
@@ -1144,9 +1148,17 @@ C-06 progress evidence (2026-09-10; gate remains open):
   executions without a crash, timeout, model difference, parser panic, or
   accepted-but-unreadable segment. These finite runs do not prove absence of
   defects or replace C-07/J continuous and cross-platform qualification.
-- C-06 is not accepted. Remaining evidence is C-06i fixed-hardware comparison
-  of no compression against adaptive page codecs,
-  optional value separation, persisted filters, and page-cache policies.
+- The first C-06i production slice directly replaces v4 with segment v5. Each
+  row-group index authenticates its unique-key count and canonical ten-bit/
+  seven-probe Bloom words. Normal manifest reopen parses nonzero filter
+  count/bytes with zero semantic-page operations; standalone/snapshot
+  validation reconstructs exact words from decoded unique keys; checksum-
+  rewritten malformed filters fail; definite point misses prune page loads;
+  and present/tombstone/MVCC reads remain exact. Segment versions 1 through 4
+  are rejection inputs with no compatibility reader or positive fixture.
+- C-06 is not accepted. Remaining C-06i evidence and integration covers no
+  compression versus adaptive page codecs, optional value placement, mixed-
+  workload interference, and page-cache policy.
   F-01 still owns the stamped asynchronous DataFusion provider; C-06g does not
   emit a DataFusion `RecordBatch` or claim end-to-end zero-copy.
 

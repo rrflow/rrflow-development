@@ -66,6 +66,8 @@ fn rrflow_kv_open_separates_segment_validation_and_reconciliation_io() {
             .runtime()
             .open_snapshot(&scope, "agent:open-evidence", 10, 100)
             .unwrap();
+        store.projections().put("filter-a", b"first").unwrap();
+        store.projections().put("filter-c", b"third").unwrap();
         store.flush(20).unwrap();
     }
 
@@ -79,6 +81,9 @@ fn rrflow_kv_open_separates_segment_validation_and_reconciliation_io() {
     assert!(open.segment_validation.format_probe_bytes > 0);
     assert!(open.segment_validation.full_checksum_bytes > 0);
     assert!(open.segment_validation.metadata_bytes > 0);
+    assert!(open.segment_validation.persisted_filter_count > 0);
+    assert!(open.segment_validation.persisted_filter_bytes > 0);
+    assert_eq!(open.segment_validation.semantic_page_operations, 0);
     assert_eq!(open.segment_validation.semantic_page_bytes, 0);
     assert!(open.reconciliation.page_requests > 0);
     assert!(open.reconciliation.page_cache_loads > 0);
@@ -91,6 +96,18 @@ fn rrflow_kv_open_separates_segment_validation_and_reconciliation_io() {
     assert_eq!(
         open.reconciliation.page_bytes_read,
         open.reconciliation.bytes_read
+    );
+
+    let before_absent = reopened.physical_store_evidence().unwrap();
+    assert_eq!(reopened.projections().get("filter-b").unwrap(), None);
+    let after_absent = reopened.physical_store_evidence().unwrap();
+    assert!(
+        after_absent.filter_negatives.unwrap() > before_absent.filter_negatives.unwrap(),
+        "an authenticated persisted filter should reject the in-range absent key"
+    );
+    assert_eq!(
+        reopened.projections().get("filter-a").unwrap(),
+        Some(b"first".to_vec())
     );
 
     assert_eq!(reopened.runtime().snapshots(20).unwrap().len(), 1);

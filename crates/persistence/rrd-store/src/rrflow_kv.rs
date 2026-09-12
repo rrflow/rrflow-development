@@ -28,7 +28,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 
 const RUNTIME_CHECKPOINT_PREFIX: &str = "runtime-";
-pub const RRFLOW_KV_OPEN_EVIDENCE_VERSION: u16 = 1;
+pub const RRFLOW_KV_OPEN_EVIDENCE_VERSION: u16 = 2;
 
 /// Work performed by startup checkpoint reconciliation after the physical
 /// database has opened but before the store is published to callers.
@@ -295,6 +295,8 @@ impl RrflowKvStore {
             checkpoint_reconcile_ms,
             validated_segments = open_evidence.segment_validation.segment_count,
             validation_bytes = open_evidence.segment_validation.full_checksum_bytes,
+            persisted_filter_count = open_evidence.segment_validation.persisted_filter_count,
+            persisted_filter_bytes = open_evidence.segment_validation.persisted_filter_bytes,
             reconciliation_page_requests = open_evidence.reconciliation.page_requests,
             reconciliation_read_operations = open_evidence.reconciliation.read_operations,
             reconciliation_bytes_read = open_evidence.reconciliation.bytes_read,

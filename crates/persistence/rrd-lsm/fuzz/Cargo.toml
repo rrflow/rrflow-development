@@ -20,8 +20,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "segment-v4-open"
-path = "fuzz_targets/segment_v4_open.rs"
+name = "segment-v5-open"
+path = "fuzz_targets/segment_v5_open.rs"
 test = false
 doc = false
 bench = false

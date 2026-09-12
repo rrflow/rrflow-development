@@ -6,7 +6,7 @@ use rrd_lsm::Segment;
 const MAX_INPUT_BYTES: usize = 128;
 const FIXTURE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../fixtures/segment-v4.hex"
+    "/../fixtures/segment-v5.hex"
 ));
 
 fuzz_target!(|input: &[u8]| {

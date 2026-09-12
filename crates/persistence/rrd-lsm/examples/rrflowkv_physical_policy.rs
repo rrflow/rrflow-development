@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const EVIDENCE_FORMAT_VERSION: u16 = 1;
+const EVIDENCE_FORMAT_VERSION: u16 = 2;
 const MAX_TRIALS: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,9 +84,13 @@ struct AggregateEvidence {
     peak_rss_bytes: Option<Distribution>,
     codecs: Vec<CodecAggregate>,
     persisted_filter_false_positive_parts_per_million: u64,
-    persisted_filter_serialized_bytes: u64,
+    persisted_filter_bytes: u64,
     lru_post_scan_hot_hits: u64,
     segmented_lru_post_scan_hot_hits: u64,
+    rrflowkv_open_persisted_filter_count: u64,
+    rrflowkv_open_persisted_filter_bytes: u64,
+    rrflowkv_open_semantic_page_operations: u64,
+    rrflowkv_open_semantic_page_bytes: u64,
     rrflowkv_reopen_filter_negatives: u64,
     rrflowkv_reopen_page_loads: u64,
 }
@@ -96,7 +100,7 @@ struct PhysicalPolicyEvidence {
     evidence_format_version: u16,
     physical_policy_evidence_version: u16,
     evidence_kind: String,
-    fixed_machine_candidate_screen: bool,
+    fixed_machine_integration_verification: bool,
     release_evidence_eligible: bool,
     release_ineligibility_reasons: Vec<String>,
     source: SourceProvenance,
@@ -176,15 +180,15 @@ fn run() -> Result<(), String> {
         release_ineligibility_reasons.push("source worktree was dirty".into());
     }
     release_ineligibility_reasons.extend([
-        "this is a C-06i candidate-selection workload, not an installed end-to-end release workload".into(),
+        "this verifies one C-06i persisted-filter integration, not an installed end-to-end release workload".into(),
         "device cache and competing host load were observed but not controlled".into(),
         "one machine and one corpus do not establish cross-platform or all-workload behavior".into(),
     ]);
     let evidence = PhysicalPolicyEvidence {
         evidence_format_version: EVIDENCE_FORMAT_VERSION,
         physical_policy_evidence_version: PHYSICAL_POLICY_EVIDENCE_VERSION,
-        evidence_kind: "rrflowkv-c06i-physical-policy-candidate-screen".into(),
-        fixed_machine_candidate_screen: source.clean_worktree,
+        evidence_kind: "rrflowkv-c06i-persisted-filter-integration".into(),
+        fixed_machine_integration_verification: source.clean_worktree,
         release_evidence_eligible: false,
         release_ineligibility_reasons,
         source,
@@ -201,8 +205,8 @@ fn run() -> Result<(), String> {
         aggregates,
         candidate_decisions,
         limitations: vec![
-            "segment v4 production bytes remain uncompressed and contain no persisted filter".into(),
-            "codec/filter/cache measurements are candidate mechanics over real v4 page bodies, not integrated policy latency".into(),
+            "segment v5 integrates the authenticated row-group filter but production pages remain uncompressed".into(),
+            "codec and cache measurements remain candidate mechanics over real v5 page bodies, not integrated policy latency".into(),
             "value separation is model-only and is categorically ineligible for adoption from this evidence".into(),
             "C-06, F-01, C-07, installed-binary, graph/BM25/vector/TurboQuant, reasoning/recall, and release gates remain open".into(),
         ],
@@ -358,7 +362,7 @@ fn require_trial_identity(
             .iter()
             .zip(&actual.codecs)
             .any(|(expected, actual)| !same_codec_identity(expected, actual))
-        || expected.persisted_filter_candidate != actual.persisted_filter_candidate
+        || expected.persisted_row_group_filter != actual.persisted_row_group_filter
         || expected.cache_candidates != actual.cache_candidates
         || expected.value_placement_candidate != actual.value_placement_candidate
         || expected.families != actual.families
@@ -390,6 +394,10 @@ fn same_reopened_identity(
     actual: &rrd_lsm::ReopenedPointMissObservation,
 ) -> bool {
     expected.integrated_rrflowkv == actual.integrated_rrflowkv
+        && expected.open_persisted_filter_count == actual.open_persisted_filter_count
+        && expected.open_persisted_filter_bytes == actual.open_persisted_filter_bytes
+        && expected.open_semantic_page_operations == actual.open_semantic_page_operations
+        && expected.open_semantic_page_bytes == actual.open_semantic_page_bytes
         && expected.misses_verified == actual.misses_verified
         && expected.hit_samples_verified == actual.hit_samples_verified
         && expected.segment_physical_bytes == actual.segment_physical_bytes
@@ -502,11 +510,17 @@ fn aggregate_trials(trials: &[PhysicalPolicyTrial]) -> Result<AggregateEvidence,
         peak_rss_bytes: peak,
         codecs,
         persisted_filter_false_positive_parts_per_million: first
-            .persisted_filter_candidate
+            .persisted_row_group_filter
             .false_positive_parts_per_million,
-        persisted_filter_serialized_bytes: first.persisted_filter_candidate.serialized_bytes,
+        persisted_filter_bytes: first.persisted_row_group_filter.serialized_bytes,
         lru_post_scan_hot_hits: lru.post_scan_hot_hits,
         segmented_lru_post_scan_hot_hits: segmented.post_scan_hot_hits,
+        rrflowkv_open_persisted_filter_count: first.reopened_point_miss.open_persisted_filter_count,
+        rrflowkv_open_persisted_filter_bytes: first.reopened_point_miss.open_persisted_filter_bytes,
+        rrflowkv_open_semantic_page_operations: first
+            .reopened_point_miss
+            .open_semantic_page_operations,
+        rrflowkv_open_semantic_page_bytes: first.reopened_point_miss.open_semantic_page_bytes,
         rrflowkv_reopen_filter_negatives: first.reopened_point_miss.filter_negatives,
         rrflowkv_reopen_page_loads: first.reopened_point_miss.page_loads,
     })

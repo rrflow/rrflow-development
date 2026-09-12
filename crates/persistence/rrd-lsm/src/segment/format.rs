@@ -2,9 +2,9 @@ use crate::{Error, Memtable, Result, SegmentDescriptor, VersionedValue};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, SeekFrom};
 
-pub const SEGMENT_FORMAT_VERSION: u16 = 4;
-pub const SEGMENT_MAGIC: &[u8; 8] = b"RRDSEG04";
-pub const INDEX_MAGIC: &[u8; 8] = b"RRDIX004";
+pub const SEGMENT_FORMAT_VERSION: u16 = 5;
+pub const SEGMENT_MAGIC: &[u8; 8] = b"RRDSEG05";
+pub const INDEX_MAGIC: &[u8; 8] = b"RRDIX005";
 pub const PAGE_ALIGNMENT: usize = 64;
 pub const SEGMENT_HEADER_BYTES: usize = 256;
 pub const INDEX_HEADER_BYTES: usize = 32;
@@ -18,8 +18,11 @@ pub const MAX_SEGMENT_BYTES: u64 = 1024 * 1024 * 1024;
 pub const MAX_INDEX_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_KEY_BYTES: usize = 1024 * 1024;
 pub const MAX_VALUE_BYTES: usize = 8 * 1024 * 1024;
+pub const FILTER_FORMAT_VERSION: u8 = 1;
+pub const FILTER_BITS_PER_KEY: usize = 10;
+pub const FILTER_HASH_FUNCTIONS: usize = 7;
 
-/// The immutable v4 segment schema is intentionally narrower than the RRFlow
+/// The immutable v5 segment schema is intentionally narrower than the RRFlow
 /// semantic model. Families such as graph adjacency, lexical postings, and
 /// vectors remain transactionally encoded keys and values above this physical
 /// layer; this digest identifies only their common MVCC storage columns.
@@ -28,7 +31,7 @@ pub const SEGMENT_SCHEMA_DIGEST: &str =
 pub const SEGMENT_KEY_CODEC_DIGEST: &str =
     "542c8fdcc2419e2b8de3b54d85e4d1fc168d4c8705acceaa1b196883a20938da";
 pub const SEGMENT_PAGE_FORMAT_DIGEST: &str =
-    "4992b28a9b9c8087d0290a6d57f3037da50d95e653baa87484df61fe748be151";
+    "1034adf043151e3b1d6ebad40ad4e54d83f7d47351277bbb3321a1cdf481da61";
 
 /// Soft limits used when a mutable key/version table is transformed into
 /// immutable Arrow-layout row groups. A complete version chain for one key is
@@ -93,7 +96,7 @@ impl PageKind {
             4 => Ok(Self::ValueValidity),
             5 => Ok(Self::ValueOffsets),
             6 => Ok(Self::ValueData),
-            other => invalid(format!("unknown v4 page kind {other}")),
+            other => invalid(format!("unknown v5 page kind {other}")),
         }
     }
 
@@ -165,15 +168,99 @@ impl PageStatistics {
 pub(super) struct RowGroupDescriptor {
     pub row_start: u64,
     pub row_count: u32,
+    pub unique_key_count: u32,
     pub first_key: Vec<u8>,
     pub last_key: Vec<u8>,
     pub pages: [PageDescriptor; PAGES_PER_ROW_GROUP],
+    pub filter: RowGroupFilter,
 }
 
 impl RowGroupDescriptor {
     pub(super) fn page(&self, kind: PageKind) -> &PageDescriptor {
         &self.pages[kind as usize - 1]
     }
+}
+
+/// Canonical RRFlow Bloom filter stored in each authenticated row-group index
+/// entry. A negative answer can skip a point read; a positive answer always
+/// falls through to the exact sorted key/version spine.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct RowGroupFilter {
+    words: Vec<u64>,
+}
+
+impl RowGroupFilter {
+    pub(super) fn new(unique_key_count: u32) -> Result<Self> {
+        let word_count = Self::word_count(unique_key_count)?;
+        Ok(Self {
+            words: vec![0; word_count],
+        })
+    }
+
+    pub(super) fn from_words(unique_key_count: u32, words: Vec<u64>) -> Result<Self> {
+        let expected = Self::word_count(unique_key_count)?;
+        if words.len() != expected {
+            return invalid("v5 row-group filter word count is noncanonical");
+        }
+        Ok(Self { words })
+    }
+
+    pub(super) fn word_count(unique_key_count: u32) -> Result<usize> {
+        if unique_key_count == 0 {
+            return invalid("v5 row-group filter has no unique keys");
+        }
+        let bits = usize::try_from(unique_key_count)
+            .map_err(|_| Error::InvalidSegment("v5 unique-key count exceeds usize".into()))?
+            .checked_mul(FILTER_BITS_PER_KEY)
+            .ok_or_else(|| Error::InvalidSegment("v5 row-group filter size overflow".into()))?
+            .max(u64::BITS as usize);
+        Ok(bits.div_ceil(u64::BITS as usize))
+    }
+
+    pub(super) fn insert(&mut self, key: &[u8]) {
+        for bit in self.positions(key) {
+            self.words[bit / u64::BITS as usize] |= 1u64 << (bit % u64::BITS as usize);
+        }
+    }
+
+    pub(super) fn may_contain(&self, key: &[u8]) -> bool {
+        self.positions(key).into_iter().all(|bit| {
+            self.words[bit / u64::BITS as usize] & (1u64 << (bit % u64::BITS as usize)) != 0
+        })
+    }
+
+    pub(super) fn byte_len(&self) -> usize {
+        self.words.len() * std::mem::size_of::<u64>()
+    }
+
+    pub(super) fn words(&self) -> &[u64] {
+        &self.words
+    }
+
+    fn positions(&self, key: &[u8]) -> [usize; FILTER_HASH_FUNCTIONS] {
+        let bit_count = u64::try_from(self.words.len())
+            .expect("bounded filter word count fits u64")
+            * u64::BITS as u64;
+        let first = filter_hash(key, 0xcbf2_9ce4_8422_2325);
+        let second = filter_hash(key, 0x9e37_79b9_7f4a_7c15) | 1;
+        std::array::from_fn(|index| {
+            usize::try_from(first.wrapping_add((index as u64).wrapping_mul(second)) % bit_count)
+                .expect("bounded filter bit position fits usize")
+        })
+    }
+}
+
+fn filter_hash(key: &[u8], seed: u64) -> u64 {
+    let mut hash = seed;
+    for byte in key {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+    hash ^ (hash >> 33)
 }
 
 pub(super) struct EncodedSegment {
@@ -201,6 +288,7 @@ struct RowGroupBuilder {
     value_offsets: Vec<i64>,
     first_key: Vec<u8>,
     last_key: Vec<u8>,
+    unique_key_count: u32,
     null_count: u32,
     minimum_key_bytes: u64,
     maximum_key_bytes: u64,
@@ -239,12 +327,17 @@ impl RowGroupBuilder {
         if self.first_key.is_empty() {
             self.first_key.extend_from_slice(key);
         }
+        if self.last_key.as_slice() != key {
+            self.unique_key_count = self.unique_key_count.checked_add(1).ok_or_else(|| {
+                Error::InvalidSegment("v5 row-group unique-key count overflow".into())
+            })?;
+        }
         self.last_key.clear();
         self.last_key.extend_from_slice(key);
         self.keys.extend_from_slice(key);
         self.key_offsets
             .push(i64::try_from(self.keys.len()).map_err(|_| {
-                Error::InvalidSegment("v4 key page length exceeds signed Arrow offsets".into())
+                Error::InvalidSegment("v5 key page length exceeds signed Arrow offsets".into())
             })?);
         self.sequences.push(version.sequence);
         let row = self.rows() - 1;
@@ -261,7 +354,7 @@ impl RowGroupBuilder {
         self.values.extend_from_slice(value);
         self.value_offsets
             .push(i64::try_from(self.values.len()).map_err(|_| {
-                Error::InvalidSegment("v4 value page length exceeds signed Arrow offsets".into())
+                Error::InvalidSegment("v5 value page length exceeds signed Arrow offsets".into())
             })?);
         let key_bytes = key.len() as u64;
         let value_bytes = value.len() as u64;
@@ -270,6 +363,26 @@ impl RowGroupBuilder {
         self.minimum_value_bytes = self.minimum_value_bytes.min(value_bytes);
         self.maximum_value_bytes = self.maximum_value_bytes.max(value_bytes);
         Ok(())
+    }
+
+    fn filter(&self) -> Result<RowGroupFilter> {
+        let mut filter = RowGroupFilter::new(self.unique_key_count)?;
+        let mut previous: Option<&[u8]> = None;
+        for offsets in self.key_offsets.windows(2) {
+            let start = usize::try_from(offsets[0])
+                .map_err(|_| Error::InvalidSegment("v5 key offset is negative".into()))?;
+            let end = usize::try_from(offsets[1])
+                .map_err(|_| Error::InvalidSegment("v5 key offset is negative".into()))?;
+            let key = self
+                .keys
+                .get(start..end)
+                .ok_or_else(|| Error::InvalidSegment("v5 key offsets escape key data".into()))?;
+            if previous != Some(key) {
+                filter.insert(key);
+                previous = Some(key);
+            }
+        }
+        Ok(filter)
     }
 }
 
@@ -282,7 +395,7 @@ pub(super) fn encode(
         return invalid("cannot write an empty segment");
     }
     let entries = u64::try_from(table.version_count())
-        .map_err(|_| Error::InvalidSegment("v4 entry count exceeds u64".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 entry count exceeds u64".into()))?;
     let minimum_sequence = table
         .all_versions()
         .flat_map(|(_, versions)| versions.iter().map(|version| version.sequence))
@@ -304,7 +417,7 @@ pub(super) fn encode(
                 .checked_add(key.len())
                 .and_then(|total| total.checked_add(value.len()))
                 .and_then(|total| total.checked_add(24))
-                .ok_or_else(|| Error::InvalidSegment("v4 row-group estimate overflow".into()))
+                .ok_or_else(|| Error::InvalidSegment("v5 row-group estimate overflow".into()))
         })?;
         if current.rows() > 0
             && (current.rows().saturating_add(versions.len()) > row_group_budget.max_rows
@@ -314,7 +427,7 @@ pub(super) fn encode(
             let next = current
                 .row_start
                 .checked_add(current.rows() as u64)
-                .ok_or_else(|| Error::InvalidSegment("v4 row offset overflow".into()))?;
+                .ok_or_else(|| Error::InvalidSegment("v5 row offset overflow".into()))?;
             builders.push(current);
             current = RowGroupBuilder::new(next);
         }
@@ -330,7 +443,9 @@ pub(super) fn encode(
     let mut row_groups = Vec::with_capacity(builders.len());
     for builder in builders {
         let row_count = u32::try_from(builder.rows())
-            .map_err(|_| Error::InvalidSegment("v4 row-group count exceeds u32".into()))?;
+            .map_err(|_| Error::InvalidSegment("v5 row-group count exceeds u32".into()))?;
+        let unique_key_count = builder.unique_key_count;
+        let filter = builder.filter()?;
         let sequence_min = *builder
             .sequences
             .iter()
@@ -405,9 +520,11 @@ pub(super) fn encode(
         row_groups.push(RowGroupDescriptor {
             row_start: builder.row_start,
             row_count,
+            unique_key_count,
             first_key: builder.first_key,
             last_key: builder.last_key,
             pages,
+            filter,
         });
     }
 
@@ -418,26 +535,36 @@ pub(super) fn encode(
     output.extend_from_slice(&(PAGES_PER_ROW_GROUP as u16).to_le_bytes());
     output.extend_from_slice(&(ROW_GROUP_HEADER_BYTES as u16).to_le_bytes());
     output.extend_from_slice(&(PAGE_DESCRIPTOR_BYTES as u16).to_le_bytes());
-    output.extend_from_slice(&[0; 14]);
+    output.push(FILTER_FORMAT_VERSION);
+    output.push(FILTER_BITS_PER_KEY as u8);
+    output.push(FILTER_HASH_FUNCTIONS as u8);
+    output.extend_from_slice(&[0; 11]);
     for group in &row_groups {
+        let filter_word_count = u32::try_from(group.filter.words().len())
+            .map_err(|_| Error::InvalidSegment("v5 filter word count exceeds u32".into()))?;
         output.extend_from_slice(&group.row_start.to_le_bytes());
         output.extend_from_slice(&group.row_count.to_le_bytes());
         output.extend_from_slice(&(group.first_key.len() as u32).to_le_bytes());
         output.extend_from_slice(&(group.last_key.len() as u32).to_le_bytes());
         output.extend_from_slice(&(PAGES_PER_ROW_GROUP as u16).to_le_bytes());
-        output.extend_from_slice(&[0; 10]);
+        output.extend_from_slice(&[0; 2]);
+        output.extend_from_slice(&group.unique_key_count.to_le_bytes());
+        output.extend_from_slice(&filter_word_count.to_le_bytes());
         output.extend_from_slice(&group.first_key);
         output.extend_from_slice(&group.last_key);
         for page in &group.pages {
             encode_page_descriptor(&mut output, page);
         }
+        for word in group.filter.words() {
+            output.extend_from_slice(&word.to_le_bytes());
+        }
     }
     let index_bytes = output.len() as u64 - index_offset;
     if index_bytes as usize > MAX_INDEX_BYTES {
-        return invalid("v4 index exceeds its bounded contract");
+        return invalid("v5 index exceeds its bounded contract");
     }
     if output.len() as u64 > MAX_SEGMENT_BYTES - FOOTER_BYTES as u64 {
-        return invalid("encoded v4 segment exceeds the 1 GiB safety limit");
+        return invalid("encoded v5 segment exceeds the 1 GiB safety limit");
     }
 
     output[..8].copy_from_slice(SEGMENT_MAGIC);
@@ -472,7 +599,7 @@ pub(super) fn parse_metadata(
     checksum: String,
 ) -> Result<ParsedMetadata> {
     if physical_bytes < (SEGMENT_HEADER_BYTES + INDEX_HEADER_BYTES + FOOTER_BYTES) as u64 {
-        return invalid("v4 segment is shorter than its framing");
+        return invalid("v5 segment is shorter than its framing");
     }
     let mut header = [0; SEGMENT_HEADER_BYTES];
     reader.seek(SeekFrom::Start(0))?;
@@ -484,7 +611,7 @@ pub(super) fn parse_metadata(
         || read_u16(&header, 46)? as usize != PAGE_ALIGNMENT
         || header[176..].iter().any(|byte| *byte != 0)
     {
-        return invalid("v4 segment header contains unsupported framing or flags");
+        return invalid("v5 segment header contains unsupported framing or flags");
     }
     let entries = read_u64(&header, 16)?;
     let minimum_sequence = read_u64(&header, 24)?;
@@ -492,7 +619,7 @@ pub(super) fn parse_metadata(
     let row_group_count = read_u32(&header, 40)? as usize;
     let index_offset = read_u64(&header, 48)?;
     let index_bytes = usize::try_from(read_u64(&header, 56)?)
-        .map_err(|_| Error::InvalidSegment("v4 index length exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 index length exceeds usize".into()))?;
     let row_group_budget = decode_row_group_budget(&header)?;
     let content_end = physical_bytes - FOOTER_BYTES as u64;
     if entries == 0
@@ -504,13 +631,13 @@ pub(super) fn parse_metadata(
         || !(INDEX_HEADER_BYTES..=MAX_INDEX_BYTES).contains(&index_bytes)
         || index_offset.checked_add(index_bytes as u64) != Some(content_end)
     {
-        return invalid("v4 segment header contract is invalid");
+        return invalid("v5 segment header contract is invalid");
     }
     if encode_digest(&header[64..96]) != SEGMENT_SCHEMA_DIGEST
         || encode_digest(&header[96..128]) != SEGMENT_KEY_CODEC_DIGEST
         || encode_digest(&header[128..160]) != SEGMENT_PAGE_FORMAT_DIGEST
     {
-        return invalid("v4 segment schema, key codec, or page format digest is unknown");
+        return invalid("v5 segment schema, key codec, or page format digest is unknown");
     }
 
     reader.seek(SeekFrom::Start(index_offset))?;
@@ -521,9 +648,25 @@ pub(super) fn parse_metadata(
         || read_u16(&index, 12)? as usize != PAGES_PER_ROW_GROUP
         || read_u16(&index, 14)? as usize != ROW_GROUP_HEADER_BYTES
         || read_u16(&index, 16)? as usize != PAGE_DESCRIPTOR_BYTES
-        || index[18..32].iter().any(|byte| *byte != 0)
+        || index[18] != FILTER_FORMAT_VERSION
+        || index[19] as usize != FILTER_BITS_PER_KEY
+        || index[20] as usize != FILTER_HASH_FUNCTIONS
+        || index[21..32].iter().any(|byte| *byte != 0)
     {
-        return invalid("v4 segment index header is invalid");
+        return invalid("v5 segment index header or filter policy is invalid");
+    }
+
+    let minimum_group_bytes = ROW_GROUP_HEADER_BYTES
+        .checked_add(PAGES_PER_ROW_GROUP * PAGE_DESCRIPTOR_BYTES)
+        .and_then(|bytes| bytes.checked_add(std::mem::size_of::<u64>()))
+        .expect("fixed v5 row-group metadata size fits usize");
+    if row_group_count
+        > index_bytes
+            .saturating_sub(INDEX_HEADER_BYTES)
+            .checked_div(minimum_group_bytes)
+            .unwrap_or(0)
+    {
+        return invalid("v5 row-group count cannot fit in the bounded index");
     }
 
     let mut cursor = INDEX_HEADER_BYTES;
@@ -536,38 +679,43 @@ pub(super) fn parse_metadata(
             &index,
             cursor,
             ROW_GROUP_HEADER_BYTES,
-            "v4 row-group header",
+            "v5 row-group header",
         )?;
         let row_start = read_u64(fixed, 0)?;
         let row_count = read_u32(fixed, 8)?;
         let first_key_bytes = read_u32(fixed, 12)? as usize;
         let last_key_bytes = read_u32(fixed, 16)? as usize;
+        let unique_key_count = read_u32(fixed, 24)?;
+        let filter_word_count = read_u32(fixed, 28)? as usize;
         if row_start != expected_row_start
             || row_count == 0
             || read_u16(fixed, 20)? as usize != PAGES_PER_ROW_GROUP
-            || fixed[22..32].iter().any(|byte| *byte != 0)
+            || fixed[22..24].iter().any(|byte| *byte != 0)
+            || unique_key_count == 0
+            || unique_key_count > row_count
+            || filter_word_count != RowGroupFilter::word_count(unique_key_count)?
             || first_key_bytes == 0
             || first_key_bytes > MAX_KEY_BYTES
             || last_key_bytes == 0
             || last_key_bytes > MAX_KEY_BYTES
         {
-            return invalid("v4 row-group framing is invalid");
+            return invalid("v5 row-group framing is invalid");
         }
         cursor += ROW_GROUP_HEADER_BYTES;
-        let first_key = slice(&index, cursor, first_key_bytes, "v4 first key")?.to_vec();
+        let first_key = slice(&index, cursor, first_key_bytes, "v5 first key")?.to_vec();
         cursor += first_key_bytes;
-        let last_key = slice(&index, cursor, last_key_bytes, "v4 last key")?.to_vec();
+        let last_key = slice(&index, cursor, last_key_bytes, "v5 last key")?.to_vec();
         cursor += last_key_bytes;
         if first_key > last_key
             || prior_last_key
                 .as_ref()
                 .is_some_and(|prior| prior >= &first_key)
         {
-            return invalid("v4 row-group key ranges are not strictly ordered");
+            return invalid("v5 row-group key ranges are not strictly ordered");
         }
         let mut pages = Vec::with_capacity(PAGES_PER_ROW_GROUP);
         for expected_kind in PageKind::ORDERED {
-            let encoded = slice(&index, cursor, PAGE_DESCRIPTOR_BYTES, "v4 page descriptor")?;
+            let encoded = slice(&index, cursor, PAGE_DESCRIPTOR_BYTES, "v5 page descriptor")?;
             let page = decode_page_descriptor(encoded)?;
             if page.kind != expected_kind
                 || page.row_start != row_start
@@ -580,37 +728,55 @@ pub(super) fn parse_metadata(
                     .checked_add(page.physical_bytes as u64)
                     .is_none_or(|end| end > index_offset)
             {
-                return invalid("v4 page descriptor violates ordering or bounds");
+                return invalid("v5 page descriptor violates ordering or bounds");
             }
             prior_page_end = page.offset + page.physical_bytes as u64;
             pages.push(page);
             cursor += PAGE_DESCRIPTOR_BYTES;
         }
+        let filter_bytes = filter_word_count
+            .checked_mul(std::mem::size_of::<u64>())
+            .ok_or_else(|| Error::InvalidSegment("v5 filter byte count overflow".into()))?;
+        let encoded_filter = slice(&index, cursor, filter_bytes, "v5 row-group filter")?;
+        let filter = RowGroupFilter::from_words(
+            unique_key_count,
+            encoded_filter
+                .as_chunks::<8>()
+                .0
+                .iter()
+                .map(|word| u64::from_le_bytes(*word))
+                .collect(),
+        )?;
+        cursor = cursor
+            .checked_add(filter_bytes)
+            .ok_or_else(|| Error::InvalidSegment("v5 filter cursor overflow".into()))?;
         validate_page_shapes(&pages, row_count)?;
         expected_row_start = expected_row_start
             .checked_add(u64::from(row_count))
-            .ok_or_else(|| Error::InvalidSegment("v4 row count overflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v5 row count overflow".into()))?;
         prior_last_key = Some(last_key.clone());
         row_groups.push(RowGroupDescriptor {
             row_start,
             row_count,
+            unique_key_count,
             first_key,
             last_key,
-            pages: pages.try_into().expect("v4 page count was fixed"),
+            pages: pages.try_into().expect("v5 page count was fixed"),
+            filter,
         });
     }
     if cursor != index.len() || expected_row_start != entries {
-        return invalid("v4 index does not exactly describe all rows");
+        return invalid("v5 index does not exactly describe all rows");
     }
     let padding_bytes_read = validate_zero_padding(reader, &row_groups, index_offset)?;
     let first_key = row_groups
         .first()
-        .expect("validated v4 segment has a row group")
+        .expect("validated v5 segment has a row group")
         .first_key
         .clone();
     let last_key = row_groups
         .last()
-        .expect("validated v4 segment has a row group")
+        .expect("validated v5 segment has a row group")
         .last_key
         .clone();
     Ok(ParsedMetadata {
@@ -639,15 +805,15 @@ pub(super) fn parse_metadata(
 
 fn decode_row_group_budget(header: &[u8]) -> Result<SegmentRowGroupBudget> {
     let target_bytes = usize::try_from(read_u64(header, 160)?)
-        .map_err(|_| Error::InvalidSegment("v4 row-group byte target exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 row-group byte target exceeds usize".into()))?;
     let max_rows = usize::try_from(read_u64(header, 168)?)
-        .map_err(|_| Error::InvalidSegment("v4 row-group row limit exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 row-group row limit exceeds usize".into()))?;
     if target_bytes == 0
         || target_bytes as u64 > MAX_SEGMENT_BYTES
         || max_rows == 0
         || max_rows > u32::MAX as usize
     {
-        return invalid("v4 segment row-group budget is invalid");
+        return invalid("v5 segment row-group budget is invalid");
     }
     Ok(SegmentRowGroupBudget {
         max_rows,
@@ -660,6 +826,7 @@ pub(super) fn require_current_format(bytes: &[u8]) -> Result<()> {
         Some(b"RRDSEG01") => Some(1),
         Some(b"RRDSEG02") => Some(2),
         Some(b"RRDSEG03") => Some(3),
+        Some(b"RRDSEG04") => Some(4),
         _ => None,
     } {
         return Err(Error::UnsupportedVersion {
@@ -738,14 +905,14 @@ fn decode_page_descriptor(bytes: &[u8]) -> Result<PageDescriptor> {
         || bytes[6] != 0
         || bytes[7] != 0
     {
-        return invalid("v4 page type, encoding, or compression metadata is unknown");
+        return invalid("v5 page type, encoding, or compression metadata is unknown");
     }
     let physical_bytes = usize::try_from(read_u64(bytes, 32)?)
-        .map_err(|_| Error::InvalidSegment("v4 physical page length exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 physical page length exceeds usize".into()))?;
     let logical_bytes = usize::try_from(read_u64(bytes, 40)?)
-        .map_err(|_| Error::InvalidSegment("v4 logical page length exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v5 logical page length exceeds usize".into()))?;
     if physical_bytes != logical_bytes {
-        return invalid("v4 uncompressed page has different physical and logical lengths");
+        return invalid("v5 uncompressed page has different physical and logical lengths");
     }
     Ok(PageDescriptor {
         kind,
@@ -766,7 +933,7 @@ fn validate_page_shapes(pages: &[PageDescriptor], rows: u32) -> Result<()> {
     let expected_offsets = rows
         .checked_add(1)
         .and_then(|count| count.checked_mul(8))
-        .ok_or_else(|| Error::InvalidSegment("v4 offset page length overflow".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v5 offset page length overflow".into()))?;
     if pages[0].logical_bytes != expected_offsets
         || pages[2].logical_bytes != rows.saturating_mul(8)
         || pages[3].logical_bytes != rows.div_ceil(8)
@@ -778,7 +945,7 @@ fn validate_page_shapes(pages: &[PageDescriptor], rows: u32) -> Result<()> {
         || pages[3].null_count != pages[4].null_count
         || pages[3].null_count != pages[5].null_count
     {
-        return invalid("v4 Arrow-compatible page lengths or null counts are invalid");
+        return invalid("v5 Arrow-compatible page lengths or null counts are invalid");
     }
     Ok(())
 }
@@ -793,25 +960,25 @@ fn validate_zero_padding(
     for page in row_groups.iter().flat_map(|group| group.pages.iter()) {
         bytes_read = bytes_read
             .checked_add(validate_zero_range(reader, expected, page.offset)?)
-            .ok_or_else(|| Error::InvalidSegment("v4 padding read count overflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v5 padding read count overflow".into()))?;
         expected = page
             .offset
             .checked_add(page.physical_bytes as u64)
-            .ok_or_else(|| Error::InvalidSegment("v4 page end overflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v5 page end overflow".into()))?;
     }
     bytes_read
         .checked_add(validate_zero_range(reader, expected, index_offset)?)
-        .ok_or_else(|| Error::InvalidSegment("v4 padding read count overflow".into()))
+        .ok_or_else(|| Error::InvalidSegment("v5 padding read count overflow".into()))
 }
 
 fn validate_zero_range(reader: &mut (impl Read + Seek), start: u64, end: u64) -> Result<u64> {
     let length = usize::try_from(
         end.checked_sub(start)
-            .ok_or_else(|| Error::InvalidSegment("v4 padding range is inverted".into()))?,
+            .ok_or_else(|| Error::InvalidSegment("v5 padding range is inverted".into()))?,
     )
-    .map_err(|_| Error::InvalidSegment("v4 padding range exceeds usize".into()))?;
+    .map_err(|_| Error::InvalidSegment("v5 padding range exceeds usize".into()))?;
     if length >= PAGE_ALIGNMENT {
-        return invalid("v4 page padding exceeds the alignment contract");
+        return invalid("v5 page padding exceeds the alignment contract");
     }
     if length == 0 {
         return Ok(0);
@@ -820,14 +987,14 @@ fn validate_zero_range(reader: &mut (impl Read + Seek), start: u64, end: u64) ->
     reader.seek(SeekFrom::Start(start))?;
     reader.read_exact(&mut padding[..length])?;
     if padding[..length].iter().any(|byte| *byte != 0) {
-        return invalid("v4 page alignment padding is non-zero");
+        return invalid("v5 page alignment padding is non-zero");
     }
     Ok(length as u64)
 }
 
 fn validate_key_value(key: &[u8], value: &[u8]) -> Result<()> {
     if key.is_empty() || key.len() > MAX_KEY_BYTES || value.len() > MAX_VALUE_BYTES {
-        return invalid("key or value exceeds the v4 segment contract");
+        return invalid("key or value exceeds the v5 segment contract");
     }
     Ok(())
 }
