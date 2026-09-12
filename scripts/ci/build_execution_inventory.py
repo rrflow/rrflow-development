@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
+ACTIVE_CHANGE_PLAN = "docs/roadmap/rrflow-1.0-active-change.json"
 
 PACKAGE_GATES: dict[str, tuple[str, ...]] = {
     "rrd-core": ("A-07", "C-01", "C-02", "C-03", "H-05", "I-01"),
@@ -681,6 +682,8 @@ H05_OBSERVABILITY_PATHS = {
 }
 
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {
+    "scripts/ci/check_change_plan.py": ("J-01", "J-02"),
+    "scripts/ci/test_change_plan.py": ("J-01", "J-02"),
     "crates/kernel/rrd-core/src/telemetry.rs": ("H-05",),
     "crates/kernel/rrd-core/tests/telemetry_contract.rs": ("H-05", "J-02"),
     "crates/transport/rrd-contract/src/observability.rs": ("H-05",),
@@ -1594,7 +1597,9 @@ def package_name(path: str) -> str | None:
 
 
 def planned_gates(path: str) -> tuple[str, ...]:
-    if path in FILE_OVERRIDES:
+    if path == ACTIVE_CHANGE_PLAN:
+        gates = ("J-01", "J-02")
+    elif path in FILE_OVERRIDES:
         gates = ("A-07", *FILE_OVERRIDES[path])
     elif path in PLANNED_PATHS:
         gates = PLANNED_PATHS[path]
@@ -1645,6 +1650,8 @@ def action(path: str) -> str:
         return "retain as the only provider-neutral repository instruction body"
     if path == "README.md":
         return "retain as the product portal; link owners and never absorb detailed roadmap or architecture bodies"
+    if path == ACTIVE_CHANGE_PLAN:
+        return "replace only in a separate planning commit; never edit alongside implementation"
     if path == "Cargo.lock":
         return "regenerate only after an accepted manifest change; never hand-edit"
     if path.startswith("docs/") and len(Path(path).parts) == 2:

@@ -43,9 +43,11 @@ complete-engine evidence.
 
 The repository-policy partition also verifies the generated
 `docs/roadmap/rrflow-1.0-file-plan.jsonl`. That inventory must match every
-tracked or non-ignored path and every gated future path before code execution
-begins; regenerate it with `python3 scripts/ci/build_execution_inventory.py`
-after an accepted path or content change.
+tracked or non-ignored path and every long-lived future path registered by its
+generator. Immediate absent paths are authorized by the earlier active change
+package and become current inventory records when created. Regenerate the
+inventory with `python3 scripts/ci/build_execution_inventory.py` after an
+accepted path or content change.
 
 The same partition enforces the documentation bootstrap package. The
 documentation policy builds and validates two in-memory packages through the
@@ -72,6 +74,32 @@ The portable development control has three layers:
 3. repository branch policy makes the pull request and stable check
    non-bypassable when the GitHub account tier supports that control.
 
+Every code-bearing or structural package first commits
+`docs/roadmap/rrflow-1.0-active-change.json` in a planning-only commit. The
+record binds one immutable parent revision and tree, complete baseline-file
+digests and line intervals, exact changed paths and symbols, research and
+adaptation decisions, failure oracles, acceptance commands,
+trace/resource/debug decisions, and stop conditions. The subsequent package
+may change only its declared implementation and evidence paths; changing the
+plan itself requires stopping and making another planning-only commit.
+
+Run `python3 scripts/ci/check_change_plan.py` as the local presubmit. It
+authenticates the planning commit and every complete-file review against Git,
+then reconciles paths touched by every post-plan commit—including paths later
+reverted—with the staged, unstaged, and non-ignored untracked worktree. It
+rejects mixed plan/code commits, stale baselines, partial reviews, undeclared
+or omitted paths, a changed lockfile, and missing research, failure,
+acceptance, observability, or stop evidence. The generated file inventory is a
+complete tree ledger, but it is not permission to edit; the earlier committed
+active package is the authorization envelope.
+
+Candidate CI checks out complete Git history and runs the same command before
+format, build, or test work. The checker proves plan-to-diff conformance, not
+algorithm correctness or alpha readiness, and it remains locally bypassable
+by a person controlling the checkout. Only the separately evidenced
+server-side protection below can make the required candidate check and review
+non-bypassable.
+
 A developer may run the
 [repository checklist](../roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist)
 locally before publishing, but the local run is convenience and early feedback,
@@ -79,14 +107,14 @@ not authority. RRFlow deliberately has no installed Git/editor/provider hook:
 client Git hooks are not distributed by clone, can be skipped, and would create
 the exact provider-owned lifecycle behavior prohibited by `AGENTS.md`.
 
-The current documentation policy machine-checks the owner chain, required
+The documentation policy machine-checks the owner chain, required
 change-authoring procedure/evidence fields, active-record classification,
 knowledge-package determinism, and local links. The execution inventory checks
-every current/generated/planned path. These controls can prove that the
-procedure and journal surface remain present; they do not yet prove that every
-pull-request path is covered by one machine-readable change package. That
-remaining presubmit-binding gap is tracked in POAM-027 rather than described as
-implemented.
+every current/generated/registered-planned path. The change-plan validator now
+proves that the candidate checkout's complete post-plan path set is covered by
+one earlier machine-readable package. These checked-in controls remain
+bypassable outside candidate CI; POAM-027 stays open for eligible server-side
+review/check/force-push/deletion enforcement.
 
 ## Repository workflow policy
 

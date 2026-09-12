@@ -25,6 +25,7 @@ DOCS_INDEX = ROOT / "docs" / "README.md"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 EXECUTION_MAP = ROOT / "docs" / "roadmap" / "rrflow-1.0-execution-map.md"
 EXECUTION_FILE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
+ACTIVE_CHANGE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-active-change.json"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
@@ -341,6 +342,16 @@ def main() -> int:
     agents = AGENTS.read_text(encoding="utf-8")
     if change_routine_link not in agents:
         failures.append("AGENTS.md does not require the change-authoring routine")
+    for required_fragment in (
+        "docs/roadmap/rrflow-1.0-active-change.json",
+        "python3 scripts/ci/check_change_plan.py",
+        "planning-only",
+        "repository-owned presubmit and candidate-CI gate",
+    ):
+        if required_fragment not in agents:
+            failures.append(
+                f"AGENTS.md lacks committed change-plan requirement {required_fragment!r}"
+            )
 
     failures.extend(knowledge_package_drift_failures(ROOT))
 
@@ -545,6 +556,7 @@ def main() -> int:
         "## How to execute this map",
         "### Codebase-grounded change-authoring routine",
         "#### Required change checklist",
+        "#### Machine-bound active change package",
         "## Product terms versus implementation packages",
         "## Frozen target source tree",
         "## Target runtime flows",
@@ -560,6 +572,8 @@ def main() -> int:
         failures.append("the execution map does not link its exhaustive file plan")
     if not EXECUTION_FILE_PLAN.is_file():
         failures.append("the exhaustive RRFlow 1.0 file plan is absent")
+    if not ACTIVE_CHANGE_PLAN.is_file():
+        failures.append("the machine-bound active change plan is absent")
     for required_evidence_field in (
         "alpha outcome or prerequisite advanced:",
         "change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions):",
@@ -605,6 +619,17 @@ def main() -> int:
             failures.append(f"the CI operations owner lacks {required_section}")
     if "POAM-027" not in ci_operations:
         failures.append("the CI operations owner does not disclose the presubmit gap")
+    for required_fragment, label in (
+        (
+            "python3 scripts/ci/check_change_plan.py",
+            "canonical change-plan presubmit command",
+        ),
+        ("complete post-plan path set", "complete plan-to-diff binding"),
+        ("bypassable outside candidate CI", "local bypass limitation"),
+        ("server-side", "separate repository-enforcement boundary"),
+    ):
+        if required_fragment not in ci_operations:
+            failures.append(f"the CI operations owner lacks {label}")
     for deficiency in ("POAM-026", "POAM-027"):
         if not re.search(rf"(?m)^\| {re.escape(deficiency)} \|", poam):
             failures.append(f"the POA&M lacks verified observability gap {deficiency}")
