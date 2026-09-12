@@ -1,6 +1,6 @@
 # C-06i rrflowKV physical-policy selection engineering plan
 
-**Status:** active candidate-screen implementation; no production policy selected
+**Status:** active retained-policy integration; candidate screen complete
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection`
 **Owner:** C-06i implementation order, measurement rules, and retained-policy handoff
 
@@ -31,6 +31,40 @@ package must integrate only accepted candidates into a new explicit segment
 format and rerun correctness, recovery, snapshot, garbage-collection, and
 mixed-family regression evidence. Rejected candidates leave no production
 option, dependency, compatibility path, or dormant runtime.
+
+## Fixed-machine candidate result
+
+The retained run is bound to clean implementation revision
+`f7257fa45d85f9a06db739e60e9eb623608ca1b4`, tree
+`4ceb46394dfa3547e9d52b0a10a4afb5a2209208`, Cargo.lock SHA-256
+`316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27`,
+and the executable digest recorded in the
+[raw evidence](../evidence/c06i-rrflowkv-physical-policy-linux-x86_64.json).
+One warm-up and all three retained children exited zero and produced the same
+corpus digest, counts, deterministic bytes, filter/cache/value observations,
+reopen counters, and candidate decisions.
+
+| Observation | Fixed-corpus result | Consequence |
+|---|---:|---|
+| corpus | 16,384 mutations; 8,192 keys; 139 row groups; 834 pages | sufficient for this candidate screen only |
+| adaptive LZ4 | 1,426,554 bytes; 84.12% saving; 677 selected pages | advance to separately planned integrated hot-page placement |
+| adaptive Zstandard level 1 | 1,226,437 bytes; 86.35% saving; 677 selected pages | advance to separately planned cold/level placement; not a hot-path default |
+| serialized Bloom | 13,304 bytes; zero false negatives; 0.634% observed false positives | first retained-policy implementation candidate |
+| normal reopened rrflowKV | 16,234 filter checks; zero filter negatives; 426 page loads | confirms the current persisted-filter gap |
+| segmented LRU model | 96/96 post-scan hot hits versus 84/96 for current LRU | advance only to an integrated concurrency/lifetime trial |
+| separated values | 8,082,816 modeled bytes avoided | reject for production from this slice |
+
+Across retained children, the complete screen processed 33,394–34,180
+mutations/s and the integrated reopen workload processed 891,381–896,144
+point misses/s. These are source-bound diagnostics on one loaded host with
+uncontrolled device cache, not release, cross-platform, end-to-end reasoning,
+or competitor evidence.
+
+The next package must implement the authenticated persisted row-group filter
+as the smallest production slice and measure actual miss-I/O reduction without
+changing semantic reads, MVCC, recovery, snapshots, or garbage collection.
+LZ4/Zstandard placement and segmented-LRU replacement remain later, separately
+bound integrated trials. No value-log work advances from this result.
 
 ## Verified baseline
 

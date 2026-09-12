@@ -112,6 +112,12 @@ load. It also records the actual warm-up and retained-child exit codes and
 checked operation/s and point-miss/s distributions. `--allow-dirty` permits
 only explicitly ineligible diagnostic output.
 
+The checked-in candidate artifact is bound to clean revision `f7257fa`. It
+advances authenticated persisted row-group filters as the first production
+experiment, while codec placement and segmented-LRU require separate
+integrated trials and value separation remains rejected. The raw artifact,
+not this summary, owns the exact host, timings, counters, and digests.
+
 ## Lifecycle measurements
 
 Both programs report three explicit physical points:

@@ -519,6 +519,18 @@ and competing load are disclosed as uncontrolled. This is enough to select a
 separately planned production experiment on the measured host; it is not
 installed-product, release, cross-platform, or competitor evidence.
 
+The clean `f7257fa` run resolved the screen without promoting a simulation.
+Across 139 real row groups, the serialized Bloom candidate used 13,304 bytes,
+had zero false negatives and 0.634% observed false positives, while normal
+manifest reopen produced zero filter negatives and loaded 426 pages for the
+same bounded miss workload. Persisted authenticated row-group filters are
+therefore the first production experiment. Adaptive LZ4 and Zstandard both
+cleared the byte threshold but remain placement experiments because their CPU
+costs and hot/cold roles differ. Segmented LRU improved the modeled post-scan
+hot set but still lacks integrated concurrency, generation, and lifetime
+evidence. Value separation remains rejected because a byte model cannot answer
+its recovery and garbage-collection obligations.
+
 ## Execution order
 
 The canonical roadmap order is the authority:

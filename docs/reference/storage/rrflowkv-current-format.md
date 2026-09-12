@@ -386,6 +386,15 @@ evidence only. The default rrd-lsm dependency tree and production format remain
 unchanged; any retained policy requires a separately planned explicit format
 revision and complete recovery/snapshot/garbage-collection regression proof.
 
+The clean C-06i candidate screen at revision `f7257fa` confirms the normal
+reopen gap: 16,234 in-range filter checks produced zero filter negatives and
+426 page loads. The serialized-filter candidate had zero member false
+negatives, 0.634% observed false positives, and 13,304 bytes across 139 real
+row groups, so authenticated persisted filters are the first retained-policy
+implementation slice. Adaptive LZ4, Zstandard placement, and segmented-LRU
+advance only to separate integrated trials. Value separation is rejected from
+this evidence. None of these results describe current segment-v4 bytes.
+
 Segment v1/v2/v3 inputs return `UnsupportedVersion` at every file-open and
 snapshot-validation boundary. No reader or migration path for them remains.
 
