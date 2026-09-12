@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "POAM-027a-plan-bound-change-gate",
+  "package_id": "POAM-027b-canonical-package-identity",
   "status": "active",
   "package_kind": "repository-engineering",
   "baseline": {
-    "revision": "b9c46c35febf81d548ec4b06ef9184df988ae693",
-    "tree": "ae41e9acf71bcf60a68b35c63554b8ba8151376e",
+    "revision": "a722c5cd1f1a02a63a6ad2fda87f63049146b881",
+    "tree": "49bd686ee2622cb8f507911e395daad2c639b71d",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,36 +13,25 @@
     "cargo_lock_sha256": "84fa792bb08030b2f7b9bc9310efc3d2b7e79132dcdad02aa6e65803d4cfe18d"
   },
   "authority": {
-    "alpha_prerequisite": "Every code-bearing or structural package is planned against the real baseline before implementation.",
-    "roadmap_gates": [
-      "J-01",
-      "J-02"
-    ],
-    "poam_items": [
-      "POAM-027"
-    ],
-    "architecture_owner": "docs/roadmap/rrflow-1.0-execution-map.md#machine-bound-active-change-package"
+    "alpha_prerequisite": "Every bounded package has one unambiguous identifier and the forward execution sequence cannot reuse an identifier already owned by a completed evidence journal.",
+    "roadmap_gates": ["A-06", "J-01"],
+    "poam_items": ["POAM-027"],
+    "architecture_owner": "docs/roadmap/rrflow-1.0-execution-map.md#codebase-grounded-critical-path-audit"
   },
-  "current_behavior": "The repository has a detailed manual change-authoring routine and deterministic file inventory, but no program binds an implementation diff to an earlier committed plan. A code change can therefore omit a file, claim an incomplete read, change its plan in the same commit, or bypass its recorded evidence while the existing policy checks still pass.",
-  "target_behavior": "A standard-library-only validator discovers the commit that introduced this active package, proves that its parent is the declared baseline and that it was planning-only, authenticates complete baseline file reviews, and rejects every undeclared committed, staged, unstaged, or untracked path plus every incomplete planning field. Candidate CI runs the validator with full Git history and workflow policy proves that binding remains present.",
+  "current_behavior": "The critical-path audit correctly identifies the remaining rrflowKV work, but its forward sequence reuses C-06b through C-06f even though the execution map already owns completed evidence journals under those identifiers. The documentation policy does not reject that collision, so a later implementation could ambiguously claim an earlier package identity.",
+  "target_behavior": "The execution map and convergence research preserve completed C-06a through C-06f as history and assign the three remaining C-06 packages the new identifiers C-06g, C-06h, and C-06i. Documentation policy deterministically rejects duplicate C-06 journal identifiers and any forward C-06 package identifier that intersects the historical journal set.",
   "unchanged_behavior": [
-    "No RRFlow engine, storage, graph, lexical, vector, DataFusion, context, reasoning, transport, installation, or runtime behavior changes.",
-    "README.md remains the product portal; the objective, canonical roadmap, POA&M, and execution map retain their existing authority order.",
+    "No RRFlow engine, storage, graph, lexical, vector, DataFusion, context, reasoning, transport, installation, binary, or runtime behavior changes.",
+    "The canonical C-06 roadmap gate remains open and no existing evidence journal or accepted behavior is renamed, deleted, or reclassified.",
+    "The ordered technical outcome remains selective rrflowKV projection first, then adversarial correctness evidence, then measured physical-policy selection before C-07.",
     "The product version remains 1.0.0 and Cargo.lock remains byte-identical.",
     "No Git, editor, provider, prompt, session-start, or RRFlow runtime hook is installed.",
-    "Local validation remains bypassable until eligible server-side protection is separately proven; POAM-027 remains open."
+    "POAM-027 remains open because checked-in policy remains locally bypassable without eligible server-side enforcement."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
     "must_have_exactly_one_parent": true,
-    "allowed_paths": [
-      "AGENTS.md",
-      "docs/poam/rrflow-1.0-alpha.md",
-      "docs/research/rrflow-system-convergence-architecture-research.md",
-      "docs/roadmap/rrflow-1.0-active-change.json",
-      "docs/roadmap/rrflow-1.0-execution-map.md",
-      "docs/roadmap/rrflow-1.0-file-plan.jsonl"
-    ]
+    "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
   },
   "reviewed_files": [
     {
@@ -50,278 +39,133 @@
       "baseline_sha256": "63cea4c628ef8e25188556e0ecce8132fce243a56bc93e8b7c3d1cf16e0faebd",
       "baseline_lines": 205,
       "reviewed_lines": "1-205",
-      "symbols": [
-        "product identity and current maturity",
-        "knowledge warp map"
-      ]
+      "symbols": ["product identity and current maturity", "knowledge warp map"]
     },
     {
       "path": "AGENTS.md",
-      "baseline_sha256": "c248609d22016cc73dfba30a0cc50ecad1ecd2b39a312d7a275dead3aa9063b7",
-      "baseline_lines": 121,
-      "reviewed_lines": "1-121",
-      "symbols": [
-        "RRFlow engineering instructions",
-        "For project work"
-      ]
+      "baseline_sha256": "6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c",
+      "baseline_lines": 129,
+      "reviewed_lines": "1-129",
+      "symbols": ["machine-readable planning requirement", "repository engineering procedure"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-active-change.json",
+      "baseline_sha256": "7ca159c013d444a9b62d052d3c8e7a444411651d61f0a3168b33f6de8ef2aea6",
+      "baseline_lines": 327,
+      "reviewed_lines": "1-327",
+      "symbols": ["POAM-027a-plan-bound-change-gate"]
     },
     {
       "path": "docs/research/rrflow-system-convergence-architecture-research.md",
-      "baseline_sha256": "cbecad3be53719ac413c9a4c4648917bf416eda610afe81487a1002793990a0d",
-      "baseline_lines": 629,
-      "reviewed_lines": "1-629",
-      "symbols": [
-        "Direct answer",
-        "Hybrid LSM and Arrow pages",
-        "DataFusion boundary",
-        "Vector, filtering, and fusion",
-        "Current-code gap matrix"
-      ]
+      "baseline_sha256": "7909b41aeb97b052b0b60dec50498c853e3b2d3d7db0eff0a690e7548b97fdc1",
+      "baseline_lines": 729,
+      "reviewed_lines": "1-729",
+      "symbols": ["2026-09-12 critical-path implementation audit", "Current-code gap matrix"]
     },
     {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "baseline_sha256": "7dd086f4074abb6a42097481b976aa90229f52e17a6cddfd680c5f0d4fbd076e",
-      "baseline_lines": 3605,
-      "reviewed_lines": "1-3605",
-      "symbols": [
-        "Codebase-grounded change-authoring routine",
-        "Implementation-requirements traceability",
-        "Gate C work packages",
-        "Gate E work packages",
-        "Gate F work packages",
-        "Evidence record template"
-      ]
+      "baseline_sha256": "3261cfc7bc96389a34f0c68c4e077a0d014624b04227d466781713df44511275",
+      "baseline_lines": 3756,
+      "reviewed_lines": "1-3756",
+      "symbols": ["Codebase-grounded critical-path audit", "C-06a through C-06f evidence journals", "Evidence record template"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0.md",
+      "baseline_sha256": "69598d717b73c50a16785cfda7acd1a2469dd598df79856ceff275fe2463f343",
+      "baseline_lines": 1265,
+      "reviewed_lines": "1-1265",
+      "symbols": ["Executable dependency spine", "C-06"]
     },
     {
       "path": "docs/poam/rrflow-1.0-alpha.md",
-      "baseline_sha256": "ee5f0868d7e9aa5add72fd4dc7c4acc4a02de8882ed14aeaa46221844220d053",
-      "baseline_lines": 70,
-      "reviewed_lines": "1-70",
-      "symbols": [
-        "Open deficiencies",
-        "POAM-027"
-      ]
-    },
-    {
-      "path": "docs/operations/ci.md",
-      "baseline_sha256": "102047fe99b78de4c8ebfce9234cd5915693b5ec96bf8f1941f0ef34732e3a57",
-      "baseline_lines": 264,
-      "reviewed_lines": "1-264",
-      "symbols": [
-        "Candidate workflow",
-        "Required repository enforcement",
-        "Local verification"
-      ]
-    },
-    {
-      "path": ".github/workflows/ci-reusable.yml",
-      "baseline_sha256": "0da34e22a5aebf5e2d66d53e00c77f08ffae959727ca9c052a10706dea47cd68",
-      "baseline_lines": 364,
-      "reviewed_lines": "1-364",
-      "symbols": [
-        "jobs.verify.steps",
-        "jobs.ci-gate"
-      ]
-    },
-    {
-      "path": ".github/workflows/ci.yml",
-      "baseline_sha256": "489b9e60da94adb6b6cf65348674013634181985b4820fd61fc5363813d9b54b",
-      "baseline_lines": 31,
-      "reviewed_lines": "1-31",
-      "symbols": [
-        "jobs.pipeline"
-      ]
-    },
-    {
-      "path": "scripts/ci/check_workflow.py",
-      "baseline_sha256": "129a9ab5c1465fad4dd4a45a39ce2ef92b2cb43cc2f92b3930dce89413f83241",
-      "baseline_lines": 435,
-      "reviewed_lines": "1-435",
-      "symbols": [
-        "verify_workflow_security",
-        "main"
-      ]
+      "baseline_sha256": "3a69a2803cb5b533103d0bc4004e937aacfdcbfe2e4936c36fc7b1c8cb62ed71",
+      "baseline_lines": 82,
+      "reviewed_lines": "1-82",
+      "symbols": ["POAM-002", "POAM-027"]
     },
     {
       "path": "scripts/ci/check_documentation.py",
-      "baseline_sha256": "79e3bfa2795296a46eec0d86ae25769ef4eaf737a9840573e5afde4f2f461125",
-      "baseline_lines": 797,
-      "reviewed_lines": "1-797",
-      "symbols": [
-        "EXECUTION_MAP",
-        "main"
-      ]
+      "baseline_sha256": "abeb065c7522b4dde509938897d384affdbeaabd4194bf0d348c72b6b5ab2923",
+      "baseline_lines": 822,
+      "reviewed_lines": "1-822",
+      "symbols": ["EXECUTION_MAP", "main"]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
-      "baseline_sha256": "3cbbcf464408740317a5c8e8f426776f140467439dcb436c9042e3395b7ecb70",
-      "baseline_lines": 1834,
-      "reviewed_lines": "1-1834",
-      "symbols": [
-        "inventory generation",
-        "planned path validation"
-      ]
+      "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
+      "baseline_lines": 1841,
+      "reviewed_lines": "1-1841",
+      "symbols": ["inventory generation", "planned path validation"]
     }
   ],
   "implementation_changes": [
     {
-      "path": "scripts/ci/check_change_plan.py",
-      "baseline_state": "absent",
-      "symbols": [
-        "PlanError",
-        "GitRepository",
-        "validate_schema",
-        "validate_planning_commit",
-        "validate_reviewed_files",
-        "validate_changed_paths",
-        "main"
-      ],
-      "action": "Create a dependency-free fail-closed validator for the active package, Git ancestry, full-file review, and committed/staged/unstaged/untracked path set.",
-      "failure_semantics": "Any malformed field, Git ambiguity, stale baseline, incomplete review, mixed plan/code commit, unplanned path, or plan drift exits nonzero with a precise diagnostic."
-    },
-    {
-      "path": "scripts/ci/test_change_plan.py",
-      "baseline_state": "absent",
-      "symbols": [
-        "ChangePlanPolicyTests"
-      ],
-      "action": "Create isolated temporary-Git-repository tests for the positive path and each required denial without modifying the RRFlow checkout.",
-      "failure_semantics": "A missing denial case or unexpected acceptance fails the test process."
-    },
-    {
-      "path": ".github/workflows/ci-reusable.yml",
+      "path": "docs/research/rrflow-system-convergence-architecture-research.md",
       "baseline_state": "present",
-      "symbols": [
-        "jobs.verify.steps.checkout",
-        "jobs.verify.steps.change-plan"
-      ],
-      "action": "Fetch complete history in the verify job and execute the change-plan validator before build/test work.",
-      "failure_semantics": "A rejected or unresolvable package stops candidate CI before compilation."
-    },
-    {
-      "path": "scripts/ci/check_workflow.py",
-      "baseline_state": "present",
-      "symbols": [
-        "verify_workflow_security",
-        "main"
-      ],
-      "action": "Require full-history checkout and the exact change-plan command in the reusable candidate workflow.",
-      "failure_semantics": "Workflow drift fails the deterministic workflow policy."
+      "symbols": ["2026-09-12 critical-path implementation audit"],
+      "action": "Correct the remaining rrflowKV package disposition to preserve completed C-06a through C-06f and name only C-06g through C-06i as future work.",
+      "failure_semantics": "The research record must not describe an already journaled package identifier as unfinished future work."
     },
     {
       "path": "scripts/ci/check_documentation.py",
       "baseline_state": "present",
-      "symbols": [
-        "ACTIVE_CHANGE_PLAN",
-        "main"
-      ],
-      "action": "Require the provider-neutral instruction warp, execution-map owner section, and active plan record without duplicating the plan schema.",
-      "failure_semantics": "Removal or drift of the planning authority linkage fails documentation policy."
-    },
-    {
-      "path": "scripts/ci/build_execution_inventory.py",
-      "baseline_state": "present",
-      "symbols": [
-        "planned_gates",
-        "action",
-        "PLANNED_PATHS"
-      ],
-      "action": "Classify the active change record under J-01/J-02 repository engineering and register its two absent checker paths without making generated JSONL an authorization source.",
-      "failure_semantics": "A missing, conflicting, or stale active-package inventory classification fails deterministic inventory generation or check mode."
-    },
-    {
-      "path": "docs/operations/ci.md",
-      "baseline_state": "present",
-      "symbols": [
-        "Candidate workflow",
-        "Required repository enforcement",
-        "Local verification"
-      ],
-      "action": "Document the exact plan-only commit, local presubmit, candidate-CI, bypass limitation, and later server-protection boundary.",
-      "failure_semantics": "Documentation cannot claim non-bypassable enforcement while POAM-027 remains open."
+      "symbols": ["C-06 package identity policy", "main"],
+      "action": "Parse the C-06 evidence-journal headings and the forward critical-path table, reject duplicate journal identifiers, and reject reuse of any journaled identifier in the forward sequence.",
+      "failure_semantics": "A duplicate historical C-06 identifier, missing canonical remaining sequence, or future/history identifier collision exits nonzero with the conflicting identifiers."
     }
   ],
   "evidence_changes": [
     {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "action": "Record the complete POAM-027a implementation journal before its code commit."
+      "action": "Correct the forward sequence to C-06g, C-06h, and C-06i; correct stale next-package statements; and record this package's complete evidence journal without changing earlier journals."
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py",
-      "action": "Regenerate the deterministic inventory after the new checker and test exist; never hand edit it."
+      "action": "Regenerate the deterministic inventory after the hand-authored correction; never hand edit it."
     }
   ],
   "research": {
-    "decision": "required",
-    "reason": "The package defines a repository integrity and review-control boundary whose bypass and Git-history behavior must be explicit.",
-    "sources": [
-      {
-        "title": "Git Hooks",
-        "url": "https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks",
-        "retained_behavior": "Client hooks are not cloned and cannot establish portable repository policy.",
-        "rejected_assumption": "A local pre-commit or provider session hook can guarantee another checkout or server accepts only planned work."
-      },
-      {
-        "title": "Google Engineering Practices: Small CLs",
-        "url": "https://google.github.io/eng-practices/review/developer/small-cls.html",
-        "retained_behavior": "One self-contained change and its tests are reviewable as a unit.",
-        "rejected_assumption": "A broad roadmap is sufficient authorization for an unbounded implementation diff."
-      },
-      {
-        "title": "GitHub ruleset rules",
-        "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
-        "retained_behavior": "Server-side required checks and pull-request restrictions are the later non-bypassable enforcement layer.",
-        "rejected_assumption": "A checked-in script alone denies a repository administrator or direct filesystem mutation."
-      }
-    ]
+    "decision": "not_required",
+    "reason": "The defect and correction are established entirely by authenticated repository history: C-06a through C-06f already have distinct evidence journals, while the new forward table reuses those identifiers. The existing engine research and technical sequence remain unchanged.",
+    "sources": []
   },
   "trace_resource_debug": {
-    "runtime_trace": {
-      "decision": "not_applicable",
-      "reason": "No RRFlow runtime operation changes."
-    },
-    "resource_evidence": {
-      "decision": "preserve",
-      "reason": "The validator uses bounded repository metadata and file hashing; tests exercise malformed and unplanned inputs without engine allocation claims."
-    },
-    "debugging_evidence": {
-      "decision": "add",
-      "reason": "Mutation tests must prove each denial emits a stable, path-specific diagnostic."
-    }
+    "runtime_trace": {"decision": "not_applicable", "reason": "No RRFlow runtime operation changes."},
+    "resource_evidence": {"decision": "not_applicable", "reason": "The change parses two bounded Markdown sections during existing documentation policy execution and makes no engine resource claim."},
+    "debugging_evidence": {"decision": "add", "reason": "The documentation policy reports duplicate historical identifiers, missing future identifiers, and future/history collisions as distinct diagnostics."}
   },
   "first_failure_oracle": [
-    "A temporary repository with a code change committed in the same commit as its plan must be rejected.",
-    "A temporary repository with one undeclared untracked implementation file must be rejected.",
-    "A plan whose reviewed line interval or SHA-256 does not cover the complete baseline file must be rejected."
+    "After adding the policy and before correcting documentation, the current execution map must fail because forward package identifiers C-06b through C-06f intersect completed evidence journals.",
+    "After correction, the policy must identify historical C-06a through C-06f exactly once and future C-06g through C-06i exactly once with an empty intersection.",
+    "The active change validator must reject any path beyond the two implementation and two evidence paths declared here."
   ],
   "edit_sequence": [
-    "Add the validator and its isolated mutation-test harness.",
-    "Run the mutation tests before touching workflow integration and fix only validator defects they expose.",
-    "Add the validator command and full-history checkout to candidate CI.",
-    "Make workflow and documentation policy reject removal of the binding.",
-    "Update CI operations documentation with exact scope and bypass limitations.",
-    "Write the execution-map evidence journal, regenerate the file plan, reread all changed files and the complete diff, then run the acceptance commands."
+    "Add only the C-06 identifier parser and diagnostics to documentation policy.",
+    "Run documentation policy against the unchanged execution map and capture the expected collision failure.",
+    "Correct the convergence research and execution-map forward sequence without editing or renaming the completed C-06a through C-06f journals.",
+    "Run the policy, active change validator, Ruff, inventory, version, knowledge-export, generated-surface, and diff checks.",
+    "Record the evidence journal, regenerate the file plan, reread every delta, commit, and push only to development/main."
   ],
   "acceptance_commands": [
-    "python3 scripts/ci/test_change_plan.py",
     "python3 scripts/ci/check_change_plan.py",
-    "ruff check scripts/ci/check_change_plan.py scripts/ci/test_change_plan.py scripts/ci/check_workflow.py scripts/ci/check_documentation.py",
-    "ruff format --check scripts/ci/check_change_plan.py scripts/ci/test_change_plan.py scripts/ci/check_workflow.py scripts/ci/check_documentation.py",
+    "ruff check scripts/ci/check_documentation.py",
+    "ruff format --check scripts/ci/check_documentation.py",
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/ci/check_workflow.py",
     "python3 scripts/check_version.py",
+    "python3 scripts/knowledge/test_export.py",
+    "python3 scripts/ci/check_generated_surfaces.py",
     "git diff --check"
   ],
   "stop_conditions": [
-    "The plan cannot be proven to precede implementation in Git history.",
-    "A changed path, generated surface, owner record, dependency lock, or workflow is not declared.",
-    "A baseline file cannot be authenticated and covered from line 1 through its final line.",
-    "The validator would require a non-standard runtime dependency, network access, provider state, or local hook.",
-    "A test would mutate the RRFlow checkout instead of an isolated temporary repository.",
-    "The package would claim an engine gate, alpha readiness, or non-bypassable server enforcement."
+    "A completed C-06 evidence journal is missing, duplicated, renamed, or contradicted by Git history.",
+    "The canonical roadmap assigns different remaining C-06 outcomes than the execution map.",
+    "The correction would change engine code, accepted gate status, Cargo.lock, product version, or an earlier evidence journal.",
+    "The parser depends on prose outside the owning execution-map sections or mistakes historical cross-references for future package declarations.",
+    "A changed path is not declared or a baseline file lacks complete authenticated review."
   ],
   "roadmap_status_change": "none"
 }
