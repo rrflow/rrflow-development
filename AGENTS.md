@@ -72,6 +72,14 @@ Every code-bearing or structural package must execute the
 Complete its auditable change checklist in the package journal; an unrecorded
 private or chat checklist is not evidence. This is a repository engineering
 procedure, not an RRFlow runtime routine, hook, trigger, skill, or lifecycle.
+Before editing implementation, commit the package's machine-readable
+`docs/roadmap/rrflow-1.0-active-change.json` as a separate planning-only
+change. It must bind the exact baseline, full-file digests and line coverage,
+symbols, edit order, research, failure oracle, acceptance commands,
+trace/resource/debug decisions, and stop conditions. After the planning commit
+exists, `python3 scripts/ci/check_change_plan.py` must accept every changed
+path. Do not install a Git, editor, provider, prompt, or session hook as a
+substitute for this repository-owned presubmit and candidate-CI gate.
 
 For project work:
 

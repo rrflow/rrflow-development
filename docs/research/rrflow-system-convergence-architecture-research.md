@@ -4,7 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/research/rrflow-system-convergence`
 **Owner:** primary-source evidence for the RRFlow 1.0 execution map
 **Audience:** RRFlow owner and engineers executing the 1.0 pre-release gates
-**Date:** 2026-09-11
+**Date:** 2026-09-12
 **Scope:** the current RRFlow repository, the path from rrflowMX through rrflowKV and Arrow/DataFusion, native graph/lexical/vector access, deterministic project-tree inventory, installation/attunement, provider-neutral agent context, explicit automation, external project data adapters, and production observability/diagnostic/fault evidence
 **Assumptions:** one RRFlow instance per project/environment; `RrdEngine` is the sole semantic, authorization, and mutation authority; version remains `1.0.0`; current code is inventory until the roadmap's behavioral evidence passes; the repository owner reports separate source-use rights for SurrealDB and Qdrant, whose legal scope is not adjudicated by this technical record
 
@@ -15,14 +15,16 @@ manifest, snapshot, query, DataFusion, BM25, HNSW, quantization, transport,
 security, and runtime code. It is also not a true alpha yet. The central gaps
 are integration and physical semantics: the Fjall selector and runtime are
 already absent, although retained historical evidence still names its original
-comparison profiles; pre-1.0 batch, manifest, segment, and catalogue readers
-remain; semantic transactions do not yet update both graph directions and
-every synchronous index family atomically; normal reads reconstruct some state
-from the runtime log; query execution eagerly materializes `Vec<QueryRow>`
-before Arrow; DataFusion's provider wraps that materialization
-instead of streaming rrflowKV pages; live query evaluation reruns two
-snapshots; and installation/attunement has contracts but no persisted
-executor.
+comparison profiles; C-05 has removed the executable pre-1.0 batch, manifest,
+segment, and vector-catalogue readers; C-03 commits both graph directions and
+the synchronous scalar/unique/BM25/vector source deltas atomically; and C-04
+uses authenticated direct semantic reads rather than normal cursor-zero log
+reconstruction. The remaining hot-path gaps are that graph, lexical, and
+vector serving still rebuild broad in-memory projections; query execution
+eagerly materializes `Vec<QueryRow>` before Arrow; DataFusion's provider wraps
+that materialization instead of streaming rrflowKV pages; live query
+evaluation reruns two snapshots; and installation/attunement has contracts but
+no persisted executor.
 
 The correct convergence target is a hybrid storage engine, not a generic
 row-only LSM and not “Arrow everywhere”:
@@ -511,15 +513,113 @@ they were produced. That supports Gate J's signed artifact, SBOM, and clean
 machine verification rather than a bare successful local build.
 [SLSA provenance](https://slsa.dev/spec/v1.2/provenance)
 
+### 2026-09-12 critical-path implementation audit
+
+This audit is bound to commit
+`b9c46c35febf81d548ec4b06ef9184df988ae693`, tree
+`ae41e9acf71bcf60a68b35c63554b8ba8151376e`. It reviewed every source line in
+`rrd-lsm` (8,125 lines), `rrd-query` (8,302 lines), and `rrd-vector` (10,480
+lines), plus the complete graph/index/versioned-read/semantic-commit modules in
+`rrd-store` and the complete context, retrieval, query, vector-search,
+vector-catalogue, read-evidence, data-plane, and trace paths in `rrd-engine`.
+The generated file plan remains the complete tracked-tree line/digest ledger;
+this narrower audit does not falsely claim that unrelated engine, transport,
+SDK, or operations files were manually reviewed.
+
+The smallest existing package suites passed at that baseline: all 87
+`rrd-lsm` tests, all `rrd-store`, `rrd-query`, and `rrd-vector` tests, and
+strict package Clippy for the audited storage/query/vector packages. Those
+results characterize existing behavior. They do not prove bounded graph
+execution, streaming rrflowKV-to-Arrow reads, production vector indexing,
+crash safety beyond the exercised faults, a turnkey database, or alpha
+readiness.
+
+| Boundary | What is real and worth retaining | What is not yet the claimed engine | Required package before rewrite |
+|---|---|---|---|
+| rrflowKV / `rrd-lsm` | framed WAL and fail-closed recovery; MVCC snapshots and write conflicts; manifest/CURRENT publication; immutable v4 segment spine plus six 64-byte-aligned Arrow-compatible pages; checksums, mapped-owner pinning, bounded/cache/io_uring modes, compaction and physical counters | pages are uncompressed and not exposed as selective asynchronous Arrow streams; no measured key/value separation or family-specific placement; whole-segment hashing is on open; mutation-free inspection, ENOSPC/crash/lifetime/fuzz/long-run proof, and a fixed-hardware policy comparison remain incomplete | finish C-06b through C-06f, then C-07; do not replace the LSM with DataFusion or add another store |
+| Temporal graph write path | typed current/history and incoming/outgoing key families in `keyspaces.rs`; `semantic_commit.rs` updates both adjacency directions in the same semantic batch and has reopen/parity characterization | `rrd-query::execute` reconstructs relation history and performs a linear scan of all relations for each visited vertex; `RrdEngine::context` rebuilds an adjacency map from a broad snapshot. That is correct small-corpus behavior, not native bounded graph execution | E-01 adds direction/range-specific cursor scans, temporal visibility, cancellation, work budgets, physical evidence, and MX/KV/reopen differential proof |
+| Scalar and lexical indexes | transactional scalar/unique/BM25 source deltas, typed stamps, BM25 scoring code, and catalogue integrity exist | uniqueness/schema checks still scan broad state; BM25 materialization is whole-map JSON; so-called incremental reconciliation computes a whole old/new map diff; tokenizer stemming is simplistic and one offset error path is silently defaulted | E-02 and E-03 freeze typed segment/postings formats, analyzer identity, deletion/generation semantics, direct iterators, exact oracle, and malformed/reopen/resource tests |
+| Vector index | exact scoring is a useful oracle; filtering, HNSW construction, immutable artifact digests, quantization lifecycle, mmap compact dense segments, exact rerank, catalogue integrity, and CPU-first accelerator admission are substantive prototypes | canonical candidates are rebuilt from history into process-local vectors; HNSW and several catalogues are monolithic JSON loaded or cloned wholesale; filtered HNSW traversal does not use payload indexes for pruning; compact rows are aligned f32 bytes rather than Arrow arrays; per-candidate allocations and query transforms remain; durable collection/catalogue code also exists inside the compute crate | E-04 moves durable vector truth and generations under the store/engine transaction while keeping `rrd-vector` compute-only; E-05 selects bounded filtered paths; F-03 streams candidates into native operators |
+| `TurboQuant` | randomized orthogonal transform, Lloyd-Max scalar codes, deterministic artifacts, exact comparison, recall tests, and typed generation lifecycle are useful experimental mechanics | current code has no one-bit QJL residual estimator, so it does not implement the full published TurboQuant product estimator; padded one-bit coordinates are not QJL; the name and unbiasedness/superiority implications are therefore unqualified. Query rotation and code unpacking also repeat per candidate | E-04 must either implement and independently test the complete estimator or rename the current codec directly; benchmark exact, current codec, published TurboQuant, and a serious alternative before selection; no compatibility alias |
+| rrflowQL / DataFusion | real DataFusion 55 execution, Arrow 59 batches, memory-pool/spill configuration, timeout/output limits, operator metrics, stamped planning, and durable query spans exist | `ArrowSnapshot` first materializes all `QueryRow`s and `MemorySource` wraps them; storage work occurs before the provider stream; synchronous calls create a runtime or helper thread; storage/native allocations are outside the DataFusion pool; every selected access path still enters DataFusion | F-01 supplies a pinned provider/`ExecutionPlan`/`SendableRecordBatchStream`; F-02 proves exact/inexact/unsupported pushdown; F-03 composes native operators; F-04 owns one request resource ledger and cancellation |
+| `RrdEngine` context and evidence | one composition boundary exists; reads carry stamps; vector catalogue objects and records are atomically bound; durable spans have typed causal links and crash-visible incomplete state | context rebuilds BM25, vectors, and relation adjacency per request and uses fixed RRF weights; vector runtime/catalogue reopening replays broad history; durable trace start/finish records cause their own commits and CAS rebasing, which can perturb hot-path cursors and must be budgeted rather than mistaken for free telemetry | E/F first make access paths real; H-01/H-02 then select eligible avenues and persist reasoning/feedback; H-05 proves one causal trace with bounded overhead and an outward OpenTelemetry projection |
+
+The graph verdict is therefore precise: its transactional representation is a
+useful base, but its current executor is not competitive. The LSM verdict is
+also precise: it is serious pre-alpha storage code, not a fabricated wrapper,
+but it is not yet a production database or a demonstrated advantage over
+RocksDB, Lance, Qdrant, or another engine. Package tests and Clippy justify
+retention while the named gates replace broad paths; they do not justify a
+performance or readiness claim.
+
+The current DataFusion guidance requires `TableProvider::scan` and
+`ExecutionPlan::execute` to remain lightweight, with storage work performed as
+the returned `SendableRecordBatchStream` is polled. It also makes projection,
+filter, limit, partition, cancellation, and resource behavior explicit. This
+directly determines F-01/F-02 and rejects merely wrapping an eager vector in a
+`MemorySource` as the final design.
+[DataFusion custom table providers](https://datafusion.apache.org/library-user-guide/custom-table-providers.html)
+
+Arrow defines an interoperable physical memory layout and permits eligible
+zero-copy relocation; it does not define a database, WAL, MVCC, mutation
+coordinator, or index. RRFlow may borrow a mapped page only when alignment,
+encoding, schema, and owner lifetime agree. Otherwise it must decode or copy
+under the resource ledger and report that fact.
+[Arrow columnar format](https://arrow.apache.org/docs/format/Columnar.html)
+
+Current SurrealDB graph execution computes directional key ranges and decodes
+adjacency entries inside a physical scan operator. The relevant lesson is not
+its bytes or API: E-01 needs RRFlow-owned typed direction/range scans that
+remain permission-aware and cancellation-aware rather than reconstructing the
+whole graph.
+[SurrealDB graph-key scan source](https://github.com/surrealdb/surrealdb/blob/main/surrealdb/core/src/exec/operators/scan/graph_keys.rs)
+
+Tantivy provides a useful lexical-segment comparison: immutable snapshot-held
+segments, separate deletion bitsets, a term dictionary pointing to posting
+offsets, and delta/bit-packed blocks of 128 document IDs. RRFlow can adapt
+those behavior and failure principles into E-03, but cannot outsource its
+transaction, stamp, analyzer, or catalogue authority to Tantivy.
+[Tantivy architecture](https://github.com/quickwit-oss/tantivy/blob/main/ARCHITECTURE.md)
+
+The published TurboQuant algorithm combines an MSE-oriented quantizer with a
+one-bit Quantized Johnson-Lindenstrauss residual estimator for the product
+objective. Qdrant's current Turbo storage is additionally a fixed encoded file
+with separate mutable deletion flags and mmap/io_uring access, not a cloned
+JSON graph. These are research and differential references for E-04, not proof
+that RRFlow's present similarly named module implements the same algorithm.
+[TurboQuant paper](https://arxiv.org/abs/2504.19874),
+[Qdrant Turbo vector storage](https://github.com/qdrant/qdrant/blob/master/lib/segment/src/vector_storage/turbo/turbo_vector_storage.rs)
+
+WiscKey establishes that separating large values from the sorted LSM key spine
+can reduce compaction write amplification, but it also introduces value-log
+garbage collection and workload-dependent tradeoffs. LSM-VEC proposes an
+LSM-distributed on-disk proximity graph with sampling and reordering. Both
+remain C-06/E-04 benchmark candidates until RRFlow measures recovery, garbage
+collection, read amplification, recall, memory, and device writes; neither is
+an accepted format merely because it fits the narrative.
+[WiscKey paper](https://www.usenix.org/system/files/conference/fast16/fast16-papers-lu.pdf),
+[LSM-VEC paper](https://arxiv.org/abs/2505.17152)
+
+The deleted `rrd-graph` and recall implementations were also reviewed from Git
+history. Reusable requirements are deterministic project topology,
+Tree-sitter-derived symbols, digest-based incremental freshness,
+grounding/quarantine, provenance-preserving bitemporal recall sets, explicit
+budget/truncation evidence, and A/B recall evaluation. Their direct filesystem
+authority, hardcoded language/task/runner tables, FNV identity, monolithic JSON
+projection, isolated PageRank router, fixed weights, and process-local
+lifecycle are rejected. Those behaviors enter D-03/D-04, E-01, H-01/H-02, and
+J-04 through new RRFlow-owned tests; the deleted crate is not restored or
+renamed.
+
 ## Current-code gap matrix
 
 | Claim | Current evidence | Missing proof | Roadmap owner |
 |---|---|---|---|
 | rrflowKV is persistent | `rrd-lsm` has WAL, MVCC versions, manifest/CURRENT, immutable segments, recovery, snapshots, compaction, and failure injection | one final format, no earlier-format readers, transaction conflicts, hybrid column pages, crash matrix | C-01..C-07 |
 | rrflowMX and rrflowKV share semantics | `RrflowMxStore`, `RrflowKvStore`, and the common `StorageEngine` trait exist | minimal transaction port and identical conformance corpus including conflict/rollback | C-02 |
-| semantic writes are atomic | `RrflowKvCommitPlan` batches runtime data, log, outbox, cursor, audit, and outcome | both adjacency directions plus scalar/unique/BM25/vector index deltas in that same batch | C-03 |
-| reads are direct and stamped | `ReadStamp`, direct materialized keyspaces, and validation exist | remove normal-path whole-log reconstruction and prove bounded point/range work | C-04 |
-| no compatibility backend | Fjall selection/dependency and the migration runtime are absent; retained Fjall names describe historical evidence only; native format is default | remove every executable pre-1.0 batch/segment/manifest/catalogue reader or format branch while retaining explicit evidence provenance | C-05, J-01 |
+| semantic writes are atomic | accepted C-03 batches runtime data, current/history graph plus both adjacency directions, scalar/unique/BM25/vector source deltas, log, outbox, cursor, audit, and outcome | keep this corpus green while E builds replaceable projection generations and native readers from the same committed source cursor | C-03 accepted; E-01..E-04 preserve it |
+| reads are direct and stamped | accepted C-04 uses authenticated direct semantic-version reads with budgets and MX/KV/reopen equality | specialized graph/postings/vector iterators and the streaming Arrow provider must replace remaining broad projection reconstruction | C-04 accepted; E-01..E-05, F-01 |
+| no compatibility backend | Fjall selection/dependency, migration runtime, and executable pre-1.0 batch/manifest/segment/vector-catalogue readers are absent; the native current formats are exclusive | retain all negative guards and complete J-01's final source/distribution closure without adding an alias or reader | C-05 accepted; J-01 preserves it |
 | DataFusion is integrated | query execution uses DataFusion, `MemorySource`, spill pool, timeout, and output limits | real rrflowKV streaming provider, pushdown, cross-operator resource accounting | F-01, F-02, F-04 |
 | native graph/BM25/vector are real | graph traversal, BM25 code, exact vector oracle, HNSW, catalogues, and planner exist | persistent incremental access paths and same-stamp native physical operators | E-01..E-05, F-03 |
 | causal traces are durable | bounded trace contract, typed links, atomic runtime-log persistence, MX/KV equivalence, conflict retry, and crash-visible incomplete spans exist | one authorized engine emission path, W3C ingress/egress propagation, canonical low-cardinality names, per-gate physical evidence, export/redaction, and complete context-flow correlation | A-07, C..I, H-05, J-02 |

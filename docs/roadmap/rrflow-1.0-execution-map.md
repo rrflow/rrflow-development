@@ -4,7 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/execution-map/rrflow-1.0`
 **Owner:** file, symbol, dependency, test, and stop-condition mapping for the canonical RRFlow 1.0 roadmap
 **File baseline:** generated inventory committed with this map
-**Reviewed:** 2026-09-11
+**Reviewed:** 2026-09-12
 
 The canonical [RRFlow 1.0 roadmap](rrflow-1.0.md) owns dependency order,
 checkboxes, and accepted completion evidence. This record turns each unchecked
@@ -14,8 +14,11 @@ architecture authority, objective status, or the POA&M.
 The companion
 [`rrflow-1.0-file-plan.jsonl`](rrflow-1.0-file-plan.jsonl) inventories every
 current tracked or non-ignored file with its complete line/byte span, digest,
-assigned gates, and disposition. It also lists every currently planned path
-before that path is created. The inventory is generated and checked by
+assigned gates, and disposition. It also lists every long-lived architecture
+path registered by its generator before that path is created. The active
+change package is the authority for immediate package-local paths that do not
+yet exist; the generator must classify the active record itself and reconcile
+those paths when the package is implemented. The inventory is generated and checked by
 [`build_execution_inventory.py`](../../scripts/ci/build_execution_inventory.py).
 
 The primary-source reasoning behind the choices below lives in the
@@ -217,6 +220,52 @@ exact revision; incremental work goes only to the private development remote.
 - [ ] Every changed hand-authored file and the complete diff were reread; generated artifacts were regenerated, not edited.
 - [ ] Narrow, owning, cross-boundary, policy, and risk-relevant wider results are recorded without overclaiming.
 - [ ] Remaining errors, unrun checks, POA&M effect, roadmap effect, commit, and development push are explicit.
+
+#### Machine-bound active change package
+
+The manual routine is enforced by the checked-in
+`docs/roadmap/rrflow-1.0-active-change.json` and
+`scripts/ci/check_change_plan.py`. This is the repository presubmit and
+candidate-CI gate requested for plan-directed work. It is deliberately not a
+Git hook, editor hook, provider hook, prompt trigger, session-start action, or
+RRFlow runtime event.
+
+The active package must be committed in a planning-only commit before any of
+its implementation changes. It records one immutable baseline commit/tree,
+the owning roadmap and POA&M coordinates, and every allowed planning,
+implementation, evidence, and generated path. Each hand-authored existing path
+records its baseline SHA-256, exact complete line interval `1..N`, and the
+symbols or configuration keys reviewed. A new path records that it was absent.
+A generated path instead binds its checked-in generator and deterministic
+check and is never hand-edited. Each planned edit records current behavior,
+target behavior, invariants, failure semantics, unchanged behavior, and its
+exact action. The package also freezes the research sources/adaptation
+decision, edit sequence, first-failure oracle, acceptance commands,
+trace/resource/debug decisions, and stop conditions.
+
+The validator resolves the commit that introduced the active package and
+fails closed when:
+
+- its parent is not the declared baseline or the commit includes a path not
+  classified as planning/evidence/generated;
+- an existing file digest or complete line count differs from the declared
+  baseline, a reviewed interval omits a line, or a supposedly new file already
+  existed;
+- committed, staged, unstaged, or untracked work contains an undeclared path;
+- the plan is modified alongside implementation, an implementation path lacks
+  exact symbols/actions, or a required planning field is empty;
+- the plan lacks a primary-source research decision, first-failure oracle,
+  acceptance command, unchanged-behavior statement, stop condition, or
+  explicit trace/resource/debug decision; or
+- `Cargo.lock`, a generated surface, an owner/status record, or another broad
+  boundary changes without being named explicitly.
+
+This proves that code is being changed from a reviewed, baseline-bound package;
+it does not prove the resulting algorithm or runtime. The package still must
+pass its semantic, differential, failure, resource, reopen, and real-process
+acceptance evidence. Local repository checks remain bypassable by a person
+with filesystem access; POAM-027 stays open until eligible server-side rules
+also require the exact candidate check and deny direct/force pushes.
 
 ### Pre-release consolidation protocol
 
@@ -575,6 +624,56 @@ for example, `rrd-lsm/src/wal.rs` means
 `crates/persistence/rrd-lsm/src/wal.rs`. The generated JSONL contains the exact
 repository path and complete byte/line span for every file. This matrix binds
 the cross-file behavior that a mechanical inventory cannot infer.
+
+### Critical engine audit and executable convergence sequence
+
+The 2026-09-12 audit is bound to commit
+`b9c46c35febf81d548ec4b06ef9184df988ae693`, tree
+`ae41e9acf71bcf60a68b35c63554b8ba8151376e`. The complete source of
+`rrd-lsm`, `rrd-query`, and `rrd-vector` was read, as were the complete current
+store/engine files named below. The source inventory totals 78,846 lines across
+the five critical crates; only the 26,907 lines in those three complete crates
+and the explicitly named store/engine paths have a manual full-file audit in
+this package. Every remaining file is still covered by the generated
+line/digest inventory and must receive its own complete review in the active
+package that changes it. This distinction prevents “search hit” or generated
+inventory coverage from being misreported as a human/agent code review.
+
+| Current path and symbols | Reviewed behavior to preserve | Directly planned change; no wrapper or parallel path | Required proof and owner |
+|---|---|---|---|
+| `rrd-lsm/src/{wal,memtable,manifest,database,transaction,batch,io,snapshot_bundle}.rs`; `segment/{format,mod}.rs` | framed WAL/recovery, sequence-visible MVCC, pinned snapshots, writer exclusion, manifest/CURRENT publication, checksummed v4 spine/pages, bounded cache/I/O, compaction, snapshot closure | C-06b first adds storage-native projected page metadata and pinned selective range iteration without importing DataFusion. C-06c through C-06f then close mixed-family visibility, mapped-generation lifetime/GC, authenticated row/byte budgets, malformed/property differential, and measured codec/value-placement/filter/cache policy. C-07 separates create/open/inspect and closes crash/ENOSPC/unsafe/long-run evidence | exact point/range/MVCC oracle; old-format denial; crash at each durability boundary; Miri/sanitizer where applicable; bounded bytes/read/decode/copy/borrow counters; fixed-hardware evidence; C-06/C-07 |
+| `rrd-store/src/keyspaces.rs::{GraphCurrentKey,GraphHistoryKey,GraphIncomingKey,GraphOutgoingKey}` and `access/semantic_commit.rs::{compile_semantic_commit,apply_semantic_commit}` | typed ordered graph families and atomic current/history plus both-direction adjacency mutations | E-01 keeps these as canonical write truth and adds stamp-scoped direction/type/range cursors. It removes graph-wide reconstruction from normal execution only after the cursor corpus passes | same transaction on MX/KV; temporal visibility; incoming/outgoing/both; self/cycle/fan-out; cancellation and key/byte/work ceilings; close/reopen; E-01 |
+| `rrd-store/src/access/{index,vector,versioned_read,runtime_state}.rs` | typed stamps, scalar/unique/BM25/vector source deltas, authenticated direct reads and physical evidence | E-02/E-03/E-04 split broad validation/materialized JSON into typed immutable projection generations and delta/tombstone access; no compute crate may persist catalogue truth. C-04/E packages remove normal cursor-zero replay | conflict/all-or-none mutation; exact old/new oracle; corrupt/gap/stale denial; bounded point/range/decode work; MX/KV/reopen differential; C-04/E-02/E-03/E-04 |
+| `rrd-query/src/{syntax,catalog,plan,pipeline,execute,arrow,fusion,live}.rs` | strict rrflowQL syntax/binding, stamped catalogue, deterministic plans, Arrow schemas/batches, real DataFusion execution and limits | E-05 replaces count-only choice with statistics/selectivity and rejection evidence. F-01 replaces `ArrowSnapshot`/eager `Vec<QueryRow>` with a pinned provider, light `scan`/`execute`, and polled `SendableRecordBatchStream`. F-02 declares exact/inexact/unsupported pushdown. H-03 later replaces two-snapshot polling with commit-impact deltas | plan golden and EXPLAIN; projection/filter/limit/partition pushdown; cancellation/backpressure; one-stamp visibility; no pre-stream I/O/materialization; physical row/key/byte/copy/allocation evidence; F-01/F-02/E-05/H-03 |
+| `rrd-query/src/{bm25,index}.rs` | BM25 formula, typed projection stamps/catalogue integrity, deterministic query/result ordering | E-03 introduces versioned analyzer identity, term dictionary/posting offsets, immutable posting blocks, deletion generations, exact scorer oracle, and fail-closed analysis. Remove silent offset default, simplistic global materialization, and whole-map “incremental” rebuild after replacement proof | lexical golden including identifiers/Unicode/phrases/deletes; malformed posting denial; incremental-vs-rebuild differential; bounded memory/I/O; reopen; E-03 |
+| all `rrd-vector/src/*.rs`, specifically `exact`, `filter`, `hnsw`, `compact`, `turboquant`, `turbo_segment`, `runtime`, `catalog`, `collection`, and `quantization_catalog` | exact oracle, typed models/metrics, payload predicate semantics, deterministic graph construction, immutable artifact digests, quantization lifecycle, mmap ownership, exact rerank, accelerator verification | E-04 moves durable collection/catalogue truth to `rrd-store` and leaves algorithms/codecs in `rrd-vector`; immutable generations use separate deletion/delta state. Filter indexes constrain ANN traversal. Current monolithic JSON HNSW/catalogue and process-local full-candidate rebuild are removed. The current Turbo codec is either completed with the published QJL residual estimator or directly renamed after comparative evidence; no claim/alias survives without algorithmic identity | exact-vs-ANN recall and filter differential; malformed/corrupt/stale generation denial; insert/update/delete/compact/reopen; working-set and device-write budgets; exact/current-codec/published-Turbo/alternative benchmarks; E-04/E-05/J-04 |
+| `rrd-engine/src/engine/{query,context,retrieval,retrieval_query}.rs`; `engine/vector/{index,search}.rs`; `runtime/{query,data_plane,vector_catalog,vector_residency,read_evidence,trace}.rs` | `RrdEngine` authorization/composition, read stamps, typed evidence links, atomically bound object/catalogue records, crash-visible trace starts, query/vector public orchestration | E/F route calls through one native access-plan port and one request resource ledger. H-01/H-02 replace per-request broad BM25/vector/adjacency reconstruction and fixed RRF weights with policy-selected eligible avenues, pure configured RRF, persisted tree state, feedback, and evidence. H-05 keeps durable evidence but projects telemetry outward and proves its commit/CAS overhead | one ingress-to-delivery trace ID and read stamp; selected/skipped/rejected path reasons; exact context oracle; timeout/cancel/resource denial; trace-export failure cannot change state; p50/p95/p99/p99.9 and overhead evidence; E/F/H-01/H-02/H-05 |
+| deleted `rrd-graph` and recall sources at commit `544872262f59d435def341f2c5317055afa75845` | deterministic inventory/topology, Tree-sitter symbols, digest freshness, grounding/quarantine, whole-file budget/truncation, bitemporal recall provenance, A/B evaluation | D-03/D-04/H/J re-author those requirements behind the committed inventory and `RrdEngine`; reject direct filesystem authority, FNV IDs, hardcoded languages/tasks/runners, monolithic JSON, isolated PageRank/fixed weights, and process-local lifecycle. Do not restore the crate | inventory race/ignore/symlink/secret/budget corpus; incremental-vs-clean parse; provenance digest; recall A/B corpus; D-03/D-04/H-01/H-02/J-04 |
+
+The executable dependency sequence below is fixed until a package uncovers
+contradictory evidence. A newly surfaced contradiction stops implementation and
+updates this map in another planning-only commit; it is not patched around.
+
+| Order | Bounded package and exact outcome | Entry condition | Exit evidence before the next order |
+|---:|---|---|---|
+| 0 | POAM-027a: machine-bind every code diff to an earlier active change package | current audited baseline | validator unit mutation corpus, workflow-policy proof, documentation/inventory checks; no engine status claim |
+| 1 | C-06b: selective pinned immutable-page projection | order 0 enforced; current v4 corpus green | exact point/range/MVCC differential plus projected-family/key-range/counter tests; no DataFusion dependency in `rrd-lsm` |
+| 2 | C-06c through C-06f and C-07: close mixed visibility, lifetimes, writer budgets, corruption/property tests, physical policy, and create/open/inspect durability | each C-06 subpackage has its own plan-only commit | all C-06/C-07 fault, reopen, resource, Miri/sanitizer-applicable and fixed-hardware evidence |
+| 3 | D-01/D-02 foundations: one `rrflow`/`rrflow.exe` install-plan/apply, explicit storage creation/open, authenticated readiness/verify, and persisted resumable jobs | storage semantics and recovery closed | clean-machine bundle-resident fresh/existing preview/apply; commit/close/reopen; killed phase resume; no external service required |
+| 4 | D-03/D-04: deterministic project inventory and incremental Tree-sitter normalization | installed estate and job executor real | Git/non-Git tree snapshot, race/secret/symlink/budget failures, unchanged-subtree identity, incremental-vs-clean parse/graph differential |
+| 5 | E-01 through E-04: persistent temporal graph, scalar/unique, BM25, canonical vector and replaceable ANN/quantized generations | committed inventory/normalized entities exist | atomic MX/KV/reopen corpora for every index family; native bounded access; exact lexical/vector oracle; stale/corrupt projection denial |
+| 6 | E-05 and F-01/F-02: costed access planning plus stamped streaming rrflowKV-to-Arrow/DataFusion | native access families accepted | light planning, polled storage streams, honest pushdown, one-stamp batches, EXPLAIN, cancellation/backpressure, physical copy/borrow/decode evidence |
+| 7 | F-03/F-04/F-05: native graph/BM25/vector/RRF operators, one cross-operator ledger, measured cache decision | streaming provider accepted | mixed native/DataFusion plan differential, global memory/I/O/time/output enforcement, cold/warm benchmark; build or reject Moka from evidence |
+| 8 | D-05 through D-10: real normalize/embed/index/verify attunement, optional adapters, placement/accounting/hibernation | C/E/F operations accepted | restartable phase corpus against real project fixtures; explicit adapter authorization; external DB/mesh/provider remains optional |
+| 9 | G and H-01/H-02: LFG proposal routing, persisted reasoning tree, dynamic context and feedback | real indexed context is queryable | constrained model proposal cannot bypass authorization; same-stamp selected/skipped route evidence; tree CAS/reopen; exact context and feedback evaluation |
+| 10 | H-03 through H-07 and I: live deltas, public surfaces, causal diagnostics, Connectome contract, explicit engine events/triggers/routines/skills/adapters | reasoning flow accepted | public HTTP/WebSocket/SDK/MCP equivalence, authorized resumable automation, no automatic provider hook, Connectome real-process flow |
+| 11 | J: clean alpha binaries, repair/recovery, comparative performance, signed offline distribution and promotion decision | every preceding acceptance corpus green | native `rrflow` and Windows `rrflow.exe`, install/start/persist/query/reason/reopen/verify/repair/uninstall on clean hosts; exact promotion authorization |
+
+Order 0 is the only implementation package authorized by the active plan
+introduced with this audit. Order 1 requires a new plan-only commit naming its
+exact baseline files, symbols, tests, counters, and failure injections. This
+prevents the roadmap table itself from becoming blanket authorization to edit
+all listed engine code.
 
 ### Mandatory direct convergence
 
@@ -3490,6 +3589,32 @@ not run and reason: no Cargo package test, Clippy, workspace compile/test, SDK c
 remaining known errors: the engine remains pre-alpha. C-06 still needs selective projected page scans, property/fuzz and mixed-family evidence, configurable budgets, mapped-generation lifetime proof, and measured compression/value-placement/filter/cache decisions. C-07 and Gates D through J remain open, including turnkey binaries/install/attunement, native graph/BM25/vector paths, streamed stamped Arrow/DataFusion execution, persisted reasoning/recall, runtime routines/skills, every public-surface proof, and Connectome conformance
 commit/development push evidence: the result is the commit containing this entry; before handoff its exact revision is pushed only to refs/heads/main at https://github.com/rrflow/rrflow-development.git and verified there. No official-repository ref, tag, binary, artifact, or release is changed
 roadmap checkbox changed: no; no POA&M status changed
+```
+
+#### Critical engine audit and active change-package planning journal
+
+```text
+gate/package: POAM-027a planning revision / critical rrflowKV, graph, BM25, vector, TurboQuant, rrflowQL/DataFusion, context, trace, and deleted-requirement audit plus machine-bound active package; planning and research only
+alpha outcome or prerequisite advanced: establishes the exact, dependency-ordered implementation plan and separately committed authorization envelope required before further code changes; it does not implement or complete storage, graph, lexical, vector, DataFusion, reasoning, installation, Connectome, binary, or release behavior
+starting revision/tree/branch/remote/worktree: commit b9c46c35febf81d548ec4b06ef9184df988ae693; tree ae41e9acf71bcf60a68b35c63554b8ba8151376e; branch agent/connectome-temporal-runtime-visualizer exactly at development/main; development resolves to https://github.com/rrflow/rrflow-development.git; official origin resolves to https://github.com/rrflow/rrflow.git; starting worktree, staged diff, and unstaged diff were empty; Cargo.lock SHA-256 84fa792bb08030b2f7b9bc9310efc3d2b7e79132dcdad02aa6e65803d4cfe18d
+baseline files/digests: README.md=63cea4c628ef8e25188556e0ecce8132fce243a56bc93e8b7c3d1cf16e0faebd (205 lines); AGENTS.md=c248609d22016cc73dfba30a0cc50ecad1ecd2b39a312d7a275dead3aa9063b7 (121); convergence research=cbecad3be53719ac413c9a4c4648917bf416eda610afe81487a1002793990a0d (629); execution map=7dd086f4074abb6a42097481b976aa90229f52e17a6cddfd680c5f0d4fbd076e (3605); POA&M=ee5f0868d7e9aa5add72fd4dc7c4acc4a02de8882ed14aeaa46221844220d053 (70); CI operations=102047fe99b78de4c8ebfce9234cd5915693b5ec96bf8f1941f0ef34732e3a57 (264); reusable CI=0da34e22a5aebf5e2d66d53e00c77f08ffae959727ca9c052a10706dea47cd68 (364); workflow policy=129a9ab5c1465fad4dd4a45a39ce2ef92b2cb43cc2f92b3930dce89413f83241 (435); documentation policy=79e3bfa2795296a46eec0d86ae25769ef4eaf737a9840573e5afde4f2f461125 (797); inventory generator=3cbbcf464408740317a5c8e8f426776f140467439dcb436c9042e3395b7ecb70 (1834); generated file plan=e4ead599cfe79609a7b68aa3d3a32617bc32b6c01c4a2e7fe9914e10ff6c9d00 (937)
+change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions): current documentation contains a sound manual routine and broad traceability but no separately committed, machine-readable per-change authorization, while critical code quality ranges from credible persistence primitives to eager/broad prototype execution. Keep the existing owner chain, RrdEngine authority, one MX/KV semantic port, custom rrflowKV LSM, rrflowQL/DataFusion compute boundary, and exact-oracle projection model. Add an honest code audit, fixed convergence sequence, active JSON package, and provider-neutral instruction requirement. Permit the next implementation package to add only the validator, mutation tests, CI/policy bindings, CI documentation, explicit active-package inventory classification, evidence journal, and generated inventory. Stop on any mixed plan/code commit, stale/partial review, undeclared path, parallel authority, compatibility lane, algorithm claim without identity/evidence, or status overclaim
+files read in full: README.md; AGENTS.md; objective, canonical roadmap, POA&M, convergence research, complete execution map, CI operations, reusable/caller workflows, workflow/documentation/inventory policies, Cargo manifests/lock context; every source file under crates/persistence/rrd-lsm/src, crates/compute/rrd-query/src, and crates/compute/rrd-vector/src; rrd-store keyspaces.rs and access/{semantic_commit,index,vector,versioned_read,runtime_state}.rs; rrd-engine engine/{core,context,query,retrieval,retrieval_query,vector.rs}, engine/vector/{index,search}.rs, and runtime/{trace,read_evidence,data_plane,query,vector_catalog}.rs; every deleted rrd-graph source/test file and deleted recall core/evaluation fixture recovered read-only from commit 544872262f59d435def341f2c5317055afa75845
+research decision and primary-source/adaptation record: required and complete for the architecture and repository-control claims. Official Apache Arrow/DataFusion documentation fixes the conditional-zero-copy and polled-stream provider boundaries; current SurrealDB graph scan source supports direction/range-specific physical adjacency without importing its format; Tantivy documents immutable lexical segments, deletion bitsets, snapshot readers and posting blocks; the TurboQuant paper identifies the QJL residual missing from current RRFlow code; current Qdrant Turbo storage demonstrates fixed encoded bytes, separate deletes, mmap/io_uring and reusable query scratch; WiscKey and LSM-VEC remain measured candidates for value separation and disk graph layout; Git/Google/GitHub sources distinguish small planned changes, non-portable client hooks, and later server enforcement. Exact links and rejected assumptions are in the convergence research and active package. No upstream code/tree/API/format was copied
+trace/resource/debug decision (add/preserve/not applicable, with reason): runtime trace=not applicable because no runtime behavior changes; resource evidence=preserve existing engine evidence and require bounded standard-library Git/file hashing for the next validator; debugging evidence=plan deterministic isolated mutation tests with stable rejection diagnostics. The code audit records the current trace start/finish commit and CAS-rebase cost as an H-05 measurement gap, not a free or completed feature
+first-failure or characterization oracle and result: all 87 rrd-lsm tests, the complete rrd-store, rrd-query, and rrd-vector package tests, and strict Clippy for rrd-lsm/rrd-query/rrd-vector passed at the clean baseline. Full-file execution review then proved the critical negative oracles: graph/context reconstruct broad relation state; rrflowQL materializes QueryRow vectors before DataFusion; vector serving rebuilds process-local candidates and several artifacts/catalogues are whole JSON; current TurboQuant lacks the published QJL residual estimator; and no script binds a diff to an earlier plan. Final generated-inventory review also exposed that its generic documentation fallback classified the new active record as A-06/J-01 and did not predeclare its package-local absent checker paths; the active package now authorizes a direct J-01/J-02 classification and path registration in the generator rather than a hand edit to JSONL. These are retained open gates or explicitly planned repairs, not silently repaired engine behavior in this package
+files changed/created/deleted/moved: changed AGENTS.md, docs/research/rrflow-system-convergence-architecture-research.md, this execution map, and docs/poam/rrflow-1.0-alpha.md; created docs/roadmap/rrflow-1.0-active-change.json; regenerated docs/roadmap/rrflow-1.0-file-plan.jsonl. No implementation, test, workflow, dependency, binary, format, generated API, version, or runtime file changed; no file was deleted, moved, renamed, restored, or archived
+contract or behavior changed: repository engineering policy now requires a separately committed baseline-bound active change package before implementation. The plan distinguishes manual review from generated inventory, records exact current engine limitations, prohibits restoring deleted parallel crates, and orders future packages from POAM-027a through C-06/C-07, D, E, F, G/H, I, and J. No RRFlow public or runtime contract changed and no automatic hook was created
+smallest test command and result: jq parsed the active package successfully; deterministic inventory generation wrote 938 records and its --check passed
+owning package command and result: documentation policy passed with 92 document statuses and 90 classified coordinates; workflow policy passed 3 workflows, 7 substantive jobs, 5 cohesive engine suites, 20 default-feature packages, and 5 optional-feature packages; version policy retained 1.0.0
+cross-boundary command and result: git diff --check passed. The implementation commit must additionally run the active package's exact validator/unit/Ruff/policy acceptance list before handoff
+failure/crash/differential evidence: existing package tests characterize the baseline only. No runtime code changed, so no new persistence crash, reopen, graph, lexical, vector, DataFusion, context, install, binary, or real-process evidence is claimed. The next POAM-027a package must prove its denial matrix in isolated temporary Git repositories
+full-file reread and diff review: complete. README.md and every baseline file that the active package permits the implementation commit to change were read completely and authenticated by SHA-256 plus exact line count. The complete baseline execution map was read before editing and its complete resulting delta was reread; AGENTS.md, the POA&M, convergence research, and active JSON were then read from first through final resulting line. The generated JSONL was regenerated, its complete deterministic check passed, and its exact five-record delta plus new active-record entry were reviewed. Final diff review found no implementation/runtime change, undeclared changed path, deleted/moved file, second authority, compatibility lane, provider/client hook, version/lock change, or status overclaim
+change checklist: baseline=complete; authority=complete; scope=complete; full reads=complete for the explicitly claimed audit and every planned POAM-027a file; oracle=complete; traceability=complete; research=complete; edit plan=complete; observability=complete at planning scope; implementation=not applicable for this planning-only commit; tests=complete for baseline characterization and documentation policy; reread=complete; verification=complete for the planning revision; handoff=pending planning commit and development push
+not run and reason: full workspace/engine/SDK/installer/server/MCP/Connectome/release/deployment suites and fixed-hardware benchmarks were not run because no such implementation changed and they cannot qualify a planning revision
+remaining known errors: engine remains pre-alpha. rrflowKV needs C-06/C-07; installation/binaries D; persistent native graph/scalar/BM25/vector E; streamed rrflowQL/DataFusion F; routed persisted reasoning/context G/H; explicit routines/skills I; clean promotion J. POAM-027 remains open through validator implementation and unavailable server-side enforcement
+commit/development push evidence: pending; this must be a planning-only commit pushed only to development/main; no official repository ref, tag, binary, artifact, or release may change
+roadmap checkbox changed: no; POAM-027 remains open
 ```
 
 #### Observability, diagnostic-build, and latency-evidence planning journal
