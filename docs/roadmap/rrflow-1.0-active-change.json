@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "C-06i-persisted-row-group-filter-integration",
+  "package_id": "C-06i-segment-v5-identity-closure",
   "status": "active",
-  "package_kind": "engine-physical-format",
+  "package_kind": "repository-architecture-closure",
   "baseline": {
-    "revision": "10c4ac2459d1862982bd94bdbc0ca6644d187928",
-    "tree": "37fc824716fe624b268564b0ddca4d844ced4933",
+    "revision": "8039c022b8e75954862770fb4d2edd60c99e4c23",
+    "tree": "6ff46be0b58adcb09a7001100553d13ebf4bb145",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,22 +13,20 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "C-06i must convert the retained persisted-filter candidate into one authenticated rrflowKV physical-format behavior before C-06 can close. Normal reopen must obtain the filter from authenticated metadata and prune in-range point misses before semantic Arrow-page I/O while exact MVCC, recovery, snapshots, compaction, garbage collection, and projected reads remain unchanged.",
-    "roadmap_gates": ["C-06", "C-07", "F-01", "J-04"],
-    "poam_items": ["POAM-002", "POAM-004"],
+    "alpha_prerequisite": "C-06i segment-v5 production evidence cannot close while the repository architecture oracle still asserts segment v4 or the active I/O boundary describes v4. Align both identities without changing runtime behavior, then rerun the complete repository policy boundary.",
+    "roadmap_gates": ["C-06", "J-01"],
+    "poam_items": ["POAM-002"],
     "architecture_owner": "docs/roadmap/rrflow-1.0-execution-map.md#critical-engine-audit-and-executable-convergence-sequence"
   },
-  "current_behavior": "The clean C-06i candidate screen measured segment-v4 normal reopen and found 16,234 filter checks, zero negatives, and 426 semantic page loads because Database::open installs allow-all filters. Its deterministic ten-bit-per-unique-key, seven-hash serialized Bloom candidate used 13,304 bytes, produced zero member false negatives and a 0.634 percent absent-key false-positive rate, and was the only candidate retained for immediate integration. Segment v4 has no persisted filter framing. Segment::open reconstructs a private filter only after loading all key pages; Database::open authenticates metadata but cannot prune misses without those reads. The laboratory duplicates the candidate filter instead of consuming a canonical format implementation.",
-  "target_behavior": "Replace the pre-release segment format directly with v5. Every authenticated row-group index entry records its unique-key count and embeds one bounded RRFlow Bloom filter using the retained ten-bit-per-unique-key, minimum-64-bit, seven-double-hash policy. Parsing derives the exact permitted word count from authenticated metadata and rejects unknown algorithms, noncanonical lengths, nonzero reserved bytes, truncation, and malformed parameters. Full validation reconstructs the filter from decoded unique keys and requires byte-exact equality before writer publication, snapshot acceptance, or standalone open. Normal Database reopen uses persisted filters without loading semantic pages; definite in-range point misses must record negatives and skip page loads. V4 is an unsupported negative input with no reader, migration, fallback, or parallel authority. The laboratory reuses the canonical implementation. Open evidence and rrflowKV traces report persisted filter count and bytes. Frozen segment, manifest, snapshot, fuzz, malformed-byte, MVCC, compaction, projected-read, recovery, and store-boundary proofs move to the sole v5 format.",
+  "current_behavior": "Clean implementation revision 07a6bb8 and evidence revision 8039c02 establish segment v5 and authenticated persisted row-group filters. The full architecture suite nevertheless passes only 27 of 28 tests because alpha_storage_closure_has_one_required_physical_dependency_and_current_reader still searches for SEGMENT_FORMAT_VERSION 4. The fully reviewed I/O module has one documentation comment calling the current immutable pages v4. Neither stale reference changes engine behavior, but both contradict the sole current pre-release format and prevent honest package closure.",
+  "target_behavior": "The architecture closure must assert segment format version 5 plus the RRDSEG05 and RRDIX005 identities already owned by the current format module. The I/O policy documentation must name immutable v5 segment pages. No production expression, public type, durable byte, dependency, feature, trace, counter, test topology, or acceptance status changes. The complete 28-test architecture suite, workspace check, documentation policies, and deterministic inventory must pass.",
   "unchanged_behavior": [
-    "RrdEngine remains the sole semantic transaction, authorization, reasoning, recall, installation, attunement, and lifecycle authority; rrflowKV owns physical persistence and read evidence only.",
-    "Product version 1.0.0, WAL v1, batch v2, manifest v3, CURRENT publication, application key format RRKV0001, key ordering, MVCC visibility, writer exclusion, durability boundaries, snapshot ownership, compaction publication, garbage collection, and projected-read semantics remain unchanged.",
-    "This is direct pre-release convergence: only v5 is readable and writable after the package. No v4 reader, converter, feature flag, fallback, deprecation path, or alternate backend is added.",
-    "The filter accelerates point reads only. It cannot establish semantic presence, positive results still perform exact key/version lookup, and range/projected scans never use it for exclusion.",
-    "Compression remains none, values remain inline, and the exact-byte LRU is unchanged. LZ4, Zstandard, cache admission, Moka, value separation, and family placement require later separately planned evidence.",
-    "DataFusion is not added to rrd-lsm. F-01 owns the stamped asynchronous rrflowQL TableProvider, pushdown, RecordBatch streaming, cancellation, spill, and shared resource ledger over this source.",
-    "Graph, scalar, BM25, vector, ANN/TurboQuant, RRF, reasoning/context, triggers/routines/skills, installed binaries, SDK/API conformance, Connectome, and deployment are not implemented or qualified here.",
-    "No competitor, latency, scale, zero-copy, or alpha-readiness claim is made from this filter slice; C-06 remains open for remaining physical-policy and gate evidence."
+    "Segment v5 bytes, persisted-filter algorithm, authentication, MVCC semantics, open/read behavior, fixtures, clean evidence, and all rrflowKV production code remain byte-for-byte unchanged.",
+    "The architecture test remains a repository closure oracle; it is updated to the current sole reader identity and is not weakened, skipped, ignored, feature-gated, or satisfied by a deceptive compatibility string.",
+    "The I/O edit is documentation-only. SegmentIoMode, policy validation, io_uring probing/fallback, mmap and bounded reads, statistics, and platform behavior remain unchanged.",
+    "Product version remains 1.0.0. C-06, C-07, D through J, installed binaries, DataFusion streaming, native recall, reasoning, routines, skills, SDKs, APIs, Connectome, and release qualification remain open.",
+    "No v4 reader, alias, migration, deprecation path, fallback, format constant, fixture, fuzz target, or parallel authority is introduced.",
+    "The private rrflow/rrflow-development repository remains the only permitted push target; official rrflow/rrflow receives no source, ref, tag, artifact, binary, or release."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -36,130 +34,131 @@
     "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
   },
   "reviewed_files": [
-    {"path":"AGENTS.md","baseline_sha256":"6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c","baseline_lines":129,"reviewed_lines":"1-129","symbols":["planning chain","machine-bound packages"]},
-    {"path":"README.md","baseline_sha256":"b81a6776f3b235dd2c109ca167f3ae504f40b6a13c42f682978d285963b37de0","baseline_lines":212,"reviewed_lines":"1-212","symbols":["product status","rrflowKV status"]},
-    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"1ccf0bfc27695f8055cda3649f0e077a58f4cc999d29520cbf1a200084f6e5a8","baseline_lines":150,"reviewed_lines":"1-150","symbols":["candidate plan","retained-policy rule"]},
-    {"path":"docs/roadmap/c06i-rrflowkv-physical-policy-selection-engineering-plan.md","baseline_sha256":"4bca540bbe28cbc9b914dd8bac464d9af797d7aba43cb5ab4faedb806ad73a18","baseline_lines":278,"reviewed_lines":"1-278","symbols":["candidate thresholds","fixed-machine verdict"]},
-    {"path":"docs/roadmap/README.md","baseline_sha256":"bbb1699336b0ecffa69f89ded193744fc0d24e99d18dab599abed35b9c6ae3b0","baseline_lines":39,"reviewed_lines":"1-39","symbols":["active package","supporting plans"]},
-    {"path":"docs/roadmap/rrflow-1.0.md","baseline_sha256":"cc68a553f76423d110502b6e7aa99b8d6a9ed323e941086d93733ef36e3167cc","baseline_lines":1313,"reviewed_lines":"1-1313","symbols":["C-06 acceptance","current evidence"]},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","baseline_sha256":"988ee448f6039c7520ee8aa7e0ade1a6f30dd06c405fc7944c9f49241061038c","baseline_lines":3891,"reviewed_lines":"1-3891","symbols":["C-06i sequence","evidence journal"]},
-    {"path":"docs/roadmap/rrflow-1.0-file-plan.jsonl","baseline_sha256":"3e4b0f99ff623dec4ea5a15d5177e520bdad62560254894760522ab86e927036","baseline_lines":960,"reviewed_lines":"1-960","symbols":["repository inventory","fixture paths"]},
-    {"path":"docs/reference/storage/rrflowkv-current-format.md","baseline_sha256":"5f834ee7be5ee76138e4631d8fe9c7a6f49ab56ba9d30dcf98cc9dbd63ad1f85","baseline_lines":545,"reviewed_lines":"1-545","symbols":["segment v4","normal reopen filters"]},
-    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","baseline_sha256":"453b198797818f48beb512179e6333d5695716f6a77df75aaf883a4c1d755841","baseline_lines":214,"reviewed_lines":"1-214","symbols":["physical-policy harness","candidate limits"]},
-    {"path":"docs/reference/storage/tiered-persistence.md","baseline_sha256":"5b9bd2dd0ebf4f4587a92d8d468f4ed221f01d6552ca483e18139d38739824ee","baseline_lines":119,"reviewed_lines":"1-119","symbols":["immutable state","tiering boundary"]},
-    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","baseline_sha256":"530acb57f53d3730d0ee8034e1c2378c9e7bfd15669b6eeb19d7d998f727c8b6","baseline_lines":635,"reviewed_lines":"1-635","symbols":["persisted-filter gap","source adaptation"]},
-    {"path":"docs/research/surrealdb-capability-inventory.md","baseline_sha256":"4ea48c6c41416537ae4509db2f037fad7d318f7d2ceca05eb69fada6632f93ef","baseline_lines":335,"reviewed_lines":"1-335","symbols":["current physical envelope","adaptation boundary"]},
-    {"path":"docs/evidence/README.md","baseline_sha256":"50910afb25b83ab2b289257d011bb1de0d02260a66114d6214a601357d7b50e9","baseline_lines":18,"reviewed_lines":"1-18","symbols":["evidence catalogue"]},
-    {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"07ac664b4f6d5175b4db8470aa99e998821ee43ee62893067479974635cfa8c9","baseline_lines":65,"reviewed_lines":"1-65","symbols":["OBJ-02","OBJ-05"]},
-    {"path":"docs/poam/rrflow-1.0-alpha.md","baseline_sha256":"fd991547e2227dbf1e29f99dee84828de12e7d569b44a41135a3d0426ad4e926","baseline_lines":82,"reviewed_lines":"1-82","symbols":["POAM-002"]},
-    {"path":"docs/architecture/engine-data-flow.md","baseline_sha256":"ed4b98c13e2b6e7a7ffdb3eefbcd8b58b035283f5b084ca7482667e5a0f5210a","baseline_lines":1376,"reviewed_lines":"1-1376","symbols":["rrflowKV flow","DataFusion boundary"]},
-    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","baseline_sha256":"b2ae0193d3c6fcbbb7c29ed5dc3228532314b4e4d40491ca2724c714e73f99e5","baseline_lines":137,"reviewed_lines":"1-137","symbols":["C-06 matrix"]},
-    {"path":"scripts/ci/build_execution_inventory.py","baseline_sha256":"3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca","baseline_lines":1841,"reviewed_lines":"1-1841","symbols":["inventory generator","check mode"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/format.rs","baseline_sha256":"2707bacfe55909c6f276ef2eb77780e179dd66869c688613f9b36d0dcf7d14b2","baseline_lines":924,"reviewed_lines":"1-924","symbols":["segment encoder","row-group index"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_sha256":"63b8e1b37a1c8fed8bbed1f900975b0c1606cd216edf32514767b18e39d06b7f","baseline_lines":1834,"reviewed_lines":"1-1834","symbols":["RowGroupFilter","Segment open"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_sha256":"65f36460c85a72c841fe934c4dabda0f7aca8d18782780de6c61698669ef0b21","baseline_lines":1499,"reviewed_lines":"1-1499","symbols":["CandidateFilter","filter trial"]},
-    {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_sha256":"7d7f8a7f834e6517e3b14684971c6a8e776132b8b3244b2216c6109c4aae4047","baseline_lines":784,"reviewed_lines":"1-784","symbols":["evidence schema","runner"]},
-    {"path":"crates/persistence/rrd-lsm/tests/segment.rs","baseline_sha256":"5293b621d83b033469ea97fc5fd94f0d9ff0050f03af5ed39d61f0192ccdfcbc","baseline_lines":639,"reviewed_lines":"1-639","symbols":["v4 golden","filter tests"]},
-    {"path":"crates/persistence/rrd-lsm/tests/hybrid_segment.rs","baseline_sha256":"dbf73163eac011c72dad1d59dfc1635505e986d7409d55cd9fdfc79a2d3a5971","baseline_lines":1309,"reviewed_lines":"1-1309","symbols":["hybrid oracle","malformed bytes"]},
-    {"path":"crates/persistence/rrd-store/src/rrflow_kv.rs","baseline_sha256":"4081fcdd8d80703ea9abbd380af475a950e49830a20e0a8fe5da4ddd2cd4527e","baseline_lines":1748,"reviewed_lines":"1-1748","symbols":["RrflowKvStore open","open trace"]},
-    {"path":"crates/persistence/rrd-store/tests/rrflow_kv_open.rs","baseline_sha256":"2c88050f1f7176b475d28527de0e8e7fe43b776a6ebdec801b3d7c8de4e1ad5d","baseline_lines":98,"reviewed_lines":"1-98","symbols":["open/query evidence"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/Cargo.toml","baseline_sha256":"8ed549968c83a60553c57eab0762d477b7d4958a2010827bf69674c95ba2684c","baseline_lines":30,"reviewed_lines":"1-30","symbols":["segment-v4-open"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/README.md","baseline_sha256":"e8d93c8d4a66f8397bc113064ca6d8c2463c000e38fddf110cbbc949fe6a8620","baseline_lines":32,"reviewed_lines":"1-32","symbols":["segment fuzz command"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v4_open.rs","baseline_sha256":"392d063c9aa9c90e7639ee5f397e77d66d012e525944c15486ab4e78661cdbc0","baseline_lines":102,"reviewed_lines":"1-102","symbols":["fixture mutation","read oracle"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/corpus/segment_v4_open/mutate","baseline_sha256":"e4a0d63936a19ad13c72d85e3b390b181ad0cbf55e01301284ec530e3e7fa0e7","baseline_lines":1,"reviewed_lines":"1-1","symbols":["mutation seed"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/corpus/segment_v4_open/truncate","baseline_sha256":"8a1d43959de846b8cd4df27b010b6743df5cf8012cbdc066248cf349f209bf0e","baseline_lines":1,"reviewed_lines":"1-1","symbols":["truncation seed"]},
-    {"path":"crates/persistence/rrd-lsm/fixtures/segment-v4.hex","baseline_sha256":"138820f69173545efdd3721858bcadc5463269ddda0778e36ac73ce17d76e0fc","baseline_lines":1,"reviewed_lines":"1-1","symbols":["v4 golden"]},
-    {"path":"crates/persistence/rrd-lsm/fixtures/manifest-v3.json","baseline_sha256":"8517fd188d0213398030984f8a40ad67ad8a7023f946d6ebadacc23f57182078","baseline_lines":49,"reviewed_lines":"1-49","symbols":["segment descriptor"]},
-    {"path":"crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex","baseline_sha256":"3dc01d71c31c79bbb79597152cf03a663eeaeef1fd789ac502088f3ea59d4928","baseline_lines":1,"reviewed_lines":"1-1","symbols":["snapshot golden"]}
+    {
+      "path": "AGENTS.md",
+      "baseline_sha256": "6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c",
+      "baseline_lines": 129,
+      "reviewed_lines": "1-129",
+      "symbols": ["planning chain", "journal requirement"]
+    },
+    {
+      "path": "README.md",
+      "baseline_sha256": "835fee3c824e7a3825247073a6574776be40eb886cd04f2b29785f3781354b99",
+      "baseline_lines": 216,
+      "reviewed_lines": "1-216",
+      "symbols": ["pre-alpha status", "segment v5 status"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-active-change.json",
+      "baseline_sha256": "4d7472d3990899cfac5bfb98b57fff85f6deb91ddbb42e29fbf92d672581ceac",
+      "baseline_lines": 185,
+      "reviewed_lines": "1-185",
+      "symbols": ["persisted-filter package", "acceptance failure"]
+    },
+    {
+      "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
+      "baseline_sha256": "9a282f50a3c6134cad710f47b2e7a9d97cca2958f41c1846546b4fe3b8e5c27c",
+      "baseline_lines": 1832,
+      "reviewed_lines": "1-1832",
+      "symbols": ["alpha_storage_closure_has_one_required_physical_dependency_and_current_reader", "repository closure"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/io.rs",
+      "baseline_sha256": "84eb6214c284bd07355aefffaee48ab164b7806ea9a776e3b8d24bf2b9dbc905",
+      "baseline_lines": 405,
+      "reviewed_lines": "1-405",
+      "symbols": ["SegmentIoMode", "immutable segment documentation"]
+    },
+    {
+      "path": "docs/roadmap/c06i-rrflowkv-persisted-filter-integration-engineering-plan.md",
+      "baseline_sha256": "4ba7b2c0348be10901808ee3aa4525e5072e89bf7d89684e19175e65efd82bbb",
+      "baseline_lines": 216,
+      "reviewed_lines": "1-216",
+      "symbols": ["status", "segment-v5 proof"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
+      "baseline_sha256": "5235b12496868bb99e91d4122796cd955a9624f0a57ad6bbd52367bd512547ec",
+      "baseline_lines": 3919,
+      "reviewed_lines": "1-3919",
+      "symbols": ["C-06i integration journal", "evidence template"]
+    },
+    {
+      "path": "scripts/ci/build_execution_inventory.py",
+      "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
+      "baseline_lines": 1841,
+      "reviewed_lines": "1-1841",
+      "symbols": ["inventory generator", "check mode"]
+    }
   ],
   "implementation_changes": [
-    {"path":"crates/persistence/rrd-lsm/src/segment/format.rs","baseline_state":"present","symbols":["SEGMENT_FORMAT_VERSION","RowGroupFilter","encode_row_group_index","parse_row_group_index"],"action":"Replace v4 with v5 framing; define the canonical Bloom algorithm; encode unique-key counts and filter words in the authenticated index; bound every length/parameter; reconstruct and compare filters during full validation.","failure_semantics":"Reject v1-v4, unknown algorithms, noncanonical words, overflow, reserved bytes, truncation, trailing bytes, reconstruction mismatch, and malformed page/index/checksum bytes."},
-    {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_state":"present","symbols":["RowGroupDescriptor","SegmentOpenEvidence","build_segment","get_version"],"action":"Use parsed filters in row-group descriptors, remove process-local and allow-all construction, expose filter count/bytes in evidence, and retain exact point-read semantics.","failure_semantics":"Never use unauthenticated filters or range exclusion; false negatives, miss page loads, unbounded allocation, or accounting drift fail."},
-    {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_state":"present","symbols":["CandidateFilter","observe_filter","observe_reopened_point_misses"],"action":"Remove duplicate filter code and measure the canonical persisted filter emitted by the real v5 encoder; keep codecs, cache, and value placement candidate-only.","failure_semantics":"Fail on duplicate authority, member mismatch, false negative, noncanonical bytes, or mislabeled evidence."},
-    {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_state":"present","symbols":["PhysicalPolicyEvidence","aggregate","limitations"],"action":"Emit separate persisted-filter integration evidence with actual filter/page-I/O observations and fixed-machine provenance.","failure_semantics":"Reject dirty/inconsistent evidence, child or corpus drift, false negatives, or release verdicts for unintegrated candidates."},
-    {"path":"crates/persistence/rrd-lsm/tests/segment.rs","baseline_state":"present","symbols":["v5 golden","persisted filter reopen","filter corruption"],"action":"Replace v4 golden proof; prove metadata-only reopen, miss pruning, exact present/tombstone reads, prior-version rejection, and authenticated filter corruption denial.","failure_semantics":"Any false negative, result mismatch, miss page load, malformed-filter acceptance, prior-version acceptance, or golden drift fails."},
-    {"path":"crates/persistence/rrd-lsm/tests/hybrid_segment.rs","baseline_state":"present","symbols":["generated v5","hybrid model","reopen compaction"],"action":"Move generated authenticated cases to v5 and retain exact mixed-family MVCC, malformed-byte, reopen, and compaction oracles.","failure_semantics":"Accepted malformed bytes or semantic/model divergence fails."},
-    {"path":"crates/persistence/rrd-store/src/rrflow_kv.rs","baseline_state":"present","symbols":["RrflowKvStore::open","rrflow_kv.open"],"action":"Add low-cardinality persisted-filter count/byte fields to the existing open trace.","failure_semantics":"Fields must be deterministic numeric evidence with no keys, values, secrets, or behavior change."},
-    {"path":"crates/persistence/rrd-store/tests/rrflow_kv_open.rs","baseline_state":"present","symbols":["open phase separation"],"action":"Prove the upper store observes persisted filters with zero semantic-page open reads and prunes absent queries while preserving present reads.","failure_semantics":"Phase overlap, missing evidence, open page I/O, or result mismatch fails."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/Cargo.toml","baseline_state":"present","symbols":["segment-v5-open"],"action":"Replace the v4 fuzz binary with the current v5 target and no alias.","failure_semantics":"Target discovery, lock, policy, or sanitizer failure stops the package."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/README.md","baseline_state":"present","symbols":["segment-v5-open command"],"action":"Replace current-format fuzz instructions with exact v5 names and bounded commands.","failure_semantics":"Commands must match the declared target/corpus and not overclaim bounded fuzzing."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v4_open.rs","baseline_state":"present","symbols":["removed v4 target"],"action":"Remove as the source of a traced direct rename to segment_v5_open.rs.","failure_semantics":"No alias, duplicate, or compatibility target remains."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v5_open.rs","baseline_state":"absent","symbols":["v5 mutation oracle"],"action":"Create the renamed target over segment-v5.hex and preserve authenticated open/read checks.","failure_semantics":"Accepted bytes must be readable and parser panics must not escape."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/corpus/segment_v4_open/mutate","baseline_state":"present","symbols":["removed v4 seed"],"action":"Remove as the source of the v5 corpus rename.","failure_semantics":"Preserve seed bytes at the new path."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/corpus/segment_v4_open/truncate","baseline_state":"present","symbols":["removed v4 seed"],"action":"Remove as the source of the v5 corpus rename.","failure_semantics":"Preserve seed bytes at the new path."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/corpus/segment_v5_open/mutate","baseline_state":"absent","symbols":["v5 mutation seed"],"action":"Create the renamed tracked seed.","failure_semantics":"Content drift or untracked input fails replayability."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/corpus/segment_v5_open/truncate","baseline_state":"absent","symbols":["v5 truncation seed"],"action":"Create the renamed tracked seed.","failure_semantics":"Content drift or untracked input fails replayability."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/segment-v4.hex","baseline_state":"present","symbols":["removed v4 golden"],"action":"Remove as the source of direct replacement by segment-v5.hex.","failure_semantics":"No v4 positive fixture remains."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/segment-v5.hex","baseline_state":"absent","symbols":["v5 golden"],"action":"Generate the deterministic authenticated v5 segment with canonical filters.","failure_semantics":"Unapproved or nondeterministic drift fails."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/manifest-v3.json","baseline_state":"present","symbols":["segment identity","physical digest"],"action":"Regenerate v3 manifest golden for v5 identity without changing manifest schema.","failure_semantics":"Only expected descriptor identity/checksum changes are allowed."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex","baseline_state":"present","symbols":["v5 object closure"],"action":"Regenerate snapshot-v1 golden over the sole v5 segment closure.","failure_semantics":"Import/export must authenticate the exact closure and reject prior/tampered bytes."}
+    {
+      "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
+      "baseline_state": "present",
+      "symbols": ["alpha_storage_closure_has_one_required_physical_dependency_and_current_reader"],
+      "action": "Replace the stale segment-v4 constant expectation with exact assertions for segment format version 5, segment magic RRDSEG05, and index magic RRDIX005 while preserving every dependency, retired-reader, and vector-catalogue assertion.",
+      "failure_semantics": "The complete architecture suite fails if the current reader identity drifts, v4 is claimed current, or any existing closure invariant changes."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/io.rs",
+      "baseline_state": "present",
+      "symbols": ["SegmentIoMode documentation"],
+      "action": "Change the single stale immutable-v4 documentation reference to immutable v5; alter no executable token.",
+      "failure_semantics": "Any executable, public API, policy, fallback, statistics, platform, or dependency change is outside scope and stops the package."
+    }
   ],
   "evidence_changes": [
-    {"path":"docs/roadmap/c06i-rrflowkv-persisted-filter-integration-engineering-plan.md","action":"Author the exact v4-to-v5 bytes, Bloom formula, writer/parser/read flow, changes, proofs, trace fields, and stop conditions."},
-    {"path":"docs/roadmap/c06i-rrflowkv-physical-policy-selection-engineering-plan.md","action":"Mark the candidate screen completed supporting evidence and link the machine-bound integration without rewriting historical measurements."},
-    {"path":"README.md","action":"Update current rrflowKV status and warp point to v5 persisted filters while preserving pre-alpha truth."},
-    {"path":"docs/roadmap/README.md","action":"Point active work to the integration and retain the candidate screen as support."},
-    {"path":"docs/roadmap/rrflow-1.0.md","action":"Update current C-06 evidence for v5 filters while leaving C-06 unchecked."},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","action":"Update current rows and append the integration journal, including rename/delete traceability, failures, commands, evidence, commits, push, and gaps; preserve historical journals."},
-    {"path":"docs/roadmap/rrflow-1.0-file-plan.jsonl","action":"Regenerate inventory after v4-to-v5 renames and new records.","generated":true,"generator":"scripts/ci/build_execution_inventory.py"},
-    {"path":"docs/reference/storage/rrflowkv-current-format.md","action":"Document exact v5 filter layout, validation, read evidence, version rejection, fixtures, and commands."},
-    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","action":"Record the integrated candidate and keep other policies candidate-only."},
-    {"path":"docs/reference/storage/tiered-persistence.md","action":"Update current immutable-segment status without claiming tiering or DataFusion completion."},
-    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","action":"Record measured adoption and exact RRFlow adaptation."},
-    {"path":"docs/research/surrealdb-capability-inventory.md","action":"Update the current RRFlow envelope and narrow persisted-filter claim."},
-    {"path":"docs/evidence/README.md","action":"Catalogue separate integration evidence and its claim boundary."},
-    {"path":"docs/evidence/c06i-rrflowkv-persisted-filter-linux-x86_64.json","action":"Record clean provenance, raw trials, filter bytes/count, false positives/negatives, reopened I/O, and limitations."},
-    {"path":"docs/objectives/rrflow-1.0-alpha.md","action":"Update OBJ-02/OBJ-05 current evidence while preserving Partial status."},
-    {"path":"docs/poam/rrflow-1.0-alpha.md","action":"Update POAM-002 for the filter slice and keep it Open."},
-    {"path":"docs/architecture/engine-data-flow.md","action":"Update current rrflowKV flow to v5 filters while preserving the rrflowQL/DataFusion boundary."},
-    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","action":"Update C-06 v5 golden, corruption, reopen-I/O, and fuzz proofs."}
+    {
+      "path": "docs/roadmap/c06i-rrflowkv-persisted-filter-integration-engineering-plan.md",
+      "action": "Record architecture identity closure and retain active C-06i ownership without claiming C-06 completion."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
+      "action": "Close the persisted-filter journal through its evidence revision and append the exact segment-v5 identity closure record, commands, failures, commits, push, and remaining gaps."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
+      "action": "Regenerate deterministic inventory after the assertion, comment, and journal changes.",
+      "generated": true,
+      "generator": "scripts/ci/build_execution_inventory.py"
+    }
   ],
   "research": {
-    "decision": "required",
-    "reason": "The candidate screen completed the primary-source comparison and fixed-machine selection. This slice reuses only measured persisted-filter behavior and adapts it to RRFlow authentication, MVCC, allocation bounds, and evidence rather than copying an upstream format.",
-    "sources": [
-      {"title":"RocksDB Bloom Filter","url":"https://github.com/facebook/rocksdb/wiki/RocksDB-Bloom-Filter","retained_behavior":"Persist filters beside immutable sorted data so definite point misses avoid data-block reads; measure bits, probes, false positives, and memory.","rejected_assumption":"RocksDB framing, APIs, defaults, compatibility, or performance automatically apply to RRFlow."},
-      {"title":"Bloom: Space/Time Trade-offs in Hash Coding with Allowable Errors","url":"https://dl.acm.org/doi/10.1145/362686.362692","retained_behavior":"Inserted members must have no false negatives; sizing and hash count trade memory for false-positive probability.","rejected_assumption":"Probabilistic membership establishes semantic presence or absence without exact lookup."}
-    ]
+    "decision": "not_required",
+    "reason": "Authenticated repository state is conclusive: format.rs owns version 5, RRDSEG05, and RRDIX005; the clean v5 fixture, package tests, and fixed-machine artifact already prove that identity. This package changes no algorithm, API, dependency, physical policy, or external behavior.",
+    "sources": []
   },
   "trace_resource_debug": {
-    "runtime_trace": {"decision":"add","reason":"Extend existing rrd_lsm.open and rrflow_kv.open events with persisted_filter_count and persisted_filter_bytes; retain operation-scoped filter/page counters and add no per-key labels."},
-    "resource_evidence": {"decision":"add","reason":"Account filter bytes/count at open and prove definite misses increase filter negatives without semantic page loads while exact cache/I/O counters cover positive reads."},
-    "debugging_evidence": {"decision":"add","reason":"Framing, length, algorithm, reserved-byte, checksum-rewritten corruption, and reconstructed-filter mismatch tests locate rejected boundaries; fixed-machine evidence preserves raw replay coordinates."}
+    "runtime_trace": {
+      "decision": "preserve",
+      "reason": "No runtime expression or trace schema changes; existing persisted-filter count/byte and operation I/O evidence remains authoritative."
+    },
+    "resource_evidence": {
+      "decision": "not_applicable",
+      "reason": "The only production-file edit is a comment and the test edit reads the same bounded source files it already inspected."
+    },
+    "debugging_evidence": {
+      "decision": "add",
+      "reason": "The architecture oracle will assert all three current segment identity tokens and the complete 28-test suite must pass."
+    }
   },
   "first_failure_oracle": [
-    "The baseline normal-reopen characterization must reproduce nonzero checks, zero negatives, and nonzero page loads for deterministic in-range absent keys.",
-    "V5 Database::open must authenticate nonzero persisted filter count/bytes with zero semantic page requests and loads during open.",
-    "Every inserted unique key must be a member and full validation must reconstruct byte-identical filter words; any false negative or mismatch is corruption.",
-    "Deterministic absent probes must produce negatives and fewer page loads than the frozen v4 observation while present and tombstone/MVCC reads remain exact.",
-    "Filter-byte mutations with the outer checksum recomputed must still be rejected by framing or canonical reconstruction.",
-    "Versions 1 through 4 and unknown version 6 must fail before alternate decoding; no v4 positive fixture, target, or compatibility branch remains.",
-    "Complete rrd-lsm and rrd-store regression suites must pass before the filter is called integrated."
+    "At baseline, cargo test -p rrd-engine --test workspace_architecture --locked passes 27/28 and fails only because the storage-closure test expects SEGMENT_FORMAT_VERSION 4.",
+    "After the edit, the focused storage-closure test and complete 28-test architecture suite must pass without adding any v4 current-reader string to production source.",
+    "A scoped text search must find no immutable-v4 I/O comment or version-4 current-reader assertion in the two changed source files.",
+    "Workspace, documentation, inventory, version, generated-surface, formatting, and diff policies must remain green."
   ],
   "edit_sequence": [
-    "Commit this JSON alone as the direct child of clean baseline 10c4ac2 and pass planning validation.",
-    "Author the human plan with exact bytes, bounds, validation, read path, trace, rename, and proof map.",
-    "Move the canonical filter into format.rs; encode/parse v5 filters; reconstruct and compare on full validation.",
-    "Remove allow-all/process-local construction, consume parsed filters, and add versioned open evidence.",
-    "Refactor the laboratory/evidence runner to production filters while leaving other policies candidate-only.",
-    "Update tests; directly replace v4 fixture/fuzz paths with v5; regenerate affected manifest/snapshot identities.",
-    "Run focused tests, package suites, bounded fuzzing, Clippy, architecture/workspace/docs/format checks, and complete diff review.",
-    "Commit implementation; run fixed-machine release evidence from that exact clean commit; update declared docs/evidence and inventory.",
-    "Resolve development URL/ref/revision before a normal fast-forward push; never push to origin or create a release/tag."
+    "Commit this JSON alone as the direct child of clean evidence revision 8039c02 and validate a planning-only package.",
+    "Update the architecture oracle to exact v5 version, segment-magic, and index-magic assertions.",
+    "Change only the stale v4 word in the fully reviewed I/O documentation comment.",
+    "Update the C-06i plan and execution journal; regenerate inventory.",
+    "Run the focused oracle, complete architecture suite, workspace and repository policies, then review the complete diff.",
+    "Commit closure, resolve remote URLs and refs, and push normally only to development/main."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "cargo test -p rrd-lsm --test segment persisted_row_group_filters_prune_reopened_point_misses --locked -- --exact --nocapture",
-    "cargo test -p rrd-lsm --test segment v5_rejects_authenticated_filter_corruption --locked -- --exact --nocapture",
-    "cargo test -p rrd-lsm --test segment v5_bytes_match_the_checked_in_format_vector --locked -- --exact",
-    "cargo test -p rrd-store --test rrflow_kv_open --locked",
-    "cargo test -p rrd-lsm --features physical-policy-lab physical_policy_lab --locked",
-    "cargo test -p rrd-lsm --locked",
-    "cargo test -p rrd-store --locked",
-    "cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v5-open crates/persistence/rrd-lsm/fuzz/corpus/segment_v5_open -- -runs=4096 -max_len=256 -timeout=10",
-    "cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06i-rrflowkv-persisted-filter-linux-x86_64.json",
-    "cargo clippy -p rrd-lsm --all-targets --all-features --locked -- -D warnings",
-    "cargo clippy -p rrd-store --all-targets --locked -- -D warnings",
+    "cargo test -p rrd-engine --test workspace_architecture alpha_storage_closure_has_one_required_physical_dependency_and_current_reader --locked -- --exact",
     "cargo test -p rrd-engine --test workspace_architecture --locked",
     "cargo check --workspace --all-targets --locked",
     "python3 scripts/ci/build_execution_inventory.py --check",
@@ -172,14 +171,11 @@
     "git diff --check"
   ],
   "stop_conditions": [
-    "A path is outside this plan, an existing path lacks full baseline review, the active plan changes beside implementation, or a defect requires an undeclared repair.",
-    "The filter is outside authenticated bytes, rebuilt on normal reopen from semantic pages, allocated from unbounded input, or duplicated.",
-    "A filter changes semantic visibility, excludes range/projected rows, produces a false negative, or suppresses exact positive lookup.",
-    "V4 remains accepted, compatibility/migration/fallback appears, or v5 leaks into product version, WAL, batch, manifest schema, key format, or semantic authority.",
-    "Malformed filters pass, writer validation lacks canonical reconstruction, or crash/snapshot/compaction/GC semantics diverge.",
-    "Compression, cache policy, Moka, value separation, recall operators, DataFusion, reasoning, install, skills, APIs, Connectome, or release behavior is added or claimed.",
-    "Evidence is dirty/inconsistent, omits raw provenance, hides failure, or generalizes one machine to competitor/alpha performance.",
-    "C-06, C-07, alpha, installed-binary readiness, or official promotion is marked complete from this filter slice."
+    "A path is outside this plan, an existing path lacks complete baseline review, or the active plan changes beside implementation.",
+    "Any executable rrflowKV I/O or segment behavior, durable byte, public type, dependency, feature, trace, counter, fixture, or evidence JSON changes.",
+    "A compatibility string, v4 reader, alias, migration, fallback, skipped test, ignored failure, or weakened architecture assertion appears.",
+    "C-06, C-07, alpha, installed-binary readiness, DataFusion, recall, reasoning, Connectome, release readiness, or competitor performance is claimed complete.",
+    "Any push targets official origin, rewrites history, uses force, creates a tag/release, or lacks immediate remote-ref verification."
   ],
-  "roadmap_status_change": "none; record this persisted-filter slice of C-06i complete only after all proofs pass. C-06 remains unchecked because compression, cache admission, value placement, full physical-policy qualification, and C-07 installed-path evidence remain open."
+  "roadmap_status_change": "none; close only the segment-v5 identity mismatch left by the persisted-filter package. C-06 and POAM-002 remain open."
 }
