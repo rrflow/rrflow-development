@@ -86,7 +86,8 @@ pub use rrd_lsm::{
 pub use rrflow_kv::{
     prepare_rrflow_kv_commit, rrflow_kv_commit_context, rrflow_kv_commit_outcome,
     rrflow_kv_database_artifact_view, rrflow_kv_snapshot_all_object_references,
-    rrflow_kv_snapshot_artifact_view, rrflow_kv_snapshot_object_references, RrflowKvStore,
+    rrflow_kv_snapshot_artifact_view, rrflow_kv_snapshot_object_references, RrflowKvOpenEvidence,
+    RrflowKvReconciliationEvidence, RrflowKvStore, RRFLOW_KV_OPEN_EVIDENCE_VERSION,
 };
 pub use s3::{
     ConditionalPut, S3Authentication, S3CompatibleObjectStore, S3MultipartUpload, S3ObjectClient,

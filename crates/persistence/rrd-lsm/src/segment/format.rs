@@ -185,6 +185,9 @@ pub(super) struct ParsedMetadata {
     pub descriptor: SegmentDescriptor,
     pub row_group_budget: SegmentRowGroupBudget,
     pub row_groups: Vec<RowGroupDescriptor>,
+    pub header_bytes_read: u64,
+    pub index_bytes_read: u64,
+    pub padding_bytes_read: u64,
 }
 
 #[derive(Default)]
@@ -599,7 +602,7 @@ pub(super) fn parse_metadata(
     if cursor != index.len() || expected_row_start != entries {
         return invalid("v4 index does not exactly describe all rows");
     }
-    validate_zero_padding(reader, &row_groups, index_offset)?;
+    let padding_bytes_read = validate_zero_padding(reader, &row_groups, index_offset)?;
     let first_key = row_groups
         .first()
         .expect("validated v4 segment has a row group")
@@ -628,6 +631,9 @@ pub(super) fn parse_metadata(
         },
         row_group_budget,
         row_groups,
+        header_bytes_read: SEGMENT_HEADER_BYTES as u64,
+        index_bytes_read: index_bytes as u64,
+        padding_bytes_read,
     })
 }
 
@@ -781,19 +787,24 @@ fn validate_zero_padding(
     reader: &mut (impl Read + Seek),
     row_groups: &[RowGroupDescriptor],
     index_offset: u64,
-) -> Result<()> {
+) -> Result<u64> {
     let mut expected = SEGMENT_HEADER_BYTES as u64;
+    let mut bytes_read = 0u64;
     for page in row_groups.iter().flat_map(|group| group.pages.iter()) {
-        validate_zero_range(reader, expected, page.offset)?;
+        bytes_read = bytes_read
+            .checked_add(validate_zero_range(reader, expected, page.offset)?)
+            .ok_or_else(|| Error::InvalidSegment("v4 padding read count overflow".into()))?;
         expected = page
             .offset
             .checked_add(page.physical_bytes as u64)
             .ok_or_else(|| Error::InvalidSegment("v4 page end overflow".into()))?;
     }
-    validate_zero_range(reader, expected, index_offset)
+    bytes_read
+        .checked_add(validate_zero_range(reader, expected, index_offset)?)
+        .ok_or_else(|| Error::InvalidSegment("v4 padding read count overflow".into()))
 }
 
-fn validate_zero_range(reader: &mut (impl Read + Seek), start: u64, end: u64) -> Result<()> {
+fn validate_zero_range(reader: &mut (impl Read + Seek), start: u64, end: u64) -> Result<u64> {
     let length = usize::try_from(
         end.checked_sub(start)
             .ok_or_else(|| Error::InvalidSegment("v4 padding range is inverted".into()))?,
@@ -803,7 +814,7 @@ fn validate_zero_range(reader: &mut (impl Read + Seek), start: u64, end: u64) ->
         return invalid("v4 page padding exceeds the alignment contract");
     }
     if length == 0 {
-        return Ok(());
+        return Ok(0);
     }
     let mut padding = [0; PAGE_ALIGNMENT - 1];
     reader.seek(SeekFrom::Start(start))?;
@@ -811,7 +822,7 @@ fn validate_zero_range(reader: &mut (impl Read + Seek), start: u64, end: u64) ->
     if padding[..length].iter().any(|byte| *byte != 0) {
         return invalid("v4 page alignment padding is non-zero");
     }
-    Ok(())
+    Ok(length as u64)
 }
 
 fn validate_key_value(key: &[u8], value: &[u8]) -> Result<()> {

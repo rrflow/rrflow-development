@@ -1,3 +1,4 @@
+use crate::segment::ProjectedReadResource;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -27,6 +28,20 @@ pub enum Error {
         actual: Option<String>,
     },
     InvalidSegment(String),
+    InvalidProjectedRead(String),
+    InvalidProjectedReadBudget {
+        resource: ProjectedReadResource,
+    },
+    ProjectedReadLimit {
+        resource: ProjectedReadResource,
+        limit: u64,
+        observed: u64,
+    },
+    DuplicateProjectedSequence {
+        manifest: String,
+        sequence: u64,
+    },
+    PoisonedReadViewRegistry,
     TornTail {
         offset: u64,
     },
@@ -82,6 +97,30 @@ impl fmt::Display for Error {
                 "manifest compare-and-swap conflict: expected {expected:?}, actual {actual:?}"
             ),
             Self::InvalidSegment(reason) => write!(formatter, "invalid segment: {reason}"),
+            Self::InvalidProjectedRead(reason) => {
+                write!(formatter, "invalid projected read: {reason}")
+            }
+            Self::InvalidProjectedReadBudget { resource } => write!(
+                formatter,
+                "invalid projected-read budget: {} must be greater than zero",
+                resource.as_str()
+            ),
+            Self::ProjectedReadLimit {
+                resource,
+                limit,
+                observed,
+            } => write!(
+                formatter,
+                "projected-read {} limit {limit} would be exceeded by {observed}",
+                resource.as_str()
+            ),
+            Self::DuplicateProjectedSequence { manifest, sequence } => write!(
+                formatter,
+                "projected read of manifest {manifest} found sequence {sequence} more than once for one key"
+            ),
+            Self::PoisonedReadViewRegistry => {
+                write!(formatter, "projected-read view registry is poisoned")
+            }
             Self::TornTail { offset } => write!(
                 formatter,
                 "WAL has an incomplete tail at byte {offset}; explicit repair is required"

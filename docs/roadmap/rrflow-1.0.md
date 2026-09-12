@@ -109,14 +109,15 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The active executable item is **C-06**. Its first bounded slice has replaced
+The active executable item is **C-06**. Its completed slices have replaced
 row-record immutable segments with segment v4's ordered key/version spine plus
 six Arrow-layout page buffers, manifest-authenticated format identities, safe
 mmap ownership, page-level physical counters, and a generated mixed-family
-MVCC/reopen/compaction differential with malformed-byte rejection. C-06 remains
-unchecked while its selective provider interface, broader adversarial/fuzz
-coverage, compression/value-placement/filter/cache decisions, and comparative
-evidence remain open.
+MVCC/reopen/compaction differential with malformed-byte rejection. C-06g now
+adds the pinned, bounded, selective projected storage stream and separates
+segment-open, startup-reconciliation, and query evidence. C-06 remains
+unchecked while C-06h adversarial/property/fuzz qualification and C-06i
+revision-bound physical-policy measurements remain open.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -1096,11 +1097,37 @@ C-06 progress evidence (2026-09-10; gate remains open):
   second reopen. Four row/byte budgets remain authenticated, reopen performs no
   semantic-page reads before a query, and 75 deterministic malformed or
   truncated segment files fail closed without a parser panic.
-- C-06 is not accepted. Remaining evidence is broader adversarial/fuzz
-  coverage, provider-facing selective projection with separated segment-open,
-  store-reconciliation, and query I/O, and fixed-hardware comparison of no
-  compression against adaptive page codecs and mixed-family workloads,
+- C-06g captures one sequence, manifest, `Arc<Memtable>`, and eligible
+  `Arc<Segment>` set without retaining a database borrow. A bounded registry
+  pins the complete manifest closure for garbage collection; later writes use
+  copy-on-write memtable generations, and flush/compaction can publish newer
+  segments without changing the captured view.
+- Its synchronous projected stream validates sorted disjoint half-open ranges
+  and all request/resource ceilings, merges one forward cursor per eligible run
+  by key, rejects equal key/sequence ambiguity, applies the greatest visible
+  version, and suppresses a winning tombstone. It loads key offsets/data and
+  sequences first, then only the winning validity page; value offsets and data
+  are absent from keys-only evidence and deferred for key-value output.
+- Output is emitted in bounded Arrow-compatible `i64` offset/data buffers.
+  Stream-local evidence distinguishes page families, cache work, actual mmap/
+  io_uring/bounded reads, logical and physical bytes, ownership, decode,
+  allocation, copy, output, batches, cancellation, failure, and completion.
+  Immutable rrflowKV open evidence separately reports whole-file segment
+  validation and startup checkpoint reconciliation; later queries cannot
+  mutate that record.
+- The independent four-seed history also consumes projected streams with one-
+  and three-row batches for keys-only and key-value projections at retained
+  snapshots before/after reopen and protected compaction. Focused tests cover
+  every declared request/operation/batch ceiling, cancellation/drop lease
+  release, duplicate-sequence denial, and old-view survival through flush,
+  compaction, and garbage collection. The complete `rrd-lsm` and `rrd-store`
+  suites and strict affected-package Clippy pass at the C-06g candidate.
+- C-06 is not accepted. Remaining evidence is C-06h broader adversarial,
+  property, fuzz, fault, and mixed-family qualification, followed by C-06i
+  fixed-hardware comparison of no compression against adaptive page codecs,
   optional value separation, persisted filters, and page-cache policies.
+  F-01 still owns the stamped asynchronous DataFusion provider; C-06g does not
+  emit a DataFusion `RecordBatch` or claim end-to-end zero-copy.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.

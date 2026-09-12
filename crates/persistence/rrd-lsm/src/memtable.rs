@@ -1,4 +1,4 @@
-use crate::{Error, Mutation, RecoveredBatch, Result, WriteBatch};
+use crate::{Error, Mutation, ProjectedReadRange, RecoveredBatch, Result, WriteBatch};
 use serde::{Deserialize, Serialize};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -82,6 +82,11 @@ pub struct MemtableProfile {
     pub version_chain_bytes: usize,
     pub version_record_bytes: usize,
     pub owned_bytes_lower_bound: usize,
+}
+
+pub(crate) struct MemtableProjectedSeek {
+    pub next: Option<(Vec<u8>, u64)>,
+    pub versions_examined: u64,
 }
 
 /// Ordered MVCC reference memtable. Versions remain until snapshot-aware
@@ -341,6 +346,58 @@ impl Memtable {
                     .map(|version| (key.to_vec(), version))
             })
             .collect()
+    }
+
+    /// Seeks to the first key after `after` in the requested disjoint ranges
+    /// and returns only its greatest version visible at `read_sequence`.
+    /// Repeated calls make monotonic B-tree progress without materializing the
+    /// remaining result set.
+    pub(crate) fn seek_visible_after(
+        &self,
+        ranges: &[ProjectedReadRange],
+        after: Option<&[u8]>,
+        read_sequence: u64,
+    ) -> Result<MemtableProjectedSeek> {
+        let mut examined = 0u64;
+        for range in ranges {
+            if after.is_some_and(|after| {
+                range
+                    .end
+                    .as_ref()
+                    .is_some_and(|end| end.as_slice() <= after)
+            }) {
+                continue;
+            }
+            let lower = match after {
+                Some(after) if after >= range.start.as_slice() => Excluded(after),
+                _ => Included(range.start.as_slice()),
+            };
+            let upper = range.end.as_deref().map_or(Unbounded, Excluded);
+            for (key, versions) in self.versions.range::<[u8], _>((lower, upper)) {
+                let mut visible = None;
+                for version in versions.iter().rev() {
+                    examined = examined.checked_add(1).ok_or_else(|| {
+                        Error::InvalidProjectedRead(
+                            "memtable projected version count overflow".into(),
+                        )
+                    })?;
+                    if version.sequence <= read_sequence {
+                        visible = Some(version.sequence);
+                        break;
+                    }
+                }
+                if let Some(sequence) = visible {
+                    return Ok(MemtableProjectedSeek {
+                        next: Some((key.to_vec(), sequence)),
+                        versions_examined: examined,
+                    });
+                }
+            }
+        }
+        Ok(MemtableProjectedSeek {
+            next: None,
+            versions_examined: examined,
+        })
     }
 
     pub fn maximum_sequence(&self) -> u64 {

@@ -1,9 +1,12 @@
 use crate::io::{IoContext, SharedIoContext};
-use crate::segment::{new_page_cache, page_cache_stats, SharedPageCache};
+use crate::segment::{
+    new_page_cache, page_cache_stats, ActiveReadViews, ReadView, SharedPageCache,
+};
 use crate::wal::replay_from;
 use crate::{
     recover_from, AppendReceipt, Checkpoint, Durability, Error, Manifest, ManifestStore, Memtable,
-    Result, Segment, SegmentIoPolicy, SegmentIoStats, SegmentRowGroupBudget, SnapshotBundle,
+    ProjectedReadRequest, ProjectedReadResource, ProjectedReadStream, Result, Segment,
+    SegmentIoPolicy, SegmentIoStats, SegmentOpenEvidence, SegmentRowGroupBudget, SnapshotBundle,
     SnapshotBundleFile, SnapshotExportBoundary, SnapshotSegment, VersionedValue, WalWriter,
     WriteBatch,
 };
@@ -279,10 +282,11 @@ pub struct Database {
     manifests: ManifestStore,
     manifest: Manifest,
     wal: WalWriter,
-    memtable: Memtable,
-    segments: Vec<Segment>,
+    memtable: Arc<Memtable>,
+    segments: Vec<Arc<Segment>>,
     page_cache: SharedPageCache,
     segment_io: SharedIoContext,
+    segment_open_evidence: SegmentOpenEvidence,
     segment_row_group_budget: SegmentRowGroupBudget,
     maintenance: MaintenancePolicy,
     compaction: CompactionPolicy,
@@ -290,6 +294,7 @@ pub struct Database {
     wal_payload_bytes: usize,
     writer_requires_reopen: Option<&'static str>,
     transaction_snapshots: Arc<crate::transaction::TransactionSnapshots>,
+    active_read_views: Arc<std::sync::Mutex<ActiveReadViews>>,
 }
 
 impl Database {
@@ -354,10 +359,11 @@ impl Database {
             manifests,
             manifest,
             wal,
-            memtable: Memtable::default(),
+            memtable: Arc::new(Memtable::default()),
             segments: Vec::new(),
             page_cache: new_page_cache(options.page_cache_bytes),
             segment_io,
+            segment_open_evidence: SegmentOpenEvidence::default(),
             segment_row_group_budget: options.segment_row_group_budget,
             maintenance: options.maintenance,
             compaction: options.compaction,
@@ -365,6 +371,7 @@ impl Database {
             wal_payload_bytes: 0,
             writer_requires_reopen: None,
             transaction_snapshots: Arc::new(crate::transaction::TransactionSnapshots::default()),
+            active_read_views: Arc::new(std::sync::Mutex::new(ActiveReadViews::default())),
         })
     }
 
@@ -400,6 +407,7 @@ impl Database {
             .sum::<u64>();
         let segments_started = Instant::now();
         let mut segments = Vec::with_capacity(manifest.segments.len());
+        let mut segment_open_evidence = SegmentOpenEvidence::default();
         for expected in &manifest.segments {
             let segment = Segment::open_expected_with_cache_and_io(
                 &root
@@ -415,6 +423,7 @@ impl Database {
                     expected.id
                 )));
             }
+            segment_open_evidence.merge(segment.open_evidence())?;
             segments.push(segment);
         }
         let segments_ms = segments_started.elapsed().as_millis() as u64;
@@ -454,10 +463,11 @@ impl Database {
             manifests,
             manifest,
             wal,
-            memtable,
-            segments,
+            memtable: Arc::new(memtable),
+            segments: segments.into_iter().map(Arc::new).collect(),
             page_cache,
             segment_io,
+            segment_open_evidence,
             segment_row_group_budget: options.segment_row_group_budget,
             maintenance: options.maintenance,
             compaction: options.compaction,
@@ -465,6 +475,7 @@ impl Database {
             wal_payload_bytes,
             writer_requires_reopen: None,
             transaction_snapshots: Arc::new(crate::transaction::TransactionSnapshots::default()),
+            active_read_views: Arc::new(std::sync::Mutex::new(ActiveReadViews::default())),
         })
     }
 
@@ -480,6 +491,74 @@ impl Database {
         Snapshot {
             sequence: self.memtable.maximum_sequence(),
         }
+    }
+
+    /// Captures one immutable logical/physical read view and returns a bounded
+    /// projected stream that owns its memtable and segment generations. The
+    /// caller can consume the stream without retaining a borrow of `Database`.
+    pub fn begin_projected_read(
+        &self,
+        request: ProjectedReadRequest,
+    ) -> Result<ProjectedReadStream> {
+        let current_sequence = self.snapshot().sequence;
+        request.validate(current_sequence)?;
+        let segments = self
+            .segments
+            .iter()
+            .filter(|segment| {
+                request.snapshot.sequence >= segment.descriptor.minimum_sequence
+                    && request.ranges.iter().any(|range| {
+                        range.overlaps(
+                            segment.descriptor.first_key.as_slice(),
+                            segment.descriptor.last_key.as_slice(),
+                        )
+                    })
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let run_count = segments
+            .len()
+            .checked_add(usize::from(self.memtable.version_count() != 0))
+            .ok_or_else(|| Error::InvalidProjectedRead("projected run count overflow".into()))?;
+        if run_count > request.budget.max_runs {
+            return Err(Error::ProjectedReadLimit {
+                resource: ProjectedReadResource::Runs,
+                limit: request.budget.max_runs as u64,
+                observed: run_count as u64,
+            });
+        }
+        let memtable_bytes = u64::try_from(self.memtable.approximate_bytes()).map_err(|_| {
+            Error::InvalidProjectedRead("captured memtable bytes exceed u64".into())
+        })?;
+        let pinned_bytes =
+            self.manifest
+                .segments
+                .iter()
+                .try_fold(memtable_bytes, |total, segment| {
+                    total.checked_add(segment.bytes).ok_or_else(|| {
+                        Error::InvalidProjectedRead("pinned read-view bytes overflow".into())
+                    })
+                })?;
+        let lease = ActiveReadViews::acquire(
+            &self.active_read_views,
+            self.manifest.clone(),
+            pinned_bytes,
+            request.budget,
+        )?;
+        let view = ReadView {
+            sequence: request.snapshot.sequence,
+            manifest: self.manifest.digest.clone(),
+            memtable: Arc::clone(&self.memtable),
+            segments,
+            pinned_bytes,
+        };
+        Ok(ProjectedReadStream::new(
+            view,
+            request.ranges,
+            request.projection,
+            request.budget,
+            lease,
+        ))
     }
 
     /// Begins one snapshot-isolated physical transaction and pins its read
@@ -638,8 +717,11 @@ impl Database {
             .append_encoded_write_batch(batch, &payload, append_durability)?;
         self.inject_post_append_failure(failure)?;
         self.inject_post_wal_failure(failure, &receipt)?;
-        self.memtable
-            .apply_write_batch(batch, receipt.first_sequence, receipt.last_sequence)?;
+        Arc::make_mut(&mut self.memtable).apply_write_batch(
+            batch,
+            receipt.first_sequence,
+            receipt.last_sequence,
+        )?;
         self.wal_payload_bytes = self.wal_payload_bytes.saturating_add(payload.len());
         self.record_memtable_peak();
         self.inject_post_visibility_failure(failure)?;
@@ -683,7 +765,7 @@ impl Database {
             .append_encoded_write_batch(&batch, &payload, append_durability)?;
         self.inject_post_append_failure(failure)?;
         self.inject_post_wal_failure(failure, &receipt)?;
-        self.memtable.apply_owned_write_batch(
+        Arc::make_mut(&mut self.memtable).apply_owned_write_batch(
             batch,
             receipt.first_sequence,
             receipt.last_sequence,
@@ -896,9 +978,9 @@ impl Database {
         )?;
         self.manifests.publish(&next, Some(&self.manifest.digest))?;
         self.wal = successor;
-        self.memtable = Memtable::at_sequence(sequence);
+        self.memtable = Arc::new(Memtable::at_sequence(sequence));
         self.wal_payload_bytes = 0;
-        self.segments.push(segment);
+        self.segments.push(Arc::new(segment));
         self.manifest = next.clone();
         inject_failure(failure, FlushBoundary::ManifestPublished)?;
         Ok(Some(next))
@@ -1043,13 +1125,13 @@ impl Database {
         let mut imported = Vec::with_capacity(bundle.source_manifest.segments.len());
         for (index, descriptor) in bundle.descriptors().enumerate() {
             let bytes = bundle.segment_bytes(index)?;
-            imported.push(Segment::install_snapshot_bytes_with_cache(
+            imported.push(Arc::new(Segment::install_snapshot_bytes_with_cache(
                 &segment_directory,
                 descriptor,
                 &bytes,
                 Arc::clone(&self.page_cache),
                 Arc::clone(&self.segment_io),
-            )?);
+            )?));
         }
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::SegmentsSynced)?;
 
@@ -1086,7 +1168,7 @@ impl Database {
         )?;
         self.manifests.publish(&manifest, Some(&previous))?;
         self.wal = successor;
-        self.memtable = Memtable::at_sequence(source_sequence);
+        self.memtable = Arc::new(Memtable::at_sequence(source_sequence));
         self.wal_payload_bytes = 0;
         self.segments = imported;
         self.manifest = manifest.clone();
@@ -1133,13 +1215,13 @@ impl Database {
         let segment_directory = self.root.join(SEGMENT_DIRECTORY);
         let mut imported = Vec::with_capacity(bundle.segments.len());
         for bundled in &bundle.segments {
-            imported.push(Segment::install_snapshot_bytes_with_cache(
+            imported.push(Arc::new(Segment::install_snapshot_bytes_with_cache(
                 &segment_directory,
                 &bundled.descriptor,
                 &bundled.bytes,
                 Arc::clone(&self.page_cache),
                 Arc::clone(&self.segment_io),
-            )?);
+            )?));
         }
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::SegmentsSynced)?;
 
@@ -1176,7 +1258,7 @@ impl Database {
         )?;
         self.manifests.publish(&manifest, Some(&previous))?;
         self.wal = successor;
-        self.memtable = Memtable::at_sequence(source_sequence);
+        self.memtable = Arc::new(Memtable::at_sequence(source_sequence));
         self.wal_payload_bytes = 0;
         self.segments = imported;
         self.manifest = manifest.clone();
@@ -1295,7 +1377,7 @@ impl Database {
             .enumerate()
             .filter_map(|(index, segment)| (!selected.contains(&index)).then_some(segment))
             .collect::<Vec<_>>();
-        retained_segments.extend(compacted_segments);
+        retained_segments.extend(compacted_segments.into_iter().map(Arc::new));
         self.segments = retained_segments;
         self.manifest = next.clone();
         inject_compaction_failure(failure, CompactionBoundary::ManifestPublished)?;
@@ -1591,6 +1673,9 @@ impl Database {
     pub fn garbage_collect(&self) -> Result<GarbageCollectionReport> {
         let mut manifests = BTreeMap::new();
         manifests.insert(self.manifest.digest.clone(), self.manifest.clone());
+        for manifest in ActiveReadViews::manifests(&self.active_read_views)? {
+            manifests.entry(manifest.digest.clone()).or_insert(manifest);
+        }
         for checkpoint in self.manifests.checkpoints()? {
             manifests
                 .entry(checkpoint.manifest.clone())
@@ -1855,6 +1940,12 @@ impl Database {
 
     pub fn segment_io_stats(&self) -> SegmentIoStats {
         self.segment_io.stats()
+    }
+
+    /// Immutable phase evidence captured while authenticating the segments
+    /// referenced by `CURRENT`. Later page reads cannot mutate this record.
+    pub fn segment_open_evidence(&self) -> &SegmentOpenEvidence {
+        &self.segment_open_evidence
     }
 
     fn ensure_no_active_transactions(&self, operation: &'static str) -> Result<()> {

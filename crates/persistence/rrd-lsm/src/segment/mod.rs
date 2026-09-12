@@ -1,4 +1,5 @@
 mod format;
+mod reader;
 
 use self::format::{
     encode, parse_metadata, require_current_format, sha256_hex, PageDescriptor, PageKind,
@@ -9,6 +10,7 @@ use crate::io::{IoContext, SelectedIo, SharedIoContext};
 use crate::{Error, Memtable, Result, SegmentDescriptor, SegmentIoPolicy, VersionedValue};
 use arrow_buffer::{alloc::Allocation, Buffer, MutableBuffer};
 use memmap2::{Mmap, MmapOptions};
+use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap};
 use std::fmt;
@@ -25,8 +27,19 @@ pub use self::format::{
     SEGMENT_FORMAT_VERSION, SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST,
     SEGMENT_SCHEMA_DIGEST,
 };
+pub(crate) use self::reader::{ActiveReadViews, ReadView};
+pub use self::reader::{
+    ProjectedReadBatch, ProjectedReadBudget, ProjectedReadEvidence, ProjectedReadOutcome,
+    ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest, ProjectedReadResource,
+    ProjectedReadStream, DEFAULT_MAX_ACTIVE_READ_VIEWS, DEFAULT_MAX_BATCH_ALLOCATED_BYTES,
+    DEFAULT_MAX_BATCH_ROWS, DEFAULT_MAX_OUTPUT_BUFFER_BYTES, DEFAULT_MAX_OUTPUT_ROWS,
+    DEFAULT_MAX_PAGE_LOGICAL_BYTES, DEFAULT_MAX_PAGE_REQUESTS, DEFAULT_MAX_PINNED_READ_BYTES,
+    DEFAULT_MAX_PROJECTED_READ_RANGES, DEFAULT_MAX_PROJECTED_READ_RUNS,
+    DEFAULT_MAX_VERSIONS_EXAMINED, PROJECTED_READ_CONTRACT_VERSION,
+};
 
 pub const DEFAULT_PAGE_CACHE_BYTES: usize = 4 * 1024 * 1024;
+pub const SEGMENT_OPEN_EVIDENCE_VERSION: u16 = 1;
 const COPY_BUFFER_BYTES: usize = 64 * 1024;
 static TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
 static CACHE_ID: AtomicU64 = AtomicU64::new(1);
@@ -50,6 +63,161 @@ pub struct PageCacheStats {
     pub bytes_decompressed: u64,
     pub filter_checks: u64,
     pub filter_negatives: u64,
+}
+
+/// Immutable process-local evidence for bytes read while opening authenticated
+/// segment files. It is diagnostic state, never part of a manifest or segment
+/// identity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SegmentOpenEvidence {
+    pub contract_version: u16,
+    pub segment_count: u64,
+    pub physical_bytes: u64,
+    pub format_probe_operations: u64,
+    pub format_probe_bytes: u64,
+    pub full_checksum_operations: u64,
+    pub full_checksum_bytes: u64,
+    pub metadata_operations: u64,
+    pub metadata_bytes: u64,
+    pub semantic_page_operations: u64,
+    pub semantic_page_bytes: u64,
+}
+
+impl Default for SegmentOpenEvidence {
+    fn default() -> Self {
+        Self {
+            contract_version: SEGMENT_OPEN_EVIDENCE_VERSION,
+            segment_count: 0,
+            physical_bytes: 0,
+            format_probe_operations: 0,
+            format_probe_bytes: 0,
+            full_checksum_operations: 0,
+            full_checksum_bytes: 0,
+            metadata_operations: 0,
+            metadata_bytes: 0,
+            semantic_page_operations: 0,
+            semantic_page_bytes: 0,
+        }
+    }
+}
+
+impl SegmentOpenEvidence {
+    fn for_metadata(
+        physical_bytes: u64,
+        metadata: &ParsedMetadata,
+        validate_semantic_pages: bool,
+    ) -> Result<Self> {
+        let metadata_bytes = metadata
+            .header_bytes_read
+            .checked_add(metadata.index_bytes_read)
+            .and_then(|bytes| bytes.checked_add(metadata.padding_bytes_read))
+            .ok_or_else(|| Error::InvalidSegment("segment-open metadata bytes overflow".into()))?;
+        let (semantic_page_operations, semantic_page_bytes) = if validate_semantic_pages {
+            metadata
+                .row_groups
+                .iter()
+                .flat_map(|group| &group.pages)
+                .try_fold((0u64, 0u64), |(operations, bytes), page| {
+                    Ok::<_, Error>((
+                        operations.checked_add(1).ok_or_else(|| {
+                            Error::InvalidSegment(
+                                "segment-open semantic page count overflow".into(),
+                            )
+                        })?,
+                        bytes
+                            .checked_add(page.physical_bytes as u64)
+                            .ok_or_else(|| {
+                                Error::InvalidSegment(
+                                    "segment-open semantic page bytes overflow".into(),
+                                )
+                            })?,
+                    ))
+                })?
+        } else {
+            (0, 0)
+        };
+        Ok(Self {
+            contract_version: SEGMENT_OPEN_EVIDENCE_VERSION,
+            segment_count: 1,
+            physical_bytes,
+            format_probe_operations: 1,
+            format_probe_bytes: 10,
+            full_checksum_operations: 1,
+            full_checksum_bytes: physical_bytes,
+            metadata_operations: 1,
+            metadata_bytes,
+            semantic_page_operations,
+            semantic_page_bytes,
+        })
+    }
+
+    pub(crate) fn merge(&mut self, other: &Self) -> Result<()> {
+        if other.contract_version != SEGMENT_OPEN_EVIDENCE_VERSION
+            || self.contract_version != SEGMENT_OPEN_EVIDENCE_VERSION
+        {
+            return Err(Error::InvalidSegment(
+                "segment-open evidence version is unsupported".into(),
+            ));
+        }
+        self.contract_version = SEGMENT_OPEN_EVIDENCE_VERSION;
+        for (field, value, name) in [
+            (
+                &mut self.segment_count,
+                other.segment_count,
+                "segment count",
+            ),
+            (
+                &mut self.physical_bytes,
+                other.physical_bytes,
+                "physical bytes",
+            ),
+            (
+                &mut self.format_probe_operations,
+                other.format_probe_operations,
+                "format-probe operations",
+            ),
+            (
+                &mut self.format_probe_bytes,
+                other.format_probe_bytes,
+                "format-probe bytes",
+            ),
+            (
+                &mut self.full_checksum_operations,
+                other.full_checksum_operations,
+                "checksum operations",
+            ),
+            (
+                &mut self.full_checksum_bytes,
+                other.full_checksum_bytes,
+                "checksum bytes",
+            ),
+            (
+                &mut self.metadata_operations,
+                other.metadata_operations,
+                "metadata operations",
+            ),
+            (
+                &mut self.metadata_bytes,
+                other.metadata_bytes,
+                "metadata bytes",
+            ),
+            (
+                &mut self.semantic_page_operations,
+                other.semantic_page_operations,
+                "semantic-page operations",
+            ),
+            (
+                &mut self.semantic_page_bytes,
+                other.semantic_page_bytes,
+                "semantic-page bytes",
+            ),
+        ] {
+            *field = field
+                .checked_add(value)
+                .ok_or_else(|| Error::InvalidSegment(format!("segment-open {name} overflow")))?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -157,12 +325,27 @@ struct LoadedPage {
     borrowed: bool,
     allocated_bytes: usize,
     copied_bytes: usize,
+    actual_io: Option<SelectedIo>,
 }
 
 impl LoadedPage {
     fn resident_bytes(&self) -> usize {
-        self.buffer.len().max(1)
+        self.buffer.capacity().max(1)
     }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct PageLoadEvidence {
+    pub cache_hit: bool,
+    pub cache_miss: bool,
+    pub cache_load: bool,
+    pub actual_io: Option<SelectedIo>,
+    pub physical_bytes: u64,
+    pub borrowed_bytes: u64,
+    pub decoded_bytes: u64,
+    pub decompressed_bytes: u64,
+    pub allocated_bytes: u64,
+    pub copied_bytes: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -232,6 +415,7 @@ pub struct Segment {
     filters: Vec<RowGroupFilter>,
     cache: SharedPageCache,
     cache_id: u64,
+    open_evidence: SegmentOpenEvidence,
 }
 
 impl fmt::Debug for Segment {
@@ -257,6 +441,7 @@ pub(crate) struct SegmentRecord {
     pub version: VersionedValue,
 }
 
+#[derive(Debug)]
 struct KeySpine {
     offsets: Arc<LoadedPage>,
     data: Arc<LoadedPage>,
@@ -354,12 +539,13 @@ impl Segment {
         let metadata_started = Instant::now();
         let metadata = parse_metadata(&mut file, physical_bytes, checksum)?;
         let metadata_ms = metadata_started.elapsed().as_millis() as u64;
+        let open_evidence = SegmentOpenEvidence::for_metadata(physical_bytes, &metadata, true)?;
         let source_started = Instant::now();
         let source = open_page_source(file, io)?;
         let source_ms = source_started.elapsed().as_millis() as u64;
         let row_group_count = metadata.row_groups.len();
         let row_group_budget = metadata.row_group_budget;
-        let mut segment = build_segment(metadata, source, cache, false)?;
+        let mut segment = build_segment(metadata, source, cache, false, open_evidence)?;
         segment.filters = segment.validate_all_pages()?;
         tracing::debug!(
             target: "rrd_lsm::open",
@@ -393,8 +579,9 @@ impl Segment {
         }
         let mut file = File::open(path)?;
         let metadata = parse_metadata(&mut file, physical_bytes, checksum)?;
+        let open_evidence = SegmentOpenEvidence::for_metadata(physical_bytes, &metadata, false)?;
         let source = open_page_source(file, io)?;
-        let mut segment = build_segment(metadata, source, cache, true)?;
+        let mut segment = build_segment(metadata, source, cache, true, open_evidence)?;
         segment.descriptor.level = expected.level;
         if &segment.descriptor != expected {
             return invalid("v4 segment differs from its manifest descriptor");
@@ -434,6 +621,7 @@ impl Segment {
             PageSource::Bytes(Arc::new(bytes)),
             new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
             false,
+            SegmentOpenEvidence::default(),
         )?;
         segment.filters = segment.validate_all_pages()?;
         segment.descriptor.level = expected.level;
@@ -579,6 +767,10 @@ impl Segment {
 
     pub fn row_group_count(&self) -> usize {
         self.row_groups.len()
+    }
+
+    pub fn open_evidence(&self) -> &SegmentOpenEvidence {
+        &self.open_evidence
     }
 
     /// Returns the authenticated writer budget carried by this immutable
@@ -771,6 +963,15 @@ impl Segment {
     }
 
     fn load_page(&self, row_group: usize, kind: PageKind) -> Result<Arc<LoadedPage>> {
+        self.load_page_with_evidence(row_group, kind)
+            .map(|(page, _)| page)
+    }
+
+    fn load_page_with_evidence(
+        &self,
+        row_group: usize,
+        kind: PageKind,
+    ) -> Result<(Arc<LoadedPage>, PageLoadEvidence)> {
         let ordinal = row_group
             .checked_mul(format::PAGES_PER_ROW_GROUP)
             .and_then(|value| value.checked_add(kind as usize - 1))
@@ -786,7 +987,19 @@ impl Segment {
                 cache.touch(key);
                 let value = Arc::clone(&cache.values[&key].value);
                 cache.maybe_rebuild_order();
-                return Ok(value);
+                return Ok((
+                    Arc::clone(&value),
+                    PageLoadEvidence {
+                        cache_hit: true,
+                        actual_io: None,
+                        borrowed_bytes: if value.borrowed {
+                            value.buffer.len() as u64
+                        } else {
+                            0
+                        },
+                        ..PageLoadEvidence::default()
+                    },
+                ));
             }
             cache.misses = cache.misses.saturating_add(1);
         }
@@ -796,6 +1009,22 @@ impl Segment {
             .ok_or_else(|| Error::InvalidSegment("row-group index is outside the segment".into()))?
             .page(kind);
         let loaded = Arc::new(read_page(&self.source, descriptor)?);
+        let evidence = PageLoadEvidence {
+            cache_miss: true,
+            cache_load: true,
+            actual_io: loaded.actual_io,
+            physical_bytes: descriptor.physical_bytes as u64,
+            borrowed_bytes: if loaded.borrowed {
+                descriptor.logical_bytes as u64
+            } else {
+                0
+            },
+            decoded_bytes: descriptor.logical_bytes as u64,
+            decompressed_bytes: 0,
+            allocated_bytes: loaded.allocated_bytes as u64,
+            copied_bytes: loaded.copied_bytes as u64,
+            ..PageLoadEvidence::default()
+        };
         let resident_bytes = loaded.resident_bytes();
         let mut cache = self
             .cache
@@ -823,7 +1052,7 @@ impl Segment {
             cache.touch(key);
             let value = Arc::clone(&cache.values[&key].value);
             cache.maybe_rebuild_order();
-            return Ok(value);
+            return Ok((value, evidence));
         }
         if resident_bytes <= cache.capacity_bytes {
             while cache.resident_bytes.saturating_add(resident_bytes) > cache.capacity_bytes {
@@ -856,7 +1085,7 @@ impl Segment {
             cache.order.push(Reverse((stamp, key)));
             cache.maybe_rebuild_order();
         }
-        Ok(loaded)
+        Ok((loaded, evidence))
     }
 
     fn load_value_columns(&self, row_group: usize) -> Result<LoadedValueColumns> {
@@ -1053,6 +1282,7 @@ fn build_segment(
     source: PageSource,
     cache: SharedPageCache,
     conservative_filters: bool,
+    open_evidence: SegmentOpenEvidence,
 ) -> Result<Segment> {
     let filters = metadata
         .row_groups
@@ -1073,6 +1303,7 @@ fn build_segment(
         filters,
         cache,
         cache_id: CACHE_ID.fetch_add(1, Ordering::Relaxed),
+        open_evidence,
     })
 }
 
@@ -1129,26 +1360,36 @@ fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedP
     let end = start
         .checked_add(descriptor.physical_bytes)
         .ok_or_else(|| Error::InvalidSegment("v4 page range overflow".into()))?;
-    let (buffer, borrowed, allocated_bytes, copied_bytes) = match source {
+    let (buffer, borrowed, allocated_bytes, copied_bytes, actual_io) = match source {
         PageSource::File { file, selected, io } => {
             let mut bytes = MutableBuffer::new(descriptor.physical_bytes);
             bytes.resize(descriptor.physical_bytes, 0);
-            io.read_exact_at(*selected, file, descriptor.offset, bytes.as_slice_mut())?;
-            let allocated = bytes.len();
-            (Buffer::from(bytes), false, allocated, 0)
+            let actual_io =
+                io.read_exact_at(*selected, file, descriptor.offset, bytes.as_slice_mut())?;
+            let buffer = Buffer::from(bytes);
+            let allocated = buffer.capacity();
+            (buffer, false, allocated, 0, Some(actual_io))
         }
         PageSource::Mapped { bytes, io } => {
             let slice = bytes
                 .get(start..end)
                 .ok_or_else(|| Error::InvalidSegment("v4 mapped page range is absent".into()))?;
             io.record_read(SelectedIo::Mmap, slice.len());
-            (borrow_mmap(bytes, start, slice.len())?, true, 0, 0)
+            (
+                borrow_mmap(bytes, start, slice.len())?,
+                true,
+                0,
+                0,
+                Some(SelectedIo::Mmap),
+            )
         }
         PageSource::Bytes(bytes) => {
             let slice = bytes
                 .get(start..end)
                 .ok_or_else(|| Error::InvalidSegment("v4 snapshot page range is absent".into()))?;
-            (Buffer::from(slice), false, slice.len(), slice.len())
+            let buffer = Buffer::from(slice);
+            let allocated = buffer.capacity();
+            (buffer, false, allocated, slice.len(), None)
         }
     };
     if ring::digest::digest(&ring::digest::SHA256, buffer.as_slice()).as_ref() != descriptor.digest
@@ -1160,6 +1401,7 @@ fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedP
         borrowed,
         allocated_bytes,
         copied_bytes,
+        actual_io,
     })
 }
 

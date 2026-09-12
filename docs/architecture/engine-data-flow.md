@@ -141,7 +141,8 @@ for high-frequency writes, current state, CAS, and bounded range reads. A
 stamped analytical scan merges the visible memtable delta with immutable
 segment pages before returning a batch.
 
-The first C-06 slice has reached the common immutable-page foundation. Its
+The completed C-06a through C-06f slices reached the common immutable-page
+foundation. Its
 [current physical-format reference](../reference/storage/rrflowkv-current-format.md)
 records segment v4's ordered spine, six Arrow-layout buffers, authenticated
 format identities, page ownership/copy counters, frozen bytes, and explicit
@@ -150,9 +151,38 @@ and compaction outputs and remain authenticated per segment so older
 generations are self-describing when the writer configuration changes. A
 generated mixed-family MVCC corpus now proves exact point/range behavior through
 reopen and protected compaction and rejects bounded malformed physical bytes.
-C-06 remains open because selective provider projection, broader adversarial/
-fuzz evidence, persisted-filter/open-cost resolution, and measured compression,
-value-placement, mixed-workload, and cache decisions are not complete.
+C-06g adds the first storage-facing projected stream:
+
+```text
+validated ranges + projection + snapshot + budgets
+    -> capture sequence + manifest + Arc memtable + eligible Arc segments
+    -> acquire bounded active-manifest lease; release Database borrow
+    -> key/sequence spine cursors + minimum-key heap
+    -> greatest visible version; equal sequence across runs fails closed
+    -> winning validity page; suppress winning tombstone
+    -> optional winning value offsets/data
+    -> bounded Arrow-compatible offset/data output batch
+    -> completed | cancelled | failed; release lease exactly once
+```
+
+Future writes use copy-on-write when the captured memtable is shared. Flush and
+compaction may publish a later manifest while the stream continues over its
+owned generation. Garbage collection treats every active manifest as a root,
+so it cannot unlink that generation until completion, cancellation, failure,
+or drop releases the lease. Creation bounds active views, selected runs, and
+pinned bytes. Iteration bounds versions, page requests/logical bytes, rows,
+output buffers, batch rows, and batch allocation. Query evidence records page
+families, cache work, actual I/O backend, physical bytes, ownership, decode,
+allocation, copy, output, and terminal outcome. Immutable rrflowKV-open
+evidence separately records whole-file segment validation and startup
+checkpoint reconciliation; none of these diagnostics becomes database truth.
+
+This is a synchronous physical storage stream, not the F-01 DataFusion
+provider. It emits owned general-MVCC merge batches; it does not claim an Arrow
+`RecordBatch`, asynchronous backpressure, filter/limit pushdown, or end-to-end
+zero-copy. C-06 remains open for C-06h adversarial/property/fuzz qualification
+and C-06i persisted-filter plus measured compression, value-placement, mixed-
+workload, and cache decisions.
 
 ## Conditional zero-copy
 
@@ -1247,11 +1277,11 @@ compile cannot substitute for this proof.
 
 | Concern | Present checkout | Required target |
 |---|---|---|
-| rrflowKV writes and hot reads | Checksummed WAL frames, mutable MVCC version chains, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, derived row-group filters, a byte-bounded immutable-page cache, ownership/copy physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04 behavior while C-06 completes selective projection and measured physical policy; C-07 qualifies recovery, maintenance, and mapped-buffer lifetime; F-05 decides final cache admission from measurements. |
-| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v4 read path. Segment v4 stores a strict ordered key/version spine in six aligned Arrow-layout buffers per row group; validated configurable row/byte targets apply to flush and compaction and are authenticated in each segment. Descriptors authenticate types, encoding/compression metadata, bounds, statistics, and page digests. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3 fail unsupported before alternate decoding. Fixed and generated mixed-family histories match independent exact state through reopen and protected compaction, and bounded malformed bytes fail closed. | C-06 must add broader adversarial/fuzz coverage, selective projected-page streaming with separated open/reconciliation/query I/O evidence, and comparative compression/value-placement/filter/cache decisions under mixed workloads. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime. |
+| rrflowKV writes and hot reads | Checksummed WAL frames, copy-on-write-capable mutable MVCC generations, snapshots, one consumed point/range/write transaction, authenticated direct current/temporal reads, derived row-group filters, a byte-bounded immutable-page cache, ownership/copy physical counters, and an AI-hotset benchmark. | Preserve accepted C-02/C-04/C-06g behavior while C-06h/C-06i close qualification and measured physical policy; C-07 qualifies installed-path recovery, maintenance, and mapped-buffer lifetime; F-05 decides final cache admission from measurements. |
+| rrflowKV immutable storage | One batch-v2, manifest-v3, and segment-v4 read path. Segment v4 stores a strict ordered key/version spine in six aligned Arrow-layout buffers per row group; validated configurable row/byte targets apply to flush and compaction and are authenticated in each segment. Descriptors authenticate types, encoding/compression metadata, bounds, statistics, and page digests. Manifest descriptors pin segment/schema/key-codec/page-format identities. mmap can lend an eligible page buffer through an owned mapping lease; bounded/io_uring allocates; snapshot validation copies. Segment v1/v2/v3 fail unsupported before alternate decoding. C-06g provides a bounded projected stream over one owned sequence/manifest/memtable/segment generation, selective key/validity/value page acquisition, exact global MVCC merge, tombstone suppression, Arrow-compatible output buffers, active-manifest GC retention, and separate segment-open/startup-reconciliation/query evidence. | C-06h must add broader adversarial/property/fuzz/fault coverage; C-06i must make comparative compression/value-placement/persisted-filter/cache decisions under mixed workloads. C-07 must qualify crash, maintenance, and live mapped-buffer lifetime through the installed composition. |
 | Transactions, identity, and audit | C-02 supplies one snapshot-isolation point/range/write transaction and one set of repositories for rrflowMX and rrflowKV. Accepted C-03 publishes record/relation temporal state, both adjacency directions, schema-bound scalar/unique changes, BM25/vector source deltas, generic projection work, runtime entry, prepared governed-function receipts and proposals, semantic audit, outbox, cursor, and outcome through one plan. Exact semantic-key comparison passes at prepared, WAL-appended, WAL-synced, and visible-before-acknowledgement failures; catalogue maxima fit one physical batch; corrupt runtime substitution fails closed; and lost-acknowledgement recovery consumes the durable receipt without guest re-execution. | H-04/H-05 must complete same-stamp effect authorization plus identity/trace parity across embedded and transport paths. |
-| Arrow conversion | Materialized `QueryRow` values are converted into newly allocated typed Arrow arrays. | Stream eligible segment buffers and bounded decoded/memtable overlays through a stamped provider. |
-| DataFusion | Real bounded execution over the materialized Arrow snapshot. | Push projection/predicate/limit into rrflowKV and compose native graph/BM25/vector operators at one stamp. |
+| Arrow conversion | C-06g emits bounded Arrow-compatible key and optional value offset/data buffers from a projected physical stream, but rrflowQL still converts materialized `QueryRow` values into newly allocated typed Arrow arrays. | Adapt eligible segment buffers and bounded decoded/memtable overlays into `RecordBatch` streams through one stamped provider; measure every borrow and copy. |
+| DataFusion | Real bounded execution over the materialized Arrow snapshot; it does not yet consume the C-06g storage stream. | Push projection/predicate/limit through the provider into rrflowKV and compose native graph/BM25/vector operators at one stamp. |
 | Project discovery and attunement | B-01 freezes the provider-neutral eleven-phase plan/job/checkpoint contract, but no engine-persisted executor, project-tree snapshot, inventory phase implementation, or parse phase exists. | D-01 through D-05 must prove preview/apply, a deterministic committed tree snapshot and change set, pure phase proposals, restartable checkpoints, and downstream work pinned to exact source/policy/tool revisions. |
 | Embedding and vectors | Deterministic local embedding, model/provenance binding, exact search, filtered planning, compact dense artifacts, HNSW, quantization, and accelerator differential checks exist. Canonical vector heads retain their source commit coordinate and commit temporal versions plus collection/name/field pointer deltas atomically; that address is required across the public mutation, kernel, inference, commit digest, source keys, and every derived artifact, and no accelerator is built in the write path. Generic publication is exact/compact/HNSW-only; scalar/product/binary/TurboQuant artifacts use one explicit lifecycle and join the same planner only after activation. | D-05/E-04/E-05/F-03 must consume committed deltas incrementally, bind every derived artifact to its source cursor, and preserve exact fallback/reranking inside the stamped native/Arrow plan. |
 | Graph, scalar, and BM25 | Current and temporal bidirectional adjacency keys commit with relation changes. Schema-bound scalar/unique entries and exact BM25 old/new source fields commit with record changes and survive rrflowKV reopen. Normal state selection now uses C-04's authenticated direct versions, but graph assembly still materializes selected state and no native adjacency/scalar reader or incremental term dictionary/posting materializer is planner-selected. | E-01 through E-03 must expose bounded stamped access, prove graph/scalar/BM25 results against exact oracles, and make stale/corrupt projections fall back or fail exactly as declared. |

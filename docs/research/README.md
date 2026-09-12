@@ -42,6 +42,11 @@ receives a separate full review and link-preserving classification.
   compares primary database and release-tool lifecycle guidance with the
   current checkout and records the evidence behind RRFlow's single-executable,
   plan/apply, verification, repair, restore, salvage, and artifact target.
+- [`rrflowkv-rust-storage-engine-architecture-research.md`](rrflowkv-rust-storage-engine-architecture-research.md)
+  is the draft, source-backed qualification study for a Rust-native rrflowKV,
+  its hybrid ordered/Arrow immutable layout, the DataFusion boundary, and the
+  later governed discussion-to-configuration flow. It does not make an ADR,
+  benchmark, completion, or roadmap-status claim.
 
 The pinned SurrealDB reference explicitly rejects its namespace → database →
 table/record hierarchy as RRFlow authority. `estate` is an RRFlow-owned term;

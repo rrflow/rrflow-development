@@ -211,7 +211,7 @@ impl IoContext {
         file: &File,
         offset: u64,
         output: &mut [u8],
-    ) -> Result<()> {
+    ) -> Result<SelectedIo> {
         if output.len() > self.policy.max_request_bytes {
             return Err(Error::InvalidSegment(format!(
                 "segment page requests {} bytes beyond the configured {} byte I/O bound",
@@ -243,7 +243,7 @@ impl IoContext {
             }
         };
         self.record_read(actual, output.len());
-        Ok(())
+        Ok(actual)
     }
 
     fn lock_stats(&self) -> std::sync::MutexGuard<'_, SegmentIoStats> {

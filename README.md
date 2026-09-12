@@ -146,16 +146,22 @@ TurboQuant `ensure_vector_index` request, generic publication, replay
 suppression, and successful fixtures are gone. The complete default workspace
 test and strict Clippy matrices pass after that convergence. The unavailable
 post-alpha OpenRaft implementation remains an explicit POA&M item and is not
-part of the alpha composition. C-06 is active: segment v4 now supplies the
-ordered key/version spine, six Arrow-layout page buffers, authenticated format
+part of the alpha composition. C-06 is active: segment v4 supplies the ordered
+key/version spine, six Arrow-layout page buffers, authenticated format
 identities, measured mapped-versus-allocated ownership, and authenticated
-configurable row-group targets applied by flush and compaction. A generated
-mixed-family MVCC corpus now checks exact reads across flush, reopen, protected
-compaction, and a second reopen, while malformed segment bytes fail closed.
-C-06 remains open for selective projection, broader adversarial/fuzz evidence,
-and measured compression/value-placement/filter/cache decisions. This is not
-yet proof of the complete hybrid format, native graph/BM25/vector access paths,
-streamed DataFusion, turnkey installation, or persistent reasoning/recall.
+configurable row-group targets applied by flush and compaction. C-06g now adds
+a synchronous bounded projected storage stream over an owned sequence,
+manifest, memtable, and segment generation. It selects key-spine pages first,
+resolves one MVCC winner, suppresses winning tombstones, defers value pages by
+projection, emits bounded Arrow-compatible buffers, pins the manifest closure
+through cancellation/drop, and reports query work separately from segment-open
+validation and rrflowKV startup reconciliation. Fixed and generated mixed-
+family histories match the independent oracle through reopen and protected
+compaction. C-06 remains open for C-06h adversarial/property/fuzz
+qualification and C-06i measured compression, value-placement, persisted-
+filter, mixed-workload, and cache decisions. This is not a DataFusion
+`RecordBatch` provider, native graph/BM25/vector access, turnkey installation,
+or persistent reasoning/recall proof.
 
 The executable baseline is not an installed product. A locked Linux release
 build emits separate `rrflow`, `rrd-server`, and `rrflow-mcp` ELF files; the

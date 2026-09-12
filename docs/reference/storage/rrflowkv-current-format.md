@@ -26,14 +26,15 @@ key/version spine and six Arrow-layout buffers per row group. Point, range,
 snapshot, CAS, recovery, and compaction reads use those buffers directly and do
 not invoke DataFusion.
 
-This is the first C-06 implementation slice, not completion of C-06 and not a
-claim that query output is zero-copy. The segment owns Arrow-compatible buffer
-layout and safe mapped-buffer ownership. A later C-06 slice must expose a
-selective projection stream to `rrd-store`; Gate F must consume that stream
-through a stamped `TableProvider`/`ExecutionPlan` and prove actual
-`RecordBatch` borrowing, pushdown, cancellation, and resource bounds. Current
-semantic values can still be JSON bytes inside the value-data page, and current
-query adapters can still decode values and allocate result arrays.
+This is a partial C-06 implementation, not completion of C-06 and not a claim
+that query output is zero-copy. The segment owns Arrow-compatible buffer layout
+and safe mapped-buffer ownership. C-06g exposes a synchronous selective
+projected stream to the physical storage boundary, but Gate F must still adapt
+that stream through a stamped `TableProvider`/`ExecutionPlan` and prove actual
+`RecordBatch` borrowing, asynchronous backpressure, pushdown, cancellation,
+and cross-operator resource bounds. Current semantic values can still be JSON
+bytes inside the value-data page, and current rrflowQL adapters still decode
+values and allocate result arrays.
 
 The active physical readers accept exactly mutation batch v2, manifest v3, and
 segment v4. Batch v1, manifest v1, and segment v1/v2/v3 bytes are negative
@@ -71,6 +72,11 @@ callers to duplicate:
 | Key/value bytes | 1 MiB / 8 MiB | batch and segment validators |
 | Segment bytes / segment-index bytes | 1 GiB / 64 MiB | segment validator |
 | Row-group target / maximum rows / immutable page cache | 64 KiB / 2,048 / 4 MiB | configurable `SegmentRowGroupBudget` and database defaults |
+| Active projected read views / ranges / selected runs | 1,024 / 1,024 / 4,096 | `ProjectedReadBudget` defaults |
+| Pinned projected bytes / versions examined | 4 GiB / 16,000,000 | `ProjectedReadBudget` defaults |
+| Projected page requests / logical page bytes | 4,000,000 / 8 GiB | `ProjectedReadBudget` defaults |
+| Projected output rows / output buffer bytes | 1,000,000 / 1 GiB | `ProjectedReadBudget` defaults |
+| Projected batch rows / allocated bytes | 8,192 / 64 MiB | `ProjectedReadBudget` defaults |
 | Snapshot bundle bytes / segments | 1 GiB / 1,000,000 | snapshot-bundle validator |
 
 Before a new batch crosses either mutable threshold, the single writer runs
@@ -300,9 +306,13 @@ counts. Normal manifest-based reopen authenticates the complete file digest
 and metadata against the manifest but deliberately installs conservative
 filters instead of reading every data page during segment open. Runtime page
 loads authenticate and validate each selected page, so tampering after open
-fails closed. Higher-layer checkpoint reconciliation can still issue semantic
-reads during `RrflowKvStore` startup; C-06 must measure and separate that work
-from segment admission and query-time I/O.
+fails closed. `SegmentOpenEvidence` records format-probe, whole-file checksum,
+metadata, and semantic-page phases without changing the segment or manifest.
+`RrflowKvOpenEvidence` freezes that validation record and checked page-cache/
+I/O deltas for higher-layer checkpoint reconciliation before the store is
+published. Later projected reads own their own meters, so segment admission,
+startup reconciliation, and query work are not inferred from one concurrent
+process-counter delta.
 
 Point lookup first selects a row group by authenticated key bounds and a
 derived conservative Bloom filter, then reads only key offsets/data/sequences
@@ -310,6 +320,33 @@ and, for a live match, value validity/offsets/data. Range and compaction scans
 read the required complete row groups. The Bloom filter is process-local
 acceleration state rather than persistence truth: a negative can skip page I/O,
 while a positive still executes exact key and MVCC comparison.
+
+`Database::begin_projected_read` validates nonempty sorted disjoint half-open
+ranges, the requested snapshot, and every nonzero budget before returning a
+stream. It captures the sequence, manifest, an `Arc`-owned memtable generation,
+and only range/sequence-eligible `Arc` segments. An active-view lease retains
+the complete manifest closure for garbage collection. A write that encounters
+a shared memtable uses copy-on-write; later flush or compaction publication
+cannot change the captured generation.
+
+The stream has one monotonic cursor per captured run and a minimum-key heap.
+For each key it selects the sole greatest sequence visible at the snapshot;
+equal key/sequence entries in separate live runs are corruption and fail
+closed. Only the winning run reads validity, so a winning tombstone suppresses
+older values. Keys-only output never requests value offsets or data. Key-value
+output reads the winner's offsets, applies output/batch bounds, and copies the
+selected value into a bounded output buffer. Each batch carries little-endian
+signed 64-bit offsets plus key data and, when selected, value offsets/data as
+64-byte-aligned `arrow_buffer::Buffer` owners. These are Arrow-compatible
+buffers, not a DataFusion `RecordBatch`.
+
+`ProjectedReadEvidence` reports manifest and snapshot identity, projection,
+ranges/runs/row groups, pinned bytes, examined versions, page-family requests,
+cache hits/misses/loads, actual mmap/io_uring/bounded reads, physical/logical
+bytes, borrowed/decoded/decompressed/allocated/copied bytes, output and batch
+peaks, and `creating`, `running`, `completed`, `cancelled`, or `failed` outcome.
+A typed ceiling failure is not successful truncation. Completion, explicit
+cancellation, failure, and drop fuse the stream and release its lease once.
 
 All segments in one database share a byte-bounded immutable page LRU. Its
 evidence separates `loads`, `bytes_read`, `bytes_decoded`, `bytes_borrowed`,
@@ -325,8 +362,8 @@ zero-copy query output is not claimed.
 
 Encoding/compression metadata is explicit but only `plain` plus `none` is
 accepted today. Adaptive compression, key/value separation, persisted filters,
-family grouping, selective provider projection, and cache admission are C-06
-candidates that require comparative workload evidence before adoption. A
+family grouping, and cache admission are C-06i candidates that require
+comparative workload evidence before adoption. A
 WiscKey-style value log is not assumed: it must beat stationary value pages on
 RRFlow update, compaction, recovery, garbage-collection, scan, and mixed-family
 corpora without weakening snapshot reachability.
@@ -347,8 +384,10 @@ with one manifest compare-and-swap. The current default output target is
 8 MiB, split only at key boundaries. Explicit compaction retains versions
 visible to protected sequences; cooperative automatic maintenance retains all
 versions because the copyable low-level snapshot is not a lifetime-tracked
-reclamation lease. Garbage collection deletes only objects unreachable from
-`CURRENT` and named checkpoints after validating the complete root inventory.
+reclamation lease. The C-06g projected stream is lifetime tracked: garbage
+collection treats each active stream manifest as another root. It deletes only
+objects unreachable from `CURRENT`, named checkpoints, and active projected
+views after validating the complete root inventory.
 
 A snapshot bundle begins with `RRDSNP01`, version `1`, zero flags, manifest
 length, and segment count. It carries the authenticated manifest, each
@@ -385,6 +424,19 @@ These are checked-in, executable examples rather than illustrative pseudocode:
    writer does not split a key's MVCC chain at a row-group target.
 8. `v4_bytes_match_the_checked_in_format_vector` freezes the complete current
    segment bytes independently of the snapshot envelope.
+9. `projected_stream_matches_model_across_ranges_snapshots_and_projections`
+   compares full, bounded, disjoint, empty, keys-only, and key-value streams at
+   retained snapshots against the independent MVCC model.
+10. `projected_stream_enforces_bounds_and_reports_selected_pages` proves every
+    request/operation/batch ceiling, range/request validation, page-family
+    selection, cancellation/drop, and Arrow-buffer alignment.
+11. `projected_stream_rejects_equal_key_sequence_across_live_runs` proves that
+    an ambiguous MVCC winner fails closed instead of depending on run order.
+12. `pinned_projected_stream_survives_flush_compaction_and_gc_until_drop`
+    proves an old generation remains readable and its files become reclaimable
+    only after its stream releases the manifest lease.
+13. `rrflow_kv_open_separates_segment_validation_and_reconciliation_io` proves
+    startup phases are immutable and distinct from later query work.
 
 ## Frozen vectors
 
@@ -437,10 +489,11 @@ audit correction that forced C-05e through C-05h before the gate could close.
 The optional post-alpha cluster implementation remains unqualified under
 POAM-023. The v4 segment vector, fixed and generated mixed-family MVCC
 comparisons, configurable authenticated row-group targets, malformed-byte
-denial, and ownership counters are now concrete C-06 evidence. C-06 remains
-open for broader adversarial/fuzz coverage, a selective projected-page
-interface with separated segment-open/store-reconciliation/query counters,
-persisted-filter or open-cost resolution, and fixed-hardware compression,
-value-placement, mixed-workload, and cache comparisons. Gate F separately requires a stamped streamed DataFusion provider
-with projection/predicate/budget evidence. Passing this suite cannot close
-those remaining gates by itself.
+denial, ownership counters, bounded projected reads, pinned-generation GC, and
+separated segment-open/startup-reconciliation/query evidence are now concrete
+C-06 evidence. C-06 remains open for C-06h adversarial/property/fuzz/fault
+qualification and C-06i persisted-filter plus fixed-hardware compression,
+value-placement, mixed-workload, and cache comparisons. Gate F separately
+requires a stamped streamed DataFusion provider with projection/predicate/
+budget evidence. Passing this suite cannot close those remaining gates by
+itself.

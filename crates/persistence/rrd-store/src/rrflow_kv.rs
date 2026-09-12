@@ -19,19 +19,85 @@ use rrd_core::{
 };
 use rrd_lsm::{
     CompactionOutcome, Database, DatabaseOptions, GarbageCollectionReport, Manifest, Mutation,
-    Snapshot, SnapshotBundleFile,
+    PageCacheStats, SegmentIoStats, SegmentOpenEvidence, Snapshot, SnapshotBundleFile,
 };
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 
 const RUNTIME_CHECKPOINT_PREFIX: &str = "runtime-";
+pub const RRFLOW_KV_OPEN_EVIDENCE_VERSION: u16 = 1;
+
+/// Work performed by startup checkpoint reconciliation after the physical
+/// database has opened but before the store is published to callers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RrflowKvReconciliationEvidence {
+    pub contract_version: u16,
+    pub page_requests: u64,
+    pub page_cache_hits: u64,
+    pub page_cache_misses: u64,
+    pub page_cache_loads: u64,
+    pub page_cache_evictions: u64,
+    pub page_bytes_read: u64,
+    pub page_bytes_decoded: u64,
+    pub page_bytes_borrowed: u64,
+    pub page_bytes_allocated: u64,
+    pub page_bytes_copied: u64,
+    pub page_bytes_decompressed: u64,
+    pub filter_checks: u64,
+    pub filter_negatives: u64,
+    pub io_fallbacks: u64,
+    pub read_operations: u64,
+    pub mmap_read_operations: u64,
+    pub io_uring_read_operations: u64,
+    pub bounded_read_operations: u64,
+    pub bytes_read: u64,
+}
+
+impl Default for RrflowKvReconciliationEvidence {
+    fn default() -> Self {
+        Self {
+            contract_version: RRFLOW_KV_OPEN_EVIDENCE_VERSION,
+            page_requests: 0,
+            page_cache_hits: 0,
+            page_cache_misses: 0,
+            page_cache_loads: 0,
+            page_cache_evictions: 0,
+            page_bytes_read: 0,
+            page_bytes_decoded: 0,
+            page_bytes_borrowed: 0,
+            page_bytes_allocated: 0,
+            page_bytes_copied: 0,
+            page_bytes_decompressed: 0,
+            filter_checks: 0,
+            filter_negatives: 0,
+            io_fallbacks: 0,
+            read_operations: 0,
+            mmap_read_operations: 0,
+            io_uring_read_operations: 0,
+            bounded_read_operations: 0,
+            bytes_read: 0,
+        }
+    }
+}
+
+/// Immutable evidence for the two physically distinct read phases performed
+/// by [`RrflowKvStore::open_with_options`]. Query evidence is owned by each
+/// projected read and never inferred from these process-wide counters.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RrflowKvOpenEvidence {
+    pub contract_version: u16,
+    pub created: bool,
+    pub segment_validation: SegmentOpenEvidence,
+    pub reconciliation: RrflowKvReconciliationEvidence,
+}
 
 pub struct RrflowKvStore {
     path: PathBuf,
     database: Mutex<Database>,
+    open_evidence: RrflowKvOpenEvidence,
 }
 
 struct RrflowKvTransaction<'a> {
@@ -176,8 +242,9 @@ impl RrflowKvStore {
                 .map_err(|error| Error::Substrate(error.to_string()))?
                 .next()
                 .is_none();
+        let created = !path.exists() || empty;
         let database_started = Instant::now();
-        let mut database = if !path.exists() || empty {
+        let mut database = if created {
             Database::create_with_application_format(path, options, keyspaces::RRFLOW_KV_FORMAT)?
         } else {
             Database::open_with_options(path, options).map_err(|error| {
@@ -197,6 +264,9 @@ impl RrflowKvStore {
                 database.manifest().application_format
             ))
         })?;
+        let segment_validation = database.segment_open_evidence().clone();
+        let cache_before = database.page_cache_stats();
+        let io_before = database.segment_io_stats();
         let checkpoints_started = Instant::now();
         reconcile_runtime_checkpoints(&mut database, None, 0).map_err(|error| {
             Error::Substrate(format!(
@@ -205,11 +275,29 @@ impl RrflowKvStore {
             ))
         })?;
         let checkpoint_reconcile_ms = checkpoints_started.elapsed().as_millis() as u64;
+        let reconciliation = reconciliation_evidence(
+            &cache_before,
+            &database.page_cache_stats(),
+            &io_before,
+            &database.segment_io_stats(),
+        )?;
+        let open_evidence = RrflowKvOpenEvidence {
+            contract_version: RRFLOW_KV_OPEN_EVIDENCE_VERSION,
+            created,
+            segment_validation,
+            reconciliation,
+        };
         tracing::info!(
             target: "rrflow_kv::open",
             path = %path.display(),
+            created,
             database_open_ms,
             checkpoint_reconcile_ms,
+            validated_segments = open_evidence.segment_validation.segment_count,
+            validation_bytes = open_evidence.segment_validation.full_checksum_bytes,
+            reconciliation_page_requests = open_evidence.reconciliation.page_requests,
+            reconciliation_read_operations = open_evidence.reconciliation.read_operations,
+            reconciliation_bytes_read = open_evidence.reconciliation.bytes_read,
             total_ms = total_started.elapsed().as_millis() as u64,
             "rrflowKV store open phases completed"
         );
@@ -217,11 +305,16 @@ impl RrflowKvStore {
         Ok(Self {
             path,
             database: Mutex::new(database),
+            open_evidence,
         })
     }
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn open_evidence(&self) -> &RrflowKvOpenEvidence {
+        &self.open_evidence
     }
 
     /// Publishes the current rrflowKV memtable as an immutable segment.
@@ -266,6 +359,140 @@ impl RrflowKvStore {
             .lock()
             .map_err(|_| Error::Substrate("rrflowKV database mutex poisoned".into()))
     }
+}
+
+fn reconciliation_evidence(
+    cache_before: &PageCacheStats,
+    cache_after: &PageCacheStats,
+    io_before: &SegmentIoStats,
+    io_after: &SegmentIoStats,
+) -> Result<RrflowKvReconciliationEvidence> {
+    if cache_before.capacity_bytes != cache_after.capacity_bytes
+        || io_before.requested_mode != io_after.requested_mode
+        || io_before.configured_max_request_bytes != io_after.configured_max_request_bytes
+        || io_before.mmap_segments != io_after.mmap_segments
+        || io_before.io_uring_segments != io_after.io_uring_segments
+        || io_before.bounded_segments != io_after.bounded_segments
+    {
+        return Err(Error::Substrate(
+            "rrflowKV open counters changed outside startup reconciliation".into(),
+        ));
+    }
+    let delta = |before: u64, after: u64, name: &str| {
+        after.checked_sub(before).ok_or_else(|| {
+            Error::Substrate(format!(
+                "rrflowKV startup reconciliation counter regressed: {name}"
+            ))
+        })
+    };
+    let page_cache_hits = delta(cache_before.hits, cache_after.hits, "cache hits")?;
+    let page_cache_misses = delta(cache_before.misses, cache_after.misses, "cache misses")?;
+    let page_requests = page_cache_hits
+        .checked_add(page_cache_misses)
+        .ok_or_else(|| {
+            Error::Substrate("rrflowKV startup reconciliation page requests overflowed".into())
+        })?;
+    let read_operations = delta(
+        io_before.read_operations,
+        io_after.read_operations,
+        "read operations",
+    )?;
+    let mmap_read_operations = delta(
+        io_before.mmap_read_operations,
+        io_after.mmap_read_operations,
+        "mmap read operations",
+    )?;
+    let io_uring_read_operations = delta(
+        io_before.io_uring_read_operations,
+        io_after.io_uring_read_operations,
+        "io_uring read operations",
+    )?;
+    let bounded_read_operations = delta(
+        io_before.bounded_read_operations,
+        io_after.bounded_read_operations,
+        "bounded read operations",
+    )?;
+    let classified_reads = mmap_read_operations
+        .checked_add(io_uring_read_operations)
+        .and_then(|value| value.checked_add(bounded_read_operations))
+        .ok_or_else(|| {
+            Error::Substrate("rrflowKV startup reconciliation read classes overflowed".into())
+        })?;
+    if classified_reads != read_operations {
+        return Err(Error::Substrate(
+            "rrflowKV startup reconciliation read classes do not match total reads".into(),
+        ));
+    }
+    let evidence = RrflowKvReconciliationEvidence {
+        contract_version: RRFLOW_KV_OPEN_EVIDENCE_VERSION,
+        page_requests,
+        page_cache_hits,
+        page_cache_misses,
+        page_cache_loads: delta(cache_before.loads, cache_after.loads, "cache loads")?,
+        page_cache_evictions: delta(
+            cache_before.evictions,
+            cache_after.evictions,
+            "cache evictions",
+        )?,
+        page_bytes_read: delta(
+            cache_before.bytes_read,
+            cache_after.bytes_read,
+            "page bytes read",
+        )?,
+        page_bytes_decoded: delta(
+            cache_before.bytes_decoded,
+            cache_after.bytes_decoded,
+            "page bytes decoded",
+        )?,
+        page_bytes_borrowed: delta(
+            cache_before.bytes_borrowed,
+            cache_after.bytes_borrowed,
+            "page bytes borrowed",
+        )?,
+        page_bytes_allocated: delta(
+            cache_before.bytes_allocated,
+            cache_after.bytes_allocated,
+            "page bytes allocated",
+        )?,
+        page_bytes_copied: delta(
+            cache_before.bytes_copied,
+            cache_after.bytes_copied,
+            "page bytes copied",
+        )?,
+        page_bytes_decompressed: delta(
+            cache_before.bytes_decompressed,
+            cache_after.bytes_decompressed,
+            "page bytes decompressed",
+        )?,
+        filter_checks: delta(
+            cache_before.filter_checks,
+            cache_after.filter_checks,
+            "filter checks",
+        )?,
+        filter_negatives: delta(
+            cache_before.filter_negatives,
+            cache_after.filter_negatives,
+            "filter negatives",
+        )?,
+        io_fallbacks: delta(
+            io_before.fallback_count,
+            io_after.fallback_count,
+            "I/O fallbacks",
+        )?,
+        read_operations,
+        mmap_read_operations,
+        io_uring_read_operations,
+        bounded_read_operations,
+        bytes_read: delta(io_before.bytes_read, io_after.bytes_read, "I/O bytes read")?,
+    };
+    if evidence.page_cache_loads != evidence.read_operations
+        || evidence.page_bytes_read != evidence.bytes_read
+    {
+        return Err(Error::Substrate(
+            "rrflowKV startup reconciliation page loads do not match physical reads".into(),
+        ));
+    }
+    Ok(evidence)
 }
 
 impl StorageEngine for RrflowKvStore {
@@ -862,6 +1089,69 @@ mod tests {
     };
     use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
     use std::collections::BTreeMap;
+
+    #[test]
+    fn reconciliation_evidence_fails_on_counter_regression() {
+        let before_cache = PageCacheStats {
+            hits: 1,
+            ..PageCacheStats::default()
+        };
+        let after_cache = PageCacheStats::default();
+        let error = reconciliation_evidence(
+            &before_cache,
+            &after_cache,
+            &SegmentIoStats::default(),
+            &SegmentIoStats::default(),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("counter regressed: cache hits"));
+    }
+
+    #[test]
+    fn reconciliation_evidence_fails_on_derived_counter_overflow() {
+        let after_cache = PageCacheStats {
+            hits: u64::MAX,
+            misses: 1,
+            ..PageCacheStats::default()
+        };
+        let error = reconciliation_evidence(
+            &PageCacheStats::default(),
+            &after_cache,
+            &SegmentIoStats::default(),
+            &SegmentIoStats::default(),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("page requests overflowed"));
+    }
+
+    #[test]
+    fn reconciliation_evidence_attributes_actual_io_backend() {
+        let after_cache = PageCacheStats {
+            misses: 1,
+            loads: 1,
+            bytes_read: 64,
+            ..PageCacheStats::default()
+        };
+        let after_io = SegmentIoStats {
+            fallback_count: 1,
+            read_operations: 1,
+            bounded_read_operations: 1,
+            bytes_read: 64,
+            ..SegmentIoStats::default()
+        };
+        let evidence = reconciliation_evidence(
+            &PageCacheStats::default(),
+            &after_cache,
+            &SegmentIoStats::default(),
+            &after_io,
+        )
+        .unwrap();
+        assert_eq!(evidence.io_fallbacks, 1);
+        assert_eq!(evidence.read_operations, 1);
+        assert_eq!(evidence.io_uring_read_operations, 0);
+        assert_eq!(evidence.bounded_read_operations, 1);
+        assert_eq!(evidence.bytes_read, 64);
+    }
 
     fn claim() -> Claim {
         Claim::new(

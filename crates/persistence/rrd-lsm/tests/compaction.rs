@@ -1,4 +1,7 @@
-use rrd_lsm::{CompactionPolicy, Database, DatabaseOptions, Durability, Mutation, WriteBatch};
+use rrd_lsm::{
+    CompactionPolicy, Database, DatabaseOptions, Durability, Mutation, ProjectedReadBudget,
+    ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest, WriteBatch,
+};
 use std::collections::BTreeSet;
 
 fn batch(operations: Vec<Mutation>) -> WriteBatch {
@@ -100,6 +103,102 @@ fn pinned_transaction_reads_survive_compaction_garbage_collect_cycles() {
         Some(b"old".to_vec())
     );
     historical.rollback().unwrap();
+}
+
+#[test]
+fn pinned_projected_stream_survives_flush_compaction_and_gc_until_drop() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("database");
+    let mut database = Database::create_with_options(
+        &root,
+        DatabaseOptions {
+            compaction: CompactionPolicy {
+                l0_compaction_trigger: 2,
+                ..CompactionPolicy::default()
+            },
+            ..DatabaseOptions::default()
+        },
+    )
+    .unwrap();
+    database
+        .write(
+            &batch(vec![put("shared", "old"), put("removed", "present")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(10).unwrap();
+    let pinned_manifest = database.manifest().digest.clone();
+    let pinned_segments = database
+        .manifest()
+        .segments
+        .iter()
+        .map(|segment| segment.id.clone())
+        .collect::<BTreeSet<_>>();
+    let mut stream = database
+        .begin_projected_read(ProjectedReadRequest {
+            ranges: vec![ProjectedReadRange::all()],
+            projection: ProjectedReadProjection::KeyValue,
+            snapshot: database.snapshot(),
+            budget: ProjectedReadBudget {
+                max_batch_rows: 1,
+                ..ProjectedReadBudget::default()
+            },
+        })
+        .unwrap();
+
+    database
+        .write(
+            &batch(vec![put("shared", "new"), delete("removed")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(20).unwrap();
+    database
+        .write(
+            &batch(vec![put("other", "fresh")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(30).unwrap();
+    database.compact(&[], 40).unwrap().unwrap();
+
+    let while_pinned = database.garbage_collect().unwrap();
+    assert!(while_pinned.retained_manifests.contains(&pinned_manifest));
+    for segment in &pinned_segments {
+        assert!(while_pinned.retained_segments.contains(segment));
+        assert!(root
+            .join("segments")
+            .join(format!("{segment}.seg"))
+            .exists());
+    }
+
+    let mut rows = Vec::new();
+    while let Some(batch) = stream.next_batch().unwrap() {
+        for index in 0..batch.len() {
+            rows.push((
+                batch.key(index).unwrap().to_vec(),
+                batch.value(index).unwrap().to_vec(),
+            ));
+        }
+    }
+    assert_eq!(
+        rows,
+        vec![
+            (b"removed".to_vec(), b"present".to_vec()),
+            (b"shared".to_vec(), b"old".to_vec()),
+        ]
+    );
+    drop(stream);
+
+    let after_drop = database.garbage_collect().unwrap();
+    assert!(after_drop
+        .removed_manifests
+        .contains(&format!("{pinned_manifest}.json")));
+    assert!(pinned_segments.iter().any(|segment| {
+        after_drop
+            .removed_segments
+            .contains(&format!("{segment}.seg"))
+    }));
 }
 
 #[test]
