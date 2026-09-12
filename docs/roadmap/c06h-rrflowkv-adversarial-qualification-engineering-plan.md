@@ -1,8 +1,8 @@
 # C-06h rrflowKV adversarial qualification engineering plan
 
-**Status:** active human-readable work-package evidence; implementation and
-repository verification complete, commit and handoff pending; C-06 remains open
-for C-06i
+**Status:** active supporting work-package evidence; implementation committed at
+`5d9a203816ac3b2ad045170ed57d751387756c6b`; C-06 remains open for the
+unplanned C-06i package
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06h-rrflowkv-adversarial-qualification`
 **Owner:** executable qualification of the C-06g projected reader and existing rrflowKV recovery paths
 **Authority:** subordinate to [`rrflow-1.0.md`](rrflow-1.0.md) and the machine-bound [`rrflow-1.0-active-change.json`](rrflow-1.0-active-change.json)
