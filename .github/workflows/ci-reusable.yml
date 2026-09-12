@@ -272,6 +272,7 @@ jobs:
           - rrd-cluster
           - rrd-engine
           - rrd-inference
+          - rrd-lsm
           - rrd-vector
     env:
       CARGO_BUILD_JOBS: "2"

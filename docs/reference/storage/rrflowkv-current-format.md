@@ -368,6 +368,24 @@ WiscKey-style value log is not assumed: it must beat stationary value pages on
 RRFlow update, compaction, recovery, garbage-collection, scan, and mixed-family
 corpora without weakening snapshot reachability.
 
+The filter distinction is important. `Segment::open` is a standalone deep-open
+path: it reads and validates all six pages in every row group and constructs a
+process-local Bloom filter from the decoded keys. Normal `Database::open`
+authenticates the manifest's segment descriptors and deliberately avoids those
+semantic page reads; its current row-group filters are conservative
+`allow_all` values. Consequently a point miss whose key sorts inside a segment
+range performs a filter check but cannot record a filter negative after normal
+reopen and may load the key spine. C-06i measures a serialized filter candidate
+against this exact behavior. Segment v4 does not persist that candidate.
+
+The default-disabled `physical-policy-lab` feature mounts a measurement child
+inside the canonical segment module so it can consume the real v4 encoder and
+private parsed descriptors without copying the format parser. Its LZ4,
+Zstandard, serialized-filter, cache, and value-placement results are candidate
+evidence only. The default rrd-lsm dependency tree and production format remain
+unchanged; any retained policy requires a separately planned explicit format
+revision and complete recovery/snapshot/garbage-collection regression proof.
+
 Segment v1/v2/v3 inputs return `UnsupportedVersion` at every file-open and
 snapshot-validation boundary. No reader or migration path for them remains.
 
@@ -447,6 +465,10 @@ These are checked-in, executable examples rather than illustrative pseudocode:
     frozen authenticated segment-v4 fixture under AddressSanitizer. Generated
     corpus/artifacts are ignored while reviewed seeds and the nested lockfile
     remain tracked.
+17. `rrflowkv-physical-policy` runs isolated release-profile trials over a
+    deterministic eight-family corpus, exact v4 page bodies, and a real
+    create/flush/reopen miss workload. It selects follow-up candidates; it does
+    not alter segment v4 or close C-06.
 
 ## Frozen vectors
 
@@ -482,6 +504,7 @@ cargo test -p rrd-lsm --test segment v4_rejects_authenticated_length_flags_and_p
 cargo test -p rrd-lsm --test hybrid_segment --locked
 cargo test -p rrd-lsm --test projected_read_adversarial --locked -- --nocapture
 cargo run -p rrd-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
+cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06i-rrflowkv-physical-policy-linux-x86_64.json
 cargo +nightly fuzz check --fuzz-dir crates/persistence/rrd-lsm/fuzz
 cargo test -p rrd-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
 cargo test -p rrd-lsm --test snapshot_bundle physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes -- --exact

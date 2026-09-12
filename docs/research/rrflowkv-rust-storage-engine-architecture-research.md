@@ -476,6 +476,49 @@ fixed-hardware performance; C-07 and Gate J retain those claims.
 Loom remains excluded because it cannot model the filesystem/mmap/io_uring
 boundaries under test, and no Miri claim is made for code it did not execute.
 
+## C-06i physical-policy candidate screen
+
+The code audit established a sharper filter gap than the earlier shorthand
+"no persisted filters." `Segment::open` already builds a correct process-local
+ten-bit/seven-hash Bloom filter, but only after deep-reading every semantic
+page. The normal manifest-owned `Database::open` path correctly avoids that
+startup read and installs conservative `allow_all` filters. Point misses inside
+a row-group key range therefore perform filter checks but cannot be rejected
+after normal reopen. The C-06i baseline must measure those resulting key-spine
+loads rather than crediting the standalone-open filter to the database.
+
+The first C-06i slice is a candidate screen, not a format patch. A
+default-disabled module beside the canonical segment encoder builds one
+deterministic eight-family MVCC corpus, calls the real v4 encoder, and consumes
+its parsed page descriptors. This avoids both an invented benchmark layout and
+a second parser. Its isolated release-profile children compare:
+
+- raw pages with adaptive LZ4 and Zstandard level 1, counting per-page framing,
+  exact decode, selected pages, stored bytes, and encode/decode CPU;
+- a serialized version of the current Bloom behavior, with exact member and
+  absent-key probes per real row group;
+- the current exact-byte LRU behavior with a purpose-built exact-byte
+  segmented-LRU trace candidate under repeated-hot, scan, repeated-hot access;
+- an explicitly non-retainable value-separation byte model; and
+- real rrflowKV create, flush, process-state drop, normal reopen, missing-key,
+  present-key, filter, cache, and physical-I/O counters.
+
+The codec dependencies exist only behind the disabled `physical-policy-lab`
+feature. Moka is not added: this slice can answer whether scan resistance is
+useful without weakening exact accounting, and its simulator cannot claim
+integrated concurrent-cache latency. Value separation remains rejected for
+production regardless of modeled savings because it lacks authenticated
+pointer publication, read-view/snapshot closure, crash recovery, corruption,
+range-read, and value-log garbage-collection evidence.
+
+One warm-up and every retained trial run in separate child processes. The
+evidence binds seed/corpus, raw trials, clean revision/tree, Cargo.lock and
+executable digests, compiler/target/profile/command, CPU/memory/kernel,
+filesystem/mount/device, frequency policy, and current load. OS/device cache
+and competing load are disclosed as uncontrolled. This is enough to select a
+separately planned production experiment on the measured host; it is not
+installed-product, release, cross-platform, or competitor evidence.
+
 ## Execution order
 
 The canonical roadmap order is the authority:

@@ -4476,6 +4476,7 @@ dependencies = [
  "crc32c",
  "io-uring",
  "libc",
+ "lz4_flex",
  "memmap2",
  "ring",
  "rrd-core",
@@ -4484,6 +4485,7 @@ dependencies = [
  "tempfile",
  "tracing",
  "windows-sys 0.61.2",
+ "zstd",
 ]
 
 [[package]]

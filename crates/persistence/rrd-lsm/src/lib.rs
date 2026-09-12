@@ -92,6 +92,12 @@ pub use manifest::{
     Checkpoint, CurrentPointer, Manifest, ManifestStore, SegmentDescriptor, MANIFEST_FORMAT_VERSION,
 };
 pub use memtable::{Memtable, MemtableProfile, VersionedValue};
+#[cfg(feature = "physical-policy-lab")]
+pub use segment::{
+    run_physical_policy_trial, CachePolicyObservation, CandidateDecision, CodecObservation,
+    FamilyObservation, FilterObservation, PhysicalPolicyConfig, PhysicalPolicyTrial,
+    ReopenedPointMissObservation, ValuePlacementObservation, PHYSICAL_POLICY_EVIDENCE_VERSION,
+};
 pub use segment::{
     PageCacheStats, ProjectedReadBatch, ProjectedReadBudget, ProjectedReadEvidence,
     ProjectedReadOutcome, ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest,

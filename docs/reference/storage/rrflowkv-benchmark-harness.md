@@ -16,6 +16,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 |---|---|---|
 | Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
 | AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
+| Physical-policy candidate screen | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Measures exact segment-v4 page bodies under none/LZ4/Zstandard, a serialized row-group Bloom candidate, exact-byte LRU/segmented-LRU traces, a model-only value-placement candidate, and real create/flush/reopen point misses. It selects separately planned work and changes no production bytes. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
@@ -64,6 +65,53 @@ deterministic expected value.
 Embedding-shaped bytes exercise payload size and access locality only. This is
 not HNSW, exact-vector, semantic-quality, or RRF evidence.
 
+## Physical-policy candidate protocol
+
+The C-06i executable is an optimized, feature-gated developer tool. Its child
+builds one deterministic MVCC corpus spanning audit, inbound/outbound edge,
+record, runtime, scalar, term, and vector families. It sends that corpus
+through the real `Memtable` and segment-v4 encoder, then consumes the encoder's
+parsed page descriptors rather than maintaining another format parser.
+
+Every exact page body is round-tripped through no compression, LZ4, and
+Zstandard level 1. The result reports raw codec bytes and CPU separately from
+an adaptive stored-byte result that counts framing and leaves an individual
+page raw unless it saves at least 12.5%. A codec advances only with exact
+round trips and at least 12.5% aggregate adaptive savings. This screen does not
+choose hot/cold level placement or write a codec discriminator into segment v4.
+
+For each parsed row group, the program extracts exact unique keys and builds,
+serializes, reopens, and probes a ten-bit/seven-hash Bloom candidate. Zero
+member false negatives and no more than 2% observed false positives are
+required to advance. A separate integrated characterization creates, flushes,
+drops, and normally reopens the same corpus through `Database`, then verifies
+absent and present/tombstoned reads while recording filter and page-I/O
+counters. The isolated filter result is never labelled current database
+behavior.
+
+The cache comparison replays identical real page identities and byte weights
+through exact-byte LRU and segmented-LRU simulators: repeated hot access, a
+complete scan, then repeated hot access. Both must preserve identity and stay
+inside exact capacity after every request. The candidate advances only if it
+improves post-scan hot hits. This is an admission-policy screen, not integrated
+concurrent-cache latency, pinned-file lifetime, or a reason to add Moka.
+
+Value separation always remains `analytical-model-only` in this program. It
+reports inline, latest-live, obsolete, pointer, append-log, and modeled
+compaction bytes, but `production_retainable` is false until another package
+implements and proves pointer framing, publication, recovery, snapshot closure,
+range reads, corruption handling, and value-log garbage collection.
+
+The parent requires a release build, executes one warm-up child, and retains
+every configured child trial. It rejects corpus or deterministic-observation
+drift. Nearest-rank p50/p95/p99/p99.9 plus extrema are aggregates over raw
+children; no outlier is dropped. Clean mode records the exact commit/tree,
+branch, Cargo.lock and executable SHA-256, compiler, target, command, CPU,
+memory, kernel, filesystem/mount, visible devices, CPU governor, and current
+load. It also records the actual warm-up and retained-child exit codes and
+checked operation/s and point-miss/s distributions. `--allow-dirty` permits
+only explicitly ineligible diagnostic output.
+
 ## Lifecycle measurements
 
 Both programs report three explicit physical points:
@@ -81,9 +129,11 @@ source provenance.
 
 ## Provenance still required for release evidence
 
-Current JSON records wall-clock time, architecture, operating-system family,
-workload configuration, units, raw trials, aggregates, lifecycle footprints,
-and rrflowKV physical counters where applicable. It does not yet bind:
+The semantic-storage and AI-storage JSON schemas record wall-clock time,
+architecture, operating-system family, workload configuration, units, raw
+trials, aggregates, lifecycle footprints, and rrflowKV physical counters where
+applicable. Unlike the C-06i candidate artifact, those older schemas do not yet
+bind:
 
 1. the exact clean Git revision, source-tree and lockfile digests, executable
    digest, compiler, target triple, build flags, or complete command;
@@ -93,6 +143,11 @@ and rrflowKV physical counters where applicable. It does not yet bind:
    policy, CPU/NUMA affinity, or device-cache state; or
 4. the end-to-end governed reasoning/recall workloads and quality metrics
    required by the release gates.
+
+The C-06i artifact closes the listed source/host provenance gaps only for its
+candidate screen. It still discloses uncontrolled device cache and host load,
+lacks cross-platform and complete end-to-end workloads, and is never release
+evidence.
 
 The scheduled workflow uses `ubuntu-latest`; its artifacts are useful regression
 diagnostics, not fixed-hardware release evidence. The
@@ -119,6 +174,26 @@ cargo run --release --locked -p rrd-store --example ai_hotset_benchmark -- \
   --batch-size 128 --value-bytes 128 --fanout-width 32 \
   --output target/rrflow-kv-ai-metadata-fanout-embedding-f32.json
 ```
+
+Run the C-06i fixed-machine candidate screen from a clean implementation
+revision:
+
+```bash
+cargo run --release --locked -p rrd-lsm \
+  --features physical-policy-lab \
+  --example rrflowkv-physical-policy -- \
+  --seed 14592251008053203194 \
+  --trials 3 \
+  --records-per-family 1024 \
+  --versions-per-key 2 \
+  --value-bytes 512 \
+  --misses 16384 \
+  --cache-bytes 1048576 \
+  --output docs/evidence/c06i-rrflowkv-physical-policy-linux-x86_64.json
+```
+
+Use `--allow-dirty` only for implementation smoke runs. Such output records the
+dirty paths and is not fixed-machine candidate evidence.
 
 Validate current storage behavior separately from retained evidence:
 

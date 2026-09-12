@@ -1,4 +1,6 @@
 mod format;
+#[cfg(feature = "physical-policy-lab")]
+mod physical_policy_lab;
 mod reader;
 
 use self::format::{
@@ -26,6 +28,12 @@ pub use self::format::{
     SegmentRowGroupBudget, DEFAULT_ROW_GROUP_MAX_ROWS, DEFAULT_ROW_GROUP_TARGET_BYTES,
     SEGMENT_FORMAT_VERSION, SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST,
     SEGMENT_SCHEMA_DIGEST,
+};
+#[cfg(feature = "physical-policy-lab")]
+pub use self::physical_policy_lab::{
+    run_physical_policy_trial, CachePolicyObservation, CandidateDecision, CodecObservation,
+    FamilyObservation, FilterObservation, PhysicalPolicyConfig, PhysicalPolicyTrial,
+    ReopenedPointMissObservation, ValuePlacementObservation, PHYSICAL_POLICY_EVIDENCE_VERSION,
 };
 pub(crate) use self::reader::{ActiveReadViews, ReadView};
 pub use self::reader::{
