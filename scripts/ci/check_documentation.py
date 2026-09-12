@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -61,6 +62,8 @@ MARKDOWN_HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
 CANONICAL_DIRECTORIES = tuple(sorted(KNOWLEDGE_EXPORT.CLASSIFICATIONS))
+C06_JOURNAL_HEADING = re.compile(r"(?m)^#### (C-06[a-z])\b")
+C06_PACKAGE_ID = re.compile(r"\bC-06[a-z]\b")
 
 
 def header_field(source: str, name: str) -> str | None:
@@ -153,6 +156,71 @@ def markdown_anchors(source: str) -> set[str]:
 def has_exact_heading(source: str, heading: str) -> bool:
     """Reject a renamed or suffixed owner heading instead of substring matches."""
     return re.search(rf"(?m)^{re.escape(heading)}\s*$", source) is not None
+
+
+def c06_package_identity_failures(source: str) -> list[str]:
+    """Keep completed C-06 journal IDs distinct from forward work packages."""
+    failures: list[str] = []
+    journal_ids = C06_JOURNAL_HEADING.findall(source)
+    journal_counts = Counter(journal_ids)
+    duplicate_journals = sorted(
+        package_id for package_id, count in journal_counts.items() if count > 1
+    )
+    if duplicate_journals:
+        failures.append(
+            f"the execution map duplicates C-06 evidence journals: {duplicate_journals}"
+        )
+
+    sequence_marker = "The executable dependency sequence below is fixed"
+    sequence_start = source.find(sequence_marker)
+    sequence_end = source.find("### Mandatory direct convergence", sequence_start)
+    if sequence_start < 0 or sequence_end < 0:
+        failures.append("the execution map lacks a bounded critical-path sequence")
+        return failures
+
+    sequence = source[sequence_start:sequence_end]
+    package_cells = re.findall(r"(?m)^\|\s*\d+\s*\|\s*([^|]+)\|", sequence)
+    future_ids = C06_PACKAGE_ID.findall("\n".join(package_cells))
+    future_counts = Counter(future_ids)
+    duplicate_future = sorted(
+        package_id for package_id, count in future_counts.items() if count > 1
+    )
+    if duplicate_future:
+        failures.append(
+            f"the forward critical path duplicates C-06 package IDs: {duplicate_future}"
+        )
+    if not journal_ids:
+        failures.append("the execution map has no completed C-06 package journals")
+    if not future_ids:
+        failures.append("the forward critical path has no remaining C-06 package")
+
+    historical = set(journal_ids)
+    future = set(future_ids)
+    collisions = sorted(historical & future)
+    if collisions:
+        failures.append(
+            f"the forward critical path reuses completed C-06 package IDs: {collisions}"
+        )
+
+    unique_ids = historical | future
+    suffixes = sorted(ord(package_id[-1]) for package_id in unique_ids)
+    if suffixes:
+        expected_suffixes = list(range(ord("a"), suffixes[-1] + 1))
+        missing = [
+            f"C-06{chr(suffix)}"
+            for suffix in expected_suffixes
+            if suffix not in suffixes
+        ]
+        if suffixes != expected_suffixes:
+            failures.append(f"the C-06 package sequence has gaps: {missing}")
+    if historical and future and max(historical) >= min(future):
+        failures.append(
+            "the forward C-06 packages do not follow the completed journal sequence: "
+            f"completed through {max(historical)}, next is {min(future)}"
+        )
+    if future_ids != sorted(future_ids):
+        failures.append(f"the forward C-06 packages are out of order: {future_ids}")
+    return failures
 
 
 def knowledge_package_integrity_failures(
@@ -552,6 +620,7 @@ def main() -> int:
             )
 
     execution_map = EXECUTION_MAP.read_text(encoding="utf-8")
+    failures.extend(c06_package_identity_failures(execution_map))
     for required_section in (
         "## How to execute this map",
         "### Codebase-grounded change-authoring routine",
