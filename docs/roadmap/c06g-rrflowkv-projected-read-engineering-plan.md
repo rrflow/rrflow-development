@@ -1,8 +1,7 @@
 # C-06g rrflowKV projected-read engineering plan
 
 **Status:** active human-readable work-package plan; implementation, declared
-verification, and commit complete; development-push handoff pending; C-06
-remains open
+verification, commit, and development-push handoff complete; C-06 remains open
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06g-rrflowkv-projected-read`
 **Owner:** subordinate C-06g file/symbol implementation and evidence sequence
 **Canonical gate owner:** [`rrflow-1.0.md`](rrflow-1.0.md), C-06
