@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "POAM-027b-canonical-package-identity",
+  "package_id": "C-06g-pinned-projected-page-stream",
   "status": "active",
-  "package_kind": "repository-engineering",
+  "package_kind": "engine-implementation",
   "baseline": {
-    "revision": "a722c5cd1f1a02a63a6ad2fda87f63049146b881",
-    "tree": "49bd686ee2622cb8f507911e395daad2c639b71d",
+    "revision": "6de083f9cdf9a4ffe4a6904199745b49304d8fe5",
+    "tree": "bf3284a96b9835249a6237b5c8d7c8338d04fc0b",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,20 +13,23 @@
     "cargo_lock_sha256": "84fa792bb08030b2f7b9bc9310efc3d2b7e79132dcdad02aa6e65803d4cfe18d"
   },
   "authority": {
-    "alpha_prerequisite": "Every bounded package has one unambiguous identifier and the forward execution sequence cannot reuse an identifier already owned by a completed evidence journal.",
-    "roadmap_gates": ["A-06", "J-01"],
-    "poam_items": ["POAM-027"],
-    "architecture_owner": "docs/roadmap/rrflow-1.0-execution-map.md#codebase-grounded-critical-path-audit"
+    "alpha_prerequisite": "C-06g must establish the bounded pinned rrflowKV storage stream and phase-scoped physical evidence required before broader storage qualification, native indexes, streamed rrflowQL/DataFusion execution, installation, or persistent reasoning can advance.",
+    "roadmap_gates": ["C-06", "C-07", "F-01", "F-02"],
+    "poam_items": ["POAM-002", "POAM-004"],
+    "architecture_owner": "docs/roadmap/rrflow-1.0-execution-map.md#critical-engine-audit-and-executable-convergence-sequence"
   },
-  "current_behavior": "The critical-path audit correctly identifies the remaining rrflowKV work, but its forward sequence reuses C-06b through C-06f even though the execution map already owns completed evidence journals under those identifiers. The documentation policy does not reject that collision, so a later implementation could ambiguously claim an earlier package identity.",
-  "target_behavior": "The execution map and convergence research preserve completed C-06a through C-06f as history and assign the three remaining C-06 packages the new identifiers C-06g, C-06h, and C-06i. Documentation policy deterministically rejects duplicate C-06 journal identifiers and any forward C-06 package identifier that intersects the historical journal set.",
+  "current_behavior": "rrflowKV has one authenticated segment-v4 format with an ordered key/version spine and six Arrow-layout pages per row group, but Database::scan, Database::scan_ranges, Segment::visible_from, and Segment::visible_ranges materialize result-sized BTreeMap/Vec state. SegmentRecordCursor borrows one Segment and loads all six pages for each visited row group. Snapshot carries only a sequence, Database retains mutable Memtable plus Vec<Segment>, and no owned scan can release the RrflowKvStore database mutex while retaining a stable physical generation. garbage_collect retains CURRENT and named checkpoints but has no transient read-view lease. PageCacheStats and SegmentIoStats are cumulative; whole-file segment validation is outside those page counters; RrflowKvStore startup checkpoint reconciliation can warm pages before the store is returned; and no operation-scoped query evidence separates that work. rrflowQL therefore still materializes Vec<QueryRow>, constructs an ArrowSnapshot, and registers a DataFusion MemorySource only after storage work has completed. The clean-baseline characterization remains green: cargo test -p rrd-lsm --test hybrid_segment --locked passed 2 tests and cargo test -p rrd-store --test direct_read_paths --locked passed 1 test.",
+  "target_behavior": "rrd-lsm exposes one synchronous ProjectedReadStream created from the current Database state. Creation atomically captures the physical sequence, manifest identity, Arc-owned memtable generation, and Arc-owned immutable segments; acquires a bounded active-manifest lease; validates sorted disjoint ranges and every request budget; and releases the database mutex before any consumer iteration. One cursor per eligible run reads key offsets, key bytes, and sequences first; a min-heap merges runs by key; the unique highest visible sequence wins; equal key/sequence entries across live runs fail closed; the winning validity page decides tombstone suppression; and value offsets/data load only for a winning key-value projection after output bounds are checked. Batches use bounded Arrow-compatible offset/data buffers rather than result-sized row collections. The stream reports explicit creation, running, completed, cancelled, and failed outcomes plus range/run/version/key/row/batch/page/cache/I/O/borrow/allocation/copy/decode counters. Database open reports whole-file segment validation separately, RrflowKvStore records startup reconciliation deltas before publication, and query work uses its own stream meter rather than differencing shared cumulative counters. General MVCC merge batches are truthfully owned/copied; C-06g does not claim a DataFusion RecordBatch, universal zero-copy, native graph/BM25/vector access, or alpha readiness.",
   "unchanged_behavior": [
-    "No RRFlow engine, storage, graph, lexical, vector, DataFusion, context, reasoning, transport, installation, binary, or runtime behavior changes.",
-    "The canonical C-06 roadmap gate remains open and no existing evidence journal or accepted behavior is renamed, deleted, or reclassified.",
-    "The ordered technical outcome remains selective rrflowKV projection first, then adversarial correctness evidence, then measured physical-policy selection before C-07.",
-    "The product version remains 1.0.0 and Cargo.lock remains byte-identical.",
-    "No Git, editor, provider, prompt, session-start, or RRFlow runtime hook is installed.",
-    "POAM-027 remains open because checked-in policy remains locally bypassable without eligible server-side enforcement."
+    "RrdEngine remains the only semantic transaction, authorization, reasoning, recall, and lifecycle authority; the new read path is read-only physical infrastructure.",
+    "rrflowMX remains the volatile semantic-conformance profile and rrflowKV remains the sole local persistent substrate.",
+    "WAL framing, manifest/CURRENT publication, application-key format RRKV0001, segment-v4 encoded bytes, checksums, MVCC visibility, point reads, transaction conflict rules, flush ordering, compaction semantics, snapshots, and recovery remain unchanged.",
+    "Point, CAS, and ordinary transactional paths remain independent of DataFusion; crates/persistence/rrd-lsm and crates/persistence/rrd-store gain no DataFusion, Tokio, futures, provider, network, model, hook, trigger, routine, or skill dependency.",
+    "The existing global cache and I/O snapshots remain process-level diagnostics; the package adds scoped evidence and does not relabel cumulative values as request-local work.",
+    "Mapped page buffers retain their Arc<Mmap> owner; bounded and io_uring page acquisition remains allocated; snapshot-owned bytes remain copied; no path equates mmap with observed zero-copy execution.",
+    "No compression, key/value separation, persisted-filter, family-placement, cache-policy, graph, BM25, HNSW, TurboQuant, DataFusion-provider, install, attunement, reasoning, Connectome, binary, or release claim is accepted by this package.",
+    "The product version remains 1.0.0, Cargo.lock and dependency manifests remain byte-identical, C-06 remains open, and no roadmap checkbox changes.",
+    "No compatibility reader, alias, fallback backend, second source of truth, editor/provider hook, or session-start lifecycle is introduced."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -39,133 +42,518 @@
       "baseline_sha256": "63cea4c628ef8e25188556e0ecce8132fce243a56bc93e8b7c3d1cf16e0faebd",
       "baseline_lines": 205,
       "reviewed_lines": "1-205",
-      "symbols": ["product identity and current maturity", "knowledge warp map"]
+      "symbols": ["product identity and current status", "knowledge warp map"]
     },
     {
       "path": "AGENTS.md",
       "baseline_sha256": "6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c",
       "baseline_lines": 129,
       "reviewed_lines": "1-129",
-      "symbols": ["machine-readable planning requirement", "repository engineering procedure"]
+      "symbols": ["planning chain", "independent-engine rule", "machine-bound package procedure"]
     },
     {
-      "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "7ca159c013d444a9b62d052d3c8e7a444411651d61f0a3168b33f6de8ef2aea6",
-      "baseline_lines": 327,
-      "reviewed_lines": "1-327",
-      "symbols": ["POAM-027a-plan-bound-change-gate"]
-    },
-    {
-      "path": "docs/research/rrflow-system-convergence-architecture-research.md",
-      "baseline_sha256": "7909b41aeb97b052b0b60dec50498c853e3b2d3d7db0eff0a690e7548b97fdc1",
-      "baseline_lines": 729,
-      "reviewed_lines": "1-729",
-      "symbols": ["2026-09-12 critical-path implementation audit", "Current-code gap matrix"]
-    },
-    {
-      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "baseline_sha256": "3261cfc7bc96389a34f0c68c4e077a0d014624b04227d466781713df44511275",
-      "baseline_lines": 3756,
-      "reviewed_lines": "1-3756",
-      "symbols": ["Codebase-grounded critical-path audit", "C-06a through C-06f evidence journals", "Evidence record template"]
+      "path": "docs/objectives/rrflow-1.0-alpha.md",
+      "baseline_sha256": "f56c4a05e38ae25a0bdd8024188d4ecb3dab0101d4a920e0906c9d2d4c472516",
+      "baseline_lines": 65,
+      "reviewed_lines": "1-65",
+      "symbols": ["OBJ-02", "OBJ-03", "OBJ-05"]
     },
     {
       "path": "docs/roadmap/rrflow-1.0.md",
       "baseline_sha256": "69598d717b73c50a16785cfda7acd1a2469dd598df79856ceff275fe2463f343",
       "baseline_lines": 1265,
       "reviewed_lines": "1-1265",
-      "symbols": ["Executable dependency spine", "C-06"]
+      "symbols": ["Gate C", "C-06", "C-07", "F-01", "F-02"]
     },
     {
       "path": "docs/poam/rrflow-1.0-alpha.md",
       "baseline_sha256": "3a69a2803cb5b533103d0bc4004e937aacfdcbfe2e4936c36fc7b1c8cb62ed71",
       "baseline_lines": 82,
       "reviewed_lines": "1-82",
-      "symbols": ["POAM-002", "POAM-027"]
+      "symbols": ["POAM-002", "POAM-004"]
     },
     {
-      "path": "scripts/ci/check_documentation.py",
-      "baseline_sha256": "abeb065c7522b4dde509938897d384affdbeaabd4194bf0d348c72b6b5ab2923",
-      "baseline_lines": 822,
-      "reviewed_lines": "1-822",
-      "symbols": ["EXECUTION_MAP", "main"]
+      "path": "docs/roadmap/rrflow-1.0-active-change.json",
+      "baseline_sha256": "edd31130c03821ad0aa0d0437f5480df0c67da5e92a3b8d179c54f76649be03a",
+      "baseline_lines": 171,
+      "reviewed_lines": "1-171",
+      "symbols": ["POAM-027b-canonical-package-identity"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
+      "baseline_sha256": "7dbc31534e37a05d209f0ce8c0902506f9be74ad6f85d3c0180d8cc6d25d9e35",
+      "baseline_lines": 3784,
+      "reviewed_lines": "1-3784",
+      "symbols": ["implementation-requirements traceability", "critical engine audit", "C-06a through C-06f journals", "C-06g forward package", "evidence record template"]
+    },
+    {
+      "path": "docs/research/rrflow-system-convergence-architecture-research.md",
+      "baseline_sha256": "cf4ad986b60aae537c05582413d60b0d3c4943dfe0b5c14b76f0b1ba2fa1b5bc",
+      "baseline_lines": 729,
+      "reviewed_lines": "1-729",
+      "symbols": ["Hybrid LSM and Arrow pages", "DataFusion boundary", "critical-path implementation audit", "current-code gap matrix", "source ledger"]
+    },
+    {
+      "path": "docs/research/README.md",
+      "baseline_sha256": "f73e2c5dbfcdafce8c12a720c06ea7dffa8fc8af93c6b8f52d45ab72cf144eb9",
+      "baseline_lines": 87,
+      "reviewed_lines": "1-87",
+      "symbols": ["research index", "file naming", "authority boundaries"]
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "baseline_sha256": "3750821616344462a0e370644bae34c95afb216c2b081663c949a915b098d4b5",
+      "baseline_lines": 25,
+      "reviewed_lines": "1-25",
+      "symbols": ["roadmap index", "supporting execution records"]
+    },
+    {
+      "path": "docs/architecture/engine-data-flow.md",
+      "baseline_sha256": "5387f83feda57c5ea09f63772cffa02909f05672e520997ae6565264d9cc8cea",
+      "baseline_lines": 1346,
+      "reviewed_lines": "1-1346",
+      "symbols": ["canonical write path", "canonical read path", "physical storage boundary", "DataFusion separation", "observability contract"]
+    },
+    {
+      "path": "docs/reference/storage/rrflowkv-current-format.md",
+      "baseline_sha256": "419b03c7377992b5e2b3cd7d24094dfe8593c2e155430820958915aa16579600",
+      "baseline_lines": 446,
+      "reviewed_lines": "1-446",
+      "symbols": ["segment v4", "page ownership", "open validation", "remaining C-06 evidence"]
+    },
+    {
+      "path": "docs/evidence/test-plans/persistence-scenario-matrix.md",
+      "baseline_sha256": "fd3929ce1728aaf1bad3f0b73d62ffe8be019923550daffd3962fd65fc727d52",
+      "baseline_lines": 137,
+      "reviewed_lines": "1-137",
+      "symbols": ["C-06 hybrid immutable generation", "F-01 stamped streaming provider", "execution discipline"]
+    },
+    {
+      "path": "scripts/ci/check_change_plan.py",
+      "baseline_sha256": "7cb42018ebd26ee8fc15aac8e51ddf16d76cfa43f179bc8713779f92e911a604",
+      "baseline_lines": 828,
+      "reviewed_lines": "1-828",
+      "symbols": ["validate_schema", "validate_planning_commit", "validate_reviewed_files", "validate_changed_paths"]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
       "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
       "baseline_lines": 1841,
       "reviewed_lines": "1-1841",
-      "symbols": ["inventory generation", "planned path validation"]
+      "symbols": ["ACTIVE_CHANGE_PLAN", "PLANNED_PATHS", "inventory generation", "check mode"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/Cargo.toml",
+      "baseline_sha256": "a2cef9b1b10a35e7f0a23732885cf390551dffb12d6527f6100865e0ae25d92d",
+      "baseline_lines": 27,
+      "reviewed_lines": "1-27",
+      "symbols": ["dependencies", "dev-dependencies"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/lib.rs",
+      "baseline_sha256": "a47fbb53ffc99cf2e3e3b6f2ca5ebcef044039d0a192b95f735eca13f71e89d7",
+      "baseline_lines": 146,
+      "reviewed_lines": "1-146",
+      "symbols": ["module ownership", "public physical contracts"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/error.rs",
+      "baseline_sha256": "aad29745f7a9cb6c9992e2fb2f9efc1e7adc54f56dfb0dad11a6ac56b70adef0",
+      "baseline_lines": 164,
+      "reviewed_lines": "1-164",
+      "symbols": ["Error", "Display", "source"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/io.rs",
+      "baseline_sha256": "7a3aa7fa37a53e75f32a8c18997fc14f9969790c3c56807ac8e76d20e3fc2dfc",
+      "baseline_lines": 405,
+      "reviewed_lines": "1-405",
+      "symbols": ["SegmentIoStats", "SelectedIo", "IoContext::read_exact_at"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/manifest.rs",
+      "baseline_sha256": "dfe30eb7d0eee056085b80eedcebe06d882be8e429d02d450aa09e8a187ff9e8",
+      "baseline_lines": 653,
+      "reviewed_lines": "1-653",
+      "symbols": ["Manifest", "ManifestStore::load", "checkpoint reachability"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/memtable.rs",
+      "baseline_sha256": "a299b516d6525b2001e16a707b1f4edbede0d359b6bf518083800b1a72bdccd7",
+      "baseline_lines": 472,
+      "reviewed_lines": "1-472",
+      "symbols": ["VersionChain", "Memtable", "get_version", "visible_from", "all_versions"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/database.rs",
+      "baseline_sha256": "0c2ccad46db2e0253f823c767b3655da07d36e6769890e8a148e852d2c1dfeee",
+      "baseline_lines": 2034,
+      "reviewed_lines": "1-2034",
+      "symbols": ["DatabaseOptions", "Snapshot", "Database", "open_with_options", "flush_memtable_inner", "compact_inner", "garbage_collect", "scan", "scan_ranges", "scan_each"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/format.rs",
+      "baseline_sha256": "88a98e5f7b62b3f4ef96c9259a9fa0e5ae6b54912100e7b48eb066da94ed8504",
+      "baseline_lines": 913,
+      "reviewed_lines": "1-913",
+      "symbols": ["PageKind", "PageDescriptor", "RowGroupDescriptor", "ParsedMetadata", "parse_metadata"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/mod.rs",
+      "baseline_sha256": "f987b394f5d47bbefc00f68bf27c846aefbd7d80a0ef9264bc069963dffb5d0b",
+      "baseline_lines": 1584,
+      "reviewed_lines": "1-1584",
+      "symbols": ["PageCacheStats", "PageSource", "LoadedPage", "Segment", "SegmentRecordCursor", "open_expected_with_cache_and_io", "visible_from", "visible_ranges", "load_page", "read_page", "verify_file_digest"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/transaction.rs",
+      "baseline_sha256": "16a101911abfaa458e06e77a1a339824736b06dcd2dce334f0adf22232bea238",
+      "baseline_lines": 251,
+      "reviewed_lines": "1-251",
+      "symbols": ["TransactionSnapshots", "Transaction", "snapshot sequence pin"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/hybrid_segment.rs",
+      "baseline_sha256": "d9b70f14bcf04b79c0ab2c9b4a092306c37966b5033a8aaff90233d2333fa6b0",
+      "baseline_lines": 508,
+      "reviewed_lines": "1-508",
+      "symbols": ["independent generated MVCC model", "mixed-family reopen and compaction differential", "malformed segment corpus"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/compaction.rs",
+      "baseline_sha256": "ada79e9be2944f37dca220bb329408debdbe730ee7a2352b2819f3197b4cf257",
+      "baseline_lines": 383,
+      "reviewed_lines": "1-383",
+      "symbols": ["snapshot-aware compaction", "pinned_transaction_reads_survive_compaction_garbage_collect_cycles"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/Cargo.toml",
+      "baseline_sha256": "1e3cb49112f0200ea85c54f990e4bc76df1a00339327d7a6fcf46e07fa6c58f3",
+      "baseline_lines": 23,
+      "reviewed_lines": "1-23",
+      "symbols": ["rrd-lsm dependency", "dependencies"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/src/lib.rs",
+      "baseline_sha256": "8664b46819654aba362b4f626e89c7409c7ead4d9daa5d24fb7f02f94cfb076b",
+      "baseline_lines": 97,
+      "reviewed_lines": "1-97",
+      "symbols": ["module boundaries", "RrflowKvStore exports"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/src/engine.rs",
+      "baseline_sha256": "bb7872c1a45147c52c994b835fa150f18b7414fba03873a8981f44664ec5bafc",
+      "baseline_lines": 540,
+      "reviewed_lines": "1-540",
+      "symbols": ["PhysicalStoreEvidence", "StorageEngine", "RrflowMxStore"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/src/rrflow_kv.rs",
+      "baseline_sha256": "52390a39cbf6b577e3c5b33646cff3d92f03a0029701199170a620e0feb87fef",
+      "baseline_lines": 1458,
+      "reviewed_lines": "1-1458",
+      "symbols": ["RrflowKvStore", "open_with_options", "physical_store_evidence", "reconcile_runtime_checkpoints", "scan_space"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/src/access/versioned_read.rs",
+      "baseline_sha256": "4c307082d7d0ba3f10955bcc3e34ec9cf669ecf0d6dd658d129591b5ed26dd47",
+      "baseline_lines": 930,
+      "reviewed_lines": "1-930",
+      "symbols": ["RuntimeReadBudget", "RuntimeVersionedSource", "RuntimeReadEvidence", "read_versioned", "source_range", "MeteredRead"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/tests/direct_read_paths.rs",
+      "baseline_sha256": "639e13789774b6ad25d1d1f5c16fa44a0fbd1bdb151c98ed71b7e7450c428b23",
+      "baseline_lines": 528,
+      "reviewed_lines": "1-528",
+      "symbols": ["rrflow_mx_and_rrflow_kv_direct_versions_match_the_exact_oracle_and_reopen"]
+    },
+    {
+      "path": "crates/persistence/rrd-store/tests/rrflow_kv_open.rs",
+      "baseline_sha256": "5f3ff04942a4b70c895bcbbb11677b1e23ab39f0e679399919c91cf2266e88c8",
+      "baseline_lines": 48,
+      "reviewed_lines": "1-48",
+      "symbols": ["missing_paths_create_rrflow_kv_and_reopen_by_authenticated_marker", "existing_empty_directories_initialize_as_rrflow_kv", "partial_rrflow_kv_identity_fails_closed"]
+    },
+    {
+      "path": "crates/compute/rrd-query/src/arrow.rs",
+      "baseline_sha256": "498d4eccbee75cb7dc509461e8c433dc32ed3acb432211a5ef1ad5053d8d05a9",
+      "baseline_lines": 546,
+      "reviewed_lines": "1-546",
+      "symbols": ["ArrowSnapshot", "rows_to_arrow_snapshot"]
+    },
+    {
+      "path": "crates/compute/rrd-query/src/fusion.rs",
+      "baseline_sha256": "6b0c1a37b56f2c85e4b063334aebee0eb706fd27a2f4389b612d5cba68c04062",
+      "baseline_lines": 587,
+      "reviewed_lines": "1-587",
+      "symbols": ["MemorySource", "execute_snapshot", "DataFusion physical metrics"]
+    },
+    {
+      "path": "crates/compute/rrd-query/src/pipeline.rs",
+      "baseline_sha256": "f3510e13b20613036e5eedd19a03545939b1e044046373cc110428f93f48cbdd",
+      "baseline_lines": 116,
+      "reviewed_lines": "1-116",
+      "symbols": ["rrflowQL stamped pipeline"]
+    },
+    {
+      "path": "crates/compute/rrd-query/src/execute.rs",
+      "baseline_sha256": "201edec85762bd69bcad3f35696625675c5e60a8c1a1f951d9e42792801526b5",
+      "baseline_lines": 1225,
+      "reviewed_lines": "1-1225",
+      "symbols": ["ReadPath::load", "QueryRow materialization", "execute", "execute_snapshot"]
     }
   ],
   "implementation_changes": [
     {
-      "path": "docs/research/rrflow-system-convergence-architecture-research.md",
+      "path": "crates/persistence/rrd-lsm/src/lib.rs",
       "baseline_state": "present",
-      "symbols": ["2026-09-12 critical-path implementation audit"],
-      "action": "Correct the remaining rrflowKV package disposition to preserve completed C-06a through C-06f and name only C-06g through C-06i as future work.",
-      "failure_semantics": "The research record must not describe an already journaled package identifier as unfinished future work."
+      "symbols": ["database exports", "segment exports"],
+      "action": "Export the closed projected-read request, range, projection, budget, resource, outcome, batch, evidence, and stream contracts plus deterministic segment-open evidence. Do not export internal cursors, page locators, view registries, or mutable storage access.",
+      "failure_semantics": "The public physical vocabulary must be exhaustive and typed; an unknown projection, resource, or outcome cannot be accepted through a string fallback."
     },
     {
-      "path": "scripts/ci/check_documentation.py",
+      "path": "crates/persistence/rrd-lsm/src/error.rs",
       "baseline_state": "present",
-      "symbols": ["C-06 package identity policy", "main"],
-      "action": "Parse the C-06 evidence-journal headings and the forward critical-path table, reject duplicate journal identifiers, and reject reuse of any journaled identifier in the forward sequence.",
-      "failure_semantics": "A duplicate historical C-06 identifier, missing canonical remaining sequence, or future/history identifier collision exits nonzero with the conflicting identifiers."
+      "symbols": ["Error", "Display"],
+      "action": "Add typed projected-read budget exhaustion, active-read-view capacity, and poisoned read-view registry errors carrying resource, limit, and observed values where applicable.",
+      "failure_semantics": "Invalid ranges/configuration fail before a lease or page read; a limit is checked before the work that would exceed it; registry ambiguity fails closed; no limit silently truncates a batch or returns partial success."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/io.rs",
+      "baseline_state": "present",
+      "symbols": ["SelectedIo", "IoContext::read_exact_at", "SegmentIoStats"],
+      "action": "Return the actual selected backend from read_exact_at after io_uring fallback so one operation can attribute mmap, io_uring, and bounded reads accurately while preserving the cumulative process counters and fallback behavior.",
+      "failure_semantics": "A failed I/O is not counted as a successful read, mmap cannot enter positional I/O, and an io_uring fallback is attributed to bounded I/O rather than the requested backend."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/memtable.rs",
+      "baseline_state": "present",
+      "symbols": ["Memtable", "VersionChain", "get_version", "visible_from"],
+      "action": "Add the crate-private seek-after primitive required by an owned memtable run cursor. It finds the next key inside sorted disjoint ranges and returns only key, highest sequence visible at the captured snapshot, and a value locator/tombstone state without materializing the remaining range.",
+      "failure_semantics": "The cursor never returns a key outside the selected range or a sequence newer than the view, never skips the visible tombstone that must suppress an older segment value, and makes monotonic key progress."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/database.rs",
+      "baseline_state": "present",
+      "symbols": ["Database", "create_with_options_and_application_format", "open_with_options", "flush_memtable_inner", "compact_inner", "garbage_collect", "begin_projected_read"],
+      "action": "Store the active memtable and immutable segments in Arc generations; mutate the memtable through Arc::make_mut only after a read view shares it; aggregate deterministic segment-open validation evidence; add an interior read-view registry keyed by manifest digest; create ProjectedReadStream from one captured sequence/manifest/memtable/segment set after checking the request's max_active_views, max_pinned_bytes, and max_runs; and make garbage_collect include every active read-view manifest when calculating reachable manifests, segments, and WALs. Update flush, snapshot installation, and compaction replacement sites directly for Arc ownership without changing their publication order or encoded output; do not add an unmeasured process default to DatabaseOptions.",
+      "failure_semantics": "View acquisition is atomic and either returns a complete lease or no stream; future writes cannot mutate the captured memtable generation; compaction cannot replace captured Segment owners; garbage collection cannot unlink a leased manifest closure; a poisoned/overflowed registry or configured view limit fails before exposure; dropping the last view releases its manifest for a later GC."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/format.rs",
+      "baseline_state": "present",
+      "symbols": ["ParsedMetadata", "parse_metadata"],
+      "action": "Return the exact header and index bytes read during metadata parsing as non-persistent open evidence. Do not alter a descriptor, encoded page, footer, digest, format constant, or frozen v4 byte vector.",
+      "failure_semantics": "Counter arithmetic overflow or a malformed header/index remains an open failure; evidence cannot be authenticated into or mutate segment bytes."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/mod.rs",
+      "baseline_state": "present",
+      "symbols": ["mod reader", "SegmentOpenEvidence", "LoadedPage", "Segment", "open_expected_with_cache_and_io", "load_page", "read_page", "verify_file_digest"],
+      "action": "Own the new reader module; aggregate exact format-probe, whole-file checksum, header/index metadata, and semantic-page validation reads for each segment open; retain no semantic page load in the normal manifest reopen path; expose only crate-private row-group descriptors and metered key-spine/validity/value-offset/value-data page access to the projected cursor; and record actual backend, cache hit/miss/load, logical/physical, borrowed, allocated, copied, decoded, and decompressed work into the stream-local meter. Existing point/range and compaction readers keep their behavior and cumulative counters.",
+      "failure_semantics": "Every selected page is bounds-checked and digest-verified before use; a page budget is charged before acquisition; an unselected value-offset or value-data page is not touched; counter overflow fails the operation; page-cache races may cause attributable duplicate physical work but never double publication or incorrect data."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/reader.rs",
+      "baseline_state": "absent",
+      "symbols": ["PROJECTED_READ_CONTRACT_VERSION", "ProjectedReadRange", "ProjectedReadProjection", "ProjectedReadBudget", "ProjectedReadResource", "ProjectedReadOutcome", "ProjectedReadBatch", "ProjectedReadEvidence", "SegmentProjectedCursor", "MemtableProjectedCursor", "ProjectedReadStream"],
+      "action": "Create the predeclared C-06 reader. Validate nonempty sorted disjoint half-open ranges, require every budget to be nonzero, and enforce max_active_views, max_ranges, max_runs, max_pinned_bytes, max_versions_examined, max_page_requests, max_page_logical_bytes, max_output_rows, max_output_buffer_bytes, max_batch_rows, and max_batch_allocated_bytes. Build one forward cursor per eligible Arc<Segment> plus one Arc<Memtable> cursor, skip row groups by authenticated key/sequence bounds, and use a min-heap for the global merge. For each key, choose the sole greatest sequence at or below the view, reject equal-sequence duplicates across runs, load only the winner validity, suppress a winner tombstone, load winner value offsets before checking item/output bounds, and load value data only for KeyValue projection. Emit key and optional value as 64-byte-aligned Arrow-compatible i64-offset/data buffers with exact accessors and actual allocation/copy accounting. Make next_batch fused after completion/error, add explicit cancel, release the manifest lease on every terminal/drop path, and emit one redacted process-local terminal trace with identities, budgets, work, and outcome but no keys or values.",
+      "failure_semantics": "The stream returns no out-of-order or duplicate key, never resurrects a value shadowed by a tombstone, never observes a post-capture write, never exceeds a page/output/batch bound before returning its typed error, never emits an oversize single row, never leaks a lease on cancellation/error/drop, and never converts an error into successful truncation."
+    },
+    {
+      "path": "crates/persistence/rrd-store/src/lib.rs",
+      "baseline_state": "present",
+      "symbols": ["rrflow_kv exports"],
+      "action": "Export only the immutable rrflowKV open/reconciliation evidence types needed by diagnostics. Do not re-export raw LSM ranges, cursors, page locators, or a client-selectable physical backend.",
+      "failure_semantics": "The store boundary cannot expose mutation authority or allow a public caller to construct arbitrary physical key reads."
+    },
+    {
+      "path": "crates/persistence/rrd-store/src/rrflow_kv.rs",
+      "baseline_state": "present",
+      "symbols": ["RrflowKvStore", "RrflowKvOpenEvidence", "RrflowKvReconciliationEvidence", "open_with_options", "reconcile_runtime_checkpoints", "open_evidence"],
+      "action": "Capture Database segment-open evidence, then take checked before/after cache and I/O snapshots around open-time runtime-checkpoint reconciliation while the not-yet-published store has exclusive access. Persist that immutable process-local RrflowKvOpenEvidence on the store, expose a read-only accessor, and add the separated counts to the existing redacted open trace. Keep later query attribution on ProjectedReadEvidence rather than shared snapshot subtraction and leave StorageEngine/PhysicalStoreEvidence semantic authority unchanged.",
+      "failure_semantics": "Counter regression/overflow fails store open instead of saturating; reconciliation failure still prevents store construction; startup evidence never becomes canonical database state; segment-open, reconciliation, and later query counters cannot be presented as one operation."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/hybrid_segment.rs",
+      "baseline_state": "present",
+      "symbols": ["projected_stream_matches_model_across_ranges_snapshots_and_projections", "projected_stream_enforces_bounds_and_reports_selected_pages"],
+      "action": "Extend the fixed-seed independent MVCC model with mixed memtable/multi-segment projected reads over full, bounded, disjoint, empty-result, keys-only, and key-value ranges using tiny batch limits. Compare exact ordered bytes and snapshot isolation, assert tombstone/no-resurrection and duplicate-sequence denial, and prove page-family selection plus every typed request/operation/batch budget failure.",
+      "failure_semantics": "Any oracle difference, out-of-order/duplicate result, post-capture write, unexpected value-page request, counter mismatch, oversize batch, nondeterministic seed, panic, or accepted invalid budget fails the target."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/compaction.rs",
+      "baseline_state": "present",
+      "symbols": ["pinned_projected_stream_survives_flush_compaction_and_gc_until_drop"],
+      "action": "Create a projected stream before later writes, force flush and compaction, run GC, then consume the old view and compare it with its pre-change oracle. Prove the active manifest closure is retained while the stream exists, the current manifest remains correct, cancellation/drop releases the lease, and a following GC can reclaim the old closure without relying on Unix unlink semantics.",
+      "failure_semantics": "A missing/stale row, dangling mapped page, Windows-hostile early deletion, retained lease after drop, incorrect GC inventory, or mutation to current data fails the test."
+    },
+    {
+      "path": "crates/persistence/rrd-store/tests/rrflow_kv_open.rs",
+      "baseline_state": "present",
+      "symbols": ["rrflow_kv_open_separates_segment_validation_and_reconciliation_io"],
+      "action": "Add an integration test that constructs authenticated segment and runtime-checkpoint state, closes and reopens rrflowKV, and proves immutable open evidence separates segment-file validation from startup reconciliation and later projected-query work without relying on concurrent subtraction of process counters.",
+      "failure_semantics": "Missing, overlapping, regressing, saturated, or mislabeled phase counters; reconciliation reported as query work; or query work reported as open validation fails the test."
     }
   ],
   "evidence_changes": [
     {
+      "path": "README.md",
+      "action": "Update only the current-status summary to identify accepted C-06g evidence and name C-06h as next; retain README as a portal and make no readiness claim."
+    },
+    {
+      "path": "docs/objectives/rrflow-1.0-alpha.md",
+      "action": "Update OBJ-02/OBJ-03/OBJ-05 partial evidence with the pinned projected storage stream and explicitly retain missing C-06h/C-06i, C-07, and DataFusion-provider proof."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0.md",
+      "action": "Append the exact C-06g evidence and limitations without checking C-06 or changing dependency order."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha.md",
+      "action": "Update POAM-002 and POAM-004 current evidence while retaining both open/sequenced gaps that C-06g cannot close."
+    },
+    {
+      "path": "docs/research/rrflow-system-convergence-architecture-research.md",
+      "action": "Correct only current-code audit statements that presently say no pinned/selective storage stream or phase-scoped counters exist; retain eager rrflowQL/DataFusion and all later gaps."
+    },
+    {
+      "path": "docs/research/rrflowkv-rust-storage-engine-architecture-research.md",
+      "action": "Add a draft, primary-source-cited qualification study that compares the current rrd-lsm implementation with RocksDB-class correctness and operability, evaluates Rust-native reference engines, fixes Arrow/DataFusion at the immutable-read boundary, and defines the governed natural-discussion-to-configuration proposal boundary without declaring an ADR or completion."
+    },
+    {
+      "path": "docs/research/README.md",
+      "action": "Link the bounded rrflowKV Rust storage-engine research from the research index without transferring architecture or roadmap authority to it."
+    },
+    {
+      "path": "docs/roadmap/c06g-rrflowkv-projected-read-engineering-plan.md",
+      "action": "Add the human-readable C-06g engineering plan with current-code findings, exact symbol-level changes, ordered failure-first batches, evidence commands, stop conditions, and explicit handoffs to D-01, C-07, F, and the later governed configuration workflow. It supplements rather than replaces the machine-enforced active plan."
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "action": "Link the human-readable active work-package plan and state that it cannot change canonical roadmap status or dependency order."
+    },
+    {
+      "path": "docs/architecture/engine-data-flow.md",
+      "action": "Record the exact rrflowKV capture/merge/page-selection/lease/counter flow and its boundary before F-01; do not describe DataFusion as implemented by C-06g."
+    },
+    {
+      "path": "docs/reference/storage/rrflowkv-current-format.md",
+      "action": "Document the implemented projected-read contracts, MVCC merge, buffer ownership, phase evidence, budgets, cancellation, and unchanged segment-v4 bytes."
+    },
+    {
+      "path": "docs/evidence/test-plans/persistence-scenario-matrix.md",
+      "action": "Replace C-06's planned provider-projection wording with the exact accepted storage-stream tests while leaving F-01/F-02 provider and pushdown scenarios planned."
+    },
+    {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "action": "Correct the forward sequence to C-06g, C-06h, and C-06i; correct stale next-package statements; and record this package's complete evidence journal without changing earlier journals."
+      "action": "Add the complete C-06g evidence journal, exact implementation-requirements traceability, commands/results/failures/not-run limits, and C-06h handoff without rewriting earlier journals."
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py",
-      "action": "Regenerate the deterministic inventory after the hand-authored correction; never hand edit it."
+      "action": "Regenerate deterministically after segment/reader.rs becomes current and every changed file digest/line span is final; never hand edit it."
     }
   ],
   "research": {
-    "decision": "not_required",
-    "reason": "The defect and correction are established entirely by authenticated repository history: C-06a through C-06f already have distinct evidence journals, while the new forward table reuses those identifiers. The existing engine research and technical sequence remain unchanged.",
-    "sources": []
+    "decision": "required",
+    "reason": "The package establishes an LSM reader-generation lifetime, multi-run merge iterator, Arrow-buffer, DataFusion handoff, and operation-scoped physical-evidence boundary. These choices were checked against current primary implementation/documentation sources before the file/symbol plan was frozen; no upstream source tree, public compatibility surface, or implementation is copied.",
+    "sources": [
+      {
+        "title": "RocksDB Iterator Implementation",
+        "url": "https://github.com/facebook/rocksdb/wiki/Iterator-Implementation",
+        "retained_behavior": "Use one child iterator per ordered run and a heap-based merge while the database iterator resolves versions and tombstones above it.",
+        "rejected_assumption": "Materializing every run into one BTreeMap is an acceptable streaming iterator or that RocksDB internal key encoding should be copied into RRFlow."
+      },
+      {
+        "title": "RocksDB: How we keep track of live SST files",
+        "url": "https://github.com/facebook/rocksdb/wiki/How-we-keep-track-of-live-SST-files",
+        "retained_behavior": "A reader pins the exact memtable/version file set it observes so replacement and deletion cannot invalidate a live iterator.",
+        "rejected_assumption": "An Arc<Mmap> alone is a complete portable generation-reclamation policy or that RRFlow should adopt RocksDB's topology and APIs."
+      },
+      {
+        "title": "RocksDB Perf Context and IO Stats Context",
+        "url": "https://github.com/facebook/rocksdb/wiki/Perf-Context-and-IO-Stats-Context",
+        "retained_behavior": "Attribute logical and physical work to a scoped operation instead of presenting one process-lifetime counter delta as concurrent-query evidence.",
+        "rejected_assumption": "Cumulative cache counters are request-local proof or telemetry state may become database authority."
+      },
+      {
+        "title": "Apache Arrow Columnar Format",
+        "url": "https://arrow.apache.org/docs/format/Columnar.html",
+        "retained_behavior": "Use validity, offset, and data buffers with explicit alignment and owner lifetimes so eligible pages and owned batches have an interoperable physical layout.",
+        "rejected_assumption": "Arrow memory layout supplies WAL, MVCC, authorization, indexes, database persistence, or universal zero-copy semantics."
+      },
+      {
+        "title": "Apache DataFusion Custom Table Providers",
+        "url": "https://datafusion.apache.org/library-user-guide/custom-table-providers.html",
+        "retained_behavior": "F-01 must keep TableProvider::scan and ExecutionPlan::execute lightweight and perform storage work only while the returned stream is polled, with projection/filter/limit support stated honestly.",
+        "rejected_assumption": "Wrapping a prebuilt Vec<QueryRow> or MemorySource after eager storage work is a streaming provider, or DataFusion belongs inside rrd-lsm."
+      }
+    ]
   },
   "trace_resource_debug": {
-    "runtime_trace": {"decision": "not_applicable", "reason": "No RRFlow runtime operation changes."},
-    "resource_evidence": {"decision": "not_applicable", "reason": "The change parses two bounded Markdown sections during existing documentation policy execution and makes no engine resource claim."},
-    "debugging_evidence": {"decision": "add", "reason": "The documentation policy reports duplicate historical identifiers, missing future identifiers, and future/history collisions as distinct diagnostics."}
+    "runtime_trace": {
+      "decision": "preserve",
+      "reason": "C-06g adds no semantic RrdEngine operation or durable lifecycle state. It emits only redacted process-local storage phase diagnostics; H-05 later correlates them through the authorized engine trace."
+    },
+    "resource_evidence": {
+      "decision": "add",
+      "reason": "Every stream must report and enforce ranges, runs, pinned bytes, versions, page requests/logical bytes, physical backend reads/bytes, cache work, borrowed/decoded/allocated/copied/decompressed bytes, emitted rows/bytes, batch peaks, cancellation, and terminal outcome. Segment-open and startup reconciliation receive distinct immutable evidence."
+    },
+    "debugging_evidence": {
+      "decision": "add",
+      "reason": "Stable typed errors and redacted trace fields identify the exact failed resource and limit/observed values, manifest/view coordinate, projection, and terminal outcome without logging keys, values, filesystem payloads, or secrets."
+    }
   },
   "first_failure_oracle": [
-    "After adding the policy and before correcting documentation, the current execution map must fail because forward package identifiers C-06b through C-06f intersect completed evidence journals.",
-    "After correction, the policy must identify historical C-06a through C-06f exactly once and future C-06g through C-06i exactly once with an empty intersection.",
-    "The active change validator must reject any path beyond the two implementation and two evidence paths declared here."
+    "Before implementation, tests naming Database::begin_projected_read and ProjectedReadStream fail to compile because no owned projected stream, request, budget, batch, or evidence contract exists; the current successful Database::scan_ranges path returns a fully materialized Vec.",
+    "A characterization that creates a read before a later write cannot release the RrflowKvStore mutex and continue from a pinned physical memtable/segment generation because Snapshot owns only a sequence and current scan methods borrow Database.",
+    "A keys-only characterization cannot prove zero ValueOffsets/ValueData page requests because current segment range readers have no projection contract and load all value columns after the first visible row in a row group.",
+    "A store-open characterization cannot separate whole-file segment validation from checkpoint-reconciliation page work using current PageCacheStats/SegmentIoStats because validation reads are outside page counters and reconciliation begins before the store is returned."
   ],
   "edit_sequence": [
-    "Add only the C-06 identifier parser and diagnostics to documentation policy.",
-    "Run documentation policy against the unchanged execution map and capture the expected collision failure.",
-    "Correct the convergence research and execution-map forward sequence without editing or renaming the completed C-06a through C-06f journals.",
-    "Run the policy, active change validator, Ruff, inventory, version, knowledge-export, generated-surface, and diff checks.",
-    "Record the evidence journal, regenerate the file plan, reread every delta, commit, and push only to development/main."
+    "Add the named hybrid-segment and compaction tests first and capture their missing-contract compile failures without weakening existing assertions.",
+    "Implement Arc memtable/segment generations, request-bounded active-view capacity, manifest leases, and GC reachability; keep frozen v4 and existing transaction/compaction/reopen tests green before adding the cursor.",
+    "Implement the new reader contracts, memtable seek-after primitive, segment projected cursor, min-heap MVCC merge, tombstone handling, bounded Arrow-layout batch builder, cancellation, and typed limit failures.",
+    "Instrument actual selected I/O, per-page projected work, and deterministic segment-open validation while retaining cumulative process counters and zero semantic-page reads during low-level manifest reopen.",
+    "Add immutable RrflowKvStore open/reconciliation evidence and redacted phase fields without changing StorageEngine authority or exposing raw physical reads to clients.",
+    "Run the smallest named tests, then complete rrd-lsm and rrd-store suites, strict affected-package Clippy, frozen-format and direct-read regression tests, architecture guards, and locked workspace all-target compilation.",
+    "Update only declared evidence records with actual results and limitations, add the C-06g execution journal, regenerate the file plan, reread every changed file and the complete diff, and stop with C-06h as the next package."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "ruff check scripts/ci/check_documentation.py",
-    "ruff format --check scripts/ci/check_documentation.py",
+    "cargo test -p rrd-lsm --test hybrid_segment projected_stream_matches_model_across_ranges_snapshots_and_projections --locked -- --exact --nocapture",
+    "cargo test -p rrd-lsm --test hybrid_segment projected_stream_enforces_bounds_and_reports_selected_pages --locked -- --exact --nocapture",
+    "cargo test -p rrd-lsm --test compaction pinned_projected_stream_survives_flush_compaction_and_gc_until_drop --locked -- --exact --nocapture",
+    "cargo test -p rrd-store rrflow_kv_open_separates_segment_validation_and_reconciliation_io --locked -- --exact --nocapture",
+    "cargo test -p rrd-lsm --test segment v4_bytes_match_the_checked_in_format_vector --locked -- --exact",
+    "cargo test -p rrd-store --test direct_read_paths --locked",
+    "cargo test -p rrd-lsm --locked",
+    "cargo test -p rrd-store --locked",
+    "cargo clippy -p rrd-lsm --all-targets --locked -- -D warnings",
+    "cargo clippy -p rrd-store --all-targets --locked -- -D warnings",
+    "cargo test -p rrd-engine --test workspace_architecture --locked",
+    "cargo check --workspace --all-targets --locked",
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/ci/check_workflow.py",
     "python3 scripts/check_version.py",
     "python3 scripts/knowledge/test_export.py",
     "python3 scripts/ci/check_generated_surfaces.py",
+    "cargo fmt --all -- --check",
     "git diff --check"
   ],
   "stop_conditions": [
-    "A completed C-06 evidence journal is missing, duplicated, renamed, or contradicted by Git history.",
-    "The canonical roadmap assigns different remaining C-06 outcomes than the execution map.",
-    "The correction would change engine code, accepted gate status, Cargo.lock, product version, or an earlier evidence journal.",
-    "The parser depends on prose outside the owning execution-map sections or mistakes historical cross-references for future package declarations.",
-    "A changed path is not declared or a baseline file lacks complete authenticated review."
+    "A complete baseline file named by implementation or evidence has not been read and authenticated, or implementation requires a path not declared in this plan.",
+    "The design requires DataFusion, Tokio, futures, a provider SDK, a network service, an external database, a new crate dependency, Cargo.lock change, sibling checkout, generated runtime fetch, hook, compatibility reader, or second storage/lifecycle authority.",
+    "A projected read can only be implemented by cloning/materializing the complete result, retaining the RrflowKvStore database mutex while consumed, mutating/flushing storage at query creation, or exposing arbitrary raw physical keys through the public engine/store contract.",
+    "A live stream can observe a post-capture write, lose a pre-capture row, resurrect a tombstoned value, produce duplicate/out-of-order keys, or outlive the manifest/segment/mmap owners it reads.",
+    "A limit would be checked after excess work/allocation, an oversize item would be emitted, cancellation/drop could leak a generation lease, or a resource failure would be reported as successful truncation.",
+    "Segment-open, startup-reconciliation, and query work cannot be measured with non-overlapping semantics, actual io_uring fallback cannot be attributed, or counters require unsafe concurrent differencing of shared cumulative state.",
+    "The frozen segment-v4 bytes, key format, WAL/manifest publication, MVCC oracle, existing direct-read result, rrflowMX/rrflowKV semantic parity, dependency closure, version 1.0.0, or Cargo.lock changes.",
+    "Evidence would claim zero-copy DataFusion output, native graph/BM25/vector execution, completed C-06/C-07/F-01, turnkey installation, persistent reasoning/recall, Connectome readiness, an alpha binary, or competitive performance without the later owning gate's proof."
   ],
   "roadmap_status_change": "none"
 }
