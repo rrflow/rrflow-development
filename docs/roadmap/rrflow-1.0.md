@@ -1155,7 +1155,11 @@ C-06 progress evidence (2026-09-10; gate remains open):
   validation reconstructs exact words from decoded unique keys; checksum-
   rewritten malformed filters fail; definite point misses prune page loads;
   and present/tombstone/MVCC reads remain exact. Segment versions 1 through 4
-  are rejection inputs with no compatibility reader or positive fixture.
+  are rejection inputs with no compatibility reader or positive fixture. The
+  clean `07a6bb8` fixed-machine artifact records 139 filters/11,080 raw bytes,
+  zero member false negatives, 0.634% observed false positives, zero semantic-
+  page open work, and 114 page loads for 16,106 in-range miss checks; it is not
+  release, cross-platform, all-workload, or competitor evidence.
 - C-06 is not accepted. Remaining C-06i evidence and integration covers no
   compression versus adaptive page codecs, optional value placement, mixed-
   workload interference, and page-cache policy.

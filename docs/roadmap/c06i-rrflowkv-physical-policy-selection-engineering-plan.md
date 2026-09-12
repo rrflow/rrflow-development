@@ -3,6 +3,7 @@
 **Status:** historical; completed supporting candidate screen
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-physical-policy-selection`
 **Owner:** C-06i implementation order, measurement rules, and retained-policy handoff
+**Superseded by:** [`c06i-rrflowkv-persisted-filter-integration-engineering-plan.md`](c06i-rrflowkv-persisted-filter-integration-engineering-plan.md)
 
 This record explains the machine-enforced
 [`rrflow-1.0-active-change.json`](rrflow-1.0-active-change.json) package. The

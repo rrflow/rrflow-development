@@ -115,10 +115,14 @@ only explicitly ineligible diagnostic output.
 
 The historical candidate artifact is bound to clean revision `f7257fa`. It
 selected authenticated persisted row-group filters as the first production
-experiment. The separate persisted-filter artifact records the v5 integration;
-codec placement and segmented-LRU still require separate integrated trials and
-value separation remains rejected. The raw artifacts, not this summary, own
-their exact host, timings, counters, and digests.
+experiment. The separate persisted-filter artifact is bound to clean revision
+`07a6bb8` and records the v5 integration: 139 filters/11,080 raw filter bytes,
+zero member false negatives, 0.634% observed absent-key false positives, zero
+semantic-page open work, 16,020 definite negatives from 16,106 in-range miss
+checks, and 114 miss-path page loads. Codec placement and segmented-LRU still
+require separate integrated trials and value separation remains rejected. The
+raw artifacts, not this summary, own their exact host, timings, counters, and
+digests.
 
 ## Lifecycle measurements
 

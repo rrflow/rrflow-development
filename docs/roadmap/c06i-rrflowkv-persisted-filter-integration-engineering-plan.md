@@ -1,6 +1,6 @@
 # C-06i rrflowKV persisted row-group filter integration
 
-**Status:** active implementation and verification plan
+**Status:** active; implementation and clean evidence complete, architecture assertion closure pending
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration`
 **Owner:** segment-v5 persisted-filter bytes, integration proofs, and C-06i handoff
 **Machine plan:** [`rrflow-1.0-active-change.json`](rrflow-1.0-active-change.json)
@@ -184,6 +184,14 @@ baseline. The executable fails rather than publishing a successful trial when
 filter count/bytes drift, open reads semantic pages, a member is missed, the
 declared false-positive ceiling fails, or miss-path page loads are not below
 filter checks. Other physical policies remain explicitly unintegrated.
+
+The accepted artifact is bound to implementation revision `07a6bb8` and tree
+`9d3dd75`. Across three successful retained children plus one successful
+warm-up, it records 139 persisted filters occupying 11,080 raw filter bytes,
+zero member false negatives, 0.634 percent observed absent-key false positives,
+zero semantic-page operations during normal reopen, 16,020 definite negatives
+from 16,106 in-range miss checks, and 114 miss-path page loads. It is explicitly
+ineligible as release, cross-platform, all-workload, or competitor evidence.
 
 ## File and proof map
 
