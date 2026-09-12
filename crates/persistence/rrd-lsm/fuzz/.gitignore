@@ -1,0 +1,10 @@
+/target/
+/artifacts/
+/coverage/
+/corpus/**
+!/corpus/projected_read_state_machine/
+!/corpus/projected_read_state_machine/mixed-families
+!/corpus/projected_read_state_machine/faults-and-cancel
+!/corpus/segment_v4_open/
+!/corpus/segment_v4_open/mutate
+!/corpus/segment_v4_open/truncate

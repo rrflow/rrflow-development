@@ -437,6 +437,16 @@ These are checked-in, executable examples rather than illustrative pseudocode:
     only after its stream releases the manifest lease.
 13. `rrflow_kv_open_separates_segment_validation_and_reconciliation_io` proves
     startup phases are immutable and distinct from later query work.
+14. `projected_read_adversarial` compares deterministic mixed-family operation
+    histories with an independent MVCC oracle, drives every injected write,
+    flush, and compaction boundary, and verifies cancellation, limits, reopen,
+    compaction, and garbage-collection lifetime.
+15. `rrflowkv_stress` runs the same oracle with explicit seed, case, and
+    operation counts and reports stable replay/resource counters.
+16. The nested cargo-fuzz targets drive the state-machine oracle and mutate the
+    frozen authenticated segment-v4 fixture under AddressSanitizer. Generated
+    corpus/artifacts are ignored while reviewed seeds and the nested lockfile
+    remain tracked.
 
 ## Frozen vectors
 
@@ -470,6 +480,9 @@ cargo test -p rrd-lsm --test manifest current_publication_is_ordered_content_add
 cargo test -p rrd-lsm --test segment v4_bytes_match_the_checked_in_format_vector -- --exact
 cargo test -p rrd-lsm --test segment v4_rejects_authenticated_length_flags_and_page_corruption -- --exact
 cargo test -p rrd-lsm --test hybrid_segment --locked
+cargo test -p rrd-lsm --test projected_read_adversarial --locked -- --nocapture
+cargo run -p rrd-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
+cargo +nightly fuzz check --fuzz-dir crates/persistence/rrd-lsm/fuzz
 cargo test -p rrd-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
 cargo test -p rrd-lsm --test snapshot_bundle physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes -- --exact
 cargo test -p rrd-lsm
@@ -491,9 +504,10 @@ POAM-023. The v4 segment vector, fixed and generated mixed-family MVCC
 comparisons, configurable authenticated row-group targets, malformed-byte
 denial, ownership counters, bounded projected reads, pinned-generation GC, and
 separated segment-open/startup-reconciliation/query evidence are now concrete
-C-06 evidence. C-06 remains open for C-06h adversarial/property/fuzz/fault
-qualification and C-06i persisted-filter plus fixed-hardware compression,
-value-placement, mixed-workload, and cache comparisons. Gate F separately
+C-06 evidence. C-06h's finite stable/stress/sanitizer runs add reproducible
+adversarial qualification without changing the format. C-06 remains open for
+C-06i persisted-filter plus fixed-hardware compression, value-placement,
+mixed-workload, and cache comparisons. Gate F separately
 requires a stamped streamed DataFusion provider with projection/predicate/
 budget evidence. Passing this suite cannot close those remaining gates by
 itself.

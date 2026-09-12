@@ -28,6 +28,50 @@ def fail(message: str, failures: list[str]) -> None:
     failures.append(message)
 
 
+def is_cargo_fuzz_manifest(document: dict[str, object]) -> bool:
+    package = document.get("package")
+    if not isinstance(package, dict):
+        return False
+    metadata = package.get("metadata")
+    return isinstance(metadata, dict) and metadata.get("cargo-fuzz") is True
+
+
+def validate_cargo_fuzz_manifest(
+    manifest: Path,
+    document: dict[str, object],
+    declared_manifests: list[Path],
+    failures: list[str],
+) -> None:
+    relative = manifest.relative_to(ROOT)
+    package = document.get("package")
+    if not isinstance(package, dict):
+        fail(f"{relative} cargo-fuzz manifest has no package table", failures)
+        return
+
+    if manifest in declared_manifests:
+        fail(f"{relative} cargo-fuzz tooling must not be a product member", failures)
+    if package.get("version") != "0.0.0":
+        fail(f"{relative} cargo-fuzz tooling must use version 0.0.0", failures)
+    if package.get("publish") is not False:
+        fail(f"{relative} cargo-fuzz tooling must set publish = false", failures)
+
+    nested_workspace = document.get("workspace")
+    if not isinstance(nested_workspace, dict) or nested_workspace.get("members") != [
+        "."
+    ]:
+        fail(
+            f"{relative} cargo-fuzz tooling must define workspace members = ['.']",
+            failures,
+        )
+
+    owner_manifest = manifest.parent.parent / "Cargo.toml"
+    if manifest.parent.name != "fuzz" or owner_manifest not in declared_manifests:
+        fail(
+            f"{relative} cargo-fuzz tooling must live in fuzz/ below a product crate",
+            failures,
+        )
+
+
 def main() -> int:
     failures: list[str] = []
     if not SEMVER.fullmatch(VERSION):
@@ -42,26 +86,40 @@ def main() -> int:
         )
 
     manifests = sorted((ROOT / "crates").rglob("Cargo.toml"))
+    manifest_documents = {manifest: load_toml(manifest) for manifest in manifests}
     declared_manifests = sorted(
         ROOT / member / "Cargo.toml"
         for member in workspace["workspace"]["members"]  # type: ignore[index]
     )
-    if manifests != declared_manifests:
+    cargo_fuzz_manifests = [
+        manifest
+        for manifest, document in manifest_documents.items()
+        if is_cargo_fuzz_manifest(document)
+    ]
+    product_manifests = sorted(set(manifests) - set(cargo_fuzz_manifests))
+    if product_manifests != declared_manifests:
         fail(
             "Cargo package manifests and workspace membership differ: "
-            f"discovered={[str(path.relative_to(ROOT)) for path in manifests]} "
+            f"discovered={[str(path.relative_to(ROOT)) for path in product_manifests]} "
             f"declared={[str(path.relative_to(ROOT)) for path in declared_manifests]}",
             failures,
         )
     workspace_package_names: set[str] = set()
-    for manifest in manifests:
-        package = load_toml(manifest)["package"]  # type: ignore[index]
+    for manifest in product_manifests:
+        package = manifest_documents[manifest]["package"]  # type: ignore[index]
         workspace_package_names.add(package["name"])  # type: ignore[index]
         if package.get("version") != {"workspace": True}:  # type: ignore[union-attr]
             fail(
                 f"{manifest.relative_to(ROOT)} must use `version.workspace = true`",
                 failures,
             )
+    for manifest in cargo_fuzz_manifests:
+        validate_cargo_fuzz_manifest(
+            manifest,
+            manifest_documents[manifest],
+            declared_manifests,
+            failures,
+        )
 
     cargo_lock = load_toml(ROOT / "Cargo.lock")
     stale_locked_packages = sorted(

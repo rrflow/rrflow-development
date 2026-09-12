@@ -113,11 +113,13 @@ The active executable item is **C-06**. Its completed slices have replaced
 row-record immutable segments with segment v4's ordered key/version spine plus
 six Arrow-layout page buffers, manifest-authenticated format identities, safe
 mmap ownership, page-level physical counters, and a generated mixed-family
-MVCC/reopen/compaction differential with malformed-byte rejection. C-06g now
-adds the pinned, bounded, selective projected storage stream and separates
-segment-open, startup-reconciliation, and query evidence. C-06 remains
-unchecked while C-06h adversarial/property/fuzz qualification and C-06i
-revision-bound physical-policy measurements remain open.
+MVCC/reopen/compaction differential with malformed-byte rejection. C-06g adds
+the pinned, bounded, selective projected storage stream and separates
+segment-open, startup-reconciliation, and query evidence. C-06h now adds
+stable independent-model histories, deterministic all-boundary faults, stress
+replay, cancellation/resource cases, and two coverage-guided sanitizer
+targets. C-06 remains unchecked while C-06i revision-bound physical-policy
+measurements remain open.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -1122,9 +1124,28 @@ C-06 progress evidence (2026-09-10; gate remains open):
   release, duplicate-sequence denial, and old-view survival through flush,
   compaction, and garbage collection. The complete `rrd-lsm` and `rrd-store`
   suites and strict affected-package Clippy pass at the C-06g candidate.
-- C-06 is not accepted. Remaining evidence is C-06h broader adversarial,
-  property, fuzz, fault, and mixed-family qualification, followed by C-06i
-  fixed-hardware comparison of no compression against adaptive page codecs,
+- C-06h adds one reusable deterministic state-machine model over audit,
+  incoming/outgoing edge, record, runtime, scalar, term, and vector families.
+  Stable tests compare point, broad/disjoint range, keys-only, and key-value
+  projected reads at retained snapshots while mixing atomic writes, deletes,
+  flush, protected compaction, reopen, garbage collection, pinned reads,
+  cancellation, resource denial, and every write/flush/compaction fault
+  boundary. Failures retain exact seed, input digest, and input bytes.
+- A configurable `rrflowkv_stress` run passed 1,536 operations with 283
+  injected failures, 382 reopens, 189 compactions, 264 garbage collections,
+  and 1,334 projected reads. The complete `rrd-lsm` suite passed 94 tests and
+  strict all-target Clippy.
+- A locked nested cargo-fuzz project leaves the product dependency graph and
+  root lockfile unchanged. The version policy separately validates its
+  explicit cargo-fuzz marker, unpublished `0.0.0` package, one-member nested
+  workspace, and location below a declared product crate instead of weakening
+  product workspace parity. AddressSanitizer-backed bounded runs completed 512
+  state-machine executions and 4,096 authenticated segment-v4 mutation/open
+  executions without a crash, timeout, model difference, parser panic, or
+  accepted-but-unreadable segment. These finite runs do not prove absence of
+  defects or replace C-07/J continuous and cross-platform qualification.
+- C-06 is not accepted. Remaining evidence is C-06i fixed-hardware comparison
+  of no compression against adaptive page codecs,
   optional value separation, persisted filters, and page-cache policies.
   F-01 still owns the stamped asynchronous DataFusion provider; C-06g does not
   emit a DataFusion `RecordBatch` or claim end-to-end zero-copy.

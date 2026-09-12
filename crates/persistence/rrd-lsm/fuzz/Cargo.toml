@@ -1,0 +1,30 @@
+[package]
+name = "rrd-lsm-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+rrd-lsm = { path = ".." }
+tempfile = "=3.27.0"
+
+[[bin]]
+name = "projected-read-state-machine"
+path = "fuzz_targets/projected_read_state_machine.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "segment-v4-open"
+path = "fuzz_targets/segment_v4_open.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]

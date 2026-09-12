@@ -157,8 +157,9 @@ projection, emits bounded Arrow-compatible buffers, pins the manifest closure
 through cancellation/drop, and reports query work separately from segment-open
 validation and rrflowKV startup reconciliation. Fixed and generated mixed-
 family histories match the independent oracle through reopen and protected
-compaction. C-06 remains open for C-06h adversarial/property/fuzz
-qualification and C-06i measured compression, value-placement, persisted-
+compaction. C-06h now adds deterministic independent-model, stress, fault,
+lifetime, and coverage-guided sanitizer qualification over that stream. C-06
+remains open for C-06i measured compression, value-placement, persisted-
 filter, mixed-workload, and cache decisions. This is not a DataFusion
 `RecordBatch` provider, native graph/BM25/vector access, turnkey installation,
 or persistent reasoning/recall proof.

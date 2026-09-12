@@ -444,13 +444,46 @@ start. Creating these modules now would produce another contract island before
 storage, the primary binary, persisted attunement jobs, and canonical events
 exist.
 
+## C-06h observed qualification
+
+C-06h implements the testing behaviors selected above without importing an
+upstream storage or testing surface. One shared test-only state machine owns an
+independent MVCC version history and decodes bounded operations across audit,
+incoming/outgoing edge, record, runtime, scalar, term, and vector families.
+Stable tests, a configurable stress executable, and a coverage-guided target
+all consume that same oracle. A second fuzz target mutates the frozen
+authenticated segment-v4 fixture and, when `Segment::open` accepts bytes,
+requires a complete visible-version read to remain valid.
+
+The model deliberately combines semantic-family batches, retained snapshots,
+projected keys/key-value streams, reopen, flush, protected compaction, garbage
+collection, pinned-view lifetime, cancellation, output/page limits, and all
+ten injected write/flush/compaction boundary classes. Implementation output
+never updates expected state. Every unexpected result panics with the seed,
+operation, input digest, and exact input bytes.
+
+The bounded Linux run completed 1,536 stress operations including 283 injected
+failures and 382 reopens; 512 state-machine sanitizer executions; and 4,096
+segment-v4 sanitizer executions. The complete 94-test `rrd-lsm` suite and
+strict all-target Clippy passed. The repository version policy now recognizes
+the nested fuzz project only through explicit cargo-fuzz metadata and requires
+an unpublished `0.0.0` one-member workspace directly below a declared product
+crate; seven direct denial probes passed without weakening product workspace
+or frozen-version parity. These results qualify a reproducible finite candidate
+corpus only. They do not cover real child-process termination, device failure,
+ENOSPC, cross-platform mapped-buffer lifetime, continuous stress, or
+fixed-hardware performance; C-07 and Gate J retain those claims.
+Loom remains excluded because it cannot model the filesystem/mmap/io_uring
+boundaries under test, and no Miri claim is made for code it did not execute.
+
 ## Execution order
 
 The canonical roadmap order is the authority:
 
 1. C-06g: pinned selective projected rrflowKV stream and phase-scoped evidence
    (implemented candidate; recorded in the execution journal);
-2. C-06h: property/fuzz/adversarial and mixed-family correctness;
+2. C-06h: property/fuzz/adversarial and mixed-family correctness (implemented
+   candidate with stable, stress, and bounded sanitizer evidence);
 3. C-06i: measured compression, value-placement, filter and cache decisions;
 4. D-01: real `rrflow`/`rrflow.exe` install plan/apply, create/open/inspect,
    serve, authenticated ready, commit, close/reopen and baseline verify;
