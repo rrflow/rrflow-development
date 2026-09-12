@@ -8,7 +8,7 @@ pub const DEFAULT_SEGMENT_IO_REQUEST_BYTES: usize = 16 * 1024 * 1024;
 const MIN_SEGMENT_IO_REQUEST_BYTES: usize = 4 * 1024;
 const MAX_SEGMENT_IO_REQUEST_BYTES: usize = 64 * 1024 * 1024;
 
-/// Physical access policy for immutable v4 segment pages. Page checksums,
+/// Physical access policy for immutable v5 segment pages. Page checksums,
 /// Arrow-layout validation, and read-stamp semantics are identical in every
 /// mode; only page acquisition differs.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

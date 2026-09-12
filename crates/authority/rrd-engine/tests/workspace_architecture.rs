@@ -428,7 +428,9 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
     .expect("vector artifact catalog source must be readable");
     assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
     assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 3;"));
-    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 4;"));
+    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 5;"));
+    assert!(segment.contains("pub const SEGMENT_MAGIC: &[u8; 8] = b\"RRDSEG05\";"));
+    assert!(segment.contains("pub const INDEX_MAGIC: &[u8; 8] = b\"RRDIX005\";"));
     assert!(vector_catalog.contains("pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;"));
     for (name, source) in [
         ("batch", batch.as_str()),

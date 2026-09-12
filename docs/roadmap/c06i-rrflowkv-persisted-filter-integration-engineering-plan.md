@@ -1,6 +1,6 @@
 # C-06i rrflowKV persisted row-group filter integration
 
-**Status:** active; implementation and clean evidence complete, architecture assertion closure pending
+**Status:** active; persisted-filter production slice and identity closure complete, remaining C-06i policies open
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration`
 **Owner:** segment-v5 persisted-filter bytes, integration proofs, and C-06i handoff
 **Machine plan:** [`rrflow-1.0-active-change.json`](rrflow-1.0-active-change.json)
@@ -192,6 +192,13 @@ zero member false negatives, 0.634 percent observed absent-key false positives,
 zero semantic-page operations during normal reopen, 16,020 definite negatives
 from 16,106 in-range miss checks, and 114 miss-path page loads. It is explicitly
 ineligible as release, cross-platform, all-workload, or competitor evidence.
+
+The separately bound identity closure at planning revision `8b103b3` updates
+the repository architecture oracle to require version 5, `RRDSEG05`, and
+`RRDIX005`, and corrects the I/O boundary's single stale v4 documentation
+reference. The focused oracle and complete 28-test architecture suite pass. No
+executable storage expression, durable byte, dependency, trace, or evidence
+artifact changed in that closure.
 
 ## File and proof map
 
