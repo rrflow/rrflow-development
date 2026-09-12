@@ -1,7 +1,8 @@
 # C-06g rrflowKV projected-read engineering plan
 
-**Status:** active human-readable work-package plan; implementation and declared
-verification complete, commit/development-push handoff pending; C-06 remains open
+**Status:** active human-readable work-package plan; implementation, declared
+verification, and commit complete; development-push handoff pending; C-06
+remains open
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06g-rrflowkv-projected-read`
 **Owner:** subordinate C-06g file/symbol implementation and evidence sequence
 **Canonical gate owner:** [`rrflow-1.0.md`](rrflow-1.0.md), C-06
@@ -360,7 +361,7 @@ check C-06, claim a DataFusion stream, or claim alpha readiness.
 - [x] Run strict affected-package Clippy and frozen-format regressions.
 - [x] Re-read every changed file and review the complete diff.
 - [x] Journal exact commands/results, failures, omissions and remaining gaps.
-- [ ] Commit one coherent change; do not report a roadmap status change unless
+- [x] Commit one coherent change; do not report a roadmap status change unless
   the canonical acceptance evidence exists.
 
 ## Acceptance commands
