@@ -1,9 +1,9 @@
 # C-06i rrflowKV persisted row-group filter integration
 
-**Status:** active; persisted-filter production slice and identity closure complete, remaining C-06i policies open
+**Status:** historical; persisted-filter production slice and identity closure complete
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration`
 **Owner:** segment-v5 persisted-filter bytes, integration proofs, and C-06i handoff
-**Machine plan:** [`rrflow-1.0-active-change.json`](rrflow-1.0-active-change.json)
+**Superseded by:** [`c06i-rrflowkv-adaptive-page-compression-engineering-plan.md`](c06i-rrflowkv-adaptive-page-compression-engineering-plan.md)
 **Baseline:** `10c4ac2459d1862982bd94bdbc0ca6644d187928`
 **Planning commit:** `a623c9838e1b75357cb96a3939aa2a4f02569e29`
 

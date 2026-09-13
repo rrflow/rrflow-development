@@ -6,12 +6,14 @@ completion claim, or authorization to rewrite engine code
 **Owner:** primary-source evidence for C-06, C-07, F-01 through F-05, and the
 later governed configuration workflow
 **Audience:** RRFlow owner and engineers implementing the 1.0 pre-release
-**Researched:** 2026-09-12
-**Repository baseline:** `6de083f9cdf9a4ffe4a6904199745b49304d8fe5`
+**Researched:** 2026-09-12 through 2026-09-13
+**Latest reviewed repository baseline:** `787c618b659461ca9a72eed5db78aa9c2e41b28b`
 **Implementation update:** C-06g adds the bounded pinned projected reader;
 C-06h adds finite adversarial qualification; segment v5 integrates the first
-C-06i retained policy as authenticated persisted row-group filters. C-06
-remains open for the other measured physical-policy decisions and qualification
+C-06i retained policy as authenticated persisted row-group filters. Adaptive
+LZ4 is now selected and specified for a separately machine-bound segment-v6
+implementation; no compression runtime has changed yet. C-06 remains open for
+that implementation and the other physical-policy decisions and qualification
 **Assumptions:** RRFlow remains one independently installable Rust product;
 `RrdEngine` remains the sole authorization and transaction authority;
 rrflowKV is the persistent substrate; rrflowMX is the volatile conformance
@@ -122,7 +124,7 @@ filesystem, device, operating system, configuration, workload, and seed.
 | read/write/space amplification | physical reads, writes, compaction bytes, cache work, and live/dead space are attributed per operation and over time | C-06g scopes projected query work and separates segment-open/startup reconciliation; write/compaction/live-dead amplification ledgers remain incomplete |
 | cache behavior | capacity, admission, pinning, scan resistance, hit/miss/load, duplicate-load, and eviction behavior are measured | one bounded mutex-protected page LRU exists; policy and single-flight behavior are not qualified |
 | observability | stable low-cardinality metrics, scoped traces, status/inspection output, stall causes, compaction debt, and redacted capture bundles | useful tracing and counters exist across crates; no complete storage status surface or end-to-end causal proof exists |
-| test maturity | unit/property/model tests plus continuous crash stress, fuzz, deterministic fault injection, sanitizer/Miri lanes, and fixed-hardware regression | targeted tests and the C-06g projected MVCC/bounds/generation cases are substantial; no `db_stress`-class runner, fuzz target set, or continuous fault matrix exists |
+| test maturity | unit/property/model tests plus continuous crash stress, fuzz, deterministic fault injection, sanitizer/Miri lanes, and fixed-hardware regression | targeted tests, the C-06g projected MVCC/bounds/generation cases, and C-06h's bounded model/segment fuzz targets are substantial; no continuous `db_stress`-class fault matrix or cross-platform sanitizer qualification exists |
 | operator tooling | offline/online verify, manifest/table/WAL inspection, backup/restore, safe repair policy, and reproducible benchmark binaries | snapshot/archive pieces and diagnostic examples exist; primary-binary inspection/verify/repair is not complete |
 
 RocksDB documents explicit write slowdown and stop conditions based on immutable
@@ -181,7 +183,7 @@ code is implementation inventory until its owning roadmap evidence passes.
 | `IoContext` | one mutex around one io_uring instance and synchronous calls; C-06g reports the backend that actually served a read after fallback | later compare bounded per-device queues/pools and cancellation based on measurements |
 | `ManifestStore::load` | full immutable-file digest verification on normal open can scale with total bytes; WAL closure is simpler than mature version tracking | separate fast authenticated metadata open from full verify; track complete version/WAL closure and retain full verification as an explicit operation |
 | WAL lifecycle | one straightforward log path; no group commit, fragmentation policy, log inventory/recycling, or retained-log accounting | preserve correctness first; add version-bound WAL inventory and benchmarked group commit only after installed lifecycle works |
-| immutable table policy | persisted row-group filters are integrated; no compression or value separation | C-06i separately integrates only measured wins for adaptive page codecs/cache policy; value separation remains rejected from model-only evidence |
+| immutable table policy | persisted row-group filters are integrated; no compression or value separation | implement the separately planned adaptive LZ4 slice; qualify cache admission separately; retain value separation as rejected from model-only evidence |
 | operator surface | no primary-binary table/WAL/manifest inspect and full verify/repair flow | D-01 creates read-only inspect/verify; C-07/D-11 close full verification and recovery policy |
 
 The current `Database` file is too broad for long-term ownership, but splitting
@@ -556,6 +558,67 @@ not participate in range exclusion or establish semantic presence. LZ4,
 Zstandard, segmented-LRU, and value placement remain outside this integration
 slice; the historical candidate result does not silently activate them.
 
+### Adaptive page-compression decision
+
+The next production experiment is per-page adaptive LZ4 inside rrflowKV, not
+compression in DataFusion and not a second columnar store. The decision is
+grounded in three different kinds of evidence:
+
+1. RRFlow's fixed candidate corpus shows that both LZ4 and Zstandard produce
+   substantial byte reduction and exact round trips, but LZ4 has the lower
+   measured encode/decode CPU for the intended common path.
+2. The LZ4 block specification requires the caller to supply compressed and
+   decompressed sizes and a bounded destination.[^23] RRFlow's current 96-byte
+   page descriptor already authenticates physical length, logical length, and
+   a stored-page SHA-256 digest, so raw independent blocks fit without adopting
+   another frame or size authority.
+3. Arrow's physical format permits independent buffer compression and raw
+   fallback, but a compressed buffer must be decoded before consumers can use
+   the Arrow layout.[^12] Therefore only an eligible raw mmap page is a
+   zero-copy result; a compressed page is explicitly an owned aligned decode.
+
+The implementation target is a direct segment-v6 replacement. An authenticated
+header record carries the writer policy, and each page descriptor carries
+`none` or `lz4_block`. The default policy selects a block only when checked
+integer arithmetic proves at least 1,250 basis points of saving; otherwise it
+writes the original page. An authenticated configurable page limit prevents
+the codec's required worst-case output scratch from growing implicitly; the
+16 MiB default covers the existing maximum individual value with headroom, and
+larger pages remain raw. The page digest authenticates stored bytes before
+decode, while the existing whole-file footer authenticates the complete
+framing. This follows the useful separation in Parquet between compressed and
+uncompressed page sizes and a checksum over serialized stored page bytes,[^24]
+without copying Parquet's encoding, metadata system, or reader.
+
+Compression must not weaken rrflowKV's resource boundary. Before loading any
+semantic page, the v6 parser reconstructs and bounds the entire hypothetical
+uncompressed segment layout to the existing 1 GiB segment envelope. A selected
+page is then read by physical length, authenticated, decoded into an aligned
+buffer sized from the already-bounded logical length, and accepted only when
+the decoder returns that exact length. The decoded buffer—not the smaller
+encoded block—is charged to the page cache. RocksDB's documentation supports
+lightweight per-block compression, raw fallback for poor ratios, decoded block
+caching, and separate consideration of heavier bottom-level codecs,[^25] but
+RRFlow rejects its missing-codec fallback and option topology.
+
+Zstandard remains a laboratory candidate until C-07 has real level and cold
+placement semantics. The segmented-LRU simulation does not justify replacing
+the current cache. Moka's weighted capacity is documented as best-effort and
+its weight does not control victim selection,[^26] which is not enough for
+RRFlow's exact decoded-byte, pinned-generation, scan, and physical-evidence
+contract. Value separation remains rejected for lack of crash-safe publication,
+snapshot, range-read, and value-log garbage-collection proof.
+
+This physical boundary deliberately prepares rather than impersonates F-01.
+The future DataFusion provider performs I/O in its polled execution stream and
+claims pushdown only when rrflowKV actually avoids work.[^4] DataFusion's
+memory-pool contract does not automatically track `DataSourceExec` or flowing
+`RecordBatch` memory,[^27] so rrflowKV source, decode, and cache accounting must
+remain explicit and later compose with operator reservations under F-04/F-05.
+The complete byte contract, source map, corruption matrix, and execution order
+are owned by the
+[adaptive page-compression engineering plan](../roadmap/c06i-rrflowkv-adaptive-page-compression-engineering-plan.md).
+
 ## Execution order
 
 The canonical roadmap order is the authority:
@@ -564,8 +627,8 @@ The canonical roadmap order is the authority:
    (implemented candidate; recorded in the execution journal);
 2. C-06h: property/fuzz/adversarial and mixed-family correctness (implemented
    candidate with stable, stress, and bounded sanitizer evidence);
-3. C-06i: persisted filter integrated; compression, value-placement, mixed-
-   workload, and cache decisions remain separately gated;
+3. C-06i: persisted filter integrated; adaptive LZ4 implementation-ready;
+   value-placement, mixed-workload, and cache decisions remain separately gated;
 4. D-01: real `rrflow`/`rrflow.exe` install plan/apply, create/open/inspect,
    serve, authenticated ready, commit, close/reopen and baseline verify;
 5. C-07: recovery, background maintenance, backpressure, ENOSPC and sustained
@@ -659,3 +722,8 @@ snapshot, filter, or recall contract is not a win.
 [^20]: [CloudEvents specification](https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md), vendor-neutral occurrence/event identity and context envelope (accessed 2026-09-12).
 [^21]: [Rust Fuzz Book](https://rust-fuzz.github.io/book/), Rust-native fuzzing practice, and [`loom`](https://docs.rs/loom/latest/loom/), deterministic concurrency permutation testing (accessed 2026-09-12).
 [^22]: [`fail-rs`](https://github.com/tikv/fail-rs), runtime-configurable Rust fail points for deterministic and probabilistic failure injection (accessed 2026-09-12).
+[^23]: [LZ4 block format at pinned revision `0774d055`](https://github.com/lz4/lz4/blob/0774d05537f9762f838f7ab541b7765f1a729cb5/doc/lz4_Block_format.md), independent-block framing limits and bounded decode requirements (accessed 2026-09-13).
+[^24]: [Apache Parquet page metadata at pinned revision `bb22d017`](https://github.com/apache/parquet-format/blob/bb22d0171b47000308e24209db79876b8dbe9566/src/main/thrift/parquet.thrift), separate compressed/uncompressed sizes and checksum placement (accessed 2026-09-13).
+[^25]: RocksDB [compression](https://github.com/facebook/rocksdb/wiki/Compression) and [block-cache](https://github.com/facebook/rocksdb/wiki/Block-Cache) guidance, per-block policy, decoded caching, pinning, and scan concerns (accessed 2026-09-13).
+[^26]: [Moka at pinned revision `a616ec19`](https://github.com/moka-rs/moka/tree/a616ec19e8d4ed938caf8b2c88090331d778d5da), best-effort capacity and weighted-eviction semantics (accessed 2026-09-13).
+[^27]: [DataFusion 55 `MemoryPool`](https://docs.rs/datafusion/55.0.0/datafusion/execution/memory_pool/trait.MemoryPool.html), including memory that is not automatically tracked by the pool (accessed 2026-09-13).
