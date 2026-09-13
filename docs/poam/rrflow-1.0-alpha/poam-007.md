@@ -1,0 +1,38 @@
+# POAM-007 — installed specialization and seat identity
+
+**Status:** active parent-owned POA&M detail
+**Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-007`
+**Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
+
+This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
+ledger owns priority and lifecycle status; this file cannot change either
+independently.
+
+## Observed deficiency
+
+`AGENTS.md` is the repository instruction source and a useful seat/provider/representation
+graph persists through reopen, but there is no installed digest-bound specialization
+manifest or adapter-conformance proof across supported AI hosts. The current `MemoryEstate*`
+names conflate seat identity with an estate, CLI defaults hardcode Clyffy instead of
+consuming an installed specialization, the caller manually commits the identity plan, broad
+snapshot reconstruction resolves it, and the authenticated
+session/representation/authorization/routing path is not joined.
+
+## Impact
+
+Provider files can drift or claim invisible lifecycle behavior; a generic install can
+accidentally acquire this repository's persona; or a caller can label itself as a seat
+without one same-stamp authenticated and authorized causal operation.
+
+## Owning gates
+
+A-07, C-03, D-01, G-02, G-04, H-04, H-05, I-04 through I-06
+
+## Closure evidence
+
+Canonical seat naming is direct; the generic template has no persona/provider default; this
+repository's specialization explicitly selects Clyffy; install atomically persists the seat
+and approved representation inputs; provider stubs contain only verified forwarding
+behavior; and every adapter resolves the same specialization digest, authenticates the exact
+provider identity, resolves a visible representation at the operation stamp, independently
+authorizes the operation, and records seat attribution through commit/reopen.

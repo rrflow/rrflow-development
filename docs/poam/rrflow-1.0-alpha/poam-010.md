@@ -1,0 +1,38 @@
+# POAM-010 — context routing, feedback, and retention
+
+**Status:** active parent-owned POA&M detail
+**Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-010`
+**Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
+
+This detail record is part of the canonical RRFlow 1.0 alpha POA&M. The parent
+ledger owns priority and lifecycle status; this file cannot change either
+independently.
+
+## Observed deficiency
+
+Context routing uses useful components but lacks native incremental BM25/HNSW integration,
+adaptive access planning, and verified feedback-policy evolution. Proposed
+working/semantic/episodic memory tiers are still policy labels rather than independent
+databases, and no authorized retention routine yet converts evidence, access, outcome,
+legal/hold, provenance, or project policy into a versioned retirement proposal. Compaction
+cannot be allowed to infer semantic deletion from age, access count, an Ebbinghaus score, or
+a prompt boundary.
+
+## Impact
+
+Retrieval remains expensive and cannot prove that dynamic routing improves quality;
+premature autonomous decay could erase governed evidence while prompt-triggered
+flush/reindex work could amplify writes and latency.
+
+## Owning gates
+
+E, H-01, H-02, I-01 through I-03
+
+## Closure evidence
+
+Exact and approximate quality corpus, plan evidence, feedback replay, rollback, and
+regression gates pass. A deterministic policy fixture proves tier/priority changes and
+retirement proposals are authorized, reviewable, hold-aware, restart-safe, and reversible
+until an engine commit; compaction only reclaims versions already made unreachable by
+accepted retention state. No request forces a durability flush, full statistics rebuild,
+vector retrain, or graph rewrite.

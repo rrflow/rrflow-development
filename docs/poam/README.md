@@ -11,3 +11,6 @@ reorder the release roadmap.
 | POA&M | Durable warp | Checkout record | State |
 |---|---|---|---|
 | RRFlow 1.0 alpha | [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha) | [`rrflow-1.0-alpha.md`](rrflow-1.0-alpha.md) | active |
+
+The [RRFlow 1.0 alpha record portal](rrflow-1.0-alpha/) indexes its ledger
+governance and one addressable detail record per deficiency.
