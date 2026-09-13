@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "C-06i-rrflowkv-adaptive-page-compression-runtime",
+  "package_id": "C-06j-rrflowkv-scan-resistant-cache-integration",
   "status": "active",
   "package_kind": "bounded-runtime-implementation-and-evidence",
   "baseline": {
-    "revision": "b2aa2fed46f598f99e0810e563f4ae4f390ebb14",
-    "tree": "2c77ef469bfe3034eec75c1746a5787b46bc98b7",
+    "revision": "9592b886f2c6f2f716933fcf46e8c0595de3c315",
+    "tree": "bc177bbdb4af4adb1e30ae0cfe8f6ae46d2fd949",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,19 +13,20 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Implement and prove the researched segment-v6 adaptive LZ4 page codec inside the sole rrflowKV persistence boundary so flush, compaction, reopen, snapshot, bounded reads, and future DataFusion source batches share authenticated physical semantics.",
-    "roadmap_gates": ["C-06", "F-01", "F-05", "J-04"],
+    "alpha_prerequisite": "Complete the remaining C-06 physical-policy decision with a configurable exact-byte scan-resistant rrflowKV page cache and a real persisted mixed-family differential, while preserving one persistence authority below future stamped rrflowQL/DataFusion execution.",
+    "roadmap_gates": ["C-06", "C-07", "F-01", "F-05", "J-04"],
     "poam_items": ["POAM-002"],
     "architecture_owner": "docs/roadmap/rrflow-1.0.md#gate-c--sole-persistent-rrflowkv-substrate"
   },
-  "current_behavior": "The clean baseline accepts only segment v5. It persists six authenticated Arrow-layout buffers and canonical row-group filters, but every page is raw and physical length must equal logical length. Compression policy is not configurable, bytes_decompressed remains zero, and current fixtures, fuzzing, traces, and source-of-truth records describe v5.",
-  "target_behavior": "Directly replace segment v5 with authenticated segment v6. Add validated none and adaptive-LZ4 writer policies, deterministic per-page selection, stored-byte digests, a one-GiB reconstructed logical envelope, checksum-before-decode, exact aligned bounded decode, truthful ownership/cache/query/open evidence, flush and compaction propagation, none-versus-adaptive semantic differential proof, current-format fixtures and fuzzing, and one clean-revision integration artifact. Do not introduce a second persistence authority or change query semantics.",
+  "current_behavior": "The clean baseline has one RRFlow-owned exact-byte immutable page cache shared by database segments, but it admits every fitting miss into one LRU region. A broad projected scan can evict repeatedly used graph, lexical, vector, and control pages. The physical-policy laboratory advances a two-region cache only in simulation; production policy is not configurable, duplicate losing loads are unclassified, and no real same-corpus exact-versus-scan-resistant mixed-family evidence exists.",
+  "target_behavior": "Add a closed PageCachePolicy with selectable ExactLru and default ScanResistantLru modes. Preserve exact-byte charging and immutable Arc ownership; admit new pages probationary, promote on cache reuse, demote protected LRU pages above a validated target, evict probationary first, and count admissions, rejections, promotions, demotions, and duplicate loads. Prove byte-identical reads, strict capacity, reopen invariance, and fewer post-scan hot loads on one real persisted eight-family corpus. Keep the cache below RrdEngine and the future rrflowQL/DataFusion TableProvider, and close C-06 only if all canonical evidence is satisfied.",
   "unchanged_behavior": [
-    "WAL, MVCC visibility, manifest-v3 publication, snapshot-bundle-v1 envelope, transaction authority, row-group filtering, projected-read ordering, tombstone behavior, crash boundaries, and garbage-collection ownership remain unchanged.",
-    "rrflowQL and DataFusion remain downstream stamped compute over bounded Arrow-compatible batches; they do not own persistence, authentication, decompression, or cache admission in this package.",
-    "Zstandard remains laboratory-only; Moka, value separation, family grouping, graph, BM25, ANN, TurboQuant, installation, attunement, SDK, Connectome, and binary release work remain separately gated.",
-    "Segment versions one through five are rejection inputs only; no compatibility reader, migration shim, fallback, or positive v5 fixture is retained.",
-    "Product version remains 1.0.0, C-06 and POAM-002 remain open, and only rrflow/rrflow-development may receive this pre-release package."
+    "WAL, MVCC, manifest-v3, segment-v6 encoding, snapshot-bundle-v1, adaptive LZ4, row-group filters, projected-read ordering, tombstones, compaction publication, garbage collection, and RrdEngine transaction authority remain unchanged.",
+    "The cache remains process-local and non-durable; replacement policy never enters segment, manifest, WAL, snapshot, application-key, query, or public transport encodings.",
+    "rrflowQL/DataFusion remains downstream stamped compute over bounded Arrow-compatible batches and cannot own persistence, authorization, page admission, or direct writes.",
+    "No family-specific capacity, caller-selected cache bypass, Moka, TinyLFU, ghost cache, value log, cache daemon, alternate storage engine, hook, routine, skill, adapter, or provider state is added.",
+    "Lock sharding, in-flight load coalescing, pinned-owner concurrency, cancellation fairness, and sustained stress remain C-07 work; this package records duplicate loads without claiming to prevent them.",
+    "Product version remains 1.0.0; installation, attunement, native graph/BM25/vector/TurboQuant, SDK/API/MCP/Connectome, distribution, and release work remain separately gated; only rrflow/rrflow-development may receive this package."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -33,132 +34,188 @@
     "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
   },
   "reviewed_files": [
-    {"path":"AGENTS.md","baseline_sha256":"6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c","baseline_lines":129,"reviewed_lines":"1-129","symbols":["planning chain","source adaptation","journaling"]},
-    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"f9f662ee8322b3d8efdd92bc5c5451cec9384547837e7199e2d5122abba0bf73","baseline_lines":377,"reviewed_lines":"1-377","symbols":["prior research package","machine-plan schema"]},
-    {"path":"crates/persistence/rrd-lsm/Cargo.toml","baseline_sha256":"3319cd8a7c87ff9e0aff5652bd942e8cbd48549513df853aca536a82477b738b","baseline_lines":38,"reviewed_lines":"1-38","symbols":["physical-policy-lab","codec dependencies"]},
-    {"path":"crates/persistence/rrd-lsm/src/lib.rs","baseline_sha256":"901962e09f40681bd548b4039bcc835e1c02920422d2d812df2ae09b63bd27f2","baseline_lines":160,"reviewed_lines":"1-160","symbols":["segment public exports"]},
-    {"path":"crates/persistence/rrd-lsm/src/database.rs","baseline_sha256":"cd7c49804e1e7e5049c79ef3a5f7cef84e07d7eab7634b39204a1b21e8704734","baseline_lines":2125,"reviewed_lines":"1-2125","symbols":["DatabaseOptions","flush_memtable_inner","write_compaction_partition"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/format.rs","baseline_sha256":"a32e71590ea90ba4ff346edc4c9bbffb6751e939738ea6571ff5d875f54c4ce0","baseline_lines":1091,"reviewed_lines":"1-1091","symbols":["segment v5 identity","encode","parse_metadata","page descriptors"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_sha256":"ac15ee4fa52a7f5b436a9b544e25bdfb816317bcff68ed606e46d1250d5aa0c9","baseline_lines":1795,"reviewed_lines":"1-1795","symbols":["SegmentOpenEvidence","write_from_memtable_with_cache","read_page","PageCache"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_sha256":"d0f4f346c298797aa1e0693610686dd641397e78158291c7cc83b06874d2257e","baseline_lines":1466,"reviewed_lines":"1-1466","symbols":["candidate codec trial","real segment observations"]},
-    {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_sha256":"11767550fcdc1b528115dfee0671efb9a4fb644553bb3050e124d465bd6a1d4e","baseline_lines":798,"reviewed_lines":"1-798","symbols":["fixed-machine child protocol","evidence artifact"]},
-    {"path":"crates/persistence/rrd-lsm/tests/segment.rs","baseline_sha256":"2a9dc4c219034decb1baef13d61a4cd71269dc4409b75cdb56f89b75ce2f8f1f","baseline_lines":718,"reviewed_lines":"1-718","symbols":["v5 format vector","authenticated corruption","cache evidence"]},
-    {"path":"crates/persistence/rrd-lsm/tests/hybrid_segment.rs","baseline_sha256":"d54ad36b364d8f49f5c1f68f5d661680cf59abb9ff0466da8cbc74825aea03ae","baseline_lines":1309,"reviewed_lines":"1-1309","symbols":["mixed-family model","reopen and compaction"]},
-    {"path":"crates/persistence/rrd-lsm/tests/tiered_io.rs","baseline_sha256":"d0e3d22635247d3d81ce62aff00c588596a2afe95bb399c18da895df28a47b58","baseline_lines":119,"reviewed_lines":"1-119","symbols":["mmap ownership","bounded I/O evidence"]},
-    {"path":"crates/persistence/rrd-lsm/tests/manifest.rs","baseline_sha256":"676e974975bb357468af8df77d85a0536019d2c9a665e321638b891d705fd3da","baseline_lines":243,"reviewed_lines":"1-243","symbols":["manifest-v3 vector","format identity"]},
-    {"path":"crates/persistence/rrd-lsm/tests/snapshot_bundle.rs","baseline_sha256":"55600f4fd5b8459b7b4e2acf7faa718e0947a817a4fe573fa0b1f11ea44e9ba4","baseline_lines":399,"reviewed_lines":"1-399","symbols":["snapshot-bundle vector","install and corruption"]},
-    {"path":"crates/persistence/rrd-lsm/tests/support/projected_read_model.rs","baseline_sha256":"e517e961f29713cedcdc9eb084bb89fabda22608e582cdea9344e93fb6ea033e","baseline_lines":977,"reviewed_lines":"1-977","symbols":["independent MVCC oracle","scenario configuration"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/Cargo.toml","baseline_sha256":"79750ed34bf4d530a7cac499e4ec5635d9b7be69b53dda9d8519f31fa418e609","baseline_lines":30,"reviewed_lines":"1-30","symbols":["segment-v5-open target"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/Cargo.lock","baseline_sha256":"708e46a107b1a43509c5b24e8ea1a1feb3ea7ea6a22e003faabe8b1c00ff6543","baseline_lines":577,"reviewed_lines":"1-577","symbols":["isolated fuzz dependency lock"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/README.md","baseline_sha256":"64d900d2739c966d43a8ac2a30b6615ce91a339d5a1eac12df2607b48b66c097","baseline_lines":33,"reviewed_lines":"1-33","symbols":["current-format fuzz invocation"]},
-    {"path":"crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v5_open.rs","baseline_sha256":"2485eb415a2d4a297e066870b62bc3706ffd7a6d0137c4b9d0ea73f31d6cfc91","baseline_lines":102,"reviewed_lines":"1-102","symbols":["bounded segment mutation oracle"]},
-    {"path":"crates/persistence/rrd-lsm/fixtures/segment-v5.hex","baseline_sha256":"548a30fab492124158757bf4d11b44ff8442df84d91884a91d7afd11acf3f6ea","baseline_lines":1,"reviewed_lines":"1-1","symbols":["v5 positive vector"]},
-    {"path":"crates/persistence/rrd-lsm/fixtures/manifest-v3.json","baseline_sha256":"906fbf1bd616db277151d9948ba6287e7860e97cb9045cba25eece149a324d39","baseline_lines":49,"reviewed_lines":"1-49","symbols":["current manifest vector"]},
-    {"path":"crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex","baseline_sha256":"ee945a257243699fc5a8d9edf85e2580c8ed2ec37234f75ee22812bfdf496673","baseline_lines":1,"reviewed_lines":"1-1","symbols":["current physical snapshot vector"]},
-    {"path":"crates/persistence/rrd-store/src/rrflow_kv.rs","baseline_sha256":"975f7cbd1fe568abfc2f09b8b7b94dd87d0f2e1cbadc880dd0c72a16197a4f80","baseline_lines":1750,"reviewed_lines":"1-1750","symbols":["rrflow_kv.open trace","reconciliation evidence"]},
-    {"path":"crates/persistence/rrd-store/tests/rrflow_kv_open.rs","baseline_sha256":"7936e94cf688df4a4a1e6130c5a634696bab23589574effe87262b4ec3a56dd8","baseline_lines":115,"reviewed_lines":"1-115","symbols":["open evidence trace assertions"]},
-    {"path":"crates/authority/rrd-engine/tests/workspace_architecture.rs","baseline_sha256":"c9111567add1c343244eab95b31d7f490156103406d928aa804384666ab30468","baseline_lines":1834,"reviewed_lines":"1-1834","symbols":["current segment identity","dependency boundary oracle"]},
-    {"path":"README.md","baseline_sha256":"835fee3c824e7a3825247073a6574776be40eb886cd04f2b29785f3781354b99","baseline_lines":216,"reviewed_lines":"1-216","symbols":["product status","C-06 summary"]},
-    {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"2a0f3ec0df25e231e28ff46b6340be6f4601d9b871c5fe0491463179a1be19d4","baseline_lines":65,"reviewed_lines":"1-65","symbols":["OBJ-02","OBJ-05"]},
-    {"path":"docs/roadmap/rrflow-1.0.md","baseline_sha256":"4f6277eb80e9a837927f8221c480a75dcf359b61e5d39e59fb360ee353fa599c","baseline_lines":1329,"reviewed_lines":"1-1329","symbols":["C-06","current implementation status"]},
-    {"path":"docs/poam/rrflow-1.0-alpha.md","baseline_sha256":"80a709ec126ce60466c637ae64eac444ef5a6e11a432bb63ce9371a66b8d76d3","baseline_lines":82,"reviewed_lines":"1-82","symbols":["POAM-002"]},
-    {"path":"docs/architecture/engine-data-flow.md","baseline_sha256":"b336019b0938fef2a597c65244de3739c8744136a6be46fc5cdf5fd36f6e536f","baseline_lines":1380,"reviewed_lines":"1-1380","symbols":["persistence flow","physical-policy ledger"]},
-    {"path":"docs/reference/storage/rrflowkv-current-format.md","baseline_sha256":"d6f7f5d12714148fa6c66dd7979d104b2fdc86a37247fada19df3b05478409e7","baseline_lines":559,"reviewed_lines":"1-559","symbols":["segment-v5 contract","ownership and qualification"]},
-    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","baseline_sha256":"fcfcc6d29efaf99a094f024303f80d24e8a0d1c7f8d0fdf2c31f1bd818097579","baseline_lines":220,"reviewed_lines":"1-220","symbols":["physical-policy harness","fixed-machine evidence"]},
-    {"path":"docs/reference/storage/tiered-persistence.md","baseline_sha256":"39693bd0eb3ecfaa408960e848c74c02cdc94cd17235cca1f5a5d75b25468670","baseline_lines":119,"reviewed_lines":"1-119","symbols":["immutable state","mapped ownership"]},
-    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","baseline_sha256":"3cd46cde640a87ad57e05357aeac6c376db08fb52962647779f49d0f1e27dadf","baseline_lines":137,"reviewed_lines":"1-137","symbols":["C-06 scenario"]},
-    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","baseline_sha256":"4b4a2338023824b0b125193f468fd7fbbb8f8387040098a39f0536fdd272e850","baseline_lines":729,"reviewed_lines":"1-729","symbols":["current implementation audit","adaptive codec decision"]},
-    {"path":"docs/roadmap/README.md","baseline_sha256":"14cca28b3aa6734508815ef83921efdf9ecdd6b0ba1231af8d2a30fd9091d87f","baseline_lines":46,"reviewed_lines":"1-46","symbols":["C-06i work-package index"]},
-    {"path":"docs/evidence/README.md","baseline_sha256":"52c5d8dde8d63c76a2b8593389def0968c402029e4e1995bf2137cfcfd8ffce9","baseline_lines":19,"reviewed_lines":"1-19","symbols":["C-06i evidence index"]},
-    {"path":"docs/roadmap/c06i-rrflowkv-adaptive-page-compression-engineering-plan.md","baseline_sha256":"80dee9a28d6cf0ed130bceca31c80c27f3a0969ad6a349acc0ae8d6c9b0c6f83","baseline_lines":563,"reviewed_lines":"1-563","symbols":["segment-v6 decision","implementation map","stop conditions"]},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","baseline_sha256":"b859235605291f55667def123a8e6f11663f6283cefe7be732568c272afbec78","baseline_lines":3971,"reviewed_lines":"1-3971","symbols":["package journal template","C-06i history"]},
-    {"path":"scripts/ci/build_execution_inventory.py","baseline_sha256":"3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca","baseline_lines":1841,"reviewed_lines":"1-1841","symbols":["deterministic inventory","check mode"]}
+    {"path":"AGENTS.md","baseline_sha256":"6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c","baseline_lines":129,"reviewed_lines":"1-129","symbols":["planning chain","source adaptation","journaling","push authority"]},
+    {"path":"README.md","baseline_sha256":"d89a5f278857cacaade3d2c1fe06b356a14d04971a466e49a448a97de716134a","baseline_lines":224,"reviewed_lines":"1-224","symbols":["product identity","current status","storage warp points"]},
+    {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"baa006e9faf5f07de1f80fbba7c27414819f799710b60d645d0ed0333daae7aa","baseline_lines":65,"reviewed_lines":"1-65","symbols":["OBJ-02","OBJ-05","alpha proof"]},
+    {"path":"docs/roadmap/rrflow-1.0.md","baseline_sha256":"c703a841470b93da85459e0d4d33ba94ad18981fe797fff350a037d7846f0e07","baseline_lines":1346,"reviewed_lines":"1-1346","symbols":["C-06","C-07","F-01","F-05","J-04"]},
+    {"path":"docs/poam/rrflow-1.0-alpha.md","baseline_sha256":"8bcadb816716aec999dbb75b43f076ddb9568ad22220f9ba059ce2ef8df3aa21","baseline_lines":82,"reviewed_lines":"1-82","symbols":["POAM-002","verified gaps"]},
+    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"65d8152e46be0936f248bce9ac93b6cfd88529f772bf80a0dfb4db7bce3660e6","baseline_lines":182,"reviewed_lines":"1-182","symbols":["machine-plan schema","prior package handoff"]},
+    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","baseline_sha256":"b73ca517651ea34c64bcc0d9bc0321d1135c2a0c41b8cd3bd80a563c5988cd31","baseline_lines":3997,"reviewed_lines":"1-3997","symbols":["C-06 packages","journal template","global stop conditions"]},
+    {"path":"docs/roadmap/README.md","baseline_sha256":"56edff7207d156fc45796a59fa7ffd6ac816d17d8625625834b8fd881dd22847","baseline_lines":46,"reviewed_lines":"1-46","symbols":["roadmap discovery","C-06 package index"]},
+    {"path":"docs/research/README.md","baseline_sha256":"da2cc431bb01a4d1e1eabea1a7af13ad595024dee6c9faab7010ba94e5eb7e20","baseline_lines":92,"reviewed_lines":"1-92","symbols":["research classification","storage research index"]},
+    {"path":"docs/architecture/engine-data-flow.md","baseline_sha256":"fe808fbbcd9b7e9fd4409b0ed53ac3d6f58d17069a266bec90da9087d583c086","baseline_lines":1385,"reviewed_lines":"1-1385","symbols":["rrflowKV","projected batches","DataFusion boundary"]},
+    {"path":"docs/reference/storage/rrflowkv-current-format.md","baseline_sha256":"82bad418a956482a8cf4c2c2b69bf02aee5873a69690b9c7307378d8f0f5806a","baseline_lines":585,"reviewed_lines":"1-585","symbols":["segment v6","page cache","ownership evidence"]},
+    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","baseline_sha256":"e9189049eecc355a1c92c6e3fe1a8c3a9fdd7d40732ebff9ae6dc9184d0df07e","baseline_lines":224,"reviewed_lines":"1-224","symbols":["physical-policy harness","evidence limitations"]},
+    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","baseline_sha256":"724b4d6841bd678960f53b65e00cf44b93c0a26c568393224da0ccce08e1d6db","baseline_lines":758,"reviewed_lines":"1-758","symbols":["cache candidates","value placement","DataFusion boundary"]},
+    {"path":"docs/evidence/README.md","baseline_sha256":"cae0b70b1ea02884961dd1a8236b67382aaf915c70de3280d279290fbb2e0045","baseline_lines":20,"reviewed_lines":"1-20","symbols":["artifact index","evidence limitations"]},
+    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","baseline_sha256":"224417bd5ba1c6c801ebf0f97fdbd3dba3c9de6fc160ab3a175ebf366d1167b4","baseline_lines":137,"reviewed_lines":"1-137","symbols":["C-06 scenarios","remaining qualification"]},
+    {"path":"scripts/ci/build_execution_inventory.py","baseline_sha256":"3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca","baseline_lines":1841,"reviewed_lines":"1-1841","symbols":["deterministic inventory generator","planned path classification"]},
+    {"path":"crates/persistence/rrd-lsm/src/lib.rs","baseline_sha256":"0de8a4f2f41b3c396a52fefcc1be469449b575f83db52cd88ca866b5ed64f6ca","baseline_lines":162,"reviewed_lines":"1-162","symbols":["database exports","segment exports"]},
+    {"path":"crates/persistence/rrd-lsm/src/database.rs","baseline_sha256":"88b07bb73f70c7e90101aeb1aee78baec329bd6c76e01505f2d463af05bd1750","baseline_lines":2142,"reviewed_lines":"1-2142","symbols":["DatabaseOptions","create/open","page cache construction","open trace","projected reads"]},
+    {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_sha256":"ee623aae6bd5eb8e6ecf615bfaa374d84df0e48a48d0d9105aca3be6bdb760b1","baseline_lines":2061,"reviewed_lines":"1-2061","symbols":["PageCacheStats","PageCache","CacheEntry","new_page_cache","load_page_with_evidence"]},
+    {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_sha256":"e9d6235af88292a50fc00a3885796de176ef4cb86c0b522cc29b5a84f231a0c6","baseline_lines":1573,"reviewed_lines":"1-1573","symbols":["cache candidate simulator","real segment observations","physical policy trial"]},
+    {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_sha256":"69364edd04d8454a6f5a6cbdd4094ac25881b4d37753ce76b25f8225866a8830","baseline_lines":815,"reviewed_lines":"1-815","symbols":["fixed-machine child protocol","evidence aggregation","artifact validation"]}
   ],
   "implementation_changes": [
-    {"path":"crates/persistence/rrd-lsm/Cargo.toml","baseline_state":"present","symbols":["dependencies","physical-policy-lab"],"action":"Promote pinned safe checked lz4_flex block support to the production graph while keeping Zstandard laboratory-only.","failure_semantics":"Default features, frames, unchecked decode, an unpinned codec, or default Zstandard fail the architecture oracle."},
-    {"path":"crates/persistence/rrd-lsm/src/lib.rs","baseline_state":"present","symbols":["segment exports"],"action":"Expose only the canonical compression policy, defaults, codec identity, and evidence needed by composition and tests.","failure_semantics":"No alternate storage or codec authority may enter the public surface."},
-    {"path":"crates/persistence/rrd-lsm/src/database.rs","baseline_state":"present","symbols":["DatabaseOptions","flush","compaction"],"action":"Validate and retain writer policy, propagate it through all immutable outputs, and emit bounded aggregate write evidence.","failure_semantics":"Invalid policy fails open/create; flush or compaction may not bypass policy or publish partial output."},
-    {"path":"crates/persistence/rrd-lsm/src/segment/format.rs","baseline_state":"present","symbols":["SegmentCompressionPolicy","segment v6","encode","parse_metadata"],"action":"Implement v6 policy/codec metadata, deterministic adaptive LZ4 pages, stored-byte digests, descriptor validation, and reconstructed logical-envelope checks.","failure_semantics":"Unknown fields, overflow, policy/codec conflict, malformed lengths, excessive logical state, or prior formats fail closed before decode allocation."},
-    {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_state":"present","symbols":["Segment","read_page","SegmentOpenEvidence","PageCacheStats"],"action":"Thread policy into writes; authenticate stored pages before exact aligned decode; preserve raw mmap borrowing and charge decoded ownership truthfully.","failure_semantics":"Codec errors, checksum errors, inexact decode, or accounting overflow fail without cached partial data."},
-    {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_state":"present","symbols":["run_physical_policy_trial","integration observations"],"action":"Measure real none and adaptive-v6 outputs and retain Zstandard and cache/value simulations only as explicitly unintegrated comparisons.","failure_semantics":"Evidence may not substitute candidate bytes for production writer/reopen semantics or claim release/competitor proof."},
-    {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_state":"present","symbols":["fixed-machine protocol","artifact validation"],"action":"Emit clean-revision integration evidence for deterministic none/adaptive v6 bytes and semantic reopen/compaction equivalence.","failure_semantics":"Dirty, mismatched, single-policy, non-round-tripping, or all-raw evidence is rejected."},
-    {"path":"crates/persistence/rrd-lsm/tests/segment.rs","baseline_state":"present","symbols":["v6 vector","codec boundaries","corruption matrix"],"action":"Replace v5 positives and prove deterministic mixed codecs, policy validation, stored checksum order, exact decode bounds, evidence, and prior-version rejection.","failure_semantics":"Checksum-rewritten malformed metadata/blocks must fail safely and no v5 positive path may survive."},
-    {"path":"crates/persistence/rrd-lsm/tests/hybrid_segment.rs","baseline_state":"present","symbols":["none/adaptive differential","malformed corpus"],"action":"Run identical mixed-family MVCC, reopen, and compaction behavior under both policies and update current-format rejection bytes.","failure_semantics":"Any semantic or ordering difference fails the package."},
-    {"path":"crates/persistence/rrd-lsm/tests/tiered_io.rs","baseline_state":"present","symbols":["raw mmap","compressed decode"],"action":"Prove raw mmap buffers borrow while compressed buffers are owned and decompression is counted across source modes.","failure_semantics":"Compressed data may never be reported borrowed or zero-copy."},
-    {"path":"crates/persistence/rrd-lsm/tests/manifest.rs","baseline_state":"present","symbols":["manifest-v3 vector"],"action":"Bind manifest-v3 to current v6 segment identity without changing its envelope version.","failure_semantics":"Stale physical identity or alternate format acceptance fails."},
-    {"path":"crates/persistence/rrd-lsm/tests/snapshot_bundle.rs","baseline_state":"present","symbols":["snapshot-bundle-v1 vector"],"action":"Prove v6 physical bytes export, install, reopen, and corruption denial under the unchanged bundle envelope.","failure_semantics":"Installed bytes must retain exact segment identity and recovery boundaries."},
-    {"path":"crates/persistence/rrd-lsm/tests/support/projected_read_model.rs","baseline_state":"present","symbols":["ScenarioConfig","independent model"],"action":"Parameterize the restored independent oracle by compression policy and compare none/adaptive executions.","failure_semantics":"Generated fault, lifetime, resource, snapshot, or read semantics may not diverge by physical policy."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/Cargo.toml","baseline_state":"present","symbols":["segment-v6-open"],"action":"Directly replace the v5 current-format target declaration.","failure_semantics":"No v5-named positive target remains."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/Cargo.lock","baseline_state":"present","symbols":["rrd-lsm production dependencies"],"action":"Regenerate the isolated fuzz lock for the production LZ4 edge.","failure_semantics":"The isolated target must resolve the same pinned codec."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/README.md","baseline_state":"present","symbols":["segment-v6 invocation"],"action":"Document the direct current-format target and retained replay procedure.","failure_semantics":"Commands may not name deleted v5 positives."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v5_open.rs","baseline_state":"present","symbols":["obsolete v5 target"],"action":"Delete the obsolete positive current-format target after carrying its bounded oracle into v6.","failure_semantics":"Deletion is valid only with the v6 replacement in the same package."},
-    {"path":"crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v6_open.rs","baseline_state":"absent","symbols":["v6 metadata and block mutation oracle"],"action":"Add bounded mutations for policy, codec, lengths, stored bytes, and digests plus accepted-segment reads.","failure_semantics":"Accepted mutations must remain bounded and panic-free through all reads."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/segment-v5.hex","baseline_state":"present","symbols":["obsolete v5 positive vector"],"action":"Delete the v5 positive fixture.","failure_semantics":"Prior bytes remain rejection inputs generated in tests, never a compatibility fixture."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/segment-v6.hex","baseline_state":"absent","symbols":["canonical mixed-codec v6 vector"],"action":"Generate and check in deterministic current-format bytes containing raw and compressed pages.","failure_semantics":"The vector must equal the production writer byte for byte."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/manifest-v3.json","baseline_state":"present","symbols":["v6 segment descriptor"],"action":"Regenerate the manifest vector for v6 checksums and format digest.","failure_semantics":"Manifest envelope remains v3 and must authenticate the exact segment."},
-    {"path":"crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex","baseline_state":"present","symbols":["v6 physical snapshot"],"action":"Regenerate the bundle vector around the v6 segment while preserving envelope version one.","failure_semantics":"Decode/install/reopen must be exact."},
-    {"path":"crates/persistence/rrd-store/src/rrflow_kv.rs","baseline_state":"present","symbols":["rrflow_kv.open","reconciliation evidence"],"action":"Propagate v6 policy/page aggregates and preserve distinct startup versus query byte accounting.","failure_semantics":"Trace fields stay low-cardinality and emit no keys, values, prompts, or project labels."},
-    {"path":"crates/persistence/rrd-store/tests/rrflow_kv_open.rs","baseline_state":"present","symbols":["open evidence assertions"],"action":"Assert v6 policy/raw/compressed aggregates and unchanged zero semantic-page startup reads.","failure_semantics":"Startup must not masquerade decompression or query work as open validation."},
-    {"path":"crates/authority/rrd-engine/tests/workspace_architecture.rs","baseline_state":"present","symbols":["alpha_storage_closure"],"action":"Require v6 identity, one pinned production LZ4 block codec, prior-reader absence, and default Zstandard absence.","failure_semantics":"Any parallel codec/storage path fails architecture validation."},
-    {"path":"README.md","baseline_state":"present","symbols":["C-06 current status"],"action":"Update the product map to accurately summarize the implemented v6 slice without claiming C-06 or alpha completion.","failure_semantics":"README remains a portal and cannot become a duplicate detailed contract."},
-    {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_state":"present","symbols":["OBJ-02","OBJ-05"],"action":"Record v6 adaptive physical progress and the still-missing DataFusion provider and alpha proofs.","failure_semantics":"No objective closes without its named end-to-end evidence."},
-    {"path":"docs/roadmap/rrflow-1.0.md","baseline_state":"present","symbols":["C-06","implementation status"],"action":"Replace stale v5/uncompressed implementation statements with actual v6 evidence and remaining work.","failure_semantics":"C-06 stays open until all acceptance evidence exists."},
-    {"path":"docs/poam/rrflow-1.0-alpha.md","baseline_state":"present","symbols":["POAM-002"],"action":"Update the verified gap ledger for integrated compression while retaining unresolved value/cache/mixed-workload/qualification gaps.","failure_semantics":"The POA&M stays open."},
-    {"path":"docs/architecture/engine-data-flow.md","baseline_state":"present","symbols":["immutable storage","adaptive compression"],"action":"Describe the authenticated v6 write/read/decode/DataFusion handoff as one rrflowKV boundary.","failure_semantics":"DataFusion is not described as durable storage or direct writer."},
-    {"path":"docs/reference/storage/rrflowkv-current-format.md","baseline_state":"present","symbols":["segment-v6 contract","ownership","evidence"],"action":"Replace the current-format reference with exact v6 policy, descriptor, checksum, logical-envelope, and ownership behavior.","failure_semantics":"No v5 positive or compressed-zero-copy claim remains."},
-    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","baseline_state":"present","symbols":["C-06i integration evidence"],"action":"Distinguish real v6 none/adaptive integration evidence from retained candidate-only comparisons.","failure_semantics":"One-host data is not release or superiority proof."},
-    {"path":"docs/reference/storage/tiered-persistence.md","baseline_state":"present","symbols":["v6 immutable state","mapped ownership"],"action":"Update tier semantics for raw borrowing and owned compressed decode.","failure_semantics":"Cold-tier policy remains separate and unimplemented."},
-    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","baseline_state":"present","symbols":["C-06 scenario"],"action":"Record the v6 differential and corruption evidence while preserving outstanding C-06/F/J cells.","failure_semantics":"A partial slice cannot become full release qualification."},
-    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","baseline_state":"present","symbols":["implementation audit","C-06i decision"],"action":"Change researched future tense only where the production path is now proven and retain source limitations.","failure_semantics":"Measured inference and implemented fact remain distinguishable."},
-    {"path":"docs/roadmap/README.md","baseline_state":"present","symbols":["C-06i package state"],"action":"Change the adaptive package discovery state from implementation-ready to implemented with bounded evidence.","failure_semantics":"Canonical roadmap status remains owned elsewhere."},
-    {"path":"docs/roadmap/c06i-rrflowkv-adaptive-page-compression-engineering-plan.md","baseline_state":"present","symbols":["package status","implementation record"],"action":"Bind actual commits, deviations, commands, evidence, and remaining gates after implementation.","failure_semantics":"The supporting record may not rewrite canonical completion authority."}
+    {
+      "path": "crates/persistence/rrd-lsm/src/lib.rs",
+      "baseline_state": "present",
+      "symbols": ["PageCachePolicy exports"],
+      "action": "Expose the closed cache policy and measured default protected-capacity constant without exposing internal regions or replacement structures.",
+      "failure_semantics": "No caller, provider, semantic family, or second cache authority enters the public surface."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/database.rs",
+      "baseline_state": "present",
+      "symbols": ["DatabaseOptions","create/open validation","page cache construction","rrd_lsm::open"],
+      "action": "Add non-durable cache policy configuration, validate it before filesystem mutation, construct the sole shared cache with it, expose truthful policy evidence, and trace low-cardinality configuration.",
+      "failure_semantics": "Invalid ratios fail closed before path creation; reopening with another policy cannot change durable identity or visibility."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/mod.rs",
+      "baseline_state": "present",
+      "symbols": ["PageCachePolicy","PageCacheStats","PageCache","load_page_with_evidence"],
+      "action": "Implement exact/probationary/protected regions, second-hit promotion, protected-target demotion, probationary-first eviction, strict byte accounting, admission/rejection/promotion/demotion/duplicate-load counters, and stale-heap/clock invariants.",
+      "failure_semantics": "I/O never occurs under the cache mutex; total and region residency never exceed or disagree with configured capacity; eviction never invalidates a reader-owned Arc."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs",
+      "baseline_state": "present",
+      "symbols": ["run_physical_policy_trial","IntegratedCachePolicyObservation","policy decision"],
+      "action": "Retain candidate simulation as screening evidence and add a real same-corpus exact-versus-scan-resistant mixed-family production-reader comparison with semantic digests and counter deltas.",
+      "failure_semantics": "The selected policy is integrated only when exact identities and bounds match and post-scan hot loads are strictly lower."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs",
+      "baseline_state": "present",
+      "symbols": ["evidence version","child identity","aggregate artifact","validation"],
+      "action": "Emit and validate clean-revision C-06j evidence for both production cache policies, authenticated child identity, exact capacity, semantic equality, post-scan loads, host provenance, and limitations.",
+      "failure_semantics": "Dirty, vacuous, mismatched, non-deterministic, over-capacity, semantically divergent, or non-improving results are rejected."
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/page_cache.rs",
+      "baseline_state": "absent",
+      "symbols": ["configuration denial","reopen invariance","mixed-family differential","capacity evidence"],
+      "action": "Add failure-first black-box tests through Database and ProjectedReadStream for validation, durable invariance, exact semantics, scan resistance, and truthful counters.",
+      "failure_semantics": "The old admit-every-miss default must fail the pollution oracle and no test may substitute a simulator or mock for persisted reads."
+    }
   ],
   "evidence_changes": [
-    {"path":"docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json","action":"Add revision-bound real-writer none/adaptive integration measurements, semantic identities, resource counters, host provenance, and explicit limitations."},
-    {"path":"docs/evidence/README.md","action":"Index the new artifact as bounded integration evidence, not release or competitor proof."},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","action":"Append the package journal with baseline, complete-file reviews, changed behavior, exact commands/results, failures, omissions, commits, and remaining gaps."},
-    {"path":"docs/roadmap/rrflow-1.0-file-plan.jsonl","action":"Regenerate the deterministic implementation and test inventory after the current-format replacement.","generated":true,"generator":"scripts/ci/build_execution_inventory.py"}
+    {"path":"docs/research/rrflowkv-page-cache-and-mixed-workload-research.md","action":"Add the primary-source audit and RRFlow adaptation decision for exact-byte scan-resistant caching and the DataFusion boundary."},
+    {"path":"docs/roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md","action":"Add the exact source/symbol/test/evidence implementation plan and update its completion record after proof."},
+    {"path":"docs/research/README.md","action":"Index the bounded cache and mixed-workload research without transferring architecture authority."},
+    {"path":"docs/roadmap/README.md","action":"Index the active C-06j supporting plan and later record its evidence state without changing canonical status independently."},
+    {"path":"docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json","action":"Add clean-revision real-reader exact-versus-scan-resistant mixed-family measurements, identities, counters, provenance, and limitations."},
+    {"path":"docs/evidence/README.md","action":"Index the C-06j artifact as bounded integration evidence, not release, scale, or competitor proof."},
+    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","action":"Append pre-edit traceability and final package journal with full-file reviews, commands, failures, results, commits, omissions, and remaining gaps."},
+    {"path":"README.md","action":"Update only current C-06 status and the next dependency after canonical evidence; retain the portal structure."},
+    {"path":"docs/objectives/rrflow-1.0-alpha.md","action":"Record the truthful physical-policy prerequisite state without closing an alpha outcome."},
+    {"path":"docs/roadmap/rrflow-1.0.md","action":"Close C-06 only if prior and current named evidence collectively satisfy every acceptance condition; otherwise name the exact residual."},
+    {"path":"docs/poam/rrflow-1.0-alpha.md","action":"Narrow POAM-002 to the remaining recovery/concurrency or retain any unproved C-06 gap explicitly."},
+    {"path":"docs/architecture/engine-data-flow.md","action":"Place the process-local cache below rrflowKV projected batches and future stamped rrflowQL/DataFusion execution."},
+    {"path":"docs/reference/storage/rrflowkv-current-format.md","action":"Document the non-durable cache policy and counters and correct stale current-format wording in the owned section."},
+    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","action":"Add the C-06j reproduction command, measured fields, acceptance invariant, and one-host limitations."},
+    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","action":"Change only cache/value/family candidate statements now supported or rejected by real production evidence."},
+    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","action":"Record the mixed-family cache differential and preserve remaining C-07/F/J qualification gaps."},
+    {"path":"docs/roadmap/rrflow-1.0-file-plan.jsonl","action":"Regenerate the deterministic repository implementation/test inventory after the runtime and documentation changes.","generated":true,"generator":"scripts/ci/build_execution_inventory.py"}
   ],
   "research": {
-    "decision": "not_required",
-    "reason": "The immediately preceding clean package already completed and cited the primary-source adaptation analysis for LZ4 blocks, Arrow ownership, Parquet-style stored-byte integrity, RocksDB compression/cache lessons, DataFusion provider and MemoryPool boundaries, and Moka deferral. This turn revalidated the exact pinned lz4_flex 0.14.0 API and baseline code; no unresolved external fact blocks this bounded implementation.",
-    "sources": []
+    "decision": "required",
+    "reason": "The baseline had only a local simulator and no accepted production cache policy. Primary sources were needed to distinguish scan resistance, admission, exact capacity, concurrent-cache tradeoffs, and the rrflowKV-versus-DataFusion cache boundary before code changes.",
+    "sources": [
+      {
+        "title": "RocksDB Block Cache",
+        "url": "https://github.com/facebook/rocksdb/wiki/Block-Cache",
+        "retained_behavior": "Use one shared immutable decoded-page cache with explicit capacity and hit, miss, add, eviction, and load evidence.",
+        "rejected_assumption": "Do not copy the C++ API, relaxed capacity behavior, compressed secondary cache, or unmeasured sharding defaults."
+      },
+      {
+        "title": "RocksDB Basic Operations",
+        "url": "https://github.com/facebook/rocksdb/wiki/Basic-Operations/8b0db11192422ae154253ae6e76123f28b09488a",
+        "retained_behavior": "Prevent one-pass scans from erasing reused pages and preserve ordered-key locality.",
+        "rejected_assumption": "Do not expose caller-controlled fill-cache authority or hard-code semantic-family quotas."
+      },
+      {
+        "title": "RocksDB block-cache analysis and simulation tools",
+        "url": "https://github.com/facebook/rocksdb/wiki/Block-cache-analysis-and-simulation-tools",
+        "retained_behavior": "Compare policies from explicit traces and retain second-use admission as a candidate principle.",
+        "rejected_assumption": "Do not treat a simulator, RocksDB trace schema, midpoint default, or ghost cache as production proof."
+      },
+      {
+        "title": "InnoDB midpoint insertion strategy",
+        "url": "https://dev.mysql.com/doc/refman/8.0/en/innodb-performance-midpoint_insertion.html",
+        "retained_behavior": "Adapt probationary insertion and promotion on reuse for mixed point-read and batch-scan workloads.",
+        "rejected_assumption": "Do not import MySQL time windows, fixed page assumptions, global variables, or its default region ratio."
+      },
+      {
+        "title": "TinyLFU: A Highly Efficient Cache Admission Policy",
+        "url": "https://arxiv.org/abs/1512.00727",
+        "retained_behavior": "Keep frequency admission as a later trace-driven candidate if two-region recency evidence proves insufficient.",
+        "rejected_assumption": "Do not add approximate frequency sketches, aging, or workload-dependent windows before real RRFlow traces justify them."
+      },
+      {
+        "title": "Moka cache crate documentation",
+        "url": "https://docs.rs/moka/latest/moka/",
+        "retained_behavior": "Retain weighted concurrent admission as a comparison point for later concurrency research.",
+        "rejected_assumption": "Do not substitute best-effort capacity and eventually consistent policy metadata for RRFlow's exact physical byte ledger."
+      },
+      {
+        "title": "DataFusion TableProvider",
+        "url": "https://docs.rs/datafusion/latest/datafusion/datasource/trait.TableProvider.html",
+        "retained_behavior": "Keep projection, filter, and limit pushdown over streaming Arrow RecordBatches above the rrflowKV physical source.",
+        "rejected_assumption": "Do not place persistence, authentication, page admission, or an eager full-estate copy inside DataFusion."
+      },
+      {
+        "title": "DataFusion RuntimeEnv",
+        "url": "https://docs.rs/datafusion/latest/datafusion/execution/runtime_env/struct.RuntimeEnv.html",
+        "retained_behavior": "Treat analytical query memory, spill, temporary disk, and session cache as a separately composed F-gate resource boundary.",
+        "rejected_assumption": "Do not merge DataFusion query caches with rrflowKV's immutable physical page cache."
+      }
+    ]
   },
   "trace_resource_debug": {
-    "runtime_trace": {"decision":"add","reason":"Flush, compaction, open, and store traces gain low-cardinality policy and raw/compressed stored/logical aggregate fields."},
-    "resource_evidence": {"decision":"add","reason":"Metadata validates the reconstructed logical envelope before page allocation; page loads report stored reads, decoded bytes, allocation capacity, copies, borrowing, decompression, and decoded-cache residency."},
-    "debugging_evidence": {"decision":"add","reason":"Frozen bytes, authenticated corruption, exact decode-length, ownership, none/adaptive differential, reopen, compaction, snapshot, fuzz, and deterministic replay checks isolate physical-format defects."}
+    "runtime_trace": {
+      "decision": "add",
+      "reason": "The existing rrd_lsm::open event gains only policy kind, protected basis points, and capacity; cumulative access counters remain queryable without per-page payload events."
+    },
+    "resource_evidence": {
+      "decision": "add",
+      "reason": "Stats report exact total and per-region resident bytes/entries plus admissions, rejections, evictions, promotions, demotions, loads, and duplicate loads; active reader Arc ownership remains distinct from cache residency."
+    },
+    "debugging_evidence": {
+      "decision": "add",
+      "reason": "Configuration denial, same-state policy reopen, independent row/value digests, phase counter deltas, stale-heap/clock invariants, and deterministic replay distinguish semantic, policy, I/O, and decode defects."
+    }
   },
   "first_failure_oracle": [
-    "The first format edit intentionally breaks v5 fixture and identity assertions until the v6 writer, reader, and direct fixture replacement land together.",
-    "The default adaptive corpus must produce at least one raw and one LZ4 page; an all-raw result fails rather than yielding vacuous codec proof.",
-    "The same independent generated operations under None and AdaptiveLz4 must produce identical MVCC point, range, projected, reopen, compaction, snapshot, cancellation, and failure-boundary results.",
-    "Authenticated policy, descriptor, logical-length, and stored-block mutations must fail before unsafe allocation or semantic visibility."
+    "The new public page-cache test is added before production edits and must initially fail to compile because PageCachePolicy and its new evidence fields are absent.",
+    "Invalid protected ratios must fail before the database directory exists; reopening the same durable bytes with either valid policy must preserve manifest, snapshot, ordering, and values.",
+    "The real eight-family corpus must exceed cache capacity, force at least one exact-LRU post-scan reload, and permit a reused hot set to remain protected; otherwise the workload is vacuous and the plan stops.",
+    "Exact and scan-resistant policies must produce independently expected byte-identical projected rows and hot values while remaining within exact capacity; any semantic or bound difference fails.",
+    "An oversize page is served but rejected from admission, stale heap entries cannot select the wrong victim, and a promoted Arc retains identity through demotion and eviction pressure."
   ],
   "edit_sequence": [
-    "Commit this machine plan alone as the direct child of b2aa2fe and validate zero post-plan implementation paths.",
-    "Add the pinned dependency and policy type/default/validation; run focused configuration tests.",
-    "Implement v6 header/descriptor encoding, adaptive stored pages, logical envelope, and metadata rejection; allow old golden failures to surface.",
-    "Implement stored-byte checksum-before-decode, exact aligned LZ4 decode, ownership/cache/open/query evidence, and flush/compaction propagation.",
-    "Add focused mixed-codec, corruption, tiered-I/O, and none/adaptive independent-model tests; run them before fixture updates.",
-    "Directly replace current-format fixture, manifest/snapshot vector, and fuzz target; update store and workspace architecture oracles.",
-    "Update only the named current source-of-truth/supporting records, regenerate inventory, append the journal, and validate documentation.",
-    "Commit runtime implementation; from its clean revision generate deterministic fixed-machine evidence, commit it separately, and rerun the full verification ladder.",
-    "Resolve development remote URL/ref/revision, push normally only to development/main, and verify the exact remote revision."
+    "Commit this machine plan alone as the direct child of 9592b88; validate that all current post-plan differences are declared and no runtime path differs.",
+    "Commit the source-backed research, implementation plan, indexes, and pre-edit traceability journal as a documentation-only child; rerun policy and documentation checks.",
+    "Add the black-box page_cache test first and record the intended missing-type compile failure.",
+    "Add PageCachePolicy, defaults, strict validation, DatabaseOptions propagation, public evidence, and low-cardinality open tracing.",
+    "Implement the exact and scan-resistant state machines with no I/O under the mutex; make focused configuration, capacity, region, identity, and mixed-family tests pass.",
+    "Extend the feature-gated real physical laboratory and evidence example; run only discarded dirty smoke output until validation passes.",
+    "Run rrd-lsm all-target/all-feature tests, strict Clippy, rrd-store, architecture, and workspace checks; commit runtime source and tests.",
+    "From the clean runtime revision generate and validate the release-profile C-06j artifact, then reconcile only declared source-of-truth/supporting records, journal results, and regenerate the file plan.",
+    "Reread every changed file and the complete diff, run the final validation ladder, commit closeout, resolve both remote URLs and refs, push normally only to development/main, and verify official main did not move."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "cargo test -p rrd-lsm --test segment --locked",
-    "cargo test -p rrd-lsm --test hybrid_segment --locked",
-    "cargo test -p rrd-lsm --test tiered_io --locked",
-    "cargo test -p rrd-lsm --test manifest --test snapshot_bundle --locked",
-    "cargo test -p rrd-store --test rrflow_kv_open --locked",
+    "cargo test -p rrd-lsm --test page_cache --locked",
+    "cargo test -p rrd-lsm --test segment database_page_cache_is_shared_bounded_and_observable --locked -- --exact",
+    "cargo test -p rrd-lsm --features physical-policy-lab cache_candidates_preserve_identity_and_exact_capacity --locked",
     "cargo test -p rrd-lsm --all-targets --all-features --locked",
     "cargo clippy -p rrd-lsm --all-targets --all-features --locked -- -D warnings",
-    "cargo clippy -p rrd-store --all-targets --locked -- -D warnings",
-    "cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v6-open -- -runs=4096 -max_len=256 -timeout=10",
+    "cargo test -p rrd-store --locked",
     "cargo test -p rrd-engine --test workspace_architecture --locked",
     "cargo check --workspace --all-targets --locked",
+    "cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json",
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/ci/check_generated_surfaces.py",
@@ -168,15 +225,16 @@
     "git diff --check"
   ],
   "stop_conditions": [
-    "A required implementation, test, fixture, documentation, generator, or evidence path is missing from this machine plan.",
-    "Any durable length, offset, alignment, threshold, allocation, cursor, aggregate, or counter arithmetic is unchecked.",
-    "Decode allocation occurs before current-format, whole-file, metadata, logical-envelope, and stored-page digest validation.",
-    "Compression silently falls back after a codec error, compressed output is called zero-copy, or decoded cache capacity is charged at stored size.",
-    "v5 remains accepted, a compatibility reader/shim appears, or a positive v5 fixture/target survives.",
-    "None and adaptive policies differ semantically or any recovery, snapshot, compaction, pinned-view, cancellation, GC, resource, or corruption proof regresses.",
-    "DataFusion, Zstandard production placement, Moka, value separation, native index work, installation, Connectome, or release promotion leaks into this slice.",
-    "An evidence run is dirty, non-deterministic, unbound to its revision/environment, or described as release, scale, or competitor proof.",
-    "A push targets official rrflow/rrflow, rewrites history, creates a release/tag, or is not verified against the exact development ref."
+    "A required implementation, test, documentation, generator, or evidence path is missing from this machine plan.",
+    "Exact and scan-resistant policies return different rows, values, ordering, snapshot identity, or durable bytes.",
+    "Total residency exceeds capacity, scan-resistant region totals disagree, I/O occurs under the mutex, or eviction invalidates an active reader Arc.",
+    "A caller, semantic family, DataFusion node, provider, hook, routine, skill, or external service gains physical cache authority.",
+    "Moka, TinyLFU, a ghost cache, another cache crate, value separation, a second persistence engine, or a durable compatibility path appears necessary.",
+    "The real workload is vacuous, exact LRU does not reload after the scan, or scan resistance does not strictly reduce post-scan loads.",
+    "Duplicate-load evidence is presented as coalescing, or C-07 concurrency and scalability are claimed without its stress proof.",
+    "A benchmark or one-host artifact is described as release, scale, latency, network, or competitor superiority evidence.",
+    "C-06 is closed from compilation, simulation, or this metric alone rather than every named canonical prerequisite.",
+    "A push targets official rrflow/rrflow, rewrites history, creates a tag/release/artifact promotion, or is not verified against the exact development ref."
   ],
-  "roadmap_status_change": "Record the adaptive-LZ4 segment-v6 C-06i slice as implemented only after runtime, recovery, differential, fixture, fuzz, trace, and clean-revision evidence pass. C-06, F-01, F-05, J-04, POAM-002, and all alpha outcomes remain open."
+  "roadmap_status_change": "Close C-06 only after prior C-06a through C-06i evidence plus the real C-06j mixed-family/cache artifact collectively prove the canonical row; if they do, Gate C becomes 6/7 and C-07 is next. No alpha outcome, F gate, J gate, installation, reasoning, recall, or release status changes in this package."
 }
