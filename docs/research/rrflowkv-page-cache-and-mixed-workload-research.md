@@ -1,6 +1,6 @@
 # rrflowKV page-cache and mixed-workload research
 
-**Status:** active supporting research; bounded review complete and implementation is governed by C-06j
+**Status:** active supporting research; implementation handoff complete and canonical acceptance remains owned by the roadmap
 **Coordinate:** `rrflow://rrflow-instance/data/research/rrflowkv-page-cache-mixed-workload`
 **Owner:** source-backed input to C-06; not architecture, roadmap, or completion authority
 **Reviewed:** 2026-09-13
@@ -270,9 +270,33 @@ engine.
   it lacks atomic pointer publication, snapshot, recovery, corruption,
   garbage-collection, and range-read proof.
 
+## Observed integration result
+
+The production implementation is bound to clean revision
+`5b1c31de73cabf79fe3353112635a09f6a12e364` and source tree
+`d99c09eadf567f55aaf3f41ea1614c16a697c1d4`. The retained artifact is
+[`c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json`](../evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json)
+with SHA-256
+`8a008ee33bb50ca197783227cfcfbb4d58945dd2f26dca8cdf12e1804106b9ad`.
+Across three isolated release-profile children:
+
+- exact LRU performed 48 post-scan hot-page loads;
+- scope-aware scan-resistant LRU performed zero;
+- the selected policy recorded 18,200 same-scope suppressions, 48 promotions,
+  and 48 protected entries;
+- both policies stayed within the 1,048,576-byte capacity; and
+- manifest, semantic, hot-value, and projected-row identities remained exact.
+
+All 114 all-target/all-feature `rrd-lsm` tests, strict affected-package Clippy,
+the complete `rrd-store` suite, 28 workspace-architecture guards, and the
+locked workspace all-target check passed for the runtime change. The artifact
+is one-host physical-policy integration evidence; it is not release,
+concurrency, scale, latency, DataFusion, reasoning/recall, or competitor proof.
+
 ## Implementation handoff
 
-The exact source/test/evidence edits are owned by
+The completed source/test/evidence edits are recorded by
 [`c06j-rrflowkv-scan-resistant-cache-engineering-plan.md`](../roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md).
-Only the canonical [RRFlow 1.0 roadmap](../roadmap/rrflow-1.0.md) may close
-C-06 after all named evidence passes.
+The canonical [RRFlow 1.0 roadmap](../roadmap/rrflow-1.0.md) accepts C-06 from
+the complete C-06a-through-C-06j evidence corpus; this supporting record does
+not change that status independently.

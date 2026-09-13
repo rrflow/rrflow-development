@@ -1,6 +1,6 @@
 # C-06j rrflowKV scan-resistant cache engineering plan
 
-**Status:** active implementation plan; machine plan committed before runtime work
+**Status:** active supporting work-package evidence; runtime implementation and clean artifact complete
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache`
 **Owner:** subordinate C-06 implementation and evidence record
 **Baseline revision:** `9592b886f2c6f2f716933fcf46e8c0595de3c315`
@@ -455,5 +455,27 @@ Stop and amend the committed plan before continuing if:
 
 ## Completion record
 
-Pending implementation, clean-revision evidence, documentation reconciliation,
-commit, and development-only push.
+Planning commits `d3a36b0` and `982b7a2` preceded their respective runtime
+edits. Runtime commit `5b1c31de73cabf79fe3353112635a09f6a12e364`
+implements the closed cache policy, exact accounting, scope-aware projected
+reuse, production-reader comparison, and evidence validation. Its clean source
+tree is `d99c09eadf567f55aaf3f41ea1614c16a697c1d4`; Cargo.lock remains
+`316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27`.
+
+The retained Linux x86_64 artifact is
+`docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json`, SHA-256
+`8a008ee33bb50ca197783227cfcfbb4d58945dd2f26dca8cdf12e1804106b9ad`.
+Three isolated release-profile children exit zero. Exact LRU performs 48 post-
+scan hot-page loads; scope-aware scan-resistant LRU performs zero and records
+18,200 same-scope suppressions, 48 promotions, and 48 protected entries. Both
+policies remain within 1,048,576 bytes and return identical manifest,
+semantic, hot-value, and projected-row identities.
+
+All 114 `rrd-lsm` all-target/all-feature tests, strict Clippy, the complete
+locked `rrd-store` suite, all 28 workspace-architecture tests, and the locked
+workspace all-target check pass. The first 45-versus-45 real-reader failure,
+the resulting scope correction, the initially untracked-target architecture
+failure, and the corrected example target name are retained in the execution
+journal. Documentation closeout and the normal development-only push are
+recorded in that journal; no official repository, tag, binary, artifact
+promotion, or release is authorized by this package.

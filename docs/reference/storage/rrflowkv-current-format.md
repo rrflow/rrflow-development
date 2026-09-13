@@ -1,6 +1,6 @@
 # rrflowKV current physical format
 
-**Status:** active implementation reference for the single current typed application-key and hybrid immutable-segment formats; C-06 remains partial until the evidence listed below passes
+**Status:** active implementation reference for the single current typed application-key and accepted C-06 hybrid immutable-segment formats
 **Coordinate:** `rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`
 **Owner:** physical bytes, limits, recovery rules, and pre-release format debt implemented by `rrd-store` and `rrd-lsm`
 
@@ -11,9 +11,10 @@ does not own release status, and makes no performance or competitive claim.
 Current comparison mechanics and evidence limitations are owned by the
 [benchmark-harness reference](rrflowkv-benchmark-harness.md).
 The [roadmap](../../roadmap/rrflow-1.0.md) owns the replacement and removal
-work. [POAM-002](../../poam/rrflow-1.0-alpha.md) keeps the physical-layout
-deficiency open; closed POAM-003 records the accepted single-node reader and
-whole-executable pre-release-shape convergence.
+work. Closed [POAM-002](../../poam/rrflow-1.0-alpha.md) records C-06 physical-
+layout acceptance; closed POAM-003 records the accepted single-node reader and
+whole-executable pre-release-shape convergence. C-07 and F remain separate
+open qualification boundaries.
 
 ## Current and target boundary
 
@@ -28,8 +29,9 @@ Each page remains raw unless its independent LZ4 block meets the configured
 saving threshold. Point, range, snapshot, CAS, recovery, and compaction reads
 use those objects directly and do not invoke DataFusion.
 
-This is a partial C-06 implementation, not completion of C-06 and not a claim
-that query output is zero-copy. The segment owns Arrow-compatible buffer layout
+This is the accepted C-06 physical implementation, not completion of the
+persistent-engine alpha and not a claim that query output is zero-copy. The
+segment owns Arrow-compatible buffer layout
 and safe mapped-buffer ownership. C-06g exposes a synchronous selective
 projected stream to the physical storage boundary, but Gate F must still adapt
 that stream through a stamped `TableProvider`/`ExecutionPlan` and prove actual
@@ -73,7 +75,8 @@ callers to duplicate:
 | Mutation operations per batch | 1,000,000 | `MAX_OPERATIONS` |
 | Key/value bytes | 1 MiB / 8 MiB | batch and segment validators |
 | Segment bytes / segment-index bytes | 1 GiB / 64 MiB | segment validator |
-| Row-group target / maximum rows / immutable page cache | 64 KiB / 2,048 / 4 MiB | configurable `SegmentRowGroupBudget` and database defaults |
+| Row-group target / maximum rows | 64 KiB / 2,048 | configurable `SegmentRowGroupBudget` and database defaults |
+| Immutable page-cache capacity / default policy / protected target | 4 MiB / scope-aware scan-resistant LRU / 8,000 basis points | configurable `DatabaseOptions`; process-local and absent from durable identities |
 | Adaptive-LZ4 minimum saving / maximum attempted logical page | 1,250 basis points / 16 MiB | configurable `SegmentCompressionPolicy`; hard bounds are `1..=9,999` basis points and `1 byte..=1 GiB` |
 | Reconstructed logical bytes per segment | 1 GiB | segment metadata validator before page allocation |
 | Active projected read views / ranges / selected runs | 1,024 / 1,024 / 4,096 | `ProjectedReadBudget` defaults |
@@ -266,8 +269,8 @@ filename inference.
 
 The manifest-v1 JSON is a negative fixture and returns `UnsupportedVersion`;
 no v1/v2 manifest state reader is present. No superseded
-application-key reader remains after C-01. These removals still do not qualify
-the remaining C-06 evidence.
+application-key reader remains after C-01. These removals contribute C-05
+closure but are not, by themselves, the evidence that accepted C-06.
 
 ## Hybrid immutable segment v6
 
@@ -366,10 +369,26 @@ peaks, and `creating`, `running`, `completed`, `cancelled`, or `failed` outcome.
 A typed ceiling failure is not successful truncation. Completion, explicit
 cancellation, failure, and drop fuse the stream and release its lease once.
 
-All segments in one database share a byte-bounded immutable page LRU. Its
-evidence separates `loads`, `bytes_read`, `bytes_decoded`, `bytes_borrowed`,
-`bytes_allocated`, `bytes_copied`, and `bytes_decompressed`, plus cache and
-filter counters. In explicit mmap mode, an aligned raw page is exposed as an
+All segments in one database share one exact-byte immutable page cache. Its
+closed `PageCachePolicy` supports selectable exact LRU and default
+`ScanResistantLru`; the latter admits into probationary residency, promotes
+only reuse across logical engine operations, demotes least-recent protected
+pages above the configured target, and evicts probationary pages first. One
+checked, opaque, nonzero scope is generated per projected stream and shared
+only by its internal cursors. Repeated touches from that same scope refresh a
+probationary page and increment `same_scope_hits` without promoting it. The
+scope is never public input, persistent state, authorization/query identity, or
+trace dimension. Ordinary operations and later projected scopes may promote.
+
+Cache evidence reports policy, total/probationary/protected resident bytes and
+entries, hits, misses, loads, admissions, rejected admissions, promotions,
+same-scope suppressions, demotions, evictions, and duplicate completed loads.
+It also separates `bytes_read`, `bytes_decoded`, `bytes_borrowed`,
+`bytes_allocated`, `bytes_copied`, and `bytes_decompressed`, plus filter
+counters. A zero-capacity or oversize page remains readable but is rejected
+from admission. Total and region accounting remain exact; I/O and decode occur
+outside the cache mutex, and eviction cannot invalidate an `Arc<LoadedPage>`
+already owned by a reader. In explicit mmap mode, an aligned raw page is exposed as an
 `arrow_buffer::Buffer` borrowing the mapping; its allocation owner holds the
 `Arc<Mmap>` for the buffer lifetime. A compressed page is authenticated in
 stored form, decoded through the checked LZ4 block API into an exact-length
@@ -386,12 +405,15 @@ Encoding remains `plain`; codec identity is exactly `none` or `lz4` and must
 agree with the authenticated segment policy. The default adaptive writer uses
 checked worst-case scratch space and selects LZ4 only when its stored block
 saves at least the configured threshold; it never falls back to an undeclared
-codec. `none` remains an explicit valid policy. Persisted row-group filters and
-adaptive LZ4 are integrated. Key/value separation, family grouping, and cache
-admission remain C-06i decisions requiring separate integration evidence. A
-WiscKey-style value log is not assumed: it must beat stationary value pages on
-RRFlow update, compaction, recovery, garbage-collection, scan, and mixed-family
-corpora without weakening snapshot reachability.
+codec. `none` remains an explicit valid policy. Persisted row-group filters,
+adaptive LZ4, and scope-aware scan-resistant cache admission are integrated.
+The cache policy is process-local, so reopening the same bytes under exact or
+scan-resistant LRU changes no manifest, snapshot, sequence, or value. Key/value
+separation and semantic-family cache partitions are rejected for this accepted
+format: the former lacks atomic pointer publication, snapshot, recovery,
+corruption, range-read, and value-log garbage-collection proof; the latter
+duplicates family knowledge below the ordered typed-key boundary and can
+strand capacity.
 
 The filter distinction is important. `Segment::open` is a standalone deep-open
 path: it reads and validates all six pages in every row group, reconstructs the
@@ -404,9 +426,12 @@ falls through to exact MVCC lookup.
 
 The default-disabled `physical-policy-lab` feature mounts a measurement child
 inside the canonical segment module so it can compare real v6 `none` and
-adaptive-LZ4 output and inspect private parsed descriptors without copying the
-format parser. Its LZ4 and filter observations consume the sole production
-implementations; Zstandard, cache, and value placement remain laboratory-only.
+adaptive-LZ4 output, inspect private parsed descriptors without copying the
+format parser, and run the same persisted eight-family corpus through both
+production page-cache policies. Its LZ4, filter, and cache observations consume
+the sole production implementations. Zstandard and value placement remain
+laboratory-only; the cache simulator remains screening history and cannot
+substitute for the real-reader comparison.
 Production `lz4_flex` is pinned with safe encode/decode and checked-decode
 features; Zstandard remains an optional lab dependency. Any other retained
 policy requires a separately planned explicit format revision and complete
@@ -423,9 +448,16 @@ replaces v5 and integrates adaptive LZ4 with no v5 compatibility reader. The
 clean v6 integration artifact at revision `eb7445e` records 50 raw and 784
 compressed reopened pages, 1,418,038 stored versus 8,988,877 logical page
 bytes, 336,041 query-decompressed bytes, and exact isolated-child identities.
-Zstandard and segmented-LRU remain laboratory candidates. Value separation is
-rejected from this evidence. The prior filter artifact remains historical proof
-for the filter slice; the v6 artifact owns current combined integration facts.
+The clean C-06j integration artifact at revision `5b1c31d` runs three isolated
+release-profile children over that same persisted state. Exact LRU performs 48
+post-scan hot-page loads; the integrated scope-aware scan-resistant policy
+performs zero, records 18,200 same-scope suppressions, 48 promotions, and 48
+protected entries, and remains within the exact 1 MiB experimental capacity.
+Both policies produce identical manifest, semantic, and projected-row digests.
+Zstandard remains laboratory-only. Value separation, family partitioning,
+Moka, TinyLFU, and caller-controlled bypass are rejected for the accepted C-06
+format. The prior filter/compression artifacts remain historical proof for
+their slices; the C-06j artifact owns current cache-integration facts.
 
 Segment v1/v2/v3/v4/v5 inputs return `UnsupportedVersion` at every file-open and
 snapshot-validation boundary. No reader or migration path for them remains.
@@ -508,10 +540,11 @@ These are checked-in, executable examples rather than illustrative pseudocode:
     corpus/artifacts are ignored while reviewed seeds and the nested lockfile
     remain tracked.
 17. `rrflowkv-physical-policy` runs isolated release-profile trials over a
-    deterministic eight-family corpus, real v6 none/adaptive output, and a
-    create/flush/reopen miss workload. It verifies integrated filter and LZ4
-    behavior and keeps Zstandard/cache/value-placement conclusions scoped; it
-    does not close C-06.
+    deterministic eight-family corpus, real v6 none/adaptive output, the
+    create/flush/reopen miss workload, and the production exact versus scope-
+    aware scan-resistant cache differential. It verifies integrated filter,
+    LZ4, and cache behavior; authenticates semantic/durable identity and exact
+    capacity; and keeps Zstandard/value-placement conclusions scoped.
 
 ## Frozen vectors
 
@@ -550,7 +583,7 @@ cargo test -p rrd-lsm --test segment v6_rejects_authenticated_filter_corruption 
 cargo test -p rrd-lsm --test hybrid_segment --locked
 cargo test -p rrd-lsm --test projected_read_adversarial --locked -- --nocapture
 cargo run -p rrd-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
-cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json
+cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json
 cargo +nightly fuzz check --fuzz-dir crates/persistence/rrd-lsm/fuzz
 cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
 cargo test -p rrd-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
@@ -578,8 +611,12 @@ persisted-filter corruption/reopen-I/O proofs are now concrete C-06 evidence.
 C-06h's finite stable/stress/sanitizer runs add reproducible adversarial
 qualification. The adaptive-LZ4 slice adds exact none/adaptive reopen and
 compaction differential, raw/owned-decode I/O evidence, checksum-aware
-corruption denial, and current-format fuzzing. C-06 remains open for
-value-placement, mixed-workload, and cache integration/qualification. Gate F separately
-requires a stamped streamed DataFusion provider with projection/predicate/
-budget evidence. Passing this suite cannot close those remaining gates by
-itself.
+corruption denial, and current-format fuzzing. The C-06j slice adds a real
+persisted mixed-family exact-versus-scan-resistant cache differential, exact
+region/capacity and scope-suppression evidence, durable/semantic identity, and
+explicit rejection of value separation and family partitioning. The canonical
+roadmap accepts C-06 from the complete retained corpus. Gate C-07 separately
+requires installed-path recovery, maintenance, concurrency, storage-full, and
+reader-lifetime proof; Gate F separately requires a stamped streamed
+DataFusion provider with projection/predicate/budget evidence. Passing this
+suite cannot close those gates by itself.

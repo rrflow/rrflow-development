@@ -146,7 +146,7 @@ TurboQuant `ensure_vector_index` request, generic publication, replay
 suppression, and successful fixtures are gone. The complete default workspace
 test and strict Clippy matrices pass after that convergence. The unavailable
 post-alpha OpenRaft implementation remains an explicit POA&M item and is not
-part of the alpha composition. C-06 is active: segment v6 supplies the ordered
+part of the alpha composition. C-06 is complete: segment v6 supplies the ordered
 key/version spine, six Arrow-layout page buffers, authenticated format and
 writer-policy identities, measured mapped-versus-allocated ownership, and
 authenticated configurable row-group targets applied by flush and compaction.
@@ -171,8 +171,18 @@ lifetime, and coverage-guided sanitizer qualification over that stream. The
 integrated C-06i compression corpus proves exact none/adaptive semantics,
 reopen and compaction behavior, raw/compressed ownership, bounded malformed
 decode rejection, and 1,418,038 stored bytes for 8,988,877 logical page bytes
-on one clean Linux revision. C-06 remains open for value-placement,
-mixed-workload, and cache integration/qualification. This is not a DataFusion
+on one clean Linux revision. C-06j completes the physical-policy decision with
+one family-neutral, exact-byte cache: scan-resistant probationary/protected LRU
+is the default, exact LRU remains a selectable oracle/operator policy, and one
+opaque engine-generated projected-stream scope prevents a scan from promoting
+its own repeated page touches. On clean revision `5b1c31d`, the same persisted
+eight-family corpus produced 48 post-scan hot-page loads under exact LRU and
+zero under scan-resistant LRU, while recording 18,200 same-scope suppressions,
+48 cross-operation promotions, 48 protected entries, identical manifest,
+semantic, and projected-row digests, and exact 1 MiB capacity compliance.
+Measured evidence rejects value separation, semantic-family cache partitions,
+Moka, TinyLFU, and caller-controlled cache bypass for this accepted format.
+D-01 is now the next executable item. This is still not a DataFusion
 `RecordBatch` provider, native graph/BM25/vector access, turnkey installation,
 or persistent reasoning/recall proof.
 

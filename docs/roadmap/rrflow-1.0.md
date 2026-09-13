@@ -33,7 +33,7 @@ Roadmap completion currently stands at:
 |---|---|---:|
 | A | authority, naming, documentation memory, and repository-contained source boundaries | 7 / 7 |
 | B | public, install, routing, model, WebSocket, and GraphQL contracts | 5 / 5 |
-| C | sole hybrid persistent rrflowKV substrate | 5 / 7 |
+| C | sole hybrid persistent rrflowKV substrate | 6 / 7 |
 | D | per-project install, operation, repair, configuration, and attunement | 0 / 11 |
 | E | native graph, scalar, BM25, and vector access paths | 0 / 5 |
 | F | streamed Arrow/DataFusion analytical execution | 0 / 5 |
@@ -109,7 +109,7 @@ its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
 Wave 8.
 
-The active executable item is **C-06**. Its completed slices have replaced
+The active executable item is **D-01**. Accepted C-06 replaced
 row-record immutable segments with segment v6's ordered key/version spine,
 six Arrow-layout page buffers, authenticated persisted membership filters, and
 authenticated none/adaptive-LZ4 writer policy, with manifest-authenticated
@@ -125,8 +125,13 @@ metadata-only reopen while exact positives still use the MVCC spine. The next
 slice directly replaces v5 with v6: each page remains raw or uses a checked LZ4
 block only after the authenticated saving threshold, stored bytes are verified
 before bounded decode, and none/adaptive histories remain exact through reopen
-and protected compaction. C-06 remains unchecked while value-placement,
-mixed-workload, and cache integration/qualification remain open.
+and protected compaction. C-06j now adds the family-neutral exact-byte
+scan-resistant page cache, suppresses same-stream promotion through an opaque
+engine-generated reuse scope, and proves identical durable/semantic results
+with 48 exact-LRU versus zero scan-resistant post-scan hot-page loads on the
+same persisted eight-family corpus. Value separation, semantic-family cache
+partitioning, Moka, TinyLFU, and caller-controlled bypass are rejected for the
+accepted format.
 C-05e removed vector artifact catalogue v1 and its alternate identity digest;
 C-05f requires one explicit nonempty schema table map and removes all
 missing-table model inference; C-05g requires every persisted vector,
@@ -138,9 +143,9 @@ package, C-02's shared
 transaction/repository package, C-03's effect-complete semantic mutation
 batch, C-04's direct current/temporal read package, C-05's lower physical
 reader/dependency packages, and every Gate B contract package are complete.
-C-05 is accepted for the single-node alpha composition; C-06 is in progress.
-After C-06 closes, the next item is D-01, not another documentation or
-component-only detour. D-01 must produce the first walking installed-product
+C-05 and C-06 are accepted for the single-node alpha composition. D-01 is
+next, not another documentation or component-only detour. D-01 must produce
+the first walking installed-product
 proof before C-07 widens the durability/lifetime matrix through that real
 composition.
 A-07 is
@@ -840,7 +845,7 @@ golden vectors without importing Rust internals.
 | [x] | C-03 | Commit canonical record, relation, both adjacency directions, synchronous index changes, runtime log entry, durable projection deltas, function invocation receipt and derived proposal, effect-complete audit, and outbox entry as one write batch. Replace the private monolithic function-catalogue control record with typed definitions, bindings, content-addressed artifacts, immutable membership revisions, and one compare-and-swap head under the same transaction authority. | `rrd-store`, `rrd-engine` | The shared rrflowMX/rrflowKV corpus plus failure injection at every prepare/WAL/batch/acknowledgement boundary proves all-or-nothing behavior; an allowed function audit cannot survive a failed domain commit, advertised catalogue limits fit physical limits, and rrflowKV reopens without re-executing a prepared function under another runtime build. |
 | [x] | C-04 | Serve current and temporal reads from direct versioned keys at one `ReadStamp`; remove normal-path whole-log reconstruction. | `rrd-store` | Physical counters and plan evidence show bounded point/range reads while exact snapshot comparisons remain equal. |
 | [x] | C-05 | Keep Fjall selection, migration-only runtime paths, and alternate stores absent; remove every pre-1.0 reader and alternate format branch from the 1.0 executable. | `rrd-store`, workspace | Fresh rrflowKV database and format-rejection tests pass; repository search and dependency metadata contain one rrflowKV opener and one accepted physical-format reader. |
-| [ ] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, authenticated persisted membership filters, and safe buffer lifetimes. Keep point/range/CAS reads independent of DataFusion. The current v6 slice provides canonical row-group filters plus authenticated none/adaptive-LZ4 page policy; key/value separation, family grouping, mixed-workload interference, and cache policy remain measured choices rather than assumed architecture. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property/fuzz tests, exact differential reads, authenticated filter/codec/length-corruption and reopen-I/O tests, selective projection/scan counters, mixed-family interference tests, and comparative benchmarks prove the layout; eligible raw/aligned pages borrow buffers while compressed pages decode into exact bounded owners and all filter, stored-read, logical, decoded, decompressed, copied, allocated, cached, and open-validation bytes are reported. Where value size/update workloads justify it, compare stationary pages with WiscKey-style separated values; retain a specialization only when its declared workload improves without correctness, recovery, GC, snapshot, or other-family regression. |
+| [x] | C-06 | Replace row-record immutable segments with the hybrid rrflowKV layout: an ordered key/version spine plus Arrow-compatible column pages, explicit encoding/compression metadata, authenticated persisted membership filters, safe buffer lifetimes, and one exact-byte scan-resistant physical page cache. Keep point/range/CAS reads independent of DataFusion. Segment v6 retains canonical row-group filters and authenticated none/adaptive-LZ4 page policy; the family-neutral cache defaults to scope-aware probationary/protected LRU while exact LRU remains a selectable oracle/operator policy. Current evidence rejects key/value separation, semantic-family partitioning, Moka, TinyLFU, and caller-controlled cache bypass rather than assuming them as architecture. | `rrd-lsm`, `rrd-store` | Frozen format vectors, property/fuzz tests, exact differential reads, authenticated filter/codec/length-corruption and reopen-I/O tests, selective projection/scan counters, mixed-family interference tests, and comparative production-reader measurements prove the layout; eligible raw/aligned pages borrow buffers while compressed pages decode into exact bounded owners and all filter, stored-read, logical, decoded, decompressed, copied, allocated, cached, admission, promotion, suppression, demotion, eviction, and open-validation bytes/events are reported. Stationary pages remain the accepted placement because the value-separation model lacks atomic publication, snapshot, recovery, corruption, range-read, and garbage-collection proof. |
 | [ ] | C-07 | Prove WAL recovery, manifest recovery, bounded maintenance and write backpressure, pinned-snapshot compaction, Arrow-page lifetime safety, checksums, storage-full behavior, and acknowledged-write durability. | `rrd-lsm` | Crash matrix, reader/compaction concurrency, sustained-write/maintenance/RSS runs, and repeated reopen suite pass with no lost acknowledged write, unbounded write-buffer growth, dangling mapped buffer, or exposed partial batch. |
 
 C-01 evidence (2026-09-08):
@@ -1069,7 +1074,7 @@ C-05 accepted convergence evidence and audit correction (2026-09-09):
   authority shape, duplicate vector publication path, or suppression shim.
   C-06 may now begin the hybrid ordered-spine/Arrow-page work.
 
-C-06 progress evidence (2026-09-10; gate remains open):
+C-06 accepted evidence (2026-09-10 through 2026-09-13):
 
 - C-06a through C-06f established the now-superseded segment-v4 proof. At that
   revision, `rrd-lsm` wrote and exclusively read v4. Flush preserved one
@@ -1178,10 +1183,36 @@ C-06 progress evidence (2026-09-10; gate remains open):
   reopened pages, 1,418,038 stored/8,988,877 logical page bytes, 336,041
   query-decompressed bytes, and three zero-exit retained children. This is one-
   host integration evidence, not release or superiority proof.
-- C-06 is not accepted. Remaining C-06i work covers optional value placement,
-  mixed-workload interference, and page-cache policy.
-  F-01 still owns the stamped asynchronous DataFusion provider; C-06g does not
-  emit a DataFusion `RecordBatch` or claim end-to-end zero-copy.
+- C-06j integrates two closed production cache policies below the projected
+  reader: selectable exact LRU and default scan-resistant
+  probationary/protected LRU with an 8,000-basis-point protected target. One
+  checked opaque scope is allocated per projected stream; repeated touches in
+  that scope refresh probationary recency and count suppression, while later
+  operations may promote. The scope is not public, durable, semantic,
+  authorization, or trace identity.
+- Clean revision `5b1c31d` and artifact SHA-256
+  `8a008ee33bb50ca197783227cfcfbb4d58945dd2f26dca8cdf12e1804106b9ad`
+  run one persisted eight-family corpus in three isolated release-profile
+  children. Exact LRU performs 48 post-scan hot-page loads; scan-resistant LRU
+  performs zero, records 18,200 same-scope suppressions, 48 promotions, and 48
+  protected entries, stays within 1,048,576 bytes, and preserves identical
+  manifest, semantic, and projected-row digests. The real reader, not the
+  simulator, supplies the acceptance counters.
+- The same package preserves all 114 all-target/all-feature `rrd-lsm` tests,
+  strict Clippy, the complete `rrd-store` suite, all 28 workspace-architecture
+  guards, and the locked workspace all-target check. It records rather than
+  claims concurrent load coalescing. C-07 owns lock contention, load
+  coalescing, sustained maintenance, installed-path recovery, and cross-
+  platform lifetime.
+- Current evidence rejects value separation because the byte-only model cannot
+  establish atomic pointer publication, snapshot reachability, recovery,
+  corruption denial, range-read behavior, or value-log garbage collection.
+  It rejects semantic-family cache partitions because the canonical key
+  ordering already supplies locality and physical quotas would strand capacity.
+  Moka, TinyLFU, and caller-selected bypass remain unadopted.
+- C-06 is accepted. F-01 still owns the stamped asynchronous DataFusion
+  provider; C-06g/C-06j do not emit a DataFusion `RecordBatch` or claim end-to-
+  end zero-copy.
 
 Gate C exits only when rrflowKV is the sole local persistent implementation and
 its correctness is demonstrated below the semantic engine.

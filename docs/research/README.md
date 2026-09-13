@@ -48,10 +48,12 @@ receives a separate full review and link-preserving classification.
   later governed discussion-to-configuration flow. It does not make an ADR,
   benchmark, completion, or roadmap-status claim.
 - [`rrflowkv-page-cache-and-mixed-workload-research.md`](rrflowkv-page-cache-and-mixed-workload-research.md)
-  is the bounded primary-source study for C-06j. It distinguishes rrflowKV's
-  exact-byte immutable-page cache from future DataFusion query caches, selects
-  a real-reader scan-resistance experiment, and rejects unmeasured Moka,
-  TinyLFU, family quota, and caller-bypass adoption.
+  is the bounded primary-source study and completed handoff for C-06j. It
+  distinguishes rrflowKV's exact-byte immutable-page cache from future
+  DataFusion query caches, records the real-reader scope-aware scan-resistance
+  result, and rejects Moka, TinyLFU, family quota, caller bypass, and value
+  separation for the accepted format. It is not architecture or completion
+  authority.
 
 The pinned SurrealDB reference explicitly rejects its namespace → database →
 table/record hierarchy as RRFlow authority. `estate` is an RRFlow-owned term;

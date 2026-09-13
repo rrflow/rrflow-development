@@ -7,13 +7,14 @@ completion claim, or authorization to rewrite engine code
 later governed configuration workflow
 **Audience:** RRFlow owner and engineers implementing the 1.0 pre-release
 **Researched:** 2026-09-12 through 2026-09-13
-**Latest reviewed repository baseline:** `eb7445e399e393b37f8e788fd5c61cd3419725cb`
+**Latest reviewed repository baseline:** `5b1c31de73cabf79fe3353112635a09f6a12e364`
 **Implementation update:** C-06g adds the bounded pinned projected reader;
 C-06h adds finite adversarial qualification; segment v6 integrates the C-06i
 authenticated persisted row-group filters and adaptive-LZ4 page policy. The
-clean integration artifact verifies the normal writer/reopen/read path, but
-C-06 remains open for value placement, mixed-workload interference, cache
-admission, and the remaining qualification.
+clean integration artifacts verify the normal writer/reopen/read path. C-06j
+adds the production scope-aware scan-resistant page cache and real persisted
+mixed-family comparison. The canonical roadmap accepts C-06; C-07 and F retain
+installed-path lifetime/recovery/concurrency and streamed DataFusion work.
 **Assumptions:** RRFlow remains one independently installable Rust product;
 `RrdEngine` remains the sole authorization and transaction authority;
 rrflowKV is the persistent substrate; rrflowMX is the volatile conformance
@@ -122,7 +123,7 @@ filesystem, device, operating system, configuration, workload, and seed.
 | sustained maintenance | background flush and compaction keep up or apply explicit measured backpressure; memory and pending work stay bounded | compaction is synchronous and policy-light; no background scheduler, debt model, or admission controller exists |
 | streaming reads | ordered k-way merge applies snapshot visibility and tombstones without materializing the result; projection avoids unneeded pages | C-06g supplies a synchronous bounded projected k-way stream and omits value pages for keys-only reads; asynchronous DataFusion adaptation and remaining broad callers are open |
 | read/write/space amplification | physical reads, writes, compaction bytes, cache work, and live/dead space are attributed per operation and over time | C-06g scopes projected query work and separates segment-open/startup reconciliation; write/compaction/live-dead amplification ledgers remain incomplete |
-| cache behavior | capacity, admission, pinning, scan resistance, hit/miss/load, duplicate-load, and eviction behavior are measured | one bounded mutex-protected page LRU exists; policy and single-flight behavior are not qualified |
+| cache behavior | capacity, admission, pinning, scan resistance, hit/miss/load, duplicate-load, and eviction behavior are measured | accepted C-06j provides exact and default scope-aware scan-resistant policies, strict byte/region accounting, a real mixed-family pollution differential, and duplicate-load counters; lock contention, coalescing, and sustained concurrency remain C-07 work |
 | observability | stable low-cardinality metrics, scoped traces, status/inspection output, stall causes, compaction debt, and redacted capture bundles | useful tracing and counters exist across crates; no complete storage status surface or end-to-end causal proof exists |
 | test maturity | unit/property/model tests plus continuous crash stress, fuzz, deterministic fault injection, sanitizer/Miri lanes, and fixed-hardware regression | targeted tests, the C-06g projected MVCC/bounds/generation cases, and C-06h's bounded model/segment fuzz targets are substantial; no continuous `db_stress`-class fault matrix or cross-platform sanitizer qualification exists |
 | operator tooling | offline/online verify, manifest/table/WAL inspection, backup/restore, safe repair policy, and reproducible benchmark binaries | snapshot/archive pieces and diagnostic examples exist; primary-binary inspection/verify/repair is not complete |
@@ -179,11 +180,11 @@ code is implementation inventory until its owning roadmap evidence passes.
 | `Snapshot { sequence }` | the public logical token alone owns no physical files; C-06g pairs it with a crate-private `ReadView` that owns the captured manifest, `Arc` memtable/segments, and GC lease | carry that owned view through F-01's provider and C-07's installed cross-platform lifetime qualification |
 | `Database::prepare_write` | flush and maintenance can run synchronously on the writer | C-07 background flush/compaction scheduler, immutable memtable queue, explicit admission/backpressure |
 | `Database::compact_inner` | segment-count selection, whole-job merging, no debt/rate/subcompaction policy | score/overlap/byte-aware picker, bounded jobs, cancellation, rate limits, metrics; specialize only from benchmarks |
-| `PageCache` | one global mutex, basic LRU, cumulative counters, no duplicate-load coalescing; C-06g adds projected operation-scoped evidence without changing policy | compare a scan-resistant/admission policy and single-flight loading before changing it |
+| `PageCache` | one global mutex, selectable exact LRU, default scope-aware probationary/protected LRU, exact capacity/region counters, and classified duplicate completed loads; no in-flight coalescing | C-07 measures contention and proves any sharding/coalescing change; preserve the accepted scan-resistance oracle and exact accounting |
 | `IoContext` | one mutex around one io_uring instance and synchronous calls; C-06g reports the backend that actually served a read after fallback | later compare bounded per-device queues/pools and cancellation based on measurements |
 | `ManifestStore::load` | full immutable-file digest verification on normal open can scale with total bytes; WAL closure is simpler than mature version tracking | separate fast authenticated metadata open from full verify; track complete version/WAL closure and retain full verification as an explicit operation |
 | WAL lifecycle | one straightforward log path; no group commit, fragmentation policy, log inventory/recycling, or retained-log accounting | preserve correctness first; add version-bound WAL inventory and benchmarked group commit only after installed lifecycle works |
-| immutable table policy | persisted row-group filters and adaptive LZ4 are integrated; no value separation, family clustering, or accepted scan-resistant cache admission | qualify value placement, mixed-family interference, and cache admission separately; retain value separation as rejected from model-only evidence until its recovery/GC proof exists |
+| immutable table policy | persisted row-group filters, adaptive LZ4, and scope-aware scan-resistant cache admission are integrated; stationary values and family-neutral capacity are the accepted C-06 choices | retain value separation and semantic-family partitioning as rejected for this format unless a new package supplies complete recovery/GC/snapshot and comparative evidence |
 | operator surface | no primary-binary table/WAL/manifest inspect and full verify/repair flow | D-01 creates read-only inspect/verify; C-07/D-11 close full verification and recovery policy |
 
 The current `Database` file is too broad for long-term ownership, but splitting
@@ -210,16 +211,14 @@ The references below are inputs, not dependencies or architectural authority.
 
 ### Moka decision
 
-Moka is not required by Arrow or DataFusion, and it is absent from the current
-workspace. It should not replace rrflowKV's page cache during C-06g. Storage
-pages require exact byte weighting, generation ownership, pin-aware eviction,
-physical read attribution, and predictable scan behavior. C-06i should compare
-the current cache with a purpose-built scan-resistant policy and, if useful, a
-Moka prototype under the same workload. A Moka dependency is accepted only if
-it improves the declared hit rate/latency/CPU tradeoff without obscuring pinned
-bytes, duplicate loads, or operation accounting. Moka remains plausible for a
-higher-level immutable plan or context cache later, where eviction is not a
-correctness decision.
+Moka is not required by Arrow or DataFusion, and it remains absent from the
+workspace. C-06j implements a purpose-built exact-byte, scope-aware scan-
+resistant cache because storage pages require deterministic charging,
+generation ownership, physical-read attribution, and scan behavior. The real
+reader improved the declared post-scan load oracle without Moka, so no Moka
+prototype or dependency is justified for the physical cache. A future higher-
+level immutable plan/context cache may reconsider it only under its own stamp,
+capacity, staleness, latency, and operation-accounting evidence.
 
 ## Target rrflowKV physical design
 
@@ -559,9 +558,10 @@ semantic-page work during open, zero member false negatives, and fewer miss-
 path page loads than filter checks while exact present, tombstone, snapshot,
 flush, compaction, and reopen semantics remain unchanged. The production
 filter does not participate in range exclusion or establish semantic presence.
-Zstandard, segmented-LRU, and value placement remain outside the integrated
-production policy; the historical candidate result does not silently activate
-them.
+Zstandard and value placement remain outside the integrated production policy;
+the historical candidate result did not silently activate them. C-06j later
+qualified the RRFlow-owned scope-aware scan-resistant cache through the real
+reader rather than promoting this simulator.
 
 ### Adaptive page-compression decision
 
@@ -607,12 +607,13 @@ caching, and separate consideration of heavier bottom-level codecs,[^25] but
 RRFlow rejects its missing-codec fallback and option topology.
 
 Zstandard remains a laboratory candidate until C-07 has real level and cold
-placement semantics. The segmented-LRU simulation does not justify replacing
-the current cache. Moka's weighted capacity is documented as best-effort and
-its weight does not control victim selection,[^26] which is not enough for
-RRFlow's exact decoded-byte, pinned-generation, scan, and physical-evidence
-contract. Value separation remains rejected for lack of crash-safe publication,
-snapshot, range-read, and value-log garbage-collection proof.
+placement semantics. The segmented-LRU simulation alone did not justify a
+change; C-06j's later persisted production-reader differential does. Moka's
+weighted capacity is documented as best-effort and its weight does not control
+victim selection,[^26] which is not enough for RRFlow's exact decoded-byte,
+pinned-generation, scan, and physical-evidence contract. Value separation
+remains rejected for lack of crash-safe publication, snapshot, range-read, and
+value-log garbage-collection proof.
 
 This physical boundary deliberately prepares rather than impersonates F-01.
 The future DataFusion provider performs I/O in its polled execution stream and
@@ -648,6 +649,31 @@ reopened pages, 1,418,038 stored versus 8,988,877 logical page bytes, and
 336,041 query-decompressed bytes. This is production-path integration evidence
 on one host, not release, all-workload, cross-platform, or competitor proof.
 
+### Scan-resistant page-cache integration result
+
+C-06j retains one cache implementation and two closed process-local policies:
+exact LRU as an oracle/operator choice and a default probationary/protected
+scan-resistant LRU with an 8,000-basis-point protected target. The first real-
+reader attempt exposed why unconditional second-hit promotion was insufficient:
+one projected stream generated 601 repeated page hits and both policies then
+reloaded 45 hot pages. RRFlow preserved the workload and instead allocated one
+opaque scope per stream. A probationary hit from that same scope now refreshes
+recency and counts suppression; reuse by a later operation may promote. Scope
+identity is internal scheduling metadata, never client input, durable state,
+authorization, query semantics, or trace identity.
+
+Clean revision `5b1c31d` runs the same persisted eight-family corpus under
+both policies in three isolated release-profile children. Exact LRU records 48
+post-scan hot-page loads; scope-aware scan-resistant LRU records zero, 18,200
+same-scope suppressions, 48 promotions, and 48 protected entries. Both remain
+within the 1,048,576-byte capacity and produce identical manifest, semantic,
+and projected-row digests. Artifact SHA-256 is
+`8a008ee33bb50ca197783227cfcfbb4d58945dd2f26dca8cdf12e1804106b9ad`.
+This qualifies C-06's mixed-workload/cache choice only. C-07 retains global-
+mutex contention, duplicate-load coalescing, sustained concurrency, recovery,
+and cross-platform reader lifetime; F retains DataFusion provider and query-
+cache budgets.
+
 ## Execution order
 
 The canonical roadmap order is the authority:
@@ -656,20 +682,22 @@ The canonical roadmap order is the authority:
    (implemented candidate; recorded in the execution journal);
 2. C-06h: property/fuzz/adversarial and mixed-family correctness (implemented
    candidate with stable, stress, and bounded sanitizer evidence);
-3. C-06i: persisted filter and adaptive LZ4 integrated; value-placement,
-   mixed-workload, and cache decisions remain separately gated;
-4. D-01: real `rrflow`/`rrflow.exe` install plan/apply, create/open/inspect,
+3. C-06i: persisted filter and adaptive LZ4 integrated;
+4. C-06j: scope-aware scan-resistant cache integrated through the real mixed-
+   family reader; stationary values and family-neutral capacity retained, and
+   C-06 accepted by the canonical roadmap;
+5. D-01: real `rrflow`/`rrflow.exe` install plan/apply, create/open/inspect,
    serve, authenticated ready, commit, close/reopen and baseline verify;
-5. C-07: recovery, background maintenance, backpressure, ENOSPC and sustained
+6. C-07: recovery, background maintenance, backpressure, ENOSPC and sustained
    lifetime through the installed product;
-6. D-02 through D-04: durable attunement jobs, deterministic project tree and
+7. D-02 through D-04: durable attunement jobs, deterministic project tree and
    incremental parse;
-7. E: persistent native graph, scalar, BM25, exact-vector and ANN generations;
-8. F: stamped streaming Arrow/DataFusion and one cross-operator resource
+8. E: persistent native graph, scalar, BM25, exact-vector and ANN generations;
+9. F: stamped streaming Arrow/DataFusion and one cross-operator resource
    ledger;
-9. D-05 onward, then G/H: complete attunement, routing, persisted reasoning,
+10. D-05 onward, then G/H: complete attunement, routing, persisted reasoning,
    dynamic recall, public surfaces and Connectome; and
-10. I: canonical engine events, triggers, routines, skills, adapters and the
+11. I: canonical engine events, triggers, routines, skills, adapters and the
     discussion-to-configuration/install workflows described above.
 
 Before this research batch, the supporting execution map placed C-07 before

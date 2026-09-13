@@ -16,7 +16,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 |---|---|---|
 | Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
 | AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
-| Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, compares exact-byte LRU/segmented-LRU traces, and retains value placement as a model only. Filters and adaptive LZ4 are integrated; Zstandard, cache admission, and value placement remain separately gated. |
+| Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, retains exact-byte cache trace simulation as screening history, and compares production exact versus scope-aware scan-resistant caches on the same persisted eight-family corpus. Filters, adaptive LZ4, and cache admission are integrated; Zstandard and value placement remain non-production. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
@@ -67,7 +67,7 @@ not HNSW, exact-vector, semantic-quality, or RRF evidence.
 
 ## Physical-policy integration protocol
 
-The C-06i executable is an optimized, feature-gated developer tool. Its child
+The C-06j executable is an optimized, feature-gated developer tool. Its child
 builds one deterministic MVCC corpus spanning audit, inbound/outbound edge,
 record, runtime, scalar, term, and vector families. It sends that corpus
 through the real `Memtable` and segment-v6 encoder, then consumes the encoder's
@@ -91,12 +91,19 @@ point reads before separately verifying bounded present/tombstoned samples.
 Filter checks/negatives and miss-path page I/O therefore describe the actual
 reopened implementation rather than a parallel candidate codec.
 
-The cache comparison replays identical real page identities and byte weights
-through exact-byte LRU and segmented-LRU simulators: repeated hot access, a
-complete scan, then repeated hot access. Both must preserve identity and stay
-inside exact capacity after every request. The candidate advances only if it
-improves post-scan hot hits. This is an admission-policy screen, not integrated
-concurrent-cache latency, pinned-file lifetime, or a reason to add Moka.
+The retained trace comparison replays identical real page identities and byte
+weights through exact-byte LRU and segmented-LRU simulators. It remains an
+admission-policy screen only. The accepted cache verdict comes from the real
+reader: the child creates and flushes the corpus once, reopens the same durable
+state independently under exact LRU and scope-aware scan-resistant LRU, reads
+one present key per family in two distinct operations, streams the complete
+key/value projection beyond cache capacity, then rereads the hot keys. Both
+policies must preserve snapshot, manifest, semantic, hot-value, and projected-
+row digests and remain inside exact byte capacity. Exact LRU must reload at
+least one hot page; scan-resistant LRU must record cross-operation promotions,
+same-stream suppression, and strictly fewer post-scan loads. This does not
+claim concurrent-cache latency, load coalescing, pinned-file lifetime, or a
+reason to add Moka.
 
 Value separation always remains `analytical-model-only` in this program. It
 reports inline, latest-live, obsolete, pointer, append-log, and modeled
@@ -124,9 +131,16 @@ checks, and 114 miss-path page loads. The current integration artifact is bound
 to clean revision `eb7445e`; it records 50 raw and 784 compressed reopened v6
 pages, 1,418,038 stored/8,988,877 logical page bytes, 336,041 bytes decompressed
 by the sampled query path, 16,020 filter negatives, 132 page loads, and zero
-child failures. Segmented-LRU still requires an integrated trial, Zstandard is
-laboratory-only, and value separation remains rejected. The raw artifacts, not
-this summary, own their exact host, timings, counters, and digests.
+child failures. The current C-06j artifact is bound to clean revision
+`5b1c31d` and SHA-256
+`8a008ee33bb50ca197783227cfcfbb4d58945dd2f26dca8cdf12e1804106b9ad`.
+Across three zero-exit children, exact LRU reloads 48 hot pages after the scan;
+scope-aware scan-resistant LRU reloads zero, records 18,200 same-scope
+suppressions, 48 promotions, and 48 protected entries, and stays within the
+1,048,576-byte experimental capacity. Durable and semantic digests are equal.
+Zstandard is laboratory-only; value separation and family partitioning are
+rejected for this format. The raw artifacts, not this summary, own their exact
+host, timings, counters, and digests.
 
 ## Lifecycle measurements
 
@@ -160,8 +174,9 @@ bind:
 4. the end-to-end governed reasoning/recall workloads and quality metrics
    required by the release gates.
 
-The C-06i artifacts close the listed source/host provenance gaps only for their
-candidate, filter, and adaptive-LZ4 integration scopes. They still disclose uncontrolled
+The C-06i/C-06j artifacts close the listed source/host provenance gaps only for
+their candidate, filter, compression, and page-cache integration scopes. They
+still disclose uncontrolled
 device cache and host load, lack cross-platform and complete end-to-end
 workloads, and are never release evidence.
 
@@ -191,7 +206,7 @@ cargo run --release --locked -p rrd-store --example ai_hotset_benchmark -- \
   --output target/rrflow-kv-ai-metadata-fanout-embedding-f32.json
 ```
 
-Run the current C-06i fixed-machine adaptive-page-compression integration proof from a
+Run the current C-06j fixed-machine physical-policy integration proof from a
 clean implementation revision:
 
 ```bash
@@ -205,7 +220,7 @@ cargo run --release --locked -p rrd-lsm \
   --value-bytes 512 \
   --misses 16384 \
   --cache-bytes 1048576 \
-  --output docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json
+  --output docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json
 ```
 
 Use `--allow-dirty` only for implementation smoke runs. Such output records the
