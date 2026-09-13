@@ -11,6 +11,10 @@ The current [alpha objective](../objectives/rrflow-1.0-alpha.md) defines the
 result. The current [POA&M](../poam/rrflow-1.0-alpha.md) tracks verified gaps
 against the roadmap gates.
 
+The canonical RRFlow 1.0 roadmap's links-only
+[chapter index](rrflow-1.0/) provides direct warp points to its checklist,
+dependency spine, gate requirements, and accepted evidence.
+
 The canonical roadmap is accompanied by a subordinate
 [code execution map](rrflow-1.0-execution-map.md) and its generated
 [whole-repository file plan](rrflow-1.0-file-plan.jsonl). These records map
