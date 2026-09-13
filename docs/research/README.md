@@ -47,6 +47,11 @@ receives a separate full review and link-preserving classification.
   its hybrid ordered/Arrow immutable layout, the DataFusion boundary, and the
   later governed discussion-to-configuration flow. It does not make an ADR,
   benchmark, completion, or roadmap-status claim.
+- [`rrflowkv-page-cache-and-mixed-workload-research.md`](rrflowkv-page-cache-and-mixed-workload-research.md)
+  is the bounded primary-source study for C-06j. It distinguishes rrflowKV's
+  exact-byte immutable-page cache from future DataFusion query caches, selects
+  a real-reader scan-resistance experiment, and rejects unmeasured Moka,
+  TinyLFU, family quota, and caller-bypass adoption.
 
 The pinned SurrealDB reference explicitly rejects its namespace → database →
 table/record hierarchy as RRFlow authority. `estate` is an RRFlow-owned term;
