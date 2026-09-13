@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "C-06j-rrflowkv-scan-resistant-cache-integration",
+  "package_id": "C-06j-rrflowkv-scope-aware-scan-resistant-cache-integration",
   "status": "active",
   "package_kind": "bounded-runtime-implementation-and-evidence",
   "baseline": {
-    "revision": "9592b886f2c6f2f716933fcf46e8c0595de3c315",
-    "tree": "bc177bbdb4af4adb1e30ae0cfe8f6ae46d2fd949",
+    "revision": "e93e3d4d3e482ed165e4d3580621d5a9212acf68",
+    "tree": "c3618921f534efbe90162cb01bf3f07ae89805f4",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -18,13 +18,14 @@
     "poam_items": ["POAM-002"],
     "architecture_owner": "docs/roadmap/rrflow-1.0.md#gate-c--sole-persistent-rrflowkv-substrate"
   },
-  "current_behavior": "The clean baseline has one RRFlow-owned exact-byte immutable page cache shared by database segments, but it admits every fitting miss into one LRU region. A broad projected scan can evict repeatedly used graph, lexical, vector, and control pages. The physical-policy laboratory advances a two-region cache only in simulation; production policy is not configurable, duplicate losing loads are unclassified, and no real same-corpus exact-versus-scan-resistant mixed-family evidence exists.",
-  "target_behavior": "Add a closed PageCachePolicy with selectable ExactLru and default ScanResistantLru modes. Preserve exact-byte charging and immutable Arc ownership; admit new pages probationary, promote on cache reuse, demote protected LRU pages above a validated target, evict probationary first, and count admissions, rejections, promotions, demotions, and duplicate loads. Prove byte-identical reads, strict capacity, reopen invariance, and fewer post-scan hot loads on one real persisted eight-family corpus. Keep the cache below RrdEngine and the future rrflowQL/DataFusion TableProvider, and close C-06 only if all canonical evidence is satisfied.",
+  "current_behavior": "The clean baseline has one RRFlow-owned exact-byte immutable page cache shared by database segments, but it admits every fitting miss into one LRU region. The first post-plan real-reader experiment then exposed a non-vacuous design defect: a projected stream requests validity, offset, and value pages repeatedly while processing rows, so unconditional second-hit promotion misclassifies same-stream scan touches as cross-operation reuse. Both exact LRU and the naive two-region implementation reloaded 45 hot pages after the scan. The reader has no engine-owned cache reuse scope.",
+  "target_behavior": "Add a closed PageCachePolicy with selectable ExactLru and default ScanResistantLru modes plus an internal non-authoritative reuse scope generated once per projected stream. Preserve exact-byte charging and immutable Arc ownership; admit new pages probationary, promote only when reuse crosses a logical operation scope, keep repeated same-stream hits probationary, demote protected LRU pages above a validated target, evict probationary first, and count admissions, rejections, promotions, demotions, same-scope suppressed promotions, and duplicate loads. Point reads retain ordinary reuse behavior. Prove byte-identical reads, strict capacity, reopen invariance, and fewer post-scan hot loads on one real persisted eight-family corpus. Keep the scope and cache below RrdEngine and the future rrflowQL/DataFusion TableProvider, and close C-06 only if all canonical evidence is satisfied.",
   "unchanged_behavior": [
     "WAL, MVCC, manifest-v3, segment-v6 encoding, snapshot-bundle-v1, adaptive LZ4, row-group filters, projected-read ordering, tombstones, compaction publication, garbage collection, and RrdEngine transaction authority remain unchanged.",
     "The cache remains process-local and non-durable; replacement policy never enters segment, manifest, WAL, snapshot, application-key, query, or public transport encodings.",
     "rrflowQL/DataFusion remains downstream stamped compute over bounded Arrow-compatible batches and cannot own persistence, authorization, page admission, or direct writes.",
-    "No family-specific capacity, caller-selected cache bypass, Moka, TinyLFU, ghost cache, value log, cache daemon, alternate storage engine, hook, routine, skill, adapter, or provider state is added.",
+    "No family-specific capacity, caller-selected cache bypass or scope, Moka, TinyLFU, ghost cache, value log, cache daemon, alternate storage engine, hook, routine, skill, adapter, or provider state is added.",
+    "The projected reuse scope is process-local scheduling metadata only: it grants no authorization, query, lifecycle, persistence, admission-policy, or external API authority and is never serialized or accepted from a client.",
     "Lock sharding, in-flight load coalescing, pinned-owner concurrency, cancellation fairness, and sustained stress remain C-07 work; this package records duplicate loads without claiming to prevent them.",
     "Product version remains 1.0.0; installation, attunement, native graph/BM25/vector/TurboQuant, SDK/API/MCP/Connectome, distribution, and release work remain separately gated; only rrflow/rrflow-development may receive this package."
   ],
@@ -39,10 +40,12 @@
     {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"baa006e9faf5f07de1f80fbba7c27414819f799710b60d645d0ed0333daae7aa","baseline_lines":65,"reviewed_lines":"1-65","symbols":["OBJ-02","OBJ-05","alpha proof"]},
     {"path":"docs/roadmap/rrflow-1.0.md","baseline_sha256":"c703a841470b93da85459e0d4d33ba94ad18981fe797fff350a037d7846f0e07","baseline_lines":1346,"reviewed_lines":"1-1346","symbols":["C-06","C-07","F-01","F-05","J-04"]},
     {"path":"docs/poam/rrflow-1.0-alpha.md","baseline_sha256":"8bcadb816716aec999dbb75b43f076ddb9568ad22220f9ba059ce2ef8df3aa21","baseline_lines":82,"reviewed_lines":"1-82","symbols":["POAM-002","verified gaps"]},
-    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"65d8152e46be0936f248bce9ac93b6cfd88529f772bf80a0dfb4db7bce3660e6","baseline_lines":182,"reviewed_lines":"1-182","symbols":["machine-plan schema","prior package handoff"]},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","baseline_sha256":"b73ca517651ea34c64bcc0d9bc0321d1135c2a0c41b8cd3bd80a563c5988cd31","baseline_lines":3997,"reviewed_lines":"1-3997","symbols":["C-06 packages","journal template","global stop conditions"]},
-    {"path":"docs/roadmap/README.md","baseline_sha256":"56edff7207d156fc45796a59fa7ffd6ac816d17d8625625834b8fd881dd22847","baseline_lines":46,"reviewed_lines":"1-46","symbols":["roadmap discovery","C-06 package index"]},
-    {"path":"docs/research/README.md","baseline_sha256":"da2cc431bb01a4d1e1eabea1a7af13ad595024dee6c9faab7010ba94e5eb7e20","baseline_lines":92,"reviewed_lines":"1-92","symbols":["research classification","storage research index"]},
+    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"b5186866288b2b54a9c35b8beb7c2440a3faacb9bfbd93146ebbb50c38959c3a","baseline_lines":240,"reviewed_lines":"1-240","symbols":["initial C-06j plan","machine-plan schema","stop condition"]},
+    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","baseline_sha256":"0202cd7dd039bb5aa7f4a713d298c3c9b82f2eb82123400d5c4be1b622b42b67","baseline_lines":4014,"reviewed_lines":"1-4014","symbols":["C-06 packages","C-06j pre-edit traceability","journal template","global stop conditions"]},
+    {"path":"docs/roadmap/README.md","baseline_sha256":"5ee22c13485c2fddd5e10401ab8a4456ced9621ebd84f46911a54f7db2ce0968","baseline_lines":52,"reviewed_lines":"1-52","symbols":["roadmap discovery","active C-06j package index"]},
+    {"path":"docs/research/README.md","baseline_sha256":"f9ada84e5beaa4cda572177f15d21609c8442788bfed8f8ad99005228f7c17e8","baseline_lines":97,"reviewed_lines":"1-97","symbols":["research classification","C-06j research index"]},
+    {"path":"docs/research/rrflowkv-page-cache-and-mixed-workload-research.md","baseline_sha256":"f99ad33f387a0f8bf040a20762e79df6b347f18ded6aa05a6ee8565f66461077","baseline_lines":248,"reviewed_lines":"1-248","symbols":["cache research decision","selected policy","real workload","DataFusion boundary"]},
+    {"path":"docs/roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md","baseline_sha256":"113a58abce9977bf44ac3b4fc10882b9a0508ae31781d0d0bb1861c7876766e0","baseline_lines":433,"reviewed_lines":"1-433","symbols":["implementation plan","state transitions","stop conditions"]},
     {"path":"docs/architecture/engine-data-flow.md","baseline_sha256":"fe808fbbcd9b7e9fd4409b0ed53ac3d6f58d17069a266bec90da9087d583c086","baseline_lines":1385,"reviewed_lines":"1-1385","symbols":["rrflowKV","projected batches","DataFusion boundary"]},
     {"path":"docs/reference/storage/rrflowkv-current-format.md","baseline_sha256":"82bad418a956482a8cf4c2c2b69bf02aee5873a69690b9c7307378d8f0f5806a","baseline_lines":585,"reviewed_lines":"1-585","symbols":["segment v6","page cache","ownership evidence"]},
     {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","baseline_sha256":"e9189049eecc355a1c92c6e3fe1a8c3a9fdd7d40732ebff9ae6dc9184d0df07e","baseline_lines":224,"reviewed_lines":"1-224","symbols":["physical-policy harness","evidence limitations"]},
@@ -53,6 +56,7 @@
     {"path":"crates/persistence/rrd-lsm/src/lib.rs","baseline_sha256":"0de8a4f2f41b3c396a52fefcc1be469449b575f83db52cd88ca866b5ed64f6ca","baseline_lines":162,"reviewed_lines":"1-162","symbols":["database exports","segment exports"]},
     {"path":"crates/persistence/rrd-lsm/src/database.rs","baseline_sha256":"88b07bb73f70c7e90101aeb1aee78baec329bd6c76e01505f2d463af05bd1750","baseline_lines":2142,"reviewed_lines":"1-2142","symbols":["DatabaseOptions","create/open","page cache construction","open trace","projected reads"]},
     {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_sha256":"ee623aae6bd5eb8e6ecf615bfaa374d84df0e48a48d0d9105aca3be6bdb760b1","baseline_lines":2061,"reviewed_lines":"1-2061","symbols":["PageCacheStats","PageCache","CacheEntry","new_page_cache","load_page_with_evidence"]},
+    {"path":"crates/persistence/rrd-lsm/src/segment/reader.rs","baseline_sha256":"59665d3918458f89312459762f22dad22948217ccf38a4d438caa407aa3608b6","baseline_lines":1549,"reviewed_lines":"1-1549","symbols":["ProjectedReadStream","SegmentProjectedCursor","load_projected_page","per-row page requests"]},
     {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_sha256":"e9d6235af88292a50fc00a3885796de176ef4cb86c0b522cc29b5a84f231a0c6","baseline_lines":1573,"reviewed_lines":"1-1573","symbols":["cache candidate simulator","real segment observations","physical policy trial"]},
     {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_sha256":"69364edd04d8454a6f5a6cbdd4094ac25881b4d37753ce76b25f8225866a8830","baseline_lines":815,"reviewed_lines":"1-815","symbols":["fixed-machine child protocol","evidence aggregation","artifact validation"]}
   ],
@@ -79,6 +83,13 @@
       "failure_semantics": "I/O never occurs under the cache mutex; total and region residency never exceed or disagree with configured capacity; eviction never invalidates a reader-owned Arc."
     },
     {
+      "path": "crates/persistence/rrd-lsm/src/segment/reader.rs",
+      "baseline_state": "present",
+      "symbols": ["ProjectedReadStream","SegmentProjectedCursor","load_projected_page","cache reuse scope"],
+      "action": "Generate one opaque internal reuse scope per projected stream and carry it through every segment page request so repeated hits within that stream refresh but do not promote probationary pages; a later stream receives a distinct scope and may earn promotion.",
+      "failure_semantics": "Scope exhaustion fails the projected-read request; scopes are never client supplied, serialized, traced as identifiers, or used for authorization/query semantics, and page/result evidence remains exact."
+    },
+    {
       "path": "crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs",
       "baseline_state": "present",
       "symbols": ["run_physical_policy_trial","IntegratedCachePolicyObservation","policy decision"],
@@ -101,8 +112,8 @@
     }
   ],
   "evidence_changes": [
-    {"path":"docs/research/rrflowkv-page-cache-and-mixed-workload-research.md","action":"Add the primary-source audit and RRFlow adaptation decision for exact-byte scan-resistant caching and the DataFusion boundary."},
-    {"path":"docs/roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md","action":"Add the exact source/symbol/test/evidence implementation plan and update its completion record after proof."},
+    {"path":"docs/research/rrflowkv-page-cache-and-mixed-workload-research.md","action":"Record the failed same-stream promotion result and refine the primary-source adaptation to an engine-owned logical reuse scope without changing cache authority or the DataFusion boundary."},
+    {"path":"docs/roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md","action":"Record the failed 45-versus-45 oracle, add the reviewed projected-reader symbols and exact reuse-scope semantics, and update the completion record after proof."},
     {"path":"docs/research/README.md","action":"Index the bounded cache and mixed-workload research without transferring architecture authority."},
     {"path":"docs/roadmap/README.md","action":"Index the active C-06j supporting plan and later record its evidence state without changing canonical status independently."},
     {"path":"docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json","action":"Add clean-revision real-reader exact-versus-scan-resistant mixed-family measurements, identities, counters, provenance, and limitations."},
@@ -121,7 +132,7 @@
   ],
   "research": {
     "decision": "required",
-    "reason": "The baseline had only a local simulator and no accepted production cache policy. Primary sources were needed to distinguish scan resistance, admission, exact capacity, concurrent-cache tradeoffs, and the rrflowKV-versus-DataFusion cache boundary before code changes.",
+    "reason": "The baseline had only a local simulator and no accepted production cache policy. Primary sources were needed to distinguish scan resistance, admission, exact capacity, concurrent-cache tradeoffs, and the rrflowKV-versus-DataFusion cache boundary. The first real-reader run then proved unconditional second-hit promotion insufficient because repeated page requests inside one projected stream promoted scan traffic; the successor adaptation uses deterministic engine-owned logical reuse scope instead of wall-clock delay or client-selected bypass.",
     "sources": [
       {
         "title": "RocksDB Block Cache",
@@ -132,8 +143,8 @@
       {
         "title": "RocksDB Basic Operations",
         "url": "https://github.com/facebook/rocksdb/wiki/Basic-Operations/8b0db11192422ae154253ae6e76123f28b09488a",
-        "retained_behavior": "Prevent one-pass scans from erasing reused pages and preserve ordered-key locality.",
-        "rejected_assumption": "Do not expose caller-controlled fill-cache authority or hard-code semantic-family quotas."
+        "retained_behavior": "Prevent one-pass scans from erasing reused pages and preserve ordered-key locality; RRFlow maps the no-insert lesson to same-scope promotion suppression while still admitting pages.",
+        "rejected_assumption": "Do not expose caller-controlled fill-cache authority, bypass all projected admissions, or hard-code semantic-family quotas."
       },
       {
         "title": "RocksDB block-cache analysis and simulation tools",
@@ -144,8 +155,8 @@
       {
         "title": "InnoDB midpoint insertion strategy",
         "url": "https://dev.mysql.com/doc/refman/8.0/en/innodb-performance-midpoint_insertion.html",
-        "retained_behavior": "Adapt probationary insertion and promotion on reuse for mixed point-read and batch-scan workloads.",
-        "rejected_assumption": "Do not import MySQL time windows, fixed page assumptions, global variables, or its default region ratio."
+        "retained_behavior": "Adapt probationary insertion and distinguish reuse after the original scan from repeated touches caused by that scan; RRFlow uses a deterministic logical request scope.",
+        "rejected_assumption": "Do not import MySQL wall-clock promotion windows, fixed page assumptions, global variables, or its default region ratio."
       },
       {
         "title": "TinyLFU: A Highly Efficient Cache Admission Policy",
@@ -180,27 +191,28 @@
     },
     "resource_evidence": {
       "decision": "add",
-      "reason": "Stats report exact total and per-region resident bytes/entries plus admissions, rejections, evictions, promotions, demotions, loads, and duplicate loads; active reader Arc ownership remains distinct from cache residency."
+      "reason": "Stats report exact total and per-region resident bytes/entries plus admissions, rejections, evictions, promotions, demotions, same-scope suppressed promotions, loads, and duplicate loads; active reader Arc ownership remains distinct from cache residency."
     },
     "debugging_evidence": {
       "decision": "add",
-      "reason": "Configuration denial, same-state policy reopen, independent row/value digests, phase counter deltas, stale-heap/clock invariants, and deterministic replay distinguish semantic, policy, I/O, and decode defects."
+      "reason": "Configuration denial, same-state policy reopen, independent row/value digests, phase counter deltas, same-scope suppression counts, stale-heap/clock invariants, and deterministic replay distinguish semantic, policy, I/O, decode, and scan-misclassification defects."
     }
   },
   "first_failure_oracle": [
     "The new public page-cache test is added before production edits and must initially fail to compile because PageCachePolicy and its new evidence fields are absent.",
+    "The first real physical-policy run is retained as a failed characterization: exact LRU and unconditional second-hit scan-resistant LRU each performed 45 post-scan hot loads because one projected stream generated 601 hits and promoted its own scan pages. The workload and strict comparison remain unchanged.",
     "Invalid protected ratios must fail before the database directory exists; reopening the same durable bytes with either valid policy must preserve manifest, snapshot, ordering, and values.",
     "The real eight-family corpus must exceed cache capacity, force at least one exact-LRU post-scan reload, and permit a reused hot set to remain protected; otherwise the workload is vacuous and the plan stops.",
     "Exact and scan-resistant policies must produce independently expected byte-identical projected rows and hot values while remaining within exact capacity; any semantic or bound difference fails.",
     "An oversize page is served but rejected from admission, stale heap entries cannot select the wrong victim, and a promoted Arc retains identity through demotion and eviction pressure."
   ],
   "edit_sequence": [
-    "Commit this machine plan alone as the direct child of 9592b88; validate that all current post-plan differences are declared and no runtime path differs.",
-    "Commit the source-backed research, implementation plan, indexes, and pre-edit traceability journal as a documentation-only child; rerun policy and documentation checks.",
-    "Add the black-box page_cache test first and record the intended missing-type compile failure.",
-    "Add PageCachePolicy, defaults, strict validation, DatabaseOptions propagation, public evidence, and low-cardinality open tracing.",
-    "Implement the exact and scan-resistant state machines with no I/O under the mutex; make focused configuration, capacity, region, identity, and mixed-family tests pass.",
-    "Extend the feature-gated real physical laboratory and evidence example; run only discarded dirty smoke output until validation passes.",
+    "Commit this successor machine plan alone as the direct child of e93e3d4 after the unchanged real workload exposes 45 versus 45 post-scan loads; validate the planning commit with all runtime work safely stashed.",
+    "Restore the failure-first test and cache edits, then update the already reviewed research, engineering plan, and pre-edit journal with the failed oracle and logical-scope correction.",
+    "Generate one checked opaque scope per ProjectedReadStream and pass it internally through SegmentProjectedCursor page requests; do not expose it through public requests or traces.",
+    "Complete PageCachePolicy, defaults, strict validation, DatabaseOptions propagation, public evidence, same-scope suppression, and low-cardinality open tracing.",
+    "Implement exact and scan-resistant state machines with no I/O under the mutex; make focused configuration, capacity, region, identity, same-scope, later-scope, and mixed-family tests pass.",
+    "Complete the feature-gated real physical laboratory and evidence example; keep the original workload and run only discarded dirty smoke output until strict validation passes.",
     "Run rrd-lsm all-target/all-feature tests, strict Clippy, rrd-store, architecture, and workspace checks; commit runtime source and tests.",
     "From the clean runtime revision generate and validate the release-profile C-06j artifact, then reconcile only declared source-of-truth/supporting records, journal results, and regenerate the file plan.",
     "Reread every changed file and the complete diff, run the final validation ladder, commit closeout, resolve both remote URLs and refs, push normally only to development/main, and verify official main did not move."
@@ -229,8 +241,9 @@
     "Exact and scan-resistant policies return different rows, values, ordering, snapshot identity, or durable bytes.",
     "Total residency exceeds capacity, scan-resistant region totals disagree, I/O occurs under the mutex, or eviction invalidates an active reader Arc.",
     "A caller, semantic family, DataFusion node, provider, hook, routine, skill, or external service gains physical cache authority.",
+    "A projected reuse scope is externally supplied, persisted, logged as an identifier, reused across streams, or changes authorization, result, snapshot, or query semantics.",
     "Moka, TinyLFU, a ghost cache, another cache crate, value separation, a second persistence engine, or a durable compatibility path appears necessary.",
-    "The real workload is vacuous, exact LRU does not reload after the scan, or scan resistance does not strictly reduce post-scan loads.",
+    "The unchanged real workload is made easier, exact LRU does not reload after the scan, same-stream hits promote probationary pages, or scope-aware scan resistance does not strictly reduce post-scan loads.",
     "Duplicate-load evidence is presented as coalescing, or C-07 concurrency and scalability are claimed without its stress proof.",
     "A benchmark or one-host artifact is described as release, scale, latency, network, or competitor superiority evidence.",
     "C-06 is closed from compilation, simulation, or this metric alone rather than every named canonical prerequisite.",
