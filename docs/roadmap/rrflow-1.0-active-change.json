@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "C-06j-rrflowkv-scope-aware-scan-resistant-cache-integration",
+  "package_id": "A-06-rrflow-1.0-roadmap-warp-refraction",
   "status": "active",
-  "package_kind": "bounded-runtime-implementation-and-evidence",
+  "package_kind": "structural-documentation-refactor",
   "baseline": {
-    "revision": "e93e3d4d3e482ed165e4d3580621d5a9212acf68",
-    "tree": "c3618921f534efbe90162cb01bf3f07ae89805f4",
+    "revision": "722a7d5b7438bdb96235bcd97c8caf9a7649017f",
+    "tree": "6e237aa63781ea25ab91790b03cf6dcbac00c2bd",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,21 +13,19 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Complete the remaining C-06 physical-policy decision with a configurable exact-byte scan-resistant rrflowKV page cache and a real persisted mixed-family differential, while preserving one persistence authority below future stamped rrflowQL/DataFusion execution.",
-    "roadmap_gates": ["C-06", "C-07", "F-01", "F-05", "J-04"],
-    "poam_items": ["POAM-002"],
-    "architecture_owner": "docs/roadmap/rrflow-1.0.md#gate-c--sole-persistent-rrflowkv-substrate"
+    "alpha_prerequisite": "Preserve OBJ-01 and A-06's one navigable documentation memory by refracting the canonical RRFlow 1.0 roadmap into addressable chapters without creating another release-plan or completion authority.",
+    "roadmap_gates": ["A-06", "A-07", "J-01"],
+    "poam_items": ["POAM-001", "POAM-027"],
+    "architecture_owner": "docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist"
   },
-  "current_behavior": "The clean baseline has one RRFlow-owned exact-byte immutable page cache shared by database segments, but it admits every fitting miss into one LRU region. The first post-plan real-reader experiment then exposed a non-vacuous design defect: a projected stream requests validity, offset, and value pages repeatedly while processing rows, so unconditional second-hit promotion misclassifies same-stream scan touches as cross-operation reuse. Both exact LRU and the naive two-region implementation reloaded 45 hot pages after the scan. The reader has no engine-owned cache reuse scope.",
-  "target_behavior": "Add a closed PageCachePolicy with selectable ExactLru and default ScanResistantLru modes plus an internal non-authoritative reuse scope generated once per projected stream. Preserve exact-byte charging and immutable Arc ownership; admit new pages probationary, promote only when reuse crosses a logical operation scope, keep repeated same-stream hits probationary, demote protected LRU pages above a validated target, evict probationary first, and count admissions, rejections, promotions, demotions, same-scope suppressed promotions, and duplicate loads. Point reads retain ordinary reuse behavior. Prove byte-identical reads, strict capacity, reopen invariance, and fewer post-scan hot loads on one real persisted eight-family corpus. Keep the scope and cache below RrdEngine and the future rrflowQL/DataFusion TableProvider, and close C-06 only if all canonical evidence is satisfied.",
+  "current_behavior": "The canonical RRFlow 1.0 roadmap is one 1,377-line Markdown record with 1,262 nonblank lines. Its objective/remediation, checklist, dependency spine, ten gate bodies, and accepted evidence share one file. Gate A alone spans 520 lines, Gate C spans 381 lines, and the absence of an evidence heading leaves lines 202 through 682 structurally nested beneath the unrelated Later knowledge-persistence sequence heading. Agents can address top-level anchors but cannot load one clean roadmap concern or evidence ledger by file.",
+  "target_behavior": "Keep docs/roadmap/rrflow-1.0.md as the sole canonical roadmap coordinate and turn its body into linked headings only. Move the current objective/remediation, checklist, dependency spine, Gate A through Gate J requirements, and accepted Gate A through Gate C evidence into exactly sixteen coordinated child records under docs/roadmap/rrflow-1.0/. Preserve the parent heading text as compatibility warp points, give every child one parent-owner link and stable coordinate, add explicit evidence headings where plain labels currently hide structure, adjust only links made relative by the one-directory move, and retain every roadmap statement, table row, checkbox, status, dependency, and evidence claim without semantic change.",
   "unchanged_behavior": [
-    "WAL, MVCC, manifest-v3, segment-v6 encoding, snapshot-bundle-v1, adaptive LZ4, row-group filters, projected-read ordering, tombstones, compaction publication, garbage collection, and RrdEngine transaction authority remain unchanged.",
-    "The cache remains process-local and non-durable; replacement policy never enters segment, manifest, WAL, snapshot, application-key, query, or public transport encodings.",
-    "rrflowQL/DataFusion remains downstream stamped compute over bounded Arrow-compatible batches and cannot own persistence, authorization, page admission, or direct writes.",
-    "No family-specific capacity, caller-selected cache bypass or scope, Moka, TinyLFU, ghost cache, value log, cache daemon, alternate storage engine, hook, routine, skill, adapter, or provider state is added.",
-    "The projected reuse scope is process-local scheduling metadata only: it grants no authorization, query, lifecycle, persistence, admission-policy, or external API authority and is never serialized or accepted from a client.",
-    "Lock sharding, in-flight load coalescing, pinned-owner concurrency, cancellation fairness, and sustained stress remain C-07 work; this package records duplicate loads without claiming to prevent them.",
-    "Product version remains 1.0.0; installation, attunement, native graph/BM25/vector/TurboQuant, SDK/API/MCP/Connectome, distribution, and release work remain separately gated; only rrflow/rrflow-development may receive this package."
+    "The root README remains the bootstrap identity and current-status owner; the RRFlow 1.0 roadmap parent remains the sole dependency-order and completion-evidence authority.",
+    "All gate counts, checkbox states, active executable item D-01, evidence dates, revisions, digests, acceptance conditions, exit conditions, and release restrictions remain unchanged.",
+    "No objective, roadmap gate, POA&M item, implementation behavior, product version, source dependency, release claim, or promotion state changes in this structural package.",
+    "The execution map is not refactored in this package; it receives only the repository-required bounded package journal. The POA&M is unchanged and will be reviewed as a separate successor package.",
+    "Existing inbound links to the parent roadmap headings remain valid and lead to linked child warp points; no forwarding file, duplicate roadmap body, or alternate completion ledger is created."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -35,219 +33,218 @@
     "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
   },
   "reviewed_files": [
-    {"path":"AGENTS.md","baseline_sha256":"6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c","baseline_lines":129,"reviewed_lines":"1-129","symbols":["planning chain","source adaptation","journaling","push authority"]},
-    {"path":"README.md","baseline_sha256":"d89a5f278857cacaade3d2c1fe06b356a14d04971a466e49a448a97de716134a","baseline_lines":224,"reviewed_lines":"1-224","symbols":["product identity","current status","storage warp points"]},
-    {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"baa006e9faf5f07de1f80fbba7c27414819f799710b60d645d0ed0333daae7aa","baseline_lines":65,"reviewed_lines":"1-65","symbols":["OBJ-02","OBJ-05","alpha proof"]},
-    {"path":"docs/roadmap/rrflow-1.0.md","baseline_sha256":"c703a841470b93da85459e0d4d33ba94ad18981fe797fff350a037d7846f0e07","baseline_lines":1346,"reviewed_lines":"1-1346","symbols":["C-06","C-07","F-01","F-05","J-04"]},
-    {"path":"docs/poam/rrflow-1.0-alpha.md","baseline_sha256":"8bcadb816716aec999dbb75b43f076ddb9568ad22220f9ba059ce2ef8df3aa21","baseline_lines":82,"reviewed_lines":"1-82","symbols":["POAM-002","verified gaps"]},
-    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"b5186866288b2b54a9c35b8beb7c2440a3faacb9bfbd93146ebbb50c38959c3a","baseline_lines":240,"reviewed_lines":"1-240","symbols":["initial C-06j plan","machine-plan schema","stop condition"]},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","baseline_sha256":"0202cd7dd039bb5aa7f4a713d298c3c9b82f2eb82123400d5c4be1b622b42b67","baseline_lines":4014,"reviewed_lines":"1-4014","symbols":["C-06 packages","C-06j pre-edit traceability","journal template","global stop conditions"]},
-    {"path":"docs/roadmap/README.md","baseline_sha256":"5ee22c13485c2fddd5e10401ab8a4456ced9621ebd84f46911a54f7db2ce0968","baseline_lines":52,"reviewed_lines":"1-52","symbols":["roadmap discovery","active C-06j package index"]},
-    {"path":"docs/research/README.md","baseline_sha256":"f9ada84e5beaa4cda572177f15d21609c8442788bfed8f8ad99005228f7c17e8","baseline_lines":97,"reviewed_lines":"1-97","symbols":["research classification","C-06j research index"]},
-    {"path":"docs/research/rrflowkv-page-cache-and-mixed-workload-research.md","baseline_sha256":"f99ad33f387a0f8bf040a20762e79df6b347f18ded6aa05a6ee8565f66461077","baseline_lines":248,"reviewed_lines":"1-248","symbols":["cache research decision","selected policy","real workload","DataFusion boundary"]},
-    {"path":"docs/roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md","baseline_sha256":"113a58abce9977bf44ac3b4fc10882b9a0508ae31781d0d0bb1861c7876766e0","baseline_lines":433,"reviewed_lines":"1-433","symbols":["implementation plan","state transitions","stop conditions"]},
-    {"path":"docs/architecture/engine-data-flow.md","baseline_sha256":"fe808fbbcd9b7e9fd4409b0ed53ac3d6f58d17069a266bec90da9087d583c086","baseline_lines":1385,"reviewed_lines":"1-1385","symbols":["rrflowKV","projected batches","DataFusion boundary"]},
-    {"path":"docs/reference/storage/rrflowkv-current-format.md","baseline_sha256":"82bad418a956482a8cf4c2c2b69bf02aee5873a69690b9c7307378d8f0f5806a","baseline_lines":585,"reviewed_lines":"1-585","symbols":["segment v6","page cache","ownership evidence"]},
-    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","baseline_sha256":"e9189049eecc355a1c92c6e3fe1a8c3a9fdd7d40732ebff9ae6dc9184d0df07e","baseline_lines":224,"reviewed_lines":"1-224","symbols":["physical-policy harness","evidence limitations"]},
-    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","baseline_sha256":"724b4d6841bd678960f53b65e00cf44b93c0a26c568393224da0ccce08e1d6db","baseline_lines":758,"reviewed_lines":"1-758","symbols":["cache candidates","value placement","DataFusion boundary"]},
-    {"path":"docs/evidence/README.md","baseline_sha256":"cae0b70b1ea02884961dd1a8236b67382aaf915c70de3280d279290fbb2e0045","baseline_lines":20,"reviewed_lines":"1-20","symbols":["artifact index","evidence limitations"]},
-    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","baseline_sha256":"224417bd5ba1c6c801ebf0f97fdbd3dba3c9de6fc160ab3a175ebf366d1167b4","baseline_lines":137,"reviewed_lines":"1-137","symbols":["C-06 scenarios","remaining qualification"]},
-    {"path":"scripts/ci/build_execution_inventory.py","baseline_sha256":"3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca","baseline_lines":1841,"reviewed_lines":"1-1841","symbols":["deterministic inventory generator","planned path classification"]},
-    {"path":"crates/persistence/rrd-lsm/src/lib.rs","baseline_sha256":"0de8a4f2f41b3c396a52fefcc1be469449b575f83db52cd88ca866b5ed64f6ca","baseline_lines":162,"reviewed_lines":"1-162","symbols":["database exports","segment exports"]},
-    {"path":"crates/persistence/rrd-lsm/src/database.rs","baseline_sha256":"88b07bb73f70c7e90101aeb1aee78baec329bd6c76e01505f2d463af05bd1750","baseline_lines":2142,"reviewed_lines":"1-2142","symbols":["DatabaseOptions","create/open","page cache construction","open trace","projected reads"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/mod.rs","baseline_sha256":"ee623aae6bd5eb8e6ecf615bfaa374d84df0e48a48d0d9105aca3be6bdb760b1","baseline_lines":2061,"reviewed_lines":"1-2061","symbols":["PageCacheStats","PageCache","CacheEntry","new_page_cache","load_page_with_evidence"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/reader.rs","baseline_sha256":"59665d3918458f89312459762f22dad22948217ccf38a4d438caa407aa3608b6","baseline_lines":1549,"reviewed_lines":"1-1549","symbols":["ProjectedReadStream","SegmentProjectedCursor","load_projected_page","per-row page requests"]},
-    {"path":"crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs","baseline_sha256":"e9d6235af88292a50fc00a3885796de176ef4cb86c0b522cc29b5a84f231a0c6","baseline_lines":1573,"reviewed_lines":"1-1573","symbols":["cache candidate simulator","real segment observations","physical policy trial"]},
-    {"path":"crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs","baseline_sha256":"69364edd04d8454a6f5a6cbdd4094ac25881b4d37753ce76b25f8225866a8830","baseline_lines":815,"reviewed_lines":"1-815","symbols":["fixed-machine child protocol","evidence aggregation","artifact validation"]}
+    {
+      "path": "docs/roadmap/rrflow-1.0-active-change.json",
+      "baseline_sha256": "de2553f90590b95b0184cbb2d8d717e5e5fbade451af6b9844793af6489bdeae",
+      "baseline_lines": 253,
+      "reviewed_lines": "1-253",
+      "symbols": ["machine change-plan schema", "planning-only ancestry", "declared path closure"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0.md",
+      "baseline_sha256": "7dd56fae4a9dabbe1a6ed848fc32b659ea19a9a25f5b06d5e102d238c1f0a97a",
+      "baseline_lines": 1377,
+      "reviewed_lines": "1-1377",
+      "symbols": ["canonical roadmap metadata", "objective and remediation", "execution checklist", "executable dependency spine", "Gate A through Gate J", "accepted evidence"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
+      "baseline_sha256": "4215e6f83700c7ff228aa8bbbac4cab50dc136d614f395f1f14b236949869fc0",
+      "baseline_lines": 4065,
+      "reviewed_lines": "1-4065",
+      "symbols": ["codebase-grounded change-authoring routine", "documentation packages", "evidence record template", "global stop conditions"]
+    },
+    {
+      "path": "scripts/ci/build_execution_inventory.py",
+      "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
+      "baseline_lines": 1841,
+      "reviewed_lines": "1-1841",
+      "symbols": ["deterministic repository inventory", "Markdown path classification", "generated file plan"]
+    }
   ],
   "implementation_changes": [
     {
-      "path": "crates/persistence/rrd-lsm/src/lib.rs",
+      "path": "docs/roadmap/rrflow-1.0.md",
       "baseline_state": "present",
-      "symbols": ["PageCachePolicy exports"],
-      "action": "Expose the closed cache policy and measured default protected-capacity constant without exposing internal regions or replacement structures.",
-      "failure_semantics": "No caller, provider, semantic family, or second cache authority enters the public surface."
+      "symbols": ["canonical roadmap metadata", "linked compatibility headings"],
+      "action": "Retain the canonical title, status, coordinate, and owner; replace the monolithic body with linked section, gate, and evidence headings in original dependency order.",
+      "failure_semantics": "Stop if the parent retains duplicated roadmap prose, loses its canonical coordinate, changes heading text needed by inbound anchors, or stops identifying every child."
     },
     {
-      "path": "crates/persistence/rrd-lsm/src/database.rs",
-      "baseline_state": "present",
-      "symbols": ["DatabaseOptions","create/open validation","page cache construction","rrd_lsm::open"],
-      "action": "Add non-durable cache policy configuration, validate it before filesystem mutation, construct the sole shared cache with it, expose truthful policy evidence, and trace low-cardinality configuration.",
-      "failure_semantics": "Invalid ratios fail closed before path creation; reopening with another policy cannot change durable identity or visibility."
-    },
-    {
-      "path": "crates/persistence/rrd-lsm/src/segment/mod.rs",
-      "baseline_state": "present",
-      "symbols": ["PageCachePolicy","PageCacheStats","PageCache","load_page_with_evidence"],
-      "action": "Implement exact/probationary/protected regions, second-hit promotion, protected-target demotion, probationary-first eviction, strict byte accounting, admission/rejection/promotion/demotion/duplicate-load counters, and stale-heap/clock invariants.",
-      "failure_semantics": "I/O never occurs under the cache mutex; total and region residency never exceed or disagree with configured capacity; eviction never invalidates a reader-owned Arc."
-    },
-    {
-      "path": "crates/persistence/rrd-lsm/src/segment/reader.rs",
-      "baseline_state": "present",
-      "symbols": ["ProjectedReadStream","SegmentProjectedCursor","load_projected_page","cache reuse scope"],
-      "action": "Generate one opaque internal reuse scope per projected stream and carry it through every segment page request so repeated hits within that stream refresh but do not promote probationary pages; a later stream receives a distinct scope and may earn promotion.",
-      "failure_semantics": "Scope exhaustion fails the projected-read request; scopes are never client supplied, serialized, traced as identifiers, or used for authorization/query semantics, and page/result evidence remains exact."
-    },
-    {
-      "path": "crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs",
-      "baseline_state": "present",
-      "symbols": ["run_physical_policy_trial","IntegratedCachePolicyObservation","policy decision"],
-      "action": "Retain candidate simulation as screening evidence and add a real same-corpus exact-versus-scan-resistant mixed-family production-reader comparison with semantic digests and counter deltas.",
-      "failure_semantics": "The selected policy is integrated only when exact identities and bounds match and post-scan hot loads are strictly lower."
-    },
-    {
-      "path": "crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs",
-      "baseline_state": "present",
-      "symbols": ["evidence version","child identity","aggregate artifact","validation"],
-      "action": "Emit and validate clean-revision C-06j evidence for both production cache policies, authenticated child identity, exact capacity, semantic equality, post-scan loads, host provenance, and limitations.",
-      "failure_semantics": "Dirty, vacuous, mismatched, non-deterministic, over-capacity, semantically divergent, or non-improving results are rejected."
-    },
-    {
-      "path": "crates/persistence/rrd-lsm/tests/page_cache.rs",
+      "path": "docs/roadmap/rrflow-1.0/current-alpha-objective-and-remediation.md",
       "baseline_state": "absent",
-      "symbols": ["configuration denial","reopen invariance","mixed-family differential","capacity evidence"],
-      "action": "Add failure-first black-box tests through Database and ProjectedReadStream for validation, durable invariance, exact semantics, scan resistance, and truthful counters.",
-      "failure_semantics": "The old admit-every-miss default must fail the pollution oracle and no test may substitute a simulator or mock for persisted reads."
+      "symbols": ["current alpha objective and remediation", "gate completion table"],
+      "action": "Move the current alpha ownership links and ten-gate completion table into one parent-owned chapter.",
+      "failure_semantics": "Stop on any changed gate count, authority statement, or source link."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/execution-checklist.md",
+      "baseline_state": "absent",
+      "symbols": ["RRFlow 1.0 execution checklist", "checklist rules"],
+      "action": "Move the checklist policy into one parent-owned chapter and link its dependency-spine child.",
+      "failure_semantics": "Stop if any execution, evidence, convergence, or failure rule is omitted or weakened."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/executable-dependency-spine.md",
+      "baseline_state": "absent",
+      "symbols": ["executable dependency spine", "waves 0 through 12", "active executable item"],
+      "action": "Move the complete dependency spine and current active-item narrative into one parent-owned chapter.",
+      "failure_semantics": "Stop if wave order, prerequisites, active D-01 status, or accepted C/A/B evidence changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-a.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate A requirements", "A-06 knowledge-bootstrap sequence", "later knowledge-persistence sequence", "Gate A exit"],
+      "action": "Move Gate A's checklist, knowledge sequences, and exit rule into one requirements chapter that links its accepted-evidence chapter.",
+      "failure_semantics": "Stop if any A or KB checkbox, requirement, acceptance condition, sequence, or exit rule changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-a-evidence.md",
+      "baseline_state": "absent",
+      "symbols": ["KB evidence", "A-02 through A-07 evidence"],
+      "action": "Move all accepted Gate A evidence into one chapter and promote each existing evidence label to a stable heading.",
+      "failure_semantics": "Stop if an evidence paragraph, date, revision, digest, limitation, failure, or command claim changes or disappears."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-b.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate B requirements", "Gate B exit"],
+      "action": "Move Gate B's checklist and exit rule into one requirements chapter that links its accepted-evidence chapter.",
+      "failure_semantics": "Stop if any B checkbox, contract boundary, acceptance condition, or exit rule changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-b-evidence.md",
+      "baseline_state": "absent",
+      "symbols": ["B-01 through B-05 evidence"],
+      "action": "Move all accepted Gate B evidence into one chapter and promote each existing evidence label to a stable heading.",
+      "failure_semantics": "Stop if an evidence paragraph, date, test count, limitation, or completion boundary changes or disappears."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-c.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate C requirements", "Gate C exit"],
+      "action": "Move Gate C's checklist and exit rule into one requirements chapter that links its accepted-evidence chapter.",
+      "failure_semantics": "Stop if any C checkbox, physical requirement, accepted-policy decision, acceptance condition, or exit rule changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-c-evidence.md",
+      "baseline_state": "absent",
+      "symbols": ["C-01 through C-06 accepted evidence"],
+      "action": "Move all accepted Gate C evidence into one chapter and promote each existing evidence label to a stable heading.",
+      "failure_semantics": "Stop if an evidence paragraph, date, revision, digest, counter, rejection decision, limitation, or completion boundary changes or disappears."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-d.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate D requirements", "Gate D exit"],
+      "action": "Move the complete Gate D checklist and exit rule into one parent-owned chapter.",
+      "failure_semantics": "Stop if any D item, dependency, installation safety rule, or acceptance condition changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-e.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate E requirements", "Gate E exit"],
+      "action": "Move the complete Gate E checklist and exit rule into one parent-owned chapter.",
+      "failure_semantics": "Stop if any graph, scalar, lexical, vector, planning, or exact-oracle requirement changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-f.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate F requirements", "Gate F exit"],
+      "action": "Move the complete Gate F checklist and exit rule into one parent-owned chapter.",
+      "failure_semantics": "Stop if any Arrow, DataFusion, pushdown, operator, budget, cache, or evidence requirement changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-g.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate G requirements", "Gate G exit"],
+      "action": "Move the complete Gate G checklist and exit rule into one parent-owned chapter.",
+      "failure_semantics": "Stop if any RouterBackend, LFG, authorization, routing, mutation, or measurement requirement changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-h.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate H requirements", "H-05 package sequence", "Gate H exit"],
+      "action": "Move the complete Gate H checklist, H-05 package sequence, and exit rule into one parent-owned chapter.",
+      "failure_semantics": "Stop if any context, feedback, delivery, public-surface, trace, Connectome, mesh, or H-05 sequencing requirement changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-i.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate I requirements", "error-resolution corpus", "Gate I exit"],
+      "action": "Move the complete Gate I checklist, end-to-end corpus, and exit rule into one parent-owned chapter.",
+      "failure_semantics": "Stop if any event, trigger, routine, adapter, skill, installation, inventory, or no-hook requirement changes."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-j.md",
+      "baseline_state": "absent",
+      "symbols": ["Gate J promotion boundary", "Gate J requirements", "release condition"],
+      "action": "Move the complete Gate J repository/promotion policy, checklist, and release condition into one parent-owned chapter.",
+      "failure_semantics": "Stop if any repository, authorization, artifact, qualification, promotion, force-push, or release restriction changes."
     }
   ],
   "evidence_changes": [
-    {"path":"docs/research/rrflowkv-page-cache-and-mixed-workload-research.md","action":"Record the failed same-stream promotion result and refine the primary-source adaptation to an engine-owned logical reuse scope without changing cache authority or the DataFusion boundary."},
-    {"path":"docs/roadmap/c06j-rrflowkv-scan-resistant-cache-engineering-plan.md","action":"Record the failed 45-versus-45 oracle, add the reviewed projected-reader symbols and exact reuse-scope semantics, and update the completion record after proof."},
-    {"path":"docs/research/README.md","action":"Index the bounded cache and mixed-workload research without transferring architecture authority."},
-    {"path":"docs/roadmap/README.md","action":"Index the active C-06j supporting plan and later record its evidence state without changing canonical status independently."},
-    {"path":"docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json","action":"Add clean-revision real-reader exact-versus-scan-resistant mixed-family measurements, identities, counters, provenance, and limitations."},
-    {"path":"docs/evidence/README.md","action":"Index the C-06j artifact as bounded integration evidence, not release, scale, or competitor proof."},
-    {"path":"docs/roadmap/rrflow-1.0-execution-map.md","action":"Append pre-edit traceability and final package journal with full-file reviews, commands, failures, results, commits, omissions, and remaining gaps."},
-    {"path":"README.md","action":"Update only current C-06 status and the next dependency after canonical evidence; retain the portal structure."},
-    {"path":"docs/objectives/rrflow-1.0-alpha.md","action":"Record the truthful physical-policy prerequisite state without closing an alpha outcome."},
-    {"path":"docs/roadmap/rrflow-1.0.md","action":"Close C-06 only if prior and current named evidence collectively satisfy every acceptance condition; otherwise name the exact residual."},
-    {"path":"docs/poam/rrflow-1.0-alpha.md","action":"Narrow POAM-002 to the remaining recovery/concurrency or retain any unproved C-06 gap explicitly."},
-    {"path":"docs/architecture/engine-data-flow.md","action":"Place the process-local cache below rrflowKV projected batches and future stamped rrflowQL/DataFusion execution."},
-    {"path":"docs/reference/storage/rrflowkv-current-format.md","action":"Document the non-durable cache policy and counters and correct stale current-format wording in the owned section."},
-    {"path":"docs/reference/storage/rrflowkv-benchmark-harness.md","action":"Add the C-06j reproduction command, measured fields, acceptance invariant, and one-host limitations."},
-    {"path":"docs/research/rrflowkv-rust-storage-engine-architecture-research.md","action":"Change only cache/value/family candidate statements now supported or rejected by real production evidence."},
-    {"path":"docs/evidence/test-plans/persistence-scenario-matrix.md","action":"Record the mixed-family cache differential and preserve remaining C-07/F/J qualification gaps."},
-    {"path":"docs/roadmap/rrflow-1.0-file-plan.jsonl","action":"Regenerate the deterministic repository implementation/test inventory after the runtime and documentation changes.","generated":true,"generator":"scripts/ci/build_execution_inventory.py"}
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
+      "action": "Append only the required roadmap-refraction package journal with baseline, complete files read, changed paths, preservation decisions, exact commands/results, surfaced failures, omissions, and unchanged roadmap status; do not refactor the execution map."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
+      "action": "Regenerate the deterministic repository inventory so the canonical parent and all new roadmap chapter paths and digests are accounted for.",
+      "generated": true,
+      "generator": "scripts/ci/build_execution_inventory.py"
+    }
   ],
   "research": {
-    "decision": "required",
-    "reason": "The baseline had only a local simulator and no accepted production cache policy. Primary sources were needed to distinguish scan resistance, admission, exact capacity, concurrent-cache tradeoffs, and the rrflowKV-versus-DataFusion cache boundary. The first real-reader run then proved unconditional second-hit promotion insufficient because repeated page requests inside one projected stream promoted scan traffic; the successor adaptation uses deterministic engine-owned logical reuse scope instead of wall-clock delay or client-selected bypass.",
-    "sources": [
-      {
-        "title": "RocksDB Block Cache",
-        "url": "https://github.com/facebook/rocksdb/wiki/Block-Cache",
-        "retained_behavior": "Use one shared immutable decoded-page cache with explicit capacity and hit, miss, add, eviction, and load evidence.",
-        "rejected_assumption": "Do not copy the C++ API, relaxed capacity behavior, compressed secondary cache, or unmeasured sharding defaults."
-      },
-      {
-        "title": "RocksDB Basic Operations",
-        "url": "https://github.com/facebook/rocksdb/wiki/Basic-Operations/8b0db11192422ae154253ae6e76123f28b09488a",
-        "retained_behavior": "Prevent one-pass scans from erasing reused pages and preserve ordered-key locality; RRFlow maps the no-insert lesson to same-scope promotion suppression while still admitting pages.",
-        "rejected_assumption": "Do not expose caller-controlled fill-cache authority, bypass all projected admissions, or hard-code semantic-family quotas."
-      },
-      {
-        "title": "RocksDB block-cache analysis and simulation tools",
-        "url": "https://github.com/facebook/rocksdb/wiki/Block-cache-analysis-and-simulation-tools",
-        "retained_behavior": "Compare policies from explicit traces and retain second-use admission as a candidate principle.",
-        "rejected_assumption": "Do not treat a simulator, RocksDB trace schema, midpoint default, or ghost cache as production proof."
-      },
-      {
-        "title": "InnoDB midpoint insertion strategy",
-        "url": "https://dev.mysql.com/doc/refman/8.0/en/innodb-performance-midpoint_insertion.html",
-        "retained_behavior": "Adapt probationary insertion and distinguish reuse after the original scan from repeated touches caused by that scan; RRFlow uses a deterministic logical request scope.",
-        "rejected_assumption": "Do not import MySQL wall-clock promotion windows, fixed page assumptions, global variables, or its default region ratio."
-      },
-      {
-        "title": "TinyLFU: A Highly Efficient Cache Admission Policy",
-        "url": "https://arxiv.org/abs/1512.00727",
-        "retained_behavior": "Keep frequency admission as a later trace-driven candidate if two-region recency evidence proves insufficient.",
-        "rejected_assumption": "Do not add approximate frequency sketches, aging, or workload-dependent windows before real RRFlow traces justify them."
-      },
-      {
-        "title": "Moka cache crate documentation",
-        "url": "https://docs.rs/moka/latest/moka/",
-        "retained_behavior": "Retain weighted concurrent admission as a comparison point for later concurrency research.",
-        "rejected_assumption": "Do not substitute best-effort capacity and eventually consistent policy metadata for RRFlow's exact physical byte ledger."
-      },
-      {
-        "title": "DataFusion TableProvider",
-        "url": "https://docs.rs/datafusion/latest/datafusion/datasource/trait.TableProvider.html",
-        "retained_behavior": "Keep projection, filter, and limit pushdown over streaming Arrow RecordBatches above the rrflowKV physical source.",
-        "rejected_assumption": "Do not place persistence, authentication, page admission, or an eager full-estate copy inside DataFusion."
-      },
-      {
-        "title": "DataFusion RuntimeEnv",
-        "url": "https://docs.rs/datafusion/latest/datafusion/execution/runtime_env/struct.RuntimeEnv.html",
-        "retained_behavior": "Treat analytical query memory, spill, temporary disk, and session cache as a separately composed F-gate resource boundary.",
-        "rejected_assumption": "Do not merge DataFusion query caches with rrflowKV's immutable physical page cache."
-      }
-    ]
+    "decision": "not_required",
+    "reason": "This is a repository-local information-architecture refactor whose source of truth is the fully reviewed canonical roadmap; no external behavior, algorithm, standard, dependency, or market claim is introduced.",
+    "sources": []
   },
   "trace_resource_debug": {
     "runtime_trace": {
-      "decision": "add",
-      "reason": "The existing rrd_lsm::open event gains only policy kind, protected basis points, and capacity; cumulative access counters remain queryable without per-page payload events."
+      "decision": "not_applicable",
+      "reason": "No runtime code, operation, causal path, or emitted signal changes."
     },
     "resource_evidence": {
-      "decision": "add",
-      "reason": "Stats report exact total and per-region resident bytes/entries plus admissions, rejections, evictions, promotions, demotions, same-scope suppressed promotions, loads, and duplicate loads; active reader Arc ownership remains distinct from cache residency."
+      "decision": "not_applicable",
+      "reason": "No runtime allocation, I/O, latency, storage format, or resource budget changes."
     },
     "debugging_evidence": {
-      "decision": "add",
-      "reason": "Configuration denial, same-state policy reopen, independent row/value digests, phase counter deltas, same-scope suppression counts, stale-heap/clock invariants, and deterministic replay distinguish semantic, policy, I/O, decode, and scan-misclassification defects."
+      "decision": "not_applicable",
+      "reason": "Structural verification uses exact content accounting, link validation, generated inventory, and diff review rather than runtime diagnostics."
     }
   },
   "first_failure_oracle": [
-    "The new public page-cache test is added before production edits and must initially fail to compile because PageCachePolicy and its new evidence fields are absent.",
-    "The first real physical-policy run is retained as a failed characterization: exact LRU and unconditional second-hit scan-resistant LRU each performed 45 post-scan hot loads because one projected stream generated 601 hits and promoted its own scan pages. The workload and strict comparison remain unchanged.",
-    "Invalid protected ratios must fail before the database directory exists; reopening the same durable bytes with either valid policy must preserve manifest, snapshot, ordering, and values.",
-    "The real eight-family corpus must exceed cache capacity, force at least one exact-LRU post-scan reload, and permit a reused hot set to remain protected; otherwise the workload is vacuous and the plan stops.",
-    "Exact and scan-resistant policies must produce independently expected byte-identical projected rows and hot values while remaining within exact capacity; any semantic or bound difference fails.",
-    "An oversize page is served but rejected from admission, stale heap entries cannot select the wrong victim, and a promoted Arc retains identity through demotion and eviction pressure."
+    "At the baseline, docs/roadmap/rrflow-1.0.md has 1,377 lines and contains substantive non-link content after its metadata; the approved link-only parent shape and all sixteen child paths are absent.",
+    "The baseline heading hierarchy assigns Gate A evidence beginning at line 202 to the Later knowledge-persistence sequence because no intervening evidence heading exists.",
+    "After refraction, every original substantive line must occur in exactly one declared child after only heading-level, chapter-metadata, parent-link, and necessary relative-link normalization; missing or duplicated roadmap meaning fails the package.",
+    "Every repository-local Markdown link must resolve, every coordinated child must have one inbound parent link, and the generated execution inventory must be byte-deterministic and current.",
+    "The parent must contain no roadmap body beyond required metadata and linked headings, while its original top-level heading anchors remain present as compatibility warp points."
   ],
   "edit_sequence": [
-    "Commit this successor machine plan alone as the direct child of e93e3d4 after the unchanged real workload exposes 45 versus 45 post-scan loads; validate the planning commit with all runtime work safely stashed.",
-    "Restore the failure-first test and cache edits, then update the already reviewed research, engineering plan, and pre-edit journal with the failed oracle and logical-scope correction.",
-    "Generate one checked opaque scope per ProjectedReadStream and pass it internally through SegmentProjectedCursor page requests; do not expose it through public requests or traces.",
-    "Complete PageCachePolicy, defaults, strict validation, DatabaseOptions propagation, public evidence, same-scope suppression, and low-cardinality open tracing.",
-    "Implement exact and scan-resistant state machines with no I/O under the mutex; make focused configuration, capacity, region, identity, same-scope, later-scope, and mixed-family tests pass.",
-    "Complete the feature-gated real physical laboratory and evidence example; keep the original workload and run only discarded dirty smoke output until strict validation passes.",
-    "Run rrd-lsm all-target/all-feature tests, strict Clippy, rrd-store, architecture, and workspace checks; commit runtime source and tests.",
-    "From the clean runtime revision generate and validate the release-profile C-06j artifact, then reconcile only declared source-of-truth/supporting records, journal results, and regenerate the file plan.",
-    "Reread every changed file and the complete diff, run the final validation ladder, commit closeout, resolve both remote URLs and refs, push normally only to development/main, and verify official main did not move."
+    "Commit this machine-readable plan alone as the direct child of baseline 722a7d5b7438bdb96235bcd97c8caf9a7649017f, then require the canonical change-plan validator to accept the planning-only state.",
+    "Replace the canonical roadmap body with linked headings only, preserving its title, status, coordinate, owner, original heading text, dependency order, and direct links to exactly sixteen child records.",
+    "Create the objective/remediation, checklist, dependency-spine, Gate A through Gate J, and Gate A through Gate C evidence chapters from the exact reviewed line bodies; add chapter metadata/parent links and repair only one-directory-relative references.",
+    "Promote existing plain evidence labels to headings, move Gate A/B/C exit rules into their requirements chapters, and verify that no requirement, checkbox, status, count, claim, evidence datum, limitation, or release restriction changed.",
+    "Append the bounded journal without refactoring the execution map, regenerate the declared file plan, reread every changed file, review the complete diff, and run the smallest structural checks before the full documentation/inventory checks.",
+    "Commit the completed roadmap-refraction package before beginning the separately planned POA&M review and refraction requested by the repository owner."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "cargo test -p rrd-lsm --test page_cache --locked",
-    "cargo test -p rrd-lsm --test segment database_page_cache_is_shared_bounded_and_observable --locked -- --exact",
-    "cargo test -p rrd-lsm --features physical-policy-lab cache_candidates_preserve_identity_and_exact_capacity --locked",
-    "cargo test -p rrd-lsm --all-targets --all-features --locked",
-    "cargo clippy -p rrd-lsm --all-targets --all-features --locked -- -D warnings",
-    "cargo test -p rrd-store --locked",
-    "cargo test -p rrd-engine --test workspace_architecture --locked",
-    "cargo check --workspace --all-targets --locked",
-    "cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06j-rrflowkv-scan-resistant-cache-linux-x86_64.json",
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/ci/check_documentation.py",
-    "python3 scripts/ci/check_generated_surfaces.py",
-    "python3 scripts/ci/check_workflow.py",
+    "python3 scripts/knowledge/test_export.py",
     "python3 scripts/check_version.py",
-    "cargo fmt --all -- --check",
     "git diff --check"
   ],
   "stop_conditions": [
-    "A required implementation, test, documentation, generator, or evidence path is missing from this machine plan.",
-    "Exact and scan-resistant policies return different rows, values, ordering, snapshot identity, or durable bytes.",
-    "Total residency exceeds capacity, scan-resistant region totals disagree, I/O occurs under the mutex, or eviction invalidates an active reader Arc.",
-    "A caller, semantic family, DataFusion node, provider, hook, routine, skill, or external service gains physical cache authority.",
-    "A projected reuse scope is externally supplied, persisted, logged as an identifier, reused across streams, or changes authorization, result, snapshot, or query semantics.",
-    "Moka, TinyLFU, a ghost cache, another cache crate, value separation, a second persistence engine, or a durable compatibility path appears necessary.",
-    "The unchanged real workload is made easier, exact LRU does not reload after the scan, same-stream hits promote probationary pages, or scope-aware scan resistance does not strictly reduce post-scan loads.",
-    "Duplicate-load evidence is presented as coalescing, or C-07 concurrency and scalability are claimed without its stress proof.",
-    "A benchmark or one-host artifact is described as release, scale, latency, network, or competitor superiority evidence.",
-    "C-06 is closed from compilation, simulation, or this metric alone rather than every named canonical prerequisite.",
-    "A push targets official rrflow/rrflow, rewrites history, creates a tag/release/artifact promotion, or is not verified against the exact development ref."
+    "Any original roadmap requirement, checkbox, gate count, dependency order, active-item statement, evidence claim, limitation, digest, revision, acceptance condition, or exit condition is missing, duplicated, or semantically changed.",
+    "The canonical parent loses its title, status, coordinate, owner, original heading anchors, ordered child coverage, or link-only body shape.",
+    "A child claims independent roadmap, objective, POA&M, product-status, release, runtime, or lifecycle authority instead of identifying itself as a parent-owned roadmap chapter.",
+    "A repository-local link or fragment breaks, a moved relative link resolves outside its intended owner, a child is unindexed, or deterministic knowledge/inventory packaging fails.",
+    "The execution map requires any change beyond the bounded evidence journal, or the POA&M, README, objectives, code, tests, configuration, version, or release state would need to change in this package.",
+    "The refactor creates a compatibility copy, duplicate body, generated editable authority, external dependency, install/runtime fetch, hook, provider state, or parallel completion ledger.",
+    "A subsequent POA&M refactor begins before this roadmap package is verified and committed as one coherent reviewable change."
   ],
-  "roadmap_status_change": "Close C-06 only after prior C-06a through C-06i evidence plus the real C-06j mixed-family/cache artifact collectively prove the canonical row; if they do, Gate C becomes 6/7 and C-07 is next. No alpha outcome, F gate, J gate, installation, reasoning, recall, or release status changes in this package."
+  "roadmap_status_change": "None. This package changes roadmap topology and warp addressability only; all objective, gate, checkbox, POA&M, maturity, active-item, version, promotion, and release states remain exactly as recorded at baseline."
 }
