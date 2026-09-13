@@ -1,7 +1,7 @@
 use ring::digest::{Context, SHA256};
 use rrd_lsm::{
-    run_physical_policy_trial, CandidateDecision, PhysicalPolicyConfig, PhysicalPolicyTrial,
-    PHYSICAL_POLICY_EVIDENCE_VERSION,
+    run_physical_policy_trial, CandidateDecision, IntegratedCachePolicyObservation,
+    PageCachePolicy, PhysicalPolicyConfig, PhysicalPolicyTrial, PHYSICAL_POLICY_EVIDENCE_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const EVIDENCE_FORMAT_VERSION: u16 = 3;
+const EVIDENCE_FORMAT_VERSION: u16 = 4;
 const MAX_TRIALS: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +98,11 @@ struct AggregateEvidence {
     rrflowkv_query_decompressed_bytes: u64,
     rrflowkv_reopen_filter_negatives: u64,
     rrflowkv_reopen_page_loads: u64,
+    rrflowkv_exact_lru_post_scan_hot_loads: u64,
+    rrflowkv_scan_resistant_post_scan_hot_loads: u64,
+    rrflowkv_scan_resistant_same_scope_hits: u64,
+    rrflowkv_scan_resistant_promotions: u64,
+    rrflowkv_scan_resistant_protected_entries: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -160,11 +165,13 @@ fn run() -> Result<(), String> {
     let host = host_provenance(&repository_root)?;
 
     let (warmup, warmup_exit_code) = spawn_child(&executable, arguments.config)?;
+    require_integrated_cache_result(&warmup)?;
     let mut raw_trials = Vec::with_capacity(arguments.trials);
     let mut raw_trial_exit_codes = Vec::with_capacity(arguments.trials);
     for _ in 0..arguments.trials {
         let (trial, exit_code) = spawn_child(&executable, arguments.config)?;
         require_trial_identity(&warmup, &trial)?;
+        require_integrated_cache_result(&trial)?;
         raw_trials.push(trial);
         raw_trial_exit_codes.push(exit_code);
     }
@@ -185,14 +192,14 @@ fn run() -> Result<(), String> {
         release_ineligibility_reasons.push("source worktree was dirty".into());
     }
     release_ineligibility_reasons.extend([
-        "this verifies one C-06i adaptive-page-compression integration, not an installed end-to-end release workload".into(),
+        "this verifies the bounded C-06j rrflowKV scan-resistant-cache integration, not an installed end-to-end release workload".into(),
         "device cache and competing host load were observed but not controlled".into(),
         "one machine and one corpus do not establish cross-platform or all-workload behavior".into(),
     ]);
     let evidence = PhysicalPolicyEvidence {
         evidence_format_version: EVIDENCE_FORMAT_VERSION,
         physical_policy_evidence_version: PHYSICAL_POLICY_EVIDENCE_VERSION,
-        evidence_kind: "rrflowkv-c06i-adaptive-page-compression-integration".into(),
+        evidence_kind: "rrflowkv-c06j-scan-resistant-cache-integration".into(),
         fixed_machine_integration_verification: source.clean_worktree,
         release_evidence_eligible: false,
         release_ineligibility_reasons,
@@ -210,10 +217,10 @@ fn run() -> Result<(), String> {
         aggregates,
         candidate_decisions,
         limitations: vec![
-            "segment v6 integrates deterministic per-page adaptive LZ4 and retains raw pages that miss the authenticated threshold".into(),
-            "Zstandard and cache measurements remain candidate mechanics over none-policy v6 page bodies, not integrated production policy".into(),
+            "segment v6 integrates deterministic per-page adaptive LZ4 and the default exact-byte scan-resistant immutable-page cache; exact LRU remains an explicit comparison policy".into(),
+            "Zstandard and the trace-only cache simulators remain candidate mechanics over none-policy v6 page bodies, not integrated production policy".into(),
             "value separation is model-only and is categorically ineligible for adoption from this evidence".into(),
-            "C-06, F-01, C-07, installed-binary, graph/BM25/vector/TurboQuant, reasoning/recall, and release gates remain open".into(),
+            "C-07, F-01, installed-binary, graph/BM25/vector/TurboQuant, reasoning/recall, and release gates remain open".into(),
         ],
     };
     emit_evidence(&evidence, arguments.output.as_deref())
@@ -369,6 +376,7 @@ fn require_trial_identity(
             .any(|(expected, actual)| !same_codec_identity(expected, actual))
         || expected.persisted_row_group_filter != actual.persisted_row_group_filter
         || expected.cache_candidates != actual.cache_candidates
+        || expected.integrated_cache_policies != actual.integrated_cache_policies
         || expected.value_placement_candidate != actual.value_placement_candidate
         || expected.families != actual.families
         || !same_reopened_identity(&expected.reopened_point_miss, &actual.reopened_point_miss)
@@ -376,6 +384,75 @@ fn require_trial_identity(
         || expected.limitations != actual.limitations
     {
         return Err("deterministic trial identity drifted from warm-up".into());
+    }
+    Ok(())
+}
+
+fn integrated_cache_pair(
+    trial: &PhysicalPolicyTrial,
+) -> Result<
+    (
+        &IntegratedCachePolicyObservation,
+        &IntegratedCachePolicyObservation,
+    ),
+    String,
+> {
+    let exact = trial
+        .integrated_cache_policies
+        .iter()
+        .find(|observation| observation.policy == PageCachePolicy::ExactLru.kind())
+        .ok_or_else(|| "integrated exact-LRU observation is absent".to_owned())?;
+    let scan_resistant = trial
+        .integrated_cache_policies
+        .iter()
+        .find(|observation| observation.policy == PageCachePolicy::default().kind())
+        .ok_or_else(|| "integrated scan-resistant observation is absent".to_owned())?;
+    Ok((exact, scan_resistant))
+}
+
+fn require_integrated_cache_result(trial: &PhysicalPolicyTrial) -> Result<(), String> {
+    let (exact, scan_resistant) = integrated_cache_pair(trial)?;
+    let configured_capacity = u64::try_from(trial.config.cache_bytes)
+        .map_err(|_| "configured cache capacity exceeds u64".to_owned())?;
+    let same_identity = exact.snapshot_sequence == scan_resistant.snapshot_sequence
+        && exact.manifest_digest == scan_resistant.manifest_digest
+        && exact.semantic_digest == scan_resistant.semantic_digest
+        && exact.projected_row_digest == scan_resistant.projected_row_digest;
+    let exact_regions_are_empty = exact.probationary_resident_bytes == 0
+        && exact.protected_resident_bytes == 0
+        && exact.probationary_entries == 0
+        && exact.protected_entries == 0;
+    let scan_regions_are_exact = scan_resistant
+        .probationary_resident_bytes
+        .checked_add(scan_resistant.protected_resident_bytes)
+        == Some(scan_resistant.final_resident_bytes)
+        && scan_resistant
+            .probationary_entries
+            .checked_add(scan_resistant.protected_entries)
+            == Some(scan_resistant.final_entries);
+    if !exact.semantic_identity_exact
+        || !scan_resistant.semantic_identity_exact
+        || !same_identity
+        || !exact.exact_capacity_respected
+        || !scan_resistant.exact_capacity_respected
+        || !exact_regions_are_empty
+        || !scan_regions_are_exact
+        || exact.capacity_bytes != configured_capacity
+        || scan_resistant.capacity_bytes != configured_capacity
+        || exact.post_scan_hot_loads == 0
+        || scan_resistant.post_scan_hot_loads >= exact.post_scan_hot_loads
+        || scan_resistant.same_scope_hits == 0
+        || scan_resistant.promotions == 0
+        || scan_resistant.protected_entries == 0
+    {
+        return Err(format!(
+            "integrated cache evidence failed: identity_exact={same_identity}, exact_post_scan_loads={}, scan_resistant_post_scan_loads={}, same_scope_hits={}, promotions={}, protected_entries={}",
+            exact.post_scan_hot_loads,
+            scan_resistant.post_scan_hot_loads,
+            scan_resistant.same_scope_hits,
+            scan_resistant.promotions,
+            scan_resistant.protected_entries
+        ));
     }
     Ok(())
 }
@@ -487,6 +564,7 @@ fn aggregate_trials(trials: &[PhysicalPolicyTrial]) -> Result<AggregateEvidence,
         .iter()
         .find(|cache| cache.policy == "exact-byte-segmented-lru-candidate")
         .ok_or_else(|| "segmented-LRU observation is absent".to_owned())?;
+    let (exact_integrated, scan_resistant_integrated) = integrated_cache_pair(first)?;
     Ok(AggregateEvidence {
         trial_elapsed_nanoseconds: distribution(
             trials
@@ -540,6 +618,11 @@ fn aggregate_trials(trials: &[PhysicalPolicyTrial]) -> Result<AggregateEvidence,
         rrflowkv_query_decompressed_bytes: first.reopened_point_miss.bytes_decompressed,
         rrflowkv_reopen_filter_negatives: first.reopened_point_miss.filter_negatives,
         rrflowkv_reopen_page_loads: first.reopened_point_miss.page_loads,
+        rrflowkv_exact_lru_post_scan_hot_loads: exact_integrated.post_scan_hot_loads,
+        rrflowkv_scan_resistant_post_scan_hot_loads: scan_resistant_integrated.post_scan_hot_loads,
+        rrflowkv_scan_resistant_same_scope_hits: scan_resistant_integrated.same_scope_hits,
+        rrflowkv_scan_resistant_promotions: scan_resistant_integrated.promotions,
+        rrflowkv_scan_resistant_protected_entries: scan_resistant_integrated.protected_entries,
     })
 }
 
@@ -811,5 +894,16 @@ mod tests {
         let mut reopen_drift = trial.clone();
         reopen_drift.reopened_point_miss.page_loads += 1;
         assert!(require_trial_identity(&trial, &reopen_drift).is_err());
+
+        require_integrated_cache_result(&trial).unwrap();
+        let mut invalid_cache = trial.clone();
+        invalid_cache
+            .integrated_cache_policies
+            .iter_mut()
+            .find(|cache| cache.policy == PageCachePolicy::default().kind())
+            .unwrap()
+            .same_scope_hits = 0;
+        assert!(require_integrated_cache_result(&invalid_cache).is_err());
+        assert!(require_trial_identity(&trial, &invalid_cache).is_err());
     }
 }

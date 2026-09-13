@@ -1,9 +1,11 @@
-//! Feature-gated C-06i measurements over rrflowKV's real segment-v6 encoder.
+//! Feature-gated C-06j measurements over rrflowKV's real segment-v6 encoder
+//! and immutable-page reader.
 //!
 //! Nothing in this module owns production storage policy. It verifies the
-//! canonical persisted filter and integrated adaptive-LZ4 behavior, then keeps
-//! the remaining codec, cache-admission, and value-placement decisions
-//! reproducible before another candidate changes durable bytes.
+//! canonical persisted filter, integrated adaptive-LZ4 behavior, and selected
+//! scan-resistant cache policy, then keeps unintegrated codec, cache, and
+//! value-placement candidates reproducible before another candidate changes
+//! durable bytes.
 
 #[cfg(test)]
 use super::format::RowGroupFilter;
@@ -13,7 +15,8 @@ use super::format::{
     encode, parse_metadata, sha256_hex, PageKind, FILTER_BITS_PER_KEY, FILTER_HASH_FUNCTIONS,
 };
 use crate::{
-    Database, DatabaseOptions, Durability, Error, Memtable, Mutation, Result,
+    Database, DatabaseOptions, Durability, Error, Memtable, Mutation, PageCachePolicy,
+    ProjectedReadBudget, ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest, Result,
     SegmentCompressionPolicy, SegmentRowGroupBudget, WriteBatch, SEGMENT_FORMAT_VERSION,
 };
 use serde::{Deserialize, Serialize};
@@ -23,7 +26,7 @@ use std::io::Cursor;
 use std::path::Path;
 use std::time::Instant;
 
-pub const PHYSICAL_POLICY_EVIDENCE_VERSION: u16 = 3;
+pub const PHYSICAL_POLICY_EVIDENCE_VERSION: u16 = 4;
 
 const FAMILY_PREFIXES: [(&str, &[u8]); 8] = [
     ("audit", b"audit/"),
@@ -200,6 +203,47 @@ pub struct ReopenedPointMissObservation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IntegratedCachePolicyObservation {
+    pub policy: String,
+    pub protected_capacity_basis_points: u64,
+    pub snapshot_sequence: u64,
+    pub manifest_digest: String,
+    pub semantic_digest: String,
+    pub projected_row_digest: String,
+    pub hot_family_count: u64,
+    pub hot_requests_per_pass: u64,
+    pub projected_rows: u64,
+    pub capacity_bytes: u64,
+    pub final_resident_bytes: u64,
+    pub probationary_resident_bytes: u64,
+    pub protected_resident_bytes: u64,
+    pub final_entries: u64,
+    pub probationary_entries: u64,
+    pub protected_entries: u64,
+    pub warm_hits: u64,
+    pub warm_misses: u64,
+    pub warm_loads: u64,
+    pub scan_hits: u64,
+    pub scan_misses: u64,
+    pub scan_loads: u64,
+    pub post_scan_hot_hits: u64,
+    pub post_scan_hot_misses: u64,
+    pub post_scan_hot_loads: u64,
+    pub admissions: u64,
+    pub admission_rejections: u64,
+    pub promotions: u64,
+    pub demotions: u64,
+    pub same_scope_hits: u64,
+    pub evictions: u64,
+    pub duplicate_loads: u64,
+    pub bytes_read: u64,
+    pub bytes_decoded: u64,
+    pub bytes_decompressed: u64,
+    pub semantic_identity_exact: bool,
+    pub exact_capacity_respected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PhysicalPolicyTrial {
     pub evidence_version: u16,
     pub evidence_scope: String,
@@ -220,6 +264,7 @@ pub struct PhysicalPolicyTrial {
     pub value_placement_candidate: ValuePlacementObservation,
     pub families: Vec<FamilyObservation>,
     pub reopened_point_miss: ReopenedPointMissObservation,
+    pub integrated_cache_policies: Vec<IntegratedCachePolicyObservation>,
     pub decisions: Vec<CandidateDecision>,
     pub limitations: Vec<String>,
 }
@@ -307,7 +352,7 @@ pub fn run_physical_policy_trial(
     )?;
     let encoded = encode(
         &table,
-        SegmentRowGroupBudget::default(),
+        integrated_row_group_budget(config)?,
         SegmentCompressionPolicy::None,
     )?;
     let segment_physical_bytes = encoded.bytes.len() as u64;
@@ -335,16 +380,19 @@ pub fn run_physical_policy_trial(
         &persisted_row_group_filter,
         &reopened_point_miss,
     )?;
+    let integrated_cache_policies = observe_integrated_cache_policies(root, config, &corpus)?;
+    validate_integrated_cache_policies(&integrated_cache_policies)?;
     let decisions = decide_candidates(
         &codecs,
         &persisted_row_group_filter,
         &cache_candidates,
+        &integrated_cache_policies,
         &value_placement_candidate,
     );
 
     Ok(PhysicalPolicyTrial {
         evidence_version: PHYSICAL_POLICY_EVIDENCE_VERSION,
-        evidence_scope: "c06i-adaptive-page-compression-integration".into(),
+        evidence_scope: "c06j-scan-resistant-cache-integration".into(),
         config,
         corpus_digest: corpus.digest,
         operation_count,
@@ -362,11 +410,13 @@ pub fn run_physical_policy_trial(
         value_placement_candidate,
         families,
         reopened_point_miss,
+        integrated_cache_policies,
         decisions,
         limitations: vec![
-            "adaptive LZ4 is integrated in segment v6; Zstandard and cache observations remain unintegrated candidates".into(),
+            "adaptive LZ4 and the exact-byte scan-resistant page cache are integrated; Zstandard and trace-only cache candidates remain unintegrated".into(),
             "value placement is a byte model only and lacks pointer publication, recovery, snapshot, corruption, range-read, and garbage-collection proof".into(),
-            "one machine and one deterministic corpus cannot establish release latency, all-workload policy, or competitor superiority".into(),
+            "the integrated cache comparison is single-threaded and records duplicate loads without proving load coalescing, lock scalability, cancellation fairness, or sustained concurrency".into(),
+            "one machine and one deterministic corpus cannot establish release latency, every-workload policy, network behavior, or competitor superiority".into(),
             "operating-system device cache and competing host load are recorded but not controlled by this executable".into(),
         ],
     })
@@ -1215,6 +1265,7 @@ fn observe_reopened_database(
 ) -> Result<ReopenedPointMissObservation> {
     let options = DatabaseOptions {
         page_cache_bytes: config.cache_bytes,
+        segment_row_group_budget: integrated_row_group_budget(config)?,
         ..DatabaseOptions::default()
     };
     let mut database = Database::create_with_options(root, options)?;
@@ -1303,10 +1354,334 @@ fn observe_reopened_database(
     })
 }
 
+fn integrated_row_group_budget(config: PhysicalPolicyConfig) -> Result<SegmentRowGroupBudget> {
+    let max_rows = config
+        .versions_per_key
+        .checked_mul(4)
+        .ok_or_else(|| Error::InvalidConfiguration("cache-lab row bound overflow".into()))?;
+    let target_bytes = config
+        .value_bytes
+        .checked_mul(max_rows)
+        .and_then(|bytes| bytes.checked_add(1_024))
+        .ok_or_else(|| Error::InvalidConfiguration("cache-lab byte target overflow".into()))?;
+    Ok(SegmentRowGroupBudget {
+        max_rows,
+        target_bytes,
+    })
+}
+
+fn observe_integrated_cache_policies(
+    root: &Path,
+    config: PhysicalPolicyConfig,
+    corpus: &Corpus,
+) -> Result<Vec<IntegratedCachePolicyObservation>> {
+    let policies = [
+        PageCachePolicy::ExactLru,
+        PageCachePolicy::ScanResistantLru {
+            protected_capacity_basis_points:
+                crate::DEFAULT_PAGE_CACHE_PROTECTED_CAPACITY_BASIS_POINTS,
+        },
+    ];
+    policies
+        .into_iter()
+        .map(|policy| observe_integrated_cache_policy(root, config, corpus, policy))
+        .collect()
+}
+
+fn observe_integrated_cache_policy(
+    root: &Path,
+    config: PhysicalPolicyConfig,
+    corpus: &Corpus,
+    policy: PageCachePolicy,
+) -> Result<IntegratedCachePolicyObservation> {
+    let database = Database::open_with_options(
+        root,
+        DatabaseOptions {
+            page_cache_bytes: config.cache_bytes,
+            page_cache_policy: policy,
+            segment_row_group_budget: integrated_row_group_budget(config)?,
+            ..DatabaseOptions::default()
+        },
+    )?;
+    let snapshot = database.snapshot();
+    let manifest_digest =
+        sha256_hex(&serde_json::to_vec(database.manifest()).map_err(|error| {
+            Error::InvalidSegment(format!("cache-lab manifest encoding failed: {error}"))
+        })?);
+    let hot_keys = FAMILY_PREFIXES
+        .iter()
+        .map(|(_, prefix)| corpus_key(prefix, 1, false))
+        .collect::<Vec<_>>();
+    let expected_hot_values = hot_keys
+        .iter()
+        .map(|key| {
+            corpus
+                .expected_latest
+                .get(key)
+                .and_then(Clone::clone)
+                .ok_or_else(|| {
+                    Error::InvalidSegment(
+                        "cache-lab hot key is not present in the expected corpus".into(),
+                    )
+                })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let expected_rows = corpus
+        .expected_latest
+        .iter()
+        .filter_map(|(key, value)| {
+            value
+                .as_ref()
+                .map(|value| (key.clone(), Some(value.clone())))
+        })
+        .collect::<Vec<_>>();
+    let expected_row_digest = digest_projected_rows(&expected_rows)?;
+
+    let before = database.page_cache_stats();
+    let first_hot_values = read_integrated_hot_values(&database, snapshot, &hot_keys)?;
+    let second_hot_values = read_integrated_hot_values(&database, snapshot, &hot_keys)?;
+    let after_warm = database.page_cache_stats();
+
+    let mut stream = database.begin_projected_read(ProjectedReadRequest {
+        ranges: vec![ProjectedReadRange::all()],
+        projection: ProjectedReadProjection::KeyValue,
+        snapshot,
+        budget: ProjectedReadBudget {
+            max_batch_rows: 257,
+            ..ProjectedReadBudget::default()
+        },
+    })?;
+    let mut rows = Vec::with_capacity(expected_rows.len());
+    while let Some(batch) = stream.next_batch()? {
+        for row in 0..batch.len() {
+            rows.push((
+                batch
+                    .key(row)
+                    .ok_or_else(|| {
+                        Error::InvalidSegment("cache-lab projected key is absent".into())
+                    })?
+                    .to_vec(),
+                batch.value(row).map(<[u8]>::to_vec),
+            ));
+        }
+    }
+    drop(stream);
+    let after_scan = database.page_cache_stats();
+    let post_scan_hot_values = read_integrated_hot_values(&database, snapshot, &hot_keys)?;
+    let after_post_scan = database.page_cache_stats();
+    let projected_row_digest = digest_projected_rows(&rows)?;
+    let semantic_identity_exact = first_hot_values == expected_hot_values
+        && second_hot_values == expected_hot_values
+        && post_scan_hot_values == expected_hot_values
+        && rows == expected_rows
+        && projected_row_digest == expected_row_digest;
+    let classified_bytes = after_post_scan
+        .probationary_resident_bytes
+        .checked_add(after_post_scan.protected_resident_bytes)
+        .ok_or_else(|| Error::InvalidSegment("cache-lab region byte total overflow".into()))?;
+    let classified_entries = after_post_scan
+        .probationary_entries
+        .checked_add(after_post_scan.protected_entries)
+        .ok_or_else(|| Error::InvalidSegment("cache-lab region entry total overflow".into()))?;
+    let exact_capacity_respected = after_post_scan.resident_bytes <= config.cache_bytes
+        && match policy {
+            PageCachePolicy::ExactLru => classified_bytes == 0 && classified_entries == 0,
+            PageCachePolicy::ScanResistantLru { .. } => {
+                classified_bytes == after_post_scan.resident_bytes
+                    && classified_entries == after_post_scan.entries
+            }
+        };
+    let semantic_digest = digest_cache_semantics(&rows, &post_scan_hot_values)?;
+
+    Ok(IntegratedCachePolicyObservation {
+        policy: policy.kind().into(),
+        protected_capacity_basis_points: u64::from(policy.protected_capacity_basis_points()),
+        snapshot_sequence: snapshot.sequence,
+        manifest_digest,
+        semantic_digest,
+        projected_row_digest,
+        hot_family_count: FAMILY_PREFIXES.len() as u64,
+        hot_requests_per_pass: hot_keys.len() as u64,
+        projected_rows: rows.len() as u64,
+        capacity_bytes: after_post_scan.capacity_bytes as u64,
+        final_resident_bytes: after_post_scan.resident_bytes as u64,
+        probationary_resident_bytes: after_post_scan.probationary_resident_bytes as u64,
+        protected_resident_bytes: after_post_scan.protected_resident_bytes as u64,
+        final_entries: after_post_scan.entries as u64,
+        probationary_entries: after_post_scan.probationary_entries as u64,
+        protected_entries: after_post_scan.protected_entries as u64,
+        warm_hits: counter_delta(after_warm.hits, before.hits, "warm hits")?,
+        warm_misses: counter_delta(after_warm.misses, before.misses, "warm misses")?,
+        warm_loads: counter_delta(after_warm.loads, before.loads, "warm loads")?,
+        scan_hits: counter_delta(after_scan.hits, after_warm.hits, "scan hits")?,
+        scan_misses: counter_delta(after_scan.misses, after_warm.misses, "scan misses")?,
+        scan_loads: counter_delta(after_scan.loads, after_warm.loads, "scan loads")?,
+        post_scan_hot_hits: counter_delta(
+            after_post_scan.hits,
+            after_scan.hits,
+            "post-scan hot hits",
+        )?,
+        post_scan_hot_misses: counter_delta(
+            after_post_scan.misses,
+            after_scan.misses,
+            "post-scan hot misses",
+        )?,
+        post_scan_hot_loads: counter_delta(
+            after_post_scan.loads,
+            after_scan.loads,
+            "post-scan hot loads",
+        )?,
+        admissions: counter_delta(after_post_scan.admissions, before.admissions, "admissions")?,
+        admission_rejections: counter_delta(
+            after_post_scan.admission_rejections,
+            before.admission_rejections,
+            "admission rejections",
+        )?,
+        promotions: counter_delta(after_post_scan.promotions, before.promotions, "promotions")?,
+        demotions: counter_delta(after_post_scan.demotions, before.demotions, "demotions")?,
+        same_scope_hits: counter_delta(
+            after_post_scan.same_scope_hits,
+            before.same_scope_hits,
+            "same-scope hits",
+        )?,
+        evictions: counter_delta(after_post_scan.evictions, before.evictions, "evictions")?,
+        duplicate_loads: counter_delta(
+            after_post_scan.duplicate_loads,
+            before.duplicate_loads,
+            "duplicate loads",
+        )?,
+        bytes_read: counter_delta(after_post_scan.bytes_read, before.bytes_read, "bytes read")?,
+        bytes_decoded: counter_delta(
+            after_post_scan.bytes_decoded,
+            before.bytes_decoded,
+            "bytes decoded",
+        )?,
+        bytes_decompressed: counter_delta(
+            after_post_scan.bytes_decompressed,
+            before.bytes_decompressed,
+            "bytes decompressed",
+        )?,
+        semantic_identity_exact,
+        exact_capacity_respected,
+    })
+}
+
+fn read_integrated_hot_values(
+    database: &Database,
+    snapshot: crate::Snapshot,
+    hot_keys: &[Vec<u8>],
+) -> Result<Vec<Vec<u8>>> {
+    hot_keys
+        .iter()
+        .map(|key| {
+            database.get(key, snapshot)?.ok_or_else(|| {
+                Error::InvalidSegment("cache-lab present hot key was not visible".into())
+            })
+        })
+        .collect()
+}
+
+fn digest_projected_rows(rows: &[(Vec<u8>, Option<Vec<u8>>)]) -> Result<String> {
+    let mut encoded = Vec::new();
+    for (key, value) in rows {
+        encoded.extend_from_slice(
+            &u64::try_from(key.len())
+                .map_err(|_| Error::InvalidSegment("cache-lab key length exceeds u64".into()))?
+                .to_le_bytes(),
+        );
+        encoded.extend_from_slice(key);
+        match value {
+            Some(value) => {
+                encoded.push(1);
+                encoded.extend_from_slice(
+                    &u64::try_from(value.len())
+                        .map_err(|_| {
+                            Error::InvalidSegment("cache-lab value length exceeds u64".into())
+                        })?
+                        .to_le_bytes(),
+                );
+                encoded.extend_from_slice(value);
+            }
+            None => {
+                encoded.push(0);
+                encoded.extend_from_slice(&0u64.to_le_bytes());
+            }
+        }
+    }
+    Ok(sha256_hex(&encoded))
+}
+
+fn digest_cache_semantics(
+    rows: &[(Vec<u8>, Option<Vec<u8>>)],
+    hot_values: &[Vec<u8>],
+) -> Result<String> {
+    let mut encoded = digest_projected_rows(rows)?.into_bytes();
+    for value in hot_values {
+        encoded.extend_from_slice(
+            &u64::try_from(value.len())
+                .map_err(|_| Error::InvalidSegment("cache-lab hot value exceeds u64".into()))?
+                .to_le_bytes(),
+        );
+        encoded.extend_from_slice(value);
+    }
+    Ok(sha256_hex(&encoded))
+}
+
+fn counter_delta(after: u64, before: u64, name: &str) -> Result<u64> {
+    after
+        .checked_sub(before)
+        .ok_or_else(|| Error::InvalidSegment(format!("cache-lab {name} counter moved backwards")))
+}
+
+fn validate_integrated_cache_policies(
+    observations: &[IntegratedCachePolicyObservation],
+) -> Result<()> {
+    let exact = observations
+        .iter()
+        .find(|observation| observation.policy == PageCachePolicy::ExactLru.kind())
+        .ok_or_else(|| Error::InvalidSegment("integrated exact-LRU evidence is absent".into()))?;
+    let selected_policy = PageCachePolicy::default();
+    let scan_resistant = observations
+        .iter()
+        .find(|observation| observation.policy == selected_policy.kind())
+        .ok_or_else(|| {
+            Error::InvalidSegment("integrated scan-resistant evidence is absent".into())
+        })?;
+    if !exact.semantic_identity_exact
+        || !scan_resistant.semantic_identity_exact
+        || !exact.exact_capacity_respected
+        || !scan_resistant.exact_capacity_respected
+        || exact.snapshot_sequence != scan_resistant.snapshot_sequence
+        || exact.manifest_digest != scan_resistant.manifest_digest
+        || exact.semantic_digest != scan_resistant.semantic_digest
+        || exact.projected_row_digest != scan_resistant.projected_row_digest
+        || exact.post_scan_hot_loads == 0
+        || scan_resistant.post_scan_hot_loads >= exact.post_scan_hot_loads
+        || scan_resistant.promotions == 0
+        || scan_resistant.same_scope_hits == 0
+        || scan_resistant.protected_entries == 0
+    {
+        return Err(Error::InvalidSegment(format!(
+            "integrated scan-resistant cache policy failed: exact_post_scan_loads={}, scan_resistant_post_scan_loads={}, scan_warm_hits={}, scan_warm_loads={}, scan_scan_hits={}, scan_scan_loads={}, promotions={}, same_scope_hits={}, protected_entries={}",
+            exact.post_scan_hot_loads,
+            scan_resistant.post_scan_hot_loads,
+            scan_resistant.warm_hits,
+            scan_resistant.warm_loads,
+            scan_resistant.scan_hits,
+            scan_resistant.scan_loads,
+            scan_resistant.promotions,
+            scan_resistant.same_scope_hits,
+            scan_resistant.protected_entries
+        )));
+    }
+    Ok(())
+}
+
 fn decide_candidates(
     codecs: &[CodecObservation],
     filter: &FilterObservation,
     caches: &[CachePolicyObservation],
+    integrated_caches: &[IntegratedCachePolicyObservation],
     values: &ValuePlacementObservation,
 ) -> Vec<CandidateDecision> {
     let mut decisions = Vec::new();
@@ -1375,11 +1750,66 @@ fn decide_candidates(
             _ => "required cache observations are absent".into(),
         },
     });
+    let exact_integrated = integrated_caches
+        .iter()
+        .find(|cache| cache.policy == PageCachePolicy::ExactLru.kind());
+    let selected_policy = PageCachePolicy::default();
+    let scan_resistant_integrated = integrated_caches
+        .iter()
+        .find(|cache| cache.policy == selected_policy.kind());
+    let cache_integrated =
+        exact_integrated
+            .zip(scan_resistant_integrated)
+            .is_some_and(|(exact, scan_resistant)| {
+                exact.semantic_identity_exact
+                    && scan_resistant.semantic_identity_exact
+                    && exact.exact_capacity_respected
+                    && scan_resistant.exact_capacity_respected
+                    && exact.semantic_digest == scan_resistant.semantic_digest
+                    && exact.post_scan_hot_loads > 0
+                    && scan_resistant.post_scan_hot_loads < exact.post_scan_hot_loads
+                    && scan_resistant.promotions > 0
+                    && scan_resistant.same_scope_hits > 0
+            });
+    decisions.push(CandidateDecision {
+        candidate: "scan-resistant-page-cache".into(),
+        decision: if cache_integrated {
+            "integrated"
+        } else {
+            "integrated-policy-failed"
+        }
+        .into(),
+        reason: match (exact_integrated, scan_resistant_integrated) {
+            (Some(exact), Some(scan_resistant)) => format!(
+                "real_rrflowkv_reader=true, semantic_identity_exact={}, exact_capacity_respected={}, post_scan_hot_loads={} versus exact-LRU {}, promotions={}, same_scope_hits={}, duplicate_loads={}",
+                scan_resistant.semantic_identity_exact
+                    && exact.semantic_identity_exact
+                    && scan_resistant.semantic_digest == exact.semantic_digest,
+                scan_resistant.exact_capacity_respected && exact.exact_capacity_respected,
+                scan_resistant.post_scan_hot_loads,
+                exact.post_scan_hot_loads,
+                scan_resistant.promotions,
+                scan_resistant.same_scope_hits,
+                scan_resistant.duplicate_loads
+            ),
+            _ => "required integrated cache observations are absent".into(),
+        },
+    });
+    decisions.push(CandidateDecision {
+        candidate: "semantic-family-cache-partitions".into(),
+        decision: if cache_integrated {
+            "reject"
+        } else {
+            "unresolved"
+        }
+        .into(),
+        reason: "the real mixed audit/edge/record/runtime/scalar/term/vector corpus is served by one family-neutral policy, so semantic quotas would duplicate key knowledge and can strand capacity".into(),
+    });
     decisions.push(CandidateDecision {
         candidate: "value-separation".into(),
-        decision: "reject-for-production-from-this-slice".into(),
+        decision: "reject".into(),
         reason: format!(
-            "{} reports {} modeled bytes avoided, but production_retainable={} and recovery/GC/snapshot proofs are absent",
+            "{} reports {} modeled bytes avoided, but production_retainable={} and authenticated pointer publication, recovery, GC, snapshot, corruption, and range-read proofs are absent",
             values.evidence_kind,
             values.modeled_compaction_bytes_avoided,
             values.production_retainable
@@ -1434,6 +1864,10 @@ mod tests {
         assert_eq!(first.key_count, second.key_count);
         assert_eq!(first.page_count, second.page_count);
         assert_eq!(first.segment_physical_bytes, second.segment_physical_bytes);
+        assert_eq!(
+            first.integrated_cache_policies,
+            second.integrated_cache_policies
+        );
         assert!(first.codecs.iter().all(|codec| codec.round_trip_exact));
         assert_eq!(first.persisted_row_group_filter.member_false_negatives, 0);
         assert!(first.persisted_row_group_filter.passes_policy_threshold);
@@ -1441,6 +1875,25 @@ mod tests {
             .cache_candidates
             .iter()
             .all(|cache| cache.semantic_identity_exact && cache.exact_capacity_respected));
+        let exact_cache = first
+            .integrated_cache_policies
+            .iter()
+            .find(|cache| cache.policy == PageCachePolicy::ExactLru.kind())
+            .unwrap();
+        let scan_resistant_cache = first
+            .integrated_cache_policies
+            .iter()
+            .find(|cache| cache.policy == PageCachePolicy::default().kind())
+            .unwrap();
+        assert_eq!(
+            exact_cache.semantic_digest,
+            scan_resistant_cache.semantic_digest
+        );
+        assert!(exact_cache.post_scan_hot_loads > 0);
+        assert!(scan_resistant_cache.post_scan_hot_loads < exact_cache.post_scan_hot_loads);
+        assert!(scan_resistant_cache.same_scope_hits > 0);
+        assert!(scan_resistant_cache.promotions > 0);
+        assert!(scan_resistant_cache.protected_entries > 0);
         assert!(!first.value_placement_candidate.production_retainable);
         assert!(first.reopened_point_miss.open_persisted_filter_count > 0);
         assert!(first.reopened_point_miss.open_persisted_filter_bytes > 0);

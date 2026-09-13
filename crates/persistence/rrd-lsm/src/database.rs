@@ -1,12 +1,13 @@
 use crate::io::{IoContext, SharedIoContext};
 use crate::segment::{
-    new_page_cache, page_cache_stats, ActiveReadViews, ReadView, SharedPageCache,
+    new_page_cache_with_policy, next_projected_cache_access, page_cache_stats, ActiveReadViews,
+    ReadView, SharedPageCache,
 };
 use crate::wal::replay_from;
 use crate::{
     recover_from, AppendReceipt, Checkpoint, Durability, Error, Manifest, ManifestStore, Memtable,
-    ProjectedReadRequest, ProjectedReadResource, ProjectedReadStream, Result, Segment,
-    SegmentCompressionPolicy, SegmentIoPolicy, SegmentIoStats, SegmentOpenEvidence,
+    PageCachePolicy, ProjectedReadRequest, ProjectedReadResource, ProjectedReadStream, Result,
+    Segment, SegmentCompressionPolicy, SegmentIoPolicy, SegmentIoStats, SegmentOpenEvidence,
     SegmentRowGroupBudget, SnapshotBundle, SnapshotBundleFile, SnapshotExportBoundary,
     SnapshotSegment, VersionedValue, WalWriter, WriteBatch,
 };
@@ -96,6 +97,7 @@ impl CompactionPolicy {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DatabaseOptions {
     pub page_cache_bytes: usize,
+    pub page_cache_policy: PageCachePolicy,
     pub segment_io: SegmentIoPolicy,
     pub segment_row_group_budget: SegmentRowGroupBudget,
     pub segment_compression: SegmentCompressionPolicy,
@@ -107,6 +109,7 @@ impl Default for DatabaseOptions {
     fn default() -> Self {
         Self {
             page_cache_bytes: crate::DEFAULT_PAGE_CACHE_BYTES,
+            page_cache_policy: PageCachePolicy::default(),
             segment_io: SegmentIoPolicy::default(),
             segment_row_group_budget: SegmentRowGroupBudget::default(),
             segment_compression: SegmentCompressionPolicy::default(),
@@ -118,6 +121,8 @@ impl Default for DatabaseOptions {
 
 impl DatabaseOptions {
     fn validate(self) -> Result<Self> {
+        self.page_cache_policy
+            .protected_capacity_bytes(self.page_cache_bytes)?;
         self.segment_io.validate()?;
         self.segment_row_group_budget.validate()?;
         self.segment_compression.validate()?;
@@ -365,7 +370,10 @@ impl Database {
             wal,
             memtable: Arc::new(Memtable::default()),
             segments: Vec::new(),
-            page_cache: new_page_cache(options.page_cache_bytes),
+            page_cache: new_page_cache_with_policy(
+                options.page_cache_bytes,
+                options.page_cache_policy,
+            )?,
             segment_io,
             segment_open_evidence: SegmentOpenEvidence::default(),
             segment_row_group_budget: options.segment_row_group_budget,
@@ -404,7 +412,8 @@ impl Database {
             .current()?
             .ok_or_else(|| Error::InvalidManifest("database has no CURRENT manifest".into()))?;
         let manifest_ms = manifest_started.elapsed().as_millis() as u64;
-        let page_cache = new_page_cache(options.page_cache_bytes);
+        let page_cache =
+            new_page_cache_with_policy(options.page_cache_bytes, options.page_cache_policy)?;
         let segment_bytes = manifest
             .segments
             .iter()
@@ -458,6 +467,10 @@ impl Database {
             segments_ms,
             wal_recovery_ms,
             wal_payload_bytes,
+            page_cache_policy = options.page_cache_policy.kind(),
+            page_cache_protected_capacity_basis_points =
+                options.page_cache_policy.protected_capacity_basis_points(),
+            page_cache_capacity_bytes = options.page_cache_bytes,
             row_group_target_bytes = options.segment_row_group_budget.target_bytes,
             row_group_max_rows = options.segment_row_group_budget.max_rows,
             segment_compression = options.segment_compression.kind(),
@@ -550,6 +563,7 @@ impl Database {
                         Error::InvalidProjectedRead("pinned read-view bytes overflow".into())
                     })
                 })?;
+        let cache_access = next_projected_cache_access()?;
         let lease = ActiveReadViews::acquire(
             &self.active_read_views,
             self.manifest.clone(),
@@ -568,6 +582,7 @@ impl Database {
             request.ranges,
             request.projection,
             request.budget,
+            cache_access,
             lease,
         ))
     }

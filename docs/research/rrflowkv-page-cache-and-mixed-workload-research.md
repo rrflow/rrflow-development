@@ -11,14 +11,17 @@
 RRFlow should retain an RRFlow-owned, exact-byte cache below `RrdEngine` and
 below the future rrflowQL/DataFusion provider. The production default should
 change from admit-every-miss exact LRU to a configurable scan-resistant LRU:
-new pages enter a probationary region, a cache hit promotes them into a
-protected region, and eviction drains probationary pages before protected
-pages. Exact LRU remains selectable only as a differential and operator
+new pages enter a probationary region, reuse by a later engine operation
+promotes them into a protected region, and eviction drains probationary pages
+before protected pages. Repeated touches inside one projected stream refresh
+probationary recency but do not prove reuse. The stream receives an opaque,
+process-local scope generated inside the engine; clients neither provide nor
+observe it. Exact LRU remains selectable only as a differential and operator
 policy. The implementation must expose exact residency, admission, promotion,
-demotion, eviction, load, and duplicate-load counters. It must not partition
-capacity by semantic family, disable caching for all projected scans, import
-Moka, add TinyLFU frequency state, or claim concurrent scalability in this
-package.
+same-scope suppression, demotion, eviction, load, and duplicate-load counters.
+It must not partition capacity by semantic family, disable caching for all
+projected scans, import Moka, add TinyLFU frequency state, or claim concurrent
+scalability in this package.
 
 This is a physical read policy, not a second reasoning or query engine. A
 future rrflowQL `TableProvider` will request bounded, read-stamped projections
@@ -72,6 +75,16 @@ policy and records a better post-scan hot hit count, but that simulator neither
 executes the real reader nor proves configuration, variable-sized pages,
 concurrent behavior, or end-to-end semantic identity.
 
+The first real-reader C-06j run proved that unconditional second-hit promotion
+was still wrong. One key/value projected stream generated 601 cache hits while
+walking its row groups because validity, offset, and data pages are requested
+again as rows are prepared and copied. Those same-stream hits promoted scan
+pages and both exact LRU and the naive two-region implementation performed 45
+post-scan hot loads. The workload and strict comparison are retained. RRFlow
+must distinguish reuse across engine operations from repeated physical access
+inside one operation; reducing row-group size or weakening the assertion would
+only hide the defect.
+
 The current layout already sorts the canonical application key families.
 Therefore a family-specific cache quota would duplicate semantic knowledge in
 the physical layer and can strand capacity. The experiment must mix audit,
@@ -90,7 +103,10 @@ adopt RocksDB's C++ cache API, sharding defaults, compressed secondary cache,
 or relaxed capacity behavior. [RocksDB block-cache documentation](https://github.com/facebook/rocksdb/wiki/Block-Cache)
 
 RocksDB explicitly supports `fill_cache = false` for bulk iterators so a scan
-does not displace cached contents. Its key-layout guidance also recommends
+does not displace cached contents. RRFlow adapts the underlying distinction
+without disabling admission: pages touched by one projected scope remain
+probationary, while a later scope can promote and reuse them. Its key-layout
+guidance also recommends
 placing metadata and bulky content in different key regions when their access
 patterns differ. RRFlow retains the principle that scan traffic must not erase
 the hot set and relies on its canonical ordered family prefixes for locality.
@@ -106,11 +122,14 @@ v6 reader before adoption. It does not copy a RocksDB trace format or ghost
 cache. [RocksDB cache analysis and simulation](https://github.com/facebook/rocksdb/wiki/Block-cache-analysis-and-simulation-tools)
 
 InnoDB uses a two-region LRU so newly read pages start in an old region and
-pages reused after admission become young. Its documentation specifically
-targets mixed OLTP plus batch-scan workloads and requires workload benchmarking
-before changing policy. RRFlow adapts that mechanism as probationary and
-protected exact-byte regions, without importing MySQL's time window, page-size
-assumptions, global configuration, or fixed 3/8 default. [InnoDB scan-resistant buffer pool](https://dev.mysql.com/doc/refman/8.0/en/innodb-performance-midpoint_insertion.html)
+pages reused after admission become young. Its time threshold prevents repeated
+touches caused by one scan from immediately promoting a page. RRFlow retains
+that semantic distinction but replaces wall-clock delay with an exact logical
+projected-stream scope, making the verdict deterministic. Its documentation
+specifically targets mixed OLTP plus batch-scan workloads and requires workload
+benchmarking before changing policy. RRFlow does not import MySQL's time
+window, page-size assumptions, global configuration, or fixed 3/8 default.
+[InnoDB scan-resistant buffer pool](https://dev.mysql.com/doc/refman/8.0/en/innodb-performance-midpoint_insertion.html)
 
 ### TinyLFU is relevant, but it is not justified by the current evidence
 
@@ -147,6 +166,7 @@ not add a DataFusion object to the persistence crate. [DataFusion `RuntimeEnv`](
 | Alternative | Decision | Reason |
 |---|---|---|
 | Keep admit-every-miss exact LRU as the only policy | Reject as default; retain as oracle | It has exact accounting but is vulnerable to one-pass scan pollution. |
+| Promote on every probationary hit | Reject after real-reader failure | One projected stream legitimately rereads pages while preparing and copying rows; 601 same-stream hits polluted protection and produced the same 45 hot reloads as exact LRU. |
 | Disable admission for every projected scan | Reject as default | It protects point-read pages but prevents repeated analytical projections from earning residency and lets a caller select physical behavior. |
 | Partition cache capacity by record/edge/term/vector family | Reject | It embeds semantic family knowledge below the typed key boundary and can strand capacity; mixed-family evidence should drive a family-neutral policy. |
 | Import Moka/TinyLFU now | Reject for C-06j | Approximate frequency, best-effort capacity, and eventually consistent policy evidence add unproved state and weaken exact accounting. |
@@ -170,14 +190,20 @@ version marker.
 The state transitions are:
 
 ```text
-miss -> load -> probationary admission
-probationary hit -> protected promotion
+miss -> load -> admission with the current internal reuse scope
+same projected-scope probationary hit -> probationary recency refresh
+later projected-scope or ordinary-operation probationary hit -> protected promotion
 protected hit -> protected recency refresh
 protected bytes above target -> least-recent protected demotion
 capacity pressure -> probationary eviction, then protected eviction only if needed
 oversize page -> serve without admission
 concurrent losing load -> serve the already admitted immutable page and count duplicate load
 ```
+
+One projected stream receives one non-zero scope allocated by the engine and
+shared across its segment cursors. Scope exhaustion fails creation rather than
+reusing an identifier. The scope is never serialized, accepted over a public
+request, used for authorization, or emitted as a trace identifier.
 
 All arithmetic remains checked or saturating evidence arithmetic as already
 specified by the cache contract. Residency never exceeds `capacity_bytes`.
@@ -191,7 +217,8 @@ physical families. It reopens the same immutable state independently under
 both policies, then performs:
 
 1. one present-key warm pass across every family;
-2. a second pass that proves reuse and earns protection;
+2. a second logical operation that proves cross-operation reuse and earns
+   protection;
 3. one complete bounded key/value projected stream larger than the configured
    cache;
 4. the identical present-key pass after the scan; and
@@ -230,6 +257,9 @@ engine.
   contention and decide sharding.
 - Duplicate concurrent loads are counted, not coalesced; C-07 must prove a
   safe in-flight owner before changing this.
+- Logical reuse scope prevents one stream from promoting its own scan pages;
+  C-07 must still prove scope allocation, cancellation, and concurrent-stream
+  behavior under sustained stress.
 - The Linux page cache may duplicate stored compressed bytes when buffered I/O
   is selected; direct-I/O and tier decisions remain separately measured.
 - A one-host deterministic corpus cannot establish universal hit ratio,

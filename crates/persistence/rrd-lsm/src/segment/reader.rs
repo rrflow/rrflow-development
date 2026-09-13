@@ -1,5 +1,7 @@
 use super::format::PageKind;
-use super::{key_at, offset_at, sequence_at, valid_at, KeySpine, PageLoadEvidence, Segment};
+use super::{
+    key_at, offset_at, sequence_at, valid_at, KeySpine, PageCacheAccess, PageLoadEvidence, Segment,
+};
 use crate::{Error, Manifest, Memtable, Result, Snapshot};
 use arrow_buffer::{Buffer, MutableBuffer};
 use serde::{Deserialize, Serialize};
@@ -529,6 +531,7 @@ impl ProjectedReadStream {
         ranges: Vec<ProjectedReadRange>,
         projection: ProjectedReadProjection,
         budget: ProjectedReadBudget,
+        cache_access: PageCacheAccess,
         lease: ReadViewLease,
     ) -> Self {
         let ranges: Arc<[ProjectedReadRange]> = ranges.into();
@@ -550,6 +553,7 @@ impl ProjectedReadStream {
                 segment,
                 Arc::clone(&ranges),
                 view.sequence,
+                cache_access,
             ))
         }));
         let evidence = ProjectedReadEvidence {
@@ -1002,6 +1006,7 @@ struct SegmentProjectedCursor {
     segment: Arc<Segment>,
     ranges: Arc<[ProjectedReadRange]>,
     read_sequence: u64,
+    cache_access: PageCacheAccess,
     row_group: usize,
     row: usize,
     loaded_spine: Option<KeySpine>,
@@ -1009,7 +1014,12 @@ struct SegmentProjectedCursor {
 }
 
 impl SegmentProjectedCursor {
-    fn new(segment: Arc<Segment>, ranges: Arc<[ProjectedReadRange]>, read_sequence: u64) -> Self {
+    fn new(
+        segment: Arc<Segment>,
+        ranges: Arc<[ProjectedReadRange]>,
+        read_sequence: u64,
+        cache_access: PageCacheAccess,
+    ) -> Self {
         let row_group = segment
             .row_groups
             .partition_point(|group| group.last_key.as_slice() < ranges[0].start.as_slice());
@@ -1017,6 +1027,7 @@ impl SegmentProjectedCursor {
             segment,
             ranges,
             read_sequence,
+            cache_access,
             row_group,
             row: 0,
             loaded_spine: None,
@@ -1088,10 +1099,11 @@ impl SegmentProjectedCursor {
                 continue;
             }
             if self.loaded_spine.is_none() {
-                self.loaded_spine = Some(
-                    self.segment
-                        .load_projected_key_spine(self.row_group, meter)?,
-                );
+                self.loaded_spine = Some(self.segment.load_projected_key_spine(
+                    self.row_group,
+                    meter,
+                    self.cache_access,
+                )?);
                 meter.record_selected_row_group()?;
                 self.row = 0;
             }
@@ -1136,16 +1148,22 @@ impl SegmentProjectedCursor {
                 "segment cursor received a memtable locator".into(),
             ));
         };
-        let validity =
-            self.segment
-                .load_projected_page(*row_group, PageKind::ValueValidity, meter)?;
+        let validity = self.segment.load_projected_page(
+            *row_group,
+            PageKind::ValueValidity,
+            meter,
+            self.cache_access,
+        )?;
         if !valid_at(validity.buffer.as_slice(), *row)? {
             return Ok(None);
         }
         let value_len = if projection == ProjectedReadProjection::KeyValue {
-            let offsets =
-                self.segment
-                    .load_projected_page(*row_group, PageKind::ValueOffsets, meter)?;
+            let offsets = self.segment.load_projected_page(
+                *row_group,
+                PageKind::ValueOffsets,
+                meter,
+                self.cache_access,
+            )?;
             let start = offset_at(offsets.buffer.as_slice(), *row)?;
             let end = offset_at(offsets.buffer.as_slice(), *row + 1)?;
             if start > end {
@@ -1184,9 +1202,12 @@ impl SegmentProjectedCursor {
                 "projected segment value has no authenticated byte range".into(),
             ));
         };
-        let data = self
-            .segment
-            .load_projected_page(row_group, PageKind::ValueData, meter)?;
+        let data = self.segment.load_projected_page(
+            row_group,
+            PageKind::ValueData,
+            meter,
+            self.cache_access,
+        )?;
         let value = data
             .buffer
             .as_slice()
@@ -1207,11 +1228,22 @@ impl Segment {
         &self,
         row_group: usize,
         meter: &mut ProjectedReadMeter,
+        cache_access: PageCacheAccess,
     ) -> Result<KeySpine> {
         Ok(KeySpine {
-            offsets: self.load_projected_page(row_group, PageKind::KeyOffsets, meter)?,
-            data: self.load_projected_page(row_group, PageKind::KeyData, meter)?,
-            sequences: self.load_projected_page(row_group, PageKind::SequenceValues, meter)?,
+            offsets: self.load_projected_page(
+                row_group,
+                PageKind::KeyOffsets,
+                meter,
+                cache_access,
+            )?,
+            data: self.load_projected_page(row_group, PageKind::KeyData, meter, cache_access)?,
+            sequences: self.load_projected_page(
+                row_group,
+                PageKind::SequenceValues,
+                meter,
+                cache_access,
+            )?,
         })
     }
 
@@ -1220,6 +1252,7 @@ impl Segment {
         row_group: usize,
         kind: PageKind,
         meter: &mut ProjectedReadMeter,
+        cache_access: PageCacheAccess,
     ) -> Result<Arc<super::LoadedPage>> {
         let descriptor = self
             .row_groups
@@ -1227,7 +1260,7 @@ impl Segment {
             .ok_or_else(|| Error::InvalidSegment("row-group index is outside the segment".into()))?
             .page(kind);
         meter.request_page(kind, descriptor.logical_bytes as u64)?;
-        let (page, evidence) = self.load_page_with_evidence(row_group, kind)?;
+        let (page, evidence) = self.load_page_with_access(row_group, kind, cache_access)?;
         meter.record_page_load(evidence)?;
         Ok(page)
     }

@@ -95,21 +95,23 @@ pub use memtable::{Memtable, MemtableProfile, VersionedValue};
 #[cfg(feature = "physical-policy-lab")]
 pub use segment::{
     run_physical_policy_trial, CachePolicyObservation, CandidateDecision, CodecObservation,
-    FamilyObservation, FilterObservation, PhysicalPolicyConfig, PhysicalPolicyTrial,
-    ReopenedPointMissObservation, ValuePlacementObservation, PHYSICAL_POLICY_EVIDENCE_VERSION,
+    FamilyObservation, FilterObservation, IntegratedCachePolicyObservation, PhysicalPolicyConfig,
+    PhysicalPolicyTrial, ReopenedPointMissObservation, ValuePlacementObservation,
+    PHYSICAL_POLICY_EVIDENCE_VERSION,
 };
 pub use segment::{
-    PageCacheStats, ProjectedReadBatch, ProjectedReadBudget, ProjectedReadEvidence,
-    ProjectedReadOutcome, ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest,
-    ProjectedReadResource, ProjectedReadStream, Segment, SegmentCompressionPolicy,
-    SegmentOpenEvidence, SegmentRowGroupBudget, COMPRESSION_BASIS_POINTS,
+    PageCachePolicy, PageCacheStats, ProjectedReadBatch, ProjectedReadBudget,
+    ProjectedReadEvidence, ProjectedReadOutcome, ProjectedReadProjection, ProjectedReadRange,
+    ProjectedReadRequest, ProjectedReadResource, ProjectedReadStream, Segment,
+    SegmentCompressionPolicy, SegmentOpenEvidence, SegmentRowGroupBudget, COMPRESSION_BASIS_POINTS,
     DEFAULT_COMPRESSION_MAXIMUM_PAGE_LOGICAL_BYTES,
     DEFAULT_COMPRESSION_MINIMUM_SAVINGS_BASIS_POINTS, DEFAULT_MAX_ACTIVE_READ_VIEWS,
     DEFAULT_MAX_BATCH_ALLOCATED_BYTES, DEFAULT_MAX_BATCH_ROWS, DEFAULT_MAX_OUTPUT_BUFFER_BYTES,
     DEFAULT_MAX_OUTPUT_ROWS, DEFAULT_MAX_PAGE_LOGICAL_BYTES, DEFAULT_MAX_PAGE_REQUESTS,
     DEFAULT_MAX_PINNED_READ_BYTES, DEFAULT_MAX_PROJECTED_READ_RANGES,
     DEFAULT_MAX_PROJECTED_READ_RUNS, DEFAULT_MAX_VERSIONS_EXAMINED, DEFAULT_PAGE_CACHE_BYTES,
-    DEFAULT_ROW_GROUP_MAX_ROWS, DEFAULT_ROW_GROUP_TARGET_BYTES, DEFAULT_SEGMENT_COMPRESSION_POLICY,
+    DEFAULT_PAGE_CACHE_PROTECTED_CAPACITY_BASIS_POINTS, DEFAULT_ROW_GROUP_MAX_ROWS,
+    DEFAULT_ROW_GROUP_TARGET_BYTES, DEFAULT_SEGMENT_COMPRESSION_POLICY,
     PROJECTED_READ_CONTRACT_VERSION, SEGMENT_FORMAT_VERSION, SEGMENT_KEY_CODEC_DIGEST,
     SEGMENT_OPEN_EVIDENCE_VERSION, SEGMENT_PAGE_FORMAT_DIGEST, SEGMENT_SCHEMA_DIGEST,
 };

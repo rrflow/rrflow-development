@@ -11,8 +11,10 @@
 
 Replace rrflowKV's sole admit-every-miss immutable-page LRU with one
 configurable, exact-byte cache that supports both the existing exact LRU oracle
-and a scan-resistant probationary/protected policy. Make the scan-resistant
-policy the process-local default only after a real persisted eight-family
+and a scan-resistant probationary/protected policy. Make that policy
+scope-aware: repeated page requests inside one projected stream remain
+probationary, while a later engine operation may promote them. Make it the
+process-local default only after a real persisted eight-family
 workload proves semantic identity, exact capacity, and fewer post-scan hot-page
 loads. Record but do not solve concurrent duplicate loads. If all prior C-06
 evidence remains green and the remaining value-placement/family-grouping
@@ -42,6 +44,7 @@ smallest coherent step before C-07 recovery/concurrency and D-01 installation.
 | Path and symbols | Current behavior | Required change |
 |---|---|---|
 | `crates/persistence/rrd-lsm/src/segment/mod.rs` — `PageCacheStats`, `PageCache`, `CacheEntry`, `new_page_cache`, `load_page_with_evidence`, `impl PageCache` | One `HashMap`, one lazy LRU heap, one global mutex, admit every fitting miss; duplicate losing loads are unclassified. | Add the closed policy type, exact/probationary/protected regions, validated basis-point target, exact state transitions, strict region/total accounting, admissions/promotions/demotions/rejections/duplicate-load evidence, and policy-aware lookup/insertion helpers. |
+| `crates/persistence/rrd-lsm/src/segment/reader.rs` — `ProjectedReadStream`, `SegmentProjectedCursor`, `load_projected_page` | One projected stream can request the same row-group page repeatedly while preparing and copying rows; no logical cache-reuse scope exists. | Allocate one checked opaque scope per stream and pass it through every segment page request so same-stream hits refresh without promoting; later streams get distinct scopes. |
 | `crates/persistence/rrd-lsm/src/database.rs` — `DatabaseOptions`, create/open cache construction, open trace | Configures bytes only and always constructs exact LRU. | Add non-durable `page_cache_policy`, validate before filesystem mutation, pass it to the sole cache constructor, expose current policy, and trace low-cardinality kind/ratio on open. |
 | `crates/persistence/rrd-lsm/src/lib.rs` — database/segment exports | Exposes bytes and cumulative stats but no policy. | Export the closed policy and default protected-target constant; expose no cache internals. |
 | `crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs` — cache simulator, reopened integration, decisions | Compares simulated exact/segmented LRU; real reopen uses the implicit default and does not compare policies. | Keep the simulator as a deterministic screen, add a real same-database exact-versus-scan-resistant mixed-family workload, bind semantic digests and production counters, and call the selected policy integrated only when the real invariant passes. |
@@ -108,6 +111,7 @@ admissions
 admission_rejections
 promotions
 demotions
+same_scope_hits
 duplicate_loads
 ```
 
@@ -115,6 +119,8 @@ Existing hit/miss/eviction/load and byte ownership counters retain their
 meaning. `loads` counts each actual `read_page` completion, including a
 duplicate losing load. `duplicate_loads` counts only a completed load whose
 key was inserted by another reader before the completion lock was reacquired.
+`same_scope_hits` counts probationary hits intentionally not promoted because
+they came from the same projected stream that last touched the entry.
 An oversize/no-capacity page increments `admission_rejections` but is still
 returned to the requesting read.
 
@@ -124,7 +130,8 @@ Replace the single-region entry with:
 
 ```text
 CacheRegion = Exact | Probationary | Protected
-CacheEntry = { value, last_used, region }
+CacheAccess = OrdinaryOperation | ProjectedScope(non-zero u64)
+CacheEntry = { value, last_used, region, last_access }
 ```
 
 `PageCache` retains the one immutable-value map and adds one lazy-invalidated
@@ -147,15 +154,23 @@ metadata.
 3. If exact LRU, refresh the exact-region stamp.
 4. If scan-resistant and protected, refresh the protected stamp.
 5. If scan-resistant and probationary:
-   - move its charged bytes from probationary to protected;
-   - increment `promotions`;
-   - refresh its stamp in the protected heap; and
-   - demote least-recent protected entries until protected bytes are at or
+   - if the current projected scope equals the entry's last scope, refresh it
+     in probationary and increment `same_scope_hits`;
+   - otherwise move its charged bytes from probationary to protected,
+     increment `promotions`, refresh its stamp in the protected heap, and
+     demote least-recent protected entries until protected bytes are at or
      below the configured target.
 6. Increment `hits`, rebuild stale heap metadata if necessary, and clone the
    immutable `Arc`.
 
 Lookup performs no I/O under the cache mutex.
+
+Every `ProjectedReadStream` receives one checked non-zero scope generated
+inside rrflowKV and shared by all of its segment cursors. A later stream gets a
+different scope. Point operations use the ordinary-operation access class and
+retain second-access promotion. Scope exhaustion fails stream creation; scope
+values are never public input, persistent state, authorization, query
+semantics, or trace dimensions.
 
 ### Completed load and admission
 
@@ -225,6 +240,8 @@ Assertions:
 - both policies stay within capacity;
 - exact LRU demonstrates at least one post-scan reload on this corpus;
 - scan-resistant LRU records promotions and protected entries;
+- the projected scan records same-scope suppressed promotions and cannot
+  promote its own newly admitted probationary pages;
 - scan-resistant post-scan loads are strictly fewer than exact LRU and are zero
   if the declared hot set fits the protected target;
 - scan-resistant region bytes sum to total residency;
@@ -259,7 +276,7 @@ hot family count and hot request count
 projected row count and row digest
 capacity/current region bytes and entries
 warm, scan, and post-scan hit/miss/load deltas
-admissions/rejections/promotions/demotions/evictions/duplicate loads
+admissions/rejections/promotions/same-scope hits/demotions/evictions/duplicate loads
 physical/decoded/decompressed byte deltas
 semantic_identity_exact and exact_capacity_respected
 ```
@@ -320,10 +337,11 @@ This package makes no process-RSS equality claim.
 
 ### Debugging evidence
 
-Policy, ratios, admissions, promotions, demotions, evictions, rejected
-admissions, duplicate loads, physical bytes, decoded bytes, and post-scan
-loads must be sufficient to distinguish policy failure from disk/decode or
-semantic failure. No debug-only alternative execution path is allowed.
+Policy, ratios, admissions, promotions, same-scope suppressed promotions,
+demotions, evictions, rejected admissions, duplicate loads, physical bytes,
+decoded bytes, and post-scan loads must be sufficient to distinguish policy,
+scope, disk/decode, or semantic failure. No debug-only alternative execution
+path is allowed.
 
 ## Documentation and status edits after runtime proof
 
@@ -361,19 +379,23 @@ exact missing evidence. Never close it because the package compiles.
    journal as a separate documentation-only child before runtime edits.
 4. Add `tests/page_cache.rs`; record the intended missing-type compile failure.
 5. Add and validate `PageCachePolicy` and `DatabaseOptions` propagation.
-6. Implement policy-aware lookup, promotion/demotion, admission, eviction, and
+6. Run the unchanged real-reader workload. Preserve its first failure—45
+   post-scan loads for both policies because 601 same-stream hits promoted scan
+   pages—as the reason for the successor machine plan.
+7. Add the engine-owned projected reuse scope and same-scope suppression.
+8. Implement policy-aware lookup, promotion/demotion, admission, eviction, and
    counters without I/O under the mutex.
-7. Make all focused black-box and internal invariants pass.
-8. Extend the feature-gated laboratory and evidence example; run dirty smoke
+9. Make all focused black-box and internal invariants pass.
+10. Extend the feature-gated laboratory and evidence example; run dirty smoke
    trials only.
-9. Run the owning package, strict Clippy, architecture, and workspace check.
-10. Commit runtime source and tests.
-11. From the clean runtime revision, run release-profile evidence into the new
+11. Run the owning package, strict Clippy, architecture, and workspace check.
+12. Commit runtime source and tests.
+13. From the clean runtime revision, run release-profile evidence into the new
     artifact and validate deterministic child identity.
-12. Update the declared source-of-truth/supporting records, journal exact
+14. Update the declared source-of-truth/supporting records, journal exact
     commands/results, regenerate inventory, reread every changed file and the
     full diff, then commit closeout.
-13. Resolve both remote URLs and refs; push normally only to
+15. Resolve both remote URLs and refs; push normally only to
     `development/main`; verify its exact revision and verify official main did
     not move.
 
@@ -411,6 +433,8 @@ Stop and amend the committed plan before continuing if:
 - cache or region residency exceeds capacity;
 - a caller, family prefix, DataFusion node, provider, hook, or skill gains
   physical cache authority;
+- a projected reuse scope is externally supplied, persisted, traced as an
+  identifier, reused across streams, or changes authorization/query results;
 - Moka, another cache crate, a frequency sketch, a ghost cache, or time-based
   promotion becomes necessary;
 - policy is persisted into segment/manifest bytes or creates a compatibility
@@ -419,6 +443,8 @@ Stop and amend the committed plan before continuing if:
 - cache eviction invalidates an active `Arc<LoadedPage>`;
 - the mixed corpus does not force exact-LRU reloads or the selected policy does
   not improve the declared post-scan result;
+- same-stream projected hits promote probationary pages instead of incrementing
+  the suppression counter;
 - duplicate-load evidence cannot be defined without claiming coalescing;
 - a new path was not declared in the machine plan;
 - any existing storage/recovery/projected-read test regresses;
