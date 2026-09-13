@@ -16,7 +16,7 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 |---|---|---|
 | Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
 | AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
-| Physical-policy and filter-integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Measures exact segment-v5 page bodies under none/LZ4/Zstandard, verifies the production persisted row-group Bloom filters and normal reopen I/O, compares exact-byte LRU/segmented-LRU traces, and retains value placement as a model only. Only the filter is integrated; the other policies remain separately gated. |
+| Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, compares exact-byte LRU/segmented-LRU traces, and retains value placement as a model only. Filters and adaptive LZ4 are integrated; Zstandard, cache admission, and value placement remain separately gated. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
 | Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
@@ -65,23 +65,24 @@ deterministic expected value.
 Embedding-shaped bytes exercise payload size and access locality only. This is
 not HNSW, exact-vector, semantic-quality, or RRF evidence.
 
-## Physical-policy and filter-integration protocol
+## Physical-policy integration protocol
 
 The C-06i executable is an optimized, feature-gated developer tool. Its child
 builds one deterministic MVCC corpus spanning audit, inbound/outbound edge,
 record, runtime, scalar, term, and vector families. It sends that corpus
-through the real `Memtable` and segment-v5 encoder, then consumes the encoder's
+through the real `Memtable` and segment-v6 encoder, then consumes the encoder's
 parsed page descriptors rather than maintaining another format parser.
 
 Every exact page body is round-tripped through no compression, LZ4, and
 Zstandard level 1. The result reports raw codec bytes and CPU separately from
 an adaptive stored-byte result that counts framing and leaves an individual
-page raw unless it saves at least 12.5%. A codec advances only with exact
-round trips and at least 12.5% aggregate adaptive savings. This screen does not
-choose hot/cold level placement or write a codec discriminator into segment v5.
+page raw unless it saves at least 12.5%. Segment v6 applies that rule through
+the production none/adaptive-LZ4 writer and authenticates the selected policy
+and each page codec. Zstandard remains laboratory-only; this harness does not
+choose hot/cold level placement.
 
 For each parsed row group, the program extracts exact unique keys and probes the
-production ten-bit/seven-hash Bloom words parsed from the authenticated v5
+production ten-bit/seven-hash Bloom words parsed from the authenticated v6
 index. Zero member false negatives and no more than 2% observed false positives
 are required. The integrated characterization creates, flushes, drops, and
 normally reopens the same corpus through `Database`; requires nonzero persisted
@@ -116,13 +117,16 @@ only explicitly ineligible diagnostic output.
 The historical candidate artifact is bound to clean revision `f7257fa`. It
 selected authenticated persisted row-group filters as the first production
 experiment. The separate persisted-filter artifact is bound to clean revision
-`07a6bb8` and records the v5 integration: 139 filters/11,080 raw filter bytes,
+`07a6bb8` and records the historical v5 integration: 139 filters/11,080 raw filter bytes,
 zero member false negatives, 0.634% observed absent-key false positives, zero
 semantic-page open work, 16,020 definite negatives from 16,106 in-range miss
-checks, and 114 miss-path page loads. Codec placement and segmented-LRU still
-require separate integrated trials and value separation remains rejected. The
-raw artifacts, not this summary, own their exact host, timings, counters, and
-digests.
+checks, and 114 miss-path page loads. The current integration artifact is bound
+to clean revision `eb7445e`; it records 50 raw and 784 compressed reopened v6
+pages, 1,418,038 stored/8,988,877 logical page bytes, 336,041 bytes decompressed
+by the sampled query path, 16,020 filter negatives, 132 page loads, and zero
+child failures. Segmented-LRU still requires an integrated trial, Zstandard is
+laboratory-only, and value separation remains rejected. The raw artifacts, not
+this summary, own their exact host, timings, counters, and digests.
 
 ## Lifecycle measurements
 
@@ -157,7 +161,7 @@ bind:
    required by the release gates.
 
 The C-06i artifacts close the listed source/host provenance gaps only for their
-candidate and filter-integration scopes. They still disclose uncontrolled
+candidate, filter, and adaptive-LZ4 integration scopes. They still disclose uncontrolled
 device cache and host load, lack cross-platform and complete end-to-end
 workloads, and are never release evidence.
 
@@ -187,7 +191,7 @@ cargo run --release --locked -p rrd-store --example ai_hotset_benchmark -- \
   --output target/rrflow-kv-ai-metadata-fanout-embedding-f32.json
 ```
 
-Run the current C-06i fixed-machine persisted-filter integration proof from a
+Run the current C-06i fixed-machine adaptive-page-compression integration proof from a
 clean implementation revision:
 
 ```bash
@@ -201,7 +205,7 @@ cargo run --release --locked -p rrd-lsm \
   --value-bytes 512 \
   --misses 16384 \
   --cache-bytes 1048576 \
-  --output docs/evidence/c06i-rrflowkv-persisted-filter-linux-x86_64.json
+  --output docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json
 ```
 
 Use `--allow-dirty` only for implementation smoke runs. Such output records the

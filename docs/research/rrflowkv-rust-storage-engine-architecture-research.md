@@ -7,13 +7,13 @@ completion claim, or authorization to rewrite engine code
 later governed configuration workflow
 **Audience:** RRFlow owner and engineers implementing the 1.0 pre-release
 **Researched:** 2026-09-12 through 2026-09-13
-**Latest reviewed repository baseline:** `787c618b659461ca9a72eed5db78aa9c2e41b28b`
+**Latest reviewed repository baseline:** `eb7445e399e393b37f8e788fd5c61cd3419725cb`
 **Implementation update:** C-06g adds the bounded pinned projected reader;
-C-06h adds finite adversarial qualification; segment v5 integrates the first
-C-06i retained policy as authenticated persisted row-group filters. Adaptive
-LZ4 is now selected and specified for a separately machine-bound segment-v6
-implementation; no compression runtime has changed yet. C-06 remains open for
-that implementation and the other physical-policy decisions and qualification
+C-06h adds finite adversarial qualification; segment v6 integrates the C-06i
+authenticated persisted row-group filters and adaptive-LZ4 page policy. The
+clean integration artifact verifies the normal writer/reopen/read path, but
+C-06 remains open for value placement, mixed-workload interference, cache
+admission, and the remaining qualification.
 **Assumptions:** RRFlow remains one independently installable Rust product;
 `RrdEngine` remains the sole authorization and transaction authority;
 rrflowKV is the persistent substrate; rrflowMX is the volatile conformance
@@ -26,8 +26,8 @@ Yes: RRFlow can build a Rust-native storage engine that reaches RocksDB-class
 quality for its declared workload. The current repository is not starting from
 zero. It already contains a checksummed WAL, atomic batches, MVCC sequence
 visibility, write-conflict detection, manifest/CURRENT publication,
-checksummed immutable segment-v5 files, Arrow-compatible column pages,
-authenticated persisted row-group filters,
+checksummed immutable segment-v6 files, raw/adaptive-LZ4 Arrow-compatible
+column pages, authenticated persisted row-group filters,
 snapshots, a bounded pinned projected stream, compaction, garbage collection,
 snapshot bundles, page caching, multiple I/O modes, phase-scoped physical
 counters, deterministic differential tests, and real process-kill recovery
@@ -162,8 +162,8 @@ code is implementation inventory until its owning roadmap evidence passes.
 | `crates/persistence/rrd-lsm/src/memtable.rs` | sequence-version chains, tombstones, visible-version selection, sorted keys |
 | `crates/persistence/rrd-lsm/src/transaction.rs` | snapshot sequence capture and write/write conflict validation |
 | `crates/persistence/rrd-lsm/src/manifest.rs` | content-addressed manifests, checksummed CURRENT pointer, publication ordering, checkpoints and reachability |
-| `crates/persistence/rrd-lsm/src/segment/format.rs` | authenticated segment-v5 metadata, row groups, persisted membership filters, page descriptors, 64-byte alignment, format/schema/key/page identities |
-| `crates/persistence/rrd-lsm/src/segment/mod.rs` | mmap/bounded/io_uring page sources, checksummed page acquisition, page cache, table reads and frozen bytes |
+| `crates/persistence/rrd-lsm/src/segment/format.rs` | authenticated segment-v6 metadata, row groups, persisted membership filters, none/adaptive-LZ4 policy, raw/LZ4 page descriptors, 64-byte alignment, and format/schema/key/page identities |
+| `crates/persistence/rrd-lsm/src/segment/mod.rs` | mmap/bounded/io_uring page sources, checksum-before-decode page acquisition, bounded aligned LZ4 reconstruction, decoded-byte page cache, table reads, evidence, and frozen bytes |
 | `crates/persistence/rrd-lsm/src/database.rs` | single-writer composition, write preparation, flush/publication ordering, compaction, snapshot install, GC |
 | `crates/persistence/rrd-lsm/src/snapshot_bundle.rs` | portable checksummed snapshot closure and restore validation |
 | `crates/persistence/rrd-store/src/rrflow_kv.rs` | RRFlow key-format binding, startup checkpoint reconciliation, storage-profile integration |
@@ -183,7 +183,7 @@ code is implementation inventory until its owning roadmap evidence passes.
 | `IoContext` | one mutex around one io_uring instance and synchronous calls; C-06g reports the backend that actually served a read after fallback | later compare bounded per-device queues/pools and cancellation based on measurements |
 | `ManifestStore::load` | full immutable-file digest verification on normal open can scale with total bytes; WAL closure is simpler than mature version tracking | separate fast authenticated metadata open from full verify; track complete version/WAL closure and retain full verification as an explicit operation |
 | WAL lifecycle | one straightforward log path; no group commit, fragmentation policy, log inventory/recycling, or retained-log accounting | preserve correctness first; add version-bound WAL inventory and benchmarked group commit only after installed lifecycle works |
-| immutable table policy | persisted row-group filters are integrated; no compression or value separation | implement the separately planned adaptive LZ4 slice; qualify cache admission separately; retain value separation as rejected from model-only evidence |
+| immutable table policy | persisted row-group filters and adaptive LZ4 are integrated; no value separation, family clustering, or accepted scan-resistant cache admission | qualify value placement, mixed-family interference, and cache admission separately; retain value separation as rejected from model-only evidence until its recovery/GC proof exists |
 | operator surface | no primary-binary table/WAL/manifest inspect and full verify/repair flow | D-01 creates read-only inspect/verify; C-07/D-11 close full verification and recovery policy |
 
 The current `Database` file is too broad for long-term ownership, but splitting
@@ -508,10 +508,12 @@ a second parser. Its isolated release-profile children compare:
 - real rrflowKV create, flush, process-state drop, normal reopen, missing-key,
   present-key, filter, cache, and physical-I/O counters.
 
-The codec dependencies exist only behind the disabled `physical-policy-lab`
-feature. Moka is not added: this slice can answer whether scan resistance is
-useful without weakening exact accounting, and its simulator cannot claim
-integrated concurrent-cache latency. Value separation remains rejected for
+The original codec screen kept both codecs behind the disabled
+`physical-policy-lab` feature. Current segment v6 promotes only pinned safe,
+checked `lz4_flex` into production; Zstandard remains lab-only. Moka is not
+added: this slice can answer whether scan resistance is useful without
+weakening exact accounting, and its simulator cannot claim integrated
+concurrent-cache latency. Value separation remains rejected for
 production regardless of modeled savings because it lacks authenticated
 pointer publication, read-view/snapshot closure, crash recovery, corruption,
 range-read, and value-log garbage-collection evidence.
@@ -538,31 +540,34 @@ its recovery and garbage-collection obligations.
 
 ### Persisted-filter adaptation
 
-The retained behavior is now adapted into RRFlow segment v5 rather than copied
-from an upstream format. One implementation in `segment/format.rs` owns the
-ten-bit/seven-probe hash policy, sizing, encoding, parsing, and membership
-operation. Each authenticated row-group index entry stores the unique-key count
-and exact derived little-endian filter words. Normal manifest reopen parses
-those bounded metadata bytes without reading semantic pages. Standalone
-admission and snapshot validation rebuild the words from decoded unique keys
-and reject any mismatch even when a mutated file has a recomputed outer
-checksum. Versions 1 through 4 remain direct rejection inputs; there is no
-compatibility reader or migration lane.
+The retained behavior was first adapted into RRFlow segment v5 rather than
+copied from an upstream format and is retained in the sole current segment v6
+reader and writer. One implementation in `segment/format.rs` owns the ten-bit/
+seven-probe hash policy, sizing, encoding, parsing, and membership operation.
+Each authenticated row-group index entry stores the unique-key count and exact
+derived little-endian filter words. Normal manifest reopen parses those bounded
+metadata bytes without reading semantic pages. Standalone admission and
+snapshot validation rebuild the words from decoded unique keys and reject any
+mismatch even when a mutated file has a recomputed outer checksum. Versions 1
+through 5 remain direct rejection inputs; there is no compatibility reader or
+migration lane.
 
-The fixed integration workload measures the production v5 encoder and normal
-rrflowKV reopen. It requires nonzero persisted filter count/bytes, zero
-semantic-page work during open, zero member false negatives, and fewer miss-path
-page loads than filter checks while exact present, tombstone, snapshot, flush,
-compaction, and reopen semantics remain unchanged. The production filter does
-not participate in range exclusion or establish semantic presence. LZ4,
-Zstandard, segmented-LRU, and value placement remain outside this integration
-slice; the historical candidate result does not silently activate them.
+The original fixed integration workload measured the v5 encoder and normal
+rrflowKV reopen; the current adaptive-compression artifact repeats those filter
+checks through v6. Both require nonzero persisted filter count/bytes, zero
+semantic-page work during open, zero member false negatives, and fewer miss-
+path page loads than filter checks while exact present, tombstone, snapshot,
+flush, compaction, and reopen semantics remain unchanged. The production
+filter does not participate in range exclusion or establish semantic presence.
+Zstandard, segmented-LRU, and value placement remain outside the integrated
+production policy; the historical candidate result does not silently activate
+them.
 
 ### Adaptive page-compression decision
 
-The next production experiment is per-page adaptive LZ4 inside rrflowKV, not
-compression in DataFusion and not a second columnar store. The decision is
-grounded in three different kinds of evidence:
+The selected production experiment was per-page adaptive LZ4 inside rrflowKV,
+not compression in DataFusion and not a second columnar store. The implemented
+decision is grounded in three different kinds of evidence:
 
 1. RRFlow's fixed candidate corpus shows that both LZ4 and Zstandard produce
    substantial byte reduction and exact round trips, but LZ4 has the lower
@@ -577,7 +582,7 @@ grounded in three different kinds of evidence:
    the Arrow layout.[^12] Therefore only an eligible raw mmap page is a
    zero-copy result; a compressed page is explicitly an owned aligned decode.
 
-The implementation target is a direct segment-v6 replacement. An authenticated
+The implemented target is a direct segment-v6 replacement. An authenticated
 header record carries the writer policy, and each page descriptor carries
 `none` or `lz4_block`. The default policy selects a block only when checked
 integer arithmetic proves at least 1,250 basis points of saving; otherwise it
@@ -619,6 +624,30 @@ The complete byte contract, source map, corruption matrix, and execution order
 are owned by the
 [adaptive page-compression engineering plan](../roadmap/c06i-rrflowkv-adaptive-page-compression-engineering-plan.md).
 
+### Adaptive page-compression integration result
+
+Segment v6 now carries the authenticated writer policy and per-page raw/LZ4
+identity described above. The default writer attempts a checked LZ4 block for
+each page up to the authenticated 16 MiB attempt cap and retains it only at the
+1,250-basis-point threshold. The normal reader authenticates stored bytes
+before exact-length decode, bounds the reconstructed logical segment before
+allocation, borrows only raw mmap pages, and charges compressed pages as owned
+aligned decoded cache entries. Flush and compaction use the configured policy;
+`none` remains an explicit conformance option. Versions 1 through 5 are rejected
+with no compatibility reader.
+
+The exact none/adaptive independent-model corpus passes through reopen and
+protected compaction. The corruption corpus covers authenticated policy and
+codec discriminants, reserved bytes, raw and compressed length invariants,
+page caps, the aggregate logical envelope, stale and recomputed checksums, and
+too-short/too-long LZ4 output. A structure-aware current-format fuzz target
+combines blind mutations with checksum-rewritten header, descriptor, stored
+page, and footer mutations. On clean revision `eb7445e`, one warm-up and three
+retained isolated children exited zero and recorded 50 raw plus 784 compressed
+reopened pages, 1,418,038 stored versus 8,988,877 logical page bytes, and
+336,041 query-decompressed bytes. This is production-path integration evidence
+on one host, not release, all-workload, cross-platform, or competitor proof.
+
 ## Execution order
 
 The canonical roadmap order is the authority:
@@ -627,8 +656,8 @@ The canonical roadmap order is the authority:
    (implemented candidate; recorded in the execution journal);
 2. C-06h: property/fuzz/adversarial and mixed-family correctness (implemented
    candidate with stable, stress, and bounded sanitizer evidence);
-3. C-06i: persisted filter integrated; adaptive LZ4 implementation-ready;
-   value-placement, mixed-workload, and cache decisions remain separately gated;
+3. C-06i: persisted filter and adaptive LZ4 integrated; value-placement,
+   mixed-workload, and cache decisions remain separately gated;
 4. D-01: real `rrflow`/`rrflow.exe` install plan/apply, create/open/inspect,
    serve, authenticated ready, commit, close/reopen and baseline verify;
 5. C-07: recovery, background maintenance, backpressure, ENOSPC and sustained

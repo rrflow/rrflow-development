@@ -18,7 +18,7 @@ unfinished DevForge placement and hibernation system.
 | Layer | Canonical role | Current implementation |
 |---|---|---|
 | rrflowKV mutable state | Low-latency WAL-backed MVCC writes and the active memtable | Implemented locally; every acknowledged authoritative batch is synchronized before the mutable state is exposed |
-| rrflowKV immutable state | Manifest-addressed sorted segments, compaction input, and retained snapshot state | Implemented locally as segment v5 ordered key/version spines, aligned Arrow-layout pages, and authenticated persisted row-group filters; DataFusion provider integration and the remaining C-06 physical-policy evidence remain open |
+| rrflowKV immutable state | Manifest-addressed sorted segments, compaction input, and retained snapshot state | Implemented locally as segment v6 ordered key/version spines, raw or adaptive-LZ4 aligned Arrow-layout pages, and authenticated persisted row-group filters; DataFusion provider integration plus C-06 value-placement, mixed-workload, and cache-policy evidence remain open |
 | rrflowKV immutable page cache | Process-local reuse of authenticated immutable pages | Implemented as a byte-bounded shared LRU with separate hit, miss, load, eviction, residency, read, decode, borrow, allocation, copy, and decompression counters |
 | Immutable application objects | Content-addressed source artifacts and multimodal payload bytes referenced by canonical records | Memory and local adapters implemented; provider-neutral S3 port implemented without a production transport |
 | Vector artifact residency | Process-local pinned, cached, or cold opening of immutable vector artifacts | Implemented separately under the [vector residency contract](../vector/memory-tiers.md); never canonical state |
@@ -54,10 +54,11 @@ decoded, borrowed, allocated, copied, and decompressed bytes, hits, misses,
 evictions, and filter outcomes.
 
 These are local access modes, not persistence tiers. With explicit mmap, an
-aligned uncompressed v5 page can back an `arrow_buffer::Buffer` while an owned
-mapping lease preserves its lifetime. Bounded and io_uring paths allocate an
-aligned buffer; snapshot-envelope validation copies. Point values and current
-query results can still allocate. The [current-format
+aligned raw v6 page can back an `arrow_buffer::Buffer` while an owned mapping
+lease preserves its lifetime. A compressed v6 page is authenticated before its
+checked, bounded LZ4 decode into an owned aligned buffer; bounded and io_uring
+raw paths also allocate, and snapshot-envelope validation copies or decodes.
+Point values and current query results can still allocate. The [current-format
 record](rrflowkv-current-format.md) owns the exact eligibility boundary and
 remaining C-06 work; no end-to-end zero-copy DataFusion claim exists yet.
 
@@ -107,9 +108,10 @@ upper layer.
 ## Current executable evidence
 
 `crates/persistence/rrd-lsm/tests/tiered_io.rs` proves exact read equality
-between mmap and bounded modes, distinct borrowed-versus-allocated page
-evidence, byte/request/cache accounting, and actual io_uring or an explicit
-measured fallback on the executing kernel. Segment,
+between mmap and bounded modes for none and adaptive-LZ4 segments, distinct raw
+borrowed-versus-compressed-owned page evidence, byte/request/cache/decompression
+accounting, and actual io_uring or an explicit measured fallback on the
+executing kernel. Segment,
 snapshot, failure-matrix, and snapshot-memory suites prove current local
 authentication, bounded transfer, crash ordering, and install behavior. The
 S3-port tests use an in-memory conformance client.

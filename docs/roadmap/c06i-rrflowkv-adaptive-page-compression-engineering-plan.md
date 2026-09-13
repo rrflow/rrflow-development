@@ -1,16 +1,38 @@
 # C-06i rrflowKV adaptive page-compression engineering plan
 
-**Status:** active supporting plan; implementation-ready, runtime work not started
+**Status:** active supporting work-package evidence; segment-v6 adaptive-LZ4
+implementation committed at `6d4e5aed1498200ec34315b63688e034bc6dc24c`
+with evidence wording correction at `eb7445e399e393b37f8e788fd5c61cd3419725cb`;
+C-06 remains open
 **Coordinate:** `rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression`
 **Owner:** segment-v6 adaptive page-compression implementation order and proof
 **Machine plan:** [`rrflow-1.0-active-change.json`](rrflow-1.0-active-change.json)
-**Repository baseline:** `787c618b659461ca9a72eed5db78aa9c2e41b28b`
-**Planning commit:** `58cc8f882186a25e080ee2d85e344dc367bd5ed8`
+**Repository baseline:** `b2aa2fed46f598f99e0810e563f4ae4f390ebb14`
+**Planning commit:** `59d17e215d3ec9189ad2b0b0f40fa8698856563b`
 
 The canonical [RRFlow 1.0 roadmap](rrflow-1.0.md) owns completion status. This
 record makes one C-06i production slice executable; it does not authorize a
 second persistence engine, make DataFusion a storage owner, or complete C-06,
 F-01, F-05, J-04, POAM-002, or an alpha outcome.
+
+## Implementation result
+
+The planned direct replacement is implemented. Segment v6 is the sole reader;
+versions 1 through 5 fail unsupported. `SegmentCompressionPolicy` exposes
+authenticated `none` and adaptive-LZ4 modes, with the planned default threshold
+and page cap. Flush and compaction propagate the policy. The reader verifies
+stored-page digests before checked exact-length LZ4 decode, bounds the aggregate
+logical envelope before allocation, borrows eligible raw mmap pages, and owns
+aligned decoded pages under exact physical/decode/cache evidence.
+
+The owning segment, hybrid, tiered-I/O, manifest, snapshot, store-open,
+architecture, all-target/all-feature, strict-Clippy, and structure-aware v6 fuzz
+proofs pass. The fixed-machine artifact generated from clean revision
+`eb7445e` records one warm-up and three retained zero-exit children, 50 raw and
+784 compressed reopened pages, 1,418,038 stored versus 8,988,877 logical page
+bytes, and 336,041 query-decompressed bytes. The artifact is integration
+evidence only. Value placement, mixed-workload interference, cache admission,
+C-07 installed recovery/lifetime, F-01 streaming, and release proof remain open.
 
 ## Decision
 
@@ -471,8 +493,7 @@ cargo test -p rrd-lsm --all-targets --all-features --locked
 cargo clippy -p rrd-lsm --all-targets --all-features --locked -- -D warnings
 cargo clippy -p rrd-store --all-targets --locked -- -D warnings
 cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz \
-  segment-v6-open crates/persistence/rrd-lsm/fuzz/corpus/segment_v6_open \
-  -- -runs=4096 -max_len=256 -timeout=10
+  segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
 cargo test -p rrd-engine --test workspace_architecture --locked
 cargo check --workspace --all-targets --locked
 python3 scripts/ci/build_execution_inventory.py --check
@@ -484,9 +505,16 @@ cargo fmt --all -- --check
 git diff --check
 ```
 
-The exact release-profile evidence invocation is added by the runtime plan only
-after the example's reviewed arguments exist. A dirty run is diagnostic and
-cannot populate the retained artifact.
+The retained release-profile integration command is:
+
+```bash
+cargo run --release --locked -p rrd-lsm \
+  --features physical-policy-lab \
+  --example rrflowkv-physical-policy -- \
+  --output docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json
+```
+
+A dirty run is diagnostic and cannot populate the retained artifact.
 
 ## Deferred work
 

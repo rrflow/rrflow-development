@@ -21,10 +21,12 @@ The current application-key format is the C-01 `RRKV0001` typed ordered tuple
 grammar. All live `RrflowKvStore` key construction and decoding uses it, and a
 store whose manifest does not authenticate that application identity is
 rejected. The mutable path remains a write-optimized WAL plus MVCC memtable.
-Flush now transforms that sorted mutable state into segment v5: an ordered
-key/version spine, six Arrow-layout buffers, and one authenticated membership
-filter per row group. Point, range, snapshot, CAS, recovery, and compaction
-reads use those objects directly and do not invoke DataFusion.
+Flush now transforms that sorted mutable state into segment v6: an ordered
+key/version spine, six Arrow-layout buffers, one authenticated membership
+filter per row group, and an authenticated none/adaptive-LZ4 writer policy.
+Each page remains raw unless its independent LZ4 block meets the configured
+saving threshold. Point, range, snapshot, CAS, recovery, and compaction reads
+use those objects directly and do not invoke DataFusion.
 
 This is a partial C-06 implementation, not completion of C-06 and not a claim
 that query output is zero-copy. The segment owns Arrow-compatible buffer layout
@@ -37,7 +39,7 @@ bytes inside the value-data page, and current rrflowQL adapters still decode
 values and allocate result arrays.
 
 The active physical readers accept exactly mutation batch v2, manifest v3, and
-segment v5. Batch v1, manifest v1, and segment v1/v2/v3/v4 bytes are negative
+segment v6. Batch v1, manifest v1, and segment v1/v2/v3/v4/v5 bytes are negative
 inputs that return an explicit unsupported-format error before an alternate
 decoder can run. There is no row-segment compatibility reader, Fjall store,
 backend selector, or migration executor. The disabled optional OpenRaft
@@ -57,7 +59,7 @@ otherwise.
 | Mutation batch | 2 | Canonical put/delete payload inside one WAL frame | [`batch.rs`](../../../crates/persistence/rrd-lsm/src/batch.rs) |
 | Manifest | 3 | Immutable reachable-state inventory, sequence boundary, and authenticated segment schema/codec/page-format identities | [`manifest.rs`](../../../crates/persistence/rrd-lsm/src/manifest.rs) |
 | `CURRENT` and checkpoint controls | 1 | Authenticated manifest and retention pointers | [`manifest.rs`](../../../crates/persistence/rrd-lsm/src/manifest.rs) |
-| Immutable segment | 5 | Ordered key/version spine plus aligned Arrow-layout column pages and authenticated row-group membership filters | [`segment/mod.rs`](../../../crates/persistence/rrd-lsm/src/segment/mod.rs) and [`segment/format.rs`](../../../crates/persistence/rrd-lsm/src/segment/format.rs) |
+| Immutable segment | 6 | Ordered key/version spine plus raw or adaptive-LZ4 aligned Arrow-layout column pages and authenticated row-group membership filters | [`segment/mod.rs`](../../../crates/persistence/rrd-lsm/src/segment/mod.rs) and [`segment/format.rs`](../../../crates/persistence/rrd-lsm/src/segment/format.rs) |
 | Physical snapshot bundle | 1 | Authenticated flush-bounded manifest closure | [`snapshot_bundle.rs`](../../../crates/persistence/rrd-lsm/src/snapshot_bundle.rs) |
 
 Current default and hard bounds are implementation policy, not values for
@@ -72,6 +74,8 @@ callers to duplicate:
 | Key/value bytes | 1 MiB / 8 MiB | batch and segment validators |
 | Segment bytes / segment-index bytes | 1 GiB / 64 MiB | segment validator |
 | Row-group target / maximum rows / immutable page cache | 64 KiB / 2,048 / 4 MiB | configurable `SegmentRowGroupBudget` and database defaults |
+| Adaptive-LZ4 minimum saving / maximum attempted logical page | 1,250 basis points / 16 MiB | configurable `SegmentCompressionPolicy`; hard bounds are `1..=9,999` basis points and `1 byte..=1 GiB` |
+| Reconstructed logical bytes per segment | 1 GiB | segment metadata validator before page allocation |
 | Active projected read views / ranges / selected runs | 1,024 / 1,024 / 4,096 | `ProjectedReadBudget` defaults |
 | Pinned projected bytes / versions examined | 4 GiB / 16,000,000 | `ProjectedReadBudget` defaults |
 | Projected page requests / logical page bytes | 4,000,000 / 8 GiB | `ProjectedReadBudget` defaults |
@@ -246,7 +250,7 @@ must contain ordered, non-overlapping key ranges.
 
 Manifest v3 may carry one non-zero opaque `application_format`. `rrd-store`
 binds the eight ASCII bytes `RRKV0001` as a big-endian `u64`. Every reachable
-segment descriptor additionally authenticates segment format v5 plus the
+segment descriptor additionally authenticates segment format v6 plus the
 current schema, key-codec, and page-format SHA-256 identities. Unknown, absent,
 or different identities fail closed, and physical snapshot installation
 requires an identical source and target identity. Cross-format movement is not
@@ -265,10 +269,10 @@ no v1/v2 manifest state reader is present. No superseded
 application-key reader remains after C-01. These removals still do not qualify
 the remaining C-06 evidence.
 
-## Hybrid immutable segment v5
+## Hybrid immutable segment v6
 
-A v5 segment contains a fixed 256-byte `RRDSEG05` header, 64-byte-aligned page
-payloads, a bounded `RRDIX005` row-group index, and a 64-byte lowercase ASCII
+A v6 segment contains a fixed 256-byte `RRDSEG06` header, 64-byte-aligned page
+payloads, a bounded `RRDIX006` row-group index, and a 64-byte lowercase ASCII
 SHA-256 footer over every preceding physical byte. Segment and page integers
 are little-endian because the page values are Arrow-compatible native buffers;
 the `RRKV0001` ordered key grammar above remains byte-order-preserving and is
@@ -281,10 +285,10 @@ targets used by both flush and compaction; the defaults are 64 KiB and 2,048
 rows. Both values must be non-zero, the byte target cannot exceed the 1 GiB
 segment limit, and the row target must fit `u32`; invalid configuration fails
 before creating storage. Each segment authenticates its selected targets in
-the v5 header, so historical segments remain self-describing if a later open
+the v6 header, so historical segments remain self-describing if a later open
 selects different targets for future writes. One key's chain may exceed either
 target within the 1 MiB key and 8 MiB value bounds. Each row group owns exactly
-six plain, currently uncompressed buffers:
+six plain buffers, each stored raw or as one independent LZ4 block:
 
 | Page | Arrow-compatible representation | Point-read role |
 |---|---|---|
@@ -296,9 +300,12 @@ six plain, currently uncompressed buffers:
 | value data | concatenated non-null value bytes | selected value payload |
 
 Every 96-byte page descriptor pins page/column/buffer/logical/physical type,
-plain encoding, no-compression metadata, row interval, null count, aligned
-offset, physical and logical byte lengths, minimum/maximum statistics, and a
-SHA-256 digest. The row-group descriptor pins its strict key range. The
+plain encoding, raw/LZ4 codec identity, row interval, null count, aligned
+offset, stored and logical byte lengths, minimum/maximum statistics, and a
+SHA-256 digest over the stored bytes. The v6 header authenticates the writer
+policy: `none`, or adaptive LZ4 with a nonzero `1..=9,999` basis-point threshold
+and a bounded maximum logical page size. The default is 1,250 basis points and
+16 MiB. The row-group descriptor pins its strict key range. The
 32-byte row-group-index header fixes filter format `1`, ten bits per unique
 key, seven probes, and eleven zero reserved bytes. Each 32-byte row-group
 header fixes its nonzero unique-key count and exact derived filter-word count;
@@ -312,9 +319,12 @@ counts, and a byte-identical filter reconstructed from decoded unique keys.
 Normal manifest-based reopen authenticates the complete file digest and
 metadata against the manifest, parses the bounded persisted filters, and reads
 zero semantic pages. Runtime page loads authenticate and validate each selected
-page, so tampering after open fails closed. `SegmentOpenEvidence` schema 2
-records format-probe, whole-file checksum, metadata, persisted-filter
-count/bytes, and semantic-page phases without changing the segment or manifest.
+page, so tampering after open fails closed. Metadata admission also sums every
+logical page with checked arithmetic and rejects a reconstructed segment above
+1 GiB before decode allocation. `SegmentOpenEvidence` schema 3 records
+format-probe, whole-file checksum, metadata, none/adaptive policy counts,
+raw/compressed page counts, stored/logical bytes, persisted-filter count/bytes,
+and semantic-page phases without changing the segment or manifest.
 `RrflowKvOpenEvidence` freezes that validation record and checked page-cache/
 I/O deltas for higher-layer checkpoint reconciliation before the store is
 published. Later projected reads own their own meters, so segment admission,
@@ -359,19 +369,26 @@ cancellation, failure, and drop fuse the stream and release its lease once.
 All segments in one database share a byte-bounded immutable page LRU. Its
 evidence separates `loads`, `bytes_read`, `bytes_decoded`, `bytes_borrowed`,
 `bytes_allocated`, `bytes_copied`, and `bytes_decompressed`, plus cache and
-filter counters. In explicit mmap mode, an aligned uncompressed page is exposed
-as an `arrow_buffer::Buffer` borrowing the mapping; its allocation owner holds
-the `Arc<Mmap>` for the buffer lifetime. Bounded and io_uring paths allocate an
-aligned Arrow buffer and read into it. Snapshot-byte validation copies into an
-Arrow-owned buffer because the envelope does not promise alignment or a stable
-mapped owner. Returned point values are still copied into owned `Vec<u8>`.
+filter counters. In explicit mmap mode, an aligned raw page is exposed as an
+`arrow_buffer::Buffer` borrowing the mapping; its allocation owner holds the
+`Arc<Mmap>` for the buffer lifetime. A compressed page is authenticated in
+stored form, decoded through the checked LZ4 block API into an exact-length
+64-byte-aligned owned Arrow buffer, and charged by stored read, logical decode,
+decompression, allocation, and cache-resident bytes. Bounded and io_uring raw
+paths allocate an aligned Arrow buffer and read into it. Snapshot-byte
+validation copies or decodes into an Arrow-owned buffer because the envelope
+does not promise alignment or a stable mapped owner. Returned point values are
+still copied into owned `Vec<u8>`.
 Therefore only the page-buffer load is currently borrow-eligible; end-to-end
 zero-copy query output is not claimed.
 
-Encoding/compression metadata is explicit but only `plain` plus `none` is
-accepted today. Persisted row-group filters are integrated; adaptive
-compression, key/value separation, family grouping, and cache admission remain
-C-06i candidates that require separate comparative and integration evidence. A
+Encoding remains `plain`; codec identity is exactly `none` or `lz4` and must
+agree with the authenticated segment policy. The default adaptive writer uses
+checked worst-case scratch space and selects LZ4 only when its stored block
+saves at least the configured threshold; it never falls back to an undeclared
+codec. `none` remains an explicit valid policy. Persisted row-group filters and
+adaptive LZ4 are integrated. Key/value separation, family grouping, and cache
+admission remain C-06i decisions requiring separate integration evidence. A
 WiscKey-style value log is not assumed: it must beat stationary value pages on
 RRFlow update, compaction, recovery, garbage-collection, scan, and mixed-family
 corpora without weakening snapshot reachability.
@@ -386,28 +403,31 @@ spine after reopen. A maybe-present answer cannot establish presence and always
 falls through to exact MVCC lookup.
 
 The default-disabled `physical-policy-lab` feature mounts a measurement child
-inside the canonical segment module so it can consume the real v5 encoder and
-private parsed descriptors without copying the format parser. Its LZ4,
-Zstandard, cache, and value-placement results remain candidate evidence only.
-Its filter observation consumes the sole production implementation and records
-integration evidence rather than maintaining another filter codec. The default
-rrd-lsm dependency tree remains unchanged; any other retained policy requires
-a separately planned explicit format revision and complete recovery/snapshot/
-garbage-collection regression proof.
+inside the canonical segment module so it can compare real v6 `none` and
+adaptive-LZ4 output and inspect private parsed descriptors without copying the
+format parser. Its LZ4 and filter observations consume the sole production
+implementations; Zstandard, cache, and value placement remain laboratory-only.
+Production `lz4_flex` is pinned with safe encode/decode and checked-decode
+features; Zstandard remains an optional lab dependency. Any other retained
+policy requires a separately planned explicit format revision and complete
+recovery/snapshot/garbage-collection regression proof.
 
 The clean C-06i candidate screen at revision `f7257fa` confirmed the v4 normal
 reopen gap: 16,234 in-range filter checks produced zero filter negatives and
 426 page loads. The serialized-filter candidate had zero member false
 negatives, 0.634% observed false positives, and 13,304 bytes across 139 real
 row groups, so authenticated persisted filters are the first retained-policy
-implementation slice. Segment v5 implements that slice with one canonical
-authenticated filter and no v4 compatibility reader. Adaptive LZ4, Zstandard
-placement, and segmented-LRU
-advance only to separate integrated trials. Value separation is rejected from
-this evidence. The separate integration artifact owns current v5 filter bytes,
-false-positive observations, and metadata-only reopen/page-I/O counters.
+implementation slice. Segment v5 implemented that slice with one canonical
+authenticated filter and no v4 compatibility reader. Segment v6 directly
+replaces v5 and integrates adaptive LZ4 with no v5 compatibility reader. The
+clean v6 integration artifact at revision `eb7445e` records 50 raw and 784
+compressed reopened pages, 1,418,038 stored versus 8,988,877 logical page
+bytes, 336,041 query-decompressed bytes, and exact isolated-child identities.
+Zstandard and segmented-LRU remain laboratory candidates. Value separation is
+rejected from this evidence. The prior filter artifact remains historical proof
+for the filter slice; the v6 artifact owns current combined integration facts.
 
-Segment v1/v2/v3/v4 inputs return `UnsupportedVersion` at every file-open and
+Segment v1/v2/v3/v4/v5 inputs return `UnsupportedVersion` at every file-open and
 snapshot-validation boundary. No reader or migration path for them remains.
 
 ## Flush, compaction, snapshots, and garbage collection
@@ -451,7 +471,7 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 3. `current_publication_is_ordered_content_addressed_and_compare_and_swap`
    proves stale publication cannot move `CURRENT` and accepted publication
    names the authenticated immutable manifest.
-4. `v5_rejects_authenticated_length_flags_and_page_corruption` corrupts v5
+4. `v6_rejects_authenticated_length_flags_and_page_corruption` corrupts v6
    header/index/page fields and proves the reader fails closed.
 5. `physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes`
    exports, installs, reopens, verifies the same state, and continues the
@@ -461,7 +481,7 @@ These are checked-in, executable examples rather than illustrative pseudocode:
    reports allocated bytes. It does not prove zero-copy DataFusion output.
 7. `versions_remain_exact_when_one_key_exceeds_the_row_group_target` proves the
    writer does not split a key's MVCC chain at a row-group target.
-8. `v5_bytes_match_the_checked_in_format_vector` freezes the complete current
+8. `v6_bytes_match_the_checked_in_format_vector` freezes the complete current
    segment bytes independently of the snapshot envelope.
 9. `projected_stream_matches_model_across_ranges_snapshots_and_projections`
    compares full, bounded, disjoint, empty, keys-only, and key-value streams at
@@ -482,14 +502,16 @@ These are checked-in, executable examples rather than illustrative pseudocode:
     compaction, and garbage-collection lifetime.
 15. `rrflowkv_stress` runs the same oracle with explicit seed, case, and
     operation counts and reports stable replay/resource counters.
-16. The nested cargo-fuzz targets drive the state-machine oracle and mutate the
-    frozen authenticated segment-v5 fixture under AddressSanitizer. Generated
+16. The nested cargo-fuzz targets drive the state-machine oracle and apply blind
+    plus checksum-aware codec, length, page, and footer mutations to the frozen
+    authenticated segment-v6 fixture under AddressSanitizer. Generated
     corpus/artifacts are ignored while reviewed seeds and the nested lockfile
     remain tracked.
 17. `rrflowkv-physical-policy` runs isolated release-profile trials over a
-    deterministic eight-family corpus, exact v5 page bodies, and a real
-    create/flush/reopen miss workload. It verifies the integrated filter and
-    selects only the remaining follow-up candidates; it does not close C-06.
+    deterministic eight-family corpus, real v6 none/adaptive output, and a
+    create/flush/reopen miss workload. It verifies integrated filter and LZ4
+    behavior and keeps Zstandard/cache/value-placement conclusions scoped; it
+    does not close C-06.
 
 ## Frozen vectors
 
@@ -500,7 +522,7 @@ These are checked-in, executable examples rather than illustrative pseudocode:
 - [`batch-v2.hex`](../../../crates/persistence/rrd-lsm/fixtures/batch-v2.hex)
 - [`manifest-v1.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v1.json) — rejection input only
 - [`manifest-v3.json`](../../../crates/persistence/rrd-lsm/fixtures/manifest-v3.json)
-- [`segment-v5.hex`](../../../crates/persistence/rrd-lsm/fixtures/segment-v5.hex)
+- [`segment-v6.hex`](../../../crates/persistence/rrd-lsm/fixtures/segment-v6.hex)
 - [`snapshot-bundle-v1.hex`](../../../crates/persistence/rrd-lsm/fixtures/snapshot-bundle-v1.hex)
 
 Changing current pre-alpha bytes requires changing the explicit version and
@@ -520,15 +542,17 @@ cargo test -p rrd-lsm --test failure_matrix --locked
 cargo test -p rrd-lsm --test mvcc batch_codec_is_canonical_strict_and_frozen -- --exact
 cargo test -p rrd-lsm --test wal torn_tail_is_reported_and_only_explicit_repair_truncates_it -- --exact
 cargo test -p rrd-lsm --test manifest current_publication_is_ordered_content_addressed_and_compare_and_swap -- --exact
-cargo test -p rrd-lsm --test segment v5_bytes_match_the_checked_in_format_vector -- --exact
-cargo test -p rrd-lsm --test segment v5_rejects_authenticated_length_flags_and_page_corruption -- --exact
+cargo test -p rrd-lsm --test segment v6_bytes_match_the_checked_in_format_vector -- --exact
+cargo test -p rrd-lsm --test segment v6_rejects_authenticated_compression_metadata_and_block_corruption -- --exact
+cargo test -p rrd-lsm --test segment v6_rejects_authenticated_length_flags_and_page_corruption -- --exact
 cargo test -p rrd-lsm --test segment persisted_row_group_filters_prune_reopened_point_misses --locked -- --exact --nocapture
-cargo test -p rrd-lsm --test segment v5_rejects_authenticated_filter_corruption --locked -- --exact --nocapture
+cargo test -p rrd-lsm --test segment v6_rejects_authenticated_filter_corruption --locked -- --exact --nocapture
 cargo test -p rrd-lsm --test hybrid_segment --locked
 cargo test -p rrd-lsm --test projected_read_adversarial --locked -- --nocapture
 cargo run -p rrd-lsm --example rrflowkv_stress --locked -- --seed 14592251008053203194 --cases 16 --operations 96
-cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06i-rrflowkv-persisted-filter-linux-x86_64.json
+cargo run --release --locked -p rrd-lsm --features physical-policy-lab --example rrflowkv-physical-policy -- --seed 14592251008053203194 --trials 3 --records-per-family 1024 --versions-per-key 2 --value-bytes 512 --misses 16384 --cache-bytes 1048576 --output docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json
 cargo +nightly fuzz check --fuzz-dir crates/persistence/rrd-lsm/fuzz
+cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v6-open -- -runs=4096 -max_len=256 -timeout=10
 cargo test -p rrd-lsm --test tiered_io mmap_and_bounded_reads_are_identical_and_measure_page_ownership -- --exact
 cargo test -p rrd-lsm --test snapshot_bundle physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes -- --exact
 cargo test -p rrd-lsm
@@ -546,14 +570,16 @@ C-05's lower source, dependency, opener, physical-reader, and upper-shape
 closure evidence is recorded in its execution journals; C-05d records the
 audit correction that forced C-05e through C-05h before the gate could close.
 The optional post-alpha cluster implementation remains unqualified under
-POAM-023. The v5 segment vector, fixed and generated mixed-family MVCC
+POAM-023. The v6 segment vector, fixed and generated mixed-family MVCC
 comparisons, configurable authenticated row-group targets, malformed-byte
 denial, ownership counters, bounded projected reads, pinned-generation GC, and
 separated segment-open/startup-reconciliation/query evidence and authenticated
 persisted-filter corruption/reopen-I/O proofs are now concrete C-06 evidence.
 C-06h's finite stable/stress/sanitizer runs add reproducible adversarial
-qualification. C-06 remains open for C-06i compression, value-placement,
-mixed-workload, and cache integration/qualification. Gate F separately
+qualification. The adaptive-LZ4 slice adds exact none/adaptive reopen and
+compaction differential, raw/owned-decode I/O evidence, checksum-aware
+corruption denial, and current-format fuzzing. C-06 remains open for
+value-placement, mixed-workload, and cache integration/qualification. Gate F separately
 requires a stamped streamed DataFusion provider with projection/predicate/
 budget evidence. Passing this suite cannot close those remaining gates by
 itself.

@@ -1,0 +1,991 @@
+{
+  "evidence_format_version": 3,
+  "physical_policy_evidence_version": 3,
+  "evidence_kind": "rrflowkv-c06i-adaptive-page-compression-integration",
+  "fixed_machine_integration_verification": true,
+  "release_evidence_eligible": false,
+  "release_ineligibility_reasons": [
+    "this verifies one C-06i adaptive-page-compression integration, not an installed end-to-end release workload",
+    "device cache and competing host load were observed but not controlled",
+    "one machine and one corpus do not establish cross-platform or all-workload behavior"
+  ],
+  "source": {
+    "repository_root": ".",
+    "revision": "eb7445e399e393b37f8e788fd5c61cd3419725cb",
+    "tree": "628fc8fb0a94a4711fe91530ee4d93f1a1cf8463",
+    "branch": "agent/connectome-temporal-runtime-visualizer",
+    "clean_worktree": true,
+    "worktree_status": "",
+    "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27",
+    "executable_sha256": "cb8d86b7411b0984ae51a6114add6e909bb3eb048e3df9d34dd2009bc23d5cb8",
+    "rustc_verbose": "rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.0\nLLVM version: 22.1.8\n",
+    "cargo_version": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+    "target_triple": "x86_64-unknown-linux-gnu",
+    "build_profile": "release",
+    "rustflags": "",
+    "command": [
+      "/workspace/warden-storage/cache/wardenop/cargo-target/release/examples/rrflowkv-physical-policy",
+      "--output",
+      "docs/evidence/c06i-rrflowkv-adaptive-page-compression-linux-x86_64.json"
+    ]
+  },
+  "host": {
+    "operating_system": "linux",
+    "architecture": "x86_64",
+    "kernel": "Linux 7.0.0-30-generic #30-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 18:22:54 UTC 2026 x86_64 GNU/Linux",
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz",
+    "logical_cpu_count": 8,
+    "total_memory_bytes": 16763219968,
+    "filesystem": "/dev/sdb1 ext4 rw,noatime",
+    "block_devices": "loop0                    4K 0 loop\nloop1                 50.3M 0 loop\nloop2                193.4M 0 loop\nloop3                   74M 0 loop\nloop4                   74M 0 loop\nloop5                 66.8M 0 loop\nloop6                 47.9M 0 loop\nloop7                 47.9M 0 loop\nloop8                606.1M 0 loop\nloop9                614.5M 0 loop\nloop10                91.7M 0 loop\nloop11                 402M 0 loop\nloop12                 402M 0 loop\nloop13                66.8M 0 loop\nloop14                50.1M 0 loop\nloop15               179.3M 0 loop\nsda    QEMU HARDDISK   160G 0 disk\nsdb    QEMU HARDDISK   500G 0 disk\nsr0    QEMU DVD-ROM      4M 1 rom",
+    "cpu_frequency_policy": "unavailable",
+    "load_average": "4.42 4.24 4.19 2/763 1904879"
+  },
+  "configuration": {
+    "seed": 14590623822911635457,
+    "records_per_family": 1024,
+    "versions_per_key": 2,
+    "value_bytes": 512,
+    "point_misses": 16384,
+    "cache_bytes": 1048576
+  },
+  "trial_count": 3,
+  "warmup_trials": 1,
+  "warmup_exit_code": 0,
+  "raw_trial_exit_codes": [
+    0,
+    0,
+    0
+  ],
+  "warmup_policy": "one complete isolated child trial with identical corpus before retained trials",
+  "outlier_policy": "retain every raw child; aggregate nearest-rank p50/p95/p99/p99.9; discard none",
+  "device_cache_policy": "uncontrolled operating-system/device cache; same executable and corpus; child processes isolate allocator high-water state",
+  "raw_trials": [
+    {
+      "evidence_version": 3,
+      "evidence_scope": "c06i-adaptive-page-compression-integration",
+      "config": {
+        "seed": 14590623822911635457,
+        "records_per_family": 1024,
+        "versions_per_key": 2,
+        "value_bytes": 512,
+        "point_misses": 16384,
+        "cache_bytes": 1048576
+      },
+      "corpus_digest": "be82798e4f10f1fc1f163f3454c6a3217cde6b0a0b3b0d7d5435b964c524d522",
+      "operation_count": 16384,
+      "key_count": 8192,
+      "row_group_count": 139,
+      "page_count": 834,
+      "segment_format_version": 6,
+      "segment_physical_bytes": 9106159,
+      "logical_page_bytes": 8988877,
+      "elapsed_nanoseconds": 313573763,
+      "peak_rss_bytes": 75296768,
+      "codecs": [
+        {
+          "codec": "none",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 8988877,
+          "adaptive_stored_bytes": 8988877,
+          "adaptive_selected_pages": 0,
+          "savings_basis_points": 0,
+          "encode_nanoseconds": 618416,
+          "decode_nanoseconds": 500622,
+          "round_trip_exact": true
+        },
+        {
+          "codec": "lz4",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 1418467,
+          "adaptive_stored_bytes": 1426554,
+          "adaptive_selected_pages": 677,
+          "savings_basis_points": 8412,
+          "encode_nanoseconds": 2958667,
+          "decode_nanoseconds": 3557165,
+          "round_trip_exact": true
+        },
+        {
+          "codec": "zstd",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 1214844,
+          "adaptive_stored_bytes": 1226437,
+          "adaptive_selected_pages": 677,
+          "savings_basis_points": 8635,
+          "encode_nanoseconds": 12337719,
+          "decode_nanoseconds": 6654696,
+          "round_trip_exact": true
+        }
+      ],
+      "persisted_row_group_filter": {
+        "format": "segment-v6-row-group-bloom-v1",
+        "filters": 139,
+        "unique_keys": 8192,
+        "serialized_bytes": 11080,
+        "bits_per_key": 10,
+        "hash_functions": 7,
+        "member_queries": 8192,
+        "member_false_negatives": 0,
+        "absent_queries": 16402,
+        "false_positives": 104,
+        "false_positive_parts_per_million": 6340,
+        "passes_policy_threshold": true
+      },
+      "cache_candidates": [
+        {
+          "policy": "exact-byte-lru",
+          "capacity_bytes": 1048576,
+          "peak_resident_bytes": 1048535,
+          "final_resident_bytes": 1003458,
+          "hits": 180,
+          "misses": 846,
+          "admissions": 846,
+          "evictions": 750,
+          "post_scan_hot_hits": 84,
+          "post_scan_hot_requests": 96,
+          "semantic_identity_exact": true,
+          "exact_capacity_respected": true
+        },
+        {
+          "policy": "exact-byte-segmented-lru-candidate",
+          "capacity_bytes": 1048576,
+          "peak_resident_bytes": 331718,
+          "final_resident_bytes": 291503,
+          "hits": 192,
+          "misses": 834,
+          "admissions": 834,
+          "evictions": 804,
+          "post_scan_hot_hits": 96,
+          "post_scan_hot_requests": 96,
+          "semantic_identity_exact": true,
+          "exact_capacity_respected": true
+        }
+      ],
+      "value_placement_candidate": {
+        "evidence_kind": "analytical-model-only",
+        "non_null_versions": 16296,
+        "inline_value_bytes": 8343552,
+        "latest_live_value_bytes": 4149248,
+        "obsolete_value_bytes": 4194304,
+        "separated_pointer_bytes": 260736,
+        "append_only_value_log_bytes": 8343552,
+        "modeled_compaction_bytes_avoided": 8082816,
+        "production_retainable": false,
+        "missing_proofs": [
+          "authenticated pointer encoding",
+          "atomic WAL and manifest publication",
+          "snapshot and backup closure",
+          "value-log garbage collection",
+          "range-read amplification",
+          "corruption and crash recovery"
+        ]
+      },
+      "families": [
+        {
+          "family": "audit",
+          "rows": 2028,
+          "page_count": 102,
+          "logical_page_bytes": 1110295,
+          "lz4_adaptive_bytes": 65023,
+          "zstd_adaptive_bytes": 21860
+        },
+        {
+          "family": "edge-in",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1037552,
+          "lz4_adaptive_bytes": 35004,
+          "zstd_adaptive_bytes": 15016
+        },
+        {
+          "family": "edge-out",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1039440,
+          "lz4_adaptive_bytes": 35165,
+          "zstd_adaptive_bytes": 15763
+        },
+        {
+          "family": "mixed",
+          "rows": 828,
+          "page_count": 42,
+          "logical_page_bytes": 452925,
+          "lz4_adaptive_bytes": 76533,
+          "zstd_adaptive_bytes": 69555
+        },
+        {
+          "family": "record",
+          "rows": 2006,
+          "page_count": 102,
+          "logical_page_bytes": 1100713,
+          "lz4_adaptive_bytes": 64373,
+          "zstd_adaptive_bytes": 21632
+        },
+        {
+          "family": "runtime",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1037552,
+          "lz4_adaptive_bytes": 35067,
+          "zstd_adaptive_bytes": 15304
+        },
+        {
+          "family": "scalar",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1036176,
+          "lz4_adaptive_bytes": 41021,
+          "zstd_adaptive_bytes": 44621
+        },
+        {
+          "family": "term",
+          "rows": 2026,
+          "page_count": 102,
+          "logical_page_bytes": 1107681,
+          "lz4_adaptive_bytes": 52937,
+          "zstd_adaptive_bytes": 19750
+        },
+        {
+          "family": "vector",
+          "rows": 1944,
+          "page_count": 102,
+          "logical_page_bytes": 1066543,
+          "lz4_adaptive_bytes": 1021431,
+          "zstd_adaptive_bytes": 1002936
+        }
+      ],
+      "reopened_point_miss": {
+        "integrated_rrflowkv": true,
+        "open_none_policy_segment_count": 0,
+        "open_adaptive_lz4_policy_segment_count": 1,
+        "open_raw_page_count": 50,
+        "open_compressed_page_count": 784,
+        "open_stored_page_bytes": 1418038,
+        "open_logical_page_bytes": 8988877,
+        "open_persisted_filter_count": 139,
+        "open_persisted_filter_bytes": 11080,
+        "open_semantic_page_operations": 0,
+        "open_semantic_page_bytes": 0,
+        "misses_verified": 16384,
+        "hit_samples_verified": 128,
+        "elapsed_nanoseconds": 7096263,
+        "segment_physical_bytes": 1547695,
+        "filter_checks": 16106,
+        "filter_negatives": 16020,
+        "page_cache_hits": 890,
+        "page_cache_misses": 132,
+        "page_loads": 132,
+        "bytes_read": 62704,
+        "bytes_decoded": 336041,
+        "bytes_decompressed": 336041,
+        "final_cache_resident_bytes": 338624
+      },
+      "decisions": [
+        {
+          "candidate": "adaptive-lz4-page-codec",
+          "decision": "integrated",
+          "reason": "segment_v6=true, exact_round_trip=true, selected_pages=677, savings_basis_points=8412, required_savings_basis_points=1250; authenticated adaptive LZ4 is integrated in the normal rrflowKV flush, compaction, reopen, and read path"
+        },
+        {
+          "candidate": "adaptive-zstd-page-codec",
+          "decision": "advance",
+          "reason": "exact_round_trip=true, selected_pages=677, savings_basis_points=8635, required_savings_basis_points=1250; this candidate remains laboratory-only and requires a separate production-format plan"
+        },
+        {
+          "candidate": "persisted-row-group-bloom",
+          "decision": "integrated",
+          "reason": "segment_v6=true, member_false_negatives=0, false_positive_ppm=6340, limit_ppm=20000, serialized_bytes=11080"
+        },
+        {
+          "candidate": "exact-byte-segmented-lru",
+          "decision": "advance",
+          "reason": "post_scan_hot_hits=96 versus LRU 84; both must preserve identity and exact capacity"
+        },
+        {
+          "candidate": "value-separation",
+          "decision": "reject-for-production-from-this-slice",
+          "reason": "analytical-model-only reports 8082816 modeled bytes avoided, but production_retainable=false and recovery/GC/snapshot proofs are absent"
+        }
+      ],
+      "limitations": [
+        "adaptive LZ4 is integrated in segment v6; Zstandard and cache observations remain unintegrated candidates",
+        "value placement is a byte model only and lacks pointer publication, recovery, snapshot, corruption, range-read, and garbage-collection proof",
+        "one machine and one deterministic corpus cannot establish release latency, all-workload policy, or competitor superiority",
+        "operating-system device cache and competing host load are recorded but not controlled by this executable"
+      ]
+    },
+    {
+      "evidence_version": 3,
+      "evidence_scope": "c06i-adaptive-page-compression-integration",
+      "config": {
+        "seed": 14590623822911635457,
+        "records_per_family": 1024,
+        "versions_per_key": 2,
+        "value_bytes": 512,
+        "point_misses": 16384,
+        "cache_bytes": 1048576
+      },
+      "corpus_digest": "be82798e4f10f1fc1f163f3454c6a3217cde6b0a0b3b0d7d5435b964c524d522",
+      "operation_count": 16384,
+      "key_count": 8192,
+      "row_group_count": 139,
+      "page_count": 834,
+      "segment_format_version": 6,
+      "segment_physical_bytes": 9106159,
+      "logical_page_bytes": 8988877,
+      "elapsed_nanoseconds": 328857014,
+      "peak_rss_bytes": 75165696,
+      "codecs": [
+        {
+          "codec": "none",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 8988877,
+          "adaptive_stored_bytes": 8988877,
+          "adaptive_selected_pages": 0,
+          "savings_basis_points": 0,
+          "encode_nanoseconds": 564188,
+          "decode_nanoseconds": 465818,
+          "round_trip_exact": true
+        },
+        {
+          "codec": "lz4",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 1418467,
+          "adaptive_stored_bytes": 1426554,
+          "adaptive_selected_pages": 677,
+          "savings_basis_points": 8412,
+          "encode_nanoseconds": 2924599,
+          "decode_nanoseconds": 3494283,
+          "round_trip_exact": true
+        },
+        {
+          "codec": "zstd",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 1214844,
+          "adaptive_stored_bytes": 1226437,
+          "adaptive_selected_pages": 677,
+          "savings_basis_points": 8635,
+          "encode_nanoseconds": 12404077,
+          "decode_nanoseconds": 6698588,
+          "round_trip_exact": true
+        }
+      ],
+      "persisted_row_group_filter": {
+        "format": "segment-v6-row-group-bloom-v1",
+        "filters": 139,
+        "unique_keys": 8192,
+        "serialized_bytes": 11080,
+        "bits_per_key": 10,
+        "hash_functions": 7,
+        "member_queries": 8192,
+        "member_false_negatives": 0,
+        "absent_queries": 16402,
+        "false_positives": 104,
+        "false_positive_parts_per_million": 6340,
+        "passes_policy_threshold": true
+      },
+      "cache_candidates": [
+        {
+          "policy": "exact-byte-lru",
+          "capacity_bytes": 1048576,
+          "peak_resident_bytes": 1048535,
+          "final_resident_bytes": 1003458,
+          "hits": 180,
+          "misses": 846,
+          "admissions": 846,
+          "evictions": 750,
+          "post_scan_hot_hits": 84,
+          "post_scan_hot_requests": 96,
+          "semantic_identity_exact": true,
+          "exact_capacity_respected": true
+        },
+        {
+          "policy": "exact-byte-segmented-lru-candidate",
+          "capacity_bytes": 1048576,
+          "peak_resident_bytes": 331718,
+          "final_resident_bytes": 291503,
+          "hits": 192,
+          "misses": 834,
+          "admissions": 834,
+          "evictions": 804,
+          "post_scan_hot_hits": 96,
+          "post_scan_hot_requests": 96,
+          "semantic_identity_exact": true,
+          "exact_capacity_respected": true
+        }
+      ],
+      "value_placement_candidate": {
+        "evidence_kind": "analytical-model-only",
+        "non_null_versions": 16296,
+        "inline_value_bytes": 8343552,
+        "latest_live_value_bytes": 4149248,
+        "obsolete_value_bytes": 4194304,
+        "separated_pointer_bytes": 260736,
+        "append_only_value_log_bytes": 8343552,
+        "modeled_compaction_bytes_avoided": 8082816,
+        "production_retainable": false,
+        "missing_proofs": [
+          "authenticated pointer encoding",
+          "atomic WAL and manifest publication",
+          "snapshot and backup closure",
+          "value-log garbage collection",
+          "range-read amplification",
+          "corruption and crash recovery"
+        ]
+      },
+      "families": [
+        {
+          "family": "audit",
+          "rows": 2028,
+          "page_count": 102,
+          "logical_page_bytes": 1110295,
+          "lz4_adaptive_bytes": 65023,
+          "zstd_adaptive_bytes": 21860
+        },
+        {
+          "family": "edge-in",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1037552,
+          "lz4_adaptive_bytes": 35004,
+          "zstd_adaptive_bytes": 15016
+        },
+        {
+          "family": "edge-out",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1039440,
+          "lz4_adaptive_bytes": 35165,
+          "zstd_adaptive_bytes": 15763
+        },
+        {
+          "family": "mixed",
+          "rows": 828,
+          "page_count": 42,
+          "logical_page_bytes": 452925,
+          "lz4_adaptive_bytes": 76533,
+          "zstd_adaptive_bytes": 69555
+        },
+        {
+          "family": "record",
+          "rows": 2006,
+          "page_count": 102,
+          "logical_page_bytes": 1100713,
+          "lz4_adaptive_bytes": 64373,
+          "zstd_adaptive_bytes": 21632
+        },
+        {
+          "family": "runtime",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1037552,
+          "lz4_adaptive_bytes": 35067,
+          "zstd_adaptive_bytes": 15304
+        },
+        {
+          "family": "scalar",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1036176,
+          "lz4_adaptive_bytes": 41021,
+          "zstd_adaptive_bytes": 44621
+        },
+        {
+          "family": "term",
+          "rows": 2026,
+          "page_count": 102,
+          "logical_page_bytes": 1107681,
+          "lz4_adaptive_bytes": 52937,
+          "zstd_adaptive_bytes": 19750
+        },
+        {
+          "family": "vector",
+          "rows": 1944,
+          "page_count": 102,
+          "logical_page_bytes": 1066543,
+          "lz4_adaptive_bytes": 1021431,
+          "zstd_adaptive_bytes": 1002936
+        }
+      ],
+      "reopened_point_miss": {
+        "integrated_rrflowkv": true,
+        "open_none_policy_segment_count": 0,
+        "open_adaptive_lz4_policy_segment_count": 1,
+        "open_raw_page_count": 50,
+        "open_compressed_page_count": 784,
+        "open_stored_page_bytes": 1418038,
+        "open_logical_page_bytes": 8988877,
+        "open_persisted_filter_count": 139,
+        "open_persisted_filter_bytes": 11080,
+        "open_semantic_page_operations": 0,
+        "open_semantic_page_bytes": 0,
+        "misses_verified": 16384,
+        "hit_samples_verified": 128,
+        "elapsed_nanoseconds": 7033701,
+        "segment_physical_bytes": 1547695,
+        "filter_checks": 16106,
+        "filter_negatives": 16020,
+        "page_cache_hits": 890,
+        "page_cache_misses": 132,
+        "page_loads": 132,
+        "bytes_read": 62704,
+        "bytes_decoded": 336041,
+        "bytes_decompressed": 336041,
+        "final_cache_resident_bytes": 338624
+      },
+      "decisions": [
+        {
+          "candidate": "adaptive-lz4-page-codec",
+          "decision": "integrated",
+          "reason": "segment_v6=true, exact_round_trip=true, selected_pages=677, savings_basis_points=8412, required_savings_basis_points=1250; authenticated adaptive LZ4 is integrated in the normal rrflowKV flush, compaction, reopen, and read path"
+        },
+        {
+          "candidate": "adaptive-zstd-page-codec",
+          "decision": "advance",
+          "reason": "exact_round_trip=true, selected_pages=677, savings_basis_points=8635, required_savings_basis_points=1250; this candidate remains laboratory-only and requires a separate production-format plan"
+        },
+        {
+          "candidate": "persisted-row-group-bloom",
+          "decision": "integrated",
+          "reason": "segment_v6=true, member_false_negatives=0, false_positive_ppm=6340, limit_ppm=20000, serialized_bytes=11080"
+        },
+        {
+          "candidate": "exact-byte-segmented-lru",
+          "decision": "advance",
+          "reason": "post_scan_hot_hits=96 versus LRU 84; both must preserve identity and exact capacity"
+        },
+        {
+          "candidate": "value-separation",
+          "decision": "reject-for-production-from-this-slice",
+          "reason": "analytical-model-only reports 8082816 modeled bytes avoided, but production_retainable=false and recovery/GC/snapshot proofs are absent"
+        }
+      ],
+      "limitations": [
+        "adaptive LZ4 is integrated in segment v6; Zstandard and cache observations remain unintegrated candidates",
+        "value placement is a byte model only and lacks pointer publication, recovery, snapshot, corruption, range-read, and garbage-collection proof",
+        "one machine and one deterministic corpus cannot establish release latency, all-workload policy, or competitor superiority",
+        "operating-system device cache and competing host load are recorded but not controlled by this executable"
+      ]
+    },
+    {
+      "evidence_version": 3,
+      "evidence_scope": "c06i-adaptive-page-compression-integration",
+      "config": {
+        "seed": 14590623822911635457,
+        "records_per_family": 1024,
+        "versions_per_key": 2,
+        "value_bytes": 512,
+        "point_misses": 16384,
+        "cache_bytes": 1048576
+      },
+      "corpus_digest": "be82798e4f10f1fc1f163f3454c6a3217cde6b0a0b3b0d7d5435b964c524d522",
+      "operation_count": 16384,
+      "key_count": 8192,
+      "row_group_count": 139,
+      "page_count": 834,
+      "segment_format_version": 6,
+      "segment_physical_bytes": 9106159,
+      "logical_page_bytes": 8988877,
+      "elapsed_nanoseconds": 319021006,
+      "peak_rss_bytes": 75169792,
+      "codecs": [
+        {
+          "codec": "none",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 8988877,
+          "adaptive_stored_bytes": 8988877,
+          "adaptive_selected_pages": 0,
+          "savings_basis_points": 0,
+          "encode_nanoseconds": 571251,
+          "decode_nanoseconds": 469813,
+          "round_trip_exact": true
+        },
+        {
+          "codec": "lz4",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 1418467,
+          "adaptive_stored_bytes": 1426554,
+          "adaptive_selected_pages": 677,
+          "savings_basis_points": 8412,
+          "encode_nanoseconds": 2906547,
+          "decode_nanoseconds": 3513850,
+          "round_trip_exact": true
+        },
+        {
+          "codec": "zstd",
+          "pages": 834,
+          "logical_bytes": 8988877,
+          "codec_bytes": 1214844,
+          "adaptive_stored_bytes": 1226437,
+          "adaptive_selected_pages": 677,
+          "savings_basis_points": 8635,
+          "encode_nanoseconds": 12413307,
+          "decode_nanoseconds": 6685445,
+          "round_trip_exact": true
+        }
+      ],
+      "persisted_row_group_filter": {
+        "format": "segment-v6-row-group-bloom-v1",
+        "filters": 139,
+        "unique_keys": 8192,
+        "serialized_bytes": 11080,
+        "bits_per_key": 10,
+        "hash_functions": 7,
+        "member_queries": 8192,
+        "member_false_negatives": 0,
+        "absent_queries": 16402,
+        "false_positives": 104,
+        "false_positive_parts_per_million": 6340,
+        "passes_policy_threshold": true
+      },
+      "cache_candidates": [
+        {
+          "policy": "exact-byte-lru",
+          "capacity_bytes": 1048576,
+          "peak_resident_bytes": 1048535,
+          "final_resident_bytes": 1003458,
+          "hits": 180,
+          "misses": 846,
+          "admissions": 846,
+          "evictions": 750,
+          "post_scan_hot_hits": 84,
+          "post_scan_hot_requests": 96,
+          "semantic_identity_exact": true,
+          "exact_capacity_respected": true
+        },
+        {
+          "policy": "exact-byte-segmented-lru-candidate",
+          "capacity_bytes": 1048576,
+          "peak_resident_bytes": 331718,
+          "final_resident_bytes": 291503,
+          "hits": 192,
+          "misses": 834,
+          "admissions": 834,
+          "evictions": 804,
+          "post_scan_hot_hits": 96,
+          "post_scan_hot_requests": 96,
+          "semantic_identity_exact": true,
+          "exact_capacity_respected": true
+        }
+      ],
+      "value_placement_candidate": {
+        "evidence_kind": "analytical-model-only",
+        "non_null_versions": 16296,
+        "inline_value_bytes": 8343552,
+        "latest_live_value_bytes": 4149248,
+        "obsolete_value_bytes": 4194304,
+        "separated_pointer_bytes": 260736,
+        "append_only_value_log_bytes": 8343552,
+        "modeled_compaction_bytes_avoided": 8082816,
+        "production_retainable": false,
+        "missing_proofs": [
+          "authenticated pointer encoding",
+          "atomic WAL and manifest publication",
+          "snapshot and backup closure",
+          "value-log garbage collection",
+          "range-read amplification",
+          "corruption and crash recovery"
+        ]
+      },
+      "families": [
+        {
+          "family": "audit",
+          "rows": 2028,
+          "page_count": 102,
+          "logical_page_bytes": 1110295,
+          "lz4_adaptive_bytes": 65023,
+          "zstd_adaptive_bytes": 21860
+        },
+        {
+          "family": "edge-in",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1037552,
+          "lz4_adaptive_bytes": 35004,
+          "zstd_adaptive_bytes": 15016
+        },
+        {
+          "family": "edge-out",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1039440,
+          "lz4_adaptive_bytes": 35165,
+          "zstd_adaptive_bytes": 15763
+        },
+        {
+          "family": "mixed",
+          "rows": 828,
+          "page_count": 42,
+          "logical_page_bytes": 452925,
+          "lz4_adaptive_bytes": 76533,
+          "zstd_adaptive_bytes": 69555
+        },
+        {
+          "family": "record",
+          "rows": 2006,
+          "page_count": 102,
+          "logical_page_bytes": 1100713,
+          "lz4_adaptive_bytes": 64373,
+          "zstd_adaptive_bytes": 21632
+        },
+        {
+          "family": "runtime",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1037552,
+          "lz4_adaptive_bytes": 35067,
+          "zstd_adaptive_bytes": 15304
+        },
+        {
+          "family": "scalar",
+          "rows": 1888,
+          "page_count": 96,
+          "logical_page_bytes": 1036176,
+          "lz4_adaptive_bytes": 41021,
+          "zstd_adaptive_bytes": 44621
+        },
+        {
+          "family": "term",
+          "rows": 2026,
+          "page_count": 102,
+          "logical_page_bytes": 1107681,
+          "lz4_adaptive_bytes": 52937,
+          "zstd_adaptive_bytes": 19750
+        },
+        {
+          "family": "vector",
+          "rows": 1944,
+          "page_count": 102,
+          "logical_page_bytes": 1066543,
+          "lz4_adaptive_bytes": 1021431,
+          "zstd_adaptive_bytes": 1002936
+        }
+      ],
+      "reopened_point_miss": {
+        "integrated_rrflowkv": true,
+        "open_none_policy_segment_count": 0,
+        "open_adaptive_lz4_policy_segment_count": 1,
+        "open_raw_page_count": 50,
+        "open_compressed_page_count": 784,
+        "open_stored_page_bytes": 1418038,
+        "open_logical_page_bytes": 8988877,
+        "open_persisted_filter_count": 139,
+        "open_persisted_filter_bytes": 11080,
+        "open_semantic_page_operations": 0,
+        "open_semantic_page_bytes": 0,
+        "misses_verified": 16384,
+        "hit_samples_verified": 128,
+        "elapsed_nanoseconds": 7061204,
+        "segment_physical_bytes": 1547695,
+        "filter_checks": 16106,
+        "filter_negatives": 16020,
+        "page_cache_hits": 890,
+        "page_cache_misses": 132,
+        "page_loads": 132,
+        "bytes_read": 62704,
+        "bytes_decoded": 336041,
+        "bytes_decompressed": 336041,
+        "final_cache_resident_bytes": 338624
+      },
+      "decisions": [
+        {
+          "candidate": "adaptive-lz4-page-codec",
+          "decision": "integrated",
+          "reason": "segment_v6=true, exact_round_trip=true, selected_pages=677, savings_basis_points=8412, required_savings_basis_points=1250; authenticated adaptive LZ4 is integrated in the normal rrflowKV flush, compaction, reopen, and read path"
+        },
+        {
+          "candidate": "adaptive-zstd-page-codec",
+          "decision": "advance",
+          "reason": "exact_round_trip=true, selected_pages=677, savings_basis_points=8635, required_savings_basis_points=1250; this candidate remains laboratory-only and requires a separate production-format plan"
+        },
+        {
+          "candidate": "persisted-row-group-bloom",
+          "decision": "integrated",
+          "reason": "segment_v6=true, member_false_negatives=0, false_positive_ppm=6340, limit_ppm=20000, serialized_bytes=11080"
+        },
+        {
+          "candidate": "exact-byte-segmented-lru",
+          "decision": "advance",
+          "reason": "post_scan_hot_hits=96 versus LRU 84; both must preserve identity and exact capacity"
+        },
+        {
+          "candidate": "value-separation",
+          "decision": "reject-for-production-from-this-slice",
+          "reason": "analytical-model-only reports 8082816 modeled bytes avoided, but production_retainable=false and recovery/GC/snapshot proofs are absent"
+        }
+      ],
+      "limitations": [
+        "adaptive LZ4 is integrated in segment v6; Zstandard and cache observations remain unintegrated candidates",
+        "value placement is a byte model only and lacks pointer publication, recovery, snapshot, corruption, range-read, and garbage-collection proof",
+        "one machine and one deterministic corpus cannot establish release latency, all-workload policy, or competitor superiority",
+        "operating-system device cache and competing host load are recorded but not controlled by this executable"
+      ]
+    }
+  ],
+  "aggregates": {
+    "trial_elapsed_nanoseconds": {
+      "minimum": 313573763,
+      "p50": 319021006,
+      "p95": 328857014,
+      "p99": 328857014,
+      "p99_9": 328857014,
+      "maximum": 328857014
+    },
+    "operations_per_second": {
+      "minimum": 49821,
+      "p50": 51357,
+      "p95": 52249,
+      "p99": 52249,
+      "p99_9": 52249,
+      "maximum": 52249
+    },
+    "point_miss_elapsed_nanoseconds": {
+      "minimum": 7033701,
+      "p50": 7061204,
+      "p95": 7096263,
+      "p99": 7096263,
+      "p99_9": 7096263,
+      "maximum": 7096263
+    },
+    "point_misses_per_second": {
+      "minimum": 2308820,
+      "p50": 2320284,
+      "p95": 2329356,
+      "p99": 2329356,
+      "p99_9": 2329356,
+      "maximum": 2329356
+    },
+    "peak_rss_bytes": {
+      "minimum": 75165696,
+      "p50": 75169792,
+      "p95": 75296768,
+      "p99": 75296768,
+      "p99_9": 75296768,
+      "maximum": 75296768
+    },
+    "codecs": [
+      {
+        "codec": "none",
+        "adaptive_stored_bytes": 8988877,
+        "savings_basis_points": 0,
+        "selected_pages": 0,
+        "encode_nanoseconds": {
+          "minimum": 564188,
+          "p50": 571251,
+          "p95": 618416,
+          "p99": 618416,
+          "p99_9": 618416,
+          "maximum": 618416
+        },
+        "decode_nanoseconds": {
+          "minimum": 465818,
+          "p50": 469813,
+          "p95": 500622,
+          "p99": 500622,
+          "p99_9": 500622,
+          "maximum": 500622
+        }
+      },
+      {
+        "codec": "lz4",
+        "adaptive_stored_bytes": 1426554,
+        "savings_basis_points": 8412,
+        "selected_pages": 677,
+        "encode_nanoseconds": {
+          "minimum": 2906547,
+          "p50": 2924599,
+          "p95": 2958667,
+          "p99": 2958667,
+          "p99_9": 2958667,
+          "maximum": 2958667
+        },
+        "decode_nanoseconds": {
+          "minimum": 3494283,
+          "p50": 3513850,
+          "p95": 3557165,
+          "p99": 3557165,
+          "p99_9": 3557165,
+          "maximum": 3557165
+        }
+      },
+      {
+        "codec": "zstd",
+        "adaptive_stored_bytes": 1226437,
+        "savings_basis_points": 8635,
+        "selected_pages": 677,
+        "encode_nanoseconds": {
+          "minimum": 12337719,
+          "p50": 12404077,
+          "p95": 12413307,
+          "p99": 12413307,
+          "p99_9": 12413307,
+          "maximum": 12413307
+        },
+        "decode_nanoseconds": {
+          "minimum": 6654696,
+          "p50": 6685445,
+          "p95": 6698588,
+          "p99": 6698588,
+          "p99_9": 6698588,
+          "maximum": 6698588
+        }
+      }
+    ],
+    "persisted_filter_false_positive_parts_per_million": 6340,
+    "persisted_filter_bytes": 11080,
+    "lru_post_scan_hot_hits": 84,
+    "segmented_lru_post_scan_hot_hits": 96,
+    "rrflowkv_open_persisted_filter_count": 139,
+    "rrflowkv_open_persisted_filter_bytes": 11080,
+    "rrflowkv_open_semantic_page_operations": 0,
+    "rrflowkv_open_semantic_page_bytes": 0,
+    "rrflowkv_open_raw_page_count": 50,
+    "rrflowkv_open_compressed_page_count": 784,
+    "rrflowkv_open_stored_page_bytes": 1418038,
+    "rrflowkv_open_logical_page_bytes": 8988877,
+    "rrflowkv_query_decompressed_bytes": 336041,
+    "rrflowkv_reopen_filter_negatives": 16020,
+    "rrflowkv_reopen_page_loads": 132
+  },
+  "candidate_decisions": [
+    {
+      "candidate": "adaptive-lz4-page-codec",
+      "decision": "integrated",
+      "reason": "segment_v6=true, exact_round_trip=true, selected_pages=677, savings_basis_points=8412, required_savings_basis_points=1250; authenticated adaptive LZ4 is integrated in the normal rrflowKV flush, compaction, reopen, and read path"
+    },
+    {
+      "candidate": "adaptive-zstd-page-codec",
+      "decision": "advance",
+      "reason": "exact_round_trip=true, selected_pages=677, savings_basis_points=8635, required_savings_basis_points=1250; this candidate remains laboratory-only and requires a separate production-format plan"
+    },
+    {
+      "candidate": "persisted-row-group-bloom",
+      "decision": "integrated",
+      "reason": "segment_v6=true, member_false_negatives=0, false_positive_ppm=6340, limit_ppm=20000, serialized_bytes=11080"
+    },
+    {
+      "candidate": "exact-byte-segmented-lru",
+      "decision": "advance",
+      "reason": "post_scan_hot_hits=96 versus LRU 84; both must preserve identity and exact capacity"
+    },
+    {
+      "candidate": "value-separation",
+      "decision": "reject-for-production-from-this-slice",
+      "reason": "analytical-model-only reports 8082816 modeled bytes avoided, but production_retainable=false and recovery/GC/snapshot proofs are absent"
+    }
+  ],
+  "limitations": [
+    "segment v6 integrates deterministic per-page adaptive LZ4 and retains raw pages that miss the authenticated threshold",
+    "Zstandard and cache measurements remain candidate mechanics over none-policy v6 page bodies, not integrated production policy",
+    "value separation is model-only and is categorically ineligible for adoption from this evidence",
+    "C-06, F-01, C-07, installed-binary, graph/BM25/vector/TurboQuant, reasoning/recall, and release gates remain open"
+  ]
+}
