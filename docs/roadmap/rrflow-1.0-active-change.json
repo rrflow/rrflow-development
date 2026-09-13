@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "A-06-rrflow-1.0-alpha-poam-warp-refraction-v1",
+  "package_id": "POAM-027c-linked-execution-records-and-generated-navigation-v1",
   "status": "active",
-  "package_kind": "structural-documentation-refactor",
+  "package_kind": "documentation-architecture-and-repository-navigation-refactor",
   "baseline": {
-    "revision": "4e2bffef2702c3f77679a939a5a78518c0e2af7c",
-    "tree": "c7bb2cb95dbc49c46ac6e45394eec04ae875d04c",
+    "revision": "b7b061900b67d535ffec2710e6e4c30815d0f216",
+    "tree": "7b471dbd558045f4062771a705a1aff5e9f2e07e",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,336 +13,1192 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Preserve OBJ-01 and A-06's navigable documentation memory while making every verified RRFlow 1.0 alpha deficiency directly addressable without creating another remediation-status or release authority.",
-    "roadmap_gates": ["A-06", "A-07", "J-01"],
-    "poam_items": [
-      "POAM-001", "POAM-002", "POAM-003", "POAM-004", "POAM-005",
-      "POAM-006", "POAM-007", "POAM-008", "POAM-009", "POAM-010",
-      "POAM-011", "POAM-012", "POAM-013", "POAM-014", "POAM-015",
-      "POAM-016", "POAM-017", "POAM-018", "POAM-019", "POAM-020",
-      "POAM-021", "POAM-022", "POAM-023", "POAM-024", "POAM-025",
-      "POAM-026", "POAM-027"
+    "alpha_prerequisite": "Keep RRFlow reasoning and discovery adaptive while making durable effects, evidence, ownership, and navigation trustworthy; remove the execution-map shadow authority and make linked records mechanically discoverable.",
+    "roadmap_gates": [
+      "A-06",
+      "H-04",
+      "I-03",
+      "I-07",
+      "J-01",
+      "J-02"
     ],
-    "architecture_owner": "docs/poam/rrflow-1.0-alpha.md#open-deficiencies"
+    "poam_items": [
+      "POAM-011",
+      "POAM-014",
+      "POAM-027"
+    ],
+    "architecture_owner": "docs/decisions/0002-adaptive-reasoning-governed-effects.md"
   },
-  "current_behavior": "The canonical alpha POA&M is an 82-line, 52,359-byte Markdown record whose 27 deficiencies are encoded as one-line seven-column table rows. The longest row, POAM-011, is 10,599 characters. Deficiency observations, impacts, gate mappings, closure evidence, lifecycle statuses, status vocabulary, milestone discipline, and two item-specific updates share one file, so an agent cannot load or link one clean deficiency record.",
-  "target_behavior": "Keep docs/poam/rrflow-1.0-alpha.md as the sole canonical remediation-status coordinate and turn its body into metadata plus linked warp headings and a compact 27-row ID/priority/status/record ledger. Add a classified nested portal, one governance chapter for ownership/status vocabulary/milestone discipline, and exactly one coordinated detail record for each POAM-001 through POAM-027 under docs/poam/rrflow-1.0-alpha/. Move each original observed-deficiency, impact, owning-gates, and closure-evidence cell verbatim into its item record; move the existing POAM-011 convergence update and POAM-027 execution decision into their respective records. Each detail record delegates priority and lifecycle status to the canonical parent. Add one discovery link from docs/poam/README.md and preserve every original deficiency fact, priority, status, mapping, evidence requirement, date, revision, digest, and limitation without semantic change.",
+  "current_behavior": "docs/roadmap/rrflow-1.0-execution-map.md is 4,117 lines and combines authoring procedure, architecture restatement, current implementation audit, future gate instructions, 96 completed journal/receipt blocks, run commands, and stop conditions. It shadows the roadmap and POA&M, forces AGENTS.md to append every future journal into the same growing file, and depends on manually synchronized Markdown indexes. Related architecture text also treats a fully committed project snapshot and closed routine graph as prerequisites to exploration, while six SDK records repeat projections of one executable protocol catalogue.",
+  "target_behavior": "Turn the execution-map coordinate into a stable links-only portal. Author the change routine, implementation navigation, and generated-surface design as small linked records. Move all 96 legacy journal blocks without byte changes into individually coordinated evidence records grouped by gate, and record this package the same way. Change the literal AGENTS.md rule so one linked journal record plus regenerated indexes satisfies it. Add a generic marker-driven navigation maintainer that discovers record metadata and derives index entries, use it for the execution, journal, roadmap-chapter, POA&M-record, and SDK portals, and enforce freshness in documentation policy. Establish adaptive reasoning with governed effects: exploration and semantic planning remain flexible; closed validation is required at authorization, persistence, external-effect, replay, and evidence boundaries. State that the executable operation/capability catalogue is the single source from which internal dispatch, OpenAPI, SDK bindings/models, reference projections, and conformance matrices are generated.",
   "unchanged_behavior": [
-    "The root README remains the product identity/current-status owner, the alpha objective remains the measurable-outcome owner, the roadmap remains the dependency-order/completion-evidence owner, and the POA&M parent remains the sole verified-gap/remediation-status owner.",
-    "All 27 POA&M IDs, 17 Critical and 10 High priorities, 21 Sequenced, 3 Closed, and 3 Open lifecycle states remain unchanged and in the original order.",
-    "No deficiency is added, removed, merged, split, reclassified, closed, reopened, or advanced; no roadmap gate, objective, active executable item, implementation behavior, version, release claim, or promotion state changes.",
-    "The execution map receives only the repository-required bounded package journal, and the deterministic file inventory is regenerated; no code, test, configuration, workflow, dependency, hook, runtime, or release artifact changes.",
-    "Existing inbound links to docs/poam/rrflow-1.0-alpha.md and its #open-deficiencies anchor remain valid; no forwarding file, compatibility copy, duplicate deficiency body, or parallel status ledger is created."
+    "README.md remains the bootstrap identity/current-status owner; the objective owns measurable outcomes; the roadmap parent and gate chapters own dependency order and completion evidence; the POA&M parent owns deficiency lifecycle status.",
+    "All roadmap checkboxes, gate counts, POA&M priorities/statuses, the active D-01 executable item, product version 1.0.0, implementation behavior, build outputs, remotes, and release/promotion state remain unchanged.",
+    "Every legacy journal text block remains byte-for-byte intact and addressable; extraction changes location and metadata only, not its historical claim, command result, limitation, or revision.",
+    "RrdEngine remains the sole authority for authenticated durable mutation and accepted external-effect receipts. Generated indexes, schemas, clients, docs, traces, and adapters remain projections and cannot become lifecycle or semantic authorities.",
+    "The existing active-change validator remains the current repository effect-boundary check in this package; the new doctrine clarifies that it does not schema, capture, or constrain private analysis and exploratory reasoning."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
     "must_have_exactly_one_parent": true,
-    "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
+    "allowed_paths": [
+      "docs/roadmap/rrflow-1.0-active-change.json"
+    ]
   },
   "reviewed_files": [
     {
       "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "77e5a4a246f772f1441c05f925fd5ffa22b0add792e4a3c76f271d63a3b75498",
-      "baseline_lines": 272,
-      "reviewed_lines": "1-272",
-      "symbols": ["machine change-plan schema", "roadmap-refraction predecessor", "planning-only ancestry", "declared path closure"]
+      "baseline_sha256": "253f05e06573e0b2d8a708f532e7ac6d8a7094be39c4a7c83b9ae3790f222a03",
+      "baseline_lines": 361,
+      "reviewed_lines": "1-361",
+      "symbols": [
+        "schema v1 planning boundary",
+        "prior POA&M refraction package",
+        "planning-only ancestry"
+      ]
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha.md",
-      "baseline_sha256": "97f6a1e355ac9ebc913c999060ae8624594127a1c7adfef2fe07d94d942170b7",
-      "baseline_lines": 82,
-      "reviewed_lines": "1-82",
-      "symbols": ["canonical POA&M metadata", "status vocabulary", "POAM-001 through POAM-027", "item-specific updates", "milestone discipline"]
+      "path": "AGENTS.md",
+      "baseline_sha256": "6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c",
+      "baseline_lines": 129,
+      "reviewed_lines": "1-129",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
     },
     {
-      "path": "docs/poam/README.md",
-      "baseline_sha256": "a743800441a53e7d109440fd20518a4d448abab548f5bac4154455f435ab4c30",
-      "baseline_lines": 13,
-      "reviewed_lines": "1-13",
-      "symbols": ["POA&M discovery index", "canonical alpha ledger link"]
+      "path": "README.md",
+      "baseline_sha256": "a084008158bc42270ad731c51fe95c5f33ddf98c3af43f2363dda88f671cd87f",
+      "baseline_lines": 234,
+      "reviewed_lines": "1-234",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/README.md",
+      "baseline_sha256": "6c1cc7512f23e859a53d298f5a84dfabac86c66886678d88146a5597e4c1c040",
+      "baseline_lines": 102,
+      "reviewed_lines": "1-102",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/architecture/engine-data-flow.md",
+      "baseline_sha256": "de421f748ac6bbd26894fd3a8a6e8526d4aef448716c0433c26d535e7e692542",
+      "baseline_lines": 1393,
+      "reviewed_lines": "1-1393",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/architecture/system-overview.md",
+      "baseline_sha256": "28f7046f16bb67ad673c0b2934a382e445208f8fb938754252e73db5cb44c450",
+      "baseline_lines": 259,
+      "reviewed_lines": "1-259",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "baseline_sha256": "5e6787a77b92ccdd78578161be69961e38a7e1be0e821b2fd70ca59f038f4e98",
+      "baseline_lines": 14,
+      "reviewed_lines": "1-14",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/evidence/README.md",
+      "baseline_sha256": "0985289877bcfe3046b3439370cbb2b65bafa361a25523bf58e7408a846415a2",
+      "baseline_lines": 21,
+      "reviewed_lines": "1-21",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/evidence/test-plans/persistence-scenario-matrix.md",
+      "baseline_sha256": "eeb426a010a4b11d03365c313e9daf49ed84bacc0829b0c61fd5d8f4061574df",
+      "baseline_lines": 136,
+      "reviewed_lines": "1-136",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/operations/ci.md",
+      "baseline_sha256": "1e86719f4439dbadccccfd5371aacc98239e451eddda9f35c47792d469585092",
+      "baseline_lines": 292,
+      "reviewed_lines": "1-292",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/README.md",
+      "baseline_sha256": "6fbec75ab698607ac001b267f68b15d9e77760dc6f1a3a22d62ef70531c26952",
+      "baseline_lines": 38,
+      "reviewed_lines": "1-38",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-011.md",
+      "baseline_sha256": "f0a6b2560be38cc748ec0343524c559e1b4c2278ef5ab52b1684be6877f7a5e7",
+      "baseline_lines": 151,
+      "reviewed_lines": "1-151",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-027.md",
+      "baseline_sha256": "cefb9d549ea908a7af5c9607e8f7e40c7aefb2c942a3b8c5fc7dca09964bbca7",
+      "baseline_lines": 52,
+      "reviewed_lines": "1-52",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/reference/agent-bootstrap.md",
+      "baseline_sha256": "ef3921a4a4fa95dd994e89abc29a7508724a70c8f9270884a0b68c1ab400df4e",
+      "baseline_lines": 303,
+      "reviewed_lines": "1-303",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/reference/automation/functions.md",
+      "baseline_sha256": "f08e83841c856ed1e7b7d55fc502f629269597608969578c159147f9b736ee11",
+      "baseline_lines": 418,
+      "reviewed_lines": "1-418",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/reference/automation/project-command-capabilities.md",
+      "baseline_sha256": "1b3bb4c70e483189aac36170b254d8fa003eb05907b0c057a98a8bf4876e5661",
+      "baseline_lines": 365,
+      "reviewed_lines": "1-365",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/reference/deployment/installed-lifecycle.md",
+      "baseline_sha256": "1dc8d268414ca83a961954005659d5638c617b279f807633890025468b4e8886",
+      "baseline_lines": 363,
+      "reviewed_lines": "1-363",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/reference/protocol/public-contract.md",
+      "baseline_sha256": "b910c29cbd1c1910d53844197d75d7f5f630e8e0cdc923d675d573a9a611e4e3",
+      "baseline_lines": 237,
+      "reviewed_lines": "1-237",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/reference/sdk/README.md",
+      "baseline_sha256": "fbed60121b3e428e0e39eb20c3f8a559aac9856d2de66b9d7a25b2d72ca73c3f",
+      "baseline_lines": 27,
+      "reviewed_lines": "1-27",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "baseline_sha256": "f5b4865260e3be4646230876e61b15c578e3af2a4e3e150450b5fbbff04c4006",
+      "baseline_lines": 56,
+      "reviewed_lines": "1-56",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
     },
     {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "baseline_sha256": "9c57589d1d25eaca56d90fcd590cf3cfc9cab7fec7adb25824521e556b8b094a",
-      "baseline_lines": 4091,
-      "reviewed_lines": "1-4091",
-      "symbols": ["codebase-grounded change-authoring routine", "documentation packages", "evidence record template", "global stop conditions", "roadmap refraction journal"]
+      "baseline_sha256": "0d1b342e5ad26b1ca95e087dcdb14280c897e6427599650889be4c4e73805b81",
+      "baseline_lines": 4117,
+      "reviewed_lines": "1-4117",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/README.md",
+      "baseline_sha256": "96ccafd83a8c5c314f616ead60acbb610e44691f5822e598192584f5227f7ac2",
+      "baseline_lines": 26,
+      "reviewed_lines": "1-26",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-h.md",
+      "baseline_sha256": "9a1e8998a050639f64fc4719ac1d77bf0002435200f763c545a66d8190fb638d",
+      "baseline_lines": 74,
+      "reviewed_lines": "1-74",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-i.md",
+      "baseline_sha256": "2c91a2256ae6df74d472f986d118ea587406ff3fd0e668a99004f1be99ef233e",
+      "baseline_lines": 36,
+      "reviewed_lines": "1-36",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
+    },
+    {
+      "path": "scripts/ci/check_documentation.py",
+      "baseline_sha256": "6324f7348928b03f20513af777a94c3f52aae14c60e15ae6b44fc6ea7fedd983",
+      "baseline_lines": 891,
+      "reviewed_lines": "1-891",
+      "symbols": [
+        "complete file",
+        "ownership and link semantics",
+        "affected authoring or validation boundary"
+      ]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
       "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
       "baseline_lines": 1841,
       "reviewed_lines": "1-1841",
-      "symbols": ["deterministic repository inventory", "Markdown path classification", "generated file plan"]
+      "symbols": [
+        "deterministic repository inventory",
+        "current and planned path classification",
+        "generated file plan"
+      ]
     }
   ],
   "implementation_changes": [
     {
-      "path": "docs/poam/rrflow-1.0-alpha.md",
+      "path": "AGENTS.md",
       "baseline_state": "present",
-      "symbols": ["canonical POA&M metadata", "ledger governance warp", "compact deficiency status ledger"],
-      "action": "Retain the canonical title, status, coordinate, owner, and Open deficiencies anchor; replace substantive bodies with a governance link and a compact ordered table containing each exact ID, priority, lifecycle status, and item-record link.",
-      "failure_semantics": "Stop if the parent retains duplicated deficiency prose, loses its canonical coordinate or anchor, changes any ID/priority/status/order, or ceases to be the sole remediation-status authority."
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
     },
     {
-      "path": "docs/poam/README.md",
+      "path": "README.md",
       "baseline_state": "present",
-      "symbols": ["POA&M discovery index", "alpha POA&M record portal link"],
-      "action": "Add one discovery link to the nested RRFlow 1.0 alpha POA&M record portal without changing the canonical ledger's status or ownership.",
-      "failure_semantics": "Stop if the directory index duplicates the deficiency ledger or changes any objective, roadmap, or POA&M authority relationship."
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/README.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/architecture/engine-data-flow.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/architecture/system-overview.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/evidence/README.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/evidence/test-plans/persistence-scenario-matrix.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/operations/ci.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
     },
     {
       "path": "docs/poam/rrflow-1.0-alpha/README.md",
-      "baseline_state": "absent",
-      "symbols": ["POA&M detail-record portal", "governance link", "POAM-001 through POAM-027 links"],
-      "action": "Add the links-only directory portal required by deterministic knowledge classification; link the canonical parent, governance chapter, and all 27 item records exactly once.",
-      "failure_semantics": "Stop if the portal omits or duplicates a record, claims remediation status authority, or contains a second deficiency body."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/governance.md",
-      "baseline_state": "absent",
-      "symbols": ["ledger ownership", "status vocabulary", "milestone discipline"],
-      "action": "Move the original ownership explanation, four-state vocabulary, and milestone discipline into one parent-owned governance chapter.",
-      "failure_semantics": "Stop if row-closure authority, status meaning, roadmap dependency order, or new-deficiency discipline changes."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-001.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-001 durable knowledge import and warp resolution"],
-      "action": "Move POAM-001's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-002.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-002 accepted segment-v6 physical layout"],
-      "action": "Move POAM-002's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-003.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-003 accepted single-node physical owner and readers"],
-      "action": "Move POAM-003's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-004.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-004 stamped streamed DataFusion provider"],
-      "action": "Move POAM-004's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-005.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-005 native graph scalar lexical and vector access"],
-      "action": "Move POAM-005's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-006.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-006 installed product and attunement lifecycle"],
-      "action": "Move POAM-006's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-007.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-007 installed specialization and seat identity"],
-      "action": "Move POAM-007's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-008.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-008 functions routines and automation convergence"],
-      "action": "Move POAM-008's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-009.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-009 RouterBackend and LFG execution"],
-      "action": "Move POAM-009's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-010.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-010 context routing feedback and retention"],
-      "action": "Move POAM-010's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
     },
     {
       "path": "docs/poam/rrflow-1.0-alpha/poam-011.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-011 public surfaces SDKs and Connectome", "B-05 convergence update"],
-      "action": "Move POAM-011's four substantive ledger fields and its existing convergence update into one parent-owned detail record.",
-      "failure_semantics": "Stop if any SDK, transport, Connectome, conformance, packaging, limitation, or update fact changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-012.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-012 complete workload benchmark and failure corpus"],
-      "action": "Move POAM-012's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-013.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-013 self-contained signed native release"],
-      "action": "Move POAM-013's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-014.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-014 implementation requirements traceability"],
-      "action": "Move POAM-014's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-015.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-015 public contract discovery consistency"],
-      "action": "Move POAM-015's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-016.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-016 security initialization and effect-complete authorization"],
-      "action": "Move POAM-016's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-017.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-017 estate administration authority"],
-      "action": "Move POAM-017's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-018.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-018 accepted complete estate and backup shapes"],
-      "action": "Move POAM-018's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-019.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-019 native estate records and engine transactions"],
-      "action": "Move POAM-019's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-020.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-020 canonical project estate instance topology"],
-      "action": "Move POAM-020's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-021.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-021 local process control authority"],
-      "action": "Move POAM-021's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-022.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-022 deployment facts and profile semantics"],
-      "action": "Move POAM-022's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-023.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-023 distributed cluster authority"],
-      "action": "Move POAM-023's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-024.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-024 Kubernetes controller authority"],
-      "action": "Move POAM-024's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-025.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-025 verification repair restore and salvage"],
-      "action": "Move POAM-025's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-026.md",
-      "baseline_state": "absent",
-      "symbols": ["POAM-026 observability and diagnostic evidence"],
-      "action": "Move POAM-026's four substantive ledger fields into one parent-owned detail record.",
-      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
     },
     {
       "path": "docs/poam/rrflow-1.0-alpha/poam-027.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/reference/agent-bootstrap.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/reference/automation/functions.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/reference/automation/project-command-capabilities.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/reference/deployment/installed-lifecycle.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/reference/protocol/public-contract.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/reference/sdk/README.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/README.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-h.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-i.md",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "scripts/ci/check_documentation.py",
+      "baseline_state": "present",
+      "symbols": [
+        "linked-record ownership",
+        "adaptive reasoning and governed effects",
+        "generated navigation boundary"
+      ],
+      "action": "Refactor only the record, policy, or validation statements needed to route execution through canonical owners, linked journals, generated indexes, and boundary-scoped contracts.",
+      "failure_semantics": "Stop if the edit changes roadmap completion, POA&M lifecycle status, runtime behavior, release identity, or makes an index, client, adapter, schema, or evidence receipt a second authority."
+    },
+    {
+      "path": "docs/decisions/0002-adaptive-reasoning-governed-effects.md",
       "baseline_state": "absent",
-      "symbols": ["POAM-027 change-package and repository enforcement", "POAM-027a execution decision"],
-      "action": "Move POAM-027's four substantive ledger fields and its existing execution decision into one parent-owned detail record.",
-      "failure_semantics": "Stop if any CI, server-protection, GitHub response, execution-decision, or limitation fact changes or the child claims lifecycle-status authority."
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-b/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-d/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution/README.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution/change-authoring.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution/implementation-navigation.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution/generated-surfaces.md",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "scripts/knowledge/render_navigation.py",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
+    },
+    {
+      "path": "scripts/knowledge/test_navigation.py",
+      "baseline_state": "absent",
+      "symbols": [
+        "linked record",
+        "generated discovery projection",
+        "adaptive reasoning boundary"
+      ],
+      "action": "Create the declared canonical supporting record or deterministic navigation implementation without introducing another status or lifecycle authority.",
+      "failure_semantics": "Stop if the new path duplicates an owning body, requires manually synchronized listings, schemas internal reasoning, or cannot be regenerated and checked deterministically where it is a projection."
     }
   ],
   "evidence_changes": [
     {
-      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "action": "Append only the required POA&M-refraction package journal with baseline, complete files read, changed paths, exact field/status preservation, surfaced failures, commands/results, omissions, and unchanged roadmap/POA&M lifecycle status; also record the preceding roadmap structural commit as the completed predecessor."
+      "path": "docs/evidence/change-journals/kb-05/governed-functions.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'governed-functions' from baseline line 953 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/project-command-capabilities.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'project-command-capabilities' from baseline line 973 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/clyffy-kernel-alpha.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'clyffy-kernel-alpha' from baseline line 993 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-security-bootstrap-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-security-bootstrap-v1' from baseline line 1012 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-kubernetes-v1alpha1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-kubernetes-v1alpha1' from baseline line 1030 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-cluster-m7.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-cluster-m7' from baseline line 1049 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-deployment-modes-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-deployment-modes-v1' from baseline line 1067 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/local-process-driver-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'local-process-driver-v1' from baseline line 1085 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/instance-topology.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'instance-topology' from baseline line 1104 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/estate-control-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'estate-control-v1' from baseline line 1122 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/local-estate-authorization-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'local-estate-authorization-v1' from baseline line 1140 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-security-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-security-v1' from baseline line 1158 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-public-contract.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-public-contract' from baseline line 1176 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-live-subscriptions-v1.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-live-subscriptions-v1' from baseline line 1194 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/kb-05-execution-queue.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'kb-05-execution-queue' from baseline line 1212 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-rust-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-rust-client' from baseline line 1230 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-typescript-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-typescript-client' from baseline line 1248 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-python-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-python-client' from baseline line 1266 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-go-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-go-client' from baseline line 1284 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-java-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-java-client' from baseline line 1302 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrd-dotnet-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrd-dotnet-client' from baseline line 1320 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/qdrant-capability-inventory.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'qdrant-capability-inventory' from baseline line 1338 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/surrealdb-capability-inventory.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'surrealdb-capability-inventory' from baseline line 1357 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/rrflow-surrealdb-differential.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'rrflow-surrealdb-differential' from baseline line 1376 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/anytype-connectome-client.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'anytype-connectome-client' from baseline line 1395 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/kb-05/ci-operations.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'ci-operations' from baseline line 1415 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-0-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.0 evidence journal' from baseline line 1454 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1a-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1a evidence journal' from baseline line 1679 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1b-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1b evidence journal' from baseline line 1697 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1c-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1c evidence journal' from baseline line 1715 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1d-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1d evidence journal' from baseline line 1733 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1e-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1e evidence journal' from baseline line 1751 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1f-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1f evidence journal' from baseline line 1769 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1g-dotnet-sdk-responsibility-boundary.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'a-07.1g-dotnet-sdk-responsibility-boundary' from baseline line 1787 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-1h-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.1h evidence journal' from baseline line 1805 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/a-07-2-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'A-07.2 evidence journal' from baseline line 1848 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-b/b-03-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'B-03 evidence journal' from baseline line 1881 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-b/b-04-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'B-04 evidence journal' from baseline line 1912 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-b/b-05-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'B-05 evidence journal' from baseline line 1942 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-01-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-01 evidence journal' from baseline line 1988 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-02-transaction-substrate-progress-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-02 transaction-substrate progress journal' from baseline line 2045 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-02-semantic-repository-completion-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-02 semantic-repository completion journal' from baseline line 2063 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-03a-semantic-commit-and-graph-fan-out-progress-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-03a semantic-commit and graph-fan-out progress journal' from baseline line 2148 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-03b-synchronous-native-index-and-vector-source-progress-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-03b synchronous native-index and vector-source progress journal' from baseline line 2166 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-03c-typed-governed-function-state-and-prepared-receipt-progress-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-03c typed governed-function state and prepared-receipt progress journal' from baseline line 2184 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-03d-effect-gap-and-physical-limit-closure-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-03d effect-gap and physical-limit closure journal' from baseline line 2203 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04-execution-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04 execution-plan journal' from baseline line 2327 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04a-implementation-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04a implementation journal' from baseline line 2345 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04b-implementation-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04b implementation journal' from baseline line 2363 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04c1-rrflowql-direct-read-progress-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04c1 rrflowQL direct-read progress journal' from baseline line 2382 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04c2-public-engine-adoption-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04c2 public/engine adoption plan journal' from baseline line 2400 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04c2-implementation-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04c2 implementation journal' from baseline line 2418 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-04c3-final-source-evidence-closure-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-04c3 final source/evidence closure journal' from baseline line 2436 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05a-physical-reader-and-accumulator-bootstrap-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05a physical-reader and accumulator-bootstrap plan journal' from baseline line 2465 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05a-physical-reader-and-accumulator-bootstrap-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05a physical-reader and accumulator-bootstrap evidence journal' from baseline line 2480 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05b-canonical-estate-backup-recovery-shape-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05b canonical estate backup/recovery shape plan journal' from baseline line 2499 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05b-canonical-estate-backup-recovery-shape-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05b canonical estate backup/recovery shape evidence journal' from baseline line 2516 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05c-active-alpha-storage-closure-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05c active-alpha storage-closure plan journal' from baseline line 2535 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05c-active-alpha-storage-closure-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05c active-alpha storage-closure evidence journal' from baseline line 2551 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05d-whole-executable-old-shape-audit-correction-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05d whole-executable old-shape audit correction plan journal' from baseline line 2570 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05d-whole-executable-old-shape-audit-correction-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05d whole-executable old-shape audit correction evidence journal' from baseline line 2585 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05e-vector-artifact-catalogue-v1-removal-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05e vector artifact catalogue v1 removal plan journal' from baseline line 2602 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05e-vector-artifact-catalogue-v1-removal-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05e vector artifact catalogue v1 removal evidence journal' from baseline line 2618 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05f-canonical-schema-table-map-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05f canonical schema table map plan journal' from baseline line 2634 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05f-canonical-schema-table-map-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05f canonical schema table map evidence journal' from baseline line 2650 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05g-canonical-vector-collection-address-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05g canonical vector collection address plan journal' from baseline line 2668 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05g-canonical-vector-collection-address-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05g canonical vector collection address evidence journal' from baseline line 2685 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05h-single-vector-projection-lifecycle-plan-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05h single vector projection lifecycle plan journal' from baseline line 2703 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-05h-single-vector-projection-lifecycle-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-05h single vector projection lifecycle evidence journal' from baseline line 2721 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06a-common-hybrid-immutable-segment-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06a common hybrid immutable segment evidence journal' from baseline line 2769 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06b-selective-projection-optimization-for-immutable-segment-range-scans.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06b selective projection optimization for immutable segment range scans' from baseline line 2788 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06c-mixed-family-visibility-differential-for-segment-scans.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06c mixed-family visibility differential for segment scans' from baseline line 2808 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06d-mapped-generation-lifetime-proof-with-pinned-reads-and-gc.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06d mapped-generation lifetime proof with pinned reads and GC' from baseline line 2827 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06e-authenticated-configurable-row-group-writer-budgets.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06e authenticated configurable row-group writer budgets' from baseline line 2848 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06f-generated-hybrid-segment-differential-and-malformed-byte-corpus.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06f generated hybrid-segment differential and malformed-byte corpus' from baseline line 2874 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-d/d-01-d-11-installed-lifecycle-research-and-execution-plan-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'D-01/D-11 installed-lifecycle research and execution-plan evidence journal' from baseline line 3160 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/development-repository-separation-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Development repository separation journal' from baseline line 3558 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/repository-change-authoring-routine-evidence-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Repository change-authoring routine evidence journal' from baseline line 3574 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/critical-engine-audit-and-active-change-package-planning-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Critical engine audit and active change-package planning journal' from baseline line 3600 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/poam-027a-change-plan-enforcement-implementation-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'POAM-027a change-plan enforcement implementation journal' from baseline line 3626 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/poam-027b-canonical-package-identity-correction-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'POAM-027b canonical package-identity correction journal' from baseline line 3652 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/observability-diagnostic-build-and-latency-evidence-planning-journal.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Observability, diagnostic-build, and latency-evidence planning journal' from baseline line 3678 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/storage-research-prerequisite-for-active-c-06g.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Storage research prerequisite for active C-06g' from baseline line 3704 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06g-pinned-projected-rrflowkv-read-generation.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06g pinned projected rrflowKV read generation' from baseline line 3730 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/c-06h-adversarial-rrflowkv-qualification.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'C-06h adversarial rrflowKV qualification' from baseline line 3756 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/active-physical-policy-candidate-screen-c-06i.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Active physical-policy candidate screen (C-06i)' from baseline line 3782 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/active-persisted-row-group-filter-integration-c-06i.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Active persisted row-group filter integration (C-06i)' from baseline line 3808 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/segment-v5-repository-identity-closure.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Segment-v5 repository identity closure' from baseline line 3835 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/adaptive-page-compression-research-and-implementation-plan-c-06i.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Adaptive page-compression research and implementation plan (C-06i)' from baseline line 3861 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/adaptive-page-compression-runtime-integration-c-06i.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Adaptive page-compression runtime integration (C-06i)' from baseline line 3887 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/scan-resistant-page-cache-pre-edit-traceability-c-06j.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Scan-resistant page-cache pre-edit traceability (C-06j)' from baseline line 3913 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/scan-resistant-page-cache-integration-evidence-c-06j.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Scan-resistant page-cache integration evidence (C-06j)' from baseline line 3931 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/physical-policy-documentation-and-evidence-closeout-c-06j.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Physical-policy documentation and evidence closeout (C-06j)' from baseline line 3957 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-c/development-push-receipt-for-the-c-06j-closeout.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'Development push receipt for the C-06j closeout' from baseline line 3970 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/rrflow-1-0-roadmap-warp-refraction-a-06.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'RRFlow 1.0 roadmap warp refraction (A-06)' from baseline line 3981 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-a/rrflow-1-0-alpha-poa-m-warp-refraction-a-06.md",
+      "action": "Preserve the complete legacy execution-map text block headed 'RRFlow 1.0 alpha POA&M warp refraction (A-06)' from baseline line 4007 as one immutable, coordinated, parent-indexed evidence record with source revision and block digest."
+    },
+    {
+      "path": "docs/evidence/change-journals/repository/poam-027c-linked-execution-records-and-generated-navigation.md",
+      "action": "Record this bounded refactor as one linked evidence journal containing the exact baseline, complete review scope, changed paths, generated-index and byte-preservation oracles, commands and results, surfaced failures, omissions, and unchanged roadmap/POA&M status."
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
-      "action": "Regenerate the deterministic repository inventory so the canonical POA&M parent, portal, governance chapter, and all 27 detail records and digests are accounted for.",
+      "action": "Regenerate the deterministic whole-repository file projection after the linked records, navigation tool, and owner references are complete.",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py"
     }
   ],
   "research": {
     "decision": "not_required",
-    "reason": "This is a repository-local information-architecture refactor whose sole semantic source is the fully reviewed canonical POA&M; it introduces no external behavior, algorithm, standard, dependency, or market claim.",
+    "reason": "This package resolves repository-local authority and information-architecture conflicts from complete source records and existing executable catalogue/generator behavior; it adds no external algorithm, dependency, performance claim, or upstream code.",
     "sources": []
   },
   "trace_resource_debug": {
     "runtime_trace": {
       "decision": "not_applicable",
-      "reason": "No runtime code, operation, causal path, or emitted signal changes."
+      "reason": "No runtime operation, persisted engine state, adapter activity, or emitted signal changes."
     },
     "resource_evidence": {
       "decision": "not_applicable",
-      "reason": "No runtime allocation, I/O, latency, storage format, or resource budget changes."
+      "reason": "No runtime allocation, storage format, I/O path, latency budget, or model execution changes."
     },
     "debugging_evidence": {
-      "decision": "not_applicable",
-      "reason": "Structural verification uses exact parsed-cell reconstruction, status-ledger equality, link/coordinate validation, deterministic knowledge export, generated inventory, and complete diff review."
+      "decision": "preserve",
+      "reason": "Retain exact legacy evidence blocks and prove one-to-one extraction, unique coordinates, generated index freshness, local-link validity, deterministic knowledge export, and exact declared path closure."
     }
   },
   "first_failure_oracle": [
-    "At baseline the canonical POA&M is 82 lines and 52,359 bytes, all 27 deficiencies occupy single seven-column rows, POAM-011 alone is 10,599 characters, and the approved portal/governance/item-record paths are absent.",
-    "Parse the original table into exactly 27 ordered seven-field records; after refraction, reconstruct each record from the parent ID/priority/status ledger plus its item's observed-deficiency, impact, owning-gates, and closure-evidence sections and require exact field equality.",
-    "Require the parent to contain only metadata, headings, links, and the compact ledger; require exactly 17 Critical, 10 High, 21 Sequenced, 3 Closed, and 3 Open entries in original order.",
-    "Require the governance chapter to preserve the original ownership, four status definitions, and milestone discipline; require the POAM-011 and POAM-027 notes to occur exactly once in their respective records.",
-    "Require 29 unique new coordinates, exact portal coverage of governance plus 27 items, one parent-owner link from every child, valid repository-local links/fragments, and byte-deterministic knowledge/inventory output."
+    "At baseline the execution map is exactly 4,117 lines, contains exactly 96 immediate fenced text journals/receipts, and mixes procedure, target architecture, implementation inventory, gate work packages, evidence, commands, and stop conditions in one coordinated file.",
+    "Extract the 96 fenced text blocks from the baseline by their immediate level-four or level-five heading; require exactly one new evidence record per block, unique paths and coordinates, and exact SHA-256 equality of each fenced payload.",
+    "Require the new execution-map parent to contain only metadata, stable compatibility headings, and links; reject copied roadmap requirements, POA&M statuses, implementation-audit tables, or embedded journal bodies.",
+    "Require every generated-index marker block to equal a fresh deterministic scan of its immediate coordinated children; adding or removing a child without regeneration must fail.",
+    "Require the adaptive-reasoning decision and affected architecture/roadmap text to distinguish exploratory reads and model reasoning from authorized durable mutation/effect/evidence boundaries, and require SDK/reference projections to name one executable catalogue source."
   ],
   "edit_sequence": [
-    "Commit this machine-readable plan alone as the direct child of clean roadmap-refraction commit 4e2bffef2702c3f77679a939a5a78518c0e2af7c.",
-    "Create the nested links-only portal and governance chapter, then replace the canonical POA&M body with the compact ordered ID/priority/status/detail-record ledger while preserving #open-deficiencies.",
-    "Create POAM-001 through POAM-027 detail records from the exact parsed source cells, using stable coordinates, parent ownership, fixed section headings, and no duplicate lifecycle-status field.",
-    "Move the existing POAM-011 convergence update and POAM-027 execution decision into their owning detail records; add one nested-portal discovery link to docs/poam/README.md.",
-    "Run exact source-versus-reconstructed field equality and topology oracles, append the bounded execution-map journal, regenerate the file plan, reread every changed file, and inspect the complete diff.",
-    "Run the smallest structural checks followed by documentation, knowledge-export, version, and staged-diff gates; commit the coherent POA&M refraction without pushing."
+    "Commit this active plan alone as the direct child of clean baseline b7b061900b67d535ffec2710e6e4c30815d0f216.",
+    "Create the adaptive-reasoning/governed-effects decision and the three focused execution supporting records; replace the execution map with the stable link portal and preserve all inbound compatibility anchors.",
+    "Extract all 96 baseline journal payloads into grouped evidence records with source revision and payload digest; add the current package journal path and change AGENTS.md rule 7 to require linked records plus regenerated discovery.",
+    "Implement the generic marker-driven navigation maintainer and focused tests; migrate execution, change-journal, roadmap-chapter, POA&M-record, and SDK indexes to generated blocks.",
+    "Correct architecture, agent bootstrap, public-contract, H-04/I-03/I-07, POA&M, CI, and supporting references so adaptive exploration, governed effects, canonical owner boundaries, and catalogue-derived API/SDK maintenance are explicit.",
+    "Verify journal byte preservation and unique topology, regenerate all marked indexes and the file plan, reread every changed file and the complete diff, then run documentation, knowledge, version, and change-plan checks.",
+    "Commit the coherent implementation and evidence without pushing."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
+    "python3 scripts/knowledge/render_navigation.py --check",
+    "python3 scripts/knowledge/test_navigation.py",
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/knowledge/test_export.py",
@@ -350,12 +1206,14 @@
     "git diff --check"
   ],
   "stop_conditions": [
-    "Any original POA&M ID, priority, lifecycle status, order, observation, impact, owning-gate mapping, closure-evidence statement, item-specific update, date, revision, digest, limitation, or milestone rule is missing, duplicated, or semantically changed.",
-    "The canonical parent loses its title, status, coordinate, owner, #open-deficiencies anchor, compact ordered ledger, links-only body shape, or sole remediation-status authority.",
-    "A detail record duplicates or claims authority over priority/lifecycle status, objective completion, roadmap order/gate completion, product status, runtime state, release, or promotion.",
-    "A repository-local link or fragment breaks; a record lacks a unique coordinate/parent owner; the nested portal is absent, substantive, incomplete, duplicated, or undiscoverable from docs/poam/README.md; deterministic knowledge/inventory packaging fails.",
-    "The execution map requires any change beyond the bounded evidence journal, or README, AGENTS, objective, roadmap, implementation, tests, configuration, workflow, version, release artifact, or external state would need to change.",
-    "The refactor creates a forwarding copy, duplicate deficiency body, generated editable authority, external dependency, install/runtime fetch, hook, provider state, or parallel remediation ledger."
+    "Any of the 96 legacy journal payloads is missing, duplicated, reordered within its record, or byte-different from the baseline fenced block.",
+    "The execution parent retains substantive gate requirements, implementation audit, status ledger, evidence body, or another authority instead of acting as a link portal.",
+    "A generated listing requires hand-maintained child entries, a record is absent from its nearest index, a coordinate is duplicated, or a local/fragment link breaks.",
+    "The design constrains exploratory reading, discovery, hypothesis formation, context selection, model reasoning, or private planning to a closed schema or committed snapshot instead of governing only effects and durable claims.",
+    "A generated API, SDK, documentation projection, adapter, trace, index, or client is described as an independent semantic, authorization, persistence, or lifecycle authority.",
+    "Any roadmap checkbox/count, POA&M priority/status, active package, runtime behavior, product version, dependency, release artifact, remote, push, or promotion state would change.",
+    "Implementation touches an undeclared path, requires an external dependency or network fetch, or cannot pass deterministic navigation, documentation, knowledge-export, inventory, and diff checks."
   ],
-  "roadmap_status_change": "None. This package changes POA&M documentation topology and warp addressability only; all 27 priorities/lifecycle states, objective classifications, roadmap gates/checkboxes, active D-01 item, product maturity, version, promotion, and release states remain exactly as recorded at baseline."
+  "roadmap_status_change": "None. This package removes a documentation shadow authority, establishes linked/generated discovery and a governing architecture decision, and preserves evidence; it does not complete any release gate, close any POA&M item, change D-01 as the active executable item, or alter product maturity."
 }
+
