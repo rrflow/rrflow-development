@@ -1,9 +1,9 @@
 //! Feature-gated C-06i measurements over rrflowKV's real segment-v6 encoder.
 //!
 //! Nothing in this module owns production storage policy. It verifies the
-//! canonical persisted filter and keeps codec, cache-admission, and
-//! value-placement decisions reproducible before another candidate changes
-//! durable bytes.
+//! canonical persisted filter and integrated adaptive-LZ4 behavior, then keeps
+//! the remaining codec, cache-admission, and value-placement decisions
+//! reproducible before another candidate changes durable bytes.
 
 #[cfg(test)]
 use super::format::RowGroupFilter;
@@ -1314,13 +1314,26 @@ fn decide_candidates(
         let passes = codec.round_trip_exact
             && codec.savings_basis_points >= ADAPTIVE_CODEC_MINIMUM_SAVINGS_BPS
             && codec.adaptive_selected_pages > 0;
+        let integrated = codec.codec == "lz4";
         decisions.push(CandidateDecision {
             candidate: format!("adaptive-{}-page-codec", codec.codec),
-            decision: if passes { "advance" } else { "reject" }.into(),
-            reason: format!(
-                "exact_round_trip={}, selected_pages={}, savings_basis_points={}, required_savings_basis_points={ADAPTIVE_CODEC_MINIMUM_SAVINGS_BPS}; production integration still requires a separate format plan",
-                codec.round_trip_exact, codec.adaptive_selected_pages, codec.savings_basis_points
-            ),
+            decision: match (passes, integrated) {
+                (true, true) => "integrated",
+                (true, false) => "advance",
+                (false, _) => "reject",
+            }
+            .into(),
+            reason: if integrated {
+                format!(
+                    "segment_v6=true, exact_round_trip={}, selected_pages={}, savings_basis_points={}, required_savings_basis_points={ADAPTIVE_CODEC_MINIMUM_SAVINGS_BPS}; authenticated adaptive LZ4 is integrated in the normal rrflowKV flush, compaction, reopen, and read path",
+                    codec.round_trip_exact, codec.adaptive_selected_pages, codec.savings_basis_points
+                )
+            } else {
+                format!(
+                    "exact_round_trip={}, selected_pages={}, savings_basis_points={}, required_savings_basis_points={ADAPTIVE_CODEC_MINIMUM_SAVINGS_BPS}; this candidate remains laboratory-only and requires a separate production-format plan",
+                    codec.round_trip_exact, codec.adaptive_selected_pages, codec.savings_basis_points
+                )
+            },
         });
     }
     decisions.push(CandidateDecision {
@@ -1451,6 +1464,20 @@ mod tests {
         assert!(first.reopened_point_miss.filter_checks > 0);
         assert!(first.reopened_point_miss.page_loads < first.reopened_point_miss.filter_checks);
         assert_eq!(first.segment_format_version, 6);
+        let lz4 = first
+            .decisions
+            .iter()
+            .find(|decision| decision.candidate == "adaptive-lz4-page-codec")
+            .unwrap();
+        assert_eq!(lz4.decision, "integrated");
+        assert!(lz4.reason.contains("normal rrflowKV"));
+        let zstd = first
+            .decisions
+            .iter()
+            .find(|decision| decision.candidate == "adaptive-zstd-page-codec")
+            .unwrap();
+        assert_eq!(zstd.decision, "advance");
+        assert!(zstd.reason.contains("laboratory-only"));
 
         let mut invalid_reopen = first.reopened_point_miss.clone();
         invalid_reopen.open_semantic_page_operations = 1;
