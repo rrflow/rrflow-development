@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "C-06i-segment-v5-identity-closure",
+  "package_id": "C-06i-adaptive-page-compression-research-plan",
   "status": "active",
-  "package_kind": "repository-architecture-closure",
+  "package_kind": "research-and-implementation-planning",
   "baseline": {
-    "revision": "8039c022b8e75954862770fb4d2edd60c99e4c23",
-    "tree": "6ff46be0b58adcb09a7001100553d13ebf4bb145",
+    "revision": "787c618b659461ca9a72eed5db78aa9c2e41b28b",
+    "tree": "c4750d8a9aee7942d64e114d2e05f40cedb3b6f0",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,20 +13,20 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "C-06i segment-v5 production evidence cannot close while the repository architecture oracle still asserts segment v4 or the active I/O boundary describes v4. Align both identities without changing runtime behavior, then rerun the complete repository policy boundary.",
-    "roadmap_gates": ["C-06", "J-01"],
+    "alpha_prerequisite": "C-06 cannot close while immutable rrflowKV pages remain uncompressed, but a codec cannot enter the sole persistent substrate from candidate ratios alone. Research and bind the exact format, configuration, checksum, decode-bound, ownership, observability, failure, fixture, snapshot, fuzz, and DataFusion handoff changes before any production edit.",
+    "roadmap_gates": ["C-06", "F-01", "F-05", "J-04"],
     "poam_items": ["POAM-002"],
-    "architecture_owner": "docs/roadmap/rrflow-1.0-execution-map.md#critical-engine-audit-and-executable-convergence-sequence"
+    "architecture_owner": "docs/roadmap/rrflow-1.0.md#gate-c--sole-persistent-rrflowkv-substrate"
   },
-  "current_behavior": "Clean implementation revision 07a6bb8 and evidence revision 8039c02 establish segment v5 and authenticated persisted row-group filters. The full architecture suite nevertheless passes only 27 of 28 tests because alpha_storage_closure_has_one_required_physical_dependency_and_current_reader still searches for SEGMENT_FORMAT_VERSION 4. The fully reviewed I/O module has one documentation comment calling the current immutable pages v4. Neither stale reference changes engine behavior, but both contradict the sole current pre-release format and prevent honest package closure.",
-  "target_behavior": "The architecture closure must assert segment format version 5 plus the RRDSEG05 and RRDIX005 identities already owned by the current format module. The I/O policy documentation must name immutable v5 segment pages. No production expression, public type, durable byte, dependency, feature, trace, counter, test topology, or acceptance status changes. The complete 28-test architecture suite, workspace check, documentation policies, and deterministic inventory must pass.",
+  "current_behavior": "Segment v5 is the sole pre-release immutable format. It has an authenticated ordered MVCC spine, six 64-byte-aligned Arrow-layout page buffers, persisted row-group filters, physical/logical page lengths, page SHA-256 digests, bounded I/O, safe mapped ownership, and decoded-page cache/resource counters. Every page is nevertheless stored with plain encoding and compression none. The clean C-06i candidate corpus measured adaptive LZ4 and Zstandard but did not specify a production format, configuration path, allocation bound, corruption behavior, fixture replacement, or DataFusion ownership contract. Cache admission and value separation remain unintegrated candidates.",
+  "target_behavior": "Create one cited, implementation-ready C-06i adaptive-page-compression plan. It must select or reject each measured codec and cache/value candidate; define a direct segment-v6 replacement with explicit writer policy and per-page codec identity; preserve raw-page mmap borrowing; require exact bounded allocation and decode for compressed pages; authenticate stored bytes before decode; account physical, logical, allocated, copied, borrowed, and decompressed bytes; enumerate every existing source, test, fixture, snapshot, fuzz, architecture, dependency, documentation, and evidence path; and state the exact incremental edit order and stop conditions. This package changes no runtime code or durable bytes and marks no roadmap gate complete.",
   "unchanged_behavior": [
-    "Segment v5 bytes, persisted-filter algorithm, authentication, MVCC semantics, open/read behavior, fixtures, clean evidence, and all rrflowKV production code remain byte-for-byte unchanged.",
-    "The architecture test remains a repository closure oracle; it is updated to the current sole reader identity and is not weakened, skipped, ignored, feature-gated, or satisfied by a deceptive compatibility string.",
-    "The I/O edit is documentation-only. SegmentIoMode, policy validation, io_uring probing/fallback, mmap and bounded reads, statistics, and platform behavior remain unchanged.",
-    "Product version remains 1.0.0. C-06, C-07, D through J, installed binaries, DataFusion streaming, native recall, reasoning, routines, skills, SDKs, APIs, Connectome, and release qualification remain open.",
-    "No v4 reader, alias, migration, deprecation path, fallback, format constant, fixture, fuzz target, or parallel authority is introduced.",
-    "The private rrflow/rrflow-development repository remains the only permitted push target; official rrflow/rrflow receives no source, ref, tag, artifact, binary, or release."
+    "All rrflowKV production Rust, segment-v5 bytes, WAL/MVCC/manifest/compaction/snapshot semantics, filters, cache behavior, public types, dependencies, and fixtures remain unchanged in this research package.",
+    "DataFusion remains rrflowQL compute and consumes only stamped, bounded Arrow RecordBatches; it does not become persistence, transaction, decode, or cache authority.",
+    "The plan may adapt verified behavior from primary sources but may not copy an upstream format tree, public model, compatibility reader, hidden runtime, or fallback-on-missing-codec behavior.",
+    "Cache admission, Zstandard bottom-level placement, value separation, graph/BM25/vector/TurboQuant access paths, install/attunement, reasoning, SDKs, Connectome, binaries, and release qualification remain separate gates.",
+    "Product version remains 1.0.0; C-06 and POAM-002 remain open.",
+    "Only the private rrflow/rrflow-development repository may receive this pre-release planning package; official rrflow/rrflow remains untouched."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -39,128 +39,324 @@
       "baseline_sha256": "6da65c00a55399f7bdd4d853bb08e3f3a13f66ba1b510c406eca28cccf244b8c",
       "baseline_lines": 129,
       "reviewed_lines": "1-129",
-      "symbols": ["planning chain", "journal requirement"]
+      "symbols": ["planning chain", "source adaptation", "journal requirement"]
     },
     {
       "path": "README.md",
       "baseline_sha256": "835fee3c824e7a3825247073a6574776be40eb886cd04f2b29785f3781354b99",
       "baseline_lines": 216,
       "reviewed_lines": "1-216",
-      "symbols": ["pre-alpha status", "segment v5 status"]
+      "symbols": ["product identity", "C-06 status", "warp points"]
     },
     {
       "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "4d7472d3990899cfac5bfb98b57fff85f6deb91ddbb42e29fbf92d672581ceac",
-      "baseline_lines": 185,
-      "reviewed_lines": "1-185",
-      "symbols": ["persisted-filter package", "acceptance failure"]
+      "baseline_sha256": "64693a6d0d74ef9faa5c04c661351ed9d869e8ac17a9d2941d35c1d1efb6909c",
+      "baseline_lines": 181,
+      "reviewed_lines": "1-181",
+      "symbols": ["closed segment-v5 identity package", "machine plan schema"]
     },
     {
-      "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
-      "baseline_sha256": "9a282f50a3c6134cad710f47b2e7a9d97cca2958f41c1846546b4fe3b8e5c27c",
-      "baseline_lines": 1832,
-      "reviewed_lines": "1-1832",
-      "symbols": ["alpha_storage_closure_has_one_required_physical_dependency_and_current_reader", "repository closure"]
+      "path": "docs/roadmap/rrflow-1.0.md",
+      "baseline_sha256": "4f6277eb80e9a837927f8221c480a75dcf359b61e5d39e59fb360ee353fa599c",
+      "baseline_lines": 1329,
+      "reviewed_lines": "1-1329",
+      "symbols": ["C-06 physical layout", "F-01 DataFusion provider", "J-04 evidence"]
     },
     {
-      "path": "crates/persistence/rrd-lsm/src/io.rs",
-      "baseline_sha256": "84eb6214c284bd07355aefffaee48ab164b7806ea9a776e3b8d24bf2b9dbc905",
-      "baseline_lines": 405,
-      "reviewed_lines": "1-405",
-      "symbols": ["SegmentIoMode", "immutable segment documentation"]
+      "path": "docs/roadmap/README.md",
+      "baseline_sha256": "3029846986b2e33a64afcd91a100d8593d630363074ad979152fb8d188be2e62",
+      "baseline_lines": 41,
+      "reviewed_lines": "1-41",
+      "symbols": ["roadmap index", "C-06i supporting records"]
+    },
+    {
+      "path": "docs/roadmap/c06i-rrflowkv-physical-policy-selection-engineering-plan.md",
+      "baseline_sha256": "45fe3a5993722ffef33d928e0526377f136b0300b209e14b776d97604cab0d36",
+      "baseline_lines": 281,
+      "reviewed_lines": "1-281",
+      "symbols": ["fixed-machine candidate result", "retained-policy handoff"]
     },
     {
       "path": "docs/roadmap/c06i-rrflowkv-persisted-filter-integration-engineering-plan.md",
-      "baseline_sha256": "4ba7b2c0348be10901808ee3aa4525e5072e89bf7d89684e19175e65efd82bbb",
-      "baseline_lines": 216,
-      "reviewed_lines": "1-216",
-      "symbols": ["status", "segment-v5 proof"]
+      "baseline_sha256": "dadcb80a0e649149c42e84bb81ca24ce04234a9a67b0f2888f2e41418b68a9bc",
+      "baseline_lines": 223,
+      "reviewed_lines": "1-223",
+      "symbols": ["segment-v5 production slice", "remaining C-06i policies"]
+    },
+    {
+      "path": "docs/research/rrflowkv-rust-storage-engine-architecture-research.md",
+      "baseline_sha256": "1b4f9c0b729fc1c4b108caaa4275041134935c886fbaae89ec7a1c13e0c432c8",
+      "baseline_lines": 661,
+      "reviewed_lines": "1-661",
+      "symbols": ["current implementation audit", "C-06i candidate screen", "execution order"]
+    },
+    {
+      "path": "docs/reference/storage/rrflowkv-current-format.md",
+      "baseline_sha256": "d6f7f5d12714148fa6c66dd7979d104b2fdc86a37247fada19df3b05478409e7",
+      "baseline_lines": 559,
+      "reviewed_lines": "1-559",
+      "symbols": ["segment-v5 byte contract", "page ownership", "known gaps"]
+    },
+    {
+      "path": "docs/reference/storage/rrflowkv-benchmark-harness.md",
+      "baseline_sha256": "fcfcc6d29efaf99a094f024303f80d24e8a0d1c7f8d0fdf2c31f1bd818097579",
+      "baseline_lines": 220,
+      "reviewed_lines": "1-220",
+      "symbols": ["candidate evidence eligibility", "fixed-machine procedure"]
+    },
+    {
+      "path": "docs/evidence/c06i-rrflowkv-physical-policy-linux-x86_64.json",
+      "baseline_sha256": "b258ebb9b311d2755c5773750f70ba58fac8aeab028d9926a0cba2eaca693038",
+      "baseline_lines": 966,
+      "reviewed_lines": "1-966",
+      "symbols": ["raw codec trials", "family observations", "candidate decisions"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/Cargo.toml",
+      "baseline_sha256": "3319cd8a7c87ff9e0aff5652bd942e8cbd48549513df853aca536a82477b738b",
+      "baseline_lines": 38,
+      "reviewed_lines": "1-38",
+      "symbols": ["physical-policy-lab", "lz4_flex", "zstd"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/lib.rs",
+      "baseline_sha256": "901962e09f40681bd548b4039bcc835e1c02920422d2d812df2ae09b63bd27f2",
+      "baseline_lines": 160,
+      "reviewed_lines": "1-160",
+      "symbols": ["rrd-lsm public surface", "segment exports"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/database.rs",
+      "baseline_sha256": "cd7c49804e1e7e5049c79ef3a5f7cef84e07d7eab7634b39204a1b21e8704734",
+      "baseline_lines": 2125,
+      "reviewed_lines": "1-2125",
+      "symbols": ["DatabaseOptions", "flush_memtable_inner", "write_compaction_partition"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/format.rs",
+      "baseline_sha256": "a32e71590ea90ba4ff346edc4c9bbffb6751e939738ea6571ff5d875f54c4ce0",
+      "baseline_lines": 1091,
+      "reviewed_lines": "1-1091",
+      "symbols": ["segment-v5 header", "append_page", "decode_page_descriptor", "page shape validation"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/mod.rs",
+      "baseline_sha256": "ac15ee4fa52a7f5b436a9b544e25bdfb816317bcff68ed606e46d1250d5aa0c9",
+      "baseline_lines": 1795,
+      "reviewed_lines": "1-1795",
+      "symbols": ["PageCache", "LoadedPage", "load_page_with_evidence", "read_page"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/reader.rs",
+      "baseline_sha256": "59665d3918458f89312459762f22dad22948217ccf38a4d438caa407aa3608b6",
+      "baseline_lines": 1549,
+      "reviewed_lines": "1-1549",
+      "symbols": ["ProjectedReadBudget", "ProjectedReadEvidence", "page accounting"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/src/segment/physical_policy_lab.rs",
+      "baseline_sha256": "d0f4f346c298797aa1e0693610686dd641397e78158291c7cc83b06874d2257e",
+      "baseline_lines": 1466,
+      "reviewed_lines": "1-1466",
+      "symbols": ["adaptive codec candidate", "cache simulator", "real corpus"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/segment.rs",
+      "baseline_sha256": "2a9dc4c219034decb1baef13d61a4cd71269dc4409b75cdb56f89b75ce2f8f1f",
+      "baseline_lines": 718,
+      "reviewed_lines": "1-718",
+      "symbols": ["v5 format vector", "authenticated corruption", "cache evidence"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/hybrid_segment.rs",
+      "baseline_sha256": "d54ad36b364d8f49f5c1f68f5d661680cf59abb9ff0466da8cbc74825aea03ae",
+      "baseline_lines": 1309,
+      "reviewed_lines": "1-1309",
+      "symbols": ["mixed-family model", "projected stream", "malformed segment corpus"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/tiered_io.rs",
+      "baseline_sha256": "d0e3d22635247d3d81ce62aff00c588596a2afe95bb399c18da895df28a47b58",
+      "baseline_lines": 119,
+      "reviewed_lines": "1-119",
+      "symbols": ["mmap ownership", "bounded I/O evidence"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/snapshot_memory.rs",
+      "baseline_sha256": "7148b26b61c1016f8f8e009c154f474ccf32beede0e25a3c31b2146d950386ef",
+      "baseline_lines": 146,
+      "reviewed_lines": "1-146",
+      "symbols": ["bounded reopen RSS", "page-cache residency"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/tests/snapshot_bundle.rs",
+      "baseline_sha256": "55600f4fd5b8459b7b4e2acf7faa718e0947a817a4fe573fa0b1f11ea44e9ba4",
+      "baseline_lines": 399,
+      "reviewed_lines": "1-399",
+      "symbols": ["snapshot format vector", "physical install", "corruption denial"]
+    },
+    {
+      "path": "crates/persistence/rrd-lsm/fuzz/fuzz_targets/segment_v5_open.rs",
+      "baseline_sha256": "2485eb415a2d4a297e066870b62bc3706ffd7a6d0137c4b9d0ea73f31d6cfc91",
+      "baseline_lines": 102,
+      "reviewed_lines": "1-102",
+      "symbols": ["bounded byte mutations", "accepted-segment read oracle"]
+    },
+    {
+      "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
+      "baseline_sha256": "c9111567add1c343244eab95b31d7f490156103406d928aa804384666ab30468",
+      "baseline_lines": 1834,
+      "reviewed_lines": "1-1834",
+      "symbols": ["alpha storage closure", "current segment identity"]
     },
     {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "baseline_sha256": "5235b12496868bb99e91d4122796cd955a9624f0a57ad6bbd52367bd512547ec",
-      "baseline_lines": 3919,
-      "reviewed_lines": "1-3919",
-      "symbols": ["C-06i integration journal", "evidence template"]
+      "baseline_sha256": "579b3bab7b7523cc8747fe394a1bb1ad90f766f9d60634eed302a6a999d6fa02",
+      "baseline_lines": 3945,
+      "reviewed_lines": "1-3945",
+      "symbols": ["C-06 implementation map", "package journal template", "C-06i history"]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
       "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
       "baseline_lines": 1841,
       "reviewed_lines": "1-1841",
-      "symbols": ["inventory generator", "check mode"]
+      "symbols": ["deterministic file inventory", "check mode"]
     }
   ],
   "implementation_changes": [
     {
-      "path": "crates/authority/rrd-engine/tests/workspace_architecture.rs",
-      "baseline_state": "present",
-      "symbols": ["alpha_storage_closure_has_one_required_physical_dependency_and_current_reader"],
-      "action": "Replace the stale segment-v4 constant expectation with exact assertions for segment format version 5, segment magic RRDSEG05, and index magic RRDIX005 while preserving every dependency, retired-reader, and vector-catalogue assertion.",
-      "failure_semantics": "The complete architecture suite fails if the current reader identity drifts, v4 is claimed current, or any existing closure invariant changes."
+      "path": "docs/roadmap/c06i-rrflowkv-adaptive-page-compression-engineering-plan.md",
+      "baseline_state": "absent",
+      "symbols": ["research verdict", "segment-v6 contract", "file-by-file implementation map"],
+      "action": "Create the cited implementation plan with exact format bytes, policy types, read/write flows, corruption/resource matrix, test fixtures, incremental sequence, commands, and deferred decisions.",
+      "failure_semantics": "The record is rejected if it calls a candidate production-ready without evidence, conflates Arrow/DataFusion with persistence, permits unbounded or unauthenticated decode, claims compressed buffers are zero-copy, or leaves runtime paths and tests ambiguous."
     },
     {
-      "path": "crates/persistence/rrd-lsm/src/io.rs",
+      "path": "docs/research/rrflowkv-rust-storage-engine-architecture-research.md",
       "baseline_state": "present",
-      "symbols": ["SegmentIoMode documentation"],
-      "action": "Change the single stale immutable-v4 documentation reference to immutable v5; alter no executable token.",
-      "failure_semantics": "Any executable, public API, policy, fallback, statistics, platform, or dependency change is outside scope and stops the package."
+      "symbols": ["C-06i adaptive page-compression decision"],
+      "action": "Add the primary-source and repository-evidence synthesis, including why adaptive LZ4 advances now and why Zstandard, Moka cache replacement, and value separation do not.",
+      "failure_semantics": "Research must distinguish measured fact, primary-source behavior, RRFlow inference, and unproven claim; it cannot redefine roadmap status."
+    },
+    {
+      "path": "docs/roadmap/README.md",
+      "baseline_state": "present",
+      "symbols": ["active C-06i record", "supporting-record table"],
+      "action": "Point roadmap discovery at the new adaptive-page-compression plan while retaining prior C-06i records as history.",
+      "failure_semantics": "The index must not create a second roadmap authority or mark C-06 complete."
+    },
+    {
+      "path": "docs/roadmap/c06i-rrflowkv-persisted-filter-integration-engineering-plan.md",
+      "baseline_state": "present",
+      "symbols": ["status", "successor"],
+      "action": "Close the completed persisted-filter record as history and link its separately planned compression successor without rewriting its evidence.",
+      "failure_semantics": "Historical evidence, clean revisions, test results, and remaining-gap statements must remain intact."
     }
   ],
   "evidence_changes": [
     {
-      "path": "docs/roadmap/c06i-rrflowkv-persisted-filter-integration-engineering-plan.md",
-      "action": "Record architecture identity closure and retain active C-06i ownership without claiming C-06 completion."
-    },
-    {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "action": "Close the persisted-filter journal through its evidence revision and append the exact segment-v5 identity closure record, commands, failures, commits, push, and remaining gaps."
+      "action": "Append the bounded research/plan journal with reviewed code, primary sources, decision rationale, exact future paths, validation, commits, push destination, and remaining gaps."
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
-      "action": "Regenerate deterministic inventory after the assertion, comment, and journal changes.",
+      "action": "Regenerate the deterministic repository inventory after adding the new supporting plan and journal.",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py"
     }
   ],
   "research": {
-    "decision": "not_required",
-    "reason": "Authenticated repository state is conclusive: format.rs owns version 5, RRDSEG05, and RRDIX005; the clean v5 fixture, package tests, and fixed-machine artifact already prove that identity. This package changes no algorithm, API, dependency, physical policy, or external behavior.",
-    "sources": []
+    "decision": "required",
+    "reason": "Compression changes authenticated durable bytes, mapped ownership, allocation behavior, cache charge, corruption handling, snapshots, and the future DataFusion source contract. The existing candidate screen supplies RRFlow measurements but not these production semantics.",
+    "sources": [
+      {
+        "title": "LZ4 block format, pinned dev revision 0774d055",
+        "url": "https://github.com/lz4/lz4/blob/0774d05537f9762f838f7ab541b7765f1a729cb5/doc/lz4_Block_format.md",
+        "retained_behavior": "Use independent LZ4 blocks only because RRFlow page descriptors already carry compressed size and an authenticated bounded logical size; require safe bounded decoding and fuzzing.",
+        "rejected_assumption": "A raw LZ4 block is self-framing, self-bounding, or safe to decode before validating out-of-band lengths."
+      },
+      {
+        "title": "lz4_flex 0.14.0 block implementation",
+        "url": "https://github.com/PSeitz/lz4_flex/tree/1bffdcbbf906a234b913937cb2f57c0245915038",
+        "retained_behavior": "Use caller-bounded block compression and decompress_into with safe encode, safe decode, and checked decode features.",
+        "rejected_assumption": "The size-prepended helper may control RRFlow allocation or unchecked/default feature selection is acceptable for persistent untrusted bytes."
+      },
+      {
+        "title": "Apache Arrow columnar format 25.0.1",
+        "url": "https://arrow.apache.org/docs/25.0/format/Columnar.html",
+        "retained_behavior": "Keep each Arrow buffer independently selectable as raw when compression has insufficient benefit, and preserve 64-byte alignment for decoded buffers.",
+        "rejected_assumption": "Compressed Arrow-compatible storage pages remain zero-copy or RRFlow raw LZ4 blocks are Arrow IPC compressed messages."
+      },
+      {
+        "title": "Apache Parquet page metadata and checksum contract",
+        "url": "https://github.com/apache/parquet-format/blob/bb22d0171b47000308e24209db79876b8dbe9566/src/main/thrift/parquet.thrift",
+        "retained_behavior": "Carry distinct compressed and uncompressed page lengths and authenticate serialized stored page bytes after compression.",
+        "rejected_assumption": "A file-level digest eliminates the need for independently diagnosable page integrity and bounded page metadata."
+      },
+      {
+        "title": "RocksDB compression guidance",
+        "url": "https://github.com/facebook/rocksdb/wiki/Compression",
+        "retained_behavior": "Use lightweight LZ4 for the common path, leave incompressible blocks raw, and reserve heavier Zstandard policy for measured colder levels.",
+        "rejected_assumption": "RRFlow may silently fall back to no compression when a configured codec is unavailable or should copy RocksDB's per-level option model."
+      },
+      {
+        "title": "RocksDB block-cache guidance",
+        "url": "https://github.com/facebook/rocksdb/wiki/Block-Cache",
+        "retained_behavior": "Charge decoded resident blocks, keep encoded bytes in the file/OS-cache domain, and qualify scan admission, pinning, and concurrency separately.",
+        "rejected_assumption": "A favorable segmented-LRU simulation proves a production cache replacement or cache capacity alone accounts for pinned iterator memory."
+      },
+      {
+        "title": "Apache DataFusion custom table-provider guide",
+        "url": "https://datafusion.apache.org/library-user-guide/custom-table-providers.html",
+        "retained_behavior": "Keep planning lightweight and perform selective RRFlow I/O/decode in the execution stream, with pushdown only where rrflowKV avoids work.",
+        "rejected_assumption": "DataFusion owns RRFlow persistence, transactions, page decoding, or work performed during TableProvider planning."
+      },
+      {
+        "title": "Apache DataFusion 55.0.0 MemoryPool contract",
+        "url": "https://docs.rs/datafusion/55.0.0/datafusion/execution/memory_pool/trait.MemoryPool.html",
+        "retained_behavior": "Retain separate rrflowKV source/decode/cache budgets because DataFusion does not automatically track DataSourceExec or flowing RecordBatch memory.",
+        "rejected_assumption": "Configuring a DataFusion MemoryPool automatically bounds decompression, page-cache residency, or source batches."
+      },
+      {
+        "title": "Moka concurrent cache behavior",
+        "url": "https://github.com/moka-rs/moka/tree/a616ec19e8d4ed938caf8b2c88090331d778d5da",
+        "retained_behavior": "Retain TinyLFU as a later comparative admission reference only.",
+        "rejected_assumption": "Best-effort weighted capacity and a general cache library satisfy rrflowKV's exact decoded-byte, pinned-lifetime, scan, and storage-evidence contract."
+      }
+    ]
   },
   "trace_resource_debug": {
     "runtime_trace": {
-      "decision": "preserve",
-      "reason": "No runtime expression or trace schema changes; existing persisted-filter count/byte and operation I/O evidence remains authoritative."
+      "decision": "add",
+      "reason": "The plan must bind future segment-write/open traces to policy identity and raw/compressed page counts/bytes, and future reads to physical, decoded, borrowed, allocated, copied, and decompressed counters."
     },
     "resource_evidence": {
-      "decision": "not_applicable",
-      "reason": "The only production-file edit is a comment and the test edit reads the same bounded source files it already inspected."
+      "decision": "add",
+      "reason": "The plan must reject decompression bombs before allocation, cap total logical page bytes, allocate exactly the authenticated logical length, and keep rrflowKV source/decode/cache accounting distinct from DataFusion MemoryPool accounting."
     },
     "debugging_evidence": {
       "decision": "add",
-      "reason": "The architecture oracle will assert all three current segment identity tokens and the complete 28-test suite must pass."
+      "reason": "The plan must enumerate codec/length/checksum corruption, threshold boundaries, raw-versus-compressed ownership, snapshot/reopen/compaction differential behavior, frozen vectors, fuzzing, and exact replay evidence."
     }
   },
   "first_failure_oracle": [
-    "At baseline, cargo test -p rrd-engine --test workspace_architecture --locked passes 27/28 and fails only because the storage-closure test expects SEGMENT_FORMAT_VERSION 4.",
-    "After the edit, the focused storage-closure test and complete 28-test architecture suite must pass without adding any v4 current-reader string to production source.",
-    "A scoped text search must find no immutable-v4 I/O comment or version-4 current-reader assertion in the two changed source files.",
-    "Workspace, documentation, inventory, version, generated-surface, formatting, and diff policies must remain green."
+    "At baseline there is no C-06i adaptive-page-compression engineering-plan file and the roadmap index names only the completed candidate screen plus persisted-filter slice.",
+    "The current segment decoder rejects every compression byte other than zero and every current page records equal physical/logical lengths; the package must describe that fact without modifying it.",
+    "The candidate artifact proves byte and CPU observations for one corpus but contains no production segment-v6, allocation, corruption, snapshot, or DataFusion handoff proof; the research must not promote it beyond that scope.",
+    "Documentation validation must reject duplicate authority, broken warp points, rewritten historical evidence, missing exact file paths, or any readiness/completion claim."
   ],
   "edit_sequence": [
-    "Commit this JSON alone as the direct child of clean evidence revision 8039c02 and validate a planning-only package.",
-    "Update the architecture oracle to exact v5 version, segment-magic, and index-magic assertions.",
-    "Change only the stale v4 word in the fully reviewed I/O documentation comment.",
-    "Update the C-06i plan and execution journal; regenerate inventory.",
-    "Run the focused oracle, complete architecture suite, workspace and repository policies, then review the complete diff.",
-    "Commit closure, resolve remote URLs and refs, and push normally only to development/main."
+    "Commit this active-change JSON alone as the direct child of clean revision 787c618 and validate the planning-only package.",
+    "Create the cited adaptive-page-compression engineering plan from the reviewed v5 code, tests, fixtures, evidence, and primary sources.",
+    "Add the research verdict, update roadmap discovery, and close the persisted-filter record as history without changing canonical gate status.",
+    "Append the package journal and regenerate the deterministic file plan.",
+    "Run documentation, knowledge, inventory, formatting, and diff policies; reread every changed file and inspect the complete diff.",
+    "Commit the research package, resolve remote URL/ref/revision, and push normally only to development/main.",
+    "Only after this package is clean, create and commit a separate machine plan for the production segment-v6 implementation."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "cargo test -p rrd-engine --test workspace_architecture alpha_storage_closure_has_one_required_physical_dependency_and_current_reader --locked -- --exact",
-    "cargo test -p rrd-engine --test workspace_architecture --locked",
-    "cargo check --workspace --all-targets --locked",
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/ci/check_workflow.py",
@@ -171,11 +367,11 @@
     "git diff --check"
   ],
   "stop_conditions": [
-    "A path is outside this plan, an existing path lacks complete baseline review, or the active plan changes beside implementation.",
-    "Any executable rrflowKV I/O or segment behavior, durable byte, public type, dependency, feature, trace, counter, fixture, or evidence JSON changes.",
-    "A compatibility string, v4 reader, alias, migration, fallback, skipped test, ignored failure, or weakened architecture assertion appears.",
-    "C-06, C-07, alpha, installed-binary readiness, DataFusion, recall, reasoning, Connectome, release readiness, or competitor performance is claimed complete.",
-    "Any push targets official origin, rewrites history, uses force, creates a tag/release, or lacks immediate remote-ref verification."
+    "Any runtime Rust, Cargo dependency, lockfile, durable byte, fixture, test behavior, generated API surface, product version, or roadmap checkbox changes in this research package.",
+    "Any existing planned path lacks complete baseline review or a changed path is absent from this plan.",
+    "The plan leaves codec identity, threshold arithmetic, logical-size bounds, checksum order, decode ownership, evidence counters, direct format replacement, or failure tests unresolved.",
+    "The plan calls compression zero-copy, makes DataFusion a storage authority, silently introduces Moka/Zstandard/value separation, or copies an upstream format/API.",
+    "A push targets official origin, rewrites history, uses force, creates a tag/release, or is not immediately verified against development/main."
   ],
-  "roadmap_status_change": "none; close only the segment-v5 identity mismatch left by the persisted-filter package. C-06 and POAM-002 remain open."
+  "roadmap_status_change": "none; this package makes the next C-06i production slice implementation-ready but does not implement it or complete C-06, F-01, F-05, J-04, POAM-002, or an alpha outcome."
 }
