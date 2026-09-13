@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "A-06-rrflow-1.0-roadmap-warp-refraction",
+  "package_id": "A-06-rrflow-1.0-roadmap-warp-refraction-v2",
   "status": "active",
   "package_kind": "structural-documentation-refactor",
   "baseline": {
-    "revision": "722a7d5b7438bdb96235bcd97c8caf9a7649017f",
-    "tree": "6e237aa63781ea25ab91790b03cf6dcbac00c2bd",
+    "revision": "dcb22b8ae1000e1f1f6c92c2509993f5fee902b3",
+    "tree": "d59be24ca1e654e8610b0c7aad0c0809c0fc916e",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -19,7 +19,7 @@
     "architecture_owner": "docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist"
   },
   "current_behavior": "The canonical RRFlow 1.0 roadmap is one 1,377-line Markdown record with 1,262 nonblank lines. Its objective/remediation, checklist, dependency spine, ten gate bodies, and accepted evidence share one file. Gate A alone spans 520 lines, Gate C spans 381 lines, and the absence of an evidence heading leaves lines 202 through 682 structurally nested beneath the unrelated Later knowledge-persistence sequence heading. Agents can address top-level anchors but cannot load one clean roadmap concern or evidence ledger by file.",
-  "target_behavior": "Keep docs/roadmap/rrflow-1.0.md as the sole canonical roadmap coordinate and turn its body into linked headings only. Move the current objective/remediation, checklist, dependency spine, Gate A through Gate J requirements, and accepted Gate A through Gate C evidence into exactly sixteen coordinated child records under docs/roadmap/rrflow-1.0/. Preserve the parent heading text as compatibility warp points, give every child one parent-owner link and stable coordinate, add explicit evidence headings where plain labels currently hide structure, adjust only links made relative by the one-directory move, and retain every roadmap statement, table row, checkbox, status, dependency, and evidence claim without semantic change.",
+  "target_behavior": "Keep docs/roadmap/rrflow-1.0.md as the sole canonical roadmap coordinate and turn its body into linked warp labels only. Move the current objective/remediation, checklist, dependency spine, Gate A through Gate J requirements, and accepted Gate A through Gate C evidence into exactly sixteen coordinated content chapters under docs/roadmap/rrflow-1.0/. Add the repository-required docs/roadmap/rrflow-1.0/README.md directory portal as a links-only owner index for those chapters. Preserve the parent heading text as compatibility warp points, retain the policy-required A-06, execution-map, and H-05a through H-05e link labels, give every child one parent-owner link and stable coordinate, add explicit evidence headings where plain labels currently hide structure, adjust only links made relative by the one-directory move, and retain every roadmap statement, table row, checkbox, status, dependency, and evidence claim without semantic change.",
   "unchanged_behavior": [
     "The root README remains the bootstrap identity and current-status owner; the RRFlow 1.0 roadmap parent remains the sole dependency-order and completion-evidence authority.",
     "All gate counts, checkbox states, active executable item D-01, evidence dates, revisions, digests, acceptance conditions, exit conditions, and release restrictions remain unchanged.",
@@ -35,9 +35,9 @@
   "reviewed_files": [
     {
       "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "de2553f90590b95b0184cbb2d8d717e5e5fbade451af6b9844793af6489bdeae",
-      "baseline_lines": 253,
-      "reviewed_lines": "1-253",
+      "baseline_sha256": "52c7bec1655e8ee91971ceb8c16e7813cc20c039fecdcff42bd35714bf6d91a3",
+      "baseline_lines": 250,
+      "reviewed_lines": "1-250",
       "symbols": ["machine change-plan schema", "planning-only ancestry", "declared path closure"]
     },
     {
@@ -69,6 +69,13 @@
       "symbols": ["canonical roadmap metadata", "linked compatibility headings"],
       "action": "Retain the canonical title, status, coordinate, and owner; replace the monolithic body with linked section, gate, and evidence headings in original dependency order.",
       "failure_semantics": "Stop if the parent retains duplicated roadmap prose, loses its canonical coordinate, changes heading text needed by inbound anchors, or stops identifying every child."
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/README.md",
+      "baseline_state": "absent",
+      "symbols": ["roadmap chapter owner index", "sixteen chapter links"],
+      "action": "Add the links-only directory portal required by deterministic knowledge classification; it identifies the canonical parent and links every coordinated content chapter exactly once without duplicating roadmap substance.",
+      "failure_semantics": "Stop if the portal omits or duplicates a child, claims release-plan authority, or contains a second roadmap body."
     },
     {
       "path": "docs/roadmap/rrflow-1.0/current-alpha-objective-and-remediation.md",
@@ -215,15 +222,16 @@
     }
   },
   "first_failure_oracle": [
-    "At the baseline, docs/roadmap/rrflow-1.0.md has 1,377 lines and contains substantive non-link content after its metadata; the approved link-only parent shape and all sixteen child paths are absent.",
+    "At the baseline, docs/roadmap/rrflow-1.0.md has 1,377 lines and contains substantive non-link content after its metadata; the approved link-only parent shape, sixteen content chapters, and required directory owner index are absent.",
     "The baseline heading hierarchy assigns Gate A evidence beginning at line 202 to the Later knowledge-persistence sequence because no intervening evidence heading exists.",
     "After refraction, every original substantive line must occur in exactly one declared child after only heading-level, chapter-metadata, parent-link, and necessary relative-link normalization; missing or duplicated roadmap meaning fails the package.",
-    "Every repository-local Markdown link must resolve, every coordinated child must have one inbound parent link, and the generated execution inventory must be byte-deterministic and current.",
+    "Every repository-local Markdown link must resolve, every coordinated child must be linked from the required directory owner index and canonical parent, and the generated execution inventory must be byte-deterministic and current.",
     "The parent must contain no roadmap body beyond required metadata and linked headings, while its original top-level heading anchors remain present as compatibility warp points."
   ],
   "edit_sequence": [
-    "Commit this machine-readable plan alone as the direct child of baseline 722a7d5b7438bdb96235bcd97c8caf9a7649017f, then require the canonical change-plan validator to accept the planning-only state.",
-    "Replace the canonical roadmap body with linked headings only, preserving its title, status, coordinate, owner, original heading text, dependency order, and direct links to exactly sixteen child records.",
+    "Commit this successor machine-readable plan alone as the direct child of baseline dcb22b8ae1000e1f1f6c92c2509993f5fee902b3 after the first documentation-policy run exposed the mandatory nested owner index and raw parent warp labels.",
+    "Replace the canonical roadmap body with linked warp labels only, preserving its title, status, coordinate, owner, original heading text, dependency order, policy-required A-06/execution-map/H-05 labels, and direct links to exactly sixteen content chapters.",
+    "Add one links-only directory README that owns classification of the sixteen chapters while explicitly delegating canonical release order and completion authority to the parent roadmap.",
     "Create the objective/remediation, checklist, dependency-spine, Gate A through Gate J, and Gate A through Gate C evidence chapters from the exact reviewed line bodies; add chapter metadata/parent links and repair only one-directory-relative references.",
     "Promote existing plain evidence labels to headings, move Gate A/B/C exit rules into their requirements chapters, and verify that no requirement, checkbox, status, count, claim, evidence datum, limitation, or release restriction changed.",
     "Append the bounded journal without refactoring the execution map, regenerate the declared file plan, reread every changed file, review the complete diff, and run the smallest structural checks before the full documentation/inventory checks.",
@@ -239,9 +247,9 @@
   ],
   "stop_conditions": [
     "Any original roadmap requirement, checkbox, gate count, dependency order, active-item statement, evidence claim, limitation, digest, revision, acceptance condition, or exit condition is missing, duplicated, or semantically changed.",
-    "The canonical parent loses its title, status, coordinate, owner, original heading anchors, ordered child coverage, or link-only body shape.",
+    "The canonical parent loses its title, status, coordinate, owner, original heading anchors, policy-required warp labels, ordered child coverage, or links-only body shape.",
     "A child claims independent roadmap, objective, POA&M, product-status, release, runtime, or lifecycle authority instead of identifying itself as a parent-owned roadmap chapter.",
-    "A repository-local link or fragment breaks, a moved relative link resolves outside its intended owner, a child is unindexed, or deterministic knowledge/inventory packaging fails.",
+    "A repository-local link or fragment breaks, a moved relative link resolves outside its intended owner, the required directory README is absent or substantive, a child is unindexed, or deterministic knowledge/inventory packaging fails.",
     "The execution map requires any change beyond the bounded evidence journal, or the POA&M, README, objectives, code, tests, configuration, version, or release state would need to change in this package.",
     "The refactor creates a compatibility copy, duplicate body, generated editable authority, external dependency, install/runtime fetch, hook, provider state, or parallel completion ledger.",
     "A subsequent POA&M refactor begins before this roadmap package is verified and committed as one coherent reviewable change."
