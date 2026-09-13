@@ -6,9 +6,9 @@ use crate::wal::replay_from;
 use crate::{
     recover_from, AppendReceipt, Checkpoint, Durability, Error, Manifest, ManifestStore, Memtable,
     ProjectedReadRequest, ProjectedReadResource, ProjectedReadStream, Result, Segment,
-    SegmentIoPolicy, SegmentIoStats, SegmentOpenEvidence, SegmentRowGroupBudget, SnapshotBundle,
-    SnapshotBundleFile, SnapshotExportBoundary, SnapshotSegment, VersionedValue, WalWriter,
-    WriteBatch,
+    SegmentCompressionPolicy, SegmentIoPolicy, SegmentIoStats, SegmentOpenEvidence,
+    SegmentRowGroupBudget, SnapshotBundle, SnapshotBundleFile, SnapshotExportBoundary,
+    SnapshotSegment, VersionedValue, WalWriter, WriteBatch,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -98,6 +98,7 @@ pub struct DatabaseOptions {
     pub page_cache_bytes: usize,
     pub segment_io: SegmentIoPolicy,
     pub segment_row_group_budget: SegmentRowGroupBudget,
+    pub segment_compression: SegmentCompressionPolicy,
     pub maintenance: MaintenancePolicy,
     pub compaction: CompactionPolicy,
 }
@@ -108,6 +109,7 @@ impl Default for DatabaseOptions {
             page_cache_bytes: crate::DEFAULT_PAGE_CACHE_BYTES,
             segment_io: SegmentIoPolicy::default(),
             segment_row_group_budget: SegmentRowGroupBudget::default(),
+            segment_compression: SegmentCompressionPolicy::default(),
             maintenance: MaintenancePolicy::default(),
             compaction: CompactionPolicy::default(),
         }
@@ -118,6 +120,7 @@ impl DatabaseOptions {
     fn validate(self) -> Result<Self> {
         self.segment_io.validate()?;
         self.segment_row_group_budget.validate()?;
+        self.segment_compression.validate()?;
         self.maintenance.validate()?;
         self.compaction.validate()?;
         Ok(self)
@@ -288,6 +291,7 @@ pub struct Database {
     segment_io: SharedIoContext,
     segment_open_evidence: SegmentOpenEvidence,
     segment_row_group_budget: SegmentRowGroupBudget,
+    segment_compression: SegmentCompressionPolicy,
     maintenance: MaintenancePolicy,
     compaction: CompactionPolicy,
     maintenance_stats: MaintenanceStats,
@@ -365,6 +369,7 @@ impl Database {
             segment_io,
             segment_open_evidence: SegmentOpenEvidence::default(),
             segment_row_group_budget: options.segment_row_group_budget,
+            segment_compression: options.segment_compression,
             maintenance: options.maintenance,
             compaction: options.compaction,
             maintenance_stats: MaintenanceStats::default(),
@@ -455,6 +460,11 @@ impl Database {
             wal_payload_bytes,
             row_group_target_bytes = options.segment_row_group_budget.target_bytes,
             row_group_max_rows = options.segment_row_group_budget.max_rows,
+            segment_compression = options.segment_compression.kind(),
+            compression_minimum_savings_basis_points =
+                options.segment_compression.minimum_savings_basis_points(),
+            compression_maximum_page_logical_bytes =
+                options.segment_compression.maximum_page_logical_bytes(),
             total_ms = total_started.elapsed().as_millis() as u64,
             "rrflowKV LSM open phases completed"
         );
@@ -469,6 +479,7 @@ impl Database {
             segment_io,
             segment_open_evidence,
             segment_row_group_budget: options.segment_row_group_budget,
+            segment_compression: options.segment_compression,
             maintenance: options.maintenance,
             compaction: options.compaction,
             maintenance_stats,
@@ -941,6 +952,7 @@ impl Database {
             &self.root.join(SEGMENT_DIRECTORY),
             &self.memtable,
             self.segment_row_group_budget,
+            self.segment_compression,
             Arc::clone(&self.page_cache),
             Arc::clone(&self.segment_io),
         )?;
@@ -1661,6 +1673,7 @@ impl Database {
             &self.root.join(SEGMENT_DIRECTORY),
             &table,
             self.segment_row_group_budget,
+            self.segment_compression,
             Arc::clone(&self.page_cache),
             Arc::clone(&self.segment_io),
         )?;
@@ -1911,6 +1924,10 @@ impl Database {
 
     pub fn segment_row_group_budget(&self) -> SegmentRowGroupBudget {
         self.segment_row_group_budget
+    }
+
+    pub fn segment_compression_policy(&self) -> SegmentCompressionPolicy {
+        self.segment_compression
     }
 
     pub fn l0_segment_count(&self) -> usize {

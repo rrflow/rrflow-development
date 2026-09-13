@@ -114,6 +114,13 @@ fn physical_snapshot_bundle_round_trips_installs_atomically_and_continues_writes
     assert_eq!(bundle.source_manifest.durable_sequence, 4);
     assert_eq!(bundle.source_manifest.wal_start_sequence, 5);
     assert!(!bundle.segments.is_empty());
+    assert!(
+        bundle
+            .segments
+            .iter()
+            .all(|segment| segment.bytes.starts_with(b"RRDSEG06")),
+        "the current snapshot bundle must carry only direct v6 segments"
+    );
     assert_eq!(
         source.export_snapshot_bundle(10).unwrap(),
         bundle,

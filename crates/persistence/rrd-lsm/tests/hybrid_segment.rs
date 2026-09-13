@@ -2,7 +2,8 @@ use rrd_lsm::{
     CompactionPolicy, Database, DatabaseOptions, Durability, Error, Manifest, ManifestStore,
     Memtable, Mutation, ProjectedReadBudget, ProjectedReadEvidence, ProjectedReadProjection,
     ProjectedReadRange, ProjectedReadRequest, ProjectedReadResource, RecoveredBatch, Segment,
-    SegmentIoMode, SegmentIoPolicy, SegmentRowGroupBudget, Snapshot, WriteBatch,
+    SegmentCompressionPolicy, SegmentIoMode, SegmentIoPolicy, SegmentRowGroupBudget, Snapshot,
+    WriteBatch,
 };
 use std::collections::BTreeMap;
 
@@ -169,7 +170,7 @@ fn row_group_budget(case: usize) -> SegmentRowGroupBudget {
     BUDGETS[case]
 }
 
-fn database_options(case: usize) -> DatabaseOptions {
+fn database_options(case: usize, segment_compression: SegmentCompressionPolicy) -> DatabaseOptions {
     DatabaseOptions {
         page_cache_bytes: 16 * 1024,
         segment_io: SegmentIoPolicy {
@@ -177,6 +178,7 @@ fn database_options(case: usize) -> DatabaseOptions {
             ..SegmentIoPolicy::default()
         },
         segment_row_group_budget: row_group_budget(case),
+        segment_compression,
         compaction: CompactionPolicy {
             l0_compaction_trigger: 2,
             max_input_segments: 64,
@@ -367,14 +369,25 @@ fn request(
 }
 
 #[test]
-fn generated_mixed_family_histories_match_model_across_reopen_and_compaction() {
+fn none_and_adaptive_lz4_match_the_independent_mvcc_model() {
     let directory = tempfile::tempdir().unwrap();
     let mutation_keys = mutation_keys();
     let verification_keys = verification_keys(&mutation_keys);
 
-    for (case, seed) in CASE_SEEDS.into_iter().enumerate() {
-        let root = directory.path().join(format!("case-{case}"));
-        let options = database_options(case);
+    let cases = [
+        ("none", SegmentCompressionPolicy::None),
+        ("adaptive", SegmentCompressionPolicy::default()),
+    ]
+    .into_iter()
+    .flat_map(|(policy_name, policy)| {
+        CASE_SEEDS
+            .into_iter()
+            .enumerate()
+            .map(move |(case, seed)| (policy_name, policy, case, seed))
+    });
+    for (policy_name, policy, case, seed) in cases {
+        let root = directory.path().join(format!("{policy_name}-case-{case}"));
+        let options = database_options(case, policy);
         let mut database = Database::create_with_options(&root, options).unwrap();
         let mut generator = Generator::new(seed);
         let mut model = Model::default();
@@ -452,6 +465,7 @@ fn generated_mixed_family_histories_match_model_across_reopen_and_compaction() {
                 "{before_reopen}: segment {} lost its authenticated budget",
                 descriptor.id
             );
+            assert_eq!(segment.compression_policy(), policy);
         }
 
         drop(database);
@@ -466,6 +480,20 @@ fn generated_mixed_family_histories_match_model_across_reopen_and_compaction() {
             open_io.read_operations, 0,
             "seed {seed:#018x}: manifest open unexpectedly performed page I/O"
         );
+        let open_evidence = database.segment_open_evidence();
+        match policy {
+            SegmentCompressionPolicy::None => {
+                assert_eq!(open_evidence.compressed_page_count, 0);
+                assert_eq!(
+                    open_evidence.stored_page_bytes,
+                    open_evidence.logical_page_bytes
+                );
+            }
+            SegmentCompressionPolicy::AdaptiveLz4 { .. } => {
+                assert!(open_evidence.compressed_page_count > 0);
+                assert!(open_evidence.stored_page_bytes < open_evidence.logical_page_bytes);
+            }
+        }
         let after_reopen = format!(
             "seed {seed:#018x}, operation {operation}, budget {:?}, after reopen",
             options.segment_row_group_budget
@@ -521,6 +549,7 @@ fn generated_mixed_family_histories_match_model_across_reopen_and_compaction() {
                 Segment::open(&root.join("segments").join(format!("{}.seg", descriptor.id)))
                     .unwrap();
             assert_eq!(segment.row_group_budget(), options.segment_row_group_budget);
+            assert_eq!(segment.compression_policy(), policy);
         }
 
         drop(database);
@@ -1296,8 +1325,8 @@ fn deterministic_malformed_segment_bytes_are_rejected_without_panics() {
             .map(|_| generator.next_u64() as u8)
             .collect::<Vec<_>>();
         if case % 3 == 0 {
-            bytes[..8].copy_from_slice(b"RRDSEG05");
-            bytes[8..10].copy_from_slice(&5u16.to_le_bytes());
+            bytes[..8].copy_from_slice(b"RRDSEG06");
+            bytes[8..10].copy_from_slice(&6u16.to_le_bytes());
         }
         let path = malformed_root.join(format!("generated-{case:02}.seg"));
         std::fs::write(&path, bytes).unwrap();

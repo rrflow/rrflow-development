@@ -25,9 +25,11 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 pub use self::format::{
-    SegmentRowGroupBudget, DEFAULT_ROW_GROUP_MAX_ROWS, DEFAULT_ROW_GROUP_TARGET_BYTES,
-    SEGMENT_FORMAT_VERSION, SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST,
-    SEGMENT_SCHEMA_DIGEST,
+    SegmentCompressionPolicy, SegmentRowGroupBudget, COMPRESSION_BASIS_POINTS,
+    DEFAULT_COMPRESSION_MAXIMUM_PAGE_LOGICAL_BYTES,
+    DEFAULT_COMPRESSION_MINIMUM_SAVINGS_BASIS_POINTS, DEFAULT_ROW_GROUP_MAX_ROWS,
+    DEFAULT_ROW_GROUP_TARGET_BYTES, DEFAULT_SEGMENT_COMPRESSION_POLICY, SEGMENT_FORMAT_VERSION,
+    SEGMENT_KEY_CODEC_DIGEST, SEGMENT_PAGE_FORMAT_DIGEST, SEGMENT_SCHEMA_DIGEST,
 };
 #[cfg(feature = "physical-policy-lab")]
 pub use self::physical_policy_lab::{
@@ -47,7 +49,7 @@ pub use self::reader::{
 };
 
 pub const DEFAULT_PAGE_CACHE_BYTES: usize = 4 * 1024 * 1024;
-pub const SEGMENT_OPEN_EVIDENCE_VERSION: u16 = 2;
+pub const SEGMENT_OPEN_EVIDENCE_VERSION: u16 = 3;
 const COPY_BUFFER_BYTES: usize = 64 * 1024;
 static TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
 static CACHE_ID: AtomicU64 = AtomicU64::new(1);
@@ -89,6 +91,12 @@ pub struct SegmentOpenEvidence {
     pub metadata_bytes: u64,
     pub persisted_filter_count: u64,
     pub persisted_filter_bytes: u64,
+    pub none_policy_segment_count: u64,
+    pub adaptive_lz4_policy_segment_count: u64,
+    pub raw_page_count: u64,
+    pub compressed_page_count: u64,
+    pub stored_page_bytes: u64,
+    pub logical_page_bytes: u64,
     pub semantic_page_operations: u64,
     pub semantic_page_bytes: u64,
 }
@@ -107,6 +115,12 @@ impl Default for SegmentOpenEvidence {
             metadata_bytes: 0,
             persisted_filter_count: 0,
             persisted_filter_bytes: 0,
+            none_policy_segment_count: 0,
+            adaptive_lz4_policy_segment_count: 0,
+            raw_page_count: 0,
+            compressed_page_count: 0,
+            stored_page_bytes: 0,
+            logical_page_bytes: 0,
             semantic_page_operations: 0,
             semantic_page_bytes: 0,
         }
@@ -156,6 +170,57 @@ impl SegmentOpenEvidence {
                     .checked_add(group.filter.byte_len() as u64)
                     .ok_or_else(|| Error::InvalidSegment("persisted filter bytes overflow".into()))
             })?;
+        let (none_policy_segment_count, adaptive_lz4_policy_segment_count) =
+            match metadata.compression_policy {
+                SegmentCompressionPolicy::None => (1, 0),
+                SegmentCompressionPolicy::AdaptiveLz4 { .. } => (0, 1),
+            };
+        let (raw_page_count, compressed_page_count, stored_page_bytes, logical_page_bytes) =
+            metadata
+                .row_groups
+                .iter()
+                .flat_map(|group| &group.pages)
+                .try_fold(
+                    (0u64, 0u64, 0u64, 0u64),
+                    |(raw, compressed, stored, logical), page| {
+                        let (raw_delta, compressed_delta) = match page.compression {
+                            format::PageCompression::None => (1, 0),
+                            format::PageCompression::Lz4Block => (0, 1),
+                        };
+                        Ok::<_, Error>((
+                            raw.checked_add(raw_delta).ok_or_else(|| {
+                                Error::InvalidSegment("segment-open raw page count overflow".into())
+                            })?,
+                            compressed.checked_add(compressed_delta).ok_or_else(|| {
+                                Error::InvalidSegment(
+                                    "segment-open compressed page count overflow".into(),
+                                )
+                            })?,
+                            stored
+                                .checked_add(u64::try_from(page.physical_bytes).map_err(|_| {
+                                    Error::InvalidSegment(
+                                        "segment-open stored page bytes exceed u64".into(),
+                                    )
+                                })?)
+                                .ok_or_else(|| {
+                                    Error::InvalidSegment(
+                                        "segment-open stored page bytes overflow".into(),
+                                    )
+                                })?,
+                            logical
+                                .checked_add(u64::try_from(page.logical_bytes).map_err(|_| {
+                                    Error::InvalidSegment(
+                                        "segment-open logical page bytes exceed u64".into(),
+                                    )
+                                })?)
+                                .ok_or_else(|| {
+                                    Error::InvalidSegment(
+                                        "segment-open logical page bytes overflow".into(),
+                                    )
+                                })?,
+                        ))
+                    },
+                )?;
         Ok(Self {
             contract_version: SEGMENT_OPEN_EVIDENCE_VERSION,
             segment_count: 1,
@@ -168,6 +233,12 @@ impl SegmentOpenEvidence {
             metadata_bytes,
             persisted_filter_count,
             persisted_filter_bytes,
+            none_policy_segment_count,
+            adaptive_lz4_policy_segment_count,
+            raw_page_count,
+            compressed_page_count,
+            stored_page_bytes,
+            logical_page_bytes,
             semantic_page_operations,
             semantic_page_bytes,
         })
@@ -232,6 +303,36 @@ impl SegmentOpenEvidence {
                 &mut self.persisted_filter_bytes,
                 other.persisted_filter_bytes,
                 "persisted filter bytes",
+            ),
+            (
+                &mut self.none_policy_segment_count,
+                other.none_policy_segment_count,
+                "none-policy segment count",
+            ),
+            (
+                &mut self.adaptive_lz4_policy_segment_count,
+                other.adaptive_lz4_policy_segment_count,
+                "adaptive-LZ4 segment count",
+            ),
+            (
+                &mut self.raw_page_count,
+                other.raw_page_count,
+                "raw page count",
+            ),
+            (
+                &mut self.compressed_page_count,
+                other.compressed_page_count,
+                "compressed page count",
+            ),
+            (
+                &mut self.stored_page_bytes,
+                other.stored_page_bytes,
+                "stored page bytes",
+            ),
+            (
+                &mut self.logical_page_bytes,
+                other.logical_page_bytes,
+                "logical page bytes",
             ),
             (
                 &mut self.semantic_page_operations,
@@ -357,6 +458,15 @@ struct LoadedPage {
     borrowed: bool,
     allocated_bytes: usize,
     copied_bytes: usize,
+    decompressed_bytes: usize,
+    actual_io: Option<SelectedIo>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct PageReadContext {
+    raw_borrowed: bool,
+    source_allocated_bytes: usize,
+    raw_copied_bytes: usize,
     actual_io: Option<SelectedIo>,
 }
 
@@ -383,6 +493,7 @@ pub(super) struct PageLoadEvidence {
 pub struct Segment {
     pub descriptor: SegmentDescriptor,
     row_group_budget: SegmentRowGroupBudget,
+    compression_policy: SegmentCompressionPolicy,
     source: PageSource,
     row_groups: Vec<RowGroupDescriptor>,
     cache: SharedPageCache,
@@ -396,6 +507,7 @@ impl fmt::Debug for Segment {
             .debug_struct("Segment")
             .field("descriptor", &self.descriptor)
             .field("row_group_budget", &self.row_group_budget)
+            .field("compression_policy", &self.compression_policy)
             .field("row_group_count", &self.row_group_count())
             .finish()
     }
@@ -442,10 +554,19 @@ pub(crate) struct SegmentRecordCursor<'a> {
 
 impl Segment {
     pub fn write_from_memtable(directory: &Path, table: &Memtable) -> Result<(Self, PathBuf)> {
+        Self::write_from_memtable_with_policy(directory, table, DEFAULT_SEGMENT_COMPRESSION_POLICY)
+    }
+
+    pub fn write_from_memtable_with_policy(
+        directory: &Path,
+        table: &Memtable,
+        compression_policy: SegmentCompressionPolicy,
+    ) -> Result<(Self, PathBuf)> {
         Self::write_from_memtable_with_cache(
             directory,
             table,
             SegmentRowGroupBudget::default(),
+            compression_policy,
             new_page_cache(DEFAULT_PAGE_CACHE_BYTES),
             IoContext::new(SegmentIoPolicy::default())?,
         )
@@ -455,10 +576,12 @@ impl Segment {
         directory: &Path,
         table: &Memtable,
         row_group_budget: SegmentRowGroupBudget,
+        compression_policy: SegmentCompressionPolicy,
         cache: SharedPageCache,
         io: SharedIoContext,
     ) -> Result<(Self, PathBuf)> {
-        let encoded = encode(table, row_group_budget)?;
+        let encoded = encode(table, row_group_budget, compression_policy)?;
+        let write_evidence = encoded.evidence;
         let path = directory.join(format!("{}.seg", encoded.checksum));
         std::fs::create_dir_all(directory)?;
         if path.exists() {
@@ -466,6 +589,22 @@ impl Segment {
             if segment.descriptor.id != encoded.checksum {
                 return invalid("existing content-addressed segment has another identity");
             }
+            tracing::debug!(
+                target: "rrd_lsm::segment_write",
+                compression_policy = compression_policy.kind(),
+                compression_minimum_savings_basis_points =
+                    compression_policy.minimum_savings_basis_points(),
+                compression_maximum_page_logical_bytes =
+                    compression_policy.maximum_page_logical_bytes(),
+                raw_page_count = write_evidence.raw_page_count,
+                compressed_page_count = write_evidence.compressed_page_count,
+                stored_page_bytes = write_evidence.stored_page_bytes,
+                logical_page_bytes = write_evidence.logical_page_bytes,
+                compression_scratch_high_water_bytes =
+                    write_evidence.compression_scratch_high_water_bytes,
+                deduplicated = true,
+                "immutable v6 segment output resolved"
+            );
             return Ok((segment, path));
         }
         let temporary = directory.join(format!(
@@ -486,7 +625,24 @@ impl Segment {
             let _ = std::fs::remove_file(&temporary);
             return Err(Error::Io(error));
         }
-        Ok((Self::open_with_cache_and_io(&path, cache, io)?, path))
+        let segment = Self::open_with_cache_and_io(&path, cache, io)?;
+        tracing::debug!(
+            target: "rrd_lsm::segment_write",
+            compression_policy = compression_policy.kind(),
+            compression_minimum_savings_basis_points =
+                compression_policy.minimum_savings_basis_points(),
+            compression_maximum_page_logical_bytes =
+                compression_policy.maximum_page_logical_bytes(),
+            raw_page_count = write_evidence.raw_page_count,
+            compressed_page_count = write_evidence.compressed_page_count,
+            stored_page_bytes = write_evidence.stored_page_bytes,
+            logical_page_bytes = write_evidence.logical_page_bytes,
+            compression_scratch_high_water_bytes =
+                write_evidence.compression_scratch_high_water_bytes,
+            deduplicated = false,
+            "immutable v6 segment output published"
+        );
+        Ok((segment, path))
     }
 
     pub fn open(path: &Path) -> Result<Self> {
@@ -526,13 +682,24 @@ impl Segment {
             row_group_count,
             row_group_target_bytes = row_group_budget.target_bytes,
             row_group_max_rows = row_group_budget.max_rows,
+            compression_policy = segment.compression_policy.kind(),
+            compression_minimum_savings_basis_points = segment
+                .compression_policy
+                .minimum_savings_basis_points(),
+            compression_maximum_page_logical_bytes = segment
+                .compression_policy
+                .maximum_page_logical_bytes(),
             persisted_filter_count = segment.open_evidence.persisted_filter_count,
             persisted_filter_bytes = segment.open_evidence.persisted_filter_bytes,
+            raw_page_count = segment.open_evidence.raw_page_count,
+            compressed_page_count = segment.open_evidence.compressed_page_count,
+            stored_page_bytes = segment.open_evidence.stored_page_bytes,
+            logical_page_bytes = segment.open_evidence.logical_page_bytes,
             verify_ms,
             metadata_ms,
             source_ms,
             total_ms = total_started.elapsed().as_millis() as u64,
-            "immutable v5 columnar segment open phases completed"
+            "immutable v6 columnar segment open phases completed"
         );
         Ok(segment)
     }
@@ -558,7 +725,7 @@ impl Segment {
         let mut segment = build_segment(metadata, source, cache, open_evidence)?;
         segment.descriptor.level = expected.level;
         if &segment.descriptor != expected {
-            return invalid("v5 segment differs from its manifest descriptor");
+            return invalid("v6 segment differs from its manifest descriptor");
         }
         Ok(segment)
     }
@@ -581,7 +748,7 @@ impl Segment {
         let content_end = bytes
             .len()
             .checked_sub(FOOTER_BYTES)
-            .ok_or_else(|| Error::InvalidSegment("v5 snapshot footer underflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v6 snapshot footer underflow".into()))?;
         let footer = std::str::from_utf8(&bytes[content_end..])
             .map_err(|_| Error::InvalidSegment("segment footer is not ASCII".into()))?;
         let checksum = sha256_hex(&bytes[..content_end]);
@@ -751,6 +918,13 @@ impl Segment {
     /// budget for future flushes changes.
     pub fn row_group_budget(&self) -> SegmentRowGroupBudget {
         self.row_group_budget
+    }
+
+    /// Returns the authenticated physical writer policy carried by this
+    /// immutable segment. It describes durable bytes, not current process
+    /// configuration for future outputs.
+    pub fn compression_policy(&self) -> SegmentCompressionPolicy {
+        self.compression_policy
     }
 
     pub(crate) fn visible_from(
@@ -948,7 +1122,7 @@ impl Segment {
         let ordinal = row_group
             .checked_mul(format::PAGES_PER_ROW_GROUP)
             .and_then(|value| value.checked_add(kind as usize - 1))
-            .ok_or_else(|| Error::InvalidSegment("v5 page cache ordinal overflow".into()))?;
+            .ok_or_else(|| Error::InvalidSegment("v6 page cache ordinal overflow".into()))?;
         let key = (self.cache_id, ordinal);
         {
             let mut cache = self
@@ -993,7 +1167,7 @@ impl Segment {
                 0
             },
             decoded_bytes: descriptor.logical_bytes as u64,
-            decompressed_bytes: 0,
+            decompressed_bytes: loaded.decompressed_bytes as u64,
             allocated_bytes: loaded.allocated_bytes as u64,
             copied_bytes: loaded.copied_bytes as u64,
             ..PageLoadEvidence::default()
@@ -1016,6 +1190,12 @@ impl Segment {
         cache.bytes_copied = cache
             .bytes_copied
             .saturating_add(loaded.copied_bytes as u64);
+        cache.bytes_decompressed = cache
+            .bytes_decompressed
+            .checked_add(loaded.decompressed_bytes as u64)
+            .ok_or_else(|| {
+                Error::InvalidSegment("page-cache decompression evidence overflow".into())
+            })?;
         if loaded.borrowed {
             cache.bytes_borrowed = cache
                 .bytes_borrowed
@@ -1122,13 +1302,13 @@ impl Segment {
                                 || (key == prior_key.as_slice() && sequence <= *prior_sequence)
                         })
                 {
-                    return invalid("v5 spine is not in canonical key/sequence order");
+                    return invalid("v6 spine is not in canonical key/sequence order");
                 }
                 previous = Some((key.to_vec(), sequence));
                 if previous_group_key.as_deref() != Some(key) {
                     filter.insert(key);
                     unique_key_count = unique_key_count.checked_add(1).ok_or_else(|| {
-                        Error::InvalidSegment("v5 unique-key validation count overflow".into())
+                        Error::InvalidSegment("v6 unique-key validation count overflow".into())
                     })?;
                     previous_group_key = Some(key.to_vec());
                 }
@@ -1161,20 +1341,20 @@ impl Segment {
                 || descriptor.page(PageKind::ValueOffsets).statistic_min != value_min
                 || descriptor.page(PageKind::ValueOffsets).statistic_max != value_max
             {
-                return invalid("v5 page statistics or row-group bounds disagree with data");
+                return invalid("v6 page statistics or row-group bounds disagree with data");
             }
             if unique_key_count != descriptor.unique_key_count || filter != descriptor.filter {
-                return invalid("v5 persisted row-group filter disagrees with decoded keys");
+                return invalid("v6 persisted row-group filter disagrees with decoded keys");
             }
             observed_rows = observed_rows
                 .checked_add(u64::from(descriptor.row_count))
-                .ok_or_else(|| Error::InvalidSegment("v5 observed row count overflow".into()))?;
+                .ok_or_else(|| Error::InvalidSegment("v6 observed row count overflow".into()))?;
         }
         if observed_rows != self.descriptor.entries
             || observed_minimum != self.descriptor.minimum_sequence
             || observed_maximum != self.descriptor.maximum_sequence
         {
-            return invalid("v5 header counts or sequence range disagree with pages");
+            return invalid("v6 header counts or sequence range disagree with pages");
         }
         Ok(())
     }
@@ -1265,9 +1445,11 @@ fn build_segment(
     cache: SharedPageCache,
     open_evidence: SegmentOpenEvidence,
 ) -> Result<Segment> {
+    let compression_policy = metadata.compression_policy;
     Ok(Segment {
         descriptor: metadata.descriptor,
         row_group_budget: metadata.row_group_budget,
+        compression_policy,
         source,
         row_groups: metadata.row_groups,
         cache,
@@ -1325,11 +1507,11 @@ fn open_page_source(file: File, io: SharedIoContext) -> Result<PageSource> {
 
 fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedPage> {
     let start = usize::try_from(descriptor.offset)
-        .map_err(|_| Error::InvalidSegment("v5 page offset exceeds usize".into()))?;
+        .map_err(|_| Error::InvalidSegment("v6 page offset exceeds usize".into()))?;
     let end = start
         .checked_add(descriptor.physical_bytes)
-        .ok_or_else(|| Error::InvalidSegment("v5 page range overflow".into()))?;
-    let (buffer, borrowed, allocated_bytes, copied_bytes, actual_io) = match source {
+        .ok_or_else(|| Error::InvalidSegment("v6 page range overflow".into()))?;
+    match source {
         PageSource::File { file, selected, io } => {
             let mut bytes = MutableBuffer::new(descriptor.physical_bytes);
             bytes.resize(descriptor.physical_bytes, 0);
@@ -1337,41 +1519,121 @@ fn read_page(source: &PageSource, descriptor: &PageDescriptor) -> Result<LoadedP
                 io.read_exact_at(*selected, file, descriptor.offset, bytes.as_slice_mut())?;
             let buffer = Buffer::from(bytes);
             let allocated = buffer.capacity();
-            (buffer, false, allocated, 0, Some(actual_io))
+            verify_stored_page(buffer.as_slice(), descriptor)?;
+            finish_page(
+                buffer.as_slice(),
+                descriptor,
+                Some(buffer.clone()),
+                PageReadContext {
+                    source_allocated_bytes: allocated,
+                    actual_io: Some(actual_io),
+                    ..PageReadContext::default()
+                },
+            )
         }
         PageSource::Mapped { bytes, io } => {
             let slice = bytes
                 .get(start..end)
-                .ok_or_else(|| Error::InvalidSegment("v5 mapped page range is absent".into()))?;
+                .ok_or_else(|| Error::InvalidSegment("v6 mapped page range is absent".into()))?;
             io.record_read(SelectedIo::Mmap, slice.len());
-            (
-                borrow_mmap(bytes, start, slice.len())?,
-                true,
-                0,
-                0,
-                Some(SelectedIo::Mmap),
+            verify_stored_page(slice, descriptor)?;
+            let raw = if descriptor.compression == format::PageCompression::None {
+                Some(borrow_mmap(bytes, start, slice.len())?)
+            } else {
+                None
+            };
+            finish_page(
+                slice,
+                descriptor,
+                raw,
+                PageReadContext {
+                    raw_borrowed: true,
+                    actual_io: Some(SelectedIo::Mmap),
+                    ..PageReadContext::default()
+                },
             )
         }
         PageSource::Bytes(bytes) => {
             let slice = bytes
                 .get(start..end)
-                .ok_or_else(|| Error::InvalidSegment("v5 snapshot page range is absent".into()))?;
-            let buffer = Buffer::from(slice);
-            let allocated = buffer.capacity();
-            (buffer, false, allocated, slice.len(), None)
+                .ok_or_else(|| Error::InvalidSegment("v6 snapshot page range is absent".into()))?;
+            verify_stored_page(slice, descriptor)?;
+            if descriptor.compression == format::PageCompression::None {
+                let buffer = Buffer::from(slice);
+                let allocated = buffer.capacity();
+                finish_page(
+                    buffer.as_slice(),
+                    descriptor,
+                    Some(buffer.clone()),
+                    PageReadContext {
+                        source_allocated_bytes: allocated,
+                        raw_copied_bytes: slice.len(),
+                        ..PageReadContext::default()
+                    },
+                )
+            } else {
+                finish_page(slice, descriptor, None, PageReadContext::default())
+            }
         }
-    };
-    if ring::digest::digest(&ring::digest::SHA256, buffer.as_slice()).as_ref() != descriptor.digest
-    {
-        return invalid("v5 page checksum does not match");
     }
-    Ok(LoadedPage {
-        buffer,
-        borrowed,
-        allocated_bytes,
-        copied_bytes,
-        actual_io,
-    })
+}
+
+fn verify_stored_page(stored: &[u8], descriptor: &PageDescriptor) -> Result<()> {
+    if ring::digest::digest(&ring::digest::SHA256, stored).as_ref() != descriptor.digest {
+        return invalid("v6 stored-page checksum does not match");
+    }
+    Ok(())
+}
+
+fn finish_page(
+    stored: &[u8],
+    descriptor: &PageDescriptor,
+    raw_buffer: Option<Buffer>,
+    context: PageReadContext,
+) -> Result<LoadedPage> {
+    match descriptor.compression {
+        format::PageCompression::None => {
+            let buffer = raw_buffer
+                .ok_or_else(|| Error::InvalidSegment("v6 raw page has no source buffer".into()))?;
+            Ok(LoadedPage {
+                buffer,
+                borrowed: context.raw_borrowed,
+                allocated_bytes: context.source_allocated_bytes,
+                copied_bytes: context.raw_copied_bytes,
+                decompressed_bytes: 0,
+                actual_io: context.actual_io,
+            })
+        }
+        format::PageCompression::Lz4Block => {
+            let mut decoded = MutableBuffer::new(descriptor.logical_bytes);
+            decoded.resize(descriptor.logical_bytes, 0);
+            let decoded_bytes = lz4_flex::block::decompress_into(stored, decoded.as_slice_mut())
+                .map_err(|error| {
+                    Error::InvalidSegment(format!("v6 LZ4 page decode failed: {error}"))
+                })?;
+            if decoded_bytes != descriptor.logical_bytes {
+                return invalid(format!(
+                    "v6 LZ4 page decoded {decoded_bytes} bytes, expected {}",
+                    descriptor.logical_bytes
+                ));
+            }
+            let buffer = Buffer::from(decoded);
+            let allocated_bytes = context
+                .source_allocated_bytes
+                .checked_add(buffer.capacity())
+                .ok_or_else(|| {
+                    Error::InvalidSegment("v6 page allocation evidence overflow".into())
+                })?;
+            Ok(LoadedPage {
+                buffer,
+                borrowed: false,
+                allocated_bytes,
+                copied_bytes: 0,
+                decompressed_bytes: descriptor.logical_bytes,
+                actual_io: context.actual_io,
+            })
+        }
+    }
 }
 
 fn borrow_mmap(bytes: &Arc<Mmap>, start: usize, length: usize) -> Result<Buffer> {
@@ -1380,7 +1642,7 @@ fn borrow_mmap(bytes: &Arc<Mmap>, start: usize, length: usize) -> Result<Buffer>
     }
     let pointer = unsafe { bytes.as_ptr().add(start) as *mut u8 };
     let pointer = NonNull::new(pointer)
-        .ok_or_else(|| Error::InvalidSegment("v5 mapped page has a null pointer".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v6 mapped page has a null pointer".into()))?;
     let owner: Arc<dyn Allocation> = Arc::clone(bytes) as Arc<dyn Allocation>;
     Ok(unsafe { Buffer::from_custom_allocation(pointer, length, owner) })
 }
@@ -1410,13 +1672,13 @@ fn key_at(spine: &KeySpine, row: usize) -> Result<&[u8]> {
 fn sequence_at(spine: &KeySpine, row: usize) -> Result<u64> {
     let offset = row
         .checked_mul(8)
-        .ok_or_else(|| Error::InvalidSegment("v5 sequence offset overflow".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v6 sequence offset overflow".into()))?;
     let bytes = spine
         .sequences
         .buffer
         .as_slice()
         .get(offset..offset + 8)
-        .ok_or_else(|| Error::InvalidSegment("v5 sequence row is absent".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v6 sequence row is absent".into()))?;
     Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
 }
 
@@ -1445,7 +1707,7 @@ fn value_from_columns(columns: &LoadedValueColumns, row: usize) -> Result<Option
 fn valid_at(validity: &[u8], row: usize) -> Result<bool> {
     let byte = validity
         .get(row / 8)
-        .ok_or_else(|| Error::InvalidSegment("v5 validity row is absent".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v6 validity row is absent".into()))?;
     Ok(byte & (1 << (row % 8)) != 0)
 }
 
@@ -1453,7 +1715,7 @@ fn binary_at<'a>(offsets: &[u8], data: &'a [u8], row: usize) -> Result<&'a [u8]>
     let start = offset_at(offsets, row)?;
     let end = offset_at(offsets, row + 1)?;
     if start > end || end > data.len() {
-        return invalid("v5 Arrow binary offsets are not monotonic or in bounds");
+        return invalid("v6 Arrow binary offsets are not monotonic or in bounds");
     }
     Ok(&data[start..end])
 }
@@ -1461,13 +1723,13 @@ fn binary_at<'a>(offsets: &[u8], data: &'a [u8], row: usize) -> Result<&'a [u8]>
 fn offset_at(offsets: &[u8], index: usize) -> Result<usize> {
     let offset = index
         .checked_mul(8)
-        .ok_or_else(|| Error::InvalidSegment("v5 Arrow offset index overflow".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v6 Arrow offset index overflow".into()))?;
     let bytes = offsets
         .get(offset..offset + 8)
-        .ok_or_else(|| Error::InvalidSegment("v5 Arrow offset is absent".into()))?;
+        .ok_or_else(|| Error::InvalidSegment("v6 Arrow offset is absent".into()))?;
     let value = i64::from_le_bytes(bytes.try_into().unwrap());
     usize::try_from(value)
-        .map_err(|_| Error::InvalidSegment("v5 Arrow offset is negative or too large".into()))
+        .map_err(|_| Error::InvalidSegment("v6 Arrow offset is negative or too large".into()))
 }
 
 fn validate_offsets(
@@ -1478,7 +1740,7 @@ fn validate_offsets(
     allow_empty: bool,
 ) -> Result<()> {
     if offsets.len() != (rows + 1).saturating_mul(8) || offset_at(offsets, 0)? != 0 {
-        return invalid("v5 Arrow binary offset page has the wrong shape");
+        return invalid("v6 Arrow binary offset page has the wrong shape");
     }
     for row in 0..rows {
         let start = offset_at(offsets, row)?;
@@ -1488,22 +1750,22 @@ fn validate_offsets(
             || end - start > maximum_item_bytes
             || (!allow_empty && start == end)
         {
-            return invalid("v5 Arrow binary offsets violate item bounds");
+            return invalid("v6 Arrow binary offsets violate item bounds");
         }
     }
     if offset_at(offsets, rows)? != data.len() {
-        return invalid("v5 Arrow binary offsets do not terminate at the data length");
+        return invalid("v6 Arrow binary offsets do not terminate at the data length");
     }
     Ok(())
 }
 
 fn validate_validity(validity: &[u8], rows: usize) -> Result<()> {
     if validity.len() != rows.div_ceil(8) {
-        return invalid("v5 Arrow validity bitmap has the wrong length");
+        return invalid("v6 Arrow validity bitmap has the wrong length");
     }
     let used = rows % 8;
     if used != 0 && validity.last().is_some_and(|byte| byte >> used != 0) {
-        return invalid("v5 Arrow validity bitmap has non-zero padding bits");
+        return invalid("v6 Arrow validity bitmap has non-zero padding bits");
     }
     Ok(())
 }
@@ -1678,6 +1940,7 @@ mod tests {
             &segments,
             &table,
             SegmentRowGroupBudget::default(),
+            DEFAULT_SEGMENT_COMPRESSION_POLICY,
             Arc::clone(&cache),
             io,
         )
@@ -1711,6 +1974,7 @@ mod tests {
             &segments,
             &table,
             SegmentRowGroupBudget::default(),
+            DEFAULT_SEGMENT_COMPRESSION_POLICY,
             Arc::clone(&cache),
             io,
         )
@@ -1742,6 +2006,7 @@ mod tests {
             &segments,
             &table,
             SegmentRowGroupBudget::default(),
+            DEFAULT_SEGMENT_COMPRESSION_POLICY,
             Arc::clone(&cache),
             io,
         )
@@ -1775,6 +2040,7 @@ mod tests {
             &segments,
             &table,
             SegmentRowGroupBudget::default(),
+            DEFAULT_SEGMENT_COMPRESSION_POLICY,
             Arc::clone(&cache),
             io,
         )

@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const EVIDENCE_FORMAT_VERSION: u16 = 2;
+const EVIDENCE_FORMAT_VERSION: u16 = 3;
 const MAX_TRIALS: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,6 +91,11 @@ struct AggregateEvidence {
     rrflowkv_open_persisted_filter_bytes: u64,
     rrflowkv_open_semantic_page_operations: u64,
     rrflowkv_open_semantic_page_bytes: u64,
+    rrflowkv_open_raw_page_count: u64,
+    rrflowkv_open_compressed_page_count: u64,
+    rrflowkv_open_stored_page_bytes: u64,
+    rrflowkv_open_logical_page_bytes: u64,
+    rrflowkv_query_decompressed_bytes: u64,
     rrflowkv_reopen_filter_negatives: u64,
     rrflowkv_reopen_page_loads: u64,
 }
@@ -180,14 +185,14 @@ fn run() -> Result<(), String> {
         release_ineligibility_reasons.push("source worktree was dirty".into());
     }
     release_ineligibility_reasons.extend([
-        "this verifies one C-06i persisted-filter integration, not an installed end-to-end release workload".into(),
+        "this verifies one C-06i adaptive-page-compression integration, not an installed end-to-end release workload".into(),
         "device cache and competing host load were observed but not controlled".into(),
         "one machine and one corpus do not establish cross-platform or all-workload behavior".into(),
     ]);
     let evidence = PhysicalPolicyEvidence {
         evidence_format_version: EVIDENCE_FORMAT_VERSION,
         physical_policy_evidence_version: PHYSICAL_POLICY_EVIDENCE_VERSION,
-        evidence_kind: "rrflowkv-c06i-persisted-filter-integration".into(),
+        evidence_kind: "rrflowkv-c06i-adaptive-page-compression-integration".into(),
         fixed_machine_integration_verification: source.clean_worktree,
         release_evidence_eligible: false,
         release_ineligibility_reasons,
@@ -205,8 +210,8 @@ fn run() -> Result<(), String> {
         aggregates,
         candidate_decisions,
         limitations: vec![
-            "segment v5 integrates the authenticated row-group filter but production pages remain uncompressed".into(),
-            "codec and cache measurements remain candidate mechanics over real v5 page bodies, not integrated policy latency".into(),
+            "segment v6 integrates deterministic per-page adaptive LZ4 and retains raw pages that miss the authenticated threshold".into(),
+            "Zstandard and cache measurements remain candidate mechanics over none-policy v6 page bodies, not integrated production policy".into(),
             "value separation is model-only and is categorically ineligible for adoption from this evidence".into(),
             "C-06, F-01, C-07, installed-binary, graph/BM25/vector/TurboQuant, reasoning/recall, and release gates remain open".into(),
         ],
@@ -394,6 +399,13 @@ fn same_reopened_identity(
     actual: &rrd_lsm::ReopenedPointMissObservation,
 ) -> bool {
     expected.integrated_rrflowkv == actual.integrated_rrflowkv
+        && expected.open_none_policy_segment_count == actual.open_none_policy_segment_count
+        && expected.open_adaptive_lz4_policy_segment_count
+            == actual.open_adaptive_lz4_policy_segment_count
+        && expected.open_raw_page_count == actual.open_raw_page_count
+        && expected.open_compressed_page_count == actual.open_compressed_page_count
+        && expected.open_stored_page_bytes == actual.open_stored_page_bytes
+        && expected.open_logical_page_bytes == actual.open_logical_page_bytes
         && expected.open_persisted_filter_count == actual.open_persisted_filter_count
         && expected.open_persisted_filter_bytes == actual.open_persisted_filter_bytes
         && expected.open_semantic_page_operations == actual.open_semantic_page_operations
@@ -521,6 +533,11 @@ fn aggregate_trials(trials: &[PhysicalPolicyTrial]) -> Result<AggregateEvidence,
             .reopened_point_miss
             .open_semantic_page_operations,
         rrflowkv_open_semantic_page_bytes: first.reopened_point_miss.open_semantic_page_bytes,
+        rrflowkv_open_raw_page_count: first.reopened_point_miss.open_raw_page_count,
+        rrflowkv_open_compressed_page_count: first.reopened_point_miss.open_compressed_page_count,
+        rrflowkv_open_stored_page_bytes: first.reopened_point_miss.open_stored_page_bytes,
+        rrflowkv_open_logical_page_bytes: first.reopened_point_miss.open_logical_page_bytes,
+        rrflowkv_query_decompressed_bytes: first.reopened_point_miss.bytes_decompressed,
         rrflowkv_reopen_filter_negatives: first.reopened_point_miss.filter_negatives,
         rrflowkv_reopen_page_loads: first.reopened_point_miss.page_loads,
     })
@@ -778,11 +795,11 @@ mod tests {
             root.path(),
             PhysicalPolicyConfig {
                 seed: 7,
-                records_per_family: 16,
+                records_per_family: 32,
                 versions_per_key: 2,
-                value_bytes: 64,
-                point_misses: 128,
-                cache_bytes: 16 * 1024,
+                value_bytes: 128,
+                point_misses: 512,
+                cache_bytes: 32 * 1024,
             },
         )
         .unwrap();

@@ -4,8 +4,8 @@ use rrd_lsm::{
     CompactionBoundary, CompactionPolicy, Database, DatabaseOptions, Durability, Error,
     FailureMode, FlushBoundary, Mutation, ProjectedReadBudget, ProjectedReadEvidence,
     ProjectedReadOutcome, ProjectedReadProjection, ProjectedReadRange, ProjectedReadRequest,
-    ProjectedReadResource, SegmentIoMode, SegmentIoPolicy, SegmentRowGroupBudget, Snapshot,
-    WriteBatch, WriteBoundary,
+    ProjectedReadResource, SegmentCompressionPolicy, SegmentIoMode, SegmentIoPolicy,
+    SegmentRowGroupBudget, Snapshot, WriteBatch, WriteBoundary,
 };
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -168,7 +168,7 @@ struct Scenario {
 }
 
 impl Scenario {
-    fn create(root: &Path, selector: u8) -> Self {
+    fn create(root: &Path, selector: u8, segment_compression: SegmentCompressionPolicy) -> Self {
         let row_group_rows = usize::from(selector % 4) + 1;
         let options = DatabaseOptions {
             page_cache_bytes: 16 * 1024,
@@ -181,6 +181,7 @@ impl Scenario {
                 max_rows: row_group_rows,
                 target_bytes: 96 * row_group_rows,
             },
+            segment_compression,
             compaction: CompactionPolicy {
                 l0_compaction_trigger: 4,
                 max_input_segments: 16,
@@ -725,19 +726,36 @@ impl Scenario {
 }
 
 pub fn run_encoded_scenario(seed: u64, input: &[u8]) -> ScenarioReport {
+    run_encoded_scenario_with_policy(seed, input, SegmentCompressionPolicy::default())
+}
+
+pub fn run_encoded_scenario_with_policy(
+    seed: u64,
+    input: &[u8],
+    segment_compression: SegmentCompressionPolicy,
+) -> ScenarioReport {
     assert!(
         input.len() <= MAX_ENCODED_BYTES,
         "encoded scenario exceeds {MAX_ENCODED_BYTES} bytes"
     );
     let temporary = tempfile::tempdir().unwrap();
-    run_encoded_scenario_at(seed, input, temporary.path())
+    run_encoded_scenario_at_with_policy(seed, input, temporary.path(), segment_compression)
 }
 
 pub fn run_encoded_scenario_at(seed: u64, input: &[u8], root: &Path) -> ScenarioReport {
+    run_encoded_scenario_at_with_policy(seed, input, root, SegmentCompressionPolicy::default())
+}
+
+pub fn run_encoded_scenario_at_with_policy(
+    seed: u64,
+    input: &[u8],
+    root: &Path,
+    segment_compression: SegmentCompressionPolicy,
+) -> ScenarioReport {
     let replay = replay_coordinate(seed, input);
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let selector = input.first().copied().unwrap_or(seed as u8);
-        let mut scenario = Scenario::create(root, selector);
+        let mut scenario = Scenario::create(root, selector, segment_compression);
         for (operation, chunk) in input.chunks(OPERATION_WIDTH).enumerate() {
             let mut padded = [0u8; OPERATION_WIDTH];
             padded[..chunk.len()].copy_from_slice(chunk);

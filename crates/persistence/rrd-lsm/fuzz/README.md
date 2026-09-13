@@ -16,14 +16,14 @@ Run bounded reproducible qualification from the repository root:
 
 ```text
 cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz projected-read-state-machine crates/persistence/rrd-lsm/fuzz/corpus/projected_read_state_machine -- -runs=512 -max_len=256 -timeout=10
-cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v5-open crates/persistence/rrd-lsm/fuzz/corpus/segment_v5_open -- -runs=4096 -max_len=256 -timeout=10
+cargo +nightly fuzz run --fuzz-dir crates/persistence/rrd-lsm/fuzz segment-v6-open crates/persistence/rrd-lsm/fuzz/corpus/segment_v6_open -- -runs=4096 -max_len=256 -timeout=10
 ```
 
 The state-machine target reuses the stable suite's independent MVCC oracle.
 Every panic includes a replay coordinate derived from the input. The segment
-target mutates the checked-in authenticated v5 fixture, including its
-persisted row-group filters, and accepts only a
-fully usable segment or a typed `rrd-lsm` error.
+target mutates the checked-in authenticated v6 fixture, including blind byte
+damage plus checksum-rewritten policy, descriptor, stored-page, and LZ4-block
+cases, and accepts only a fully usable segment or a typed `rrd-lsm` error.
 
 Generated corpus growth, minimized crash artifacts, coverage, and target
 output remain ignored. The named seed files are reviewed and tracked. A crash

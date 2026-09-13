@@ -60,6 +60,12 @@ fn manifest_identity_is_stable_and_segment_order_is_canonical() {
     .unwrap();
     assert_eq!(left, right);
     left.validate().unwrap();
+    assert!(
+        left.segments
+            .iter()
+            .all(|segment| segment.format_version == 6),
+        "the current manifest must reference only direct v6 segments"
+    );
 
     let actual = format!("{}\n", serde_json::to_string_pretty(&left).unwrap());
     assert_eq!(left.format_version, MANIFEST_FORMAT_VERSION);

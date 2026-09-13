@@ -83,6 +83,15 @@ fn rrflow_kv_open_separates_segment_validation_and_reconciliation_io() {
     assert!(open.segment_validation.metadata_bytes > 0);
     assert!(open.segment_validation.persisted_filter_count > 0);
     assert!(open.segment_validation.persisted_filter_bytes > 0);
+    assert_eq!(open.segment_validation.none_policy_segment_count, 0);
+    assert_eq!(
+        open.segment_validation.adaptive_lz4_policy_segment_count,
+        open.segment_validation.segment_count
+    );
+    assert!(open.segment_validation.raw_page_count > 0);
+    assert!(open.segment_validation.compressed_page_count > 0);
+    assert!(open.segment_validation.stored_page_bytes > 0);
+    assert!(open.segment_validation.stored_page_bytes < open.segment_validation.logical_page_bytes);
     assert_eq!(open.segment_validation.semantic_page_operations, 0);
     assert_eq!(open.segment_validation.semantic_page_bytes, 0);
     assert!(open.reconciliation.page_requests > 0);

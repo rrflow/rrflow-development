@@ -1,4 +1,4 @@
-//! Feature-gated C-06i measurements over rrflowKV's real segment-v5 encoder.
+//! Feature-gated C-06i measurements over rrflowKV's real segment-v6 encoder.
 //!
 //! Nothing in this module owns production storage policy. It verifies the
 //! canonical persisted filter and keeps codec, cache-admission, and
@@ -14,7 +14,7 @@ use super::format::{
 };
 use crate::{
     Database, DatabaseOptions, Durability, Error, Memtable, Mutation, Result,
-    SegmentRowGroupBudget, WriteBatch, SEGMENT_FORMAT_VERSION,
+    SegmentCompressionPolicy, SegmentRowGroupBudget, WriteBatch, SEGMENT_FORMAT_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -23,7 +23,7 @@ use std::io::Cursor;
 use std::path::Path;
 use std::time::Instant;
 
-pub const PHYSICAL_POLICY_EVIDENCE_VERSION: u16 = 2;
+pub const PHYSICAL_POLICY_EVIDENCE_VERSION: u16 = 3;
 
 const FAMILY_PREFIXES: [(&str, &[u8]); 8] = [
     ("audit", b"audit/"),
@@ -174,6 +174,12 @@ pub struct FamilyObservation {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReopenedPointMissObservation {
     pub integrated_rrflowkv: bool,
+    pub open_none_policy_segment_count: u64,
+    pub open_adaptive_lz4_policy_segment_count: u64,
+    pub open_raw_page_count: u64,
+    pub open_compressed_page_count: u64,
+    pub open_stored_page_bytes: u64,
+    pub open_logical_page_bytes: u64,
     pub open_persisted_filter_count: u64,
     pub open_persisted_filter_bytes: u64,
     pub open_semantic_page_operations: u64,
@@ -299,7 +305,11 @@ pub fn run_physical_policy_trial(
         first_sequence,
         last_sequence,
     )?;
-    let encoded = encode(&table, SegmentRowGroupBudget::default())?;
+    let encoded = encode(
+        &table,
+        SegmentRowGroupBudget::default(),
+        SegmentCompressionPolicy::None,
+    )?;
     let segment_physical_bytes = encoded.bytes.len() as u64;
     let mut cursor = Cursor::new(&encoded.bytes);
     let metadata = parse_metadata(
@@ -334,7 +344,7 @@ pub fn run_physical_policy_trial(
 
     Ok(PhysicalPolicyTrial {
         evidence_version: PHYSICAL_POLICY_EVIDENCE_VERSION,
-        evidence_scope: "c06i-persisted-row-group-filter-integration".into(),
+        evidence_scope: "c06i-adaptive-page-compression-integration".into(),
         config,
         corpus_digest: corpus.digest,
         operation_count,
@@ -354,7 +364,7 @@ pub fn run_physical_policy_trial(
         reopened_point_miss,
         decisions,
         limitations: vec![
-            "the persisted row-group filter is integrated in segment v5; codec and cache observations remain unintegrated candidates".into(),
+            "adaptive LZ4 is integrated in segment v6; Zstandard and cache observations remain unintegrated candidates".into(),
             "value placement is a byte model only and lacks pointer publication, recovery, snapshot, corruption, range-read, and garbage-collection proof".into(),
             "one machine and one deterministic corpus cannot establish release latency, all-workload policy, or competitor superiority".into(),
             "operating-system device cache and competing host load are recorded but not controlled by this executable".into(),
@@ -487,7 +497,7 @@ fn extract_pages(
                 .to_vec();
             if descriptor.physical_bytes != descriptor.logical_bytes {
                 return Err(Error::InvalidSegment(
-                    "segment v5 physical-policy evidence expected current uncompressed pages"
+                    "the none-policy segment-v6 candidate corpus unexpectedly contained compression"
                         .into(),
                 ));
             }
@@ -689,7 +699,7 @@ fn observe_filters(
         .checked_div(absent_queries)
         .unwrap_or(0);
     Ok(FilterObservation {
-        format: "segment-v5-row-group-bloom-v1".into(),
+        format: "segment-v6-row-group-bloom-v1".into(),
         filters,
         unique_keys,
         serialized_bytes,
@@ -712,22 +722,66 @@ fn validate_persisted_filter_integration(
 ) -> Result<()> {
     let row_group_count = u64::try_from(row_group_count)
         .map_err(|_| Error::InvalidSegment("row-group count exceeds u64".into()))?;
-    if filter.filters != row_group_count
-        || filter.member_false_negatives != 0
-        || !filter.passes_policy_threshold
-        || reopened.open_persisted_filter_count != filter.filters
-        || reopened.open_persisted_filter_bytes != filter.serialized_bytes
-        || reopened.open_semantic_page_operations != 0
-        || reopened.open_semantic_page_bytes != 0
-        || reopened.filter_checks == 0
-        || reopened.filter_negatives == 0
-        || reopened.page_loads >= reopened.filter_checks
-    {
-        return Err(Error::InvalidSegment(
-            "persisted row-group filter integration evidence failed".into(),
-        ));
-    }
+    require_integration(
+        filter.filters == row_group_count,
+        "candidate and segment row-group counts differ",
+    )?;
+    require_integration(
+        filter.member_false_negatives == 0,
+        "persisted filter produced a member false negative",
+    )?;
+    require_integration(
+        filter.passes_policy_threshold,
+        "persisted filter exceeded its accepted false-positive threshold",
+    )?;
+    require_integration(
+        reopened.open_persisted_filter_count == filter.filters,
+        "reopen filter count differs from the candidate observation",
+    )?;
+    require_integration(
+        reopened.open_persisted_filter_bytes == filter.serialized_bytes,
+        "reopen filter bytes differ from the candidate observation",
+    )?;
+    require_integration(
+        reopened.open_semantic_page_operations == 0 && reopened.open_semantic_page_bytes == 0,
+        "metadata-only reopen performed semantic page work",
+    )?;
+    require_integration(
+        reopened.open_none_policy_segment_count == 0
+            && reopened.open_adaptive_lz4_policy_segment_count > 0,
+        "reopen did not authenticate only adaptive-LZ4 segments",
+    )?;
+    require_integration(
+        reopened.open_raw_page_count > 0 && reopened.open_compressed_page_count > 0,
+        "corpus did not exercise both raw and compressed production pages",
+    )?;
+    require_integration(
+        reopened.open_stored_page_bytes < reopened.open_logical_page_bytes,
+        "adaptive production pages did not reduce stored bytes",
+    )?;
+    require_integration(
+        reopened.bytes_decompressed > 0,
+        "present-key reads did not exercise production decompression",
+    )?;
+    require_integration(
+        reopened.filter_checks > 0 && reopened.filter_negatives > 0,
+        "point-miss workload did not exercise persisted filter pruning",
+    )?;
+    require_integration(
+        reopened.page_loads < reopened.filter_checks,
+        "point-miss workload did not avoid semantic page loads",
+    )?;
     Ok(())
+}
+
+fn require_integration(condition: bool, invariant: &'static str) -> Result<()> {
+    if condition {
+        Ok(())
+    } else {
+        Err(Error::InvalidSegment(format!(
+            "adaptive page-compression integration evidence failed: {invariant}"
+        )))
+    }
 }
 
 fn keys_for_group(
@@ -1212,8 +1266,15 @@ fn observe_reopened_database(
         }
         hit_samples_verified += 1;
     }
+    let after_reads = database.page_cache_stats();
     Ok(ReopenedPointMissObservation {
         integrated_rrflowkv: true,
+        open_none_policy_segment_count: open.none_policy_segment_count,
+        open_adaptive_lz4_policy_segment_count: open.adaptive_lz4_policy_segment_count,
+        open_raw_page_count: open.raw_page_count,
+        open_compressed_page_count: open.compressed_page_count,
+        open_stored_page_bytes: open.stored_page_bytes,
+        open_logical_page_bytes: open.logical_page_bytes,
         open_persisted_filter_count: open.persisted_filter_count,
         open_persisted_filter_bytes: open.persisted_filter_bytes,
         open_semantic_page_operations: open.semantic_page_operations,
@@ -1228,17 +1289,17 @@ fn observe_reopened_database(
         filter_negatives: after_misses
             .filter_negatives
             .saturating_sub(before.filter_negatives),
-        page_cache_hits: after_misses.hits.saturating_sub(before.hits),
-        page_cache_misses: after_misses.misses.saturating_sub(before.misses),
-        page_loads: after_misses.loads.saturating_sub(before.loads),
-        bytes_read: after_misses.bytes_read.saturating_sub(before.bytes_read),
-        bytes_decoded: after_misses
+        page_cache_hits: after_reads.hits.saturating_sub(before.hits),
+        page_cache_misses: after_reads.misses.saturating_sub(before.misses),
+        page_loads: after_reads.loads.saturating_sub(before.loads),
+        bytes_read: after_reads.bytes_read.saturating_sub(before.bytes_read),
+        bytes_decoded: after_reads
             .bytes_decoded
             .saturating_sub(before.bytes_decoded),
-        bytes_decompressed: after_misses
+        bytes_decompressed: after_reads
             .bytes_decompressed
             .saturating_sub(before.bytes_decompressed),
-        final_cache_resident_bytes: after_misses.resident_bytes as u64,
+        final_cache_resident_bytes: after_reads.resident_bytes as u64,
     })
 }
 
@@ -1271,7 +1332,7 @@ fn decide_candidates(
         }
         .into(),
         reason: format!(
-            "segment_v5=true, member_false_negatives={}, false_positive_ppm={}, limit_ppm={}, serialized_bytes={}",
+            "segment_v6=true, member_false_negatives={}, false_positive_ppm={}, limit_ppm={}, serialized_bytes={}",
             filter.member_false_negatives,
             filter.false_positive_parts_per_million,
             FILTER_FALSE_POSITIVE_LIMIT_PPM,
@@ -1349,7 +1410,7 @@ mod tests {
     }
 
     #[test]
-    fn physical_policy_lab_is_deterministic_and_keeps_unintegrated_candidates_non_production() {
+    fn physical_policy_lab_proves_adaptive_v6_and_keeps_other_candidates_non_production() {
         let first_root = tempfile::tempdir().unwrap();
         let second_root = tempfile::tempdir().unwrap();
         let first = run_physical_policy_trial(first_root.path(), small_config()).unwrap();
@@ -1372,10 +1433,24 @@ mod tests {
         assert!(first.reopened_point_miss.open_persisted_filter_bytes > 0);
         assert_eq!(first.reopened_point_miss.open_semantic_page_operations, 0);
         assert_eq!(first.reopened_point_miss.open_semantic_page_bytes, 0);
+        assert_eq!(first.reopened_point_miss.open_none_policy_segment_count, 0);
+        assert!(
+            first
+                .reopened_point_miss
+                .open_adaptive_lz4_policy_segment_count
+                > 0
+        );
+        assert!(first.reopened_point_miss.open_raw_page_count > 0);
+        assert!(first.reopened_point_miss.open_compressed_page_count > 0);
+        assert!(
+            first.reopened_point_miss.open_stored_page_bytes
+                < first.reopened_point_miss.open_logical_page_bytes
+        );
+        assert!(first.reopened_point_miss.bytes_decompressed > 0);
         assert!(first.reopened_point_miss.filter_negatives > 0);
         assert!(first.reopened_point_miss.filter_checks > 0);
         assert!(first.reopened_point_miss.page_loads < first.reopened_point_miss.filter_checks);
-        assert_eq!(first.segment_format_version, 5);
+        assert_eq!(first.segment_format_version, 6);
 
         let mut invalid_reopen = first.reopened_point_miss.clone();
         invalid_reopen.open_semantic_page_operations = 1;
@@ -1455,7 +1530,12 @@ mod tests {
         table
             .apply_owned_write_batch(WriteBatch::new(corpus.mutations).unwrap(), 1, operations)
             .unwrap();
-        let encoded = encode(&table, SegmentRowGroupBudget::default()).unwrap();
+        let encoded = encode(
+            &table,
+            SegmentRowGroupBudget::default(),
+            SegmentCompressionPolicy::None,
+        )
+        .unwrap();
         let mut cursor = Cursor::new(&encoded.bytes);
         let metadata =
             parse_metadata(&mut cursor, encoded.bytes.len() as u64, encoded.checksum).unwrap();

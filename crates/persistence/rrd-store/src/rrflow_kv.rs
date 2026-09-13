@@ -297,6 +297,14 @@ impl RrflowKvStore {
             validation_bytes = open_evidence.segment_validation.full_checksum_bytes,
             persisted_filter_count = open_evidence.segment_validation.persisted_filter_count,
             persisted_filter_bytes = open_evidence.segment_validation.persisted_filter_bytes,
+            none_policy_segments = open_evidence.segment_validation.none_policy_segment_count,
+            adaptive_lz4_policy_segments = open_evidence
+                .segment_validation
+                .adaptive_lz4_policy_segment_count,
+            raw_pages = open_evidence.segment_validation.raw_page_count,
+            compressed_pages = open_evidence.segment_validation.compressed_page_count,
+            stored_page_bytes = open_evidence.segment_validation.stored_page_bytes,
+            logical_page_bytes = open_evidence.segment_validation.logical_page_bytes,
             reconciliation_page_requests = open_evidence.reconciliation.page_requests,
             reconciliation_read_operations = open_evidence.reconciliation.read_operations,
             reconciliation_bytes_read = open_evidence.reconciliation.bytes_read,

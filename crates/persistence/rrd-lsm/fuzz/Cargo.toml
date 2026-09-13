@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "=0.4.13"
+ring = "=0.17.14"
 rrd-lsm = { path = ".." }
 tempfile = "=3.27.0"
 
@@ -20,8 +21,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "segment-v5-open"
-path = "fuzz_targets/segment_v5_open.rs"
+name = "segment-v6-open"
+path = "fuzz_targets/segment_v6_open.rs"
 test = false
 doc = false
 bench = false

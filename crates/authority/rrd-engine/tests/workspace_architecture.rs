@@ -395,6 +395,32 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
         );
     }
 
+    let lsm_lz4 = metadata
+        .dependency_inputs
+        .iter()
+        .find(|dependency| dependency.owner == "rrd-lsm" && dependency.name == "lz4_flex")
+        .expect("rrd-lsm must declare its production LZ4 block codec");
+    assert_eq!(lsm_lz4.kind, "normal");
+    assert!(!lsm_lz4.optional);
+    assert_exact(
+        &lsm_lz4.features,
+        names(&["checked-decode", "safe-decode", "safe-encode", "std"]),
+        "rrd-lsm production LZ4 safety features",
+    );
+    let lsm_zstd = metadata
+        .dependency_inputs
+        .iter()
+        .find(|dependency| dependency.owner == "rrd-lsm" && dependency.name == "zstd")
+        .expect("rrd-lsm must retain Zstd only as a physical-policy lab candidate");
+    assert!(lsm_zstd.optional);
+    assert!(
+        metadata.packages["rrd-lsm"]
+            .features
+            .get("physical-policy-lab")
+            .is_some_and(|features| features.contains("dep:zstd")),
+        "Zstd must remain gated behind rrd-lsm's physical-policy lab"
+    );
+
     let batch = fs::read_to_string(
         metadata
             .root
@@ -428,9 +454,9 @@ fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader
     .expect("vector artifact catalog source must be readable");
     assert!(batch.contains("pub const BATCH_FORMAT_VERSION: u16 = 2;"));
     assert!(manifest.contains("pub const MANIFEST_FORMAT_VERSION: u16 = 3;"));
-    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 5;"));
-    assert!(segment.contains("pub const SEGMENT_MAGIC: &[u8; 8] = b\"RRDSEG05\";"));
-    assert!(segment.contains("pub const INDEX_MAGIC: &[u8; 8] = b\"RRDIX005\";"));
+    assert!(segment.contains("pub const SEGMENT_FORMAT_VERSION: u16 = 6;"));
+    assert!(segment.contains("pub const SEGMENT_MAGIC: &[u8; 8] = b\"RRDSEG06\";"));
+    assert!(segment.contains("pub const INDEX_MAGIC: &[u8; 8] = b\"RRDIX006\";"));
     assert!(vector_catalog.contains("pub const VECTOR_ARTIFACT_CATALOG_VERSION: u16 = 2;"));
     for (name, source) in [
         ("batch", batch.as_str()),

@@ -1,13 +1,20 @@
 use rrd_lsm::{
-    Database, DatabaseOptions, Durability, Mutation, SegmentIoMode, SegmentIoPolicy,
-    SegmentIoStats, WriteBatch,
+    Database, DatabaseOptions, Durability, Mutation, SegmentCompressionPolicy, SegmentIoMode,
+    SegmentIoPolicy, SegmentIoStats, WriteBatch,
 };
 
 const CACHE_BYTES: usize = 16 * 1024;
 const REQUEST_BYTES: usize = 16 * 1024 * 1024;
 
-fn write_fixture(root: &std::path::Path) {
-    let mut database = Database::create(root).unwrap();
+fn write_fixture(root: &std::path::Path, segment_compression: SegmentCompressionPolicy) {
+    let mut database = Database::create_with_options(
+        root,
+        DatabaseOptions {
+            segment_compression,
+            ..DatabaseOptions::default()
+        },
+    )
+    .unwrap();
     let mutations = (0..96)
         .map(|index| Mutation::Put {
             key: format!("key-{index:03}").into_bytes(),
@@ -23,7 +30,11 @@ fn write_fixture(root: &std::path::Path) {
     database.flush_memtable(100).unwrap();
 }
 
-fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>, SegmentIoStats) {
+fn read_with_mode(
+    root: &std::path::Path,
+    mode: SegmentIoMode,
+    compressed: bool,
+) -> (Vec<Vec<u8>>, SegmentIoStats) {
     let database = Database::open_with_options(
         root,
         DatabaseOptions {
@@ -38,6 +49,15 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
     )
     .unwrap();
     let snapshot = database.snapshot();
+    let open = database.segment_open_evidence();
+    if compressed {
+        assert!(open.raw_page_count > 0);
+        assert!(open.compressed_page_count > 0);
+        assert!(open.stored_page_bytes < open.logical_page_bytes);
+    } else {
+        assert_eq!(open.compressed_page_count, 0);
+        assert_eq!(open.stored_page_bytes, open.logical_page_bytes);
+    }
     let values = [0, 17, 51, 95]
         .into_iter()
         .map(|index| {
@@ -52,7 +72,11 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
     match mode {
         SegmentIoMode::Mmap => {
             assert!(cache.bytes_borrowed > 0);
-            assert_eq!(cache.bytes_allocated, 0);
+            if compressed {
+                assert!(cache.bytes_allocated > 0);
+            } else {
+                assert_eq!(cache.bytes_allocated, 0);
+            }
             assert_eq!(cache.bytes_copied, 0);
         }
         SegmentIoMode::Bounded | SegmentIoMode::IoUring | SegmentIoMode::Auto => {
@@ -60,7 +84,11 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
             assert!(cache.bytes_allocated > 0);
         }
     }
-    assert_eq!(cache.bytes_decompressed, 0);
+    if compressed {
+        assert!(cache.bytes_decompressed > 0);
+    } else {
+        assert_eq!(cache.bytes_decompressed, 0);
+    }
     let stats = database.segment_io_stats();
     assert_eq!(stats.configured_max_request_bytes, REQUEST_BYTES);
     assert!(stats.read_operations > 0);
@@ -72,28 +100,33 @@ fn read_with_mode(root: &std::path::Path, mode: SegmentIoMode) -> (Vec<Vec<u8>>,
 #[test]
 fn mmap_and_bounded_reads_are_identical_and_measure_page_ownership() {
     let temporary = tempfile::tempdir().unwrap();
-    let root = temporary.path().join("native");
-    write_fixture(&root);
+    for (name, policy, compressed) in [
+        ("none", SegmentCompressionPolicy::None, false),
+        ("adaptive", SegmentCompressionPolicy::default(), true),
+    ] {
+        let root = temporary.path().join(name);
+        write_fixture(&root, policy);
 
-    let (bounded, bounded_stats) = read_with_mode(&root, SegmentIoMode::Bounded);
-    let (mapped, mapped_stats) = read_with_mode(&root, SegmentIoMode::Mmap);
-    assert_eq!(mapped, bounded);
-    assert!(bounded_stats.bounded_segments > 0);
-    assert!(bounded_stats.bounded_read_operations > 0);
-    assert_eq!(bounded_stats.mmap_segments, 0);
-    assert!(mapped_stats.mmap_segments > 0);
-    assert!(mapped_stats.mmap_read_operations > 0);
-    assert_eq!(mapped_stats.bounded_segments, 0);
+        let (bounded, bounded_stats) = read_with_mode(&root, SegmentIoMode::Bounded, compressed);
+        let (mapped, mapped_stats) = read_with_mode(&root, SegmentIoMode::Mmap, compressed);
+        assert_eq!(mapped, bounded);
+        assert!(bounded_stats.bounded_segments > 0);
+        assert!(bounded_stats.bounded_read_operations > 0);
+        assert_eq!(bounded_stats.mmap_segments, 0);
+        assert!(mapped_stats.mmap_segments > 0);
+        assert!(mapped_stats.mmap_read_operations > 0);
+        assert_eq!(mapped_stats.bounded_segments, 0);
+    }
 }
 
 #[test]
 fn io_uring_runs_when_the_kernel_admits_it_or_records_the_bounded_fallback() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path().join("native");
-    write_fixture(&root);
+    write_fixture(&root, SegmentCompressionPolicy::default());
 
-    let (expected, _) = read_with_mode(&root, SegmentIoMode::Bounded);
-    let (actual, stats) = read_with_mode(&root, SegmentIoMode::IoUring);
+    let (expected, _) = read_with_mode(&root, SegmentIoMode::Bounded, true);
+    let (actual, stats) = read_with_mode(&root, SegmentIoMode::IoUring, true);
     assert_eq!(actual, expected);
     if stats.io_uring_segments > 0 {
         assert_eq!(stats.bounded_segments, 0);
