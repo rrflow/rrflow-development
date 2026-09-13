@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "A-06-rrflow-1.0-roadmap-warp-refraction-v3",
+  "package_id": "A-06-rrflow-1.0-alpha-poam-warp-refraction-v1",
   "status": "active",
   "package_kind": "structural-documentation-refactor",
   "baseline": {
-    "revision": "73a7483348ad43e4afad4f5d3be07b6c402c5381",
-    "tree": "59548d7454c365f2d3280eff871b2b7ed7c28bb7",
+    "revision": "4e2bffef2702c3f77679a939a5a78518c0e2af7c",
+    "tree": "c7bb2cb95dbc49c46ac6e45394eec04ae875d04c",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,19 +13,26 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Preserve OBJ-01 and A-06's one navigable documentation memory by refracting the canonical RRFlow 1.0 roadmap into addressable chapters without creating another release-plan or completion authority.",
+    "alpha_prerequisite": "Preserve OBJ-01 and A-06's navigable documentation memory while making every verified RRFlow 1.0 alpha deficiency directly addressable without creating another remediation-status or release authority.",
     "roadmap_gates": ["A-06", "A-07", "J-01"],
-    "poam_items": ["POAM-001", "POAM-027"],
-    "architecture_owner": "docs/roadmap/rrflow-1.0.md#rrflow-10-execution-checklist"
+    "poam_items": [
+      "POAM-001", "POAM-002", "POAM-003", "POAM-004", "POAM-005",
+      "POAM-006", "POAM-007", "POAM-008", "POAM-009", "POAM-010",
+      "POAM-011", "POAM-012", "POAM-013", "POAM-014", "POAM-015",
+      "POAM-016", "POAM-017", "POAM-018", "POAM-019", "POAM-020",
+      "POAM-021", "POAM-022", "POAM-023", "POAM-024", "POAM-025",
+      "POAM-026", "POAM-027"
+    ],
+    "architecture_owner": "docs/poam/rrflow-1.0-alpha.md#open-deficiencies"
   },
-  "current_behavior": "The canonical RRFlow 1.0 roadmap is one 1,377-line Markdown record with 1,262 nonblank lines. Its objective/remediation, checklist, dependency spine, ten gate bodies, and accepted evidence share one file. Gate A alone spans 520 lines, Gate C spans 381 lines, and the absence of an evidence heading leaves lines 202 through 682 structurally nested beneath the unrelated Later knowledge-persistence sequence heading. Agents can address top-level anchors but cannot load one clean roadmap concern or evidence ledger by file.",
-  "target_behavior": "Keep docs/roadmap/rrflow-1.0.md as the sole canonical roadmap coordinate and turn its body into linked warp labels only. Move the current objective/remediation, checklist, dependency spine, Gate A through Gate J requirements, and accepted Gate A through Gate C evidence into exactly sixteen coordinated content chapters under docs/roadmap/rrflow-1.0/. Add the repository-required docs/roadmap/rrflow-1.0/README.md directory portal as a links-only owner index for those chapters, and add its single discovery link to docs/roadmap/README.md. Preserve the parent heading text as compatibility warp points, retain the policy-required A-06, execution-map, and H-05a through H-05e link labels, give every child one parent-owner link and stable coordinate, add explicit evidence headings where plain labels currently hide structure, adjust only links made relative by the one-directory move, and retain every roadmap statement, table row, checkbox, status, dependency, and evidence claim without semantic change.",
+  "current_behavior": "The canonical alpha POA&M is an 82-line, 52,359-byte Markdown record whose 27 deficiencies are encoded as one-line seven-column table rows. The longest row, POAM-011, is 10,599 characters. Deficiency observations, impacts, gate mappings, closure evidence, lifecycle statuses, status vocabulary, milestone discipline, and two item-specific updates share one file, so an agent cannot load or link one clean deficiency record.",
+  "target_behavior": "Keep docs/poam/rrflow-1.0-alpha.md as the sole canonical remediation-status coordinate and turn its body into metadata plus linked warp headings and a compact 27-row ID/priority/status/record ledger. Add a classified nested portal, one governance chapter for ownership/status vocabulary/milestone discipline, and exactly one coordinated detail record for each POAM-001 through POAM-027 under docs/poam/rrflow-1.0-alpha/. Move each original observed-deficiency, impact, owning-gates, and closure-evidence cell verbatim into its item record; move the existing POAM-011 convergence update and POAM-027 execution decision into their respective records. Each detail record delegates priority and lifecycle status to the canonical parent. Add one discovery link from docs/poam/README.md and preserve every original deficiency fact, priority, status, mapping, evidence requirement, date, revision, digest, and limitation without semantic change.",
   "unchanged_behavior": [
-    "The root README remains the bootstrap identity and current-status owner; the RRFlow 1.0 roadmap parent remains the sole dependency-order and completion-evidence authority.",
-    "All gate counts, checkbox states, active executable item D-01, evidence dates, revisions, digests, acceptance conditions, exit conditions, and release restrictions remain unchanged.",
-    "No objective, roadmap gate, POA&M item, implementation behavior, product version, source dependency, release claim, or promotion state changes in this structural package.",
-    "The execution map is not refactored in this package; it receives only the repository-required bounded package journal. The POA&M is unchanged and will be reviewed as a separate successor package.",
-    "Existing inbound links to the parent roadmap headings remain valid and lead to linked child warp points; no forwarding file, duplicate roadmap body, or alternate completion ledger is created."
+    "The root README remains the product identity/current-status owner, the alpha objective remains the measurable-outcome owner, the roadmap remains the dependency-order/completion-evidence owner, and the POA&M parent remains the sole verified-gap/remediation-status owner.",
+    "All 27 POA&M IDs, 17 Critical and 10 High priorities, 21 Sequenced, 3 Closed, and 3 Open lifecycle states remain unchanged and in the original order.",
+    "No deficiency is added, removed, merged, split, reclassified, closed, reopened, or advanced; no roadmap gate, objective, active executable item, implementation behavior, version, release claim, or promotion state changes.",
+    "The execution map receives only the repository-required bounded package journal, and the deterministic file inventory is regenerated; no code, test, configuration, workflow, dependency, hook, runtime, or release artifact changes.",
+    "Existing inbound links to docs/poam/rrflow-1.0-alpha.md and its #open-deficiencies anchor remain valid; no forwarding file, compatibility copy, duplicate deficiency body, or parallel status ledger is created."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -35,31 +42,31 @@
   "reviewed_files": [
     {
       "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "3050f6d6befd8e2e187ba23aefe142523c073633930368a24eb5fb838934ce8e",
-      "baseline_lines": 258,
-      "reviewed_lines": "1-258",
-      "symbols": ["machine change-plan schema", "planning-only ancestry", "declared path closure"]
+      "baseline_sha256": "77e5a4a246f772f1441c05f925fd5ffa22b0add792e4a3c76f271d63a3b75498",
+      "baseline_lines": 272,
+      "reviewed_lines": "1-272",
+      "symbols": ["machine change-plan schema", "roadmap-refraction predecessor", "planning-only ancestry", "declared path closure"]
     },
     {
-      "path": "docs/roadmap/rrflow-1.0.md",
-      "baseline_sha256": "7dd56fae4a9dabbe1a6ed848fc32b659ea19a9a25f5b06d5e102d238c1f0a97a",
-      "baseline_lines": 1377,
-      "reviewed_lines": "1-1377",
-      "symbols": ["canonical roadmap metadata", "objective and remediation", "execution checklist", "executable dependency spine", "Gate A through Gate J", "accepted evidence"]
+      "path": "docs/poam/rrflow-1.0-alpha.md",
+      "baseline_sha256": "97f6a1e355ac9ebc913c999060ae8624594127a1c7adfef2fe07d94d942170b7",
+      "baseline_lines": 82,
+      "reviewed_lines": "1-82",
+      "symbols": ["canonical POA&M metadata", "status vocabulary", "POAM-001 through POAM-027", "item-specific updates", "milestone discipline"]
+    },
+    {
+      "path": "docs/poam/README.md",
+      "baseline_sha256": "a743800441a53e7d109440fd20518a4d448abab548f5bac4154455f435ab4c30",
+      "baseline_lines": 13,
+      "reviewed_lines": "1-13",
+      "symbols": ["POA&M discovery index", "canonical alpha ledger link"]
     },
     {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "baseline_sha256": "4215e6f83700c7ff228aa8bbbac4cab50dc136d614f395f1f14b236949869fc0",
-      "baseline_lines": 4065,
-      "reviewed_lines": "1-4065",
-      "symbols": ["codebase-grounded change-authoring routine", "documentation packages", "evidence record template", "global stop conditions"]
-    },
-    {
-      "path": "docs/roadmap/README.md",
-      "baseline_sha256": "cddbbdbd8696745a6e78072e27532db992ca489d370409d848d2fab7657a0b92",
-      "baseline_lines": 52,
-      "reviewed_lines": "1-52",
-      "symbols": ["roadmap discovery", "canonical RRFlow 1.0 row", "supporting records"]
+      "baseline_sha256": "9c57589d1d25eaca56d90fcd590cf3cfc9cab7fec7adb25824521e556b8b094a",
+      "baseline_lines": 4091,
+      "reviewed_lines": "1-4091",
+      "symbols": ["codebase-grounded change-authoring routine", "documentation packages", "evidence record template", "global stop conditions", "roadmap refraction journal"]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
@@ -71,154 +78,238 @@
   ],
   "implementation_changes": [
     {
-      "path": "docs/roadmap/rrflow-1.0.md",
+      "path": "docs/poam/rrflow-1.0-alpha.md",
       "baseline_state": "present",
-      "symbols": ["canonical roadmap metadata", "linked compatibility headings"],
-      "action": "Retain the canonical title, status, coordinate, and owner; replace the monolithic body with linked section, gate, and evidence headings in original dependency order.",
-      "failure_semantics": "Stop if the parent retains duplicated roadmap prose, loses its canonical coordinate, changes heading text needed by inbound anchors, or stops identifying every child."
+      "symbols": ["canonical POA&M metadata", "ledger governance warp", "compact deficiency status ledger"],
+      "action": "Retain the canonical title, status, coordinate, owner, and Open deficiencies anchor; replace substantive bodies with a governance link and a compact ordered table containing each exact ID, priority, lifecycle status, and item-record link.",
+      "failure_semantics": "Stop if the parent retains duplicated deficiency prose, loses its canonical coordinate or anchor, changes any ID/priority/status/order, or ceases to be the sole remediation-status authority."
     },
     {
-      "path": "docs/roadmap/README.md",
+      "path": "docs/poam/README.md",
       "baseline_state": "present",
-      "symbols": ["RRFlow 1.0 roadmap discovery row", "roadmap chapter portal link"],
-      "action": "Add one link from the existing roadmap discovery index to the nested RRFlow 1.0 chapter portal without changing roadmap status or duplicating chapter links in another table.",
-      "failure_semantics": "Stop if the discovery index changes any gate state, supporting-plan status, current active item, or authority relationship."
+      "symbols": ["POA&M discovery index", "alpha POA&M record portal link"],
+      "action": "Add one discovery link to the nested RRFlow 1.0 alpha POA&M record portal without changing the canonical ledger's status or ownership.",
+      "failure_semantics": "Stop if the directory index duplicates the deficiency ledger or changes any objective, roadmap, or POA&M authority relationship."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/README.md",
+      "path": "docs/poam/rrflow-1.0-alpha/README.md",
       "baseline_state": "absent",
-      "symbols": ["roadmap chapter owner index", "sixteen chapter links"],
-      "action": "Add the links-only directory portal required by deterministic knowledge classification; it identifies the canonical parent and links every coordinated content chapter exactly once without duplicating roadmap substance.",
-      "failure_semantics": "Stop if the portal omits or duplicates a child, claims release-plan authority, or contains a second roadmap body."
+      "symbols": ["POA&M detail-record portal", "governance link", "POAM-001 through POAM-027 links"],
+      "action": "Add the links-only directory portal required by deterministic knowledge classification; link the canonical parent, governance chapter, and all 27 item records exactly once.",
+      "failure_semantics": "Stop if the portal omits or duplicates a record, claims remediation status authority, or contains a second deficiency body."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/current-alpha-objective-and-remediation.md",
+      "path": "docs/poam/rrflow-1.0-alpha/governance.md",
       "baseline_state": "absent",
-      "symbols": ["current alpha objective and remediation", "gate completion table"],
-      "action": "Move the current alpha ownership links and ten-gate completion table into one parent-owned chapter.",
-      "failure_semantics": "Stop on any changed gate count, authority statement, or source link."
+      "symbols": ["ledger ownership", "status vocabulary", "milestone discipline"],
+      "action": "Move the original ownership explanation, four-state vocabulary, and milestone discipline into one parent-owned governance chapter.",
+      "failure_semantics": "Stop if row-closure authority, status meaning, roadmap dependency order, or new-deficiency discipline changes."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/execution-checklist.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-001.md",
       "baseline_state": "absent",
-      "symbols": ["RRFlow 1.0 execution checklist", "checklist rules"],
-      "action": "Move the checklist policy into one parent-owned chapter and link its dependency-spine child.",
-      "failure_semantics": "Stop if any execution, evidence, convergence, or failure rule is omitted or weakened."
+      "symbols": ["POAM-001 durable knowledge import and warp resolution"],
+      "action": "Move POAM-001's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/executable-dependency-spine.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-002.md",
       "baseline_state": "absent",
-      "symbols": ["executable dependency spine", "waves 0 through 12", "active executable item"],
-      "action": "Move the complete dependency spine and current active-item narrative into one parent-owned chapter.",
-      "failure_semantics": "Stop if wave order, prerequisites, active D-01 status, or accepted C/A/B evidence changes."
+      "symbols": ["POAM-002 accepted segment-v6 physical layout"],
+      "action": "Move POAM-002's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-a.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-003.md",
       "baseline_state": "absent",
-      "symbols": ["Gate A requirements", "A-06 knowledge-bootstrap sequence", "later knowledge-persistence sequence", "Gate A exit"],
-      "action": "Move Gate A's checklist, knowledge sequences, and exit rule into one requirements chapter that links its accepted-evidence chapter.",
-      "failure_semantics": "Stop if any A or KB checkbox, requirement, acceptance condition, sequence, or exit rule changes."
+      "symbols": ["POAM-003 accepted single-node physical owner and readers"],
+      "action": "Move POAM-003's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-a-evidence.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-004.md",
       "baseline_state": "absent",
-      "symbols": ["KB evidence", "A-02 through A-07 evidence"],
-      "action": "Move all accepted Gate A evidence into one chapter and promote each existing evidence label to a stable heading.",
-      "failure_semantics": "Stop if an evidence paragraph, date, revision, digest, limitation, failure, or command claim changes or disappears."
+      "symbols": ["POAM-004 stamped streamed DataFusion provider"],
+      "action": "Move POAM-004's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-b.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-005.md",
       "baseline_state": "absent",
-      "symbols": ["Gate B requirements", "Gate B exit"],
-      "action": "Move Gate B's checklist and exit rule into one requirements chapter that links its accepted-evidence chapter.",
-      "failure_semantics": "Stop if any B checkbox, contract boundary, acceptance condition, or exit rule changes."
+      "symbols": ["POAM-005 native graph scalar lexical and vector access"],
+      "action": "Move POAM-005's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-b-evidence.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-006.md",
       "baseline_state": "absent",
-      "symbols": ["B-01 through B-05 evidence"],
-      "action": "Move all accepted Gate B evidence into one chapter and promote each existing evidence label to a stable heading.",
-      "failure_semantics": "Stop if an evidence paragraph, date, test count, limitation, or completion boundary changes or disappears."
+      "symbols": ["POAM-006 installed product and attunement lifecycle"],
+      "action": "Move POAM-006's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-c.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-007.md",
       "baseline_state": "absent",
-      "symbols": ["Gate C requirements", "Gate C exit"],
-      "action": "Move Gate C's checklist and exit rule into one requirements chapter that links its accepted-evidence chapter.",
-      "failure_semantics": "Stop if any C checkbox, physical requirement, accepted-policy decision, acceptance condition, or exit rule changes."
+      "symbols": ["POAM-007 installed specialization and seat identity"],
+      "action": "Move POAM-007's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-c-evidence.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-008.md",
       "baseline_state": "absent",
-      "symbols": ["C-01 through C-06 accepted evidence"],
-      "action": "Move all accepted Gate C evidence into one chapter and promote each existing evidence label to a stable heading.",
-      "failure_semantics": "Stop if an evidence paragraph, date, revision, digest, counter, rejection decision, limitation, or completion boundary changes or disappears."
+      "symbols": ["POAM-008 functions routines and automation convergence"],
+      "action": "Move POAM-008's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-d.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-009.md",
       "baseline_state": "absent",
-      "symbols": ["Gate D requirements", "Gate D exit"],
-      "action": "Move the complete Gate D checklist and exit rule into one parent-owned chapter.",
-      "failure_semantics": "Stop if any D item, dependency, installation safety rule, or acceptance condition changes."
+      "symbols": ["POAM-009 RouterBackend and LFG execution"],
+      "action": "Move POAM-009's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-e.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-010.md",
       "baseline_state": "absent",
-      "symbols": ["Gate E requirements", "Gate E exit"],
-      "action": "Move the complete Gate E checklist and exit rule into one parent-owned chapter.",
-      "failure_semantics": "Stop if any graph, scalar, lexical, vector, planning, or exact-oracle requirement changes."
+      "symbols": ["POAM-010 context routing feedback and retention"],
+      "action": "Move POAM-010's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-f.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-011.md",
       "baseline_state": "absent",
-      "symbols": ["Gate F requirements", "Gate F exit"],
-      "action": "Move the complete Gate F checklist and exit rule into one parent-owned chapter.",
-      "failure_semantics": "Stop if any Arrow, DataFusion, pushdown, operator, budget, cache, or evidence requirement changes."
+      "symbols": ["POAM-011 public surfaces SDKs and Connectome", "B-05 convergence update"],
+      "action": "Move POAM-011's four substantive ledger fields and its existing convergence update into one parent-owned detail record.",
+      "failure_semantics": "Stop if any SDK, transport, Connectome, conformance, packaging, limitation, or update fact changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-g.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-012.md",
       "baseline_state": "absent",
-      "symbols": ["Gate G requirements", "Gate G exit"],
-      "action": "Move the complete Gate G checklist and exit rule into one parent-owned chapter.",
-      "failure_semantics": "Stop if any RouterBackend, LFG, authorization, routing, mutation, or measurement requirement changes."
+      "symbols": ["POAM-012 complete workload benchmark and failure corpus"],
+      "action": "Move POAM-012's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-h.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-013.md",
       "baseline_state": "absent",
-      "symbols": ["Gate H requirements", "H-05 package sequence", "Gate H exit"],
-      "action": "Move the complete Gate H checklist, H-05 package sequence, and exit rule into one parent-owned chapter.",
-      "failure_semantics": "Stop if any context, feedback, delivery, public-surface, trace, Connectome, mesh, or H-05 sequencing requirement changes."
+      "symbols": ["POAM-013 self-contained signed native release"],
+      "action": "Move POAM-013's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-i.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-014.md",
       "baseline_state": "absent",
-      "symbols": ["Gate I requirements", "error-resolution corpus", "Gate I exit"],
-      "action": "Move the complete Gate I checklist, end-to-end corpus, and exit rule into one parent-owned chapter.",
-      "failure_semantics": "Stop if any event, trigger, routine, adapter, skill, installation, inventory, or no-hook requirement changes."
+      "symbols": ["POAM-014 implementation requirements traceability"],
+      "action": "Move POAM-014's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-j.md",
+      "path": "docs/poam/rrflow-1.0-alpha/poam-015.md",
       "baseline_state": "absent",
-      "symbols": ["Gate J promotion boundary", "Gate J requirements", "release condition"],
-      "action": "Move the complete Gate J repository/promotion policy, checklist, and release condition into one parent-owned chapter.",
-      "failure_semantics": "Stop if any repository, authorization, artifact, qualification, promotion, force-push, or release restriction changes."
+      "symbols": ["POAM-015 public contract discovery consistency"],
+      "action": "Move POAM-015's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-016.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-016 security initialization and effect-complete authorization"],
+      "action": "Move POAM-016's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-017.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-017 estate administration authority"],
+      "action": "Move POAM-017's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-018.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-018 accepted complete estate and backup shapes"],
+      "action": "Move POAM-018's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-019.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-019 native estate records and engine transactions"],
+      "action": "Move POAM-019's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-020.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-020 canonical project estate instance topology"],
+      "action": "Move POAM-020's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-021.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-021 local process control authority"],
+      "action": "Move POAM-021's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-022.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-022 deployment facts and profile semantics"],
+      "action": "Move POAM-022's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-023.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-023 distributed cluster authority"],
+      "action": "Move POAM-023's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-024.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-024 Kubernetes controller authority"],
+      "action": "Move POAM-024's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-025.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-025 verification repair restore and salvage"],
+      "action": "Move POAM-025's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-026.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-026 observability and diagnostic evidence"],
+      "action": "Move POAM-026's four substantive ledger fields into one parent-owned detail record.",
+      "failure_semantics": "Stop if any original field meaning changes or the child claims lifecycle-status authority."
+    },
+    {
+      "path": "docs/poam/rrflow-1.0-alpha/poam-027.md",
+      "baseline_state": "absent",
+      "symbols": ["POAM-027 change-package and repository enforcement", "POAM-027a execution decision"],
+      "action": "Move POAM-027's four substantive ledger fields and its existing execution decision into one parent-owned detail record.",
+      "failure_semantics": "Stop if any CI, server-protection, GitHub response, execution-decision, or limitation fact changes or the child claims lifecycle-status authority."
     }
   ],
   "evidence_changes": [
     {
       "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "action": "Append only the required roadmap-refraction package journal with baseline, complete files read, changed paths, preservation decisions, exact commands/results, surfaced failures, omissions, and unchanged roadmap status; do not refactor the execution map."
+      "action": "Append only the required POA&M-refraction package journal with baseline, complete files read, changed paths, exact field/status preservation, surfaced failures, commands/results, omissions, and unchanged roadmap/POA&M lifecycle status; also record the preceding roadmap structural commit as the completed predecessor."
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
-      "action": "Regenerate the deterministic repository inventory so the canonical parent and all new roadmap chapter paths and digests are accounted for.",
+      "action": "Regenerate the deterministic repository inventory so the canonical POA&M parent, portal, governance chapter, and all 27 detail records and digests are accounted for.",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py"
     }
   ],
   "research": {
     "decision": "not_required",
-    "reason": "This is a repository-local information-architecture refactor whose source of truth is the fully reviewed canonical roadmap; no external behavior, algorithm, standard, dependency, or market claim is introduced.",
+    "reason": "This is a repository-local information-architecture refactor whose sole semantic source is the fully reviewed canonical POA&M; it introduces no external behavior, algorithm, standard, dependency, or market claim.",
     "sources": []
   },
   "trace_resource_debug": {
@@ -232,24 +323,23 @@
     },
     "debugging_evidence": {
       "decision": "not_applicable",
-      "reason": "Structural verification uses exact content accounting, link validation, generated inventory, and diff review rather than runtime diagnostics."
+      "reason": "Structural verification uses exact parsed-cell reconstruction, status-ledger equality, link/coordinate validation, deterministic knowledge export, generated inventory, and complete diff review."
     }
   },
   "first_failure_oracle": [
-    "At the baseline, docs/roadmap/rrflow-1.0.md has 1,377 lines and contains substantive non-link content after its metadata; the approved link-only parent shape, sixteen content chapters, and required directory owner index are absent.",
-    "The baseline heading hierarchy assigns Gate A evidence beginning at line 202 to the Later knowledge-persistence sequence because no intervening evidence heading exists.",
-    "After refraction, every original substantive line must occur in exactly one declared child after only heading-level, chapter-metadata, parent-link, and necessary relative-link normalization; missing or duplicated roadmap meaning fails the package.",
-    "Every repository-local Markdown link must resolve, every coordinated child must be linked from the required directory owner index and canonical parent, the directory index must be linked from docs/roadmap/README.md, and the generated execution inventory must be byte-deterministic and current.",
-    "The parent must contain no roadmap body beyond required metadata and linked headings, while its original top-level heading anchors remain present as compatibility warp points."
+    "At baseline the canonical POA&M is 82 lines and 52,359 bytes, all 27 deficiencies occupy single seven-column rows, POAM-011 alone is 10,599 characters, and the approved portal/governance/item-record paths are absent.",
+    "Parse the original table into exactly 27 ordered seven-field records; after refraction, reconstruct each record from the parent ID/priority/status ledger plus its item's observed-deficiency, impact, owning-gates, and closure-evidence sections and require exact field equality.",
+    "Require the parent to contain only metadata, headings, links, and the compact ledger; require exactly 17 Critical, 10 High, 21 Sequenced, 3 Closed, and 3 Open entries in original order.",
+    "Require the governance chapter to preserve the original ownership, four status definitions, and milestone discipline; require the POAM-011 and POAM-027 notes to occur exactly once in their respective records.",
+    "Require 29 unique new coordinates, exact portal coverage of governance plus 27 items, one parent-owner link from every child, valid repository-local links/fragments, and byte-deterministic knowledge/inventory output."
   ],
   "edit_sequence": [
-    "Commit this successor machine-readable plan alone as the direct child of baseline 73a7483348ad43e4afad4f5d3be07b6c402c5381 after review of the nested-index ownership chain exposed its required discovery link from docs/roadmap/README.md.",
-    "Replace the canonical roadmap body with linked warp labels only, preserving its title, status, coordinate, owner, original heading text, dependency order, policy-required A-06/execution-map/H-05 labels, and direct links to exactly sixteen content chapters.",
-    "Add one links-only directory README that owns classification of the sixteen chapters while explicitly delegating canonical release order and completion authority to the parent roadmap, then add exactly one discovery link from docs/roadmap/README.md.",
-    "Create the objective/remediation, checklist, dependency-spine, Gate A through Gate J, and Gate A through Gate C evidence chapters from the exact reviewed line bodies; add chapter metadata/parent links and repair only one-directory-relative references.",
-    "Promote existing plain evidence labels to headings, move Gate A/B/C exit rules into their requirements chapters, and verify that no requirement, checkbox, status, count, claim, evidence datum, limitation, or release restriction changed.",
-    "Append the bounded journal without refactoring the execution map, regenerate the declared file plan, reread every changed file, review the complete diff, and run the smallest structural checks before the full documentation/inventory checks.",
-    "Commit the completed roadmap-refraction package before beginning the separately planned POA&M review and refraction requested by the repository owner."
+    "Commit this machine-readable plan alone as the direct child of clean roadmap-refraction commit 4e2bffef2702c3f77679a939a5a78518c0e2af7c.",
+    "Create the nested links-only portal and governance chapter, then replace the canonical POA&M body with the compact ordered ID/priority/status/detail-record ledger while preserving #open-deficiencies.",
+    "Create POAM-001 through POAM-027 detail records from the exact parsed source cells, using stable coordinates, parent ownership, fixed section headings, and no duplicate lifecycle-status field.",
+    "Move the existing POAM-011 convergence update and POAM-027 execution decision into their owning detail records; add one nested-portal discovery link to docs/poam/README.md.",
+    "Run exact source-versus-reconstructed field equality and topology oracles, append the bounded execution-map journal, regenerate the file plan, reread every changed file, and inspect the complete diff.",
+    "Run the smallest structural checks followed by documentation, knowledge-export, version, and staged-diff gates; commit the coherent POA&M refraction without pushing."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
@@ -260,13 +350,12 @@
     "git diff --check"
   ],
   "stop_conditions": [
-    "Any original roadmap requirement, checkbox, gate count, dependency order, active-item statement, evidence claim, limitation, digest, revision, acceptance condition, or exit condition is missing, duplicated, or semantically changed.",
-    "The canonical parent loses its title, status, coordinate, owner, original heading anchors, policy-required warp labels, ordered child coverage, or links-only body shape.",
-    "A child claims independent roadmap, objective, POA&M, product-status, release, runtime, or lifecycle authority instead of identifying itself as a parent-owned roadmap chapter.",
-    "A repository-local link or fragment breaks, a moved relative link resolves outside its intended owner, the required directory README is absent, substantive, or undiscoverable from docs/roadmap/README.md, a child is unindexed, or deterministic knowledge/inventory packaging fails.",
-    "The execution map requires any change beyond the bounded evidence journal, or the POA&M, README, objectives, code, tests, configuration, version, or release state would need to change in this package.",
-    "The refactor creates a compatibility copy, duplicate body, generated editable authority, external dependency, install/runtime fetch, hook, provider state, or parallel completion ledger.",
-    "A subsequent POA&M refactor begins before this roadmap package is verified and committed as one coherent reviewable change."
+    "Any original POA&M ID, priority, lifecycle status, order, observation, impact, owning-gate mapping, closure-evidence statement, item-specific update, date, revision, digest, limitation, or milestone rule is missing, duplicated, or semantically changed.",
+    "The canonical parent loses its title, status, coordinate, owner, #open-deficiencies anchor, compact ordered ledger, links-only body shape, or sole remediation-status authority.",
+    "A detail record duplicates or claims authority over priority/lifecycle status, objective completion, roadmap order/gate completion, product status, runtime state, release, or promotion.",
+    "A repository-local link or fragment breaks; a record lacks a unique coordinate/parent owner; the nested portal is absent, substantive, incomplete, duplicated, or undiscoverable from docs/poam/README.md; deterministic knowledge/inventory packaging fails.",
+    "The execution map requires any change beyond the bounded evidence journal, or README, AGENTS, objective, roadmap, implementation, tests, configuration, workflow, version, release artifact, or external state would need to change.",
+    "The refactor creates a forwarding copy, duplicate deficiency body, generated editable authority, external dependency, install/runtime fetch, hook, provider state, or parallel remediation ledger."
   ],
-  "roadmap_status_change": "None. This package changes roadmap topology and warp addressability only; all objective, gate, checkbox, POA&M, maturity, active-item, version, promotion, and release states remain exactly as recorded at baseline."
+  "roadmap_status_change": "None. This package changes POA&M documentation topology and warp addressability only; all 27 priorities/lifecycle states, objective classifications, roadmap gates/checkboxes, active D-01 item, product maturity, version, promotion, and release states remain exactly as recorded at baseline."
 }
