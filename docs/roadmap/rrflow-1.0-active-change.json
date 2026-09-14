@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "H05-build-debug-trace-optimize-deep-research-v1",
+  "package_id": "H05a-01-kernel-signal-catalogue-v1",
   "status": "active",
-  "package_kind": "research-and-engineering-evidence-guidance",
+  "package_kind": "rust-contract-foundation",
   "baseline": {
-    "revision": "65e679ef2852447d5ebbbd7ed0220eedf2372f63",
-    "tree": "807a8986144ba6d04276d170d5497054616b4785",
+    "revision": "717b79538d6d5242b2756549fd309c8586c8d20f",
+    "tree": "c8f4adfbb8c8d302048b15e235b8c3816b007613",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,29 +13,28 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Establish a source-backed engineering evidence foundation for reproducible builds, release-equivalent diagnostics, causal tracing, deterministic failure reproduction, profiling, benchmark science, and optimization without making research a second runtime or release authority.",
+    "alpha_prerequisite": "Provide the first executable H-05a prerequisite for OBJ-09 and OBJ-10: one kernel-owned, deterministic signal catalogue that later build identity, public projections, diagnostic runtimes, SDKs, and release evidence can consume without duplicating trace or metric semantics.",
     "roadmap_gates": [
-      "C-07",
       "D-01",
       "H-05",
       "J-02",
-      "J-04",
-      "J-05"
+      "J-04"
     ],
     "poam_items": [
-      "POAM-011",
-      "POAM-026",
-      "POAM-027"
+      "POAM-026"
     ],
     "architecture_owner": "docs/architecture/engine-data-flow.md"
   },
-  "current_behavior": "The engine data-flow owner already defines release-equivalent diagnostic mode, bounded observability, metric and latency contracts, and sanitized captures, while the roadmap names H-05 and Gate J implementation packages. The checkout has tracing at selected boundaries and a pinned Rust/DataFusion workspace, but it has no Cargo diagnostic profile, OpenTelemetry bridge, closed runtime metric implementation, unified release-evidence runner, fixed-hardware benchmark implementation, release assembly tooling, or one focused source-backed engineering guide that tells future packages which build, debugging, tracing, failure-reproduction, profiling, and optimization techniques to apply or reject. Relevant primary-source conclusions are currently distributed across external specifications and broader repository research.",
-  "target_behavior": "Create one bounded, repository-indexed research record that translates current primary-source practice into RRFlow-specific implementation guidance: separate correctness, diagnostic, fault, profiler, benchmark, and release modes; bind every artifact to reproducible build identity and provenance; preserve RrdEngine as durable authority while projecting bounded causal signals; define deterministic failure artifacts and a layered test matrix; choose symptom-specific native profilers; require distribution-aware benchmark evidence; and provide an adopt/defer/reject decision matrix plus package handoff to the existing roadmap. The record must cite current primary sources, distinguish researched evidence from RRFlow recommendations, and explicitly remain subordinate to architecture, roadmap, POA&M, and measured evidence owners.",
+  "current_behavior": "rrd-core already owns the closed TraceBoundary, TraceOperation, and TraceAttribute catalogues and validates durable trace evidence while depending only on serde. The architecture separately names four runtime diagnostic levels, twenty-two metric instruments, their kinds and units, nine permitted low-cardinality metric dimensions, and a default 2,000-point cardinality limit. No Rust telemetry module, metric descriptor catalogue, deterministic signal fingerprint, or checked-in machine projection exists. Current crates can therefore invent metric names, units, dimensions, or diagnostic levels independently, and the later build identity has no canonical signal-catalogue digest to bind. The root workspace also lacks the release-derived diagnostic profile and executable build identity, but those depend on this stable signal fingerprint and are intentionally deferred to the next H-05a packages.",
+  "target_behavior": "Add one dependency-free rrd-core telemetry contract that derives trace-operation descriptors directly from TraceOperation::ALL and trace-attribute descriptors directly from TraceAttribute::ALL, owns the four diagnostic levels and the exact twenty-two architecture-defined metric descriptors, admits only the nine architecture-defined low-cardinality metric dimensions, validates canonical-order/uniqueness/name/kind/unit/dimension invariants, and computes one deterministic SHA-256 signal-catalogue fingerprint over a versioned unambiguous byte preimage. Export the types and constants from rrd-core and add a generated golden JSON projection plus negative and mutation-sensitive tests. The catalogue describes signal identity only: it emits no metric, reads no clock or environment, installs no subscriber, chooses no exporter, captures no content, and changes no authoritative runtime event. This package is H-05a slice 1 only; it does not claim H-05a or H-05 complete.",
   "unchanged_behavior": [
-    "README.md remains product identity and current-status owner; the objective owns outcomes; the roadmap owns dependency order and completion evidence; the POA&M owns verified gap status; engine-data-flow owns the accepted observability and diagnostic contract.",
-    "No Rust code, Cargo profile, dependency, feature, API, schema, generated binding, SDK, workflow, fixture, executable, telemetry signal, persistence format, benchmark result, release artifact, product version, or installed behavior changes.",
-    "Research does not mark C-07, D-01, H-05, J-02, J-04, J-05, a POA&M item, or alpha readiness complete and does not turn diagnostic output, logs, traces, metrics, profiles, or benchmark harness state into engine authority.",
-    "Exploratory reasoning remains adaptive under ADR-0002; only governed durable effects cross the RrdEngine boundary, and future generators remain replaceable projections from one semantic owner."
+    "README.md remains product identity and status owner; the objective owns measurable outcomes; the roadmap owns dependency and completion; the POA&M owns deficiency status; engine-data-flow remains the accepted signal contract.",
+    "TraceOperation, TraceBoundary, and TraceAttribute remain the only durable trace name/type owners. telemetry.rs must iterate their ALL catalogues and must not copy operation or trace-attribute strings into a second list.",
+    "RuntimeTraceEvent persistence, validation, direct-convergence inventories, engine execution, storage formats, query/index behavior, authorization, receipts, public operations, SDKs, and all current call sites remain byte- and behavior-compatible.",
+    "rrd-core retains serde as its only normal dependency. No tracing, OpenTelemetry, metrics SDK, exporter, async runtime, transport, storage, provider, model, profiler, or hosted service enters the kernel.",
+    "Cargo release/diagnostic/runtime-analysis/benchmark profiles, compile-time source/toolchain identity, executable and distribution digests, format/configuration identities, rrflow version, release/diagnostic parity, runtime level activation, overhead measurement, W3C propagation, exporters, and captures remain subsequent H-05a through H-05e work.",
+    "The telemetry catalogue types only interoperable signal/effect metadata. It does not encode exploratory reasoning, hypotheses, prompts, source bodies, model output, private analysis, or lifecycle state.",
+    "Product version remains 1.0.0. No roadmap checkbox, POA&M state, maturity, benchmark, release, or promotion claim changes."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -50,321 +49,365 @@
       "baseline_sha256": "3e30915a632460d954131ed670772bc33fa341ae5caf47d159245f21765f0675",
       "baseline_lines": 238,
       "reviewed_lines": "1-238",
-      "symbols": ["complete product entry point and knowledge map"]
+      "symbols": [
+        "complete product entry point, current status, and engineering warp map"
+      ]
     },
     {
       "path": "Cargo.toml",
       "baseline_sha256": "44e90f79716e38305dc690acea46be390b52c1ba6b065c781c60d7a0b7b93896",
       "baseline_lines": 44,
       "reviewed_lines": "1-44",
-      "symbols": ["complete workspace membership, package identity, and shared dependencies"]
+      "symbols": [
+        "complete workspace membership, package metadata, dependencies, and absence of build profiles"
+      ]
     },
     {
       "path": "rust-toolchain.toml",
       "baseline_sha256": "495c69d1db93f25f53e3d0d2d40d812313366cc368de317871c2ace6c6ffafa4",
       "baseline_lines": 4,
       "reviewed_lines": "1-4",
-      "symbols": ["complete pinned Rust toolchain"]
+      "symbols": [
+        "complete pinned Rust 1.98.0 toolchain"
+      ]
     },
     {
       "path": "docs/objectives/rrflow-1.0-alpha.md",
       "baseline_sha256": "c65cc500a92e67caf919299033efabc2c94106426c2e30cf206a3b65aa3ddec9",
       "baseline_lines": 65,
       "reviewed_lines": "1-65",
-      "symbols": ["complete measurable alpha outcome owner"]
+      "symbols": [
+        "complete alpha outcome set",
+        "OBJ-09 provider-neutral client operation",
+        "OBJ-10 reproducible competitive evidence"
+      ]
     },
     {
       "path": "docs/roadmap/rrflow-1.0.md",
       "baseline_sha256": "ee5445a41ba7d5d07393150ce6ee5ab259284d43d4603b96efe35c7990e4db42",
       "baseline_lines": 165,
       "reviewed_lines": "1-165",
-      "symbols": ["complete release checklist and dependency owner"]
+      "symbols": [
+        "complete dependency spine and checklist",
+        "H-05a through H-05e warp order"
+      ]
     },
     {
       "path": "docs/roadmap/rrflow-1.0/gate-h.md",
       "baseline_sha256": "51efe3532a3e6cfda3917fb48f190ce154533ddb16737d85190d79160cda82b4",
       "baseline_lines": 74,
       "reviewed_lines": "1-74",
-      "symbols": ["complete Gate H security and observability requirements"]
+      "symbols": [
+        "complete Gate H requirements and acceptance",
+        "H-05a build and signal identity package"
+      ]
     },
     {
-      "path": "docs/roadmap/rrflow-1.0/gate-j.md",
-      "baseline_sha256": "73b5da9e503765ff600fefed752fea7f7b7d9c839160d053bb32da50bbce3b92",
-      "baseline_lines": 32,
-      "reviewed_lines": "1-32",
-      "symbols": ["complete Gate J qualification and release requirements"]
+      "path": "docs/poam/rrflow-1.0-alpha.md",
+      "baseline_sha256": "e68ae3e9221cfa77f56ffac54a30450e30d3798fa975d374b465e08e58c8012f",
+      "baseline_lines": 43,
+      "reviewed_lines": "1-43",
+      "symbols": [
+        "complete deficiency ledger and POAM-026 status"
+      ]
     },
     {
-      "path": "docs/roadmap/rrflow-1.0-execution/change-authoring.md",
-      "baseline_sha256": "6ea5ed28b4621e824c53e503dae84ef46de549fed0f02d6be6298d9e7979bb42",
-      "baseline_lines": 145,
-      "reviewed_lines": "1-145",
-      "symbols": ["complete repository effect and evidence procedure"]
+      "path": "docs/poam/rrflow-1.0-alpha/poam-026.md",
+      "baseline_sha256": "a8301be62f6054c5574baf350e15a40ccad71c69364088fa3476836693df6a36",
+      "baseline_lines": 45,
+      "reviewed_lines": "1-45",
+      "symbols": [
+        "complete observability and diagnostic deficiency",
+        "H-05a through H-05e closure order"
+      ]
     },
     {
       "path": "docs/architecture/engine-data-flow.md",
       "baseline_sha256": "e8ad761b8aa08da9c7f450a696bb105f1f2b19cfead40509c75915a2263fe40a",
       "baseline_lines": 1416,
       "reviewed_lines": "1-1416",
-      "symbols": ["complete engine flow", "trace and observability flow", "runtime modes, build profiles, and build identity", "metric instruments and cardinality", "latency measurement contract", "diagnostic capture and failure workflow"]
+      "symbols": [
+        "complete engine authority and flow",
+        "canonical operation catalogue",
+        "canonical attributes",
+        "runtime modes, build profiles, and build identity",
+        "metric instruments and cardinality",
+        "latency and diagnostic capture boundaries"
+      ]
     },
     {
-      "path": "docs/operations/ci.md",
-      "baseline_sha256": "2d484763faafa27f09189b22304e6e129e77e38ec9ff8abefbb54a58a913fab5",
-      "baseline_lines": 308,
-      "reviewed_lines": "1-308",
-      "symbols": ["complete CI lane and evidence owner"]
+      "path": "docs/research/rrflow-build-debug-trace-optimize-architecture-research.md",
+      "baseline_sha256": "69829b2e22e9ce0f569f333ac81d81ec7dd7b8902c9d782a64b450cc591e4dad",
+      "baseline_lines": 833,
+      "reviewed_lines": "1-833",
+      "symbols": [
+        "complete primary-source research",
+        "catalogue-driven generation boundary",
+        "H-05a implementation handoff"
+      ]
     },
     {
-      "path": "docs/research/README.md",
-      "baseline_sha256": "790a7969f014c8982fa2800e86fcdc4016b7ca65633c88e6623d7a4aa15d40a1",
-      "baseline_lines": 99,
-      "reviewed_lines": "1-99",
-      "symbols": ["complete platform-industry research index"]
-    },
-    {
-      "path": "docs/evidence/change-journals/gate-h/observability-diagnostic-build-and-latency-evidence-planning-journal.md",
-      "baseline_sha256": "2fd947e2a1aa150e9c849bb4a11f183603c82dd14d7847f89a62ae2a65d9b939",
-      "baseline_lines": 39,
-      "reviewed_lines": "1-39",
-      "symbols": ["complete prior H-05 planning receipt and residual gaps"]
+      "path": "docs/roadmap/rrflow-1.0-execution/change-authoring.md",
+      "baseline_sha256": "6ea5ed28b4621e824c53e503dae84ef46de549fed0f02d6be6298d9e7979bb42",
+      "baseline_lines": 145,
+      "reviewed_lines": "1-145",
+      "symbols": [
+        "complete repository effect procedure, checklist, journal, and stop conditions"
+      ]
     },
     {
       "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "8228e719f796d9571a0a7062cab96896042de341e1a27cc671dc8a0da27f6cfb",
-      "baseline_lines": 552,
-      "reviewed_lines": "1-552",
-      "symbols": ["complete prior active planning boundary"]
+      "baseline_sha256": "b6d94eee1ea090b6f8a36d1688784e6ffd8afa72ddc85236f387435664d481c2",
+      "baseline_lines": 384,
+      "reviewed_lines": "1-384",
+      "symbols": [
+        "complete superseded H-05 research package envelope and final declared paths"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/Cargo.toml",
+      "baseline_sha256": "0ae9c6084aac7632baecd16cea660d8d4c23eac7af4684928d1aa2e8bae987de",
+      "baseline_lines": 15,
+      "reviewed_lines": "1-15",
+      "symbols": [
+        "complete kernel dependency boundary and serde-only normal dependency"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/src/lib.rs",
+      "baseline_sha256": "6bb85b9e23edc22503073d35abac5e5b1a9e53d1061805f369c5855e58cddf96",
+      "baseline_lines": 87,
+      "reviewed_lines": "1-87",
+      "symbols": [
+        "complete kernel module and public export surface"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/src/digest.rs",
+      "baseline_sha256": "d310fbfa1ba7aaaebca6c3452a45ee6e41aba5771ba214b4e84d662cde5eecd3",
+      "baseline_lines": 202,
+      "reviewed_lines": "1-202",
+      "symbols": [
+        "complete dependency-free SHA-256 implementation and published-vector tests"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/src/error.rs",
+      "baseline_sha256": "6231957ab8e68d6c2f968de5625f057ef2840c7cc1a1e453b901432663a1573f",
+      "baseline_lines": 61,
+      "reviewed_lines": "1-61",
+      "symbols": [
+        "complete kernel error vocabulary and InvalidRuntime failure shape"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/src/trace.rs",
+      "baseline_sha256": "dfb535cfa555b138bb2ca8059c02fafd68e9217d2048f8965c27c64c70a19292",
+      "baseline_lines": 2537,
+      "reviewed_lines": "1-2537",
+      "symbols": [
+        "complete durable trace contract",
+        "TraceBoundary::ALL",
+        "TraceOperation::ALL",
+        "TraceAttribute::ALL",
+        "direct-convergence inventories",
+        "closed-catalogue and wire tests"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/fixtures/runtime-trace-v1.json",
+      "baseline_sha256": "71e645d80f2c313aed205cb0ad9c9d3b4d38f67b4469f46e4ea00b5bdb749534",
+      "baseline_lines": 108,
+      "reviewed_lines": "1-108",
+      "symbols": [
+        "complete persisted trace golden shape and typed attribute encoding"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/tests/golden.rs",
+      "baseline_sha256": "d31ae59ce7a8c1a4d7391f19b68746037a1180a839033b1cfa95ff4b878da73c",
+      "baseline_lines": 157,
+      "reviewed_lines": "1-157",
+      "symbols": [
+        "complete deterministic kernel fixture-generation and drift pattern"
+      ]
+    },
+    {
+      "path": "crates/kernel/rrd-core/tests/trace_golden.rs",
+      "baseline_sha256": "4124320e2bbff21ff8329af2d339f3c8d7829d60239f2a91e4740152caee1c60",
+      "baseline_lines": 15,
+      "reviewed_lines": "1-15",
+      "symbols": [
+        "complete runtime-trace fixture conformance oracle"
+      ]
     },
     {
       "path": "scripts/knowledge/render_navigation.py",
       "baseline_sha256": "d19b692237b0ceee868de99fcc240ab5e601d49f66c1689d16bc5d8d35f17855",
       "baseline_lines": 351,
       "reviewed_lines": "1-351",
-      "symbols": ["complete generated navigation and relationship projection"]
+      "symbols": [
+        "complete generated journal-index renderer and check mode"
+      ]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
       "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
       "baseline_lines": 1841,
       "reviewed_lines": "1-1841",
-      "symbols": ["complete Git-backed file and digest inventory generator"]
+      "symbols": [
+        "complete Git-backed current/generated/planned path and digest inventory"
+      ]
     }
   ],
   "implementation_changes": [
     {
-      "path": "docs/research/rrflow-build-debug-trace-optimize-architecture-research.md",
-      "baseline_state": "absent",
-      "symbols": ["bounded question and method", "repository baseline", "research findings", "RRFlow implementation guidance", "adopt-defer-reject matrix", "package handoff", "numbered primary sources"],
-      "action": "Create a comprehensive primary-source research artifact that makes future build, debug, trace, fault-reproduction, profiling, benchmark, and optimization choices reviewable while deferring accepted semantics and completion to their current owners.",
-      "failure_semantics": "Stop if the record duplicates the architecture or roadmap, prescribes a schema of thought, treats telemetry as state, claims unmeasured performance or completion, adopts an external source tree, or leaves recommendations uncited and unbounded."
+      "path": "crates/kernel/rrd-core/src/lib.rs",
+      "baseline_state": "present",
+      "symbols": [
+        "telemetry module declaration",
+        "public telemetry contract re-exports"
+      ],
+      "action": "Expose the new kernel-owned signal catalogue through the existing rrd-core public boundary without changing or aliasing existing trace exports.",
+      "failure_semantics": "Stop if the public export requires an outward crate, renames an existing contract, or makes a diagnostic projection authoritative."
     },
     {
-      "path": "docs/research/README.md",
-      "baseline_state": "present",
-      "symbols": ["Reviewed metadata", "Cross-system lifecycle research"],
-      "action": "Link the new bounded research record from the owning research index and update the index review date without copying its body.",
-      "failure_semantics": "Stop if the index absorbs implementation detail or becomes product, architecture, planning, or evidence authority."
+      "path": "crates/kernel/rrd-core/src/telemetry.rs",
+      "baseline_state": "absent",
+      "symbols": [
+        "TELEMETRY_CONTRACT_VERSION",
+        "DEFAULT_METRIC_CARDINALITY_LIMIT",
+        "DiagnosticLevel",
+        "MetricKind",
+        "MetricUnit",
+        "MetricAttribute",
+        "MetricInstrument",
+        "TraceOperationDescriptor",
+        "TraceAttributeDescriptor",
+        "MetricDescriptor",
+        "SignalCatalogue",
+        "signal_catalogue",
+        "signal_catalogue_sha256"
+      ],
+      "action": "Create the sole kernel semantic owner for diagnostic levels, trace-operation/attribute projection, metric instruments, kinds, units, permitted dimensions, validation, canonical versioned digest preimage, and SHA-256 fingerprint. Trace descriptors must be derived from TraceOperation::ALL and TraceAttribute::ALL, and every collection must be statically bounded and deterministic.",
+      "failure_semantics": "Reject unknown, duplicate, or out-of-canonical-order names; a trace operation whose name and boundary disagree; a metric descriptor with a wrong kind/unit or an undeclared, duplicate, or out-of-canonical-order dimension; an empty or noncanonical token; a cardinality limit other than the architecture-owned default for v1; and any digest computed from ambiguous or non-versioned concatenation."
+    },
+    {
+      "path": "crates/kernel/rrd-core/fixtures/telemetry-catalogue-v1.json",
+      "baseline_state": "absent",
+      "symbols": [
+        "generated signal catalogue",
+        "signal catalogue SHA-256"
+      ],
+      "action": "Add the pretty canonical JSON projection generated from SignalCatalogue, including its deterministic digest, for later contract/SDK/build-identity consumers and cross-language drift detection.",
+      "failure_semantics": "The fixture must be a replaceable projection from Rust catalogue code, not a manually interpreted authority; any byte or semantic drift fails until intentionally regenerated and reviewed."
+    },
+    {
+      "path": "crates/kernel/rrd-core/tests/telemetry_contract.rs",
+      "baseline_state": "absent",
+      "symbols": [
+        "catalogue closure and invariant test",
+        "golden projection test",
+        "mutation-sensitive digest test",
+        "fail-closed deserialization tests",
+        "non-authoritative contract boundary test"
+      ],
+      "action": "Author the failing contract oracle first, then prove exact architecture counts and values, derivation from TraceOperation::ALL and TraceAttribute::ALL, stable fixture bytes/digest, validation rejection for schema and catalogue drift, and no runtime/exporter authority.",
+      "failure_semantics": "The test must fail for a copied or missing trace operation, extra dynamic metric dimension, reordered descriptor, wrong unit/kind, unknown JSON field, stale fixture, unchanged digest after semantic mutation, or added normal kernel dependency."
     }
   ],
   "evidence_changes": [
     {
-      "path": "docs/evidence/change-journals/gate-h/build-debug-trace-optimize-research-journal.md",
-      "action": "Create the linked package journal with exact baseline, full reads, changed paths, primary-source method, commands/results, surfaced failures, omissions, remaining gaps, and explicit no-status-change statement."
+      "path": "docs/evidence/change-journals/gate-h/h05a-kernel-signal-catalogue-journal.md",
+      "action": "Create the H-05a slice-1 receipt with baseline/planning commit, full reads, test-first failure, exact catalogue/digest behavior, commands and results, surfaced failures, omissions, remaining H-05a work, and explicit no-status-change statement."
     },
     {
       "path": "docs/evidence/change-journals/gate-h/README.md",
-      "action": "Regenerate the nearest journal index so the new package receipt is discoverable.",
+      "action": "Regenerate the nearest Gate H journal index so the bounded implementation receipt is discoverable.",
       "generated": true,
       "generator": "scripts/knowledge/render_navigation.py"
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
-      "action": "Regenerate the deterministic Git-backed file and digest inventory after adding the research and evidence records.",
+      "action": "Regenerate the deterministic Git-backed path/digest inventory after the source, fixture, test, and evidence files exist.",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py"
     }
   ],
   "research": {
     "decision": "required",
-    "reason": "The package exists to compare current RRFlow boundaries with current language, telemetry, reliability, profiling, benchmarking, and supply-chain practice. Primary specifications and project documentation are required to separate portable semantics from tool-specific mechanisms and to avoid inventing unsupported performance or diagnostic claims.",
+    "reason": "The preceding reviewed deep-research record resolved the portable semantics before this implementation plan. This package uses only its current primary-source conclusions needed for metric kinds/units, deterministic aggregation, bounded cardinality, and telemetry failure isolation; it adds no upstream code or public compatibility surface.",
     "sources": [
       {
-        "title": "Cargo Book: Profiles",
-        "url": "https://doc.rust-lang.org/cargo/reference/profiles.html",
-        "retained_behavior": "Use root-owned custom profiles and explicit optimization/debug/LTO/codegen settings to create release-derived diagnostic and benchmark modes.",
-        "rejected_assumption": "A debug build or an implicitly configured local profile can represent shipped behavior or release latency."
-      },
-      {
-        "title": "rustc book: Remap source paths",
-        "url": "https://doc.rust-lang.org/rustc/remap-source-paths.html",
-        "retained_behavior": "Normalize compiler-emitted build paths where supported and verify the resulting artifacts on every target.",
-        "rejected_assumption": "Path remapping alone makes every linker, symbol, generated file, and platform artifact reproducible or secret-free."
-      },
-      {
-        "title": "SOURCE_DATE_EPOCH specification",
-        "url": "https://reproducible-builds.org/specs/source-date-epoch/",
-        "retained_behavior": "Derive embedded build timestamps from a deterministic source-owned epoch and clamp archive metadata.",
-        "rejected_assumption": "A wall-clock build timestamp is a reliable source identity or that timestamp normalization proves reproducibility."
-      },
-      {
-        "title": "SLSA 1.2 build provenance",
-        "url": "https://slsa.dev/spec/v1.2/build-provenance",
-        "retained_behavior": "Bind outputs to source, resolved inputs, build definition, builder, invocation, and useful diagnostic byproducts by digest.",
-        "rejected_assumption": "A checksum or provenance envelope proves the artifact is correct, secure, performant, or qualified."
-      },
-      {
-        "title": "OpenTelemetry tracing API",
-        "url": "https://opentelemetry.io/docs/specs/otel/trace/api/",
-        "retained_behavior": "Model bounded operations as spans with stable names, causal context, events, links, and explicit terminal error status.",
-        "rejected_assumption": "An exported or sampled span is durable engine evidence or permission for an effect."
-      },
-      {
-        "title": "W3C Trace Context",
-        "url": "https://www.w3.org/TR/trace-context/",
-        "retained_behavior": "Validate and propagate traceparent/tracestate interoperably with explicit privacy and trust-boundary handling.",
-        "rejected_assumption": "Incoming trace context is trusted identity, authorization, or a safe carrier for personal or secret data."
-      },
-      {
-        "title": "OpenTelemetry metrics data model",
+        "title": "OpenTelemetry Metrics Data Model",
         "url": "https://opentelemetry.io/docs/specs/otel/metrics/data-model/",
-        "retained_behavior": "Use aggregatable sums, gauges, and histograms with declared temporality and optional trace exemplars.",
-        "rejected_assumption": "Per-request identifiers belong in metric attributes or precomputed averages preserve tail behavior."
+        "retained_behavior": "Represent the closed catalogue with aggregatable counters, up/down counters, observable gauges, histograms, explicit units, and stable identifying attributes.",
+        "rejected_assumption": "Metric points or exporter output are authoritative engine state, and precomputed averages preserve useful distributions."
       },
       {
-        "title": "OpenTelemetry error handling",
+        "title": "OpenTelemetry Metrics API",
+        "url": "https://opentelemetry.io/docs/specs/otel/metrics/api/",
+        "retained_behavior": "Use stable instrument descriptors and treat name, kind, unit, and description as one registration identity.",
+        "rejected_assumption": "Callers may dynamically create semantically conflicting instruments or unrestricted attributes."
+      },
+      {
+        "title": "OpenTelemetry Metrics SDK",
+        "url": "https://opentelemetry.io/docs/specs/otel/metrics/sdk/",
+        "retained_behavior": "Keep cardinality and aggregation controls explicit and ensure later SDK/exporter behavior is a replaceable projection of the semantic catalogue.",
+        "rejected_assumption": "An exporter-specific view or silent overflow policy may become the metric contract."
+      },
+      {
+        "title": "OpenTelemetry Error Handling",
         "url": "https://opentelemetry.io/docs/specs/otel/error-handling/",
-        "retained_behavior": "Make telemetry fail independently, expose bounded self-diagnostics, and prefer signal loss over application semantic change.",
-        "rejected_assumption": "Exporter success can establish operation success or exporter failure may block, roll back, or crash engine work."
+        "retained_behavior": "Keep diagnostic collection nonessential to application semantics and expose bounded telemetry failures separately.",
+        "rejected_assumption": "Signal creation or export failure may fail, retry, commit, roll back, or relabel an RRFlow engine operation."
       },
       {
-        "title": "Tokio: Getting started with Tracing",
-        "url": "https://tokio.rs/tokio/topics/tracing",
-        "retained_behavior": "Use structured spans and events to preserve async causality and install subscribers at executable composition roots.",
-        "rejected_assumption": "Unstructured interleaved log lines or a subscriber hidden in a library provide a coherent causal path."
-      },
-      {
-        "title": "Rust standard library backtrace module",
-        "url": "https://doc.rust-lang.org/stable/std/backtrace/index.html",
-        "retained_behavior": "Capture backtraces only in explicitly enabled diagnostic paths and retain matching debug information for symbolization.",
-        "rejected_assumption": "Backtraces are cheap, complete, portable, or reliable enough to replace typed failure coordinates."
-      },
-      {
-        "title": "Miri",
-        "url": "https://github.com/rust-lang/miri/",
-        "retained_behavior": "Run bounded interpreter-compatible tests to expose undefined behavior and selected weak-memory effects.",
-        "rejected_assumption": "One Miri execution covers native FFI, all schedules, all platforms, or all Rust correctness properties."
-      },
-      {
-        "title": "Loom concurrency testing",
-        "url": "https://docs.rs/loom/latest/loom/",
-        "retained_behavior": "Model small concurrency primitives with deterministic interleaving exploration and retained failing seeds/configuration.",
-        "rejected_assumption": "Loom sees synchronization not routed through its replacement types or scales to the entire engine state space."
-      },
-      {
-        "title": "Rust compiler sanitizer support",
-        "url": "https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html",
-        "retained_behavior": "Use target-specific sanitizer lanes alongside tests, fuzzing, Miri, and native execution with symbolized reports.",
-        "rejected_assumption": "Sanitizers are zero-overhead production modes, universally supported, or complete proof of memory and concurrency safety."
-      },
-      {
-        "title": "FoundationDB simulation and testing",
-        "url": "https://apple.github.io/foundationdb/testing.html",
-        "retained_behavior": "Combine deterministic seeded failure simulation, live performance testing, and hardware failure tests rather than relying on one lane.",
-        "rejected_assumption": "Compilation, unit tests, simulation alone, or a mock filesystem qualifies crash and recovery behavior."
-      },
-      {
-        "title": "Prometheus instrumentation practices",
+        "title": "Prometheus Instrumentation Practices",
         "url": "https://prometheus.io/docs/practices/instrumentation/",
-        "retained_behavior": "Measure traffic, errors, latency, saturation, queues, caches, and resource use with aggressively bounded label sets.",
-        "rejected_assumption": "Unbounded identifiers and content are safe labels or that more telemetry is automatically more useful."
-      },
-      {
-        "title": "HdrHistogram",
-        "url": "https://github.com/HdrHistogram/HdrHistogram",
-        "retained_behavior": "Retain raw high-dynamic-range latency distributions and prevent or explicitly correct coordinated omission.",
-        "rejected_assumption": "Averages, a few percentiles, or closed-loop samples faithfully represent latency during stalls."
-      },
-      {
-        "title": "Apache DataFusion testing guide",
-        "url": "https://datafusion.apache.org/contributor-guide/testing.html",
-        "retained_behavior": "Start with the smallest oracle, widen to SQL/integration coverage, and run repeatable benchmarks against retained identical data.",
-        "rejected_assumption": "A microbenchmark or a newly generated dataset proves end-to-end query improvement."
-      },
-      {
-        "title": "Criterion BenchmarkGroup",
-        "url": "https://docs.rs/criterion/latest/criterion/struct.BenchmarkGroup.html",
-        "retained_behavior": "Declare measurement time, sample size, confidence, significance, throughput, and practical noise thresholds for microbenchmarks.",
-        "rejected_assumption": "Statistical significance alone means a change is operationally meaningful or release-acceptable."
-      },
-      {
-        "title": "Google SRE: Monitoring distributed systems",
-        "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
-        "retained_behavior": "Correlate latency, traffic, errors, and saturation and keep automated signals simple enough to produce an actionable investigation.",
-        "rejected_assumption": "One dashboard, mean latency, or an opaque anomaly detector establishes causality."
-      },
-      {
-        "title": "The Tail at Scale",
-        "url": "https://research.google/pubs/the-tail-at-scale/",
-        "retained_behavior": "Treat tail latency and utilization-sensitive stragglers as first-class end-to-end behavior.",
-        "rejected_assumption": "Median latency or isolated component speed predicts interactive system responsiveness."
-      },
-      {
-        "title": "rustc profile-guided optimization",
-        "url": "https://doc.rust-lang.org/nightly/rustc/profile-guided-optimization.html",
-        "retained_behavior": "Consider PGO only after representative, versioned workloads and stable build/benchmark evidence exist.",
-        "rejected_assumption": "PGO is a free build flag or profiles gathered from arbitrary workloads generalize to the shipped product."
-      },
-      {
-        "title": "Valgrind Cachegrind manual",
-        "url": "https://valgrind.org/docs/manual/cg-manual.html",
-        "retained_behavior": "Use reproducible instruction counts to complement noisy elapsed-time and sampling profiles for bounded CPU investigations.",
-        "rejected_assumption": "Simulated cache behavior exactly models modern target hardware or instruction reduction guarantees latency reduction."
-      },
-      {
-        "title": "Microsoft Windows Performance Toolkit",
-        "url": "https://learn.microsoft.com/en-us/windows-hardware/test/wpt/",
-        "retained_behavior": "Capture native Windows CPU, disk, memory, scheduling, and application events with WPR and inspect them with WPA.",
-        "rejected_assumption": "Linux profiling results explain native Windows behavior or cross-compilation supplies native runtime evidence."
-      },
-      {
-        "title": "Apple recording performance data",
-        "url": "https://developer.apple.com/documentation/os/recording-performance-data",
-        "retained_behavior": "Use bounded signpost intervals and native Instruments captures to correlate RRFlow operations on Apple targets.",
-        "rejected_assumption": "Portable spans alone expose every scheduler, allocation, I/O, or platform-specific performance cause."
+        "retained_behavior": "Model work, latency, errors, queues, caches, and saturation with deliberately bounded dimensions.",
+        "rejected_assumption": "Request, project, record, path, provider, model, or arbitrary error values are safe metric labels."
       }
     ]
   },
   "trace_resource_debug": {
     "runtime_trace": {
       "decision": "preserve",
-      "reason": "The research maps future diagnostic projections to the already accepted one-causal-chain architecture; it changes no span, event, context propagation, durable trace, engine operation, or exporter behavior."
+      "reason": "TraceOperation::ALL and TraceAttribute::ALL are read as the sole durable trace-name sources for descriptor projections and the digest. RuntimeTraceEvent, durable trace persistence, direct-convergence names, call sites, clocks, spans, and causal behavior remain unchanged."
     },
     "resource_evidence": {
       "decision": "add",
-      "reason": "The research specifies how future packages should collect CPU, wall time, allocation, RSS, disk, copy/decode, queue, telemetry-overhead, and raw latency distributions, while making no measurement or acceptance claim in this package."
+      "reason": "Add only the static identity of the twenty-two architecture-owned metric instruments and permitted dimensions. This package records no runtime sample, allocation, latency, throughput, or performance claim and adds no collection dependency."
     },
     "debugging_evidence": {
       "decision": "add",
-      "reason": "The research defines release-equivalent diagnostic builds, typed failure coordinates, deterministic seed/schedule artifacts, fuzz/sanitizer/concurrency lanes, capture contents, and symptom-to-profiler selection for future implementation packages."
+      "reason": "Add the closed off/normal/detailed/profile vocabulary and signal fingerprint needed by future build/capture identities. This package does not activate a level, retain symbols, capture data, or add a debug-only behavior."
     }
   },
   "first_failure_oracle": [
-    "No focused record in docs/research links reproducible build identity, release-equivalent diagnostics, causal telemetry, deterministic failures, native profilers, benchmark science, and optimization decisions to RRFlow's current implementation boundaries.",
-    "The workspace root has no Cargo profile declarations, while the architecture requires distinct release, diagnostic, fault, benchmark, and runtime-analysis modes without semantic feature drift.",
-    "Current tracing is present at selected adapter, storage, and engine boundaries, but no OpenTelemetry dependency, governed exporter bridge, or implemented closed metric catalogue exists.",
-    "Only the rrflowKV fuzz package currently exposes fuzz targets, and no shared release-evidence runner or deterministic whole-engine fault artifact contract exists.",
-    "The J-02/J-04/J-05 planned release-evidence, comparison, assembly, verification, and distribution paths are absent, so research must define prerequisites without pretending they are implemented."
+    "At baseline, crates/kernel/rrd-core/src/telemetry.rs, fixtures/telemetry-catalogue-v1.json, and tests/telemetry_contract.rs do not exist, and rrd-core exports no DiagnosticLevel, MetricInstrument, MetricDescriptor, SignalCatalogue, or signal-catalogue digest.",
+    "The architecture defines twenty-two exact instruments and nine permitted low-cardinality dimensions, but repository search finds no executable Rust owner for those names, kinds, units, relationships, or the default 2,000-point limit.",
+    "The root Cargo manifest has no custom profile and no build-identity implementation exists; those are intentionally not solved until this package supplies a stable signal-catalogue digest.",
+    "Baseline cargo test -p rrd-core --locked -- --list compiled successfully and listed the current 51 unit tests plus existing golden/integration tests, with no telemetry contract test. During implementation, author telemetry_contract.rs first and retain its expected unresolved-import/absent-fixture failure before adding telemetry.rs."
   ],
   "edit_sequence": [
-    "Commit this active plan alone as the direct child of clean baseline 65e679ef2852447d5ebbbd7ed0220eedf2372f63 and require check_change_plan.py to accept the planning boundary.",
-    "Author the bounded research record from the complete repository owner review and current primary sources, separating external facts, RRFlow recommendations, and rejected shortcuts.",
-    "Link only the research record from docs/research/README.md; do not restate its body or alter roadmap, objective, POA&M, architecture, or runtime status.",
-    "Create one Gate H package journal, regenerate the nearest navigation index and Git-backed file inventory, then reread every changed file and the complete diff.",
-    "Run the declared documentation, navigation, knowledge, inventory, version, and whitespace checks and commit the coherent research/evidence package without pushing or promoting it."
+    "Commit this active plan alone as the direct child of clean baseline 717b79538d6d5242b2756549fd309c8586c8d20f, then require check_change_plan.py to accept a planning-only state with zero post-plan paths.",
+    "Create telemetry_contract.rs first around the public API and architecture-owned counts/names/kinds/units/dimensions; run it and record the expected compile failure caused by the absent telemetry module.",
+    "Implement telemetry.rs at the dependency-free kernel boundary. Derive trace descriptors from TraceOperation::ALL and TraceAttribute::ALL, define the exact metric and diagnostic catalogues once, validate every invariant, and compute the versioned length-delimited SHA-256 preimage with rrd-core::digest.",
+    "Expose only the canonical types/functions from lib.rs. Do not touch trace.rs unless the planned assumptions are false; if a second operation list is required, stop rather than expanding scope.",
+    "Generate telemetry-catalogue-v1.json from the canonical Rust serializer through a guarded test regeneration mode, inspect the complete fixture, then prove unchanged normal test runs compare rather than rewrite it.",
+    "Add adversarial mutations for duplicate/reordered/unknown descriptors and dimensions, wrong kind/unit/boundary, unknown JSON fields, and semantic changes that must alter the fingerprint. Run the focused test first, then the complete core and kernel-storage CI suites, strict Clippy, formatting, dependency-boundary, and workspace architecture guards.",
+    "Create one Gate H journal, regenerate only its nearest index and the Git-backed execution inventory, reread every changed file and the complete diff, run all declared acceptance commands, and commit one coherent implementation result without pushing or promoting it.",
+    "After this package is clean, author a new planning-only boundary for H-05a slice 2: rrd-contract projection/generation. Later separate plans own release-derived Cargo profiles/build manifest, rrflow version and release/diagnostic parity, then runtime level activation and measured overhead."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
+    "cargo test -p rrd-core --test telemetry_contract --locked",
+    "cargo test -p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance --all-targets --locked",
+    "cargo clippy -p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance --all-targets --locked -- -D warnings",
+    "cargo test -p rrd-engine --test workspace_architecture --locked",
+    "bash -lc 'tree=\"$(cargo tree --locked -p rrd-core --edges normal --depth 1)\"; test \"$(printf \"%s\\n\" \"$tree\" | tail -n +2 | wc -l)\" -eq 1; printf \"%s\\n\" \"$tree\" | tail -n 1 | grep -q \"serde v\"'",
+    "cargo fmt --all -- --check",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/knowledge/render_navigation.py --check",
     "python3 scripts/knowledge/test_navigation.py",
@@ -374,11 +417,13 @@
     "git diff --check"
   ],
   "stop_conditions": [
-    "The research creates or overrides product, architecture, roadmap, POA&M, operation-catalogue, lifecycle, or evidence authority, or constrains private reasoning into a closed schema.",
-    "A recommendation lets diagnostic configuration change engine semantics, lets telemetry establish durable success or authorization, or makes an exporter, profiler, hosted service, provider, or external database a default prerequisite.",
-    "Build guidance claims reproducibility without independent artifact comparison, hides native-target limitations, changes the frozen 1.0.0 version, or implies provenance/signing proves runtime qualification.",
-    "Benchmark guidance accepts means, coordinated omission, different inputs/configuration, unpinned hardware/software, unreported failures, or statistical significance without a practical threshold.",
-    "The package claims a gate complete, reports an unexecuted tool or measurement as evidence, copies an external implementation surface, changes an undeclared path, or leaves navigation/inventory/documentation drift."
+    "Implementing the catalogue requires a normal rrd-core dependency beyond serde, an outward crate, a runtime clock/environment read, a global subscriber, exporter, storage access, network capability, provider, or model integration.",
+    "The implementation copies TraceOperation or TraceAttribute names instead of deriving them from their ALL catalogues, changes RuntimeTraceEvent or an existing operation/attribute, or creates a second operation, lifecycle, evidence, or telemetry authority.",
+    "A metric admits an estate, project, actor, session, request, trace, span, query, record, file/path, provider, model, collection, index generation, routine/job, error message, user value, prompt, source body, vector, credential, token, header, stack trace, or hidden reasoning as a metric dimension or payload.",
+    "The digest preimage is ambiguous, unversioned, process/order dependent, derived from debug formatting, or insensitive to a semantic change in trace operations, trace attributes, diagnostic levels, descriptors, units, kinds, dimensions, or cardinality policy.",
+    "The golden fixture becomes a handwritten authority, a normal test silently rewrites it, unknown fields deserialize successfully, or an invalid/duplicate/reordered catalogue is accepted.",
+    "The package expands into rrd-contract/OpenAPI/SDK projection, Cargo profiles, build scripts, version CLI, runtime instrumentation, W3C propagation, metrics SDK/export, capture, benchmarks, or release evidence without a new planning-only commit.",
+    "Any undeclared path changes, Cargo.lock drifts, an existing test regresses, documentation/navigation/inventory drifts, product version changes, or H-05/POAM-026/alpha completion is claimed."
   ],
-  "roadmap_status_change": "None. This package supplies supporting primary-source research and a future implementation handoff only; all roadmap checkboxes, POA&M statuses, objective outcomes, product version, release state, and promotion state remain unchanged."
+  "roadmap_status_change": "None. This package implements only the kernel signal-catalogue foundation of H-05a. H-05a, H-05, D-01, J-02, J-04, POAM-026, OBJ-09, OBJ-10, alpha readiness, version 1.0.0, release state, and promotion state remain unchanged."
 }
