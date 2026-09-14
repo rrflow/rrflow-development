@@ -25,6 +25,9 @@ prove which durable seat was authorized to cause it.
 
 D-05, G-01 through G-06
 
+Roadmap owners: [Gate D](../../roadmap/rrflow-1.0/gate-d.md) and
+[Gate G](../../roadmap/rrflow-1.0/gate-g.md).
+
 ## Closure evidence
 
 Invalid-output and identity-denial corpora, same-stamp principal/representation/seat/policy

@@ -30,6 +30,12 @@ host. Passing PID-reuse and effect-gap tests can falsely qualify this topology.
 
 A-07, C-02, C-03, D-01, D-02, H-04, H-05, J-01 through J-03, J-05
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Make `rrd-estate` pure; implement one outward local-process adapter consuming only immutable

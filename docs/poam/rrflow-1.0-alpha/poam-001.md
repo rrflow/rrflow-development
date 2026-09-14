@@ -23,6 +23,10 @@ the packaged knowledge through rrflowDB.
 
 D-02, D-05, H-01, J-03
 
+Roadmap owners: [Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Retain A-06 package reproducibility and A-07 source/vocabulary closure; KB-06 through KB-08

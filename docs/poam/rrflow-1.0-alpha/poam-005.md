@@ -28,6 +28,8 @@ fallbacks, algorithm-quality evidence, and planner evidence.
 
 E-01 through E-05
 
+Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
+
 ## Closure evidence
 
 Retain the C-03 atomic/reopen/fault and C-04 direct-read/source-closure corpora; bounded

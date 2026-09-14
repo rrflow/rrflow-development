@@ -28,6 +28,8 @@ remain C-07 work. No release, scale, latency, or competitor claim follows from C
 
 C-06
 
+Roadmap owner: [Gate C](../../roadmap/rrflow-1.0/gate-c.md).
+
 ## Closure evidence
 
 Retain the v6/manifest/snapshot vectors; exact generated/projected none/adaptive reads;

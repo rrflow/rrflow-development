@@ -30,6 +30,16 @@ reasoning, transport, or deployment equivalence.
 A-07, B-04, C-02 through C-04, D-01, E-01 through E-05, F-01 through F-05, G-04, G-05, H-01
 through H-05, H-07, J-01 through J-05
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate B](../../roadmap/rrflow-1.0/gate-b.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate E](../../roadmap/rrflow-1.0/gate-e.md),
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md),
+[Gate G](../../roadmap/rrflow-1.0/gate-g.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Replace the scalar with independently installed deployment-form, storage-profile,

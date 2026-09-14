@@ -27,6 +27,10 @@ component build that cannot install and operate an estate.
 
 A-07, D-01, D-06, D-11, J-03 through J-05
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Retain repository-closure checks; ship one primary `rrflow`/`rrflow.exe` per native target;

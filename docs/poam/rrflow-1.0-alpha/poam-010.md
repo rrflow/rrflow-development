@@ -28,6 +28,10 @@ flush/reindex work could amplify writes and latency.
 
 E, H-01, H-02, I-01 through I-03
 
+Roadmap owners: [Gate E](../../roadmap/rrflow-1.0/gate-e.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate I](../../roadmap/rrflow-1.0/gate-i.md).
+
 ## Closure evidence
 
 Exact and approximate quality corpus, plan evidence, feedback replay, rollback, and

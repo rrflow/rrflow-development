@@ -34,6 +34,16 @@ graph/index/vector/Arrow/DataFusion reasoning engine.
 A-07, B-04, C-02, C-03, D-01, D-02, E-01 through E-05, F-01 through F-05, G-04, G-05, H-01
 through H-05, H-07, J-01 through J-05
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate B](../../roadmap/rrflow-1.0/gate-b.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate E](../../roadmap/rrflow-1.0/gate-e.md),
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md),
+[Gate G](../../roadmap/rrflow-1.0/gate-g.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Move useful mechanics into outward `rrflow-kubernetes` with no forwarding crate; accept only

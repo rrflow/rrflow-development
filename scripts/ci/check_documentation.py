@@ -40,6 +40,8 @@ EXECUTION_FILE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
 ACTIVE_CHANGE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-active-change.json"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
 POAM = ROOT / "docs" / "poam" / "rrflow-1.0-alpha.md"
+POAM_RECORDS = ROOT / "docs" / "poam" / "rrflow-1.0-alpha"
+POAM_GOVERNANCE = POAM_RECORDS / "governance.md"
 AGENT_REFERENCE = ROOT / "docs" / "reference" / "agent-bootstrap.md"
 SEAT_IDENTITY_REFERENCE = ROOT / "docs" / "reference" / "seat-identity.md"
 SYSTEM_OVERVIEW = ROOT / "docs" / "architecture" / "system-overview.md"
@@ -84,6 +86,14 @@ JOURNAL_PAYLOAD = re.compile(r"(?ms)^```text\n(.*?)^```$")
 LEGACY_EXECUTION_SOURCE = re.compile(
     r"^docs/roadmap/rrflow-1\.0-execution-map\.md@"
     r"b7b061900b67d535ffec2710e6e4c30815d0f216#L[1-9][0-9]*$"
+)
+POAM_ROW = re.compile(
+    r"(?m)^\| (POAM-\d{3}) \| ([^|]+?) \| ([^|]+?) \| "
+    r"\[([^\]\n]+)\]\(([^)\n]+)\) \|$"
+)
+POAM_GATE_TOKEN = re.compile(r"(?<![A-Z0-9-])([A-J])(?:-\d{2})?(?![A-Z0-9-])")
+POAM_GATE_LINK = re.compile(
+    r"\(\.\./\.\./roadmap/rrflow-1\.0/gate-([a-j])\.md(?:#[^)]*)?\)"
 )
 
 
@@ -158,7 +168,7 @@ def local_fragment(raw: str) -> str | None:
 
 def markdown_anchors(source: str) -> set[str]:
     """Build the GitHub-style heading anchors used by the root portal."""
-    anchors: set[str] = set()
+    anchors = set(re.findall(r"(?im)<a\s+id=[\"']([^\"']+)[\"']\s*></a>", source))
     counts: dict[str, int] = {}
     for heading in MARKDOWN_HEADING.findall(source):
         label = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", heading)
@@ -223,6 +233,175 @@ def linked_journal_integrity_failures() -> list[str]:
         failures.append(
             f"linked journal refraction has {legacy_count} legacy records; expected 96"
         )
+    return failures
+
+
+def markdown_section(source: str, heading: str) -> str | None:
+    """Return one second-level section body without prescribing its prose shape."""
+    match = re.search(rf"(?ms)^{re.escape(heading)}\s*$\n(.*?)(?=^##\s|\Z)", source)
+    return match.group(1).strip() if match is not None else None
+
+
+def poam_integrity_failures(parent: str) -> list[str]:
+    """Keep the POA&M ledger complete while detail stays with linked owners."""
+    failures: list[str] = []
+    rows = POAM_ROW.findall(parent)
+    expected_ids = [f"POAM-{ordinal:03d}" for ordinal in range(1, 28)]
+    observed_ids = [row[0] for row in rows]
+    if observed_ids != expected_ids:
+        failures.append(
+            "the POA&M ledger must contain POAM-001 through POAM-027 exactly once "
+            "and in order"
+        )
+
+    governance = POAM_GOVERNANCE.read_text(encoding="utf-8")
+    allowed_statuses = set(
+        re.findall(
+            r"(?m)^- `([^`]+)`: ",
+            markdown_section(governance, "## Status vocabulary") or "",
+        )
+    )
+    if not allowed_statuses:
+        failures.append("the POA&M governance owner defines no status vocabulary")
+    allowed_priorities = {"Critical", "High"}
+
+    records: dict[str, str] = {}
+    for identifier, priority, status, title, target in rows:
+        relative = f"docs/poam/rrflow-1.0-alpha/{identifier.casefold()}.md"
+        expected_target = f"rrflow-1.0-alpha/{identifier.casefold()}.md"
+        if priority.strip() not in allowed_priorities:
+            failures.append(f"{identifier}: unsupported priority {priority.strip()!r}")
+        if status.strip() not in allowed_statuses:
+            failures.append(f"{identifier}: status is absent from ledger governance")
+        if target != expected_target:
+            failures.append(f"{identifier}: ledger target must be {expected_target}")
+
+        path = POAM.parent / expected_target
+        if not path.is_file():
+            failures.append(f"{identifier}: missing coordinated record {relative}")
+            continue
+        source = path.read_text(encoding="utf-8")
+        records[identifier] = source
+        if source.splitlines()[0] != f"# {identifier} — {title}":
+            failures.append(f"{identifier}: ledger title and record heading disagree")
+        expected_coordinate = (
+            "rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/"
+            f"{identifier.casefold()}"
+        )
+        if header_field(source, "Coordinate") != f"`{expected_coordinate}`":
+            failures.append(f"{identifier}: record coordinate does not match its ID")
+        if header_field(source, "Owner") != (
+            "[RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)"
+        ):
+            failures.append(f"{identifier}: record does not link its parent owner")
+
+        for required_heading in (
+            "## Observed deficiency",
+            "## Impact",
+            "## Owning gates",
+            "## Closure evidence",
+        ):
+            if len(re.findall(rf"(?m)^{re.escape(required_heading)}\s*$", source)) != 1:
+                failures.append(
+                    f"{identifier}: requires exactly one {required_heading} section"
+                )
+
+        gate_body = markdown_section(source, "## Owning gates")
+        if gate_body is None:
+            continue
+        gate_statement = gate_body.split("\n\nRoadmap owner", 1)[0]
+        named_families = set(POAM_GATE_TOKEN.findall(gate_statement))
+        linked_families = {
+            family.upper() for family in POAM_GATE_LINK.findall(gate_body)
+        }
+        if not named_families:
+            failures.append(f"{identifier}: Owning gates names no roadmap family")
+        if missing := sorted(named_families - linked_families):
+            failures.append(
+                f"{identifier}: missing roadmap owner links for gate families {missing}"
+            )
+        if unexpected := sorted(linked_families - named_families):
+            failures.append(
+                f"{identifier}: links unassigned roadmap gate families {unexpected}"
+            )
+
+        for forbidden_heading in (
+            "## Convergence update",
+            "## Execution decision",
+        ):
+            if has_exact_heading(source, forbidden_heading):
+                failures.append(
+                    f"{identifier}: move {forbidden_heading[3:].lower()} history "
+                    "to a linked evidence record"
+                )
+
+    poam_011 = records.get("POAM-011", "")
+    for required_heading in ("## Current-detail owners", "## Evidence history"):
+        if not has_exact_heading(poam_011, required_heading):
+            failures.append(f"POAM-011: missing {required_heading} owner warp")
+    for target in (
+        "../../reference/protocol/public-contract.md",
+        "../../roadmap/rrflow-1.0-execution/generated-surfaces.md",
+        "../../reference/sdk/README.md",
+        "../../reference/sdk/rust.md",
+        "../../reference/sdk/typescript.md",
+        "../../reference/sdk/python.md",
+        "../../reference/sdk/go.md",
+        "../../reference/sdk/java.md",
+        "../../reference/sdk/dotnet.md",
+        "../../reference/client/connectome.md",
+        "../../evidence/change-journals/gate-b/b-04-evidence-journal.md",
+        "../../evidence/change-journals/gate-b/b-05-evidence-journal.md",
+        "../../evidence/change-journals/repository/poam-027c-linked-execution-records-and-generated-navigation.md",
+    ):
+        if target not in poam_011:
+            failures.append(
+                f"POAM-011: missing canonical owner or evidence link {target}"
+            )
+
+    poam_014 = records.get("POAM-014", "")
+    poam_014_words = " ".join(poam_014.split())
+    for target in (
+        "../../roadmap/rrflow-1.0-file-plan.jsonl",
+        "../../roadmap/rrflow-1.0-execution/implementation-navigation.md",
+        "../../roadmap/rrflow-1.0-execution/change-authoring.md",
+    ):
+        if target not in poam_014:
+            failures.append(f"POAM-014: missing package-local trace owner {target}")
+    for required_text in (
+        "planning-only active change record",
+        "linked package journal",
+        "do not append a second global prose implementation trace",
+    ):
+        if required_text not in poam_014_words:
+            failures.append(f"POAM-014: missing trace boundary {required_text!r}")
+    if "require each later gate to update it" in poam_014_words:
+        failures.append("POAM-014: still requires a global prose trace update")
+
+    poam_027 = records.get("POAM-027", "")
+    poam_027_words = " ".join(poam_027.split())
+    if not has_exact_heading(poam_027, "## Remediation evidence"):
+        failures.append("POAM-027: missing linked remediation evidence")
+    for target in (
+        "../../evidence/change-journals/repository/poam-027a-change-plan-enforcement-implementation-journal.md",
+        "../../evidence/change-journals/repository/poam-027b-canonical-package-identity-correction-journal.md",
+        "../../evidence/change-journals/repository/poam-027c-linked-execution-records-and-generated-navigation.md",
+        "../../operations/ci.md",
+    ):
+        if target not in poam_027:
+            failures.append(f"POAM-027: missing remediation owner {target}")
+    for required_text in (
+        "scripts/ci/check_change_plan.py",
+        "Candidate CI invokes that validator",
+        "not yet derived automatically",
+        "bypassable outside candidate CI",
+        "not a schema for exploratory or private AI reasoning",
+    ):
+        if required_text not in poam_027_words:
+            failures.append(f"POAM-027: missing current boundary {required_text!r}")
+    if "procedure-to-diff binding is not machine-readable" in poam_027_words:
+        failures.append("POAM-027: still denies the implemented machine binding")
+
     return failures
 
 
@@ -456,10 +635,11 @@ def main() -> int:
         failures.append("the owning alpha objective has no durable coordinate")
 
     poam = POAM.read_text(encoding="utf-8")
-    if "## Open deficiencies" not in poam:
+    if "## Deficiency ledger" not in poam:
         failures.append("the owning alpha POA&M has no deficiency ledger")
     if "rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha" not in poam:
         failures.append("the owning alpha POA&M has no durable coordinate")
+    failures.extend(poam_integrity_failures(poam))
 
     agent_reference = AGENT_REFERENCE.read_text(encoding="utf-8")
     if "## Installed specialization" not in agent_reference:
@@ -637,7 +817,7 @@ def main() -> int:
         failures.append("the owning RRFlow 1.0 roadmap has no execution checklist")
     if "rrflow://rrflow-instance/data/roadmap/rrflow-1.0" not in roadmap:
         failures.append("the owning RRFlow 1.0 roadmap has no durable coordinate")
-    if "## Required outcomes" in roadmap or "## Open deficiencies" in roadmap:
+    if "## Required outcomes" in roadmap or "## Deficiency ledger" in roadmap:
         failures.append("the roadmap duplicates objective or POA&M ownership")
     if "#### A-06 knowledge-bootstrap sequence" not in roadmap:
         failures.append("the roadmap has no incremental knowledge-bootstrap sequence")

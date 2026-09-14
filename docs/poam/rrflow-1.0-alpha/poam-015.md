@@ -26,6 +26,11 @@ survive as accidental compatibility promises.
 
 A-07, C-03, H-04, J-01
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Trace every affected fixture, type, server/client path, and test; derive available surface

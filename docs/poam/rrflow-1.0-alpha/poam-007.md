@@ -28,6 +28,13 @@ without one same-stamp authenticated and authorized causal operation.
 
 A-07, C-03, D-01, G-02, G-04, H-04, H-05, I-04 through I-06
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate G](../../roadmap/rrflow-1.0/gate-g.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate I](../../roadmap/rrflow-1.0/gate-i.md).
+
 ## Closure evidence
 
 Canonical seat naming is direct; the generic template has no persona/provider default; this

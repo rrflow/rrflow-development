@@ -24,6 +24,9 @@ still-monolithic estate aggregate and direct repository into native engine recor
 
 C-05, J-01, J-02
 
+Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md) and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 The C-05b execution record traces every removed default and repeated public shape; negative

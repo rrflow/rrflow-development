@@ -27,6 +27,12 @@ canonical corruption, or an unsafe reset can hide acknowledged data loss.
 
 C-07, D-01, D-11, E-01 through E-05, F-01 through F-05, J-02 through J-05
 
+Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate E](../../roadmap/rrflow-1.0/gate-e.md),
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Implement an offline mutation-free inspector and quick/full verifier; deterministic repair

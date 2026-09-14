@@ -34,6 +34,14 @@ a deployment profile.
 A-07, C-01 through C-07, D-01, D-06, E-01 through E-05, F-01 through F-05, H-04, H-05, H-07,
 J-01 through J-05; a distributed availability gate is not yet scheduled
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate E](../../roadmap/rrflow-1.0/gate-e.md),
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Preserve every safety behavior enumerated in the distributed contract through pure contracts

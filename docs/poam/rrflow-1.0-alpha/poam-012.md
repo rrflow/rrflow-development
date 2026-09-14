@@ -21,6 +21,8 @@ Performance or competitive claims cannot be evaluated honestly.
 
 J-02 through J-05
 
+Roadmap owner: [Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Raw reproducible correctness, latency, throughput, memory, storage, recall, crash, and

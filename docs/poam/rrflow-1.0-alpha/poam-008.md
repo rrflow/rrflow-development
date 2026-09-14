@@ -43,6 +43,14 @@ generic restartable routines.
 
 A-07, C-04, D-01, D-03, D-06, F-03, H-02, H-04, H-05, I-01 through I-07, J-01 through J-05
 
+Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
+[Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate D](../../roadmap/rrflow-1.0/gate-d.md),
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md),
+[Gate I](../../roadmap/rrflow-1.0/gate-i.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Retain C-03's typed content-addressed state, explicit runtime builds, schema-bound prepared

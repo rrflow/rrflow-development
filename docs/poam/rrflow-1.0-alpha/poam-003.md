@@ -31,6 +31,9 @@ distributed gap remains explicit.
 
 C-05, J-01
 
+Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md) and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Negative pre-1.0/omission/generic-quantization tests, fresh rrflowKV reopen, lifecycle

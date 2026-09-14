@@ -33,6 +33,9 @@ cancellation/resource path remain absent.
 
 C-07, F-01, F-02, F-04, F-05
 
+Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md) and
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md).
+
 ## Closure evidence
 
 Retain C-04 source closure plus C-06g projected-stream and C-06h adversarial qualification

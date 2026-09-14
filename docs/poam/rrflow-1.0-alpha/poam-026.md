@@ -27,6 +27,12 @@ can remain invisible; and a debug-only behavior could appear to qualify the rele
 
 C-06, C-07, F-04, G-06, H-05, J-02, J-04, J-05
 
+Roadmap owners: [Gate C](../../roadmap/rrflow-1.0/gate-c.md),
+[Gate F](../../roadmap/rrflow-1.0/gate-f.md),
+[Gate G](../../roadmap/rrflow-1.0/gate-g.md),
+[Gate H](../../roadmap/rrflow-1.0/gate-h.md), and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 Implement H-05a through H-05e in dependency order: exact build identity and

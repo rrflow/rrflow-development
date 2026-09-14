@@ -28,6 +28,9 @@ internal components can appear healthy without one usable estate or executable.
 
 D-01 through D-11, J-01 through J-05
 
+Roadmap owners: [Gate D](../../roadmap/rrflow-1.0/gate-d.md) and
+[Gate J](../../roadmap/rrflow-1.0/gate-j.md).
+
 ## Closure evidence
 
 The D-01 single-primary-executable fresh/existing lifecycle passes deterministic plan,

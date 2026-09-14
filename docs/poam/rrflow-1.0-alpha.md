@@ -8,7 +8,9 @@
 
 [Open the ledger-governance chapter](rrflow-1.0-alpha/governance.md)
 
-## Open deficiencies
+<a id="open-deficiencies"></a>
+
+## Deficiency ledger
 
 | ID | Priority | Status | Deficiency record |
 |---|---|---|---|
