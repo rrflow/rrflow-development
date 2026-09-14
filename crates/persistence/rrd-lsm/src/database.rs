@@ -18,8 +18,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-const WAL_DIRECTORY: &str = "wal";
-const SEGMENT_DIRECTORY: &str = "segments";
+pub(crate) const WAL_DIRECTORY: &str = "wal";
+pub(crate) const SEGMENT_DIRECTORY: &str = "segments";
 pub const DEFAULT_WAL_PAYLOAD_MAX_BYTES: usize = 64 * 1024 * 1024;
 pub const DEFAULT_MEMTABLE_MAX_VERSIONS: usize = 524_288;
 pub const DEFAULT_L0_COMPACTION_TRIGGER: usize = 8;
@@ -350,16 +350,23 @@ impl Database {
     ) -> Result<Self> {
         let options = options.validate()?;
         let segment_io = IoContext::new(options.segment_io)?;
-        if root.exists() {
-            if !root.is_dir() || std::fs::read_dir(root)?.next().is_some() {
-                return Err(Error::InvalidManifest(
-                    "new database path exists and is not an empty directory".into(),
-                ));
+        match std::fs::symlink_metadata(root) {
+            Ok(metadata) => {
+                if metadata.file_type().is_symlink()
+                    || !metadata.is_dir()
+                    || std::fs::read_dir(root)?.next().is_some()
+                {
+                    return Err(Error::InvalidManifest(
+                        "new database path exists and is not an empty non-symlink directory".into(),
+                    ));
+                }
             }
-        } else {
-            std::fs::create_dir(root)?;
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                std::fs::create_dir(root)?;
+            }
+            Err(error) => return Err(error.into()),
         }
-        let manifests = ManifestStore::open(root)?;
+        let manifests = ManifestStore::create(root)?;
         std::fs::create_dir(root.join(WAL_DIRECTORY))?;
         std::fs::create_dir(root.join(SEGMENT_DIRECTORY))?;
         let manifest = new_manifest(1, None, 0, 0, 1, Vec::new(), application_format)?;
@@ -407,10 +414,11 @@ impl Database {
 
     pub fn open_with_options(root: &Path, options: DatabaseOptions) -> Result<Self> {
         let total_started = Instant::now();
+        validate_existing_database_layout(root)?;
         let options = options.validate()?;
         let segment_io = IoContext::new(options.segment_io)?;
         let manifest_started = Instant::now();
-        let manifests = ManifestStore::open(root)?;
+        let manifests = ManifestStore::open_existing(root)?;
         let (_, manifest) = manifests
             .current()?
             .ok_or_else(|| Error::InvalidManifest("database has no CURRENT manifest".into()))?;
@@ -426,10 +434,12 @@ impl Database {
         let mut segments = Vec::with_capacity(manifest.segments.len());
         let mut segment_open_evidence = SegmentOpenEvidence::default();
         for expected in &manifest.segments {
+            let segment_path = root
+                .join(SEGMENT_DIRECTORY)
+                .join(format!("{}.seg", expected.id));
+            require_existing_regular_file(&segment_path, "segment")?;
             let segment = Segment::open_expected_with_cache_and_io(
-                &root
-                    .join(SEGMENT_DIRECTORY)
-                    .join(format!("{}.seg", expected.id)),
+                &segment_path,
                 expected,
                 Arc::clone(&page_cache),
                 Arc::clone(&segment_io),
@@ -445,6 +455,7 @@ impl Database {
         }
         let segments_ms = segments_started.elapsed().as_millis() as u64;
         let path = wal_path(root, manifest.wal_start_sequence);
+        require_existing_regular_file(&path, "active WAL")?;
         let mut memtable = Memtable::at_sequence(manifest.durable_sequence);
         let wal_started = Instant::now();
         let recovery = replay_from(&path, manifest.wal_start_sequence, |batch| {
@@ -2159,7 +2170,34 @@ fn new_manifest(
     }
 }
 
-fn wal_path(root: &Path, starting_sequence: u64) -> PathBuf {
+fn validate_existing_database_layout(root: &Path) -> Result<()> {
+    for relative in ["", WAL_DIRECTORY, SEGMENT_DIRECTORY] {
+        let path = root.join(relative);
+        let metadata = std::fs::symlink_metadata(&path)
+            .map_err(|error| Error::io("validating database directory", &path, error))?;
+        if metadata.file_type().is_symlink() || !metadata.is_dir() {
+            return Err(Error::InvalidManifest(format!(
+                "database directory {} is missing, symbolic, or invalid",
+                path.display()
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn require_existing_regular_file(path: &Path, object: &str) -> Result<()> {
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|error| Error::io("validating database file", path, error))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(Error::InvalidManifest(format!(
+            "{object} {} is symbolic or invalid",
+            path.display()
+        )));
+    }
+    Ok(())
+}
+
+pub(crate) fn wal_path(root: &Path, starting_sequence: u64) -> PathBuf {
     root.join(WAL_DIRECTORY)
         .join(format!("{starting_sequence:020}.wal"))
 }

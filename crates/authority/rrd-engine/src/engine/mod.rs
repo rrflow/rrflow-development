@@ -106,6 +106,7 @@ mod estate;
 mod estate_control;
 mod function;
 mod inference;
+mod installation;
 mod invocation;
 mod memory_estate;
 mod model;
@@ -131,6 +132,11 @@ pub use distributed::{
 pub use error::{Result, ServiceError, ServiceErrorKind};
 pub use estate_control::{
     EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,
+};
+pub use installation::{
+    DefaultAttunementPhase, DefaultInstallProfile, InstallationPreview,
+    InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
+    InstalledEstateRecord, ProjectLocator,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,

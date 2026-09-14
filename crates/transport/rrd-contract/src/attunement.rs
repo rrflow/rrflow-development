@@ -5,7 +5,8 @@
 //! authority that may persist transitions and checkpoints.
 
 use crate::{
-    invalid, sha256_bytes, validate_sha256, CanonicalId, ResourceKind, ResourcePath, Result,
+    invalid, sha256_bytes, validate_sha256, CanonicalId, MemorySeatDefinition, ResourceKind,
+    ResourcePath, Result, SecurityAction,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -85,9 +86,12 @@ pub enum InstallationTargetKind {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum InstallationActionKind {
+    ValidateProject,
+    CreateStorageRoot,
+    PrepareCredentials,
     InitializeInstance,
-    ConfigureProjectLocator,
     CreateAttunementJob,
+    PublishProjectLocator,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -119,6 +123,44 @@ impl InstallationPlanAction {
     }
 }
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum InstallationManagedPathKind {
+    StorageRoot,
+    TokenKey,
+    OperatorCredential,
+    ProjectLocator,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum InstallationRemovalRule {
+    RemoveIfOwnedDigestMatches,
+}
+
+/// One RRFlow-owned path whose state is bound by the preview. The path is
+/// project-relative so the plan cannot silently redirect effects elsewhere.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct InstallationManagedPath {
+    pub kind: InstallationManagedPathKind,
+    pub relative_path: String,
+    pub precondition_sha256: String,
+    pub removal_rule: InstallationRemovalRule,
+}
+
+impl InstallationManagedPath {
+    fn validate(&self) -> Result<()> {
+        validate_project_relative_path(&self.relative_path)?;
+        validate_sha256(
+            &self.precondition_sha256,
+            "installation managed path precondition_sha256",
+        )
+    }
+}
+
 /// A deterministic preview of installation work. Applying this plan must use
 /// the same digest; implementations cannot silently re-plan during mutation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -128,11 +170,23 @@ pub struct InstallationPlan {
     pub id: CanonicalId,
     pub target: ResourcePath,
     pub target_kind: InstallationTargetKind,
+    pub product_version: String,
+    pub executable_sha256: String,
+    pub profile_id: CanonicalId,
+    pub profile_sha256: String,
+    pub project_root: String,
+    pub project_precondition_sha256: String,
+    pub storage_root_id: CanonicalId,
     pub configuration_sha256: String,
+    pub initial_seat: MemorySeatDefinition,
+    pub initial_principal_id: CanonicalId,
+    pub initial_grants: Vec<SecurityAction>,
+    pub credential_bytes: u16,
+    pub inactive_capabilities: Vec<CanonicalId>,
+    pub managed_paths: Vec<InstallationManagedPath>,
     pub attunement_plan_id: CanonicalId,
     pub attunement_plan_sha256: String,
     pub actions: Vec<InstallationPlanAction>,
-    pub planned_at_unix_ms: u64,
     pub plan_sha256: String,
 }
 
@@ -140,10 +194,49 @@ impl InstallationPlan {
     pub fn validate(&self) -> Result<()> {
         validate_contract_version(self.contract_version)?;
         validate_installation_target(&self.target)?;
+        validate_bounded_text(&self.product_version, "installation product_version", 64)?;
+        validate_sha256(&self.executable_sha256, "installation executable_sha256")?;
+        validate_sha256(&self.profile_sha256, "installation profile_sha256")?;
+        validate_absolute_project_root(&self.project_root)?;
+        validate_sha256(
+            &self.project_precondition_sha256,
+            "installation project_precondition_sha256",
+        )?;
         validate_sha256(
             &self.configuration_sha256,
             "installation configuration_sha256",
         )?;
+        self.initial_seat.validate()?;
+        if self.initial_grants.is_empty() {
+            return invalid("installation initial_grants cannot be empty");
+        }
+        validate_sorted_unique(
+            &self.initial_grants,
+            "installation initial_grants must be sorted and unique",
+        )?;
+        if !(32..=4_096).contains(&self.credential_bytes) {
+            return invalid("installation credential_bytes is outside its bound");
+        }
+        validate_sorted_unique(
+            &self.inactive_capabilities,
+            "installation inactive_capabilities must be sorted and unique",
+        )?;
+        let expected_paths = [
+            InstallationManagedPathKind::StorageRoot,
+            InstallationManagedPathKind::TokenKey,
+            InstallationManagedPathKind::OperatorCredential,
+            InstallationManagedPathKind::ProjectLocator,
+        ];
+        if self.managed_paths.len() != expected_paths.len() {
+            return invalid("installation plan must bind every managed path exactly once");
+        }
+        let mut paths = BTreeSet::new();
+        for (managed, expected_kind) in self.managed_paths.iter().zip(expected_paths) {
+            managed.validate()?;
+            if managed.kind != expected_kind || !paths.insert(&managed.relative_path) {
+                return invalid("installation managed paths are duplicated or out of order");
+            }
+        }
         validate_sha256(
             &self.attunement_plan_sha256,
             "installation attunement_plan_sha256",
@@ -152,9 +245,12 @@ impl InstallationPlan {
             return invalid("installation action count is outside its bound");
         }
         let expected = [
+            InstallationActionKind::ValidateProject,
+            InstallationActionKind::CreateStorageRoot,
+            InstallationActionKind::PrepareCredentials,
             InstallationActionKind::InitializeInstance,
-            InstallationActionKind::ConfigureProjectLocator,
             InstallationActionKind::CreateAttunementJob,
+            InstallationActionKind::PublishProjectLocator,
         ];
         if self.actions.len() != expected.len() {
             return invalid("installation plan must contain every canonical action exactly once");
@@ -164,9 +260,6 @@ impl InstallationPlan {
             if action.kind != expected_kind {
                 return invalid("installation actions are missing, duplicated, or out of order");
             }
-        }
-        if self.planned_at_unix_ms == 0 {
-            return invalid("installation planned_at_unix_ms must be greater than zero");
         }
         validate_sha256(&self.plan_sha256, "installation plan_sha256")?;
         if self.plan_sha256 != installation_plan_sha256(self)? {
@@ -184,10 +277,17 @@ impl InstallationPlan {
         {
             return invalid("installation plan does not bind the supplied attunement plan");
         }
-        if self.planned_at_unix_ms < plan.planned_at_unix_ms {
-            return invalid("installation plan predates its attunement plan");
-        }
         Ok(())
+    }
+
+    pub fn managed_path(&self, kind: InstallationManagedPathKind) -> &InstallationManagedPath {
+        let index = match kind {
+            InstallationManagedPathKind::StorageRoot => 0,
+            InstallationManagedPathKind::TokenKey => 1,
+            InstallationManagedPathKind::OperatorCredential => 2,
+            InstallationManagedPathKind::ProjectLocator => 3,
+        };
+        &self.managed_paths[index]
     }
 }
 
@@ -218,6 +318,10 @@ pub struct InstallationResult {
     pub action_results: Vec<InstallationActionResult>,
     pub runtime_manifest_sha256: String,
     pub runtime_cursor: u64,
+    pub control_journal_sequence: u64,
+    pub installed_record_sha256: String,
+    pub credential_sha256: String,
+    pub locator_sha256: String,
     pub applied_at_unix_ms: u64,
     pub idempotent_replay: bool,
     pub result_sha256: String,
@@ -244,8 +348,20 @@ impl InstallationResult {
             &self.runtime_manifest_sha256,
             "installation result runtime_manifest_sha256",
         )?;
-        if self.applied_at_unix_ms < plan.planned_at_unix_ms {
-            return invalid("installation result predates its plan");
+        if self.control_journal_sequence == 0 {
+            return invalid("installation result control_journal_sequence must be nonzero");
+        }
+        validate_sha256(
+            &self.installed_record_sha256,
+            "installation result installed_record_sha256",
+        )?;
+        validate_sha256(
+            &self.credential_sha256,
+            "installation result credential_sha256",
+        )?;
+        validate_sha256(&self.locator_sha256, "installation result locator_sha256")?;
+        if self.applied_at_unix_ms == 0 {
+            return invalid("installation result applied_at_unix_ms must be nonzero");
         }
         validate_sha256(&self.result_sha256, "installation result_sha256")?;
         if self.result_sha256 != installation_result_sha256(self)? {
@@ -288,7 +404,6 @@ pub struct AttunementPlan {
     pub phases: Vec<AttunementPhasePlan>,
     pub estimated_min_duration_ms: u64,
     pub estimated_max_duration_ms: u64,
-    pub planned_at_unix_ms: u64,
     pub plan_sha256: String,
 }
 
@@ -309,9 +424,6 @@ impl AttunementPlan {
         }
         if self.estimated_min_duration_ms > self.estimated_max_duration_ms {
             return invalid("attunement duration estimate is inverted");
-        }
-        if self.planned_at_unix_ms == 0 {
-            return invalid("attunement planned_at_unix_ms must be greater than zero");
         }
         validate_sha256(&self.plan_sha256, "attunement plan_sha256")?;
         if self.plan_sha256 != attunement_plan_sha256(self)? {
@@ -922,15 +1034,31 @@ pub fn installation_plan_sha256(plan: &InstallationPlan) -> Result<String> {
     digest_json(
         b"rrflow-installation-plan-v1",
         &(
-            plan.contract_version,
-            &plan.id,
-            &plan.target,
-            plan.target_kind,
-            &plan.configuration_sha256,
-            &plan.attunement_plan_id,
-            &plan.attunement_plan_sha256,
-            &plan.actions,
-            plan.planned_at_unix_ms,
+            (
+                plan.contract_version,
+                &plan.id,
+                &plan.target,
+                plan.target_kind,
+                &plan.product_version,
+                &plan.executable_sha256,
+                &plan.profile_id,
+                &plan.profile_sha256,
+                &plan.project_root,
+                &plan.project_precondition_sha256,
+                &plan.storage_root_id,
+            ),
+            (
+                &plan.configuration_sha256,
+                &plan.initial_seat,
+                &plan.initial_principal_id,
+                &plan.initial_grants,
+                plan.credential_bytes,
+                &plan.inactive_capabilities,
+                &plan.managed_paths,
+                &plan.attunement_plan_id,
+                &plan.attunement_plan_sha256,
+                &plan.actions,
+            ),
         ),
     )
 }
@@ -946,6 +1074,10 @@ pub fn installation_result_sha256(result: &InstallationResult) -> Result<String>
             &result.action_results,
             &result.runtime_manifest_sha256,
             result.runtime_cursor,
+            result.control_journal_sequence,
+            &result.installed_record_sha256,
+            &result.credential_sha256,
+            &result.locator_sha256,
             result.applied_at_unix_ms,
             result.idempotent_replay,
         ),
@@ -963,7 +1095,6 @@ pub fn attunement_plan_sha256(plan: &AttunementPlan) -> Result<String> {
             &plan.phases,
             plan.estimated_min_duration_ms,
             plan.estimated_max_duration_ms,
-            plan.planned_at_unix_ms,
         ),
     )
 }
@@ -1030,6 +1161,37 @@ fn validate_installation_target(target: &ResourcePath) -> Result<()> {
         return invalid(
             "installation target must be organization/estate/project/instance in that order",
         );
+    }
+    Ok(())
+}
+
+fn validate_absolute_project_root(value: &str) -> Result<()> {
+    validate_bounded_text(value, "installation project_root", 4_096)?;
+    if !std::path::Path::new(value).is_absolute() {
+        return invalid("installation project_root must be absolute");
+    }
+    Ok(())
+}
+
+fn validate_project_relative_path(value: &str) -> Result<()> {
+    validate_bounded_text(value, "installation managed relative_path", 4_096)?;
+    if value.starts_with('/') || value.contains('\\') {
+        return invalid("installation managed path must use portable project-relative syntax");
+    }
+    let segments = value.split('/').collect::<Vec<_>>();
+    if segments.first().copied() != Some(".rrflow")
+        || segments
+            .iter()
+            .any(|segment| segment.is_empty() || matches!(*segment, "." | ".."))
+    {
+        return invalid("installation managed path must remain below .rrflow");
+    }
+    Ok(())
+}
+
+fn validate_sorted_unique<T: Ord>(values: &[T], message: &str) -> Result<()> {
+    if values.windows(2).any(|pair| pair[0] >= pair[1]) {
+        return invalid(message);
     }
     Ok(())
 }

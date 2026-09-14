@@ -18,9 +18,9 @@ use rrd_core::{
     RuntimeLogAccumulator, RuntimeSchemaRegistry, ScopeId, SnapshotHandle, SnapshotId,
 };
 use rrd_lsm::{
-    CompactionOutcome, Database, DatabaseOptions, GarbageCollectionReport, Manifest, Mutation,
-    PageCacheStats, SegmentIoStats, SegmentOpenEvidence, Snapshot, SnapshotBundleFile,
-    WriteLockWait, WritePathDiagnostics,
+    CompactionOutcome, Database, DatabaseInspection, DatabaseOptions, GarbageCollectionReport,
+    Manifest, Mutation, PageCacheStats, ReadOnlyDatabase, SegmentIoStats, SegmentOpenEvidence,
+    Snapshot, SnapshotBundleFile, WriteLockWait, WritePathDiagnostics,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -101,6 +101,21 @@ pub struct RrflowKvStore {
     database: Mutex<Database>,
     open_evidence: RrflowKvOpenEvidence,
     native_write_path_diagnostics_enabled: AtomicBool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RrflowKvInspection {
+    pub physical: DatabaseInspection,
+    pub claim_sequence: u64,
+    pub runtime_cursor: u64,
+    pub control_journal_sequence: u64,
+}
+
+/// Read-only rrflowKV semantic inspection over an authenticated physical
+/// snapshot. It intentionally exposes no storage transaction or repair path.
+pub struct RrflowKvInspector {
+    database: ReadOnlyDatabase,
+    inspection: RrflowKvInspection,
 }
 
 struct RrflowKvTransaction<'a> {
@@ -241,6 +256,58 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
 }
 
 impl RrflowKvStore {
+    /// Creates exactly one new rrflowKV root. Parent-directory creation is an
+    /// installer effect and therefore remains outside this constructor.
+    pub fn create_new(path: &Path) -> Result<Self> {
+        Self::create_new_with_options(path, DatabaseOptions::default())
+    }
+
+    pub fn create_new_with_options(path: &Path, options: DatabaseOptions) -> Result<Self> {
+        let database =
+            Database::create_with_application_format(path, options, keyspaces::RRFLOW_KV_FORMAT)?;
+        Self::from_explicit_database(database, true)
+    }
+
+    /// Opens an existing rrflowKV root without creating paths or reconciling
+    /// checkpoints. Recovery validates bytes but never repairs a torn tail.
+    pub fn open_existing(path: &Path) -> Result<Self> {
+        Self::open_existing_with_options(path, DatabaseOptions::default())
+    }
+
+    pub fn open_existing_with_options(path: &Path, options: DatabaseOptions) -> Result<Self> {
+        let database = Database::open_with_options(path, options).map_err(|error| {
+            Error::Substrate(format!(
+                "cannot open existing rrflowKV database {}: {error}",
+                path.display()
+            ))
+        })?;
+        Self::from_explicit_database(database, false)
+    }
+
+    fn from_explicit_database(database: Database, created: bool) -> Result<Self> {
+        let _codec = keyspaces::RrflowKvKeyCodec::from_application_format(
+            database.manifest().application_format,
+        )
+        .ok_or_else(|| {
+            Error::Substrate(format!(
+                "unsupported rrflowKV application format {:?}",
+                database.manifest().application_format
+            ))
+        })?;
+        let path = database.root().to_owned();
+        Ok(Self {
+            path,
+            open_evidence: RrflowKvOpenEvidence {
+                contract_version: RRFLOW_KV_OPEN_EVIDENCE_VERSION,
+                created,
+                segment_validation: database.segment_open_evidence().clone(),
+                reconciliation: RrflowKvReconciliationEvidence::default(),
+            },
+            database: Mutex::new(database),
+            native_write_path_diagnostics_enabled: AtomicBool::new(false),
+        })
+    }
+
     /// Opens an existing rrflowKV database or creates one when `path` is absent.
     /// An existing but invalid directory fails closed rather than being
     /// silently reinitialized.
@@ -408,6 +475,81 @@ impl RrflowKvStore {
             .lock()
             .map_err(|_| Error::Substrate("rrflowKV database mutex poisoned".into()))
     }
+}
+
+impl RrflowKvInspector {
+    pub fn open(path: &Path) -> Result<Self> {
+        let database = ReadOnlyDatabase::open(path).map_err(Error::from)?;
+        if keyspaces::RrflowKvKeyCodec::from_application_format(
+            database.manifest().application_format,
+        )
+        .is_none()
+        {
+            return Err(Error::Substrate(format!(
+                "unsupported rrflowKV application format {:?}",
+                database.manifest().application_format
+            )));
+        }
+        let claim_sequence = inspect_sequence(&database, &keyspaces::sequence_watermark_key())?;
+        let runtime_cursor = inspect_sequence(&database, &keyspaces::runtime_cursor_key())?;
+        let control_journal_sequence =
+            inspect_sequence(&database, &keyspaces::control_journal_sequence_key())?;
+        let inspection = RrflowKvInspection {
+            physical: database.inspection().clone(),
+            claim_sequence,
+            runtime_cursor,
+            control_journal_sequence,
+        };
+        Ok(Self {
+            database,
+            inspection,
+        })
+    }
+
+    pub fn inspection(&self) -> &RrflowKvInspection {
+        &self.inspection
+    }
+
+    pub fn control_record(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        crate::control::validate_control_key(key)?;
+        let logical = keyspaces::control_record_key(key);
+        let physical = crate::access::runtime_state::checked_key(keyspaces::META, &logical)?;
+        self.database.get(&physical).map_err(Error::from)
+    }
+
+    /// Reconstructs the canonical semantic read identity from the same
+    /// authenticated, read-only physical snapshot used by this inspector.
+    pub fn runtime_read_stamp(&self, scope: &ScopeId) -> Result<ReadStamp> {
+        crate::access::runtime_state::read_stamp_with(&self.database, scope)
+    }
+}
+
+impl crate::access::runtime_state::AccessRead for ReadOnlyDatabase {
+    fn read_key(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        self.get(key).map_err(Error::from)
+    }
+
+    fn scan_range(
+        &self,
+        start: &[u8],
+        end: &[u8],
+        limit: usize,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        let mut rows = self.scan(start, Some(end)).map_err(Error::from)?;
+        rows.truncate(limit);
+        Ok(rows)
+    }
+}
+
+fn inspect_sequence(database: &ReadOnlyDatabase, key: &[u8]) -> Result<u64> {
+    let physical = crate::access::runtime_state::checked_key(keyspaces::META, key)?;
+    database
+        .get(&physical)
+        .map_err(Error::from)?
+        .as_deref()
+        .map(crate::access::runtime_state::decode_sequence)
+        .transpose()
+        .map(Option::unwrap_or_default)
 }
 
 fn reconciliation_evidence(

@@ -10,6 +10,7 @@ description = "RRFlow operator surface: explicit, recorded invocation of every t
 rrd-engine = { path = "../../authority/rrd-engine" }
 rrd-contract = { path = "../../transport/rrd-contract" }
 rrd-client = { path = "../../transport/rrd-client" }
+rrd-server = { path = "../../transport/rrd-server" }
 clap = { version = "4", features = ["derive", "env"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -18,7 +19,7 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 sha2 = "0.11"
 sysinfo = "0.39.6"
-tokio = { version = "1", features = ["rt", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "signal", "time"] }
 
 [dev-dependencies]
 tempfile = "3"
@@ -26,7 +27,6 @@ rrd-core = { path = "../../kernel/rrd-core" }
 rrd-store = { path = "../../persistence/rrd-store" }
 rrd-security = { path = "../../authority/rrd-security" }
 rrd-estate = { path = "../../authority/rrd-estate" }
-rrd-server = { path = "../../transport/rrd-server" }
 
 [[bin]]
 name = "rrflow"

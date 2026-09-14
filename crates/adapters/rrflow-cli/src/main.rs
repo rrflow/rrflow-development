@@ -1,16 +1,20 @@
 //! RRFlow operator surface.
 //!
-//! Every invocation is recorded with its trigger, arguments, outcome, and
-//! duration for operator diagnostics and audit evidence.
+//! Runtime operator invocations that use the legacy command path are recorded
+//! with their trigger, arguments, outcome, and duration. Installed-lifecycle
+//! bootstrap and read-only commands do not open a second/default database only
+//! to create that record: install apply persists its engine-owned receipt,
+//! authenticated service requests are audited by `RrdEngine`, and process
+//! lifecycle uses opt-in traces until D-01 adds durable start/stop receipts.
 //!
-//! Recording wraps execution in one place, so a command cannot be added that
-//! forgets to record itself.
+//! Recording for the legacy runtime path wraps execution in one place.
 //!
 //! This is an outer adapter and therefore may read a clock, which the kernel
 //! must not. The clock is read once, here, and passed inward.
 
 mod command;
 mod dev;
+mod installed;
 
 use clap::Parser;
 use command::Cli;
@@ -51,6 +55,10 @@ fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
     let parse_ms = parse_started.elapsed().as_millis() as u64;
     let now = now_millis();
+
+    if let Some(result) = installed::execute(&cli.command, now, cli.json) {
+        return finish_unrecorded(result);
+    }
 
     let db = cli
         .db

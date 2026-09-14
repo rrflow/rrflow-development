@@ -5,7 +5,7 @@ use crate::transport::Transport;
 use crate::{ClientConfig, Error, Result};
 use hyper::{Method, StatusCode};
 use rrd_contract::{
-    CanonicalId, EndpointCatalogue, ResponseEnvelope, ServiceCapabilities, PROTOCOL,
+    CanonicalId, EndpointCatalogue, Readiness, ResponseEnvelope, ServiceCapabilities, PROTOCOL,
     PROTOCOL_VERSION,
 };
 use rustls::ClientConfig as RustlsClientConfig;
@@ -21,6 +21,15 @@ pub struct RrdClient {
 }
 
 impl RrdClient {
+    pub async fn readiness(&self) -> Result<Readiness> {
+        let response: ResponseEnvelope<Readiness> = self
+            .send_raw(Method::GET, "/v1/health/ready", Vec::new(), &[], true, None)
+            .await?;
+        let readiness = outcome(StatusCode::OK, response, None)?;
+        readiness.validate().map_err(crate::error::contract)?;
+        Ok(readiness)
+    }
+
     pub async fn capabilities(&self) -> Result<ServiceCapabilities> {
         let response: ResponseEnvelope<ServiceCapabilities> = self
             .send_raw(Method::GET, "/v1/capabilities", Vec::new(), &[], true, None)

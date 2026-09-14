@@ -21,9 +21,6 @@ impl RrdEngine {
         request_id: &str,
         operation_id: &str,
     ) -> Result<MemoryEstatePlan> {
-        request
-            .validate()
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
         self.authorize(
             session_id,
             token,
@@ -40,73 +37,7 @@ impl RrdEngine {
             .as_ref()
             .map(public_schema)
             .transpose()?;
-        let (schema, schema_changed) = memory_estate_schema(current)?;
-        let mut mutations = Vec::with_capacity(2 + request.representations.len() * 2);
-        if schema_changed {
-            mutations.push(TransactionMutation::PutSchema { registry: schema });
-        }
-        mutations.push(TransactionMutation::PutRecord {
-            reference: DataReference {
-                kind: canonical(MEMORY_SEAT_KIND)?,
-                id: request.seat.id.clone(),
-            },
-            valid_from: request.valid_from,
-            valid_to: None,
-            properties: BTreeMap::from([
-                (
-                    "display_name".into(),
-                    QueryValue::String(request.seat.display_name.clone()),
-                ),
-                (
-                    "purpose".into(),
-                    QueryValue::String(request.seat.purpose.clone()),
-                ),
-            ]),
-        });
-        let mut representations = request.representations.clone();
-        representations.sort_by(|left, right| left.id.cmp(&right.id));
-        for representation in representations {
-            let provider_reference = DataReference {
-                kind: canonical(MEMORY_PROVIDER_IDENTITY_KIND)?,
-                id: representation.provider_identity,
-            };
-            mutations.push(TransactionMutation::PutRecord {
-                reference: provider_reference.clone(),
-                valid_from: request.valid_from,
-                valid_to: None,
-                properties: BTreeMap::from([
-                    (
-                        "provider".into(),
-                        QueryValue::String(representation.provider.to_string()),
-                    ),
-                    (
-                        "subject_sha256".into(),
-                        QueryValue::Digest(representation.subject_sha256),
-                    ),
-                ]),
-            });
-            mutations.push(TransactionMutation::PutRelation {
-                reference: DataReference {
-                    kind: canonical(MEMORY_REPRESENTS_KIND)?,
-                    id: representation.id,
-                },
-                from: provider_reference,
-                to: DataReference {
-                    kind: canonical(MEMORY_SEAT_KIND)?,
-                    id: request.seat.id.clone(),
-                },
-                valid_from: request.valid_from,
-                valid_to: None,
-                properties: BTreeMap::new(),
-            });
-        }
-        let plan = MemoryEstatePlan {
-            operation_sha256: transaction_operation_sha256(&mutations),
-            mutations,
-        };
-        plan.validate()
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        Ok(plan)
+        build_memory_estate_plan(request, current)
     }
 
     /// Resolves a stable `rrflow://` coordinate through the same context
@@ -277,6 +208,84 @@ impl RrdEngine {
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
         Ok(identity)
     }
+}
+
+/// Pure canonical memory-estate planner used by both authenticated previews
+/// and the cold-start transaction. It performs no authentication or I/O.
+pub(crate) fn build_memory_estate_plan(
+    request: &PersistMemoryEstate,
+    current: Option<DataSchemaRegistry>,
+) -> Result<MemoryEstatePlan> {
+    request
+        .validate()
+        .map_err(|error| ServiceError::Contract(error.to_string()))?;
+    let (schema, schema_changed) = memory_estate_schema(current)?;
+    let mut mutations = Vec::with_capacity(2 + request.representations.len() * 2);
+    if schema_changed {
+        mutations.push(TransactionMutation::PutSchema { registry: schema });
+    }
+    mutations.push(TransactionMutation::PutRecord {
+        reference: DataReference {
+            kind: canonical(MEMORY_SEAT_KIND)?,
+            id: request.seat.id.clone(),
+        },
+        valid_from: request.valid_from,
+        valid_to: None,
+        properties: BTreeMap::from([
+            (
+                "display_name".into(),
+                QueryValue::String(request.seat.display_name.clone()),
+            ),
+            (
+                "purpose".into(),
+                QueryValue::String(request.seat.purpose.clone()),
+            ),
+        ]),
+    });
+    let mut representations = request.representations.clone();
+    representations.sort_by(|left, right| left.id.cmp(&right.id));
+    for representation in representations {
+        let provider_reference = DataReference {
+            kind: canonical(MEMORY_PROVIDER_IDENTITY_KIND)?,
+            id: representation.provider_identity,
+        };
+        mutations.push(TransactionMutation::PutRecord {
+            reference: provider_reference.clone(),
+            valid_from: request.valid_from,
+            valid_to: None,
+            properties: BTreeMap::from([
+                (
+                    "provider".into(),
+                    QueryValue::String(representation.provider.to_string()),
+                ),
+                (
+                    "subject_sha256".into(),
+                    QueryValue::Digest(representation.subject_sha256),
+                ),
+            ]),
+        });
+        mutations.push(TransactionMutation::PutRelation {
+            reference: DataReference {
+                kind: canonical(MEMORY_REPRESENTS_KIND)?,
+                id: representation.id,
+            },
+            from: provider_reference,
+            to: DataReference {
+                kind: canonical(MEMORY_SEAT_KIND)?,
+                id: request.seat.id.clone(),
+            },
+            valid_from: request.valid_from,
+            valid_to: None,
+            properties: BTreeMap::new(),
+        });
+    }
+    let plan = MemoryEstatePlan {
+        operation_sha256: transaction_operation_sha256(&mutations),
+        mutations,
+    };
+    plan.validate()
+        .map_err(|error| ServiceError::Contract(error.to_string()))?;
+    Ok(plan)
 }
 
 fn memory_estate_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSchemaRegistry, bool)> {

@@ -4,7 +4,7 @@
 //! integration tests through the same path the operator uses, rather than
 //! through a parallel test-only entry point.
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use rrd_contract::{
     AssembleContext, BeginTransaction, CanonicalId, CloseSession, CommitTransaction, CorrelationId,
     CreateSession, DataReference, MemorySeatDefinition, MemoryWarp, PersistMemoryEstate,
@@ -60,6 +60,42 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {
+    /// Print the immutable RRFlow product and protocol version.
+    Version,
+    /// Preview or apply one explicit, content-bound installation plan.
+    Install {
+        #[command(subcommand)]
+        action: InstallAction,
+    },
+    /// Start the installed engine's loopback HTTP service for SDK and UI clients.
+    Serve {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        #[arg(long, default_value = "127.0.0.1:9477")]
+        bind: std::net::SocketAddr,
+        /// Debug-test surrogate for the distribution executable.
+        #[arg(long = "test-distribution-executable", hide = true)]
+        test_distribution_executable: Option<std::path::PathBuf>,
+    },
+    /// Read live readiness and the generated UI discovery documents.
+    Ready {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        #[arg(long, default_value = "127.0.0.1:9477")]
+        address: std::net::SocketAddr,
+    },
+    /// Authenticate an installed estate without opening it for writes.
+    Verify {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        /// Verification depth. The pre-release currently exposes the bounded,
+        /// read-only quick verifier only.
+        #[arg(long, value_enum, default_value_t = VerifyLevel::Quick)]
+        level: VerifyLevel,
+        /// Debug-test surrogate for the distribution executable.
+        #[arg(long = "test-distribution-executable", hide = true)]
+        test_distribution_executable: Option<std::path::PathBuf>,
+    },
     /// Inspect whether this checkout can run the canonical RRFlow development
     /// topology without split storage authority or manual hidden state.
     Dev {
@@ -174,6 +210,47 @@ pub enum Command {
         #[command(subcommand)]
         action: StorageAction,
     },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum InstallAction {
+    /// Emit an exact, deterministic preview and perform no project writes.
+    Plan {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        #[arg(long, value_enum, default_value_t = InstallMode::Existing)]
+        mode: InstallMode,
+        #[arg(long, default_value = "default")]
+        profile: String,
+        /// Debug-test surrogate for the distribution executable.
+        #[arg(long = "test-distribution-executable", hide = true)]
+        test_distribution_executable: Option<std::path::PathBuf>,
+    },
+    /// Apply only the supplied plan after its SHA-256 is explicitly accepted.
+    Apply {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        #[arg(long, value_enum, default_value_t = InstallMode::Existing)]
+        mode: InstallMode,
+        #[arg(long)]
+        plan: std::path::PathBuf,
+        #[arg(long)]
+        expect: String,
+        /// Debug-test surrogate for the distribution executable.
+        #[arg(long = "test-distribution-executable", hide = true)]
+        test_distribution_executable: Option<std::path::PathBuf>,
+    },
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstallMode {
+    Fresh,
+    Existing,
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VerifyLevel {
+    Quick,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -302,6 +379,16 @@ impl Command {
     /// Stable name used in the invocation record.
     pub fn name(&self) -> &'static str {
         match self {
+            Command::Version => "version",
+            Command::Install {
+                action: InstallAction::Plan { .. },
+            } => "install-plan",
+            Command::Install {
+                action: InstallAction::Apply { .. },
+            } => "install-apply",
+            Command::Serve { .. } => "serve",
+            Command::Ready { .. } => "ready",
+            Command::Verify { .. } => "verify",
             Command::Dev {
                 action: DevAction::Doctor { .. },
             } => "dev-doctor",
@@ -360,6 +447,79 @@ impl Command {
     /// reproduced.
     pub fn arguments(&self) -> Vec<String> {
         match self {
+            Command::Version => Vec::new(),
+            Command::Install {
+                action:
+                    InstallAction::Plan {
+                        project,
+                        mode,
+                        profile,
+                        test_distribution_executable,
+                    },
+            } => vec![
+                format!("project={}", project.display()),
+                format!("mode={mode:?}"),
+                format!("profile={profile}"),
+                format!(
+                    "test_distribution_executable={}",
+                    test_distribution_executable
+                        .as_deref()
+                        .map_or_else(|| "current".into(), |path| path.display().to_string())
+                ),
+            ],
+            Command::Install {
+                action:
+                    InstallAction::Apply {
+                        project,
+                        mode,
+                        plan,
+                        expect,
+                        test_distribution_executable,
+                    },
+            } => vec![
+                format!("project={}", project.display()),
+                format!("mode={mode:?}"),
+                format!("plan={}", plan.display()),
+                format!("expect={expect}"),
+                format!(
+                    "test_distribution_executable={}",
+                    test_distribution_executable
+                        .as_deref()
+                        .map_or_else(|| "current".into(), |path| path.display().to_string())
+                ),
+            ],
+            Command::Serve {
+                project,
+                bind,
+                test_distribution_executable,
+            } => vec![
+                format!("project={}", project.display()),
+                format!("bind={bind}"),
+                format!(
+                    "test_distribution_executable={}",
+                    test_distribution_executable
+                        .as_deref()
+                        .map_or_else(|| "current".into(), |path| path.display().to_string())
+                ),
+            ],
+            Command::Ready { project, address } => vec![
+                format!("project={}", project.display()),
+                format!("address={address}"),
+            ],
+            Command::Verify {
+                project,
+                level,
+                test_distribution_executable,
+            } => vec![
+                format!("project={}", project.display()),
+                format!("level={level:?}"),
+                format!(
+                    "test_distribution_executable={}",
+                    test_distribution_executable
+                        .as_deref()
+                        .map_or_else(|| "current".into(), |path| path.display().to_string())
+                ),
+            ],
             Command::Assert {
                 subject,
                 predicate,
@@ -1114,7 +1274,12 @@ pub fn execute(
             | Command::Context { .. }
             | Command::Identity { .. }
             | Command::Dev { .. }
-            | Command::Storage { .. } => {
+            | Command::Storage { .. }
+            | Command::Version
+            | Command::Install { .. }
+            | Command::Serve { .. }
+            | Command::Ready { .. }
+            | Command::Verify { .. } => {
                 unreachable!("handled above with an early return")
             }
 

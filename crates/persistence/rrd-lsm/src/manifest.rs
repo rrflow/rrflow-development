@@ -9,9 +9,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 pub const MANIFEST_FORMAT_VERSION: u16 = 3;
 const MANIFEST_CONTROL_FORMAT_VERSION: u16 = 1;
-const CURRENT_FILE: &str = "CURRENT";
-const MANIFEST_DIRECTORY: &str = "manifests";
-const CHECKPOINT_DIRECTORY: &str = "checkpoints";
+pub(crate) const CURRENT_FILE: &str = "CURRENT";
+pub(crate) const MANIFEST_DIRECTORY: &str = "manifests";
+pub(crate) const CHECKPOINT_DIRECTORY: &str = "checkpoints";
+pub(crate) const MANIFEST_LOCK_FILE: &str = "MANIFEST.LOCK";
 static POINTER_TEMPORARY_ID: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -376,7 +377,7 @@ impl CurrentPointer {
         pointer
     }
 
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         if self.format_version != MANIFEST_CONTROL_FORMAT_VERSION {
             return Err(Error::UnsupportedVersion {
                 object: "CURRENT pointer",
@@ -422,6 +423,47 @@ impl Drop for ManifestStore {
 }
 
 impl ManifestStore {
+    /// Creates the manifest namespace and its exclusive writer lease. The
+    /// caller must have already established an empty database root.
+    pub fn create(root: &Path) -> Result<Self> {
+        let manifest_directory = root.join(MANIFEST_DIRECTORY);
+        let checkpoint_directory = root.join(CHECKPOINT_DIRECTORY);
+        std::fs::create_dir(&manifest_directory).map_err(|error| {
+            Error::io("creating manifest directory", &manifest_directory, error)
+        })?;
+        std::fs::create_dir(&checkpoint_directory).map_err(|error| {
+            Error::io(
+                "creating checkpoint directory",
+                &checkpoint_directory,
+                error,
+            )
+        })?;
+        Self::acquire_writer(root, true, false)
+    }
+
+    /// Opens a complete manifest namespace without creating any path.
+    pub fn open_existing(root: &Path) -> Result<Self> {
+        for (operation, path) in [
+            ("opening manifest directory", root.join(MANIFEST_DIRECTORY)),
+            (
+                "opening checkpoint directory",
+                root.join(CHECKPOINT_DIRECTORY),
+            ),
+        ] {
+            let metadata = std::fs::symlink_metadata(&path)
+                .map_err(|error| Error::io(operation, &path, error))?;
+            if metadata.file_type().is_symlink() || !metadata.is_dir() {
+                return Err(Error::InvalidManifest(format!(
+                    "{} is not a non-symlink directory",
+                    path.display()
+                )));
+            }
+        }
+        Self::acquire_writer(root, false, false)
+    }
+
+    /// Legacy manifest utility entry point retained for direct manifest tests.
+    /// Database lifecycle code uses `create` or `open_existing` explicitly.
     pub fn open(root: &Path) -> Result<Self> {
         let manifest_directory = root.join(MANIFEST_DIRECTORY);
         let checkpoint_directory = root.join(CHECKPOINT_DIRECTORY);
@@ -435,12 +477,29 @@ impl ManifestStore {
                 error,
             )
         })?;
-        let lock_path = root.join("MANIFEST.LOCK");
-        let lock = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
+        Self::acquire_writer(root, false, true)
+    }
+
+    fn acquire_writer(root: &Path, create_new: bool, create_if_missing: bool) -> Result<Self> {
+        let lock_path = root.join(MANIFEST_LOCK_FILE);
+        if !create_new && !create_if_missing {
+            let metadata = std::fs::symlink_metadata(&lock_path).map_err(|error| {
+                Error::io("validating existing manifest lock", &lock_path, error)
+            })?;
+            if metadata.file_type().is_symlink() || !metadata.is_file() {
+                return Err(Error::InvalidManifest(
+                    "manifest lock is not a regular non-symlink file".into(),
+                ));
+            }
+        }
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).truncate(false);
+        if create_new {
+            options.create_new(true);
+        } else {
+            options.create(create_if_missing);
+        }
+        let lock = options
             .open(&lock_path)
             .map_err(|error| Error::io("opening manifest lock", &lock_path, error))?;
         match lock.try_lock() {
@@ -460,11 +519,17 @@ impl ManifestStore {
 
     pub fn current(&self) -> Result<Option<(CurrentPointer, Manifest)>> {
         let path = self.root.join(CURRENT_FILE);
-        let bytes = match std::fs::read(path) {
-            Ok(bytes) => bytes,
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+                return Err(Error::InvalidManifest(
+                    "CURRENT is not a regular non-symlink file".into(),
+                ));
+            }
+            Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(error) => return Err(error.into()),
-        };
+            Err(error) => return Err(Error::io("validating CURRENT", &path, error)),
+        }
+        let bytes = std::fs::read(path)?;
         let pointer: CurrentPointer = serde_json::from_slice(&bytes)?;
         pointer.validate()?;
         let manifest = self.load(&pointer.manifest)?;
@@ -482,11 +547,18 @@ impl ManifestStore {
                 "manifest lookup requires a SHA-256 identity".into(),
             ));
         }
-        let bytes = std::fs::read(
-            self.root
-                .join(MANIFEST_DIRECTORY)
-                .join(format!("{digest}.json")),
-        )?;
+        let path = self
+            .root
+            .join(MANIFEST_DIRECTORY)
+            .join(format!("{digest}.json"));
+        let metadata = std::fs::symlink_metadata(&path)
+            .map_err(|error| Error::io("validating manifest file", &path, error))?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err(Error::InvalidManifest(
+                "manifest is not a regular non-symlink file".into(),
+            ));
+        }
+        let bytes = std::fs::read(&path)?;
         let manifest: Manifest = serde_json::from_slice(&bytes)?;
         manifest.validate()?;
         if manifest.digest != digest {
@@ -596,13 +668,22 @@ impl ManifestStore {
         let directory = self.root.join(MANIFEST_DIRECTORY);
         let path = directory.join(format!("{}.json", manifest.digest));
         let bytes = serde_json::to_vec(manifest)?;
-        if path.exists() {
-            if std::fs::read(&path)? != bytes {
-                return Err(Error::InvalidManifest(
-                    "existing manifest identity has different bytes".into(),
-                ));
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) => {
+                if metadata.file_type().is_symlink() || !metadata.is_file() {
+                    return Err(Error::InvalidManifest(
+                        "existing manifest is not a regular non-symlink file".into(),
+                    ));
+                }
+                if std::fs::read(&path)? != bytes {
+                    return Err(Error::InvalidManifest(
+                        "existing manifest identity has different bytes".into(),
+                    ));
+                }
+                return Ok(());
             }
-            return Ok(());
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(Error::io("validating manifest destination", &path, error)),
         }
         let temporary = directory.join(format!(
             ".{}.{}.tmp",

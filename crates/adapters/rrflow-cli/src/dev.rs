@@ -116,9 +116,9 @@ pub fn doctor(root: &Path) -> Result<DevDoctorReport, Box<dyn std::error::Error>
         surface_boundary(
             &packages,
             "rrflow-cli",
-            &["rrd-client", "rrd-contract", "rrd-engine"],
+            &["rrd-client", "rrd-contract", "rrd-engine", "rrd-server"],
             "surface.cli-engine-boundary",
-            "the CLI may use the public embedded engine or daemon client, never physical storage/query crates",
+            "the primary CLI may compose public engine, client, contract, and server libraries, never physical storage/query crates",
         ),
         surface_boundary(
             &packages,

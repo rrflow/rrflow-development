@@ -496,29 +496,19 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
         request_id: &str,
         operation_id: &str,
     ) -> Result<()> {
-        state.validate()?;
         if self.load()?.is_some() {
             return Err(Error::AlreadyInitialized);
         }
-        let state_bytes = serde_json::to_vec(&state).map_err(json_error)?;
-        let transition = ControlTransition {
-            key: security_key(&self.instance),
-            expected: None,
-            replacement: Some(state_bytes.clone()),
+        let transitions = prepare_security_initialization(
+            &self.instance,
+            &state,
             at,
-            actor: actor.into(),
-            action: "security.initialized".into(),
-            request_id: request_id.into(),
-            operation_id: operation_id.into(),
-        };
-        let audit = self.administrative_audit(
-            at,
+            actor,
             request_id,
             operation_id,
-            &digest::sha256_hex(&state_bytes),
-            "security-authority-initialized",
         )?;
-        self.commit_with_audit(&[transition], &audit)
+        self.engine.control().commit_batch(&transitions)?;
+        Ok(())
     }
 
     /// Replaces the complete security authority with one compare-and-swap
@@ -938,39 +928,121 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
         request_sha256: &str,
         outcome: &str,
     ) -> Result<AuditEvent> {
-        let identity = digest::sha256_hex(
-            &serde_json::to_vec(&(
-                request_id,
-                operation_id,
-                Action::SecurityAdmin,
-                AuditPhase::Completed,
-                request_sha256,
-                outcome,
-            ))
-            .map_err(json_error)?,
-        );
-        Ok(AuditEvent {
-            audit_id: CanonicalId::new(format!("audit-{identity}"))
-                .map_err(|error| Error::Invalid(error.to_string()))?,
+        administrative_audit_for_instance(
+            &self.instance,
             at_unix_ms,
-            principal_id: None,
-            action: Action::SecurityAdmin,
-            resource: ResourcePath {
-                segments: vec![ResourceId::new(
-                    ResourceKind::Instance,
-                    self.instance.as_str().to_owned(),
-                )
-                .map_err(|error| Error::Invalid(error.to_string()))?],
-            },
+            request_id,
+            operation_id,
+            request_sha256,
+            outcome,
+        )
+    }
+}
+
+/// Builds the initial security authority and its genesis administrative audit
+/// as pure control transitions. The caller owns the physical transaction and
+/// may compose these effects with the initial runtime commit.
+pub fn prepare_security_initialization(
+    instance: &CanonicalId,
+    state: &SecurityState,
+    at: u64,
+    actor: &str,
+    request_id: &str,
+    operation_id: &str,
+) -> Result<Vec<ControlTransition>> {
+    state.validate()?;
+    let state_bytes = serde_json::to_vec(state).map_err(json_error)?;
+    let audit = administrative_audit_for_instance(
+        instance,
+        at,
+        request_id,
+        operation_id,
+        &digest::sha256_hex(&state_bytes),
+        "security-authority-initialized",
+    )?;
+    let record = AuditRecord::seal(audit.clone(), None)?;
+    let head = AuditHead {
+        audit_id: record.audit_id.clone(),
+        audit_sha256: record.audit_sha256.clone(),
+        record_count: 1,
+    };
+    let transitions = vec![
+        ControlTransition {
+            key: security_key(instance),
+            expected: None,
+            replacement: Some(state_bytes),
+            at,
+            actor: actor.into(),
+            action: "security.initialized".into(),
             request_id: request_id.into(),
             operation_id: operation_id.into(),
-            phase: AuditPhase::Completed,
-            decision: AuditDecision::Allowed,
-            status_code: 200,
-            request_sha256: request_sha256.into(),
-            response_sha256: digest::sha256_hex(outcome.as_bytes()),
-        })
+        },
+        ControlTransition {
+            key: audit_key(instance, &record.audit_id),
+            expected: None,
+            replacement: Some(serde_json::to_vec(&record).map_err(json_error)?),
+            at,
+            actor: "anonymous".into(),
+            action: "security.audit".into(),
+            request_id: request_id.into(),
+            operation_id: operation_id.into(),
+        },
+        ControlTransition {
+            key: audit_head_key(instance),
+            expected: None,
+            replacement: Some(serde_json::to_vec(&head).map_err(json_error)?),
+            at,
+            actor: "anonymous".into(),
+            action: "security.audit.head".into(),
+            request_id: request_id.into(),
+            operation_id: operation_id.into(),
+        },
+    ];
+    for transition in &transitions {
+        transition.validate()?;
     }
+    Ok(transitions)
+}
+
+fn administrative_audit_for_instance(
+    instance: &CanonicalId,
+    at_unix_ms: u64,
+    request_id: &str,
+    operation_id: &str,
+    request_sha256: &str,
+    outcome: &str,
+) -> Result<AuditEvent> {
+    let identity = digest::sha256_hex(
+        &serde_json::to_vec(&(
+            request_id,
+            operation_id,
+            Action::SecurityAdmin,
+            AuditPhase::Completed,
+            request_sha256,
+            outcome,
+        ))
+        .map_err(json_error)?,
+    );
+    Ok(AuditEvent {
+        audit_id: CanonicalId::new(format!("audit-{identity}"))
+            .map_err(|error| Error::Invalid(error.to_string()))?,
+        at_unix_ms,
+        principal_id: None,
+        action: Action::SecurityAdmin,
+        resource: ResourcePath {
+            segments: vec![
+                ResourceId::new(ResourceKind::Instance, instance.as_str().to_owned())
+                    .map_err(|error| Error::Invalid(error.to_string()))?,
+            ],
+        },
+        request_id: request_id.into(),
+        operation_id: operation_id.into(),
+        phase: AuditPhase::Completed,
+        decision: AuditDecision::Allowed,
+        status_code: 200,
+        request_sha256: request_sha256.into(),
+        response_sha256: digest::sha256_hex(outcome.as_bytes()),
+    })
 }
 
 fn compile_authorization(

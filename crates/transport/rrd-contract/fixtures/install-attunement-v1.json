@@ -1,17 +1,53 @@
 {
   "allowed_transitions": [
-    { "from": "pending", "to": "running" },
-    { "from": "pending", "to": "cancel_requested" },
-    { "from": "running", "to": "running" },
-    { "from": "running", "to": "paused" },
-    { "from": "running", "to": "cancel_requested" },
-    { "from": "running", "to": "failed" },
-    { "from": "running", "to": "succeeded" },
-    { "from": "paused", "to": "running" },
-    { "from": "paused", "to": "cancel_requested" },
-    { "from": "cancel_requested", "to": "cancelled" },
-    { "from": "failed", "to": "running" },
-    { "from": "failed", "to": "cancel_requested" }
+    {
+      "from": "pending",
+      "to": "running"
+    },
+    {
+      "from": "pending",
+      "to": "cancel_requested"
+    },
+    {
+      "from": "running",
+      "to": "running"
+    },
+    {
+      "from": "running",
+      "to": "paused"
+    },
+    {
+      "from": "running",
+      "to": "cancel_requested"
+    },
+    {
+      "from": "running",
+      "to": "failed"
+    },
+    {
+      "from": "running",
+      "to": "succeeded"
+    },
+    {
+      "from": "paused",
+      "to": "running"
+    },
+    {
+      "from": "paused",
+      "to": "cancel_requested"
+    },
+    {
+      "from": "cancel_requested",
+      "to": "cancelled"
+    },
+    {
+      "from": "failed",
+      "to": "running"
+    },
+    {
+      "from": "failed",
+      "to": "cancel_requested"
+    }
   ],
   "attunement_plan": {
     "contract_version": 1,
@@ -97,15 +133,26 @@
         "sequence": 11
       }
     ],
-    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
-    "planned_at_unix_ms": 1800000000000,
+    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
     "source_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
     "target": {
       "segments": [
-        { "id": "local", "kind": "organization" },
-        { "id": "developer-estate", "kind": "estate" },
-        { "id": "rrflow", "kind": "project" },
-        { "id": "rrflow-dev", "kind": "instance" }
+        {
+          "id": "local",
+          "kind": "organization"
+        },
+        {
+          "id": "developer-estate",
+          "kind": "estate"
+        },
+        {
+          "id": "rrflow",
+          "kind": "project"
+        },
+        {
+          "id": "rrflow-dev",
+          "kind": "instance"
+        }
       ]
     }
   },
@@ -113,45 +160,124 @@
     "contract_version": 1,
     "expected_job_revision": 3,
     "job_id": "job-01",
-    "last_checkpoint_sha256": "c02eb3101383693f926964c3ef2cf41619aa60d70fe50a4c4b64fd6f93627363",
-    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "last_checkpoint_sha256": "e6b9202facc09231a11c543d657b81d177111a72618a03282b51ab51ffe7db57",
+    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
     "reason": "operator requested cancellation",
     "requested_at_unix_ms": 1800000003001
   },
   "installation_plan": {
     "actions": [
       {
+        "disposition": "unchanged",
+        "estimated_write_bytes": 0,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+        "kind": "validate_project"
+      },
+      {
         "disposition": "create",
         "estimated_write_bytes": 4096,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000003",
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+        "kind": "create_storage_root"
+      },
+      {
+        "disposition": "create",
+        "estimated_write_bytes": 96,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+        "kind": "prepare_credentials"
+      },
+      {
+        "disposition": "create",
+        "estimated_write_bytes": 4096,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000006",
         "kind": "initialize_instance"
       },
       {
         "disposition": "create",
-        "estimated_write_bytes": 256,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000004",
-        "kind": "configure_project_locator"
+        "estimated_write_bytes": 1024,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+        "kind": "create_attunement_job"
       },
       {
         "disposition": "create",
-        "estimated_write_bytes": 1024,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
-        "kind": "create_attunement_job"
+        "estimated_write_bytes": 256,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+        "kind": "publish_project_locator"
       }
     ],
     "attunement_plan_id": "attune-01",
-    "attunement_plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "attunement_plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
     "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000002",
     "contract_version": 1,
+    "credential_bytes": 32,
+    "executable_sha256": "0000000000000000000000000000000000000000000000000000000000000028",
     "id": "install-01",
-    "plan_sha256": "b480bc28fbd9db7f5303b2f1f3f1da0d8f06b53a9b956bfeb881b23579938e8b",
-    "planned_at_unix_ms": 1800000000001,
+    "inactive_capabilities": [
+      "external-model-provider",
+      "project-generator"
+    ],
+    "initial_grants": [
+      "service_inspect",
+      "session_create",
+      "session_close",
+      "query_execute"
+    ],
+    "initial_principal_id": "local-operator",
+    "initial_seat": {
+      "display_name": "Local RRFlow",
+      "id": "rrflow-local-seat",
+      "purpose": "Provider-neutral reasoning and recall for this project."
+    },
+    "managed_paths": [
+      {
+        "kind": "storage_root",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002b",
+        "relative_path": ".rrflow/rrd/roots/install-01",
+        "removal_rule": "remove_if_owned_digest_matches"
+      },
+      {
+        "kind": "token_key",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002c",
+        "relative_path": ".rrflow/rrd/roots/install-01/token.key",
+        "removal_rule": "remove_if_owned_digest_matches"
+      },
+      {
+        "kind": "operator_credential",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002d",
+        "relative_path": ".rrflow/credentials/local-operator.json",
+        "removal_rule": "remove_if_owned_digest_matches"
+      },
+      {
+        "kind": "project_locator",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002e",
+        "relative_path": ".rrflow/config.toml",
+        "removal_rule": "remove_if_owned_digest_matches"
+      }
+    ],
+    "plan_sha256": "cfbe3e9df83052c88777ef3ff417e33a3d89a934f5405cd1e721161f83cc097d",
+    "product_version": "1.0.0",
+    "profile_id": "default",
+    "profile_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
+    "project_precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002a",
+    "project_root": "/srv/projects/rrflow",
+    "storage_root_id": "install-01",
     "target": {
       "segments": [
-        { "id": "local", "kind": "organization" },
-        { "id": "developer-estate", "kind": "estate" },
-        { "id": "rrflow", "kind": "project" },
-        { "id": "rrflow-dev", "kind": "instance" }
+        {
+          "id": "local",
+          "kind": "organization"
+        },
+        {
+          "id": "developer-estate",
+          "kind": "estate"
+        },
+        {
+          "id": "rrflow",
+          "kind": "project"
+        },
+        {
+          "id": "rrflow-dev",
+          "kind": "instance"
+        }
       ]
     },
     "target_kind": "existing_project"
@@ -159,25 +285,41 @@
   "installation_result": {
     "action_results": [
       {
-        "kind": "initialize_instance",
+        "kind": "validate_project",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000014"
       },
       {
-        "kind": "configure_project_locator",
+        "kind": "create_storage_root",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000015"
       },
       {
-        "kind": "create_attunement_job",
+        "kind": "prepare_credentials",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000016"
+      },
+      {
+        "kind": "initialize_instance",
+        "output_sha256": "0000000000000000000000000000000000000000000000000000000000000017"
+      },
+      {
+        "kind": "create_attunement_job",
+        "output_sha256": "0000000000000000000000000000000000000000000000000000000000000018"
+      },
+      {
+        "kind": "publish_project_locator",
+        "output_sha256": "0000000000000000000000000000000000000000000000000000000000000019"
       }
     ],
     "applied_at_unix_ms": 1800000000010,
     "attunement_job_id": "job-01",
     "contract_version": 1,
+    "control_journal_sequence": 1,
+    "credential_sha256": "0000000000000000000000000000000000000000000000000000000000000020",
     "idempotent_replay": false,
+    "installed_record_sha256": "000000000000000000000000000000000000000000000000000000000000001f",
+    "locator_sha256": "0000000000000000000000000000000000000000000000000000000000000021",
     "plan_id": "install-01",
-    "plan_sha256": "b480bc28fbd9db7f5303b2f1f3f1da0d8f06b53a9b956bfeb881b23579938e8b",
-    "result_sha256": "69ac03c862b46a0fcaef34d05ab595b4dcd8b35e818ca596f3eda4bb66c818ff",
+    "plan_sha256": "cfbe3e9df83052c88777ef3ff417e33a3d89a934f5405cd1e721161f83cc097d",
+    "result_sha256": "388a873f72d2e4cd9b3e80c3b59d928c8c35a4c59d64b8b1e9875878125a56f2",
     "runtime_cursor": 1,
     "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000001e"
   },
@@ -185,8 +327,8 @@
     "contract_version": 1,
     "expected_job_revision": 3,
     "job_id": "job-01",
-    "last_checkpoint_sha256": "c02eb3101383693f926964c3ef2cf41619aa60d70fe50a4c4b64fd6f93627363",
-    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "last_checkpoint_sha256": "e6b9202facc09231a11c543d657b81d177111a72618a03282b51ab51ffe7db57",
+    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
     "requested_at_unix_ms": 1800000003001,
     "resume_from_phase": "inventory"
   },
@@ -246,7 +388,7 @@
     "job": {
       "checkpoints": [
         {
-          "checkpoint_sha256": "c02eb3101383693f926964c3ef2cf41619aa60d70fe50a4c4b64fd6f93627363",
+          "checkpoint_sha256": "e6b9202facc09231a11c543d657b81d177111a72618a03282b51ab51ffe7db57",
           "committed_at_unix_ms": 1800000000101,
           "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000065",
           "contract_version": 1,
@@ -260,7 +402,7 @@
           "job_id": "job-01",
           "output_sha256": "00000000000000000000000000000000000000000000000000000000000000c9",
           "phase": "connect",
-          "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+          "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
           "sequence": 1
         }
       ],
@@ -276,7 +418,7 @@
         "id": "lease-01"
       },
       "plan_id": "attune-01",
-      "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+      "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
       "revision": 2,
       "state": "running",
       "updated_at_unix_ms": 1800000002000
@@ -294,11 +436,11 @@
     "contract_version": 1,
     "job_id": "job-01",
     "job_revision": 20,
-    "last_checkpoint_sha256": "aa31c4658406143726d167ce3e1130047ef85cebc22ded8ce044905276f567e8",
-    "plan_sha256": "42373b546d7db7fc51b8872675694fe94de7db48b55df7e17b3d40d9e41e12e5",
+    "last_checkpoint_sha256": "e0f7b249fa921434d6788725c32e2560de8c2ce23fe7f9354db01847149f536d",
+    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
     "runtime_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000137",
     "status": "passed",
-    "verification_sha256": "0c28d55e756e8c6bb424efaa1d0e6b7c526f1b966eca07396c880c52b02291e6",
+    "verification_sha256": "1aaa3d92ebc6136e6c9d0cfde7535e66f186012e880b6e4aff81576724614969",
     "verified_at_unix_ms": 1800000020001
   }
 }

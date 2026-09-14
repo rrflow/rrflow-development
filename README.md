@@ -184,18 +184,25 @@ zero under scan-resistant LRU, while recording 18,200 same-scope suppressions,
 semantic, and projected-row digests, and exact 1 MiB capacity compliance.
 Measured evidence rejects value separation, semantic-family cache partitions,
 Moka, TinyLFU, and caller-controlled cache bypass for this accepted format.
-D-01 is now the next executable item. This is still not a DataFusion
-`RecordBatch` provider, native graph/BM25/vector access, turnkey installation,
-or persistent reasoning/recall proof.
+D-01 remains the next executable item. Its first bounded prerequisite now
+exists: a source-built primary `rrflow` 1.0.0 executable can deterministically
+preview and apply a fresh or existing local-project installation, serve the
+generated public contract, complete an authenticated readiness challenge, and
+perform mutation-free quick verification. The linked
+[walking-product journal](docs/evidence/change-journals/gate-d/d-01-installed-ui-walking-product.md)
+records the exact limits and evidence. This is still not a streamed DataFusion
+`RecordBatch` provider, native graph/BM25/vector access, complete attunement,
+turnkey release distribution, or persistent reasoning/recall proof.
 
-The executable baseline is not an installed product. A locked Linux release
-build emits separate `rrflow`, `rrd-server`, and `rrflow-mcp` ELF files; the
-public `rrflow` command has no install, serve, authenticated ready, verify,
-repair, or version operation; and checkout-oriented `dev doctor` can report
-READY without proving any of them. No native Windows `rrflow.exe` has been
-built or run. D-01 owns the first single-executable walking lifecycle, D-11
-owns complete repair/restore/uninstall, and Gate J owns native signed platform
-distributions. See the
+The source-built walking product is not yet a releasable installed
+distribution. The primary executable now composes `version`, `install plan`,
+`install apply`, `serve`, authenticated `ready`, and read-only
+`verify --level quick`; repair remains absent, checkout-oriented `dev doctor` is not
+release readiness, and legacy companion binaries remain pending direct
+convergence. No signed/offline-complete platform bundle or native Windows
+`rrflow.exe` has been built and run. D-01 owns the remaining single-executable
+walking lifecycle, D-11 owns complete repair/restore/uninstall, and Gate J owns
+native signed platform distributions. See the
 [installed lifecycle](docs/reference/deployment/installed-lifecycle.md) and
 [POA&M](docs/poam/rrflow-1.0-alpha.md).
 

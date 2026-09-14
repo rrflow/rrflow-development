@@ -8,6 +8,7 @@
 mod batch;
 mod database;
 mod error;
+mod inspection;
 mod io;
 mod manifest;
 mod memtable;
@@ -88,6 +89,7 @@ pub use database::{
     DEFAULT_MAX_COMPACTION_LEVEL, DEFAULT_MEMTABLE_MAX_VERSIONS, DEFAULT_WAL_PAYLOAD_MAX_BYTES,
 };
 pub use error::{Error, Result};
+pub use inspection::{DatabaseInspection, InspectionFile, ReadOnlyDatabase};
 pub use io::{SegmentIoMode, SegmentIoPolicy, SegmentIoStats, DEFAULT_SEGMENT_IO_REQUEST_BYTES};
 pub use manifest::{
     Checkpoint, CurrentPointer, Manifest, ManifestStore, SegmentDescriptor, MANIFEST_FORMAT_VERSION,

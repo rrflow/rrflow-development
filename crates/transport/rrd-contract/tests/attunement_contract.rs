@@ -5,9 +5,10 @@ use rrd_contract::{
     AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
     CancelAttunement, CanonicalId, InstallationActionDisposition, InstallationActionKind,
-    InstallationActionResult, InstallationPlan, InstallationPlanAction, InstallationResult,
-    InstallationTargetKind, ResourceId, ResourceKind, ResourcePath, ResumeAttunement,
-    ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    InstallationActionResult, InstallationManagedPath, InstallationManagedPathKind,
+    InstallationPlan, InstallationPlanAction, InstallationRemovalRule, InstallationResult,
+    InstallationTargetKind, MemorySeatDefinition, ResourceId, ResourceKind, ResourcePath,
+    ResumeAttunement, SecurityAction, ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -83,7 +84,6 @@ fn attunement_plan() -> AttunementPlan {
             .collect(),
         estimated_min_duration_ms: 1_800_000,
         estimated_max_duration_ms: 2_700_000,
-        planned_at_unix_ms: CREATED_AT,
         plan_sha256: digest(0),
     };
     plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
@@ -96,30 +96,97 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
         id: canonical_id("install-01"),
         target: target(),
         target_kind: InstallationTargetKind::ExistingProject,
+        product_version: "1.0.0".into(),
+        executable_sha256: digest(40),
+        profile_id: canonical_id("default"),
+        profile_sha256: digest(41),
+        project_root: "/srv/projects/rrflow".into(),
+        project_precondition_sha256: digest(42),
+        storage_root_id: canonical_id("install-01"),
         configuration_sha256: digest(2),
+        initial_seat: MemorySeatDefinition {
+            id: canonical_id("rrflow-local-seat"),
+            display_name: "Local RRFlow".into(),
+            purpose: "Provider-neutral reasoning and recall for this project.".into(),
+        },
+        initial_principal_id: canonical_id("local-operator"),
+        initial_grants: vec![
+            SecurityAction::ServiceInspect,
+            SecurityAction::SessionCreate,
+            SecurityAction::SessionClose,
+            SecurityAction::QueryExecute,
+        ],
+        credential_bytes: 32,
+        inactive_capabilities: vec![
+            canonical_id("external-model-provider"),
+            canonical_id("project-generator"),
+        ],
+        managed_paths: vec![
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::StorageRoot,
+                relative_path: ".rrflow/rrd/roots/install-01".into(),
+                precondition_sha256: digest(43),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            },
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::TokenKey,
+                relative_path: ".rrflow/rrd/roots/install-01/token.key".into(),
+                precondition_sha256: digest(44),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            },
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::OperatorCredential,
+                relative_path: ".rrflow/credentials/local-operator.json".into(),
+                precondition_sha256: digest(45),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            },
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::ProjectLocator,
+                relative_path: ".rrflow/config.toml".into(),
+                precondition_sha256: digest(46),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            },
+        ],
         attunement_plan_id: attunement.id.clone(),
         attunement_plan_sha256: attunement.plan_sha256.clone(),
         actions: vec![
             InstallationPlanAction {
-                kind: InstallationActionKind::InitializeInstance,
-                disposition: InstallationActionDisposition::Create,
+                kind: InstallationActionKind::ValidateProject,
+                disposition: InstallationActionDisposition::Unchanged,
                 input_sha256: digest(3),
+                estimated_write_bytes: 0,
+            },
+            InstallationPlanAction {
+                kind: InstallationActionKind::CreateStorageRoot,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(4),
                 estimated_write_bytes: 4_096,
             },
             InstallationPlanAction {
-                kind: InstallationActionKind::ConfigureProjectLocator,
+                kind: InstallationActionKind::PrepareCredentials,
                 disposition: InstallationActionDisposition::Create,
-                input_sha256: digest(4),
-                estimated_write_bytes: 256,
+                input_sha256: digest(5),
+                estimated_write_bytes: 96,
+            },
+            InstallationPlanAction {
+                kind: InstallationActionKind::InitializeInstance,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(6),
+                estimated_write_bytes: 4_096,
             },
             InstallationPlanAction {
                 kind: InstallationActionKind::CreateAttunementJob,
                 disposition: InstallationActionDisposition::Create,
-                input_sha256: digest(5),
+                input_sha256: digest(7),
                 estimated_write_bytes: 1_024,
             },
+            InstallationPlanAction {
+                kind: InstallationActionKind::PublishProjectLocator,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(8),
+                estimated_write_bytes: 256,
+            },
         ],
-        planned_at_unix_ms: CREATED_AT + 1,
         plan_sha256: digest(0),
     };
     plan.plan_sha256 = installation_plan_sha256(&plan).unwrap();
@@ -143,6 +210,10 @@ fn installation_result(plan: &InstallationPlan) -> InstallationResult {
             .collect(),
         runtime_manifest_sha256: digest(30),
         runtime_cursor: 1,
+        control_journal_sequence: 1,
+        installed_record_sha256: digest(31),
+        credential_sha256: digest(32),
+        locator_sha256: digest(33),
         applied_at_unix_ms: CREATED_AT + 10,
         idempotent_replay: false,
         result_sha256: digest(0),
@@ -411,9 +482,17 @@ fn install_and_attunement_contract_matches_golden_json() {
         .validate_for(&succeeded, &fixture.attunement_plan)
         .unwrap();
 
+    let actual = serde_json::to_value(&fixture).unwrap();
+    if std::env::var_os("RRFLOW_UPDATE_GOLDEN").is_some() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("fixtures/install-attunement-v1.json");
+        let mut encoded = serde_json::to_string_pretty(&actual).unwrap();
+        encoded.push('\n');
+        std::fs::write(path, encoded).unwrap();
+        return;
+    }
     let expected: serde_json::Value =
         serde_json::from_str(include_str!("../fixtures/install-attunement-v1.json")).unwrap();
-    let actual = serde_json::to_value(&fixture).unwrap();
     assert_eq!(
         actual,
         expected,
@@ -615,6 +694,61 @@ fn validation_rejects_skipped_phases_and_mismatched_digests() {
     non_retryable.failure.as_mut().unwrap().retryable = false;
     let resumed = job(&plan, AttunementJobState::Running, 0, 4, CREATED_AT + 4_000);
     assert!(non_retryable.validate_transition(&resumed, &plan).is_err());
+}
+
+#[test]
+fn installation_and_attunement_plans_are_clock_free_deterministic_values() {
+    let first_attunement = attunement_plan();
+    let second_attunement = attunement_plan();
+    assert_eq!(first_attunement, second_attunement);
+    assert_eq!(
+        serde_json::to_vec(&first_attunement).unwrap(),
+        serde_json::to_vec(&second_attunement).unwrap()
+    );
+
+    let first_installation = installation_plan(&first_attunement);
+    let second_installation = installation_plan(&second_attunement);
+    assert_eq!(first_installation, second_installation);
+    assert_eq!(
+        serde_json::to_vec(&first_installation).unwrap(),
+        serde_json::to_vec(&second_installation).unwrap()
+    );
+    assert!(serde_json::to_value(first_installation)
+        .unwrap()
+        .get("planned_at_unix_ms")
+        .is_none());
+}
+
+#[test]
+fn canonical_security_action_catalogue_matches_the_generated_schema() {
+    let schema = serde_json::to_value(schema_for!(SecurityAction)).unwrap();
+    let variants = schema["enum"].as_array().unwrap();
+    let projected = SecurityAction::ALL
+        .into_iter()
+        .map(|action| serde_json::to_value(action).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(projected, *variants);
+}
+
+#[test]
+fn installation_plan_rejects_escaping_or_reordered_managed_effects() {
+    let attunement = attunement_plan();
+    let mut escaping = installation_plan(&attunement);
+    escaping.managed_paths[2].relative_path = "../operator.json".into();
+    escaping.plan_sha256 = installation_plan_sha256(&escaping).unwrap();
+    assert!(escaping.validate().is_err());
+
+    let mut reordered = installation_plan(&attunement);
+    reordered.actions.swap(0, 1);
+    reordered.plan_sha256 = installation_plan_sha256(&reordered).unwrap();
+    assert!(reordered.validate().is_err());
+
+    let mut duplicate_grant = installation_plan(&attunement);
+    duplicate_grant
+        .initial_grants
+        .push(SecurityAction::QueryExecute);
+    duplicate_grant.plan_sha256 = installation_plan_sha256(&duplicate_grant).unwrap();
+    assert!(duplicate_grant.validate().is_err());
 }
 
 #[test]

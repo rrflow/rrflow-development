@@ -3,7 +3,7 @@
 **Status:** active supporting research; not an implementation or release claim
 **Coordinate:** `rrflow://rrflow-instance/data/research/installation-repair-distribution`
 **Owner:** primary-source evidence for the RRFlow installed-lifecycle target
-**Reviewed:** 2026-09-10
+**Reviewed:** 2026-09-14
 
 This record answers one bounded question: what lifecycle must RRFlow expose so
 an acquired release artifact can create, operate, verify, recover, repair, and
@@ -31,9 +31,10 @@ Source behavior is evidence, not RRFlow architecture. No upstream command,
 file layout, implementation tree, or compatibility surface is adopted
 automatically.
 
-## Current checkout findings
+## Baseline checkout findings
 
-The checkout contains useful engine components but no truthful installed
+At implementation baseline `2f686f99ac1e11c8cec11a67ffb47551c12e4b15`,
+the checkout contained useful engine components but no truthful installed
 product lifecycle:
 
 - a release build emits separate `rrflow`, `rrd-server`, and `rrflow-mcp`
@@ -61,6 +62,89 @@ These are implementation facts, not a verdict on the intended architecture.
 They establish the concrete convergence work.
 
 ## Primary-source findings and RRFlow adaptations
+
+### Code-grounded synthesis for the first installed walking product
+
+The 2026-09-14 implementation review added a narrower question to the broader
+release research: what is the smallest honest installed engine a UI can start
+against now, while keeping repair, attunement execution, platform packaging,
+and release promotion open?
+
+Rust's `OpenOptions::create_new` documents atomic create-if-absent behavior and
+states that it also fails when the target is a dangling symbolic link. That is
+the correct primitive for new token keys, API-key documents, and collision-
+sensitive publication staging; an `exists()` check followed by a create-or-
+truncate open is not an equivalent installation precondition. Source:
+[Rust `OpenOptions::create_new`](https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new).
+
+Rust's file-lock API provides a non-blocking shared-lock attempt that reports
+`WouldBlock` when an incompatible lock is held. RRFlow therefore reuses the
+manifest lock as an exclusive-writer/shared-offline-inspector boundary. The
+inspector opens the already-present lock file and never manufactures one, so a
+missing estate remains missing and a live writer is not mistaken for an
+offline verification target. Source:
+[Rust `File::try_lock_shared`](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock_shared).
+
+Portable canonicalization and component-by-component symbolic-link rejection
+substantially narrow path escape, but they do not make a sequence of pathname
+lookups race-free against a hostile concurrent replacer. Linux `openat2`
+offers resolution constraints such as `RESOLVE_BENEATH`,
+`RESOLVE_NO_SYMLINKS`, and `RESOLVE_NO_MAGICLINKS`; equivalent native-platform
+qualification is deliberately deferred rather than hidden behind a claim that
+`canonicalize` solved it. Source:
+[Linux `openat2(2)`](https://man7.org/linux/man-pages/man2/openat2.2.html).
+
+Durable publication requires accounting for directory entries as well as file
+content. The Linux `fsync(2)` documentation explicitly warns that syncing a
+file does not necessarily sync the directory entry containing it. The first
+slice consequently syncs new credential content, syncs parent-directory
+metadata through the repository abstraction, commits engine state, reads it
+back, and only then publishes the non-secret project locator. This is a local
+durability boundary, not signed-distribution provenance. Source:
+[Linux `fsync(2)` and `fdatasync(2)`](https://man7.org/linux/man-pages/man2/fsync.2.html).
+
+The OpenAPI specification defines a machine-readable interface description,
+so RRFlow's executable operation catalogue can remain the source for endpoint,
+client, and UI discovery. OpenAPI does not prove that an operation is enabled,
+authorized, performant, or release-qualified; the separate capability and
+readiness projections carry those runtime facts. Source:
+[OpenAPI Specification 3.1.1](https://spec.openapis.org/oas/v3.1.1.html).
+
+DataFusion's extension path proceeds from `TableProvider` to an
+`ExecutionPlan` that returns a `SendableRecordBatchStream`. Apache Arrow's
+columnar format is designed for efficient in-memory interchange. Together,
+those sources support an in-process rrflowKV-to-Arrow streaming provider as
+the default F-01 direction. A dedicated subprocess would add IPC and copy/
+shared-memory lifetime questions and is therefore an inactive capability
+until isolation and measured workload evidence justify it. Sources:
+[DataFusion custom table providers](https://datafusion.apache.org/library-user-guide/custom-table-providers.html)
+and [Apache Arrow format introduction](https://arrow.apache.org/docs/format/Intro.html).
+
+The retained native-write trace is equally specific. Across 1,152 diagnostic
+samples, WAL `sync_data` was the largest phase in every sample, represented
+69.70% of physical p50 and 79.71% of p99, and correlated 0.9881 with physical
+latency; mutex waits were sub-microsecond at p99 and no automatic flush,
+compaction, or write-stall event occurred. That evidence is owned by the
+[C-07 attribution journal](../evidence/change-journals/gate-c/c-07-native-batch-write-tail-attribution.md).
+The installed slice preserves authoritative durability and does not change the
+failed native-versus-Fjall promotion threshold. Later optimization should
+measure group-commit policy against real reasoning workloads without turning
+buffered acknowledgement into durable acknowledgement.
+
+Finally, The Update Framework separates signed roles, freshness, and rollback
+protection in distribution metadata. An installed executable/profile self-
+digest is useful local binding, but it is not a signature, trusted acquisition
+proof, or Gate J release claim. Source:
+[The Update Framework specification](https://theupdateframework.github.io/specification/latest/).
+
+These findings select one canonical first slice: deterministic clock-free
+plan; exact digest-gated apply; explicit create-new/open-existing APIs; one
+authoritative runtime-plus-control bootstrap commit; owner-only generated
+credentials; locator publication after readback; linked in-process server;
+generated UI discovery; authenticated ready challenge; and a shared-lock,
+byte-stable quick verifier. They explicitly do not select a thought schema,
+provider hook, external database, DataFusion subprocess, repair authority, or
+release promotion shortcut.
 
 ### One public executable
 
@@ -198,6 +282,8 @@ these substitutes for runtime qualification.
 
 This review does not select a release automation product, certificate vendor,
 Windows installer format, service manager, or package manager. Those are
-implementation choices to measure in Gate J. It also does not claim the current
-rrflowKV physical verifier, semantic verifier, install coordinator, repair
-planner, or single-executable composition already exists.
+implementation choices to measure in Gate J. The first installed walking-
+product slice implements the bounded physical/semantic quick verifier, install
+coordinator, and primary-executable server composition described above; that
+does not imply a full verifier, repair planner, signed distribution, native
+platform qualification, or completed D/J gate.

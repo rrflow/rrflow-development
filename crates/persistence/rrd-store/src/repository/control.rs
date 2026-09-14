@@ -8,7 +8,7 @@ use crate::control::{
 };
 use crate::key_codec::KeyCodec;
 use crate::keyspaces::{self, Durability};
-use crate::{Error, IndexCommitBindingDefinition, Result, StorageEngine};
+use crate::{Error, IndexCommitBindingDefinition, Result, StorageEngine, StorageTransaction};
 use rrd_core::{digest, ScopeId};
 
 const CONTROL_TRANSACTION_ATTEMPTS: usize = 16;
@@ -222,81 +222,7 @@ impl<'a> ControlRepository<'a> {
         transitions: &[ControlTransition],
     ) -> Result<Vec<ControlJournalEntry>> {
         let mut transaction = self.storage.begin_transaction()?;
-        for transition in transitions {
-            let current = get(
-                &*transaction,
-                keyspaces::META,
-                &keyspaces::control_record_key(&transition.key),
-            )?;
-            if current.as_deref() != transition.expected.as_deref() {
-                return Err(Error::ControlConflict(transition.key.clone()));
-            }
-        }
-        let current_sequence =
-            read_sequence(&*transaction, &keyspaces::control_journal_sequence_key())?;
-        let mut previous_digest = get(
-            &*transaction,
-            keyspaces::META,
-            &keyspaces::control_journal_last_digest_key(),
-        )?
-        .map(String::from_utf8)
-        .transpose()
-        .map_err(|error| Error::CorruptWatermark(error.to_string()))?;
-        let previous_entry = if current_sequence == 0 {
-            None
-        } else {
-            get(
-                &*transaction,
-                keyspaces::META,
-                &keyspaces::control_journal_key(current_sequence),
-            )?
-            .map(|bytes| serde_json::from_slice(&bytes))
-            .transpose()?
-        };
-        verify_control_tail(
-            current_sequence,
-            previous_digest.as_deref(),
-            previous_entry.as_ref(),
-        )?;
-        let mut entries = Vec::with_capacity(transitions.len());
-        for (offset, transition) in transitions.iter().enumerate() {
-            let sequence = current_sequence
-                .checked_add(offset as u64 + 1)
-                .ok_or(Error::SequenceOverflow)?;
-            let entry =
-                ControlJournalEntry::committed(sequence, transition, previous_digest.clone());
-            previous_digest = Some(entry.digest.clone());
-            entries.push(entry);
-        }
-        for (transition, entry) in transitions.iter().zip(&entries) {
-            let record_key = keyspaces::control_record_key(&transition.key);
-            match &transition.replacement {
-                Some(value) => {
-                    transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
-                }
-                None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
-            }
-            transaction.put(
-                checked_key(
-                    keyspaces::META,
-                    &keyspaces::control_journal_key(entry.sequence),
-                )?,
-                serde_json::to_vec(entry)?,
-            )?;
-        }
-        let last = entries.last().expect("validated non-empty control batch");
-        put_sequence(
-            &mut *transaction,
-            &keyspaces::control_journal_sequence_key(),
-            last.sequence,
-        )?;
-        transaction.put(
-            checked_key(
-                keyspaces::META,
-                &keyspaces::control_journal_last_digest_key(),
-            )?,
-            last.digest.as_bytes().to_vec(),
-        )?;
+        let entries = prepare_control_batch(&mut *transaction, transitions)?;
         transaction.commit(Durability::Authoritative)?;
         Ok(entries)
     }
@@ -344,4 +270,89 @@ impl<'a> ControlRepository<'a> {
         let transaction = self.storage.begin_transaction()?;
         read_sequence(&*transaction, &keyspaces::control_journal_sequence_key())
     }
+}
+
+/// Validates and applies a complete control batch to a caller-owned physical
+/// transaction. This function never commits; bootstrap composition remains
+/// responsible for the one durability acknowledgement shared with runtime
+/// state.
+pub(crate) fn prepare_control_batch(
+    transaction: &mut dyn StorageTransaction,
+    transitions: &[ControlTransition],
+) -> Result<Vec<ControlJournalEntry>> {
+    validate_control_batch(transitions)?;
+    for transition in transitions {
+        let current = get(
+            transaction,
+            keyspaces::META,
+            &keyspaces::control_record_key(&transition.key),
+        )?;
+        if current.as_deref() != transition.expected.as_deref() {
+            return Err(Error::ControlConflict(transition.key.clone()));
+        }
+    }
+    let current_sequence = read_sequence(transaction, &keyspaces::control_journal_sequence_key())?;
+    let mut previous_digest = get(
+        transaction,
+        keyspaces::META,
+        &keyspaces::control_journal_last_digest_key(),
+    )?
+    .map(String::from_utf8)
+    .transpose()
+    .map_err(|error| Error::CorruptWatermark(error.to_string()))?;
+    let previous_entry = if current_sequence == 0 {
+        None
+    } else {
+        get(
+            transaction,
+            keyspaces::META,
+            &keyspaces::control_journal_key(current_sequence),
+        )?
+        .map(|bytes| serde_json::from_slice(&bytes))
+        .transpose()?
+    };
+    verify_control_tail(
+        current_sequence,
+        previous_digest.as_deref(),
+        previous_entry.as_ref(),
+    )?;
+    let mut entries = Vec::with_capacity(transitions.len());
+    for (offset, transition) in transitions.iter().enumerate() {
+        let sequence = current_sequence
+            .checked_add(offset as u64 + 1)
+            .ok_or(Error::SequenceOverflow)?;
+        let entry = ControlJournalEntry::committed(sequence, transition, previous_digest.clone());
+        previous_digest = Some(entry.digest.clone());
+        entries.push(entry);
+    }
+    for (transition, entry) in transitions.iter().zip(&entries) {
+        let record_key = keyspaces::control_record_key(&transition.key);
+        match &transition.replacement {
+            Some(value) => {
+                transaction.put(checked_key(keyspaces::META, &record_key)?, value.clone())?
+            }
+            None => transaction.delete(checked_key(keyspaces::META, &record_key)?)?,
+        }
+        transaction.put(
+            checked_key(
+                keyspaces::META,
+                &keyspaces::control_journal_key(entry.sequence),
+            )?,
+            serde_json::to_vec(entry)?,
+        )?;
+    }
+    let last = entries.last().expect("validated non-empty control batch");
+    put_sequence(
+        transaction,
+        &keyspaces::control_journal_sequence_key(),
+        last.sequence,
+    )?;
+    transaction.put(
+        checked_key(
+            keyspaces::META,
+            &keyspaces::control_journal_last_digest_key(),
+        )?,
+        last.digest.as_bytes().to_vec(),
+    )?;
+    Ok(entries)
 }

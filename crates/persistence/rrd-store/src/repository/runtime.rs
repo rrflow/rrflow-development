@@ -9,9 +9,9 @@ use crate::access::{
 };
 use crate::keyspaces::{self, Durability};
 use crate::{
-    Error, FunctionInvocationReceiptRecord, IndexSourceDelta, Result, RuntimeReadBudget,
-    RuntimeReadEvidence, RuntimeVersionedRead, RuntimeVersionedSource, StorageEngine,
-    VectorSourceAddress, VectorSourceDelta,
+    ControlJournalEntry, ControlTransition, Error, FunctionInvocationReceiptRecord,
+    IndexSourceDelta, Result, RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedRead,
+    RuntimeVersionedSource, StorageEngine, VectorSourceAddress, VectorSourceDelta,
 };
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
@@ -254,6 +254,29 @@ impl<'a> RuntimeRepository<'a> {
 
     pub fn commit(&self, commit: &RuntimeCommit) -> Result<RuntimeCommitOutcome> {
         self.commit_at_read(commit, None, None, None)
+    }
+
+    /// Cold-start composition boundary for runtime and control authority. Both
+    /// plans are validated against one physical snapshot and become visible
+    /// through one authoritative commit or not at all.
+    pub fn commit_with_control_transitions(
+        &self,
+        commit: &RuntimeCommit,
+        transitions: &[ControlTransition],
+    ) -> Result<(RuntimeCommitOutcome, Vec<ControlJournalEntry>)> {
+        commit.validate()?;
+        let mut transaction = self.storage.begin_transaction()?;
+        let plan = prepare_semantic_commit(&*transaction, commit, None, None, None)?;
+        let entries = super::control::prepare_control_batch(&mut *transaction, transitions)?;
+        let outcome = plan.apply(&mut *transaction)?;
+        match transaction.commit(Durability::Authoritative) {
+            Ok(_) => Ok((outcome, entries)),
+            Err(Error::TransactionConflict { .. }) => Err(Error::RuntimeConflict {
+                expected: commit.expected_cursor,
+                actual: self.cursor()?,
+            }),
+            Err(error) => Err(error),
+        }
     }
 
     pub fn commit_data_transaction(

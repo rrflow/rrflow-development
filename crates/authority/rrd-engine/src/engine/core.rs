@@ -28,6 +28,32 @@ pub struct RrdEngine {
     pub(crate) embedding_backends: Mutex<rrd_inference::EmbeddingBackendRegistry>,
 }
 impl RrdEngine {
+    pub fn create_new(root: &Path, instance: CanonicalId, token_key: [u8; 32]) -> Result<Self> {
+        if std::fs::symlink_metadata(root).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        let storage = RrflowKvStore::create_new(root)?;
+        Self::compose_persistent(
+            root,
+            instance,
+            token_key,
+            storage,
+            crate::VectorResidencyLimits::default(),
+        )
+    }
+
+    pub fn open_existing(root: &Path, instance: CanonicalId, token_key: [u8; 32]) -> Result<Self> {
+        validate_existing_object_layout(root)?;
+        let storage = RrflowKvStore::open_existing(root)?;
+        Self::compose_persistent(
+            root,
+            instance,
+            token_key,
+            storage,
+            crate::VectorResidencyLimits::default(),
+        )
+    }
+
     /// Opens a local engine authority for engine-owned control/bootstrap
     /// operations that cannot yet rely on a project manifest. The constructor
     /// remains private to `rrd-engine`; outward adapters call typed operations.
@@ -77,6 +103,16 @@ impl RrdEngine {
         limits: crate::VectorResidencyLimits,
     ) -> Result<Self> {
         let storage = RrflowKvStore::open(root)?;
+        Self::compose_persistent(root, instance, token_key, storage, limits)
+    }
+
+    fn compose_persistent(
+        root: &Path,
+        instance: CanonicalId,
+        token_key: [u8; 32],
+        storage: RrflowKvStore,
+        limits: crate::VectorResidencyLimits,
+    ) -> Result<Self> {
         let objects = rrd_store::LocalObjectStore::open(root.join("immutable"))?;
         let vector_residency = crate::VectorResidencyManager::new(limits)
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
@@ -170,4 +206,30 @@ impl RrdEngine {
                 .map_err(|error| ServiceError::Contract(error.to_string()))?,
         })
     }
+}
+
+pub(super) fn validate_existing_object_layout(root: &Path) -> Result<()> {
+    for relative in [
+        "",
+        "immutable",
+        "immutable/objects",
+        "immutable/objects/sha256",
+        "immutable/staging",
+        "immutable/quarantine",
+    ] {
+        let path = root.join(relative);
+        let metadata = std::fs::symlink_metadata(&path).map_err(|error| {
+            ServiceError::Storage(format!(
+                "installed object-store path cannot be inspected ({}): {error}",
+                path.display()
+            ))
+        })?;
+        if metadata.file_type().is_symlink() || !metadata.is_dir() {
+            return Err(ServiceError::Storage(format!(
+                "installed object-store path is missing, symbolic, or invalid: {}",
+                path.display()
+            )));
+        }
+    }
+    Ok(())
 }
