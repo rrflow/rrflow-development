@@ -40,6 +40,7 @@ pub mod reasoning_tree;
 pub mod reference;
 pub mod runtime;
 pub mod schema;
+pub mod telemetry;
 pub mod temporal;
 pub mod trace;
 
@@ -78,6 +79,11 @@ pub use schema::{
     RuntimeCatalogueIdentity, RuntimeEventSchema, RuntimeLogicalModel, RuntimePropertySchema,
     RuntimeRecordSchema, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
     RuntimeTableSchema, RuntimeValueType,
+};
+pub use telemetry::{
+    signal_catalogue, signal_catalogue_sha256, DiagnosticLevel, MetricAttribute, MetricDescriptor,
+    MetricInstrument, MetricKind, MetricUnit, SignalCatalogue, TraceAttributeDescriptor,
+    TraceOperationDescriptor, DEFAULT_METRIC_CARDINALITY_LIMIT, TELEMETRY_CONTRACT_VERSION,
 };
 pub use temporal::{changed_since, resolve_as_of, ClaimReader, ClaimSource};
 pub use trace::{

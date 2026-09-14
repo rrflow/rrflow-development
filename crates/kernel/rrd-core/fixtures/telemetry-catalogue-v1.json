@@ -1,0 +1,671 @@
+{
+  "catalogue": {
+    "contract_version": 1,
+    "default_diagnostic_level": "normal",
+    "default_metric_cardinality_limit": 2000,
+    "diagnostic_levels": [
+      "off",
+      "normal",
+      "detailed",
+      "profile"
+    ],
+    "metric_attributes": [
+      "rrflow.boundary",
+      "rrflow.operation",
+      "rrflow.outcome",
+      "rrflow.storage.profile",
+      "rrflow.access.path",
+      "rrflow.work.kind",
+      "rrflow.queue.kind",
+      "rrflow.cache.kind",
+      "error.type"
+    ],
+    "metric_instruments": [
+      {
+        "attributes": [
+          "rrflow.boundary",
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.storage.profile",
+          "rrflow.access.path",
+          "error.type"
+        ],
+        "description": "Wall duration of one exact operation boundary, recorded once with terminal outcome.",
+        "instrument": "rrflow.operation.duration",
+        "kind": "histogram",
+        "unit": "s"
+      },
+      {
+        "attributes": [
+          "rrflow.boundary",
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.storage.profile",
+          "rrflow.access.path",
+          "error.type"
+        ],
+        "description": "Accepted terminal operations; denials, cancellations, and errors remain distinct outcomes.",
+        "instrument": "rrflow.operation.count",
+        "kind": "counter",
+        "unit": "{operation}"
+      },
+      {
+        "attributes": [
+          "rrflow.boundary",
+          "rrflow.operation",
+          "rrflow.storage.profile",
+          "rrflow.access.path"
+        ],
+        "description": "Currently admitted operations, including queued time until terminal release.",
+        "instrument": "rrflow.operation.inflight",
+        "kind": "up_down_counter",
+        "unit": "{operation}"
+      },
+      {
+        "attributes": [
+          "rrflow.boundary",
+          "rrflow.queue.kind"
+        ],
+        "description": "Bounded executor, maintenance, delivery, model, spill, and telemetry queue occupancy.",
+        "instrument": "rrflow.queue.depth",
+        "kind": "observable_gauge",
+        "unit": "{item}"
+      },
+      {
+        "attributes": [
+          "rrflow.boundary",
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.queue.kind",
+          "error.type"
+        ],
+        "description": "Admission-to-execution delay separate from compute time.",
+        "instrument": "rrflow.queue.wait",
+        "kind": "histogram",
+        "unit": "s"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.storage.profile",
+          "rrflow.access.path",
+          "error.type"
+        ],
+        "description": "Physical KV keys examined by attributable point, range, and page operations.",
+        "instrument": "rrflow.kv.keys.examined",
+        "kind": "counter",
+        "unit": "{item}"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.storage.profile",
+          "rrflow.access.path",
+          "error.type"
+        ],
+        "description": "Physical KV pages examined by attributable point, range, and page operations.",
+        "instrument": "rrflow.kv.pages.examined",
+        "kind": "counter",
+        "unit": "{item}"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.storage.profile",
+          "rrflow.access.path",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Read, mapped, decoded, decompressed, borrowed, copied, allocated, WAL, flush, compaction, and spill byte work.",
+        "instrument": "rrflow.kv.bytes",
+        "kind": "counter",
+        "unit": "By"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.storage.profile",
+          "rrflow.access.path",
+          "rrflow.cache.kind",
+          "error.type"
+        ],
+        "description": "Hit, miss, admission rejection, and eviction outcomes for a bounded cache class.",
+        "instrument": "rrflow.kv.cache.requests",
+        "kind": "counter",
+        "unit": "{request}"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.access.path",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Rows examined and emitted by rrflowQL, native, and DataFusion execution.",
+        "instrument": "rrflow.query.rows",
+        "kind": "counter",
+        "unit": "{row}"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.access.path",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Eligible graph edges and vertices traversed by query execution.",
+        "instrument": "rrflow.query.graph.steps",
+        "kind": "counter",
+        "unit": "{step}"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.access.path",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Lexical, vector, fusion, and exact-rerank candidate work by bounded access path.",
+        "instrument": "rrflow.query.candidates",
+        "kind": "counter",
+        "unit": "{candidate}"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.work.kind"
+        ],
+        "description": "Current DataFusion pool reservation by bounded pool class.",
+        "instrument": "rrflow.datafusion.memory.usage",
+        "kind": "observable_gauge",
+        "unit": "By"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Peak DataFusion pool reservation observed for one terminal query execution.",
+        "instrument": "rrflow.datafusion.memory.peak",
+        "kind": "histogram",
+        "unit": "By"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "DataFusion spill bytes read and written by bounded work kind.",
+        "instrument": "rrflow.datafusion.spill",
+        "kind": "counter",
+        "unit": "By"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Authorized context input, output, selected, skipped, truncated, and compacted byte volume.",
+        "instrument": "rrflow.context.bytes",
+        "kind": "histogram",
+        "unit": "By"
+      },
+      {
+        "attributes": [
+          "rrflow.operation",
+          "rrflow.outcome",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Authorized context input, output, selected, skipped, truncated, and compacted token volume.",
+        "instrument": "rrflow.context.tokens",
+        "kind": "histogram",
+        "unit": "{token}"
+      },
+      {
+        "attributes": [
+          "rrflow.boundary",
+          "rrflow.queue.kind"
+        ],
+        "description": "Unacknowledged bounded delivery items by stream class.",
+        "instrument": "rrflow.delivery.backlog",
+        "kind": "observable_gauge",
+        "unit": "{item}"
+      },
+      {
+        "attributes": [
+          "rrflow.work.kind"
+        ],
+        "description": "Process RSS and allocator-owned bytes where the platform can identify them.",
+        "instrument": "rrflow.process.memory",
+        "kind": "observable_gauge",
+        "unit": "By"
+      },
+      {
+        "attributes": [
+          "rrflow.work.kind"
+        ],
+        "description": "User and system CPU time for saturation and benchmark accounting.",
+        "instrument": "rrflow.process.cpu.time",
+        "kind": "counter",
+        "unit": "s"
+      },
+      {
+        "attributes": [
+          "rrflow.outcome",
+          "rrflow.work.kind",
+          "rrflow.queue.kind",
+          "error.type"
+        ],
+        "description": "Diagnostic points dropped by bounded queue, sampling, or encoding policy.",
+        "instrument": "rrflow.telemetry.dropped",
+        "kind": "counter",
+        "unit": "{item}"
+      },
+      {
+        "attributes": [
+          "rrflow.outcome",
+          "rrflow.work.kind",
+          "error.type"
+        ],
+        "description": "Diagnostic encode, export, and exporter-rejection failures.",
+        "instrument": "rrflow.telemetry.export.errors",
+        "kind": "counter",
+        "unit": "{item}"
+      }
+    ],
+    "runtime_trace_contract_version": 1,
+    "trace_attributes": [
+      {
+        "name": "stage"
+      },
+      {
+        "name": "attempt"
+      },
+      {
+        "name": "phase"
+      },
+      {
+        "name": "action"
+      },
+      {
+        "name": "selected"
+      },
+      {
+        "name": "skip_reason"
+      },
+      {
+        "name": "exact"
+      },
+      {
+        "name": "fallback"
+      },
+      {
+        "name": "truncated"
+      },
+      {
+        "name": "cache_status"
+      },
+      {
+        "name": "input_items"
+      },
+      {
+        "name": "input_bytes"
+      },
+      {
+        "name": "max_storage_keys"
+      },
+      {
+        "name": "output_items"
+      },
+      {
+        "name": "output_bytes"
+      },
+      {
+        "name": "selected_versions"
+      },
+      {
+        "name": "keys_examined"
+      },
+      {
+        "name": "pages_examined"
+      },
+      {
+        "name": "rows_examined"
+      },
+      {
+        "name": "read_point_reads"
+      },
+      {
+        "name": "read_range_scans"
+      },
+      {
+        "name": "read_values_decoded"
+      },
+      {
+        "name": "read_stamp_validation"
+      },
+      {
+        "name": "read_stamp_validation_change_reads"
+      },
+      {
+        "name": "read_stamp_validation_proof_nodes"
+      },
+      {
+        "name": "graph_steps"
+      },
+      {
+        "name": "candidates_examined"
+      },
+      {
+        "name": "mapped_bytes"
+      },
+      {
+        "name": "read_bytes"
+      },
+      {
+        "name": "decoded_bytes"
+      },
+      {
+        "name": "decompressed_bytes"
+      },
+      {
+        "name": "borrowed_bytes"
+      },
+      {
+        "name": "copied_bytes"
+      },
+      {
+        "name": "allocated_bytes"
+      },
+      {
+        "name": "elapsed_micros"
+      },
+      {
+        "name": "memory_peak_bytes"
+      },
+      {
+        "name": "spill_bytes"
+      },
+      {
+        "name": "input_tokens"
+      },
+      {
+        "name": "output_tokens"
+      },
+      {
+        "name": "failed_stage"
+      },
+      {
+        "name": "error_class"
+      },
+      {
+        "name": "error_digest"
+      },
+      {
+        "name": "retryable"
+      },
+      {
+        "name": "rank"
+      },
+      {
+        "name": "score"
+      },
+      {
+        "name": "rrf_contribution"
+      },
+      {
+        "name": "selected_source_count"
+      },
+      {
+        "name": "skipped_source_count"
+      },
+      {
+        "name": "compacted_bytes"
+      },
+      {
+        "name": "compacted_tokens"
+      },
+      {
+        "name": "verification_status"
+      },
+      {
+        "name": "propagation_status"
+      },
+      {
+        "name": "propagation_digest"
+      },
+      {
+        "name": "start_cursor"
+      }
+    ],
+    "trace_operations": [
+      {
+        "boundary": "ingress",
+        "name": "rrflow.ingress.request"
+      },
+      {
+        "boundary": "ingress",
+        "name": "rrflow.ingress.frame"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.operation"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.authenticate"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.authorize"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.validate"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.commit"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.context_assemble"
+      },
+      {
+        "boundary": "engine",
+        "name": "rrflow.engine.function_execute"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.point_read"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.range_scan"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.write_batch"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.wal_append"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.snapshot"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.page_scan"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.flush"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.compact"
+      },
+      {
+        "boundary": "kv",
+        "name": "rrflow.kv.recover"
+      },
+      {
+        "boundary": "ql",
+        "name": "rrflow.ql.parse"
+      },
+      {
+        "boundary": "ql",
+        "name": "rrflow.ql.bind"
+      },
+      {
+        "boundary": "ql",
+        "name": "rrflow.ql.plan"
+      },
+      {
+        "boundary": "ql",
+        "name": "rrflow.ql.execute"
+      },
+      {
+        "boundary": "graph",
+        "name": "rrflow.graph.maintain"
+      },
+      {
+        "boundary": "graph",
+        "name": "rrflow.graph.traverse"
+      },
+      {
+        "boundary": "lexical",
+        "name": "rrflow.lexical.maintain"
+      },
+      {
+        "boundary": "lexical",
+        "name": "rrflow.lexical.search"
+      },
+      {
+        "boundary": "vector",
+        "name": "rrflow.vector.maintain"
+      },
+      {
+        "boundary": "vector",
+        "name": "rrflow.vector.search"
+      },
+      {
+        "boundary": "vector",
+        "name": "rrflow.vector.rerank"
+      },
+      {
+        "boundary": "vector",
+        "name": "rrflow.vector.projection"
+      },
+      {
+        "boundary": "datafusion",
+        "name": "rrflow.datafusion.plan"
+      },
+      {
+        "boundary": "datafusion",
+        "name": "rrflow.datafusion.scan"
+      },
+      {
+        "boundary": "datafusion",
+        "name": "rrflow.datafusion.execute"
+      },
+      {
+        "boundary": "datafusion",
+        "name": "rrflow.datafusion.spill"
+      },
+      {
+        "boundary": "inference",
+        "name": "rrflow.inference.embed"
+      },
+      {
+        "boundary": "inference",
+        "name": "rrflow.inference.route"
+      },
+      {
+        "boundary": "attunement",
+        "name": "rrflow.attunement.job"
+      },
+      {
+        "boundary": "attunement",
+        "name": "rrflow.attunement.phase"
+      },
+      {
+        "boundary": "routine",
+        "name": "rrflow.routine.trigger"
+      },
+      {
+        "boundary": "routine",
+        "name": "rrflow.routine.activation"
+      },
+      {
+        "boundary": "routine",
+        "name": "rrflow.routine.step"
+      },
+      {
+        "boundary": "routine",
+        "name": "rrflow.routine.activity"
+      },
+      {
+        "boundary": "routine",
+        "name": "rrflow.routine.compensation"
+      },
+      {
+        "boundary": "adapter",
+        "name": "rrflow.adapter.resolve"
+      },
+      {
+        "boundary": "adapter",
+        "name": "rrflow.adapter.invoke"
+      },
+      {
+        "boundary": "adapter",
+        "name": "rrflow.adapter.synchronize"
+      },
+      {
+        "boundary": "adapter",
+        "name": "rrflow.adapter.transfer"
+      },
+      {
+        "boundary": "delivery",
+        "name": "rrflow.delivery.connect"
+      },
+      {
+        "boundary": "delivery",
+        "name": "rrflow.delivery.publish"
+      },
+      {
+        "boundary": "delivery",
+        "name": "rrflow.delivery.acknowledge"
+      },
+      {
+        "boundary": "delivery",
+        "name": "rrflow.delivery.heartbeat"
+      },
+      {
+        "boundary": "delivery",
+        "name": "rrflow.delivery.resume"
+      },
+      {
+        "boundary": "delivery",
+        "name": "rrflow.delivery.close"
+      }
+    ]
+  },
+  "sha256": "239df2ced5974d4351ca01565369646964cb65c63d0fbae01dddccb4c3ac5a07"
+}
