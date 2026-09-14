@@ -15,6 +15,7 @@ prevents this compiler-like boundary from becoming a schema for reasoning.
 | Owning source | Generated projections | Authority boundary |
 |---|---|---|
 | Executable operation and capability catalogues plus public wire types | Router/dispatch metadata, OpenAPI, internal client bindings, language SDK operations and models, reference operation tables, and shared conformance cases | Code and validation own representable operations; a generated client or document cannot invent availability or engine semantics. |
+| Kernel signal catalogue fixture projected through private generated contract source and public OpenAPI | Coordinated signal reference plus TypeScript, Python, Go, Java, and .NET identity constants and canonical JSON | `rrd-core` owns diagnostic, trace, metric, dimension, and fingerprint semantics; its fixture and generated discovery are replaceable projections that do not activate, collect, export, or authorize telemetry. |
 | Coordinated Markdown records and their ordinary links | Parent indexes, warp discovery, incoming/outgoing relationship graph, retrieval neighborhoods, and broken-link checks | Narrative owners retain meaning; the graph is derived navigation and may be rebuilt. |
 | Git tree, package metadata, and active change record | Current file/gate inventory, digest coverage, affected-package views, and final path reconciliation | Git and the accepted change boundary own exact repository effects; inventory is not edit authorization. |
 | Test, benchmark, fault, and package journals | Evidence indexes and gate-linked proof discovery | Immutable artifacts report observations; only the roadmap owner can accept them for completion. |
@@ -46,10 +47,22 @@ authorization, error, uncertainty, cancellation, resource, restart, and
 credential-redaction corpus. Missing generator or harness configuration fails
 closed or reports an explicit skip; it never reports conformance.
 
-The current checkout already derives OpenAPI and operation identifiers from
-`rrd-contract`, but generation remains fragmented and most complete language
-models/conformance behavior are open under H-04. H-04 converges those tools
-onto one compiler entry point and rejects any handwritten duplicate registry.
+The current checkout derives OpenAPI and operation identifiers from
+`rrd-contract`. For signals,
+`scripts/ci/check_generated_surfaces.py --write` validates the kernel's
+test-verified fixture, writes a private contract projection, exports OpenAPI,
+and derives the coordinated reference plus five SDK identities. The ordinary
+command and explicit `--check` mode are non-mutating and verify all seven
+signal projections plus the existing endpoint projections. The live-kernel
+contract test closes fixture-to-code parity, while the workspace architecture
+test keeps `rrd-contract` free of production implementation dependencies. That
+is one completed narrow generation path, not completion of the broader compiler.
+
+Endpoint generation remains split across five language-specific programs, the
+internal Rust client is not generated from the full operation model, and most
+complete language models and conformance behavior remain open under H-04.
+H-04 converges those tools onto one compiler entry point and rejects any
+handwritten duplicate registry.
 
 ## Knowledge and navigation maintenance
 

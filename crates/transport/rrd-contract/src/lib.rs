@@ -9,6 +9,8 @@ mod attunement;
 mod capability_surface;
 mod diagnostic;
 mod function;
+#[path = "generated/signal_catalogue.rs"]
+mod generated_signal_catalogue;
 mod inference;
 mod knowledge;
 mod memory_context;
@@ -157,7 +159,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "1d18655aa6e670abd7319c3984dfc36b8ed50c280ce8afb62322a5e062b14cc6";
+    "8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3684,6 +3686,11 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
 pub fn openapi_document() -> Result<serde_json::Value> {
     let catalogue = endpoint_catalogue();
     catalogue.validate()?;
+    let signal_catalogue = serde_json::from_str::<serde_json::Value>(
+        generated_signal_catalogue::SIGNAL_CATALOGUE_JSON,
+    )
+    .map_err(|error| ContractError(format!("generated signal catalogue is invalid: {error}")))?;
+    let signal_catalogue_sha256 = generated_signal_catalogue::SIGNAL_CATALOGUE_SHA256;
     let query_value_schema = openapi_query_value_schema()?;
     let vector_payload_filter_schema = openapi_vector_payload_filter_schema()?;
     let mut websocket_frame_schema = schema_json::<WebSocketFrame>();
@@ -3823,6 +3830,8 @@ pub fn openapi_document() -> Result<serde_json::Value> {
         "x-rrd-protocol": PROTOCOL,
         "x-rrd-protocol-version": PROTOCOL_VERSION,
         "x-rrd-endpoint-count": catalogue.endpoints.len(),
+        "x-rrd-signal-catalogue": signal_catalogue,
+        "x-rrd-signal-catalogue-sha256": signal_catalogue_sha256,
         "x-rrd-websocket-endpoint-count": catalogue.websocket_endpoints.len(),
         "x-rrd-websocket-endpoints": catalogue.websocket_endpoints
     })))

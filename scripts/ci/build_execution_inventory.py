@@ -677,8 +677,50 @@ H05_OBSERVABILITY_PATHS = {
     "crates/transport/rrd-client/tests/real_server.rs",
     "crates/transport/rrd-contract/Cargo.toml",
     "crates/transport/rrd-contract/src/diagnostic.rs",
+    "crates/transport/rrd-contract/src/generated/signal_catalogue.rs",
     "crates/transport/rrd-contract/src/lib.rs",
     "crates/transport/rrd-contract/tests/public_contract.rs",
+    "crates/transport/rrd-contract/tests/signal_catalogue_projection.rs",
+    "docs/reference/protocol/public-contract.md",
+    "docs/reference/protocol/signal-catalogue.md",
+    "docs/roadmap/rrflow-1.0-execution/generated-surfaces.md",
+    "scripts/ci/build_execution_inventory.py",
+    "scripts/ci/check_generated_surfaces.py",
+    "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/OperationId.g.cs",
+    "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/SignalCatalogue.g.cs",
+    "sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/SignalCatalogueTests.cs",
+    "sdks/go/endpoints_gen.go",
+    "sdks/go/signal_catalogue_gen.go",
+    "sdks/go/signal_catalogue_test.go",
+    "sdks/java/src/main/java/io/rrflow/rrd/OperationId.java",
+    "sdks/java/src/main/java/io/rrflow/rrd/SignalCatalogue.java",
+    "sdks/java/src/test/java/io/rrflow/rrd/SignalCatalogueTest.java",
+    "sdks/python/src/rrd_client/__init__.py",
+    "sdks/python/src/rrd_client/generated/__init__.py",
+    "sdks/python/src/rrd_client/generated/endpoints.py",
+    "sdks/python/src/rrd_client/generated/signal_catalogue.py",
+    "sdks/python/tests/test_signal_catalogue.py",
+    "sdks/typescript/src/generated/endpoints.ts",
+    "sdks/typescript/src/generated/rrd-openapi.ts",
+    "sdks/typescript/src/generated/signal-catalogue.ts",
+    "sdks/typescript/src/index.ts",
+    "sdks/typescript/tests/signal-catalogue.test.ts",
+}
+
+GENERATED_PROJECTIONS = {
+    "crates/transport/rrd-contract/src/generated/signal_catalogue.rs": "scripts/ci/check_generated_surfaces.py",
+    "docs/reference/protocol/signal-catalogue.md": "scripts/ci/check_generated_surfaces.py",
+    "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/OperationId.g.cs": "sdks/dotnet/scripts/generate.py",
+    "sdks/dotnet/src/Rrflow.Rrd.Client/Generated/SignalCatalogue.g.cs": "scripts/ci/check_generated_surfaces.py",
+    "sdks/go/endpoints_gen.go": "sdks/go/cmd/generate/main.go",
+    "sdks/go/signal_catalogue_gen.go": "scripts/ci/check_generated_surfaces.py",
+    "sdks/java/src/main/java/io/rrflow/rrd/OperationId.java": "sdks/java/scripts/generate.py",
+    "sdks/java/src/main/java/io/rrflow/rrd/SignalCatalogue.java": "scripts/ci/check_generated_surfaces.py",
+    "sdks/python/src/rrd_client/generated/endpoints.py": "sdks/python/scripts/generate.py",
+    "sdks/python/src/rrd_client/generated/signal_catalogue.py": "scripts/ci/check_generated_surfaces.py",
+    "sdks/typescript/src/generated/endpoints.ts": "sdks/typescript/scripts/generate.ts",
+    "sdks/typescript/src/generated/rrd-openapi.ts": "sdks/typescript/scripts/generate.ts",
+    "sdks/typescript/src/generated/signal-catalogue.ts": "scripts/ci/check_generated_surfaces.py",
 }
 
 PLANNED_PATHS: dict[str, tuple[str, ...]] = {
@@ -1654,6 +1696,11 @@ def action(path: str) -> str:
         return "replace only in a separate planning commit; never edit alongside implementation"
     if path == "Cargo.lock":
         return "regenerate only after an accepted manifest change; never hand-edit"
+    if path in GENERATED_PROJECTIONS:
+        return (
+            f"regenerate deterministically with {GENERATED_PROJECTIONS[path]}; "
+            "treat as a replaceable projection and never hand-edit semantic state"
+        )
     if path.startswith("docs/") and len(Path(path).parts) == 2:
         return "review the complete record in KB-05, merge accepted current material into its one owner, then retain that owner or remove the redundant source"
     if path.startswith("docs/history/"):

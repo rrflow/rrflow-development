@@ -63,10 +63,20 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`3c016e8f0b49623aa091254a37c19cb064efa6773a1fa19ce64edb179824fec0`.
+`8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface. Neither the protocol number nor the product
 version may be changed merely to describe implementation progress.
+
+The same document projects the kernel-owned signal catalogue. It loads a
+private generated Rust snapshot, exposes it as `x-rrd-signal-catalogue`, and
+binds it with `x-rrd-signal-catalogue-sha256`. The
+[generated signal reference](signal-catalogue.md) and five SDK constants are
+derived from those fields. They expose stable diagnostic, trace, and metric
+identity for tooling; they neither activate telemetry nor report runtime state.
+`crates/kernel/rrd-core/src/telemetry.rs` remains the sole semantic owner. Its
+test-verified golden projection drives the private generated contract source;
+the focused parity test compares OpenAPI back to the live kernel value.
 
 ## Common coordinates and envelopes
 
@@ -146,6 +156,7 @@ The boundary is intentionally explicit:
 | Go client | Generates constants and a generic context-aware synchronous call over all 33 HTTP descriptors, but has no concrete operation payload validation, WebSocket, remote transport, opaque credential, or module/toolchain qualification. | The [Go SDK reference](../sdk/go.md) records the exact request/response, credential, retry/cancellation, concurrency, transport, module, and conformance boundary. |
 | Java client | Generates an enum and a generic synchronous call over all 33 HTTP descriptors, but has no concrete operation payload validation, async/WebSocket or remote transport, opaque credential, or reproducible offline Maven/JAR qualification. | The [Java SDK reference](../sdk/java.md) records the exact request/response, credential, retry/cancellation, concurrency, transport, artifact, JDK/toolchain, and conformance boundary. |
 | .NET client | Generates an enum and a generic asynchronous call over all 33 HTTP descriptors, but has no concrete operation payload validation, WebSocket or remote transport, opaque credential, or reproducible signed NuGet/toolchain qualification. | The [.NET SDK reference](../sdk/dotnet.md) records the exact request/response, credential, retry/cancellation, concurrency, transport, artifact, trimming/AOT, SDK/runtime, and conformance boundary. |
+| Generated signal discovery | OpenAPI, a coordinated reference, and TypeScript, Python, Go, Java, and .NET expose the exact kernel catalogue JSON, signal fingerprint, and OpenAPI fingerprint from one renderer. | H-05 still requires build identity, runtime levels, correlated emission, exporters, captures, parity, overhead, and release evidence. |
 | Shared generated-SDK corpus | OpenAPI and one shared semantic corpus exist as generation/conformance inputs. | Every supported language must run the same real-daemon corpus; schema generation alone is not qualification. |
 | GraphQL | B-05 supplies bounded, schema-derived query lowering into the same `Query`, `Parameters`, and `BoundQuery` path as rrflowQL. No public GraphQL operation, resolver, or second executor is established. | H-04 outward HTTP carriage and cross-surface authorization/semantic equivalence. |
 | MCP, CLI, Connectome, and model adapters | May consume public contracts but cannot infer engine state or implement missing semantics. | H-04 through H-07 and the relevant D/G/I gates. |
@@ -202,16 +213,23 @@ silently repaired during this KB-05 documentation-classification package.
 | Evidence | What it establishes | What it does not establish |
 |---|---|---|
 | `cargo test -p rrd-contract --test public_contract --locked` | Strict selected wire shapes, bounds, 33-operation catalogue, one generic WebSocket descriptor, OpenAPI digest, deployment/SDK corpus validation, and selected cross-language digest vectors. | Server dispatch, storage semantics, DataFusion streaming, native indexes, reasoning execution, or all-language SDK conformance. |
+| `cargo test -p rrd-contract --test signal_catalogue_projection --locked` | Exact kernel-to-OpenAPI catalogue/fingerprint equality, 4/9/22 closure, and a discovery-only field boundary. | Signal emission, level activation, propagation, export, diagnostic parity, overhead, or engine behavior. |
 | `cargo test -p rrd-contract --test websocket_contract --locked` | The B-04 golden frame contract, sender directions, sequence and connection integrity, exact correlations/resume coordinates, negotiated/hard resource limits, and malformed/unknown representation rejection. | H-04 operation execution, generated-language carriage, or release qualification. |
 | `cargo test -p rrd-query --test graphql_equivalence --locked` | B-05 schema-derived GraphQL parsing, lowering, bound-query/digest equality with rrflowQL, historical-schema binding, typed variables, and fail-closed unsupported shapes. | A public GraphQL route, transport authentication, engine execution, storage/index behavior, or cross-surface qualification. |
-| Normal-dependency inspection | `rrd-contract` has no RRFlow implementation crate in its normal dependency graph; `rrd-core` is test-only. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
-| Generated-surface parity check | Checked-in generated OpenAPI/SDK artifacts match the current OpenAPI projection. | Real-process semantic equivalence or complete SDK operation coverage. |
+| Normal-dependency inspection | `rrd-contract` retains no RRFlow workspace package in its normal dependency graph; `rrd-core` remains test-only for live-kernel parity. | That every adapter depends inward correctly or lowers every type through `RrdEngine`. |
+| Generated-surface parity check | The private Rust bridge, coordinated reference, and five SDK identities reproduce exactly; OpenAPI retains 33 endpoint descriptors and exact kernel signal/fingerprint equality. | Real-process semantic equivalence, complete SDK operation coverage, or runtime telemetry. |
 | Server and client suites | Separately documented real-process HTTP, mutual-TLS, WebSocket, and durable-subscription behavior. | The complete target engine or released deployment. |
 
 ## Implementation anchors and focused verification
 
 - Shared wire types, validation, catalogue, and OpenAPI projection:
   `crates/transport/rrd-contract/src/lib.rs`
+- Signal semantic owner: `crates/kernel/rrd-core/src/telemetry.rs`
+- Private generated contract projection:
+  `crates/transport/rrd-contract/src/generated/signal_catalogue.rs`
+- Generated signal reference: `docs/reference/protocol/signal-catalogue.md`
+- Signal projection characterization:
+  `crates/transport/rrd-contract/tests/signal_catalogue_projection.rs`
 - Multiplexed WebSocket frame contract:
   `crates/transport/rrd-contract/src/websocket.rs`
 - Frozen WebSocket protocol sample:
@@ -239,9 +257,10 @@ Focused verification starts with:
 
 ```text
 cargo test -p rrd-contract --test public_contract --locked
+cargo test -p rrd-contract --test signal_catalogue_projection --locked
 cargo test -p rrd-contract --test websocket_contract --locked
 cargo test -p rrd-contract --all-targets --locked
-python3 scripts/ci/check_generated_surfaces.py
+python3 scripts/ci/check_generated_surfaces.py --check
 ```
 
 Full engine, client, cross-language, crash/reopen, resource, and deployment
