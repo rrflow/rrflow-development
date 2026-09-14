@@ -1,3 +1,4 @@
+use crate::write_diagnostics::{PhaseClock, WalAppendPhases};
 use crate::{Error, Result, WriteBatch};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
@@ -166,6 +167,16 @@ impl WalWriter {
         batch: &WalBatch<'_>,
         durability: Durability,
     ) -> Result<AppendReceipt> {
+        self.append_inner(batch, durability, None)
+    }
+
+    fn append_inner(
+        &mut self,
+        batch: &WalBatch<'_>,
+        durability: Durability,
+        mut phases: Option<&mut WalAppendPhases>,
+    ) -> Result<AppendReceipt> {
+        let record_started = phases.is_some().then(PhaseClock::start);
         if self.poisoned {
             return Err(Error::PoisonedWriter);
         }
@@ -182,12 +193,26 @@ impl WalWriter {
             .checked_add(RECORD_HEADER_BYTES as u64)
             .and_then(|value| value.checked_add(batch.payload.len() as u64))
             .ok_or_else(|| Error::InvalidBatch("WAL offset overflow".into()))?;
+        if let Some(started) = record_started {
+            phases
+                .as_mut()
+                .expect("phase recorder checked")
+                .record_prepare = started.finish();
+        }
         if offset == FILE_HEADER_BYTES as u64
             && batch.first_sequence == 1
             && batch.payload.len() >= INITIAL_WAL_RESERVATION_MIN_BATCH_BYTES
         {
+            let reservation_started = phases.is_some().then(PhaseClock::start);
             reserve_initial_wal_extent(&self.file);
+            if let Some(started) = reservation_started {
+                phases
+                    .as_mut()
+                    .expect("phase recorder checked")
+                    .initial_reservation = started.finish();
+            }
         }
+        let write_started = phases.is_some().then(PhaseClock::start);
         let write = (|| -> std::io::Result<()> {
             let written = loop {
                 match self
@@ -205,14 +230,24 @@ impl WalWriter {
                 self.file
                     .write_all(&batch.payload[written - header.len()..])?;
             }
-            if durability == Durability::Authoritative {
-                self.file.sync_data()?;
-            }
             Ok(())
         })();
         if let Err(error) = write {
             self.poisoned = true;
             return Err(Error::Io(error));
+        }
+        if let Some(started) = write_started {
+            phases.as_mut().expect("phase recorder checked").write = started.finish();
+        }
+        if durability == Durability::Authoritative {
+            let sync_started = phases.is_some().then(PhaseClock::start);
+            if let Err(error) = self.file.sync_data() {
+                self.poisoned = true;
+                return Err(Error::Io(error));
+            }
+            if let Some(started) = sync_started {
+                phases.as_mut().expect("phase recorder checked").sync = started.finish();
+            }
         }
         self.offset = end_offset;
         self.next_sequence = batch
@@ -246,19 +281,42 @@ impl WalWriter {
         payload: &[u8],
         durability: Durability,
     ) -> Result<AppendReceipt> {
+        self.append_encoded_write_batch_inner(batch, payload, durability, None)
+    }
+
+    pub(crate) fn append_encoded_write_batch_profiled(
+        &mut self,
+        batch: &WriteBatch,
+        payload: &[u8],
+        durability: Durability,
+    ) -> Result<(AppendReceipt, WalAppendPhases)> {
+        let mut phases = WalAppendPhases::default();
+        let receipt =
+            self.append_encoded_write_batch_inner(batch, payload, durability, Some(&mut phases))?;
+        Ok((receipt, phases))
+    }
+
+    fn append_encoded_write_batch_inner(
+        &mut self,
+        batch: &WriteBatch,
+        payload: &[u8],
+        durability: Durability,
+        phases: Option<&mut WalAppendPhases>,
+    ) -> Result<AppendReceipt> {
         let count = u64::try_from(batch.len())
             .map_err(|_| Error::InvalidBatch("operation count exceeds u64".into()))?;
         let last_sequence = self
             .next_sequence
             .checked_add(count - 1)
             .ok_or_else(|| Error::InvalidBatch("sequence range overflow".into()))?;
-        self.append(
+        self.append_inner(
             &WalBatch {
                 first_sequence: self.next_sequence,
                 last_sequence,
                 payload,
             },
             durability,
+            phases,
         )
     }
 

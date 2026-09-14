@@ -234,7 +234,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "F-02",
         "J-04",
     ),
-    "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07"),
+    "crates/persistence/rrd-lsm/src/wal.rs": ("C-02", "C-05", "C-07", "J-04"),
+    "crates/persistence/rrd-lsm/src/write_diagnostics.rs": ("C-07", "J-04"),
     "crates/persistence/rrd-store/src/engine.rs": ("C-02", "C-03", "C-04"),
     "crates/persistence/rrd-store/src/keyspaces.rs": (
         "C-01",
@@ -252,6 +253,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "C-03",
         "C-04",
         "C-05",
+        "C-07",
+        "J-04",
     ),
     "crates/persistence/rrd-store/src/outcome.rs": ("C-02", "C-03"),
     "crates/persistence/rrd-store/src/control.rs": ("C-03", "H-05"),
@@ -259,6 +262,7 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "C-02",
         "C-04",
         "C-06",
+        "C-07",
         "J-04",
     ),
     "crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs": (
@@ -276,6 +280,8 @@ FILE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "crates/persistence/rrd-store/tests/rrflow_kv_operator.rs": (
         "C-03",
         "C-04",
+        "C-07",
+        "J-04",
     ),
     "crates/compute/rrd-query/src/arrow.rs": ("F-01", "F-02"),
     "crates/compute/rrd-query/src/execute.rs": (
@@ -1116,6 +1122,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "crates/persistence/rrd-lsm/tests/transaction_conformance.rs": ("C-02",),
     "crates/persistence/rrd-lsm/tests/hybrid_segment.rs": ("C-06", "C-07"),
     "crates/persistence/rrd-lsm/tests/mapped_page_lifetime.rs": ("C-07", "F-01"),
+    "crates/persistence/rrd-lsm/tests/write_diagnostics.rs": ("C-07", "J-04"),
     "crates/persistence/rrd-lsm/src/segment/mod.rs": ("C-06",),
     "crates/persistence/rrd-lsm/src/segment/format.rs": ("C-06", "C-07"),
     "crates/persistence/rrd-lsm/src/segment/spine.rs": ("C-06", "C-07"),
@@ -1517,7 +1524,17 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     "docs/evidence/comparisons/README.md": ("KB-05", "KB-08"),
     "docs/evidence/comparisons/rrflow-surrealdb-claim-differential.md": ("KB-05",),
     "docs/evidence/test-plans/README.md": ("KB-05", "KB-08"),
-    "docs/evidence/test-plans/persistence-scenario-matrix.md": ("KB-05",),
+    ".github/workflows/rrd-lsm-benchmark.yml": ("C-07", "J-02", "J-04"),
+    "docs/evidence/change-journals/gate-c/c-07-native-batch-write-tail-attribution.md": (
+        "C-07",
+        "J-04",
+    ),
+    "docs/evidence/test-plans/persistence-scenario-matrix.md": (
+        "KB-05",
+        "C-07",
+        "J-04",
+    ),
+    "docs/reference/storage/rrflowkv-benchmark-harness.md": ("C-07", "J-04"),
     "docs/guides/README.md": ("D-01", "KB-08"),
     "docs/guides/installation/README.md": ("D-01", "KB-08"),
     "docs/guides/installation/security-bootstrap.md": ("D-01",),

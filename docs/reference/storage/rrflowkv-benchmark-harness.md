@@ -14,12 +14,12 @@ them; they are not a compatibility requirement or a current acceptance oracle.
 
 | Boundary | Checkout source | Current responsibility |
 |---|---|---|
-| Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`. |
+| Semantic storage | [`engine_benchmark.rs`](../../../crates/persistence/rrd-store/examples/engine_benchmark.rs) | Measures authoritative claim append, bounded replay, full-corpus verification, close/reopen recovery, maintenance, RSS, and physical footprint through `RrflowKvStore`; opt-in native write diagnostics retain raw batch phases and Linux thread-resource deltas. |
 | AI storage access | [`ai_hotset_benchmark.rs`](../../../crates/persistence/rrd-store/examples/ai_hotset_benchmark.rs) | Measures hot, cold, missing, historical, and metadata-fan-out access with repeated, structured, entropy-like, and embedding-shaped payloads over the underlying rrflowKV LSM. |
 | Physical-policy integration evidence | [`rrflowkv_physical_policy.rs`](../../../crates/persistence/rrd-lsm/examples/rrflowkv_physical_policy.rs) | Compares real segment-v6 none/adaptive-LZ4 output, independently measures laboratory Zstandard over the same logical pages, verifies production persisted row-group Bloom filters and normal reopen I/O, retains exact-byte cache trace simulation as screening history, and compares production exact versus scope-aware scan-resistant caches on the same persisted eight-family corpus. Filters, adaptive LZ4, and cache admission are integrated; Zstandard and value placement remain non-production. |
 | Persistent model oracle | [`rrflow_kv_model_soak.rs`](../../../crates/persistence/rrd-store/tests/rrflow_kv_model_soak.rs) | Compares randomized rrflowKV mutations, snapshots, compaction, and reopen behavior with an independent in-memory model. |
 | Retained historical storage provenance | [`benchmark_evidence.rs`](../../../crates/persistence/rrd-store/tests/benchmark_evidence.rs) | Parses the 35 retained rrflowKV/Fjall-era storage artifacts, requires both passing and failing recorded verdicts, and executes no current performance workload. |
-| Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest` and uploads raw per-run artifacts. |
+| Scheduled diagnostics | [`rrd-lsm-benchmark.yml`](../../../.github/workflows/rrd-lsm-benchmark.yml) | Runs the semantic and AI-access matrices on `ubuntu-latest`, enables native write-phase capture for every semantic profile, and uploads raw per-run artifacts. |
 
 These programs cover physical and semantic storage only. They do not exercise
 the complete `RrdEngine` authorization, rrflowQL, graph, BM25, vector, RRF,
@@ -28,11 +28,14 @@ end-to-end reasoning or recall evidence.
 
 ## Semantic storage protocol
 
-The format-5 semantic program accepts positive `trials`, `operations`,
-`batch-size`, `reads`, and `read-width` values. Batch size and read width cannot
-exceed the operation count. Every trial uses a fresh directory and an isolated
-child process so allocator and process high-water measurements do not leak
-across trials.
+The format-6 semantic program accepts positive `trials`, `operations`,
+`batch-size`, `reads`, and `read-width` values plus the bare opt-in
+`--write-path-diagnostics` flag. Batch size and read width cannot exceed the
+operation count. Every trial uses a fresh directory and an isolated child
+process so allocator and process high-water measurements do not leak across
+trials. Collection is enabled and its bounded vector is allocated before the
+timed write interval; without the flag, the storage path takes no diagnostic
+timestamps, thread-resource probes, or sample allocations.
 
 The write phase appends one claim for each ordinal in `0..operations` using
 authoritative batches. After a clean reopen, full verification pages over the
@@ -43,9 +46,64 @@ unreachable files, and closes and reopens the store before a second verification
 and read pass.
 
 The output retains each raw trial plus the median aggregate in `rrflow_kv`.
-Latency aggregates are medians of each trial's percentile, not percentiles over
-one combined sample population. A correctness failure terminates the program;
-there is no external-engine ratio or promotion verdict.
+Ordinary latency aggregates are medians of each trial's percentile, not
+percentiles over one combined sample population. All latency records now carry
+p99.9 as well as p50/p95/p99 and extrema. Native phase summaries in the
+aggregate pool the exact raw records retained under `trials`; the aggregate's
+`raw_samples_location: trials` prevents a second multi-megabyte copy. A
+correctness or attribution-invariant failure terminates the program; there is
+no external-engine ratio or promotion verdict.
+
+### Native batch-write attribution
+
+The opt-in collector lives at the one rrflowKV database boundary and records
+accepted owned transaction batches only. The concrete store adds the wait to
+acquire its short begin mutex and exclusive commit mutex. The physical record
+then separates transaction validation, mutation-vector preparation, batch
+encoding, maintenance/preflight, WAL record/checksum work, first-WAL extent
+reservation, WAL write, `sync_data`, memtable apply, bookkeeping, and the
+enclosing physical total. Every raw record carries mutation count, encoded
+payload and WAL-frame bytes, physical sequence range, lower-bound memtable-byte
+growth, durability, and maintenance-counter deltas. It never records a key,
+value, claim, prompt, model input, project path, or authorization state.
+
+On Linux, each executed phase pairs monotonic wall duration with
+`CLOCK_THREAD_CPUTIME_ID`. Each complete physical sample also carries
+`RUSAGE_THREAD` deltas for minor and major faults, block input/output operations,
+and voluntary and involuntary context switches. Other platforms emit null CPU
+and resource fields with `thread_resource_scope: unavailable`; they never
+substitute process-wide counters. Wall minus thread CPU is useful off-CPU
+evidence, not a standalone diagnosis: a durability call may voluntarily block,
+and an involuntary switch can indicate scheduler preemption without explaining
+why the batch was runnable.
+
+The semantic append timer encloses both mutex waits, semantic transaction
+setup, claim validation, key/JSON construction, the native physical total, and
+small harness/timer transitions. `semantic_setup_and_harness_ns` is the exact
+saturating remainder after the two mutex waits and native total; it is not
+mislabelled as allocator time. Encoded bytes, memtable-byte growth, phase time,
+and page faults together screen allocation/page-backing pressure, but this
+harness does not count allocator calls or claim an allocator causal result.
+Likewise, maintenance is attributed by both its timed phase and exact
+per-sample counter deltas rather than inferred from a long batch.
+
+Collection has a versioned contract, an explicit capacity of at
+most 65,536 samples, an observed count, and a dropped count. The standard
+semantic harness sizes capacity to the exact number of batches and fails if a
+sample is absent, reordered, structurally inconsistent, or dropped; measured
+sub-phases must fit inside the physical total, and mutex waits plus that total
+must fit inside the semantic append. Enabling a second collector before draining
+the first is rejected, preventing silent evidence loss.
+
+To estimate measurement overhead, run identical disabled and enabled commands
+on the same otherwise controlled host. To diagnose a tail, inspect raw samples
+before summaries: `wal_sync` dominance supports a durability-wait hypothesis;
+nonzero maintenance deltas support a flush/compaction stall; mutex duration
+supports lock wait; faults plus encode/apply growth support memory pressure; and
+involuntary context switches plus non-sync off-CPU time support scheduling
+interference. Correlation does not authorize an optimization. Changing
+durability, batching, maintenance, allocation, or a threshold requires a
+separate workload-controlled package with correctness and crash evidence.
 
 ## AI storage-access protocol
 
@@ -162,7 +220,8 @@ source provenance.
 The semantic-storage and AI-storage JSON schemas record wall-clock time,
 architecture, operating-system family, workload configuration, units, raw
 trials, aggregates, lifecycle footprints, and rrflowKV physical counters where
-applicable. Unlike the C-06i candidate artifact, those older schemas do not yet
+applicable. Format 6 adds write-phase and calling-thread diagnostic evidence but,
+unlike the C-06i candidate artifact, these schemas do not yet
 bind:
 
 1. the exact clean Git revision, source-tree and lockfile digests, executable
@@ -192,9 +251,14 @@ Run the semantic profile:
 ```bash
 cargo run --release --locked -p rrd-store --example engine_benchmark -- \
   --trials 9 --operations 2048 --batch-size 64 \
-  --reads 1024 --read-width 32 \
-  --output target/rrflow-kv-standard-format-5.json
+  --reads 1024 --read-width 32 --write-path-diagnostics \
+  --output target/rrflow-kv-standard-format-6.json
 ```
+
+Repeat without `--write-path-diagnostics` on the same host and workload to
+measure the observer's throughput and tail effect. Neither result is eligible
+for a threshold decision unless the fixed-hardware and provenance requirements
+above are also satisfied.
 
 Run one AI access profile:
 
@@ -233,6 +297,8 @@ cargo test -p rrd-store --test rrflow_kv_model_soak --locked
 cargo test -p rrd-store --test durability --locked
 cargo test -p rrd-store --test snapshot --locked
 cargo test -p rrd-store --test benchmark_evidence --locked
+cargo test -p rrd-lsm --test write_diagnostics --locked
+cargo test -p rrd-store --example engine_benchmark --locked
 ```
 
 These checks keep useful workload and provenance coverage alive. None alone

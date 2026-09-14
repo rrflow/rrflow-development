@@ -4,12 +4,13 @@ use crate::segment::{
     ReadView, SharedPageCache,
 };
 use crate::wal::replay_from;
+use crate::write_diagnostics::{PendingWriteDiagnostics, PhaseClock, WritePathCollector};
 use crate::{
     recover_from, AppendReceipt, Checkpoint, Durability, Error, Manifest, ManifestStore, Memtable,
     PageCachePolicy, ProjectedReadRequest, ProjectedReadResource, ProjectedReadStream, Result,
     Segment, SegmentCompressionPolicy, SegmentIoPolicy, SegmentIoStats, SegmentOpenEvidence,
     SegmentRowGroupBudget, SnapshotBundle, SnapshotBundleFile, SnapshotExportBoundary,
-    SnapshotSegment, VersionedValue, WalWriter, WriteBatch,
+    SnapshotSegment, VersionedValue, WalWriter, WriteBatch, WriteLockWait, WritePathDiagnostics,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -304,6 +305,7 @@ pub struct Database {
     writer_requires_reopen: Option<&'static str>,
     transaction_snapshots: Arc<crate::transaction::TransactionSnapshots>,
     active_read_views: Arc<std::sync::Mutex<ActiveReadViews>>,
+    write_path_diagnostics: Option<WritePathCollector>,
 }
 
 impl Database {
@@ -385,6 +387,7 @@ impl Database {
             writer_requires_reopen: None,
             transaction_snapshots: Arc::new(crate::transaction::TransactionSnapshots::default()),
             active_read_views: Arc::new(std::sync::Mutex::new(ActiveReadViews::default())),
+            write_path_diagnostics: None,
         })
     }
 
@@ -500,6 +503,7 @@ impl Database {
             writer_requires_reopen: None,
             transaction_snapshots: Arc::new(crate::transaction::TransactionSnapshots::default()),
             active_read_views: Arc::new(std::sync::Mutex::new(ActiveReadViews::default())),
+            write_path_diagnostics: None,
         })
     }
 
@@ -609,7 +613,19 @@ impl Database {
         transaction: crate::Transaction,
         durability: Durability,
     ) -> Result<crate::TransactionCommit> {
-        self.commit_transaction_inner(transaction, durability, None)
+        self.commit_transaction_inner(transaction, durability, None, WriteLockWait::default())
+    }
+
+    /// Commits through the ordinary transaction path while attaching
+    /// caller-measured adapter mutex waits to an explicitly enabled diagnostic
+    /// sample. The context is ignored when collection is disabled.
+    pub fn commit_transaction_with_write_context(
+        &mut self,
+        transaction: crate::Transaction,
+        durability: Durability,
+        lock_wait: WriteLockWait,
+    ) -> Result<crate::TransactionCommit> {
+        self.commit_transaction_inner(transaction, durability, None, lock_wait)
     }
 
     /// Commits through one deterministic write-boundary failure. This is the
@@ -622,7 +638,12 @@ impl Database {
         boundary: WriteBoundary,
         mode: FailureMode,
     ) -> Result<crate::TransactionCommit> {
-        self.commit_transaction_inner(transaction, durability, Some((boundary, mode)))
+        self.commit_transaction_inner(
+            transaction,
+            durability,
+            Some((boundary, mode)),
+            WriteLockWait::default(),
+        )
     }
 
     fn commit_transaction_inner(
@@ -630,7 +651,16 @@ impl Database {
         mut transaction: crate::Transaction,
         durability: Durability,
         failure: Option<(WriteBoundary, FailureMode)>,
+        lock_wait: WriteLockWait,
     ) -> Result<crate::TransactionCommit> {
+        let mut diagnostics = self.write_path_diagnostics.as_ref().map(|_| {
+            PendingWriteDiagnostics::start(
+                lock_wait,
+                self.maintenance_stats,
+                self.memtable.approximate_bytes(),
+            )
+        });
+        let validation_started = diagnostics.is_some().then(PhaseClock::start);
         self.ensure_writer_ready()?;
         self.validate_transaction_owner(&transaction)?;
         for key in transaction.pending().keys() {
@@ -651,6 +681,13 @@ impl Database {
                 }
             }
         }
+        if let Some(started) = validation_started {
+            diagnostics
+                .as_mut()
+                .expect("diagnostic recorder checked")
+                .phases
+                .transaction_validation = started.finish();
+        }
         let mutation_count = transaction.write_count();
         if mutation_count == 0 {
             tracing::debug!(
@@ -667,8 +704,16 @@ impl Database {
             });
         }
         let snapshot_sequence = transaction.snapshot().sequence;
+        let batch_started = diagnostics.is_some().then(PhaseClock::start);
         let batch = WriteBatch::new(transaction.take_mutations())?;
-        let receipt = self.write_owned_inner(batch, durability, failure)?;
+        if let Some(started) = batch_started {
+            diagnostics
+                .as_mut()
+                .expect("diagnostic recorder checked")
+                .phases
+                .batch_prepare = started.finish();
+        }
+        let receipt = self.write_owned_inner(batch, durability, failure, diagnostics)?;
         tracing::debug!(
             target: "rrd_lsm::transaction",
             snapshot_sequence,
@@ -762,7 +807,14 @@ impl Database {
         batch: WriteBatch,
         durability: Durability,
     ) -> Result<AppendReceipt> {
-        self.write_owned_inner(batch, durability, None)
+        let diagnostics = self.write_path_diagnostics.as_ref().map(|_| {
+            PendingWriteDiagnostics::start(
+                WriteLockWait::default(),
+                self.maintenance_stats,
+                self.memtable.approximate_bytes(),
+            )
+        });
+        self.write_owned_inner(batch, durability, None, diagnostics)
     }
 
     pub fn write_owned_with_failure(
@@ -772,7 +824,14 @@ impl Database {
         boundary: WriteBoundary,
         mode: FailureMode,
     ) -> Result<AppendReceipt> {
-        self.write_owned_inner(batch, durability, Some((boundary, mode)))
+        let diagnostics = self.write_path_diagnostics.as_ref().map(|_| {
+            PendingWriteDiagnostics::start(
+                WriteLockWait::default(),
+                self.maintenance_stats,
+                self.memtable.approximate_bytes(),
+            )
+        });
+        self.write_owned_inner(batch, durability, Some((boundary, mode)), diagnostics)
     }
 
     fn write_owned_inner(
@@ -780,25 +839,86 @@ impl Database {
         batch: WriteBatch,
         durability: Durability,
         failure: Option<(WriteBoundary, FailureMode)>,
+        mut diagnostics: Option<PendingWriteDiagnostics>,
     ) -> Result<AppendReceipt> {
         self.ensure_writer_ready()?;
+        let mutation_count = batch.len();
+        let encode_started = diagnostics.is_some().then(PhaseClock::start);
         let payload = batch.encode()?;
+        if let Some(started) = encode_started {
+            diagnostics
+                .as_mut()
+                .expect("diagnostic recorder checked")
+                .phases
+                .batch_encode = started.finish();
+        }
+        let payload_bytes = payload.len();
+        let maintenance_started = diagnostics.is_some().then(PhaseClock::start);
         self.prepare_write(&batch, payload.len())?;
+        if let Some(started) = maintenance_started {
+            diagnostics
+                .as_mut()
+                .expect("diagnostic recorder checked")
+                .phases
+                .maintenance = started.finish();
+        }
         inject_write_failure(failure, WriteBoundary::Prepared)?;
         let append_durability = append_durability(durability, failure);
-        let receipt = self
-            .wal
-            .append_encoded_write_batch(&batch, &payload, append_durability)?;
+        let receipt = if let Some(diagnostics) = diagnostics.as_mut() {
+            let (receipt, wal) = self.wal.append_encoded_write_batch_profiled(
+                &batch,
+                &payload,
+                append_durability,
+            )?;
+            diagnostics.phases.wal_record_prepare = wal.record_prepare;
+            diagnostics.phases.wal_initial_reservation = wal.initial_reservation;
+            diagnostics.phases.wal_write = wal.write;
+            diagnostics.phases.wal_sync = wal.sync;
+            receipt
+        } else {
+            self.wal
+                .append_encoded_write_batch(&batch, &payload, append_durability)?
+        };
         self.inject_post_append_failure(failure)?;
         self.inject_post_wal_failure(failure, &receipt)?;
+        let apply_started = diagnostics.is_some().then(PhaseClock::start);
         Arc::make_mut(&mut self.memtable).apply_owned_write_batch(
             batch,
             receipt.first_sequence,
             receipt.last_sequence,
         )?;
+        if let Some(started) = apply_started {
+            diagnostics
+                .as_mut()
+                .expect("diagnostic recorder checked")
+                .phases
+                .memtable_apply = started.finish();
+        }
+        let bookkeeping_started = diagnostics.is_some().then(PhaseClock::start);
         self.wal_payload_bytes = self.wal_payload_bytes.saturating_add(payload.len());
         self.record_memtable_peak();
         self.inject_post_visibility_failure(failure)?;
+        if let Some(started) = bookkeeping_started {
+            diagnostics
+                .as_mut()
+                .expect("diagnostic recorder checked")
+                .phases
+                .bookkeeping = started.finish();
+        }
+        if let Some(diagnostics) = diagnostics {
+            let sample = diagnostics.finish(
+                durability,
+                mutation_count,
+                payload_bytes,
+                &receipt,
+                self.maintenance_stats,
+                self.memtable.approximate_bytes(),
+            );
+            self.write_path_diagnostics
+                .as_mut()
+                .expect("collector remains enabled for one mutable write")
+                .record(sample);
+        }
         Ok(receipt)
     }
 
@@ -1959,6 +2079,26 @@ impl Database {
 
     pub fn maintenance_stats(&self) -> MaintenanceStats {
         self.maintenance_stats
+    }
+
+    /// Enables bounded, process-local measurement for subsequently accepted
+    /// owned write batches. An active buffer must be drained before another
+    /// one is enabled so evidence cannot be discarded implicitly.
+    pub fn enable_write_path_diagnostics(&mut self, capacity: usize) -> Result<()> {
+        if self.write_path_diagnostics.is_some() {
+            return Err(Error::InvalidConfiguration(
+                "write path diagnostics are already enabled".into(),
+            ));
+        }
+        self.write_path_diagnostics = Some(WritePathCollector::new(capacity)?);
+        Ok(())
+    }
+
+    /// Disables and drains the current process-local write diagnostic buffer.
+    pub fn take_write_path_diagnostics(&mut self) -> Option<WritePathDiagnostics> {
+        self.write_path_diagnostics
+            .take()
+            .map(WritePathCollector::finish)
     }
 
     pub fn wal_payload_bytes(&self) -> usize {

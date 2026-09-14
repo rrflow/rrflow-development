@@ -53,6 +53,7 @@ jobs:
           --trials 9 --operations ${{ matrix.operations }}
           --batch-size ${{ matrix.batch_size }} --reads ${{ matrix.reads }}
           --read-width ${{ matrix.read_width }}
+          --write-path-diagnostics
           --output target/rrflow-kv-${{ matrix.profile }}.json
       - name: Retain raw benchmark evidence
         if: always()

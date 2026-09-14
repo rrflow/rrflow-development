@@ -15,6 +15,7 @@ mod segment;
 mod snapshot_bundle;
 mod transaction;
 mod wal;
+mod write_diagnostics;
 
 use std::path::Path;
 
@@ -123,6 +124,11 @@ pub use transaction::{Transaction, TransactionCommit, TransactionRollback};
 pub use wal::{
     recover, recover_from, repair_torn_tail, AppendReceipt, Durability, RecoveredBatch, Recovery,
     WalBatch, WalWriter, WAL_FORMAT_VERSION, WAL_MAX_PAYLOAD_BYTES,
+};
+pub use write_diagnostics::{
+    WriteLockWait, WriteMaintenanceDelta, WritePathDiagnostics, WritePathPhaseTiming,
+    WritePathPhases, WritePathSample, WriteThreadResourceDelta, MAX_WRITE_PATH_DIAGNOSTIC_SAMPLES,
+    WRITE_PATH_DIAGNOSTICS_CONTRACT_VERSION,
 };
 
 #[cfg(test)]

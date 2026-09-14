@@ -1,4 +1,4 @@
-use rrd_core::{Claim, Predicate, Producer, Reader, Subject};
+use rrd_core::{Claim, ClaimReader, Predicate, Producer, Reader, Subject};
 use rrd_lsm::{
     DatabaseOptions, MaintenancePolicy, DEFAULT_MEMTABLE_MAX_VERSIONS,
     DEFAULT_WAL_PAYLOAD_MAX_BYTES,
@@ -128,4 +128,43 @@ fn rrflow_kv_applies_explicit_project_maintenance_bounds() {
     assert_eq!(physical.failed_maintenance_flushes, Some(0));
     assert_eq!(physical.l0_segment_count, Some(1));
     assert_eq!(physical.compaction_debt_segments, Some(0));
+}
+
+#[test]
+fn native_write_path_diagnostics_are_explicit_bounded_and_semantically_inert() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("rrflow-kv");
+    let store = RrflowKvStore::open(&path).unwrap();
+    assert!(store
+        .take_native_write_path_diagnostics()
+        .unwrap()
+        .is_none());
+
+    store.enable_native_write_path_diagnostics(1).unwrap();
+    let expected = claim("diagnostic", "accepted");
+    store
+        .claims()
+        .append_batch(std::slice::from_ref(&expected))
+        .unwrap();
+    let diagnostics = store.take_native_write_path_diagnostics().unwrap().unwrap();
+
+    assert_eq!(diagnostics.capacity, 1);
+    assert_eq!(diagnostics.observed_samples, 1);
+    assert_eq!(diagnostics.dropped_samples, 0);
+    assert_eq!(diagnostics.samples.len(), 1);
+    let sample = &diagnostics.samples[0];
+    assert_eq!(sample.mutation_count, 3);
+    assert_eq!(sample.durability, rrd_lsm::Durability::Authoritative);
+    assert!(sample.lock_wait.begin_mutex_wait_ns > 0);
+    assert!(sample.lock_wait.commit_mutex_wait_ns > 0);
+
+    drop(store);
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    assert_eq!(
+        reopened
+            .claims()
+            .history(&expected.subject, &expected.predicate)
+            .unwrap(),
+        vec![expected]
+    );
 }

@@ -20,10 +20,12 @@ use rrd_core::{
 use rrd_lsm::{
     CompactionOutcome, Database, DatabaseOptions, GarbageCollectionReport, Manifest, Mutation,
     PageCacheStats, SegmentIoStats, SegmentOpenEvidence, Snapshot, SnapshotBundleFile,
+    WriteLockWait, WritePathDiagnostics,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 
@@ -98,12 +100,14 @@ pub struct RrflowKvStore {
     path: PathBuf,
     database: Mutex<Database>,
     open_evidence: RrflowKvOpenEvidence,
+    native_write_path_diagnostics_enabled: AtomicBool,
 }
 
 struct RrflowKvTransaction<'a> {
     store: &'a RrflowKvStore,
     transaction: rrd_lsm::Transaction,
     runtime_snapshot_writes: BTreeMap<Vec<u8>, Option<Vec<u8>>>,
+    begin_mutex_wait_ns: u64,
 }
 
 impl StorageTransaction for RrflowKvTransaction<'_> {
@@ -144,8 +148,16 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
             store,
             transaction,
             runtime_snapshot_writes,
+            begin_mutex_wait_ns,
         } = *self;
+        let diagnostics_enabled = store
+            .native_write_path_diagnostics_enabled
+            .load(Ordering::Acquire);
+        let commit_lock_started = diagnostics_enabled.then(Instant::now);
         let mut database = store.lock()?;
+        let commit_mutex_wait_ns = commit_lock_started.map_or(0, |started| {
+            u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX)
+        });
         let snapshot_handles = runtime_snapshot_writes
             .values()
             .flatten()
@@ -168,13 +180,23 @@ impl StorageTransaction for RrflowKvTransaction<'_> {
                 }
             }
         }
-        let outcome = match database.commit_transaction(
-            transaction,
-            match durability {
-                Durability::Authoritative => rrd_lsm::Durability::Authoritative,
-                Durability::Buffered => rrd_lsm::Durability::Buffered,
-            },
-        ) {
+        let physical_durability = match durability {
+            Durability::Authoritative => rrd_lsm::Durability::Authoritative,
+            Durability::Buffered => rrd_lsm::Durability::Buffered,
+        };
+        let commit = if diagnostics_enabled {
+            database.commit_transaction_with_write_context(
+                transaction,
+                physical_durability,
+                WriteLockWait {
+                    begin_mutex_wait_ns,
+                    commit_mutex_wait_ns,
+                },
+            )
+        } else {
+            database.commit_transaction(transaction, physical_durability)
+        };
+        let outcome = match commit {
             Ok(outcome) => outcome,
             Err(error) => {
                 for name in created_checkpoints {
@@ -316,6 +338,7 @@ impl RrflowKvStore {
             path,
             database: Mutex::new(database),
             open_evidence,
+            native_write_path_diagnostics_enabled: AtomicBool::new(false),
         })
     }
 
@@ -325,6 +348,22 @@ impl RrflowKvStore {
 
     pub fn open_evidence(&self) -> &RrflowKvOpenEvidence {
         &self.open_evidence
+    }
+
+    /// Enables bounded native write-path diagnostics for subsequent commits.
+    /// This process-local evidence is disabled by default and is never stored.
+    pub fn enable_native_write_path_diagnostics(&self, capacity: usize) -> Result<()> {
+        self.lock()?.enable_write_path_diagnostics(capacity)?;
+        self.native_write_path_diagnostics_enabled
+            .store(true, Ordering::Release);
+        Ok(())
+    }
+
+    /// Disables and drains the current native write-path diagnostic buffer.
+    pub fn take_native_write_path_diagnostics(&self) -> Result<Option<WritePathDiagnostics>> {
+        self.native_write_path_diagnostics_enabled
+            .store(false, Ordering::Release);
+        Ok(self.lock()?.take_write_path_diagnostics())
     }
 
     /// Publishes the current rrflowKV memtable as an immutable segment.
@@ -507,10 +546,16 @@ fn reconciliation_evidence(
 
 impl StorageEngine for RrflowKvStore {
     fn begin_transaction(&self) -> Result<Box<dyn StorageTransaction + '_>> {
-        let transaction = {
-            let database = self.lock()?;
-            database.begin_transaction()?
-        };
+        let diagnostics_enabled = self
+            .native_write_path_diagnostics_enabled
+            .load(Ordering::Acquire);
+        let begin_lock_started = diagnostics_enabled.then(Instant::now);
+        let database = self.lock()?;
+        let begin_mutex_wait_ns = begin_lock_started.map_or(0, |started| {
+            u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX)
+        });
+        let transaction = database.begin_transaction()?;
+        drop(database);
         tracing::debug!(
             target: "rrd_store::transaction",
             storage_profile = "rrflow_kv",
@@ -522,6 +567,7 @@ impl StorageEngine for RrflowKvStore {
             store: self,
             transaction,
             runtime_snapshot_writes: BTreeMap::new(),
+            begin_mutex_wait_ns,
         }))
     }
 
