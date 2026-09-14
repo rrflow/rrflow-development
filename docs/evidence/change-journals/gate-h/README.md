@@ -8,5 +8,6 @@ The roadmap owns Gate H acceptance. This generated index only discovers its
 linked package evidence.
 
 <!-- rrflow:generated-index:start -->
+- [Build, debug, trace, and optimization research journal](build-debug-trace-optimize-research-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-h/build-debug-trace-optimize-research`](rrflow://rrflow-instance/data/evidence/change-journal/gate-h/build-debug-trace-optimize-research) — active immutable change-journal evidence
 - [Observability, diagnostic-build, and latency-evidence planning journal](observability-diagnostic-build-and-latency-evidence-planning-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-h/observability-diagnostic-build-and-latency-evidence-planning-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-h/observability-diagnostic-build-and-latency-evidence-planning-journal) — active immutable change-journal evidence
 <!-- rrflow:generated-index:end -->

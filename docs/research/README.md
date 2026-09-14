@@ -3,7 +3,7 @@
 **Status:** active platform-industry research index; linked source records remain partially unclassified
 **Coordinate:** `rrflow://rrflow-instance/data/research-index/platform-industry`
 **Owner:** primary-source external-system research discovery; not RRFlow terminology or delivery planning
-**Reviewed:** 2026-09-08
+**Reviewed:** 2026-09-14
 **Scope:** `docs/research/`
 
 This directory is the single entry point for industry research used to shape
@@ -38,6 +38,11 @@ receives a separate full review and link-preserving classification.
 
 ## Cross-system lifecycle research
 
+- [`rrflow-build-debug-trace-optimize-architecture-research.md`](rrflow-build-debug-trace-optimize-architecture-research.md)
+  provides primary-source implementation guidance for reproducible builds,
+  release-equivalent diagnostics, causal signal projections, deterministic
+  failure analysis, native profiling, benchmark validity, and optimization.
+  It does not change engine semantics, gate order, or acceptance.
 - [`rrflow-installation-repair-and-distribution-research.md`](rrflow-installation-repair-and-distribution-research.md)
   compares primary database and release-tool lifecycle guidance with the
   current checkout and records the evidence behind RRFlow's single-executable,
