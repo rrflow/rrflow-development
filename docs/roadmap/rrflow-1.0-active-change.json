@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "POAM-alpha-owner-warps-and-live-records-v1",
+  "package_id": "H05-build-debug-trace-optimize-deep-research-v1",
   "status": "active",
-  "package_kind": "documentation-owner-linkage-and-policy-validation",
+  "package_kind": "research-and-engineering-evidence-guidance",
   "baseline": {
-    "revision": "0a6aa8d8ae51ffaf6deb3f0d3d5c123e6493575a",
-    "tree": "4dbcd8d7a0bea008d150282904706adc89ac8b10",
+    "revision": "65e679ef2852447d5ebbbd7ed0220eedf2372f63",
+    "tree": "807a8986144ba6d04276d170d5497054616b4785",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,29 +13,29 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Keep the POA&M as the concise lifecycle ledger for verified gaps while routing implementation detail, current evidence, and remediation history to their canonical linked owners.",
+    "alpha_prerequisite": "Establish a source-backed engineering evidence foundation for reproducible builds, release-equivalent diagnostics, causal tracing, deterministic failure reproduction, profiling, benchmark science, and optimization without making research a second runtime or release authority.",
     "roadmap_gates": [
-      "A-06",
-      "H-04",
-      "J-01",
+      "C-07",
+      "D-01",
+      "H-05",
       "J-02",
-      "KB-04",
-      "KB-08"
+      "J-04",
+      "J-05"
     ],
     "poam_items": [
       "POAM-011",
-      "POAM-014",
+      "POAM-026",
       "POAM-027"
     ],
-    "architecture_owner": "docs/decisions/0002-adaptive-reasoning-governed-effects.md"
+    "architecture_owner": "docs/architecture/engine-data-flow.md"
   },
-  "current_behavior": "The refactored POA&M parent is a 41-line ledger with 27 coordinated child records, but its heading calls all entries open even though three are closed. All 27 Owning gates sections contain plain text and no roadmap warp. POAM-011 is still a 166-line mini-authority that repeats shared protocol, six SDK, Connectome, packaging, and closure detail already owned by existing reference records. POAM-014 directs future gates to update one global prose trace instead of the package-local active plan and journal. POAM-027 still says the procedure-to-diff binding is not machine-readable even though POAM-027a implemented check_change_plan.py and candidate CI invokes it; POAM-011 and POAM-027 also retain dated convergence history in their live deficiency bodies.",
-  "target_behavior": "Retain exactly one parent-owned row for each POAM-001 through POAM-027 with the same priority and lifecycle status, under an accurate deficiency-ledger heading. Give every child a direct link to each relevant roadmap gate-family owner. Make POAM-011 a concise observed-gap, impact, owner-warp, and closure record that links the existing executable public-contract, six language SDK, Connectome, Gate H, and evidence owners instead of copying them. Make POAM-014 preserve A-07 as a frozen discovery baseline while requiring each bounded package to carry its exact trace in the active plan and linked journal, with the generated inventory as the current-path projection. Make POAM-027 state the implemented local/candidate-CI validator accurately, link the POAM-027a/b/c journals, and leave only automatic fact derivation plus eligible server-side enforcement as the live gap. Extend documentation policy with bounded topology, section, owner-link, and stale-authority checks without prescribing a schema of thought or fixing mutable status values.",
+  "current_behavior": "The engine data-flow owner already defines release-equivalent diagnostic mode, bounded observability, metric and latency contracts, and sanitized captures, while the roadmap names H-05 and Gate J implementation packages. The checkout has tracing at selected boundaries and a pinned Rust/DataFusion workspace, but it has no Cargo diagnostic profile, OpenTelemetry bridge, closed runtime metric implementation, unified release-evidence runner, fixed-hardware benchmark implementation, release assembly tooling, or one focused source-backed engineering guide that tells future packages which build, debugging, tracing, failure-reproduction, profiling, and optimization techniques to apply or reject. Relevant primary-source conclusions are currently distributed across external specifications and broader repository research.",
+  "target_behavior": "Create one bounded, repository-indexed research record that translates current primary-source practice into RRFlow-specific implementation guidance: separate correctness, diagnostic, fault, profiler, benchmark, and release modes; bind every artifact to reproducible build identity and provenance; preserve RrdEngine as durable authority while projecting bounded causal signals; define deterministic failure artifacts and a layered test matrix; choose symptom-specific native profilers; require distribution-aware benchmark evidence; and provide an adopt/defer/reject decision matrix plus package handoff to the existing roadmap. The record must cite current primary sources, distinguish researched evidence from RRFlow recommendations, and explicitly remain subordinate to architecture, roadmap, POA&M, and measured evidence owners.",
   "unchanged_behavior": [
-    "README.md remains the product identity and current-status owner; the alpha objective owns outcomes; the roadmap owns dependency order and completion evidence; the POA&M parent owns deficiency priority and lifecycle status.",
-    "All 27 POA&M identifiers, priorities, statuses, titles, coordinates, and parent ownership remain unchanged; no roadmap checkbox, count, active executable package, version, release, remote, or promotion state changes.",
-    "No runtime, protocol, operation catalogue, generated binding, SDK implementation, Connectome implementation, dependency, build artifact, or installed behavior changes.",
-    "The policy validates durable documentation ownership and navigation only; exploratory reading, hypothesis formation, context selection, and private model reasoning remain adaptive under ADR-0002."
+    "README.md remains product identity and current-status owner; the objective owns outcomes; the roadmap owns dependency order and completion evidence; the POA&M owns verified gap status; engine-data-flow owns the accepted observability and diagnostic contract.",
+    "No Rust code, Cargo profile, dependency, feature, API, schema, generated binding, SDK, workflow, fixture, executable, telemetry signal, persistence format, benchmark result, release artifact, product version, or installed behavior changes.",
+    "Research does not mark C-07, D-01, H-05, J-02, J-04, J-05, a POA&M item, or alpha readiness complete and does not turn diagnostic output, logs, traces, metrics, profiles, or benchmark harness state into engine authority.",
+    "Exploratory reasoning remains adaptive under ADR-0002; only governed durable effects cross the RrdEngine boundary, and future generators remain replaceable projections from one semantic owner."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -46,486 +46,322 @@
   },
   "reviewed_files": [
     {
-      "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "083eb442ddc8f410cc0d856555b96456bc8f52bdc77f000892b36bb85a1c0ac9",
-      "baseline_lines": 1219,
-      "reviewed_lines": "1-1219",
-      "symbols": ["complete prior planning boundary"]
+      "path": "README.md",
+      "baseline_sha256": "3e30915a632460d954131ed670772bc33fa341ae5caf47d159245f21765f0675",
+      "baseline_lines": 238,
+      "reviewed_lines": "1-238",
+      "symbols": ["complete product entry point and knowledge map"]
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha.md",
-      "baseline_sha256": "3747ec34cee6f8f4d0bc0987c00dfb291372e5d3661b3f2bd4ffd63c9104a84e",
-      "baseline_lines": 41,
-      "reviewed_lines": "1-41",
-      "symbols": ["complete parent ledger"]
+      "path": "Cargo.toml",
+      "baseline_sha256": "44e90f79716e38305dc690acea46be390b52c1ba6b065c781c60d7a0b7b93896",
+      "baseline_lines": 44,
+      "reviewed_lines": "1-44",
+      "symbols": ["complete workspace membership, package identity, and shared dependencies"]
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-001.md",
-      "baseline_sha256": "216d3022ddcc18b62f6572216cbeab429fb2efe8adf09802b4a5ed11a6e28a7f",
-      "baseline_lines": 30,
-      "reviewed_lines": "1-30",
-      "symbols": ["complete deficiency record"]
+      "path": "rust-toolchain.toml",
+      "baseline_sha256": "495c69d1db93f25f53e3d0d2d40d812313366cc368de317871c2ace6c6ffafa4",
+      "baseline_lines": 4,
+      "reviewed_lines": "1-4",
+      "symbols": ["complete pinned Rust toolchain"]
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-002.md",
-      "baseline_sha256": "73b17af6e0070055d5d4de40c67077924eea42a19717d76b562b3cfdbf58f1a5",
-      "baseline_lines": 41,
-      "reviewed_lines": "1-41",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-003.md",
-      "baseline_sha256": "a7a8ac302e465ae9cc8eccb07c47bba4b5837e3fe401c83e69467319ad918ba7",
-      "baseline_lines": 40,
-      "reviewed_lines": "1-40",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-004.md",
-      "baseline_sha256": "b09c5471c90e6715249297fbe8e4b294c705ce53c9bc4f742984bfd0cbec8934",
-      "baseline_lines": 42,
-      "reviewed_lines": "1-42",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-005.md",
-      "baseline_sha256": "2a685e12dff36865342a103de474e43ffc207b1ed11ab1a4c03ffe041105daef",
-      "baseline_lines": 39,
-      "reviewed_lines": "1-39",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-006.md",
-      "baseline_sha256": "2912262bb75585bb73fee8f91f58ae83a2a71ae98e9ce6b0a3cc9bb5e516ab0f",
-      "baseline_lines": 37,
-      "reviewed_lines": "1-37",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-007.md",
-      "baseline_sha256": "b83600f42669d475a8c17e2d3268fd5b0610922880208f7cba1933c5ca09415e",
-      "baseline_lines": 38,
-      "reviewed_lines": "1-38",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-008.md",
-      "baseline_sha256": "7890c5f69fdbd3f27be0e381e7192d1f1852faa1b3f52a3e7c51e5387bb21b51",
-      "baseline_lines": 59,
-      "reviewed_lines": "1-59",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-009.md",
-      "baseline_sha256": "2a79279a43c99228137ae802b206bd64a04200b0f787062e206a0bb3057bcfab",
-      "baseline_lines": 31,
-      "reviewed_lines": "1-31",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-010.md",
-      "baseline_sha256": "ab51a8e695e7beee632abbdc2af4ae69fe953e83fccacdc8557ead1a95eb65ae",
-      "baseline_lines": 38,
-      "reviewed_lines": "1-38",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-011.md",
-      "baseline_sha256": "46820a6aecde86d6149488b10604ea50f2e446fbe7cc922f49cc34e2400b37ef",
-      "baseline_lines": 166,
-      "reviewed_lines": "1-166",
-      "symbols": ["complete mixed public-surface deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-012.md",
-      "baseline_sha256": "37f695c61e83c3b0f53b45eed29335996559b1f604352555d4c36a79f4a65d0c",
-      "baseline_lines": 27,
-      "reviewed_lines": "1-27",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-013.md",
-      "baseline_sha256": "39456aad875bb66140aa946f511cf39462a4b81be93a905145e1524dbe7e40a8",
-      "baseline_lines": 37,
-      "reviewed_lines": "1-37",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-014.md",
-      "baseline_sha256": "3f028dcdec6eb36dc8a9664f8d872e818ffc1aa1949dcd7de5548fb56c4c18c1",
-      "baseline_lines": 34,
-      "reviewed_lines": "1-34",
-      "symbols": ["complete traceability deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-015.md",
-      "baseline_sha256": "57baa8f4633d3e1b9b4fb5b476d6ba5b0ef992ba0e422741709000a4e95be43e",
-      "baseline_lines": 34,
-      "reviewed_lines": "1-34",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-016.md",
-      "baseline_sha256": "4dc90c2ecff65fe234a7c689e5e71107adc853a9d358dbc5089e3f8363e323ad",
-      "baseline_lines": 49,
-      "reviewed_lines": "1-49",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-017.md",
-      "baseline_sha256": "65b784c0ed3e6e0c71e856abd69d5bc9e616b6fc783ca84310a962a4bc8e3b83",
-      "baseline_lines": 40,
-      "reviewed_lines": "1-40",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-018.md",
-      "baseline_sha256": "ddd21217f96e5ed28d2c4d37b4180d8eb7938b6da08d589acb85b25a65c3a264",
-      "baseline_lines": 32,
-      "reviewed_lines": "1-32",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-019.md",
-      "baseline_sha256": "d5f44dc5bd7fcef0d4f417eabbf9463d177ac4bba4bdee8abda32d7dd0eafa5f",
-      "baseline_lines": 42,
-      "reviewed_lines": "1-42",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-020.md",
-      "baseline_sha256": "20310bc8c886b15032c61a0ef7d593c1438f01afb164e53f036c7230b4b58ec3",
-      "baseline_lines": 43,
-      "reviewed_lines": "1-43",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-021.md",
-      "baseline_sha256": "a880d4fcca03186168236d62852bffe5d1793aef1ce02c4659853ce015997a00",
-      "baseline_lines": 42,
-      "reviewed_lines": "1-42",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-022.md",
-      "baseline_sha256": "20b278462e7ac1d3105b8a65d76da1b94dc8204abc03b757adf4f251e9e8c3c5",
-      "baseline_lines": 42,
-      "reviewed_lines": "1-42",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-023.md",
-      "baseline_sha256": "22fbbd3b705f3c5788aef13439c8c8889623cb914cc8773c7e55bb69ab678547",
-      "baseline_lines": 48,
-      "reviewed_lines": "1-48",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-024.md",
-      "baseline_sha256": "7e2e9ea58c6b8e043703ca3c46a0fa585ddd4392026a3ea7d36c9ab58d31feb1",
-      "baseline_lines": 47,
-      "reviewed_lines": "1-47",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-025.md",
-      "baseline_sha256": "17364d166dc0c7374b24c8c9855a283582b504f5058b3178b437ad891664593e",
-      "baseline_lines": 39,
-      "reviewed_lines": "1-39",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-026.md",
-      "baseline_sha256": "ca7dfcc00d7ce3151c075ca9fa25ef41380d9949770bf62e86c81dde34d62471",
-      "baseline_lines": 39,
-      "reviewed_lines": "1-39",
-      "symbols": ["complete deficiency record"]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-027.md",
-      "baseline_sha256": "fb914362cda9d35093a3d1cc617b1901aecf1269ab43ffedc49a8a9c454b74b0",
+      "path": "docs/objectives/rrflow-1.0-alpha.md",
+      "baseline_sha256": "c65cc500a92e67caf919299033efabc2c94106426c2e30cf206a3b65aa3ddec9",
       "baseline_lines": 65,
       "reviewed_lines": "1-65",
-      "symbols": ["complete enforcement deficiency record"]
+      "symbols": ["complete measurable alpha outcome owner"]
     },
     {
-      "path": "scripts/ci/check_documentation.py",
-      "baseline_sha256": "c3bd0cb7c1bf88adb33b24009f6af6e7f376c74e0496ac139a130d2b8b92485a",
-      "baseline_lines": 945,
-      "reviewed_lines": "1-945",
-      "symbols": ["complete documentation policy"]
+      "path": "docs/roadmap/rrflow-1.0.md",
+      "baseline_sha256": "ee5445a41ba7d5d07393150ce6ee5ab259284d43d4603b96efe35c7990e4db42",
+      "baseline_lines": 165,
+      "reviewed_lines": "1-165",
+      "symbols": ["complete release checklist and dependency owner"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-h.md",
+      "baseline_sha256": "51efe3532a3e6cfda3917fb48f190ce154533ddb16737d85190d79160cda82b4",
+      "baseline_lines": 74,
+      "reviewed_lines": "1-74",
+      "symbols": ["complete Gate H security and observability requirements"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-j.md",
+      "baseline_sha256": "73b5da9e503765ff600fefed752fea7f7b7d9c839160d053bb32da50bbce3b92",
+      "baseline_lines": 32,
+      "reviewed_lines": "1-32",
+      "symbols": ["complete Gate J qualification and release requirements"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-execution/change-authoring.md",
+      "baseline_sha256": "6ea5ed28b4621e824c53e503dae84ef46de549fed0f02d6be6298d9e7979bb42",
+      "baseline_lines": 145,
+      "reviewed_lines": "1-145",
+      "symbols": ["complete repository effect and evidence procedure"]
+    },
+    {
+      "path": "docs/architecture/engine-data-flow.md",
+      "baseline_sha256": "e8ad761b8aa08da9c7f450a696bb105f1f2b19cfead40509c75915a2263fe40a",
+      "baseline_lines": 1416,
+      "reviewed_lines": "1-1416",
+      "symbols": ["complete engine flow", "trace and observability flow", "runtime modes, build profiles, and build identity", "metric instruments and cardinality", "latency measurement contract", "diagnostic capture and failure workflow"]
+    },
+    {
+      "path": "docs/operations/ci.md",
+      "baseline_sha256": "2d484763faafa27f09189b22304e6e129e77e38ec9ff8abefbb54a58a913fab5",
+      "baseline_lines": 308,
+      "reviewed_lines": "1-308",
+      "symbols": ["complete CI lane and evidence owner"]
+    },
+    {
+      "path": "docs/research/README.md",
+      "baseline_sha256": "790a7969f014c8982fa2800e86fcdc4016b7ca65633c88e6623d7a4aa15d40a1",
+      "baseline_lines": 99,
+      "reviewed_lines": "1-99",
+      "symbols": ["complete platform-industry research index"]
+    },
+    {
+      "path": "docs/evidence/change-journals/gate-h/observability-diagnostic-build-and-latency-evidence-planning-journal.md",
+      "baseline_sha256": "2fd947e2a1aa150e9c849bb4a11f183603c82dd14d7847f89a62ae2a65d9b939",
+      "baseline_lines": 39,
+      "reviewed_lines": "1-39",
+      "symbols": ["complete prior H-05 planning receipt and residual gaps"]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0-active-change.json",
+      "baseline_sha256": "8228e719f796d9571a0a7062cab96896042de341e1a27cc671dc8a0da27f6cfb",
+      "baseline_lines": 552,
+      "reviewed_lines": "1-552",
+      "symbols": ["complete prior active planning boundary"]
     },
     {
       "path": "scripts/knowledge/render_navigation.py",
       "baseline_sha256": "d19b692237b0ceee868de99fcc240ab5e601d49f66c1689d16bc5d8d35f17855",
       "baseline_lines": 351,
       "reviewed_lines": "1-351",
-      "symbols": ["complete generated-navigation maintainer"]
+      "symbols": ["complete generated navigation and relationship projection"]
     },
     {
       "path": "scripts/ci/build_execution_inventory.py",
       "baseline_sha256": "3f014d201abe78bcb99952e6b166ac64b2165284d8d450b6c6ed50a8719cbdca",
       "baseline_lines": 1841,
       "reviewed_lines": "1-1841",
-      "symbols": ["complete generated execution inventory"]
+      "symbols": ["complete Git-backed file and digest inventory generator"]
     }
   ],
   "implementation_changes": [
     {
-      "path": "docs/poam/rrflow-1.0-alpha.md",
-      "baseline_state": "present",
-      "symbols": ["deficiency-ledger heading and 27-row topology"],
-      "action": "Rename the misleading open-only heading while preserving every row identifier, priority, status, title, order, and target exactly.",
-      "failure_semantics": "Stop if any lifecycle tuple changes or the parent absorbs child detail."
+      "path": "docs/research/rrflow-build-debug-trace-optimize-architecture-research.md",
+      "baseline_state": "absent",
+      "symbols": ["bounded question and method", "repository baseline", "research findings", "RRFlow implementation guidance", "adopt-defer-reject matrix", "package handoff", "numbered primary sources"],
+      "action": "Create a comprehensive primary-source research artifact that makes future build, debug, trace, fault-reproduction, profiling, benchmark, and optimization choices reviewable while deferring accepted semantics and completion to their current owners.",
+      "failure_semantics": "Stop if the record duplicates the architecture or roadmap, prescribes a schema of thought, treats telemetry as state, claims unmeasured performance or completion, adopts an external source tree, or leaves recommendations uncited and unbounded."
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-001.md",
+      "path": "docs/research/README.md",
       "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-002.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-003.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-004.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-005.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-006.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-007.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-008.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-009.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-010.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-011.md",
-      "baseline_state": "present",
-      "symbols": ["Observed deficiency", "Current-detail owners", "Owning gates", "Closure evidence", "Evidence history"],
-      "action": "Replace copied protocol, SDK, Connectome, packaging, and dated convergence bodies with a concise live gap and direct links to the existing semantic and evidence owners.",
-      "failure_semantics": "Stop if current open requirements are lost, a linked owner is missing, or this record becomes a second protocol, SDK, or release authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-012.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-013.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-014.md",
-      "baseline_state": "present",
-      "symbols": ["Observed deficiency", "Owning gates", "Closure evidence"],
-      "action": "Replace the global prose-trace update instruction with package-local active-plan, linked-journal, generated-inventory, and replacement-evidence ownership.",
-      "failure_semantics": "Stop if A-07 baseline evidence is rewritten, traceability becomes optional, or a new global audit authority is introduced."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-015.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-016.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-017.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-018.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-019.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-020.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-021.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-022.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-023.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-024.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-025.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-026.md",
-      "baseline_state": "present",
-      "symbols": ["Owning gates"],
-      "action": "Add direct roadmap gate-family owner links without changing the deficiency or closure claim.",
-      "failure_semantics": "Stop if a new link implies completion or changes lifecycle authority."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-027.md",
-      "baseline_state": "present",
-      "symbols": ["Observed deficiency", "Owning gates", "Closure evidence", "Remediation evidence"],
-      "action": "State the implemented validator and candidate-CI binding accurately, link the three completed remediation journals, and retain automatic fact derivation plus eligible server-side controls as the open gap.",
-      "failure_semantics": "Stop if local validation is overstated as non-bypassable protection, open server enforcement is hidden, or evidence history remains embedded as live authority."
-    },
-    {
-      "path": "scripts/ci/check_documentation.py",
-      "baseline_state": "present",
-      "symbols": ["POA&M topology and owner-link policy"],
-      "action": "Validate exact POAM-001 through POAM-027 topology, allowed ledger field vocabularies, required child sections, gate-family links, canonical POAM-011 owners, package-local POAM-014 trace language, truthful POAM-027 remediation links, and absence of embedded decision/update history.",
-      "failure_semantics": "Stop if policy hardcodes mutable lifecycle values, constrains private reasoning, or allows broken/stale documentation authority."
+      "symbols": ["Reviewed metadata", "Cross-system lifecycle research"],
+      "action": "Link the new bounded research record from the owning research index and update the index review date without copying its body.",
+      "failure_semantics": "Stop if the index absorbs implementation detail or becomes product, architecture, planning, or evidence authority."
     }
   ],
   "evidence_changes": [
     {
-      "path": "docs/evidence/change-journals/gate-a/rrflow-1-0-alpha-poam-owner-warp-review.md",
-      "action": "Create the linked package journal with baseline, complete-file review, exact changed paths, semantic preservation oracle, commands/results, surfaced failures, omissions, remaining gaps, and explicit no-status-change statement."
+      "path": "docs/evidence/change-journals/gate-h/build-debug-trace-optimize-research-journal.md",
+      "action": "Create the linked package journal with exact baseline, full reads, changed paths, primary-source method, commands/results, surfaced failures, omissions, remaining gaps, and explicit no-status-change statement."
     },
     {
-      "path": "docs/evidence/change-journals/gate-a/README.md",
-      "action": "Regenerate the nearest journal index so the new package record is discoverable.",
+      "path": "docs/evidence/change-journals/gate-h/README.md",
+      "action": "Regenerate the nearest journal index so the new package receipt is discoverable.",
       "generated": true,
       "generator": "scripts/knowledge/render_navigation.py"
     },
     {
       "path": "docs/roadmap/rrflow-1.0-file-plan.jsonl",
-      "action": "Regenerate the deterministic Git-backed file and digest inventory after the package is complete.",
+      "action": "Regenerate the deterministic Git-backed file and digest inventory after adding the research and evidence records.",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py"
     }
   ],
   "research": {
-    "decision": "not_required",
-    "reason": "This package resolves repository-local ownership, stale live-ledger claims, and navigation from complete canonical records, Git history, existing evidence journals, and current policy tooling; it adds no external algorithm, dependency, compatibility assertion, or upstream code.",
-    "sources": []
+    "decision": "required",
+    "reason": "The package exists to compare current RRFlow boundaries with current language, telemetry, reliability, profiling, benchmarking, and supply-chain practice. Primary specifications and project documentation are required to separate portable semantics from tool-specific mechanisms and to avoid inventing unsupported performance or diagnostic claims.",
+    "sources": [
+      {
+        "title": "Cargo Book: Profiles",
+        "url": "https://doc.rust-lang.org/cargo/reference/profiles.html",
+        "retained_behavior": "Use root-owned custom profiles and explicit optimization/debug/LTO/codegen settings to create release-derived diagnostic and benchmark modes.",
+        "rejected_assumption": "A debug build or an implicitly configured local profile can represent shipped behavior or release latency."
+      },
+      {
+        "title": "rustc book: Remap source paths",
+        "url": "https://doc.rust-lang.org/rustc/remap-source-paths.html",
+        "retained_behavior": "Normalize compiler-emitted build paths where supported and verify the resulting artifacts on every target.",
+        "rejected_assumption": "Path remapping alone makes every linker, symbol, generated file, and platform artifact reproducible or secret-free."
+      },
+      {
+        "title": "SOURCE_DATE_EPOCH specification",
+        "url": "https://reproducible-builds.org/specs/source-date-epoch/",
+        "retained_behavior": "Derive embedded build timestamps from a deterministic source-owned epoch and clamp archive metadata.",
+        "rejected_assumption": "A wall-clock build timestamp is a reliable source identity or that timestamp normalization proves reproducibility."
+      },
+      {
+        "title": "SLSA 1.2 build provenance",
+        "url": "https://slsa.dev/spec/v1.2/build-provenance",
+        "retained_behavior": "Bind outputs to source, resolved inputs, build definition, builder, invocation, and useful diagnostic byproducts by digest.",
+        "rejected_assumption": "A checksum or provenance envelope proves the artifact is correct, secure, performant, or qualified."
+      },
+      {
+        "title": "OpenTelemetry tracing API",
+        "url": "https://opentelemetry.io/docs/specs/otel/trace/api/",
+        "retained_behavior": "Model bounded operations as spans with stable names, causal context, events, links, and explicit terminal error status.",
+        "rejected_assumption": "An exported or sampled span is durable engine evidence or permission for an effect."
+      },
+      {
+        "title": "W3C Trace Context",
+        "url": "https://www.w3.org/TR/trace-context/",
+        "retained_behavior": "Validate and propagate traceparent/tracestate interoperably with explicit privacy and trust-boundary handling.",
+        "rejected_assumption": "Incoming trace context is trusted identity, authorization, or a safe carrier for personal or secret data."
+      },
+      {
+        "title": "OpenTelemetry metrics data model",
+        "url": "https://opentelemetry.io/docs/specs/otel/metrics/data-model/",
+        "retained_behavior": "Use aggregatable sums, gauges, and histograms with declared temporality and optional trace exemplars.",
+        "rejected_assumption": "Per-request identifiers belong in metric attributes or precomputed averages preserve tail behavior."
+      },
+      {
+        "title": "OpenTelemetry error handling",
+        "url": "https://opentelemetry.io/docs/specs/otel/error-handling/",
+        "retained_behavior": "Make telemetry fail independently, expose bounded self-diagnostics, and prefer signal loss over application semantic change.",
+        "rejected_assumption": "Exporter success can establish operation success or exporter failure may block, roll back, or crash engine work."
+      },
+      {
+        "title": "Tokio: Getting started with Tracing",
+        "url": "https://tokio.rs/tokio/topics/tracing",
+        "retained_behavior": "Use structured spans and events to preserve async causality and install subscribers at executable composition roots.",
+        "rejected_assumption": "Unstructured interleaved log lines or a subscriber hidden in a library provide a coherent causal path."
+      },
+      {
+        "title": "Rust standard library backtrace module",
+        "url": "https://doc.rust-lang.org/stable/std/backtrace/index.html",
+        "retained_behavior": "Capture backtraces only in explicitly enabled diagnostic paths and retain matching debug information for symbolization.",
+        "rejected_assumption": "Backtraces are cheap, complete, portable, or reliable enough to replace typed failure coordinates."
+      },
+      {
+        "title": "Miri",
+        "url": "https://github.com/rust-lang/miri/",
+        "retained_behavior": "Run bounded interpreter-compatible tests to expose undefined behavior and selected weak-memory effects.",
+        "rejected_assumption": "One Miri execution covers native FFI, all schedules, all platforms, or all Rust correctness properties."
+      },
+      {
+        "title": "Loom concurrency testing",
+        "url": "https://docs.rs/loom/latest/loom/",
+        "retained_behavior": "Model small concurrency primitives with deterministic interleaving exploration and retained failing seeds/configuration.",
+        "rejected_assumption": "Loom sees synchronization not routed through its replacement types or scales to the entire engine state space."
+      },
+      {
+        "title": "Rust compiler sanitizer support",
+        "url": "https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html",
+        "retained_behavior": "Use target-specific sanitizer lanes alongside tests, fuzzing, Miri, and native execution with symbolized reports.",
+        "rejected_assumption": "Sanitizers are zero-overhead production modes, universally supported, or complete proof of memory and concurrency safety."
+      },
+      {
+        "title": "FoundationDB simulation and testing",
+        "url": "https://apple.github.io/foundationdb/testing.html",
+        "retained_behavior": "Combine deterministic seeded failure simulation, live performance testing, and hardware failure tests rather than relying on one lane.",
+        "rejected_assumption": "Compilation, unit tests, simulation alone, or a mock filesystem qualifies crash and recovery behavior."
+      },
+      {
+        "title": "Prometheus instrumentation practices",
+        "url": "https://prometheus.io/docs/practices/instrumentation/",
+        "retained_behavior": "Measure traffic, errors, latency, saturation, queues, caches, and resource use with aggressively bounded label sets.",
+        "rejected_assumption": "Unbounded identifiers and content are safe labels or that more telemetry is automatically more useful."
+      },
+      {
+        "title": "HdrHistogram",
+        "url": "https://github.com/HdrHistogram/HdrHistogram",
+        "retained_behavior": "Retain raw high-dynamic-range latency distributions and prevent or explicitly correct coordinated omission.",
+        "rejected_assumption": "Averages, a few percentiles, or closed-loop samples faithfully represent latency during stalls."
+      },
+      {
+        "title": "Apache DataFusion testing guide",
+        "url": "https://datafusion.apache.org/contributor-guide/testing.html",
+        "retained_behavior": "Start with the smallest oracle, widen to SQL/integration coverage, and run repeatable benchmarks against retained identical data.",
+        "rejected_assumption": "A microbenchmark or a newly generated dataset proves end-to-end query improvement."
+      },
+      {
+        "title": "Criterion BenchmarkGroup",
+        "url": "https://docs.rs/criterion/latest/criterion/struct.BenchmarkGroup.html",
+        "retained_behavior": "Declare measurement time, sample size, confidence, significance, throughput, and practical noise thresholds for microbenchmarks.",
+        "rejected_assumption": "Statistical significance alone means a change is operationally meaningful or release-acceptable."
+      },
+      {
+        "title": "Google SRE: Monitoring distributed systems",
+        "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+        "retained_behavior": "Correlate latency, traffic, errors, and saturation and keep automated signals simple enough to produce an actionable investigation.",
+        "rejected_assumption": "One dashboard, mean latency, or an opaque anomaly detector establishes causality."
+      },
+      {
+        "title": "The Tail at Scale",
+        "url": "https://research.google/pubs/the-tail-at-scale/",
+        "retained_behavior": "Treat tail latency and utilization-sensitive stragglers as first-class end-to-end behavior.",
+        "rejected_assumption": "Median latency or isolated component speed predicts interactive system responsiveness."
+      },
+      {
+        "title": "rustc profile-guided optimization",
+        "url": "https://doc.rust-lang.org/nightly/rustc/profile-guided-optimization.html",
+        "retained_behavior": "Consider PGO only after representative, versioned workloads and stable build/benchmark evidence exist.",
+        "rejected_assumption": "PGO is a free build flag or profiles gathered from arbitrary workloads generalize to the shipped product."
+      },
+      {
+        "title": "Valgrind Cachegrind manual",
+        "url": "https://valgrind.org/docs/manual/cg-manual.html",
+        "retained_behavior": "Use reproducible instruction counts to complement noisy elapsed-time and sampling profiles for bounded CPU investigations.",
+        "rejected_assumption": "Simulated cache behavior exactly models modern target hardware or instruction reduction guarantees latency reduction."
+      },
+      {
+        "title": "Microsoft Windows Performance Toolkit",
+        "url": "https://learn.microsoft.com/en-us/windows-hardware/test/wpt/",
+        "retained_behavior": "Capture native Windows CPU, disk, memory, scheduling, and application events with WPR and inspect them with WPA.",
+        "rejected_assumption": "Linux profiling results explain native Windows behavior or cross-compilation supplies native runtime evidence."
+      },
+      {
+        "title": "Apple recording performance data",
+        "url": "https://developer.apple.com/documentation/os/recording-performance-data",
+        "retained_behavior": "Use bounded signpost intervals and native Instruments captures to correlate RRFlow operations on Apple targets.",
+        "rejected_assumption": "Portable spans alone expose every scheduler, allocation, I/O, or platform-specific performance cause."
+      }
+    ]
   },
   "trace_resource_debug": {
     "runtime_trace": {
-      "decision": "not_applicable",
-      "reason": "No runtime operation, durable engine state, adapter invocation, or emitted signal changes."
+      "decision": "preserve",
+      "reason": "The research maps future diagnostic projections to the already accepted one-causal-chain architecture; it changes no span, event, context propagation, durable trace, engine operation, or exporter behavior."
     },
     "resource_evidence": {
-      "decision": "not_applicable",
-      "reason": "No allocation, persistence format, I/O path, latency budget, model execution, or package artifact changes."
+      "decision": "add",
+      "reason": "The research specifies how future packages should collect CPU, wall time, allocation, RSS, disk, copy/decode, queue, telemetry-overhead, and raw latency distributions, while making no measurement or acceptance claim in this package."
     },
     "debugging_evidence": {
-      "decision": "preserve",
-      "reason": "Preserve every parent lifecycle tuple; validate linked gate families and canonical owners; link prior remediation journals; record exact checks, failures, and residual gaps in the new package journal."
+      "decision": "add",
+      "reason": "The research defines release-equivalent diagnostic builds, typed failure coordinates, deterministic seed/schedule artifacts, fuzz/sanitizer/concurrency lanes, capture contents, and symptom-to-profiler selection for future implementation packages."
     }
   },
   "first_failure_oracle": [
-    "The baseline parent has exactly 27 rows, but the heading says Open deficiencies while POAM-002, POAM-003, and POAM-018 are Closed.",
-    "At baseline zero of 27 child Owning gates sections links a roadmap gate chapter.",
-    "POAM-011 is 166 lines and duplicates common transport, all six SDKs, Connectome, packaging, conformance, and dated convergence detail already held by linked owners.",
-    "POAM-014 says each later gate must update the global A-07 trace, conflicting with the package-local active-plan and linked-journal rule.",
-    "POAM-027 says the binding is not machine-readable despite the implemented check_change_plan.py and its candidate-CI invocation, and embeds prior execution decisions instead of linking their evidence records."
+    "No focused record in docs/research links reproducible build identity, release-equivalent diagnostics, causal telemetry, deterministic failures, native profilers, benchmark science, and optimization decisions to RRFlow's current implementation boundaries.",
+    "The workspace root has no Cargo profile declarations, while the architecture requires distinct release, diagnostic, fault, benchmark, and runtime-analysis modes without semantic feature drift.",
+    "Current tracing is present at selected adapter, storage, and engine boundaries, but no OpenTelemetry dependency, governed exporter bridge, or implemented closed metric catalogue exists.",
+    "Only the rrflowKV fuzz package currently exposes fuzz targets, and no shared release-evidence runner or deterministic whole-engine fault artifact contract exists.",
+    "The J-02/J-04/J-05 planned release-evidence, comparison, assembly, verification, and distribution paths are absent, so research must define prerequisites without pretending they are implemented."
   ],
   "edit_sequence": [
-    "Commit this active plan alone as the direct child of clean baseline 0a6aa8d8ae51ffaf6deb3f0d3d5c123e6493575a and require check_change_plan.py to accept the planning boundary.",
-    "Rename only the parent ledger heading and add direct roadmap gate-family owner links to all 27 child records without altering their parent-owned lifecycle tuples.",
-    "Refactor POAM-011, POAM-014, and POAM-027 into concise live gap records linked to existing semantic and evidence owners; do not create duplicate protocol, SDK, Connectome, trace, or enforcement sub-authorities.",
-    "Extend documentation policy with bounded POA&M topology, required-section, owner-warp, stale-history, and special-owner checks while leaving mutable statuses and exploratory reasoning unconstrained.",
-    "Create the linked journal, regenerate its nearest navigation index and the Git-backed file inventory, reread every changed file and the complete diff, and run all declared documentation and repository checks.",
-    "Commit the coherent implementation/evidence package, resolve the development remote/ref/revision, push only the branch revision to development main, and verify the remote ref exactly."
+    "Commit this active plan alone as the direct child of clean baseline 65e679ef2852447d5ebbbd7ed0220eedf2372f63 and require check_change_plan.py to accept the planning boundary.",
+    "Author the bounded research record from the complete repository owner review and current primary sources, separating external facts, RRFlow recommendations, and rejected shortcuts.",
+    "Link only the research record from docs/research/README.md; do not restate its body or alter roadmap, objective, POA&M, architecture, or runtime status.",
+    "Create one Gate H package journal, regenerate the nearest navigation index and Git-backed file inventory, then reread every changed file and the complete diff.",
+    "Run the declared documentation, navigation, knowledge, inventory, version, and whitespace checks and commit the coherent research/evidence package without pushing or promoting it."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
@@ -535,18 +371,14 @@
     "python3 scripts/ci/build_execution_inventory.py --check",
     "python3 scripts/knowledge/test_export.py",
     "python3 scripts/check_version.py",
-    "ruff check scripts/ci/check_documentation.py",
-    "ruff format --check scripts/ci/check_documentation.py",
-    "python3 -m py_compile scripts/ci/check_documentation.py",
     "git diff --check"
   ],
   "stop_conditions": [
-    "Any POA&M identifier, priority, status, title, coordinate, ordering, parent owner, roadmap completion state, product version, runtime behavior, release state, remote, or promotion state changes.",
-    "POAM-011 loses a current closure requirement or duplicates rather than links the public-contract, SDK, Connectome, gate, or evidence owner.",
-    "POAM-014 grows a global prose implementation audit or weakens package-specific source, behavior, characterization, destination, gate, and replacement-evidence traceability.",
-    "POAM-027 represents local/candidate-CI validation as non-bypassable server enforcement or hides either remaining automatic derivation or server-protection work.",
-    "Documentation policy fixes current lifecycle values as permanent, requires thoughts or exploratory work to enter a closed schema, or makes generated navigation/evidence another semantic authority.",
-    "A local or fragment link breaks, generated navigation or inventory drifts, an undeclared path changes, or the implementation cannot pass plan, documentation, navigation, knowledge-export, version, lint, compile, and whitespace checks."
+    "The research creates or overrides product, architecture, roadmap, POA&M, operation-catalogue, lifecycle, or evidence authority, or constrains private reasoning into a closed schema.",
+    "A recommendation lets diagnostic configuration change engine semantics, lets telemetry establish durable success or authorization, or makes an exporter, profiler, hosted service, provider, or external database a default prerequisite.",
+    "Build guidance claims reproducibility without independent artifact comparison, hides native-target limitations, changes the frozen 1.0.0 version, or implies provenance/signing proves runtime qualification.",
+    "Benchmark guidance accepts means, coordinated omission, different inputs/configuration, unpinned hardware/software, unreported failures, or statistical significance without a practical threshold.",
+    "The package claims a gate complete, reports an unexecuted tool or measurement as evidence, copies an external implementation surface, changes an undeclared path, or leaves navigation/inventory/documentation drift."
   ],
-  "roadmap_status_change": "None. This package corrects ownership, warps, and live-ledger truthfulness while preserving all roadmap completion state and every POA&M priority/status tuple."
+  "roadmap_status_change": "None. This package supplies supporting primary-source research and a future implementation handoff only; all roadmap checkboxes, POA&M statuses, objective outcomes, product version, release state, and promotion state remain unchanged."
 }
