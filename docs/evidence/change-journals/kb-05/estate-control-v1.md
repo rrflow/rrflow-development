@@ -1,0 +1,31 @@
+# KB-05 journal: estate-control-v1
+
+**Status:** active immutable change-journal evidence
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/kb-05/estate-control-v1`
+**Owner:** the unchanged historical package receipt identified by its legacy heading and payload digest
+**Legacy source:** `docs/roadmap/rrflow-1.0-execution-map.md@b7b061900b67d535ffec2710e6e4c30815d0f216#L1122`
+**Legacy payload SHA-256:** `296e9519ffe27021ea693c4cdbccaf636e69b08815066318adae6823888ae1c1`
+
+This record refracts one completed package receipt out of the former
+monolithic execution map. Its fenced payload is preserved byte for byte.
+It reports historical evidence and cannot change roadmap completion or
+POA&M lifecycle status. Follow the [canonical roadmap](../../../roadmap/rrflow-1.0.md)
+for acceptance and the [change-journal index](../) for discovery.
+
+## Journal payload
+
+```text
+gate/package: A-06 / KB-05 / estate-control-v1
+revision: parent 5b63111; result is the commit containing this entry
+baseline files/digests: docs/estate-control-v1.md=ee6ce754ed532c1f9fcc5632b5e22dc8c6a06cc8eb52843314252765badc06d5; rrd-estate/Cargo.toml=dda167d115215735608328172839533d979e07a086020aae8fef045d79159c6b; rrd-estate/lib.rs=37d585386aff6152f6021d6e978a2288aa733d476e69719f1de85225736cfeab; authority.rs=50bcd975e6d0772389c9529111d1af9f78a8deff39fd4fa00421bd041694d595; reconcile.rs=aab8f34a072d6e3dda185a87d18582cf95865d8b757a0f0b83a0f58d199c36ac; backup_job.rs=35659494cfeb35328c0bc419e400fdbea06528f0f5b048e21c1197caa56a9816; backup_reconcile.rs=650ecb11f0c8fbea11d2589d28588ecab4e669132ee31de6d0db04cd57bf3a62; recovery.rs=6d22f4dedbf9a15965357aab533968007a1b1392988d12ba12157b224604a822; engine/estate_control.rs=3c3eb4684b50144958240ac252c9f9a3bfdc4c58ab819cc1528f1646d4547d61; store/control.rs=1b3c405761fe94c844cbe82c9a796ef0f000cd7a400278b744b60c6ef21f1fa2; server/local_estate_driver.rs=e34ac61817c210cf513b9e6bda6dd1ea6cd2fee163f48f28ce54b5b495017120
+files read in full: root README; flat estate-control record; documentation/reference/research indexes; system overview, single-engine ADR, alpha objective, canonical roadmap, POA&M, and relevant complete engine-flow/execution-map owners; rrd-estate manifest, public aggregate/repository, operational-authority catalogue, desired/observed reconciler, backup job/reconciler, recovery, and all focused estate tests; rrd-store control implementation/test; rrd-engine core, estate read, estate control, and complete engine-authority test; rrflow-cli estate/backup controller implementations and complete backup-controller test; server estate handler/capabilities/router and complete local-estate-driver test; contract estate snapshot/endpoint and public-contract test; Rust SDK conformance test and its real-server fixture
+files changed/created/deleted/moved: create docs/reference/operations/README.md and docs/reference/operations/estate-control.md; update root README, reference/research indexes, local-estate-authorization cross-link, POA&M, this implementation traceability/direct-convergence/resolved-review/queue/journal, and generated file inventory; delete docs/estate-control-v1.md; no Rust, manifest, public type, endpoint, fixture, SDK, runtime, storage, query, graph, index, or DataFusion file changed
+contract or behavior changed: none; the canonical record separates estate deployment control from reasoning/routine lifecycle, preserves every useful current safety semantic, defines typed record/relation/index families and one installed authorized engine flow, states exact rrflowMX versus rrflowKV behavior, and makes rrflowQL/Arrow/DataFusion a same-stamp analytical reader rather than a writer or control authority
+smallest test command and result: cargo test -p rrd-store --test control_journal --locked — 2 passed before editing and 2 passed after editing
+owning package command and result: cargo test -p rrd-estate --locked — 22 passed before editing; cargo test -p rrd-estate --all-targets --locked — 22 passed after editing; cargo clippy -p rrd-estate --all-targets --locked -- -D warnings — passed
+cross-boundary command and result: cargo test -p rrd-engine --test engine_authority --locked — 3 passed before editing and 3 passed after editing; exact public-contract estate read — 1 passed before and after; exact authenticated HTTP estate read — 1 passed before and after; backup controller effect-gap test — 1 passed before and after; cargo test -p rrd-engine --test workspace_architecture --locked — 16 passed; deterministic inventory reported 752 records; documentation policy reported 88 statuses and 66 classified coordinates; generated-surface parity reported 33 HTTP operations and OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715; workflow, frozen 1.0.0 version, Ruff, Cargo formatting, and diff checks passed
+failure/crash/differential evidence: cargo test -p rrd-server --test local_estate_driver --locked passed 4 real-process tests before editing in 225.98 seconds and after editing in 225.27 seconds, including start/stop controller kills on both sides of effects; backup effect-gap recovery passed; selected MX/KV CAS parity and KV reopen/lost-ack/takeover tests passed. The suite also positively requires two older successful shapes, and current estate control has no complete MX/KV semantic differential, write-amplification, native-index, same-stamp DataFusion, atomic audit/outbox, cross-surface mutation, or clean-install evidence
+not run and reason: full engine/server/client/CLI/workspace test suites, external SDK conformance manifest, every process/filesystem/object failure, ENOSPC, distributed topology, native graph/index/DataFusion resource corpus, Connectome repository checks, and release qualification do not prove a documentation-only KB-05 classification and remain owned by their named gates
+remaining known errors: 20 KB-05 records remain; A-06/A-07 are incomplete; POAM-016 through POAM-019 remain; estate persistence is one copied JSON aggregate behind a public direct-store repository, local controllers bypass canonical invocation, older shapes succeed, the operational authority hierarchy overlaps other owners, and no accepted native graph/index/DataFusion estate flow exists yet
+roadmap checkbox changed: no
+```

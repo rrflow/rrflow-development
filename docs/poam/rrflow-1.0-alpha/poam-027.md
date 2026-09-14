@@ -29,9 +29,13 @@ J-01, J-02
 
 ## Closure evidence
 
-Add one checked-in deterministic change-package validator that binds changed paths, starting
-revision, owner/gate, complete-file review, tests, observability decision, remaining
-failures, and generated inventory to the execution-map journal; run it in candidate CI. On
+Maintain one checked-in deterministic change-package validator that binds changed paths,
+starting revision, owner/gate, complete-file review, tests, observability decision,
+remaining failures, and generated inventory to one linked package journal under
+`docs/evidence/change-journals/`; run it in candidate CI. Derive Git baseline, digest,
+line-count, navigation, and final-path facts mechanically so the author maintains intent,
+risk, failure oracles, and evidence rather than another prose repository mirror. This is an
+effect and evidence boundary, not a schema for exploratory or private AI reasoning. On
 an eligible private-repository plan or equivalent organization control, require pull
 requests/reviews and exact `pipeline / ci-gate`, deny deletion/force pushes, and record the
 repository, ref, rule identity, API evidence, and an attempted bypass. No client hook or
@@ -50,3 +54,12 @@ failure, acceptance, observability, or stop-condition evidence. This does not
 close POAM-027: the validator is not implemented at this planning revision and,
 after implementation, eligible non-bypassable server-side protection remains
 separate evidence.
+
+POAM-027 convergence update (2026-09-14): package journals are now individual
+coordinated evidence records, their parent listings are generated, and the
+execution-map coordinate is a link portal rather than a growing journal/status
+authority. `AGENTS.md` accepts the linked record plus regenerated index as the
+literal journal obligation. ADR-0002 limits closed planning contracts to
+repository effects and claimed evidence. Further mechanical generation of the
+active change envelope and eligible non-bypassable server-side protection
+remain open, so the parent lifecycle status is unchanged.

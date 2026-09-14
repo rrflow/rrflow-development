@@ -29,10 +29,11 @@ release-ready.
 | Understand the unavailable distributed target and disposition of current cluster code | [RRFlow distributed cluster contract](docs/reference/distributed/cluster-contract.md) |
 | Follow writes, persistence, reads, Arrow/DataFusion, and context end to end | [RRFlow engine data flow](docs/architecture/engine-data-flow.md) |
 | Understand why all capabilities remain under one authority | [ADR-0001: single-engine authority](docs/decisions/0001-single-engine-authority.md) |
+| Understand where adaptive AI reasoning ends and governed durable effects begin | [ADR-0002: adaptive reasoning with governed effects](docs/decisions/0002-adaptive-reasoning-governed-effects.md) |
 | See the measurable alpha result | [RRFlow 1.0 alpha objective](docs/objectives/rrflow-1.0-alpha.md) |
 | Execute work in dependency order and inspect accepted evidence | [RRFlow 1.0 release roadmap](docs/roadmap/rrflow-1.0.md) |
 | Inspect verified gaps and remediation ownership | [RRFlow 1.0 alpha POA&M](docs/poam/rrflow-1.0-alpha.md) |
-| Map a gate to exact files, symbols, tests, and stop conditions | [RRFlow 1.0 code execution map](docs/roadmap/rrflow-1.0-execution-map.md) |
+| Assemble a gate's canonical requirements, exact active paths, generated inventory, and linked evidence | [RRFlow 1.0 execution map](docs/roadmap/rrflow-1.0-execution-map.md) |
 | Inspect frozen product-version and change-control rules | [RRFlow version policy](docs/reference/release/version-policy.md) |
 | Understand documentation ownership and future rrflowDB migration | [RRFlow knowledge map](docs/README.md) |
 
@@ -46,6 +47,7 @@ definition; this portal does not reproduce those bodies.
 | Canonical names for RRFlow, RRD, `RrdEngine`, rrflowDB, rrflowKV, rrflowMX, rrflowQL, Arrow/DataFusion, vectors, inference, LFG, and Connectome | [Canonical component terminology](docs/architecture/system-overview.md#canonical-component-terminology) |
 | One project ↔ one estate/rrflowDB ↔ one RRD instance; deployment form, storage profile, endpoint presentation, security, and physical placement remain distinct | [Locked alpha topology](docs/architecture/instance-topology.md#locked-alpha-topology) and [deployment profiles](docs/reference/deployment/modes.md#independent-profile-coordinates) |
 | One semantic, security, transaction, mutation, and context authority | [ADR-0001 decision](docs/decisions/0001-single-engine-authority.md#decision) |
+| Adaptive exploration and model reasoning; closed contracts at durable state, external effect, replay, and evidence boundaries | [ADR-0002 decision](docs/decisions/0002-adaptive-reasoning-governed-effects.md#decision) |
 | No legacy product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
 | Persistent rrflowDB versus volatile rrflowMX | [Persistence and memory boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary) |
 | Temporal graph, scalar, BM25, and vector data under one transaction model | [Native multi-model boundary](docs/architecture/system-overview.md#native-multi-model-boundary) |
@@ -56,7 +58,7 @@ definition; this portal does not reproduce those bodies.
 | Exact semantic write and durable rrflowKV commit sequence | [Write and commit flow](docs/architecture/engine-data-flow.md#write-and-commit-flow) |
 | Hybrid immutable storage and measured conditional zero-copy | [rrflowKV physical target](docs/architecture/engine-data-flow.md#rrflowkv-physical-target) and [conditional zero-copy](docs/architecture/engine-data-flow.md#conditional-zero-copy) |
 | One bounded, deterministic, provider-neutral context operation | [Context assembly contract](docs/architecture/engine-data-flow.md#context-assembly-contract) |
-| Project discovery begins with one deterministic committed tree snapshot | [Project-tree inventory and incremental attunement](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) |
+| Exploratory discovery may be iterative; persisted project models, reproducible mutations, and evidence bind a deterministic project snapshot | [ADR-0002](docs/decisions/0002-adaptive-reasoning-governed-effects.md) and [project-tree inventory](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) |
 | External databases, meshes, providers, and clients remain explicit adapters | [External integrations](docs/architecture/system-overview.md#external-integrations) |
 
 ## Product operation map
@@ -78,7 +80,7 @@ definition; this portal does not reproduce those bodies.
 | Connectome connection, projections, interactions, and conformance | [RRFlow Connectome client contract](docs/reference/client/connectome.md), [client bootstrap boundary](docs/architecture/system-overview.md#client-bootstrap-boundary), and [roadmap H-06/H-07](docs/roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome) |
 | Engine events, triggers, routines, skills, and host-event adapters | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
 | Current rrflowKV bytes and removable format readers | [rrflowKV current physical format](docs/reference/storage/rrflowkv-current-format.md) |
-| Canonical target source tree and dependency direction | [Frozen target source tree](docs/roadmap/rrflow-1.0-execution-map.md#frozen-target-source-tree) |
+| Canonical source placement and generated implementation discovery | [Implementation navigation](docs/roadmap/rrflow-1.0-execution-map.md#frozen-target-source-tree) |
 | Plan, author, instrument, verify, and journal one bounded code change | [Codebase-grounded change-authoring routine](docs/roadmap/rrflow-1.0-execution-map.md#codebase-grounded-change-authoring-routine) |
 | Repository verification sequence | [Repository-wide run checklist](docs/roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist) and [RRFlow CI operations](docs/operations/ci.md) |
 | Repository work instructions | [`AGENTS.md`](AGENTS.md) |
@@ -213,6 +215,7 @@ one repository fallback; the linked record owns the content.
 | Kubernetes deployment adapter | [`rrflow://rrflow-instance/data/reference/deployment/kubernetes-operator`](rrflow://rrflow-instance/data/reference/deployment/kubernetes-operator) | [`docs/reference/deployment/kubernetes-operator.md`](docs/reference/deployment/kubernetes-operator.md) |
 | Distributed cluster contract | [`rrflow://rrflow-instance/data/reference/distributed/cluster-contract`](rrflow://rrflow-instance/data/reference/distributed/cluster-contract) | [`docs/reference/distributed/cluster-contract.md`](docs/reference/distributed/cluster-contract.md) |
 | Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |
+| Adaptive reasoning and governed effects decision | [`rrflow://rrflow-instance/data/decision/0002-adaptive-reasoning-governed-effects`](rrflow://rrflow-instance/data/decision/0002-adaptive-reasoning-governed-effects) | [`docs/decisions/0002-adaptive-reasoning-governed-effects.md`](docs/decisions/0002-adaptive-reasoning-governed-effects.md) |
 | Engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`docs/architecture/engine-data-flow.md`](docs/architecture/engine-data-flow.md) |
 | rrflowKV current physical format | [`rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`](rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format) | [`docs/reference/storage/rrflowkv-current-format.md`](docs/reference/storage/rrflowkv-current-format.md) |
 | Seat identity and memory warps | [`rrflow://rrflow-instance/data/reference/seat-identity`](rrflow://rrflow-instance/data/reference/seat-identity) | [`docs/reference/seat-identity.md`](docs/reference/seat-identity.md) |
@@ -226,7 +229,8 @@ one repository fallback; the linked record owns the content.
 | Alpha objectives | [`rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/objective/rrflow-1.0-alpha) | [`docs/objectives/rrflow-1.0-alpha.md`](docs/objectives/rrflow-1.0-alpha.md) |
 | Release roadmap | [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0) | [`docs/roadmap/rrflow-1.0.md`](docs/roadmap/rrflow-1.0.md) |
 | Alpha POA&M | [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha) | [`docs/poam/rrflow-1.0-alpha.md`](docs/poam/rrflow-1.0-alpha.md) |
-| Code execution map | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`docs/roadmap/rrflow-1.0-execution-map.md`](docs/roadmap/rrflow-1.0-execution-map.md) |
+| Execution navigation portal | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`docs/roadmap/rrflow-1.0-execution-map.md`](docs/roadmap/rrflow-1.0-execution-map.md) |
+| Linked change journals | [`rrflow://rrflow-instance/data/evidence-index/change-journals`](rrflow://rrflow-instance/data/evidence-index/change-journals) | [`docs/evidence/change-journals/`](docs/evidence/change-journals/) |
 
 The [knowledge map](docs/README.md#record-header-and-indexing-pattern) defines
 how these reviewed Markdown owners become deterministic JSON/JSONL import

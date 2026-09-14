@@ -1,0 +1,23 @@
+# Gate A change journals
+
+**Status:** active generated change-journal group index
+**Coordinate:** `rrflow://rrflow-instance/data/evidence-index/change-journals/gate-a`
+**Owner:** discovery of Gate A and knowledge-bootstrap package receipts
+
+The roadmap owns Gate A acceptance. This generated index only discovers its
+linked package evidence.
+
+<!-- rrflow:generated-index:start -->
+- [A-07.0 evidence journal](a-07-0-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-0-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-0-evidence-journal) — active immutable change-journal evidence
+- [A-07.1a evidence journal](a-07-1a-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1a-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1a-evidence-journal) — active immutable change-journal evidence
+- [A-07.1b evidence journal](a-07-1b-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1b-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1b-evidence-journal) — active immutable change-journal evidence
+- [A-07.1c evidence journal](a-07-1c-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1c-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1c-evidence-journal) — active immutable change-journal evidence
+- [A-07.1d evidence journal](a-07-1d-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1d-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1d-evidence-journal) — active immutable change-journal evidence
+- [A-07.1e evidence journal](a-07-1e-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1e-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1e-evidence-journal) — active immutable change-journal evidence
+- [A-07.1f evidence journal](a-07-1f-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1f-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1f-evidence-journal) — active immutable change-journal evidence
+- [a-07.1g-dotnet-sdk-responsibility-boundary](a-07-1g-dotnet-sdk-responsibility-boundary.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1g-dotnet-sdk-responsibility-boundary`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1g-dotnet-sdk-responsibility-boundary) — active immutable change-journal evidence
+- [A-07.1h evidence journal](a-07-1h-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1h-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-1h-evidence-journal) — active immutable change-journal evidence
+- [A-07.2 evidence journal](a-07-2-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-2-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/a-07-2-evidence-journal) — active immutable change-journal evidence
+- [RRFlow 1.0 alpha POA&M warp refraction (A-06)](rrflow-1-0-alpha-poa-m-warp-refraction-a-06.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/rrflow-1-0-alpha-poa-m-warp-refraction-a-06`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/rrflow-1-0-alpha-poa-m-warp-refraction-a-06) — active immutable change-journal evidence
+- [RRFlow 1.0 roadmap warp refraction (A-06)](rrflow-1-0-roadmap-warp-refraction-a-06.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-a/rrflow-1-0-roadmap-warp-refraction-a-06`](rrflow://rrflow-instance/data/evidence/change-journal/gate-a/rrflow-1-0-roadmap-warp-refraction-a-06) — active immutable change-journal evidence
+<!-- rrflow:generated-index:end -->

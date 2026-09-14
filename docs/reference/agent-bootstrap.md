@@ -11,6 +11,11 @@ the product memory into every prompt and it is not a database. The root
 warp points. Installed RRFlow records will replace Markdown as durable project
 memory after the persistence and installation gates pass.
 
+The [adaptive-reasoning decision](../decisions/0002-adaptive-reasoning-governed-effects.md)
+governs this boundary. Bootstrap and attunement make durable project claims and
+external effects reproducible; they do not require an AI to encode exploratory
+reading, context selection, or private reasoning as a workflow.
+
 ## Host boundary
 
 | Host | Checkout behavior | Rule |
@@ -88,7 +93,7 @@ Installation has two explicit modes under one provider-neutral contract:
 | Mode | Required scaffolding behavior | Forbidden shortcut |
 |---|---|---|
 | Fresh project | Resolve a minimal, versioned, bundle-resident project template and specialization profile; preview every RRFlow-owned file and record before apply. | Assuming a language, framework, provider, external database, or generator is present. |
-| Existing project | Preserve project-owned content, commit a deterministic inventory first, and derive inactive integration candidates from evidence in that snapshot. | Executing a detected command, importing credentials, crawling sibling repositories, or treating detection as consent. |
+| Existing project | Preserve project-owned content; permit bounded exploratory inspection for planning; before persisting project knowledge or applying integration, commit the relevant deterministic inventory and derive inactive candidates from that evidence. | Executing a detected command, importing credentials, crawling sibling repositories, treating detection as consent, or presenting provisional inspection as snapshot-complete evidence. |
 
 An operator may configure a project-owned or externally supplied code/schema
 generator, build system, test or evaluation harness, CI/deployment system,
@@ -181,16 +186,21 @@ trust, verifier, path-race, replay, crash, and secret-accounting contract is
 owned by the
 [security authority](security/authority.md#installation-trust-bootstrap).
 
-Inventory is a committed data boundary, not an informal directory listing.
+Inventory is a committed data boundary, not an informal directory listing or
+permission to inspect a file.
 The exact record contract, Git/non-Git ignore behavior, symlink and secret
 safety, deterministic tree digest, incremental change set, and acceptance
 corpus are owned by
 [Project-tree inventory and incremental attunement](../architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement).
-No parser, indexer, model, routine, skill, watcher, or provider adapter may run
-ahead of that committed snapshot. Filesystem notifications can request another
-bounded inventory pass only after Gate I exists and they enter as authenticated
-engine events; they never mutate project knowledge directly. Before then,
-installation and explicit refresh invoke the same inventory operation directly.
+No parser, indexer, model, routine, skill, watcher, or provider adapter may
+persist project claims, activate derived state, invoke an external capability,
+or claim complete evidence ahead of the snapshot required by that guarantee.
+Exploratory readers and models may inspect provisional material and retain its
+uncertainty without committing it as project truth. Filesystem notifications
+can request another bounded inventory pass only after Gate I exists and they
+enter as authenticated engine events; they never mutate project knowledge
+directly. Before then, installation and explicit refresh invoke the same
+inventory operation directly.
 
 For a substantial existing project, 30–45 minutes is an installation-planning
 estimate, not a completion guarantee. Preview must derive its estimate from
@@ -220,25 +230,36 @@ The engine implementation must preserve these rules:
 
 ## Project-operation preflight
 
-The first engine step for development or maintenance work is not a model
-prompt and not a host shell walk. The caller submits intent; `RrdEngine`
-resolves the latest complete authorized project-tree snapshot, binds its digest
-to the operation `ReadStamp`, and retrieves only the relevant tree, ownership,
-symbol, dependency, policy, and evidence neighborhoods. If no current complete
-snapshot exists, the operation returns `inventory-required` and may propose the
-same bounded inventory capability used during installation.
+Development and maintenance may begin with a model prompt, a bounded host read,
+or another authorized exploratory capability. Those observations are
+provisional: they may guide questions and planning but do not become canonical
+project knowledge or mutation evidence merely because a model saw them.
+
+When the caller asks RRFlow to persist a project claim, apply or verify a source
+change, resume durable work, or return snapshot-complete evidence, `RrdEngine`
+resolves or captures the relevant authorized project-tree snapshot, binds its
+digest to the operation `ReadStamp`, and retrieves the needed tree, ownership,
+symbol, dependency, policy, and evidence neighborhoods. If the required
+coverage is absent or stale, that effecting operation returns
+`inventory-required` and may propose the bounded inventory capability used
+during installation. Unrelated exploration remains available.
 
 Every proposed source change retains the input snapshot and affected entry
 digests. After an authorized file activity applies the previewed change, RRFlow
-re-inventories and commits the resulting change set before later reasoning or
-index work proceeds. A provider's open-file list, editor callback, cached tree,
-or model recollection cannot satisfy this precondition.
+re-inventories and commits the resulting change set before later reasoning
+products or index state are persisted or claimed as current. A provider's
+open-file list, editor callback, cached tree, or model recollection cannot
+satisfy that durable precondition, though each may remain useful provisional
+context.
 
 ## Generic routine package
 
-A routine is a versioned, resumable graph of authorized engine operations. A
-generic package is eligible for every estate but inactive until attunement
-proves its inputs and policy allows activation. Each package declares:
+A routine is optional durable orchestration: a versioned, resumable graph of
+authorized engine operations for repeatable, long-running, or side-effecting
+work. It is not a representation of every cognitive step and does not govern
+unpersisted model reasoning. A generic package is eligible for every estate but
+inactive until attunement proves its effecting inputs and policy allows
+activation. Each package declares:
 
 - canonical identity, revision, content digest, input/output schemas, and
   minimum engine capabilities;

@@ -30,17 +30,28 @@ Public protocol truth is resolved in this order:
    vocabulary and local bounds.
 2. `endpoint_catalogue()` defines the HTTP operations and WebSocket upgrade
    descriptors that are public now.
-3. `openapi_document()` deterministically projects the HTTP catalogue and its
-   request/response wire types into OpenAPI 3.1.
-4. Checked-in golden and conformance corpora freeze selected byte shapes and
+3. `openapi_document()` is the current deterministic HTTP/OpenAPI projection.
+4. H-04 must converge the fragmented generators behind one deterministic
+   surface-compiler invocation that projects the executable sources into
+   internal dispatch metadata, OpenAPI, Rust-client bindings, language SDK
+   operations and models, reference coverage, and shared conformance cases.
+5. Checked-in golden and conformance corpora freeze selected byte shapes and
    cross-client scenarios; they are samples, not another operation registry.
-5. This reference explains those executable sources and records gaps. It
+6. This reference explains those executable sources and records gaps. It
    cannot add an operation or mark a capability available.
 
 A public Rust type is therefore not automatically an HTTP operation. Likewise,
 an OpenAPI operation proves only that a transport shape is generated; the
 owning engine gate must still prove its authorization, semantics, physical
 access path, resource bounds, and persistence behavior.
+
+No SDK, router, adapter, test harness, or documentation table may maintain a
+second successful operation registry. Language-specific code owns transport,
+resource, cancellation, packaging, and idiomatic API behavior only. Generated
+output is a replaceable projection and never becomes semantic or lifecycle
+authority. The
+[generation-boundary design](../../roadmap/rrflow-1.0-execution/generated-surfaces.md)
+defines the common maintenance flow.
 
 ## Protocol identity and version domains
 

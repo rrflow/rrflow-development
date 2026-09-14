@@ -374,8 +374,10 @@ as an outward installed feature.
    runtime, differential, crash, security, resource, surface, and clean-install
    corpora, and account for every runtime/artifact in the signed distribution.
 
-The exact files and commands are maintained in the
-[code execution map](../../roadmap/rrflow-1.0-execution-map.md).
+The roadmap owns this dependency order. Exact paths and commands for the active
+package live in the planning-only change record and its linked journal; the
+[execution portal](../../roadmap/rrflow-1.0-execution-map.md) routes to those
+records and the generated file inventory.
 
 ## External design constraints
 

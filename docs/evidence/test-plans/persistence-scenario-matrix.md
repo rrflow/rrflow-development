@@ -8,8 +8,9 @@ This matrix defines how RRFlow proves one persistent AI governance, reasoning,
 and recall engine. It does not treat compilation, a type, a generated artifact,
 or a high-level reopen result as proof of the intended physical access path.
 The [release roadmap](../../roadmap/rrflow-1.0.md) owns gate order and completion;
-the [execution map](../../roadmap/rrflow-1.0-execution-map.md) owns file-level
-implementation instructions.
+the [execution portal](../../roadmap/rrflow-1.0-execution-map.md) links the
+active exact-path boundary, generated implementation inventory, and package
+journals without duplicating those requirements.
 
 ## Evidence vocabulary
 

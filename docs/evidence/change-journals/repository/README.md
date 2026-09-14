@@ -1,0 +1,17 @@
+# Repository engineering change journals
+
+**Status:** active generated change-journal group index
+**Coordinate:** `rrflow://rrflow-instance/data/evidence-index/change-journals/repository`
+**Owner:** discovery of repository policy and documentation package receipts
+
+These linked records cover repository engineering rather than runtime gate
+completion. Their listing is generated from record metadata.
+
+<!-- rrflow:generated-index:start -->
+- [Critical engine audit and active change-package planning journal](critical-engine-audit-and-active-change-package-planning-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/critical-engine-audit-and-active-change-package-planning-journal`](rrflow://rrflow-instance/data/evidence/change-journal/repository/critical-engine-audit-and-active-change-package-planning-journal) — active immutable change-journal evidence
+- [Development repository separation journal](development-repository-separation-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/development-repository-separation-journal`](rrflow://rrflow-instance/data/evidence/change-journal/repository/development-repository-separation-journal) — active immutable change-journal evidence
+- [POAM-027a change-plan enforcement implementation journal](poam-027a-change-plan-enforcement-implementation-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/poam-027a-change-plan-enforcement-implementation-journal`](rrflow://rrflow-instance/data/evidence/change-journal/repository/poam-027a-change-plan-enforcement-implementation-journal) — active immutable change-journal evidence
+- [POAM-027b canonical package-identity correction journal](poam-027b-canonical-package-identity-correction-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/poam-027b-canonical-package-identity-correction-journal`](rrflow://rrflow-instance/data/evidence/change-journal/repository/poam-027b-canonical-package-identity-correction-journal) — active immutable change-journal evidence
+- [POAM-027c linked execution records and generated navigation](poam-027c-linked-execution-records-and-generated-navigation.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/poam-027c-linked-execution-records-and-generated-navigation`](rrflow://rrflow-instance/data/evidence/change-journal/repository/poam-027c-linked-execution-records-and-generated-navigation) — active immutable change-journal evidence
+- [Repository change-authoring routine evidence journal](repository-change-authoring-routine-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/repository/repository-change-authoring-routine-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/repository/repository-change-authoring-routine-evidence-journal) — active immutable change-journal evidence
+<!-- rrflow:generated-index:end -->

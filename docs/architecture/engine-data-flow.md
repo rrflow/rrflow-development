@@ -12,6 +12,13 @@ master component and security-boundary map, the
 [POA&M](../poam/rrflow-1.0-alpha.md) tracks observed gaps. This record owns the
 detailed end-to-end flow only.
 
+The [adaptive-reasoning decision](../decisions/0002-adaptive-reasoning-governed-effects.md)
+applies throughout this flow. Reading, searching, comparing, choosing
+provisional context, and forming hypotheses may be iterative and incompletely
+grounded. The closed paths below begin when RRFlow promises a durable mutation,
+accepted external effect, resumable state, deterministic replay, or evidence
+claim. They govern observable effects, not a model's private reasoning.
+
 ## System boundary
 
 RRFlow is one hybrid transactional and analytical reasoning-data engine. The
@@ -416,15 +423,19 @@ physical topology:
 - one scope and query;
 - one explicit nonzero valid-time coordinate;
 - optional canonical record anchors; and
+- optional versioned semantic constraints, preferences, and capability
+  extensions understood by the installed contract; and
 - explicit graph-depth, returned-item, output-byte, and scanned-change
   budgets.
 
-The caller cannot select record fields, collection IDs, vector names,
-embedding providers, indexes, or graph relations. The engine discovers visible
-text, claims, compatible vector sources, and graph roots from the captured
-snapshot and catalogue. Automatic semantic retrieval is eligible only for an
-installed deterministic local text-embedding backend whose execution denies
-network access.
+The caller may name semantic subjects, fields, relations, collections, or
+representations when the public capability supports that intent. It cannot
+command rrflowKV keys, a physical index, a DataFusion node, an embedding
+provider, or another execution shortcut. `RrdEngine` validates the semantic
+request against the captured catalogue and selects eligible text, claims,
+vector sources, graph roots, models, and physical paths under policy and
+budgets. An unknown extension is rejected or reported unsupported at the
+durable boundary; it is never coerced into a different effect.
 
 The closed request contract enforces these hard ceilings:
 
@@ -905,11 +916,18 @@ reduction percentage is policy input, never a hardcoded deletion target.
 
 ## Project-tree inventory and incremental attunement
 
-Attunement begins with a deterministic project-tree snapshot. Parsing,
-embeddings, indexes, graph relations, skills, routines, and model context are
-not allowed to guess what a project contains or race an uncommitted filesystem
-walk. The snapshot is the durable input boundary between an external project
-workspace and RRFlow's governed knowledge.
+Durable attunement begins with a deterministic project-tree snapshot. The
+snapshot is the input boundary for claims that RRFlow persists about a project
+and for reproducible parse, embedding, index, graph, routine, or evidence work.
+Those durable phases cannot guess what a project contained or combine bytes
+from a changing filesystem walk.
+
+This requirement does not gate exploratory inspection. An AI or authorized
+tool may read available project material, search live files, and form a
+provisional plan before a complete snapshot exists. Before RRFlow persists the
+result as project knowledge, applies a source mutation, resumes it, or claims
+snapshot-complete evidence, `RrdEngine` captures or refreshes the affected
+inventory boundary and rejects stale, escaped, or conflicting inputs.
 
 ```text
 rrflow install preview
@@ -1014,7 +1032,9 @@ inventory diff. An unchanged run still commits an explicit no-work checkpoint
 with zero content reads, so resume and verification never infer completion
 from silence.
 
-Each later phase consumes an exact committed snapshot/change-set digest:
+Each durable downstream phase consumes an exact committed snapshot/change-set
+digest. Exploratory reasoning may use provisional material but cannot present
+it as this evidence:
 
 - parse incrementally reuses prior syntax trees only when source digest,
   grammar revision, and parser revision match;
@@ -1025,23 +1045,26 @@ Each later phase consumes an exact committed snapshot/change-set digest:
 - ground and verify prove source coordinates, projection cursors, package
   digest, restart readback, and every skipped/failed phase.
 
-Every project-development operation has the same precondition. Before an AI or
-human can plan a source mutation, `RrdEngine` resolves the latest complete
-authorized project-tree snapshot at the operation's `ReadStamp`. A missing,
-failed, truncated, policy-stale, or explicitly out-of-date snapshot returns a
-typed `inventory-required` precondition or proposes the inventory operation; it
-does not fall back to an ad hoc `find`, editor file list, model guess, or
-provider cache. The context planner queries bounded tree records and
-`contains` relations plus later grounded semantic edges. It never passes the
-entire project tree just because the tree exists.
+Every durable project-development operation has the same precondition. Before
+`RrdEngine` accepts a source-mutation proposal, persists derived project state,
+or claims a reproducible plan, it resolves the relevant complete authorized
+project-tree snapshot at the operation's `ReadStamp`. A missing, failed,
+truncated, policy-stale, or explicitly out-of-date snapshot returns a typed
+`inventory-required` precondition for that effect or claim, or proposes the
+inventory operation. Live `find` output, an editor file list, a model
+observation, or a provider cache may inform provisional exploration but cannot
+satisfy the durable precondition. The governed context planner queries bounded
+tree records and `contains` relations plus later grounded semantic edges; it
+never passes the entire project tree merely because the tree exists.
 
 A source-mutation proposal binds its input snapshot and affected entry
 digests. The authorized filesystem activity verifies those preconditions,
 applies only the previewed changes, and then requests a new authoritative
-inventory pass. Downstream reasoning waits for the resulting committed change
-set. This makes “inspect the file tree first” an engine-enforced development
-rule while still detecting a file changed outside RRFlow between planning and
-apply.
+inventory pass. Downstream durable knowledge and effects bind the resulting
+committed change set; explicitly provisional exploration may continue without
+claiming it. This makes “rebind the affected source before an effect” an
+engine-enforced development rule while still detecting a file changed outside
+RRFlow between planning and apply.
 
 The first acceptance corpus runs against this repository and covers stable
 digests under different traversal schedules; add/edit/remove/rename; Git ignore
@@ -1051,10 +1074,10 @@ files; secret candidates; generated/vendor/cache exclusions; cancellation and
 restart; resource ceilings; close/reopen; and an unchanged rerun with zero
 content reads. It must prove parse cannot start before the snapshot and
 inventory checkpoint share a successful commit receipt. Gate I's first
-project-development routine must additionally prove that no current complete
-snapshot returns `inventory-required`, a changed-since-plan file fails its
-precondition, and no model or adapter can authorize a path outside the
-committed tree/root policy.
+durable project-development routine must additionally prove that no current
+complete snapshot returns `inventory-required` for the dependent effect or
+claim, a changed-since-plan file fails its precondition, and no model or adapter
+can authorize a path outside the committed tree/root policy.
 
 ## Automation, routine, and skill flow
 

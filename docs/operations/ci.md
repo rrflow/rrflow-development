@@ -7,7 +7,7 @@
 This record describes checked-in automation and the operator steps around it.
 The [release roadmap](../roadmap/rrflow-1.0.md) alone owns gate status, the
 [repository run checklist](../roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist)
-owns package-level widening order, and the [POA&M](../poam/rrflow-1.0-alpha.md)
+defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md)
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
@@ -49,6 +49,13 @@ package and become current inventory records when created. Regenerate the
 inventory with `python3 scripts/ci/build_execution_inventory.py` after an
 accepted path or content change.
 
+Marked documentation indexes are derived from their immediate coordinated
+children. Run `python3 scripts/knowledge/render_navigation.py` after adding,
+moving, or removing a child record; `--check` is non-mutating and fails on
+drift. The same tool derives the coordinate/link relationship graph used for
+future knowledge import and retrieval. Generated listings and edges are
+navigation, not documentation or lifecycle authority.
+
 The same partition enforces the documentation bootstrap package. The
 documentation policy builds and validates two in-memory packages through the
 single exporter, while the workflow exports twice at the checked-out revision,
@@ -83,6 +90,12 @@ trace/resource/debug decisions, and stop conditions. The subsequent package
 may change only its declared implementation and evidence paths; changing the
 plan itself requires stopping and making another planning-only commit.
 
+This machine record begins at the repository-effect boundary. It is not a
+workflow for exploratory reading or private AI reasoning and must not contain
+hidden chain-of-thought. Repository tooling should derive baseline, digest,
+line-count, generated-link, and final-diff facts; authors supply the semantic
+intent, risk, evidence, and stop decisions.
+
 Run `python3 scripts/ci/check_change_plan.py` as the local presubmit. It
 authenticates the planning commit and every complete-file review against Git,
 then reconciles paths touched by every post-plan commit—including paths later
@@ -108,13 +121,16 @@ client Git hooks are not distributed by clone, can be skipped, and would create
 the exact provider-owned lifecycle behavior prohibited by `AGENTS.md`.
 
 The documentation policy machine-checks the owner chain, required
-change-authoring procedure/evidence fields, active-record classification,
-knowledge-package determinism, and local links. The execution inventory checks
-every current/generated/registered-planned path. The change-plan validator now
-proves that the candidate checkout's complete post-plan path set is covered by
-one earlier machine-readable package. These checked-in controls remain
-bypassable outside candidate CI; POAM-027 stays open for eligible server-side
-review/check/force-push/deletion enforcement.
+change-authoring procedure/evidence fields, generated-index freshness,
+active-record classification, knowledge-package determinism, and local links.
+The execution inventory checks every current/generated/registered-planned
+path. The change-plan validator proves that the candidate checkout's complete
+post-plan path set is covered by one earlier machine-readable package. Each
+package records its result in a linked record under
+`docs/evidence/change-journals/`; the execution portal contains no journal
+bodies. These checked-in controls remain bypassable outside candidate CI;
+POAM-027 stays open for eligible server-side review/check/force-push/deletion
+enforcement.
 
 ## Repository workflow policy
 
@@ -280,7 +296,7 @@ with a local hook, make the repository public, or push to the official
 promotion repository. Enable an eligible private-repository plan or equivalent
 organization control, then record the exact repository, rule/protection
 identity, required check name, protected ref, API response, and verification
-attempt in this record and the package journal.
+attempt in this record and one linked package journal.
 
 The repository CI-policy check rejects candidate trigger duplication, unsafe
 fork routing, unpinned actions, service or runner images, persisted checkout

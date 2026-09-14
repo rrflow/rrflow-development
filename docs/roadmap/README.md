@@ -15,10 +15,13 @@ The canonical RRFlow 1.0 roadmap's links-only
 [chapter index](rrflow-1.0/) provides direct warp points to its checklist,
 dependency spine, gate requirements, and accepted evidence.
 
-The canonical roadmap is accompanied by a subordinate
-[code execution map](rrflow-1.0-execution-map.md) and its generated
-[whole-repository file plan](rrflow-1.0-file-plan.jsonl). These records map
-files, symbols, tests, and stop conditions; they cannot change checklist status.
+The canonical roadmap is accompanied by a subordinate link-only
+[execution portal](rrflow-1.0-execution-map.md), its generated
+[execution-record index](rrflow-1.0-execution/), the generated
+[whole-repository file plan](rrflow-1.0-file-plan.jsonl), and linked
+[change journals](../evidence/change-journals/). The roadmap owns requirements
+and completion; the active change record owns exact in-progress paths; generated
+views and journals provide discovery and evidence without changing status.
 The completed C-06j work is recorded by the
 [scan-resistant cache integration plan](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md).
 It specifies a configurable exact-byte production cache and a real persisted
@@ -47,7 +50,7 @@ status.
 
 | Supporting record | Durable warp | Checkout record | Authority |
 |---|---|---|---|
-| RRFlow 1.0 code execution map | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | file/symbol work packages only; roadmap checkboxes remain canonical |
+| RRFlow 1.0 execution navigation | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | stable links to canonical requirements, active scope, generated inventory, procedure, and evidence; roadmap checkboxes remain canonical |
 | C-06j rrflowKV scan-resistant cache plan | [`rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache`](rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache) | [`c06j-rrflowkv-scan-resistant-cache-engineering-plan.md`](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md) | completed exact-byte scope-aware cache integration and real mixed-family proof; canonical C-06 accepted |
 | C-06i rrflowKV adaptive page-compression plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression) | [`c06i-rrflowkv-adaptive-page-compression-engineering-plan.md`](c06i-rrflowkv-adaptive-page-compression-engineering-plan.md) | completed segment-v6 adaptive-LZ4 production slice and fixed-machine integration evidence contributing to accepted C-06 |
 | C-06i rrflowKV persisted-filter integration plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration) | [`c06i-rrflowkv-persisted-filter-integration-engineering-plan.md`](c06i-rrflowkv-persisted-filter-integration-engineering-plan.md) | completed segment-v5 persisted-filter production slice and evidence |

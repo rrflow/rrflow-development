@@ -59,6 +59,27 @@ damaging project-owned state. Generator output must re-enter the authorized
 project-inventory and mutation flow, and harness results are evidence rather
 than lifecycle state.
 
+RRFlow uses adaptive reasoning with governed durable effects. Exploratory
+reading, search, context selection, hypothesis formation, and private model
+reasoning do not require a closed workflow or a complete committed project
+snapshot. A closed contract begins when work persists canonical state, mutates
+project-owned state, invokes an external effect, resumes or replays durable
+work, or claims reproducible evidence. At that boundary, `RrdEngine` binds the
+relevant source/read identity, authorization, budgets, validation, and receipt.
+Do not build a schema of thought. Use progressively typed, versioned semantic
+capabilities and keep unfamiliar ideas representable without allowing unknown
+effects. Follow
+`docs/decisions/0002-adaptive-reasoning-governed-effects.md`.
+
+The framework must generate mechanical projections from one owner. Executable
+operation and capability catalogues drive dispatch, OpenAPI, internal client
+bindings, language SDK operations/models, reference projections, and shared
+conformance. Coordinated documentation and its ordinary links drive indexes,
+warp discovery, and relationship projections. Git and the active change record
+drive file/digest inventory. Generated output is replaceable discovery or
+acceleration; it cannot become another semantic, planning, lifecycle, or status
+authority.
+
 Upstream and experimental Rust implementations are reference inputs, not
 architecture. Before adapting code from SurrealDB, Qdrant, Lance, Fjall, or
 another implementation, map the useful behavior, algorithm, failure
@@ -72,14 +93,18 @@ Every code-bearing or structural package must execute the
 Complete its auditable change checklist in the package journal; an unrecorded
 private or chat checklist is not evidence. This is a repository engineering
 procedure, not an RRFlow runtime routine, hook, trigger, skill, or lifecycle.
+It governs repository effects and claimed evidence, not exploratory reasoning
+or private analysis.
 Before editing implementation, commit the package's machine-readable
 `docs/roadmap/rrflow-1.0-active-change.json` as a separate planning-only
 change. It must bind the exact baseline, full-file digests and line coverage,
 symbols, edit order, research, failure oracle, acceptance commands,
 trace/resource/debug decisions, and stop conditions. After the planning commit
 exists, `python3 scripts/ci/check_change_plan.py` must accept every changed
-path. Do not install a Git, editor, provider, prompt, or session hook as a
-substitute for this repository-owned presubmit and candidate-CI gate.
+path. Derive mechanical baseline and navigation fields with repository tooling
+where available; authors own intent, risk, evidence, and stop decisions rather
+than a duplicate prose inventory. This repository-owned presubmit and candidate-CI gate
+cannot be replaced by a Git, editor, provider, prompt, or session hook.
 
 For project work:
 
@@ -101,29 +126,36 @@ For project work:
    smallest test oracle, trace/debugging decision, research decision, and stop
    conditions. Let intermediate errors expose boundary mismatches, but never
    hide them or treat compilation as completion.
-7. Journal every bounded package in
-   `docs/roadmap/rrflow-1.0-execution-map.md` using its evidence-record
-   template before commit. Record the starting revision, complete files read,
-   changed paths and behavior, exact commands and results, surfaced failures,
-   checks not run, remaining errors, and any roadmap-status change. Add a
-   verified new deficiency to the POA&M; do not use chat or a Git commit alone
-   as the work record.
+7. Create one linked journal record for every bounded package under
+   `docs/evidence/change-journals/` using the
+   [evidence-record template](docs/roadmap/rrflow-1.0-execution-map.md#evidence-record-template),
+   then regenerate its nearest index with
+   `python3 scripts/knowledge/render_navigation.py` before commit. The linked
+   record—not another journal body appended to the execution map—satisfies this
+   rule. Record the starting revision, complete files read, changed paths and
+   behavior, exact commands and results, surfaced failures, checks not run,
+   remaining errors, and any roadmap-status change. Add a verified new
+   deficiency to the POA&M; do not use chat or a Git commit alone as the work
+   record.
 8. Verify with the smallest relevant test first, then the owning package suite.
 9. Report what actually passed, what failed, and what was not run.
 10. Treat existing types, files, compilation, and mocks as implementation
    inventory, not proof. Update objective, roadmap, or POA&M status only with
    the acceptance evidence named by the owning record.
-11. Before deleting, moving, merging, or rewriting implementation, update the
-   implementation-requirements traceability in
-   `docs/roadmap/rrflow-1.0-execution-map.md`. Map the current behavior, source
-   modules, characterization tests, canonical destination, owning gate, and
-   replacement evidence. Git ancestry, merge status, a path rename, and a
-   successful compile are not consolidation proof.
+11. Before deleting, moving, merging, or rewriting implementation, follow the
+   [implementation traceability procedure](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability).
+   Put the package-specific map in the planning-only active change record and
+   its result in the linked journal: current behavior, source modules,
+   characterization tests, canonical destination, owning gate, and replacement
+   evidence. Do not grow a global prose implementation audit. Git ancestry,
+   merge status, a path rename, and a successful compile are not consolidation
+   proof.
 12. RRFlow 1.0 has one current pre-release implementation. Carry reusable
    behavior and tests into their canonical boundary, then remove conflicting
    paths directly. Do not create a parallel fallback, migration, or
    historical-code lane to avoid completing that convergence.
 
-RRFlow has no editor- or provider-owned automatic hooks. Recall, reasoning
-lifecycle, and mutation authorization are explicit capabilities composed
-through `rrd-engine`; clients must not create a parallel lifecycle authority.
+RRFlow has no editor- or provider-owned automatic hooks. Durable recall,
+routine state, external effects, and mutation authorization are explicit
+capabilities composed through `rrd-engine`; clients must not create a parallel
+lifecycle authority. Exploratory reasoning remains adaptive under ADR-0002.

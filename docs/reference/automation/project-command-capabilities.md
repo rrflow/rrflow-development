@@ -299,8 +299,10 @@ trace, local-process, or evaluation tests cannot close D-06 or Gate I.
 
 ## Planned implementation and evidence
 
-The [code execution map](../../roadmap/rrflow-1.0-execution-map.md) owns exact
-files and order. The required dependency sequence is:
+The roadmap owns the required dependency sequence below. Exact files for an
+active package belong to its planning-only change record and linked journal;
+the [execution portal](../../roadmap/rrflow-1.0-execution-map.md) supplies
+generated discovery without becoming another order authority:
 
 1. A-07 freezes capability/activity terminology, pure ports, causal links, and
    the disposition of every current direct process caller.

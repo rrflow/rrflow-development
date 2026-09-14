@@ -88,6 +88,10 @@ external/trimmed/AOT consumers, and a supported platform matrix. The shared live
 bypasses installation through direct rrflowKV/security/estate fixture setup, and its domain
 labels overstate CRUD, backup/restore, vector, live-feed, error, retry, cancellation, and
 version coverage. Generated-surface parity proves only method/path/auth/mutation metadata.
+The six language reference records also repeat catalogue coverage and common
+client requirements by hand instead of deriving shared operation, model,
+reference, and conformance coverage from the executable contract and retaining
+only language-specific runtime and packaging deltas.
 The separate Connectome repository at `38f68ce7adda9d03501f3591165f0e14996899ec` passes
 TypeScript/Biome/identity checks, a production build, four focused native RRD tests, and two
 Chromium smoke tests, but it handwrites a partial RRD client, has no network TLS or
@@ -109,7 +113,11 @@ A-07, B-04, B-05, D-01, H-04 through H-07, J-01 through J-05
 
 ## Closure evidence
 
-Every supported SDK binds every catalogue descriptor exactly once; complete generated
+One deterministic surface compiler projects the executable wire types and
+operation/capability catalogue into internal dispatch metadata, OpenAPI, Rust
+and language SDK operations/models, shared reference coverage, and conformance
+cases with byte-identical clean regeneration and no handwritten duplicate
+registry. Every supported SDK binds every catalogue descriptor exactly once; complete generated
 runtime request/response/status/media/identity validation, redacted opaque sessions,
 semantic retry/uncertainty, correlated server cancellation, bounded multiplexed frames, W3C
 propagation, authenticated endpoint rotation, and adversarial resource/error tests pass.
@@ -149,3 +157,10 @@ catalogue-derived GraphQL query parsing and lowering into the same
 resolver, storage call, or second executor. POAM-011 remains `Sequenced`
 because H-04 still owns authenticated outward GraphQL carriage and the full
 cross-surface real-process corpus.
+
+POAM-011 convergence update (2026-09-14): ADR-0002 and the generated-surface
+design now establish the single-source compiler boundary, and the SDK portal's
+language listing is generated from record metadata. This changes documentation
+and maintenance direction only. The common API/SDK compiler, complete models,
+runtime behavior, packaging, and real-process corpus remain open under H-04,
+so the parent lifecycle status is unchanged.

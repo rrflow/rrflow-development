@@ -7,7 +7,6 @@ import hashlib
 import importlib.util
 import re
 import sys
-from collections import Counter
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -20,11 +19,23 @@ if KNOWLEDGE_EXPORT_SPEC is None or KNOWLEDGE_EXPORT_SPEC.loader is None:
     raise RuntimeError(f"cannot load knowledge exporter from {KNOWLEDGE_EXPORT_PATH}")
 KNOWLEDGE_EXPORT = importlib.util.module_from_spec(KNOWLEDGE_EXPORT_SPEC)
 KNOWLEDGE_EXPORT_SPEC.loader.exec_module(KNOWLEDGE_EXPORT)
+NAVIGATION_PATH = ROOT / "scripts" / "knowledge" / "render_navigation.py"
+NAVIGATION_SPEC = importlib.util.spec_from_file_location(
+    "rrflow_navigation", NAVIGATION_PATH
+)
+if NAVIGATION_SPEC is None or NAVIGATION_SPEC.loader is None:
+    raise RuntimeError(f"cannot load navigation renderer from {NAVIGATION_PATH}")
+NAVIGATION = importlib.util.module_from_spec(NAVIGATION_SPEC)
+NAVIGATION_SPEC.loader.exec_module(NAVIGATION)
 README = ROOT / "README.md"
 AGENTS = ROOT / "AGENTS.md"
 DOCS_INDEX = ROOT / "docs" / "README.md"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 EXECUTION_MAP = ROOT / "docs" / "roadmap" / "rrflow-1.0-execution-map.md"
+CHANGE_AUTHORING = (
+    ROOT / "docs" / "roadmap" / "rrflow-1.0-execution" / "change-authoring.md"
+)
+CHANGE_JOURNALS = ROOT / "docs" / "evidence" / "change-journals"
 EXECUTION_FILE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
 ACTIVE_CHANGE_PLAN = ROOT / "docs" / "roadmap" / "rrflow-1.0-active-change.json"
 OBJECTIVE = ROOT / "docs" / "objectives" / "rrflow-1.0-alpha.md"
@@ -35,6 +46,9 @@ SYSTEM_OVERVIEW = ROOT / "docs" / "architecture" / "system-overview.md"
 INSTANCE_TOPOLOGY = ROOT / "docs" / "architecture" / "instance-topology.md"
 ENGINE_DATA_FLOW = ROOT / "docs" / "architecture" / "engine-data-flow.md"
 SINGLE_ENGINE_DECISION = ROOT / "docs" / "decisions" / "0001-single-engine-authority.md"
+ADAPTIVE_REASONING_DECISION = (
+    ROOT / "docs" / "decisions" / "0002-adaptive-reasoning-governed-effects.md"
+)
 SYSTEM_CONVERGENCE_RESEARCH = (
     ROOT / "docs" / "research" / "rrflow-system-convergence-architecture-research.md"
 )
@@ -62,8 +76,15 @@ MARKDOWN_HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$")
 URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 RRFLOW_COORDINATE = re.compile(r"^rrflow://rrflow-instance/data/[a-z0-9][a-z0-9./-]*$")
 CANONICAL_DIRECTORIES = tuple(sorted(KNOWLEDGE_EXPORT.CLASSIFICATIONS))
-C06_JOURNAL_HEADING = re.compile(r"(?m)^#### (C-06[a-z])\b")
-C06_PACKAGE_ID = re.compile(r"\bC-06[a-z]\b")
+LEGACY_JOURNAL_DIGEST = re.compile(
+    r"(?m)^\*\*Legacy payload SHA-256:\*\* `([0-9a-f]{64})`$"
+)
+LEGACY_JOURNAL_SOURCE = re.compile(r"(?m)^\*\*Legacy source:\*\* `([^`]+)`$")
+JOURNAL_PAYLOAD = re.compile(r"(?ms)^```text\n(.*?)^```$")
+LEGACY_EXECUTION_SOURCE = re.compile(
+    r"^docs/roadmap/rrflow-1\.0-execution-map\.md@"
+    r"b7b061900b67d535ffec2710e6e4c30815d0f216#L[1-9][0-9]*$"
+)
 
 
 def header_field(source: str, name: str) -> str | None:
@@ -158,68 +179,50 @@ def has_exact_heading(source: str, heading: str) -> bool:
     return re.search(rf"(?m)^{re.escape(heading)}\s*$", source) is not None
 
 
-def c06_package_identity_failures(source: str) -> list[str]:
-    """Keep completed C-06 journal IDs distinct from forward work packages."""
+def linked_journal_integrity_failures() -> list[str]:
+    """Keep refracted legacy receipts complete, immutable, and addressable."""
     failures: list[str] = []
-    journal_ids = C06_JOURNAL_HEADING.findall(source)
-    journal_counts = Counter(journal_ids)
-    duplicate_journals = sorted(
-        package_id for package_id, count in journal_counts.items() if count > 1
+    legacy_sources: dict[str, Path] = {}
+    legacy_count = 0
+    journal_files = sorted(
+        path for path in CHANGE_JOURNALS.rglob("*.md") if path.name != "README.md"
     )
-    if duplicate_journals:
-        failures.append(
-            f"the execution map duplicates C-06 evidence journals: {duplicate_journals}"
-        )
 
-    sequence_marker = "The executable dependency sequence below is fixed"
-    sequence_start = source.find(sequence_marker)
-    sequence_end = source.find("### Mandatory direct convergence", sequence_start)
-    if sequence_start < 0 or sequence_end < 0:
-        failures.append("the execution map lacks a bounded critical-path sequence")
-        return failures
+    for path in journal_files:
+        source = path.read_text(encoding="utf-8")
+        digests = LEGACY_JOURNAL_DIGEST.findall(source)
+        origins = LEGACY_JOURNAL_SOURCE.findall(source)
+        if not digests and not origins:
+            continue
+        relative = path.relative_to(ROOT)
+        legacy_count += 1
+        payloads = JOURNAL_PAYLOAD.findall(source)
+        if len(digests) != 1 or len(origins) != 1 or len(payloads) != 1:
+            failures.append(
+                f"{relative}: legacy journal requires one source, digest, and text payload"
+            )
+            continue
+        actual_digest = hashlib.sha256(payloads[0].encode("utf-8")).hexdigest()
+        if actual_digest != digests[0]:
+            failures.append(
+                f"{relative}: legacy journal payload changed without a matching digest"
+            )
+        if LEGACY_EXECUTION_SOURCE.fullmatch(origins[0]) is None:
+            failures.append(
+                f"{relative}: legacy journal does not identify the frozen source object"
+            )
+        prior = legacy_sources.get(origins[0])
+        if prior is not None:
+            failures.append(
+                f"{relative}: legacy source duplicates {prior.relative_to(ROOT)}"
+            )
+        else:
+            legacy_sources[origins[0]] = path
 
-    sequence = source[sequence_start:sequence_end]
-    package_cells = re.findall(r"(?m)^\|\s*\d+\s*\|\s*([^|]+)\|", sequence)
-    future_ids = C06_PACKAGE_ID.findall("\n".join(package_cells))
-    future_counts = Counter(future_ids)
-    duplicate_future = sorted(
-        package_id for package_id, count in future_counts.items() if count > 1
-    )
-    if duplicate_future:
+    if legacy_count != 96:
         failures.append(
-            f"the forward critical path duplicates C-06 package IDs: {duplicate_future}"
+            f"linked journal refraction has {legacy_count} legacy records; expected 96"
         )
-    if not journal_ids:
-        failures.append("the execution map has no completed C-06 package journals")
-    if not future_ids:
-        failures.append("the forward critical path has no remaining C-06 package")
-
-    historical = set(journal_ids)
-    future = set(future_ids)
-    collisions = sorted(historical & future)
-    if collisions:
-        failures.append(
-            f"the forward critical path reuses completed C-06 package IDs: {collisions}"
-        )
-
-    unique_ids = historical | future
-    suffixes = sorted(ord(package_id[-1]) for package_id in unique_ids)
-    if suffixes:
-        expected_suffixes = list(range(ord("a"), suffixes[-1] + 1))
-        missing = [
-            f"C-06{chr(suffix)}"
-            for suffix in expected_suffixes
-            if suffix not in suffixes
-        ]
-        if suffixes != expected_suffixes:
-            failures.append(f"the C-06 package sequence has gaps: {missing}")
-    if historical and future and max(historical) >= min(future):
-        failures.append(
-            "the forward C-06 packages do not follow the completed journal sequence: "
-            f"completed through {max(historical)}, next is {min(future)}"
-        )
-    if future_ids != sorted(future_ids):
-        failures.append(f"the forward C-06 packages are out of order: {future_ids}")
     return failures
 
 
@@ -412,9 +415,12 @@ def main() -> int:
         failures.append("AGENTS.md does not require the change-authoring routine")
     for required_fragment in (
         "docs/roadmap/rrflow-1.0-active-change.json",
+        "docs/evidence/change-journals/",
         "python3 scripts/ci/check_change_plan.py",
+        "python3 scripts/knowledge/render_navigation.py",
         "planning-only",
         "repository-owned presubmit and candidate-CI gate",
+        "adaptive-reasoning-governed-effects.md",
     ):
         if required_fragment not in agents:
             failures.append(
@@ -422,6 +428,8 @@ def main() -> int:
             )
 
     failures.extend(knowledge_package_drift_failures(ROOT))
+    failures.extend(NAVIGATION.index_drift_failures(ROOT))
+    failures.extend(linked_journal_integrity_failures())
 
     docs_index = DOCS_INDEX.read_text(encoding="utf-8")
     if "## Documentation taxonomy" not in docs_index:
@@ -541,6 +549,28 @@ def main() -> int:
     if "../architecture/system-overview.md" not in single_engine_decision:
         failures.append("the single-engine ADR has no system-overview link")
 
+    adaptive_reasoning_decision = ADAPTIVE_REASONING_DECISION.read_text(
+        encoding="utf-8"
+    )
+    for required_section in (
+        "## Context",
+        "## Decision",
+        "## Consequences",
+        "## Rejected alternatives",
+    ):
+        if required_section not in adaptive_reasoning_decision:
+            failures.append(f"the adaptive-reasoning ADR lacks {required_section}")
+    for required_fragment in (
+        "An AI may explore available project material",
+        "A closed contract begins when work crosses a durable or externally observable",
+        "Generated output is replaceable acceleration and discovery.",
+    ):
+        if required_fragment not in adaptive_reasoning_decision:
+            failures.append(
+                "the adaptive-reasoning ADR lacks boundary decision "
+                f"{required_fragment!r}"
+            )
+
     engine_data_flow = ENGINE_DATA_FLOW.read_text(encoding="utf-8")
     if "## Write and commit flow" not in engine_data_flow:
         failures.append("the engine data-flow owner has no write path")
@@ -620,7 +650,6 @@ def main() -> int:
             )
 
     execution_map = EXECUTION_MAP.read_text(encoding="utf-8")
-    failures.extend(c06_package_identity_failures(execution_map))
     for required_section in (
         "## How to execute this map",
         "### Codebase-grounded change-authoring routine",
@@ -628,9 +657,20 @@ def main() -> int:
         "#### Machine-bound active change package",
         "## Product terms versus implementation packages",
         "## Frozen target source tree",
+        "## Target dependency and authority direction",
         "## Target runtime flows",
         "## Current implementation inventory and exact disposition",
+        "## Implementation-requirements traceability",
+        "## Gate A work packages",
+        "## Gate B work packages",
+        "## Gate C work packages",
+        "## Gate D work packages",
+        "## Gate E work packages",
+        "## Gate F work packages",
+        "## Deferred D-05 work package after Gates E and F",
+        "## Gates G through J work packages",
         "## Repository-wide run checklist",
+        "## Evidence record template",
         "## Global stop conditions",
     ):
         if required_section not in execution_map:
@@ -639,10 +679,29 @@ def main() -> int:
         failures.append("the execution map does not disclaim roadmap authority")
     if "rrflow-1.0-file-plan.jsonl" not in execution_map:
         failures.append("the execution map does not link its exhaustive file plan")
+    for required_link in (
+        "rrflow-1.0-execution/change-authoring.md",
+        "rrflow-1.0-execution/implementation-navigation.md",
+        "rrflow-1.0-execution/generated-surfaces.md",
+        "../evidence/change-journals/",
+    ):
+        if required_link not in execution_map:
+            failures.append(f"the execution portal lacks link {required_link}")
+    if len(execution_map.splitlines()) > 150:
+        failures.append("the execution portal exceeds its 150-line link-only boundary")
+    if "```text" in execution_map:
+        failures.append("the execution portal embeds a journal or evidence payload")
+    if re.search(r"(?m)^### [A-J]-\d", execution_map):
+        failures.append("the execution portal embeds roadmap work-package bodies")
+    if re.search(r"(?m)^\|", execution_map):
+        failures.append("the execution portal embeds an authority or inventory table")
+    if "The executable dependency sequence below is fixed" in execution_map:
+        failures.append("the execution portal duplicates the dependency sequence")
     if not EXECUTION_FILE_PLAN.is_file():
         failures.append("the exhaustive RRFlow 1.0 file plan is absent")
     if not ACTIVE_CHANGE_PLAN.is_file():
         failures.append("the machine-bound active change plan is absent")
+    change_authoring = CHANGE_AUTHORING.read_text(encoding="utf-8")
     for required_evidence_field in (
         "alpha outcome or prerequisite advanced:",
         "change brief (current -> target behavior, owner, exact scope, unchanged behavior, stop conditions):",
@@ -653,14 +712,9 @@ def main() -> int:
         "change checklist:",
         "commit/development push evidence:",
     ):
-        if required_evidence_field not in execution_map:
+        if required_evidence_field not in change_authoring:
             failures.append(
-                f"the execution-map evidence template lacks {required_evidence_field}"
-            )
-    for required_package in ("H-05a", "H-05b", "H-05c", "H-05d", "H-05e"):
-        if not re.search(rf"(?m)^- {re.escape(required_package)} —", execution_map):
-            failures.append(
-                f"the execution map lacks observability package {required_package}"
+                f"the linked-journal evidence template lacks {required_evidence_field}"
             )
 
     convergence_research = SYSTEM_CONVERGENCE_RESEARCH.read_text(encoding="utf-8")
@@ -693,7 +747,7 @@ def main() -> int:
             "python3 scripts/ci/check_change_plan.py",
             "canonical change-plan presubmit command",
         ),
-        ("complete post-plan path set", "complete plan-to-diff binding"),
+        ("post-plan path set", "complete plan-to-diff binding"),
         ("bypassable outside candidate CI", "local bypass limitation"),
         ("server-side", "separate repository-enforcement boundary"),
     ):

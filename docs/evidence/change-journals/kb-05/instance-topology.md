@@ -1,0 +1,31 @@
+# KB-05 journal: instance-topology
+
+**Status:** active immutable change-journal evidence
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/kb-05/instance-topology`
+**Owner:** the unchanged historical package receipt identified by its legacy heading and payload digest
+**Legacy source:** `docs/roadmap/rrflow-1.0-execution-map.md@b7b061900b67d535ffec2710e6e4c30815d0f216#L1104`
+**Legacy payload SHA-256:** `5f19a7e79d377e36c1b91eb1f7ef6f777410955262f00f7163178824275ea4e2`
+
+This record refracts one completed package receipt out of the former
+monolithic execution map. Its fenced payload is preserved byte for byte.
+It reports historical evidence and cannot change roadmap completion or
+POA&M lifecycle status. Follow the [canonical roadmap](../../../roadmap/rrflow-1.0.md)
+for acceptance and the [change-journal index](../) for discovery.
+
+## Journal payload
+
+```text
+gate/package: A-06 / KB-05 / instance-topology
+revision: parent 088b5e4; result is the commit containing this entry
+baseline files/digests: docs/instance-topology.md=c1807592de3ef0171d4e7295cd12795ef863e2b8ce984fc1b68a6d7bd42e570f; rrd-engine/runtime/instance.rs=5080c3a475169a25dd7f9c1a06531801c2f7e2b6e3fd0297e3e7daccb463099d; runtime_instance.rs=116e26edc456421e690e18f36afd25c62c7a3247238403b93ff61a1cc3d49a0f; rrd-contract/platform.rs=7857f478f2a599d8c3650676886ea086cd93a4f823020e314ec6a8adbefa4508; platform_terminology.rs=f5ff4476eb145de911e39a078d739dd2a8ea66e61205ebaf9379661bf6b495c9; history/platform-vocabulary-note.md=f008b1c2a29bba7810e53d2244d13714ce83db3fa21407b1185293c0c1a54145; rrd-estate/authority.rs=50bcd975e6d0772389c9529111d1af9f78a8deff39fd4fa00421bd041694d595; authority_catalogue.rs=60ffc8a3451a1727a65d37ef92643c4805fe70718c11eca053a99a84d49eb2ea; rrd-cluster/contract.rs=55dd79663aaa485bd3b6149ff71b39947854de9cdfd70da3a2a72b2f80ba8944; cluster/contracts.rs=64fd9df17e9bd0ddfd852173d048758225218ad6158799850ba009f010a50d6e; rrd-server/main.rs=f7cd1604b23c0f13c31517f4208e946f5ca66a91ca5881be17270f74191793b6; rrd-server/http/server.rs=424ad733122907fed24ee26983512a40d6ab7a9263b70437e0c7fb2c3378348c; rrflow-cli/dev/supervisor.rs=911067a5308b9fd29101aa2aa0ee72e59134e53eb9585cb52f0c31572e0156c9
+files read in full: root README; flat instance-topology record; documentation, architecture, research, estate-control, objective, POA&M, canonical-roadmap, and execution-map owners; system overview and engine-flow owner; historical platform-vocabulary note; rrd-engine instance implementation/export and complete runtime-instance test; rrd-contract platform module and complete terminology test, with previously reviewed unchanged public resource/estate-kind definitions revalidated; rrd-estate authority implementation and complete authority-catalogue test; rrd-cluster manifest, root, complete contract, and complete contract test; rrd-server main and HTTP composition; rrflow-cli development supervisor; initialization caller inventory across engine, server, CLI, MCP, Rust client examples/tests, and server tests
+files changed/created/deleted/moved: create docs/architecture/instance-topology.md; update root README, architecture index/system overview, research index, estate-control cross-links, POA&M, this traceability/direct-convergence/resolved-review/queue/journal, documentation policy, and generated file inventory; delete docs/instance-topology.md; no Rust, manifest, public type, wire fixture, server, CLI, MCP, SDK, runtime, storage, query, graph, index, cluster behavior, or DataFusion file changed
+contract or behavior changed: none; one accepted architecture owner now locks one project ↔ one estate/rrflowDB ↔ one RRD instance, treats environments as explicit project context, separates deployment form from rrflowMX/rrflowKV profile and logical identity from physical cluster placement, defines install/binding resolution and direct convergence, and rejects the former multi-project-estate hierarchy and compatibility/migration promises
+smallest test command and result: cargo test -p rrd-engine --test runtime_instance --locked — 7 passed before editing and 7 passed after editing; these characterize strict current manifest/binding safety and do not accept that format as the target
+owning package command and result: cargo test -p rrd-contract --test platform_terminology --locked — 3 passed before and after; cargo test -p rrd-estate --test authority_catalogue --locked — 2 passed before and after; cargo test -p rrd-cluster --test contracts --locked — 10 passed before and after
+cross-boundary command and result: cargo test -p rrd-server --bin rrd-server --locked — 5 passed; cargo test -p rrd-engine --test workspace_architecture --locked — 16 passed; deterministic inventory wrote 751 records; documentation policy reported 88 statuses and 67 classified coordinates; generated-surface parity reported 33 HTTP operations and OpenAPI e0b107bc875dc5318d90b518993023730c83c475d323e69ea54a747050e86715; CI workflow, frozen 1.0.0 version, Ruff, Cargo formatting, and diff checks passed
+failure/crash/differential evidence: the passing platform test positively freezes a historical file's term order, the server test positively retains the independent initialize command, and the runtime test proves only the current rrflowKV JSON/path binding behavior. They do not prove the accepted installation topology, rrflowMX parity, atomic semantic binding, operation-specific resource paths, cross-surface identity, clustered execution, relocation, or clean deployment. POAM-020 records the exact convergence and rejection proof
+not run and reason: full workspace, server real-process, CLI/MCP/client/SDK conformance, security denial matrix, crash/ENOSPC, rrflowMX/rrflowKV semantic differential, clustered process/fault, DataFusion, reasoning, Connectome, and release qualification suites do not prove a documentation-only KB-05 classification and remain owned by their named gates
+remaining known errors: 19 KB-05 records remain; A-06/A-07 are incomplete; POAM-020 remains; `.rrflow/instance.toml`, `ProjectAuthorityBinding`, startup initializers, historical `PLATFORM_TERMS`, arbitrary `ResourcePath` ordering, duplicate estate authority topology, and unbound cluster identities still exist in code
+roadmap checkbox changed: no
+```

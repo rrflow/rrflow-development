@@ -4,6 +4,7 @@
 **Coordinate:** `rrflow://rrflow-instance/data/architecture/system-overview`
 **Owner:** canonical platform components, authority boundaries, and high-level relationships
 **Decision:** [`../decisions/0001-single-engine-authority.md`](../decisions/0001-single-engine-authority.md)
+**Reasoning decision:** [`../decisions/0002-adaptive-reasoning-governed-effects.md`](../decisions/0002-adaptive-reasoning-governed-effects.md)
 
 The repository root [README](../../README.md) is the bootstrap product portal.
 This record is the first architecture destination behind that portal. It tells
@@ -40,7 +41,7 @@ RRFlow — AI governance, reasoning, recall, and context platform
 ├── RRFlow inference — replaceable embedding and LFG adapters
 ├── RRFlow seats — durable provider-neutral identities; Clyffy is this
 │   repository's primary specialization
-├── RRFlow attunement — committed project tree → derived project knowledge
+├── RRFlow attunement — bounded project evidence → committed derived knowledge
 ├── RRFlow automation — committed events, triggers, routines, and skills
 ├── RRFlow Security — identity, sessions, policy, authorization, and audit
 └── HTTP / WebSocket / SDK / MCP / CLI / Connectome — outward clients
@@ -70,7 +71,7 @@ authoritative databases or engines.
 | **analytical path** | Broad retrieval, ingest transformation, joins, and analytics planned by rrflowQL over native access paths and stamped Arrow batches. | `rrd-query`, `rrd-vector`, `rrd-store`, and bounded DataFusion execution. |
 | **index projection** | Derived acceleration state bound to its source cursor and relevant schema or catalogue revision; it is rebuildable and cannot outrank canonical data. | Scalar, graph, lexical, and approximate-vector structures in persistence and compute boundaries. |
 | **context assembly** | Bounded discovery and deterministic fusion owned by `RrdEngine`, returning a read-stamped `ContextPacket` with evidence. | `rrd-contract` operation and `rrd-engine` implementation. |
-| **project-tree snapshot** | One deterministic, bounded, committed inventory of observed root-relative project entries, errors, containment, policy, and change evidence; it is the required input to parsing and later attunement phases. | Pure proposal construction in planned `rrd-attunement`; authorized reads and commit coordination in `RrdEngine`. |
+| **project-tree snapshot** | One deterministic, bounded, committed inventory of observed root-relative project entries, errors, containment, policy, and change evidence; it is required when RRFlow persists a project model, applies a reproducible project mutation, or claims snapshot-complete evidence, but not merely to inspect or reason about available files. | Pure proposal construction in planned `rrd-attunement`; authorized durable reads and commit coordination in `RrdEngine`. |
 | **RRFlow vector subsystem** | Native vector-database capability inside rrflowDB: exact values, payload filters, candidate indexes, and exact reranking. | `rrd-vector`, `rrd-query`, and `RrdEngine` |
 | **RRFlow inference** | Provider-neutral, manifest-gated execution of embedding and routing models. | `rrd-inference`; LFG is a constrained routing adapter. |
 | **RRFlow seat** | A durable provider-neutral identity represented by one or more authenticated provider identities at a read coordinate; representation establishes attribution, not authorization. Clyffy is this repository's primary seat specialization, not another kernel, repository, runtime, or provider. | Canonical seat/provider/relation values in rrflowDB; resolution, authorization, routing, and mutation through `RrdEngine`. |
@@ -251,6 +252,14 @@ The root and boundary READMEs are portals now, and each warp retains one local
 checkout fallback. The deterministic JSON/JSONL knowledge package is a
 generated, content-addressed import artifact rather than a second editable
 truth.
+
+Ordinary Markdown links and record metadata also produce generated parent
+indexes and a coordinate relationship graph. Those projections make records
+self-maintaining and retrievable without duplicating their bodies. They can be
+rebuilt and never decide truth, authorization, roadmap completion, or POA&M
+status. The same single-source rule applies to the executable public catalogue:
+dispatch, OpenAPI, internal bindings, language SDKs, reference views, and
+conformance are projections, not parallel APIs.
 
 rrflowDB becomes the normal durable warp-resolution path only after authorized
 import, readback, restart, idempotency, drift-denial, and recovery evidence

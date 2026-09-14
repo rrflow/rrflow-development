@@ -1,0 +1,12 @@
+# Gate D change journals
+
+**Status:** active generated change-journal group index
+**Coordinate:** `rrflow://rrflow-instance/data/evidence-index/change-journals/gate-d`
+**Owner:** discovery of Gate D package receipts
+
+The roadmap owns Gate D acceptance. This generated index only discovers its
+linked package evidence.
+
+<!-- rrflow:generated-index:start -->
+- [D-01/D-11 installed-lifecycle research and execution-plan evidence journal](d-01-d-11-installed-lifecycle-research-and-execution-plan-evidence-journal.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-d-11-installed-lifecycle-research-and-execution-plan-evidence-journal`](rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-01-d-11-installed-lifecycle-research-and-execution-plan-evidence-journal) — active immutable change-journal evidence
+<!-- rrflow:generated-index:end -->

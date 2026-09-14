@@ -8,8 +8,9 @@
 This record defines the stable target behavior of an installed RRFlow 1.0
 estate. The [alpha objective](../../objectives/rrflow-1.0-alpha.md) owns the
 measurable result, the [roadmap](../../roadmap/rrflow-1.0.md) owns completion
-order, and the [execution map](../../roadmap/rrflow-1.0-execution-map.md) owns
-the exact code packages. This document cannot mark any of them complete.
+order, and the [execution portal](../../roadmap/rrflow-1.0-execution-map.md)
+routes to the active exact-path record, generated inventory, and linked
+evidence. This document cannot mark any of them complete.
 
 ## Product boundary
 
