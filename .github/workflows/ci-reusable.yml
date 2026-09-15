@@ -21,7 +21,7 @@ env:
 
 jobs:
   topology-smoke:
-    name: supervised RRD topology
+    name: installed RRFlow lifecycle
     runs-on: ${{ fromJSON(inputs.linux-standard-runner) }}
     timeout-minutes: 15
     steps:
@@ -33,24 +33,8 @@ jobs:
         with:
           shared-key: linux-topology
           cache-on-failure: true
-      - name: Build supervisor and RRD service process
-        run: cargo build --locked -p rrflow-cli -p rrd-server -p rrd-security
-      - name: rrflow dev up daemon smoke
-        run: |
-          set -euo pipefail
-          smoke_root="$RUNNER_TEMP/rrflow-topology-smoke"
-          mkdir -p "$smoke_root"
-          rrflow_path="${CARGO_TARGET_DIR:-target}/debug/rrflow"
-          cleanup() {
-            "$rrflow_path" dev stop --root "$smoke_root" --timeout-ms 5000 >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-          "$rrflow_path" dev up --root "$smoke_root" --instance ci-topology --rrd-bind 127.0.0.1:19477 --no-build
-          "$rrflow_path" dev status --root "$smoke_root"
-          curl --fail --silent --show-error http://127.0.0.1:19477/v1/health/ready
-          curl --fail --silent --show-error http://127.0.0.1:19477/v1/capabilities >/dev/null
-          "$rrflow_path" dev stop --root "$smoke_root" --timeout-ms 5000
-          trap - EXIT
+      - name: Test the real install, serve, authenticate, stop, reopen lifecycle
+        run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
 
   estate-portability:
     name: estate process (${{ matrix.os }})
@@ -79,7 +63,7 @@ jobs:
         run: cargo test -p rrd-server --bin rrd-server --locked
       - name: Build cross-package controller fixture
         run: cargo build -p rrflow-cli --bin rrd-estate-controller --locked
-      - name: Test real child and controller recovery
+      - name: Test process fault injection (not product-readiness evidence)
         run: cargo test -p rrd-server --test local_estate_driver --locked -- --nocapture
       - name: Deny process-boundary warnings
         run: cargo clippy -p rrd-estate -p rrd-server --all-targets --locked -- -D warnings

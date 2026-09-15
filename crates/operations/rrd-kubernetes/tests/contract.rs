@@ -1,4 +1,3 @@
-use rrd_contract::CanonicalId;
 use rrd_kubernetes::{
     applied_contract_sha256, desired_resources, DesiredInstanceInput, KubernetesResourceKind,
     RrdInstanceSpec, RrdStorageSpec, RRD_KUBERNETES_CONTRACT_VERSION,
@@ -7,7 +6,6 @@ use rrd_kubernetes::{
 fn spec() -> RrdInstanceSpec {
     RrdInstanceSpec {
         contract_version: RRD_KUBERNETES_CONTRACT_VERSION,
-        instance_id: CanonicalId::new("project-a").unwrap(),
         image: format!("registry.example/rrd@sha256:{}", "a".repeat(64)),
         storage: RrdStorageSpec {
             size: "100Gi".into(),
@@ -15,9 +13,8 @@ fn spec() -> RrdInstanceSpec {
             retain_on_delete: true,
         },
         tls_secret: "project-a-tls".into(),
-        bootstrap_manifest_config_map: "project-a-bootstrap".into(),
-        bootstrap_credential_secret: "project-a-credentials".into(),
-        bootstrap_at_unix_ms: 1_787_529_600_000,
+        installation_plan_config_map: "project-a-install-plan".into(),
+        installation_plan_sha256: "b".repeat(64),
     }
 }
 
@@ -56,20 +53,33 @@ fn one_secured_durable_instance_is_rendered_deterministically() {
     let pod = &stateful_set.body["spec"]["template"]["spec"];
     assert_eq!(pod["automountServiceAccountToken"], false);
     assert_eq!(pod["securityContext"]["runAsNonRoot"], true);
-    assert_eq!(pod["initContainers"][0]["command"][0], "rrd-server");
-    assert_eq!(pod["initContainers"][0]["args"][0], "initialize");
-    assert_eq!(
-        pod["initContainers"][1]["command"][0],
-        "rrd-security-bootstrap"
-    );
+    assert_eq!(pod["initContainers"].as_array().unwrap().len(), 1);
+    assert_eq!(pod["initContainers"][0]["command"][0], "rrflow");
+    assert_eq!(pod["initContainers"][0]["args"][0], "install");
+    assert_eq!(pod["initContainers"][0]["args"][1], "apply");
+    assert!(pod["initContainers"][0]["args"]
+        .as_array()
+        .unwrap()
+        .windows(2)
+        .any(|arguments| arguments == ["--expect", spec.installation_plan_sha256.as_str()]));
     assert_eq!(pod["containers"][0]["command"][0], "rrd-server");
-    assert_eq!(pod["containers"][0]["args"][0], "--root");
+    assert_eq!(pod["containers"][0]["args"][0], "--project");
+    assert!(pod["containers"][0]["args"]
+        .as_array()
+        .unwrap()
+        .windows(2)
+        .any(|arguments| { arguments == ["--distribution-executable", "/usr/local/bin/rrflow"] }));
     assert!(pod["containers"][0]["args"]
         .as_array()
         .unwrap()
         .iter()
         .any(|value| value == "--tls-client-ca"));
     assert_eq!(pod["containers"][0]["image"], spec.image);
+    let encoded_pod = serde_json::to_string(pod).unwrap();
+    assert!(!encoded_pod.contains("initialize"));
+    assert!(!encoded_pod.contains("rrd-security-bootstrap"));
+    assert!(!encoded_pod.contains("bootstrapAtUnixMs"));
+    assert!(!encoded_pod.contains("bootstrap-credentials"));
 
     let budget = first
         .iter()
@@ -100,6 +110,10 @@ fn unsafe_or_fake_distributed_specs_fail_before_kubernetes_io() {
 
     let mut value = spec();
     value.tls_secret = "Bad_Secret".into();
+    assert!(desired_resources(&input(&value)).is_err());
+
+    let mut value = spec();
+    value.installation_plan_sha256 = "ABC".into();
     assert!(desired_resources(&input(&value)).is_err());
 
     let value = spec();

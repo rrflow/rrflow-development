@@ -10,22 +10,24 @@ independently.
 
 ## Observed deficiency
 
-Installed topology has three conflicting active representations: `.rrflow/instance.toml`
-plus `ProjectAuthorityBinding` makes a path/manifest shape the project authority and can be
-created by server, CLI, MCP, SDK, and test startup; public `PLATFORM_TERMS`/`ResourcePath`
-mirrors a superseded historical organization/estate/project hierarchy while accepting
-arbitrary resource-kind order; and `EstateAuthorityState` defines another
+The installed product now has one active project/estate/instance representation:
+`.rrflow/config.toml` locates the engine-owned installed record and every product caller
+opens it read-only. `.rrflow/instance.toml`, `InstanceManifest`,
+`ProjectAuthorityBinding`, their raw-root openers, and all product creation callers are
+removed. Two semantic conflicts remain: public `PLATFORM_TERMS`/`ResourcePath` mirrors a
+superseded historical organization/estate/project hierarchy while accepting arbitrary
+resource-kind order, and `EstateAuthorityState` defines another
 organization/account/project/environment/instance/node/shard hierarchy. Environment is
 absent from the public resource vocabulary, cluster identities use another loose string
-family, and none of these paths proves one project/estate/instance binding across rrflowMX
-and rrflowKV.
+family, and the remaining shapes are not yet proven equivalent across rrflowMX and
+rrflowKV.
 
 ## Impact
 
-Startup can manufacture authority outside installation, logical identity and authorization
-can depend on the caller or historical word order, an estate can be mistaken for a
-multi-project fleet, physical placement can diverge from semantic scope, and clients can
-appear connected while resolving different project/database authorities.
+Product startup can no longer manufacture its own installation authority, but resource
+authorization can still depend on historical word order, an estate can be mistaken for a
+multi-project fleet, physical placement can diverge from semantic scope, and unfinished
+estate/cluster consumers can resolve a different hierarchy from the installed identity.
 
 ## Owning gates
 
@@ -41,10 +43,9 @@ Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
 ## Closure evidence
 
 Freeze one project ↔ estate ↔ instance relationship graph and operation-specific resource
-grammar; introduce only the D-01 locator and engine-persisted installed-estate binding;
-preserve strict identity, containment, digest, and cluster safety checks; remove
-`.rrflow/instance.toml`, `InstanceManifest`, `rrd-server initialize`, startup
-`ensure_dedicated*`, the private JSON binding, historical-table conformance, arbitrary path
-ordering, and the duplicate estate topology; then pass fresh/existing preview/apply, MX/KV
+grammar; retain only the implemented D-01 locator and engine-persisted installed-estate
+binding plus their strict identity, containment, digest, relocation, and foreign-state
+checks; remove historical-table conformance, arbitrary path ordering, and the duplicate
+estate topology; then pass fresh/existing preview/apply, MX/KV
 semantic, unauthorized/nested/neighbor/escape/foreign/move, cross-surface identity,
 clustered-placement, restart, and offline release tests.

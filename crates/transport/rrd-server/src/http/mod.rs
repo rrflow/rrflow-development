@@ -21,8 +21,8 @@ use rrd_contract::{
 };
 use rrd_engine::{
     product_capability_catalogue, AuthorizedInvocation, Invocation, InvocationCompletion,
-    InvocationCredential, ProjectAuthorityBinding, RrdEngine, RrdOperation, ServiceError,
-    ServiceErrorKind, MAX_AUDIT_PAGE_RECORDS,
+    InvocationCredential, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,
+    MAX_AUDIT_PAGE_RECORDS,
 };
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::server::WebPkiClientVerifier;

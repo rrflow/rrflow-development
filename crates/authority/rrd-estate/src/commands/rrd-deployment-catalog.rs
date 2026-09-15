@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 struct Args {
     server: PathBuf,
+    distribution_executable: PathBuf,
     output: PathBuf,
     version: String,
 }
@@ -23,20 +24,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args(std::env::args().skip(1))
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
     ensure_output_absent(&args.output)?;
+    let distribution_executable = canonical_regular_file(
+        &args.distribution_executable,
+        "primary distribution executable",
+    )?;
     let deployment = LocalDeployment::authenticate(
         CanonicalId::new("rrd-server")?,
         args.version,
         args.server,
+        Vec::new(),
         vec![
-            LocalArgument::Literal("initialize".into()),
-            LocalArgument::Literal("--root".into()),
+            LocalArgument::Literal("--project".into()),
             LocalArgument::InstanceRoot,
-            LocalArgument::Literal("--instance".into()),
-            LocalArgument::InstanceId,
-        ],
-        vec![
-            LocalArgument::Literal("--root".into()),
-            LocalArgument::InstanceRoot,
+            LocalArgument::Literal("--distribution-executable".into()),
+            LocalArgument::Literal(path_text(&distribution_executable)?),
             LocalArgument::Literal("--bind".into()),
             LocalArgument::Literal("127.0.0.1:0".into()),
             LocalArgument::Literal("--ready-file".into()),
@@ -67,12 +68,19 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
     let mut server = None;
+    let mut distribution_executable = None;
     let mut output = None;
     let mut version = env!("CARGO_PKG_VERSION").to_owned();
     let mut arguments = arguments;
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
             "--server" => server = Some(PathBuf::from(required(&mut arguments, "--server")?)),
+            "--distribution-executable" => {
+                distribution_executable = Some(PathBuf::from(required(
+                    &mut arguments,
+                    "--distribution-executable",
+                )?));
+            }
             "--output" => output = Some(PathBuf::from(required(&mut arguments, "--output")?)),
             "--version" => version = required(&mut arguments, "--version")?,
             "--help" | "-h" => return Err(usage().into()),
@@ -85,8 +93,30 @@ fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
     };
     Ok(Args {
         server,
+        distribution_executable: distribution_executable
+            .ok_or_else(|| format!("--distribution-executable is required\n{}", usage()))?,
         output: output.ok_or_else(|| format!("--output is required\n{}", usage()))?,
         version,
+    })
+}
+
+fn canonical_regular_file(path: &Path, name: &str) -> Result<PathBuf, io::Error> {
+    let canonical = std::fs::canonicalize(path)?;
+    if !canonical.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("{name} is not a regular file"),
+        ));
+    }
+    Ok(canonical)
+}
+
+fn path_text(path: &Path) -> Result<String, io::Error> {
+    path.to_str().map(str::to_owned).ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "primary distribution executable path is not valid UTF-8",
+        )
     })
 }
 
@@ -163,7 +193,7 @@ fn ensure_output_absent(path: &Path) -> io::Result<()> {
 }
 
 fn usage() -> &'static str {
-    "usage: rrd-deployment-catalog --output PATH [--server PATH] [--version VERSION]"
+    "usage: rrd-deployment-catalog --output PATH --distribution-executable PATH [--server PATH] [--version VERSION]"
 }
 
 #[cfg(test)]

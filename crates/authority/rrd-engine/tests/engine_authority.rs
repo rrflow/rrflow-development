@@ -3,15 +3,16 @@ use rrd_contract::{
     CloseSession, CommitTransaction, CorrelationId, CreateSession, DataCatalogueIdentity,
     DataLogicalModel, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
     DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue,
-    EnsureQueryIndex, EnsureVectorCollection, EstateDesiredPhase, NamedVectorDefinition,
-    QueryBudget, QueryIndexKind, QueryValue, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
-    RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
-    TransactionMutation, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    EnsureQueryIndex, EnsureVectorCollection, EstateDesiredPhase, InstallationManagedPathKind,
+    InstallationTargetKind, NamedVectorDefinition, QueryBudget, QueryIndexKind, QueryValue,
+    ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot, RequestContext, ResourceId, ResourceKind,
+    ResourcePath, SecurityAction, SessionLimits, TransactionMutation, VectorMemoryTier,
+    VectorSearchMetric, VectorValueKind,
 };
 use rrd_core::{digest, Claim, Predicate, Producer, Subject};
 use rrd_engine::{
-    EstateAdminAction, EstateAdminResult, InstanceBinding, InstanceManifest, Invocation,
-    InvocationCredential, RrdEngine, RrdOperation, SecurityBootstrapOutcome, ServiceError,
+    EstateAdminAction, EstateAdminResult, Invocation, InvocationCredential, RrdEngine,
+    RrdOperation, ServiceError,
 };
 use rrd_estate::{
     DesiredPhase, DesiredTarget, EstateRepository, LeaseRequest, LocalEstatePermission,
@@ -19,7 +20,6 @@ use rrd_estate::{
     ReceiptRequest, ScheduleBackup, SetDesired, SetRecoveryPolicy, LOCAL_OPERATOR_POLICY_FORMAT,
 };
 use rrd_store::StorageEngine;
-use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -74,60 +74,43 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");
     fs::create_dir(&project).unwrap();
-    InstanceManifest::ensure_dedicated(&project).unwrap();
-    let binding = InstanceBinding::discover(&project).unwrap();
-    let database = binding.expected_store();
-    let instance = canonical(&binding.manifest.id);
-    let scope = format!("instance:{instance}");
-
-    let principal_id = canonical("authority-operator");
-    let credential = temporary.path().join("principal.key");
-    fs::write(&credential, b"principal-secret").unwrap();
-    private(&credential);
-    let security_manifest = temporary.path().join("security.json");
-    let instance_resource = resource(&instance);
-    let grants = [
-        SecurityAction::SessionCreate,
-        SecurityAction::SessionClose,
-        SecurityAction::TransactionBegin,
-        SecurityAction::TransactionCommit,
-        SecurityAction::VectorCollectionEnsure,
-        SecurityAction::QueryIndexEnsure,
-        SecurityAction::ChangefeedRead,
-        SecurityAction::AuditRead,
-        SecurityAction::DiagnosticsRead,
-    ]
-    .into_iter()
-    .map(|action| {
-        json!({
-            "action": action,
-            "resource_prefix": instance_resource,
-        })
-    })
-    .collect::<Vec<_>>();
-    fs::write(
-        &security_manifest,
-        serde_json::to_vec(&json!({
-            "format_version": 1,
-            "revision": 1,
-            "principals": [{
-                "id": principal_id,
-                "kind": "service",
-                "credential_file": credential,
-                "not_before_unix_ms": 1,
-                "expires_at_unix_ms": u64::MAX,
-                "grants": grants,
-            }],
-        }))
-        .unwrap(),
+    let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        &executable,
     )
     .unwrap();
-    assert_eq!(
-        RrdEngine::bootstrap_security_store(&database, instance.clone(), &security_manifest, 100,)
-            .unwrap(),
-        SecurityBootstrapOutcome::Initialized
+    let installation = RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        100,
+        &executable,
+    )
+    .unwrap();
+    assert!(!installation.idempotent_replay);
+    let database = project.join(
+        &preview
+            .installation
+            .managed_path(InstallationManagedPathKind::StorageRoot)
+            .relative_path,
     );
-    let authority_secret = fs::read(database.join("RRD.SECRET")).unwrap();
+    let token_path = project.join(
+        &preview
+            .installation
+            .managed_path(InstallationManagedPathKind::TokenKey)
+            .relative_path,
+    );
+    let instance = preview.installation.target.instance_id.clone();
+    let scope = format!("instance:{instance}");
+
+    let api_key = RrdEngine::read_installed_api_key(&project).unwrap();
+    let principal_id = api_key.principal_id.clone();
+    let authority_secret = fs::read(&token_path).unwrap();
 
     let operator_key = temporary.path().join("operator.key");
     let operator_policy = temporary.path().join("operator.json");
@@ -173,12 +156,12 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
         EstateAdminResult::Mutation(result) if result.idempotent_replay
     ));
 
-    let engine = RrdEngine::open_bound(&binding).unwrap();
+    let engine = RrdEngine::open_installed(&project, &executable).unwrap();
     assert_eq!(engine.instance_id(), &instance);
     let lease = engine
         .create_authenticated_session(
             &principal_id,
-            b"principal-secret",
+            api_key.credential().as_bytes(),
             &CreateSession {
                 limits: SessionLimits {
                     idle_timeout_ms: 60_000,
@@ -240,7 +223,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
     let mutations = vec![
         TransactionMutation::PutSchema {
             registry: DataSchemaRegistry {
-                revision: 1,
+                revision: 2,
                 migration: "install authority fixture schema".into(),
                 catalogue: DataCatalogueIdentity::default(),
                 tables: BTreeMap::from([
@@ -334,6 +317,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
     assert_eq!(commit.claim_mutation_count, Some(1));
 
     let runtime_before_denial = engine.readiness(1_450).unwrap().runtime_cursor;
+    let invalid_session_token = correlation("invalid-session-token");
     let denied = engine.begin_invocation(
         Invocation {
             context: context(
@@ -349,14 +333,17 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
         RrdOperation::BackupCreate,
         InvocationCredential::Session {
             session_id: &lease.session_id,
-            token: &lease.token,
+            token: &invalid_session_token,
         },
     );
-    assert!(matches!(denied, Err(ServiceError::PermissionDenied)));
+    assert!(
+        matches!(denied, Err(ServiceError::Unauthenticated)),
+        "invalid session credential should be denied, got {denied:?}"
+    );
     assert_eq!(
         engine.readiness(1_451).unwrap().runtime_cursor,
         runtime_before_denial,
-        "policy denial must not mutate the runtime log"
+        "authentication denial must not mutate the runtime log"
     );
 
     let coordinated_vectors = engine
@@ -512,7 +499,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
     assert!(!closed.idempotent_replay);
     drop(engine);
 
-    let reopened = RrdEngine::open_bound(&binding).unwrap();
+    let reopened = RrdEngine::open_installed(&project, &executable).unwrap();
     assert_eq!(reopened.instance_id(), &instance);
     let readiness = reopened.readiness(2_000).unwrap();
     assert_eq!(readiness.runtime_cursor, diagnostic.read.runtime_cursor);
@@ -530,16 +517,19 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
         .unwrap();
     assert!(close_replay.idempotent_replay);
     assert_eq!(close_replay.ended_at_unix_ms, closed.ended_at_unix_ms);
-    assert_eq!(
-        fs::read(database.join("RRD.SECRET")).unwrap(),
-        authority_secret
-    );
+    assert_eq!(fs::read(&token_path).unwrap(), authority_secret);
     drop(reopened);
-    assert_eq!(
-        RrdEngine::bootstrap_security_store(&database, instance, &security_manifest, 2_100,)
-            .unwrap(),
-        SecurityBootstrapOutcome::Unchanged
-    );
+    let replay = RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        2_100,
+        &executable,
+    )
+    .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.plan_sha256, installation.plan_sha256);
 }
 
 #[cfg(unix)]
@@ -578,7 +568,11 @@ fn estate_recovery_prune_and_restore_are_one_fenced_engine_workflow() {
     }
     let state_root = fs::canonicalize(state_root).unwrap();
     let source = state_root.join("instances/instance-a/.rrflow/rrd");
-    drop(rrd_store::RrflowKvStore::open(&source).unwrap());
+    fs::create_dir_all(source.parent().unwrap()).unwrap();
+    drop(
+        RrdEngine::create_new(&source, canonical("instance-a"), [0_u8; 32])
+            .expect("component backup fixture must be a complete engine root"),
+    );
 
     let key_path = temporary.path().join("operator.key");
     let policy_path = temporary.path().join("operator.json");

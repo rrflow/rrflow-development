@@ -9,19 +9,20 @@ use rrd_contract::{
     transaction_operation_sha256, AbortTransaction, AssembleContext, BeginTransaction, CanonicalId,
     CloseSubscription, CommitTransaction, ContextEvidenceKind, CreateSession,
     DeploymentConformanceCorpus, DeploymentForm, EndpointPresentation, ErrorCode, ExecuteQuery,
-    ExportAudit, OpenSubscription, PreviewTransaction, QueryBudget, ReadAccessPath, ReadAudit,
-    ReadChangefeed, ReadDiagnosticSnapshot, RequestContext, RequestEnvelope, ResourceId,
-    ResourceKind, ResourcePath, SessionLimits, StorageProfileKind, SubscriptionAcknowledgement,
+    ExportAudit, InstallationManagedPathKind, InstallationTargetKind, OpenSubscription,
+    PreviewTransaction, QueryBudget, ReadAccessPath, ReadAudit, ReadChangefeed,
+    ReadDiagnosticSnapshot, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
+    ResourcePath, SessionLimits, StorageProfileKind, SubscriptionAcknowledgement,
     SubscriptionDelivery, SubscriptionResume, SubscriptionStream, TransactionMutation,
     WebSocketCancel, WebSocketCancellationDisposition, WebSocketErrorTarget, WebSocketFrame,
     WebSocketPayload, WebSocketRequest, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_core::{
     digest, RuntimeCommit, RuntimeLogicalModel, RuntimeProperties, RuntimePropertySchema,
-    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType,
-    RuntimeValue, RuntimeValueType, ScopeId,
+    RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeType, RuntimeValue, RuntimeValueType,
+    ScopeId,
 };
-use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::RrdEngine;
 use rrd_security::{
     Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
     SECURITY_FORMAT,
@@ -33,9 +34,11 @@ use rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::{ClientConfig as RustlsClientConfig, RootCertStore};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const INTEGRATION_IO_TIMEOUT: Duration = Duration::from_secs(10);
+const COMPONENT_TOKEN_KEY: [u8; 32] = [0x6b; 32];
 
 async fn receive_application_frame(socket: &mut RrdWebSocket) -> WebSocketFrame {
     loop {
@@ -86,14 +89,18 @@ fn roots(ca: &Certificate) -> RootCertStore {
     roots
 }
 
-fn instance_resource() -> ResourcePath {
+fn instance_resource(instance: &CanonicalId) -> ResourcePath {
     ResourcePath {
-        segments: vec![ResourceId::new(ResourceKind::Instance, "sdk-test").unwrap()],
+        segments: vec![ResourceId::new(ResourceKind::Instance, instance.as_str()).unwrap()],
     }
 }
 
 fn seed(engine: &RrflowKvStore, scope: &str) {
-    let mut registry = RuntimeSchemaRegistry::empty(1, "Rust SDK fixture");
+    let scope = ScopeId::new(scope).unwrap();
+    let read = engine.runtime().read_stamp(&scope).unwrap();
+    let mut registry = engine.runtime().schema(&scope).unwrap().unwrap();
+    registry.revision += 1;
+    registry.migration = "extend installed schema for Rust SDK fixture".into();
     registry
         .define_record_table(
             RuntimeType::new("document").unwrap(),
@@ -110,10 +117,10 @@ fn seed(engine: &RrflowKvStore, scope: &str) {
     engine
         .runtime()
         .commit(&RuntimeCommit {
-            scope: ScopeId::new(scope).unwrap(),
+            scope,
             at: 100,
             actor: "rrd-client-fixture".into(),
-            expected_cursor: 0,
+            expected_cursor: read.commit_cursor,
             mutations: vec![
                 rrd_core::RuntimeMutation::Schema { registry },
                 rrd_core::RuntimeMutation::Record {
@@ -283,16 +290,39 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");
     std::fs::create_dir_all(&project).unwrap();
-    InstanceManifest::ensure_dedicated_as(&project, "sdk-test").unwrap();
-    let binding = InstanceBinding::discover(&project).unwrap();
-    let root = binding.expected_store();
+    let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let installation = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        &executable,
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &installation,
+        &installation.installation.plan_sha256,
+        1,
+        &executable,
+    )
+    .unwrap();
+    let instance = installation.installation.target.instance_id.clone();
+    let scope = format!("instance:{instance}");
+    let root = project.join(
+        &installation
+            .installation
+            .managed_path(InstallationManagedPathKind::StorageRoot)
+            .relative_path,
+    );
     let storage = RrflowKvStore::open(&root).unwrap();
-    seed(&storage, "instance:sdk-test");
+    seed(&storage, &scope);
     let runtime_head = storage.runtime().cursor().unwrap();
     storage
         .runtime()
         .open_snapshot(
-            &ScopeId::new("instance:sdk-test").unwrap(),
+            &ScopeId::new(scope.clone()).unwrap(),
             "rust-sdk-fixture",
             u64::try_from(
                 SystemTime::now()
@@ -304,8 +334,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             3_600_000,
         )
         .unwrap();
-    let instance = CanonicalId::new("sdk-test").unwrap();
-    let resource = instance_resource();
+    let resource = instance_resource(&instance);
     let principal = Principal {
         id: CanonicalId::new("rust-sdk").unwrap(),
         kind: PrincipalKind::Service,
@@ -366,39 +395,29 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         })
         .collect(),
     };
-    SecurityRepository::new(&storage, instance.clone())
-        .initialize(
-            SecurityState {
-                format_version: SECURITY_FORMAT,
-                revision: 1,
-                principals: BTreeMap::from([
-                    (principal.id.clone(), principal),
-                    (
-                        websocket_limited_principal.id.clone(),
-                        websocket_limited_principal,
-                    ),
-                ]),
-                roles: BTreeMap::new(),
-                identity_bindings: BTreeMap::new(),
-                jwt_issuers: BTreeMap::new(),
-            },
+    let security = SecurityRepository::new(&storage, instance.clone());
+    let mut state = security.load().unwrap().unwrap();
+    assert_eq!(state.format_version, SECURITY_FORMAT);
+    assert_eq!(state.revision, 1);
+    state.revision = 2;
+    state.principals.insert(principal.id.clone(), principal);
+    state.principals.insert(
+        websocket_limited_principal.id.clone(),
+        websocket_limited_principal,
+    );
+    security
+        .replace(
             1,
-            "bootstrap",
-            "request-bootstrap",
-            "operation-bootstrap",
+            state,
+            2,
+            "rrd-client-fixture",
+            "request-fixture-security",
+            "operation-fixture-security",
         )
         .unwrap();
     drop(storage);
-    let engine = RrdEngine::open_bound_with_token_key_file(
-        &binding,
-        instance.clone(),
-        &root.join("RRD.SERVER.SECRET"),
-        2,
-    )
-    .unwrap();
-    let authority = binding.authority_binding().unwrap();
-    let server =
-        RrdHttpServer::bind_project(engine, authority, "127.0.0.1:0".parse().unwrap()).unwrap();
+    let engine = RrdEngine::open_installed(&project, &executable).unwrap();
+    let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
     let address = server.local_addr();
     let (shutdown, receiver) = tokio::sync::oneshot::channel();
     let task = tokio::spawn(server.serve_until(async move {
@@ -514,7 +533,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             OpenSubscription {
                 subscription_id: limited_subscription_id.clone(),
                 stream: SubscriptionStream::Changefeed {
-                    scope: "instance:sdk-test".into(),
+                    scope: scope.clone(),
                 },
                 after_cursor: 0,
                 batch_size: 1,
@@ -580,7 +599,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             OpenSubscription {
                 subscription_id: subscription_id.clone(),
                 stream: SubscriptionStream::Changefeed {
-                    scope: "instance:sdk-test".into(),
+                    scope: scope.clone(),
                 },
                 after_cursor: 0,
                 batch_size: 1,
@@ -604,7 +623,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             OpenSubscription {
                 subscription_id: second_subscription_id.clone(),
                 stream: SubscriptionStream::Changefeed {
-                    scope: "instance:sdk-test".into(),
+                    scope: scope.clone(),
                 },
                 after_cursor: 0,
                 batch_size: 1,
@@ -638,9 +657,9 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
                 idempotency_key: None,
                 deadline_unix_ms: None,
             },
-            resource: instance_resource(),
+            resource: instance_resource(&instance),
             payload: serde_json::to_value(ExecuteQuery {
-                scope: "instance:sdk-test".into(),
+                scope: scope.clone(),
                 query: "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title".into(),
                 parameters: BTreeMap::new(),
                 budget: QueryBudget::default(),
@@ -870,7 +889,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .assemble_context(
             &session,
             AssembleContext {
-                scope: "instance:sdk-test".into(),
+                scope: scope.clone(),
                 query: "Alpha".into(),
                 valid_at: 100,
                 seeds: Vec::new(),
@@ -899,7 +918,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .iter()
         .any(|path| path.path == ReadAccessPath::RecordVersions));
     let query_request = ExecuteQuery {
-        scope: "instance:sdk-test".into(),
+        scope: scope.clone(),
         query: "FROM record:document AT VALID 100 KNOWN HEAD PROJECT id, title EXPLAIN CONTRACT"
             .into(),
         parameters: BTreeMap::new(),
@@ -990,7 +1009,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .read_changefeed(
             &session,
             ReadChangefeed {
-                scope: "instance:sdk-test".into(),
+                scope: scope.clone(),
                 after_cursor: 0,
                 limit: 64,
             },
@@ -1008,9 +1027,9 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .read_diagnostic_snapshot(
             &session,
             ReadDiagnosticSnapshot {
-                scope: "instance:sdk-test".into(),
+                scope: scope.clone(),
                 graph_valid_at_unix_ms: 1_100,
-                graph_known_at_cursor: Some(2),
+                graph_known_at_cursor: Some(runtime_head),
                 graph_compare_cursor: 0,
                 runtime_max_scanned_changes: 1_024,
                 changes_after_cursor: 0,
@@ -1022,12 +1041,12 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         )
         .await
         .unwrap();
-    assert_eq!(diagnostics.instance.id.as_str(), "sdk-test");
+    assert_eq!(diagnostics.instance.id, instance);
     assert_eq!(diagnostics.read.runtime_cursor, runtime_head);
     assert!(diagnostics.read.control_sequence > 0);
     assert_eq!(diagnostics.read.runtime_manifest_sha256.len(), 64);
     assert_eq!(diagnostics.changes.head_cursor, runtime_head);
-    assert_eq!(diagnostics.schema.as_ref().unwrap().revision, 1);
+    assert_eq!(diagnostics.schema.as_ref().unwrap().revision, 2);
     assert!(diagnostics.models.models.iter().any(|model| {
         model.id.as_str() == "document"
             && model.kind == rrd_contract::DiagnosticModelKind::Record
@@ -1035,15 +1054,18 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             && model.required_property_count == 1
     }));
     assert_eq!(diagnostics.graph.valid_at_unix_ms, 1_100);
-    assert_eq!(diagnostics.graph.known_at_cursor, 2);
-    assert_eq!(diagnostics.graph.records.len(), 1);
-    assert_eq!(
-        diagnostics.graph.records[0].reference.kind.as_str(),
-        "document"
-    );
+    assert_eq!(diagnostics.graph.known_at_cursor, runtime_head);
+    assert!(diagnostics
+        .graph
+        .records
+        .iter()
+        .any(|record| record.reference.kind.as_str() == "document"));
     assert_eq!(diagnostics.graph_difference.from_cursor, 0);
-    assert_eq!(diagnostics.graph_difference.to_cursor, 2);
-    assert_eq!(diagnostics.graph_difference.added_records.len(), 1);
+    assert_eq!(diagnostics.graph_difference.to_cursor, runtime_head);
+    assert_eq!(
+        diagnostics.graph_difference.added_records.len(),
+        diagnostics.graph.records.len()
+    );
     assert_eq!(diagnostics.retention.leases.len(), 1);
     assert_eq!(diagnostics.retention.pins.len(), 1);
     assert_eq!(
@@ -1057,7 +1079,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
         .read_diagnostic_snapshot(
             &session,
             ReadDiagnosticSnapshot {
-                scope: "instance:sdk-test".into(),
+                scope,
                 graph_valid_at_unix_ms: 1_100,
                 graph_known_at_cursor: Some(runtime_head.saturating_add(1)),
                 graph_compare_cursor: 0,
@@ -1132,7 +1154,7 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
     assert!(matches!(
         RrdClient::connect_local(
             "192.0.2.1:9477".parse().unwrap(),
-            CanonicalId::new("sdk-test").unwrap(),
+            instance.clone(),
             ClientConfig::default(),
         ),
         Err(Error::Contract(_))
@@ -1210,12 +1232,7 @@ async fn loopback_rust_client_passes_the_shared_deployment_corpus() {
         .unwrap();
     drop(storage);
 
-    let engine = RrdEngine::open_with_token_key_file(
-        &root,
-        instance.clone(),
-        &root.join("RRD.SERVER.SECRET"),
-    )
-    .unwrap();
+    let engine = RrdEngine::open(&root, instance.clone(), COMPONENT_TOKEN_KEY).unwrap();
     let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
     let address = server.local_addr();
     let (shutdown, receiver) = tokio::sync::oneshot::channel();
@@ -1320,12 +1337,7 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
     let (client_chain, client_key) =
         test_identity(&issuer, Vec::new(), ExtendedKeyUsagePurpose::ClientAuth);
     let server_tls = RrdMutualTlsServerConfig::new(server_chain, server_key, roots(&ca)).unwrap();
-    let engine = RrdEngine::open_with_token_key_file(
-        &root,
-        instance.clone(),
-        &root.join("RRD.SERVER.SECRET"),
-    )
-    .unwrap();
+    let engine = RrdEngine::open(&root, instance.clone(), COMPONENT_TOKEN_KEY).unwrap();
     let server =
         RrdHttpServer::bind_mtls(engine, "127.0.0.1:0".parse().unwrap(), server_tls).unwrap();
     let endpoint = format!("https://localhost:{}", server.local_addr().port());

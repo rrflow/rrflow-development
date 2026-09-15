@@ -372,7 +372,77 @@ max_elapsed_ms = 5000
 }
 
 #[test]
-fn legacy_rrflow_state_blocks_a_parallel_installation_authority() {
+fn installed_locator_relocates_but_never_walks_ancestors_or_pairs_foreign_state() {
+    let container = tempfile::tempdir().unwrap();
+    let original = container.path().join("original");
+    let moved = container.path().join("moved");
+    let foreign = container.path().join("foreign");
+    std::fs::create_dir(&original).unwrap();
+    std::fs::write(original.join("README.md"), "relocatable project\n").unwrap();
+    let executable = test_executable();
+    let preview = RrdEngine::plan_installation(
+        &original,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        &executable,
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &original,
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &executable,
+    )
+    .unwrap();
+
+    std::fs::rename(&original, &moved).unwrap();
+    let relocated = RrdEngine::open_installed(&moved, &executable).unwrap();
+    assert_eq!(
+        relocated.installed_estate_identity(),
+        Some(&preview.installation.target)
+    );
+    drop(relocated);
+
+    let nested = moved.join("nested");
+    std::fs::create_dir(&nested).unwrap();
+    assert!(RrdEngine::open_installed(&nested, &executable).is_err());
+
+    std::fs::create_dir(&foreign).unwrap();
+    std::fs::write(foreign.join("README.md"), "different project\n").unwrap();
+    let foreign_preview = RrdEngine::plan_installation(
+        &foreign,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        &executable,
+    )
+    .unwrap();
+    assert_ne!(
+        foreign_preview.installation.target,
+        preview.installation.target
+    );
+    RrdEngine::apply_installation(
+        &foreign,
+        InstallationTargetKind::ExistingProject,
+        &foreign_preview,
+        &foreign_preview.installation.plan_sha256,
+        1_800_000_000_001,
+        &executable,
+    )
+    .unwrap();
+    std::fs::copy(
+        foreign.join(".rrflow/config.toml"),
+        moved.join(".rrflow/config.toml"),
+    )
+    .unwrap();
+    assert!(RrdEngine::open_installed(&moved, &executable).is_err());
+}
+
+#[test]
+fn pre_canonical_rrflow_state_blocks_a_parallel_installation_authority() {
     let project = tempfile::tempdir().unwrap();
     std::fs::create_dir(project.path().join(".rrflow")).unwrap();
     std::fs::write(project.path().join(".rrflow/instance.toml"), "format = 1\n").unwrap();

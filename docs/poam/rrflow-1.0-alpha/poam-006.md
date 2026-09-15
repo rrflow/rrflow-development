@@ -10,19 +10,29 @@ independently.
 
 ## Observed deficiency
 
-Install and attunement are contracts without an engine-persisted job, deterministic
-plan/apply implementation, generic bundle-resident template, committed project-tree
-inventory, or real phase executors. The public `rrflow` binary has no
-install/serve/ready/verify/repair/version command; checkout-only `dev up` builds companion
-binaries and `dev doctor` can report READY from source/supervisor state. `rrd-server`
-directs operators to nonexistent `rrflow init`, while `RrflowKvStore::open` can create
-absent storage and reconcile state.
+The source-built primary `rrflow` binary now owns deterministic install plan/apply,
+installed serve, authenticated ready, read-only quick verify, and version. Exact-plan
+retry recovers across eight typed durable stages without duplicating installation
+authority, and the pre-canonical manifest, raw product CLI, development supervisor,
+standalone security initializer, and server initializer are removed. The lifecycle is
+still missing execution of its persisted pending attunement job, a committed deterministic
+project-tree inventory, generic bundle-resident scaffolding and adapter bindings, real attunement phase
+executors, configuration apply, full verify, canonical installed backup resolution,
+repair, restore, ownership-safe uninstall, service installation, and a signed offline
+platform distribution. The public apply boundary also still accepts an injected
+installation timestamp; the primary CLI supplies its host wall clock, but a versioned
+trusted-clock capability and rollback/skew/failure evidence do not exist. The retained
+application-backup component is fail-closed open-existing code: it no longer creates a
+database at the pre-canonical parent, but it does not yet accept the installed locator and
+distribution binding.
 
 ## Impact
 
-RRFlow cannot become or operate as a repeatable installed product; cold start, normal open,
-diagnostics, and process supervision can manufacture conflicting lifecycle truth, and
-internal components can appear healthy without one usable estate or executable.
+RRFlow has a coherent local pre-release startup spine, but it is not yet a repeatable
+turnkey distribution. It cannot discover and attune a project durably, repair or restore
+damaged state, remove only owned integration, or prove clean offline and cross-platform
+operation. Unqualified process and Kubernetes controllers can still overstate readiness
+or maintain lifecycle state outside the finished engine contract.
 
 ## Owning gates
 

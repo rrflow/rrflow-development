@@ -6,7 +6,6 @@ use rrd_contract::CanonicalId;
 use serde::{Deserialize, Serialize};
 
 pub const TOKEN_KEY_BYTES: usize = 32;
-pub const API_KEY_HEX_BYTES: usize = TOKEN_KEY_BYTES * 2;
 const API_KEY_DOCUMENT_FORMAT: u16 = 1;
 
 /// Owner-only credential file bound to the exact accepted installation plan.
@@ -68,16 +67,20 @@ impl ApiKeyDocument {
     }
 }
 
-pub fn create_token_key(path: &Path) -> io::Result<[u8; TOKEN_KEY_BYTES]> {
-    let mut key = [0_u8; TOKEN_KEY_BYTES];
-    getrandom::fill(&mut key)
-        .map_err(|error| io::Error::other(format!("token-key entropy failed: {error}")))?;
+fn create_token_key(path: &Path) -> io::Result<[u8; TOKEN_KEY_BYTES]> {
+    let key = generate_token_key()?;
     write_private_new(path, &key)?;
     Ok(key)
 }
 
-pub fn create_api_key_document(
-    path: &Path,
+pub(in crate::engine) fn generate_token_key() -> io::Result<[u8; TOKEN_KEY_BYTES]> {
+    let mut key = [0_u8; TOKEN_KEY_BYTES];
+    getrandom::fill(&mut key)
+        .map_err(|error| io::Error::other(format!("token-key entropy failed: {error}")))?;
+    Ok(key)
+}
+
+pub(in crate::engine) fn generate_api_key_document(
     plan_sha256: &str,
     principal_id: CanonicalId,
     credential_bytes: u16,
@@ -104,15 +107,25 @@ pub fn create_api_key_document(
         credential,
     };
     document.validate()?;
-    let bytes = serde_json::to_vec(&ApiKeyDocumentWire {
+    Ok(document)
+}
+
+pub(in crate::engine) fn encode_api_key_document(document: &ApiKeyDocument) -> io::Result<Vec<u8>> {
+    document.validate()?;
+    serde_json::to_vec(&ApiKeyDocumentWire {
         format_version: document.format_version,
         plan_sha256: &document.plan_sha256,
         principal_id: &document.principal_id,
         credential_bytes: document.credential_bytes,
         credential: document.credential(),
     })
-    .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-    write_private_new(path, &bytes)?;
+    .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
+}
+
+pub(in crate::engine) fn decode_api_key_document(bytes: &[u8]) -> io::Result<ApiKeyDocument> {
+    let document: ApiKeyDocument = serde_json::from_slice(bytes)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+    document.validate()?;
     Ok(document)
 }
 
@@ -128,18 +141,13 @@ pub fn read_api_key_document(path: &Path) -> io::Result<ApiKeyDocument> {
     File::open(path)?
         .take(16 * 1024 + 1)
         .read_to_end(&mut bytes)?;
-    let document: ApiKeyDocument = serde_json::from_slice(&bytes)
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-    document.validate()?;
-    Ok(document)
+    decode_api_key_document(&bytes)
 }
 
-/// Loads the RRD token-signing key or creates it exactly once.
-///
-/// Key lifecycle belongs to the engine security authority. Transports and
-/// embedded adapters consume this function; they do not implement competing
-/// key formats or permission rules.
-pub fn load_or_create_token_key(path: &Path) -> io::Result<[u8; TOKEN_KEY_BYTES]> {
+/// Loads the RRD token-signing key or creates it exactly once for retained
+/// engine-internal component/control paths. Product transports and adapters
+/// instead open the already-installed key through the installation authority.
+pub(super) fn load_or_create_token_key(path: &Path) -> io::Result<[u8; TOKEN_KEY_BYTES]> {
     match read_token_key(path) {
         Ok(key) => return Ok(key),
         Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
@@ -152,49 +160,6 @@ pub fn load_or_create_token_key(path: &Path) -> io::Result<[u8; TOKEN_KEY_BYTES]
     match create_token_key(path) {
         Ok(key) => Ok(key),
         Err(error) if error.kind() == io::ErrorKind::AlreadyExists => read_token_key(path),
-        Err(error) => Err(error),
-    }
-}
-
-/// Loads or creates a printable 256-bit API credential in a private file.
-///
-/// This is deliberately separate from the binary token-signing key format:
-/// clients can transmit it without lossy text conversion while retaining the
-/// same entropy and permission guarantees.
-pub fn load_or_create_api_key(path: &Path) -> io::Result<String> {
-    match read_api_key(path) {
-        Ok(key) => return Ok(key),
-        Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
-        Err(_) => {}
-    }
-
-    let mut entropy = [0_u8; TOKEN_KEY_BYTES];
-    getrandom::fill(&mut entropy)
-        .map_err(|error| io::Error::other(format!("API-key entropy failed: {error}")))?;
-    let mut key = String::with_capacity(API_KEY_HEX_BYTES);
-    for byte in entropy {
-        use std::fmt::Write as _;
-        write!(&mut key, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    match options.open(path) {
-        Ok(mut file) => {
-            file.write_all(key.as_bytes())?;
-            file.sync_all()?;
-            sync_parent(path)?;
-            Ok(key)
-        }
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => read_api_key(path),
         Err(error) => Err(error),
     }
 }
@@ -223,26 +188,7 @@ pub fn read_token_key(path: &Path) -> io::Result<[u8; TOKEN_KEY_BYTES]> {
     })
 }
 
-fn read_api_key(path: &Path) -> io::Result<String> {
-    private_regular_file(path)?;
-    let mut bytes = Vec::new();
-    File::open(path)?
-        .take((API_KEY_HEX_BYTES + 1) as u64)
-        .read_to_end(&mut bytes)?;
-    if bytes.len() != API_KEY_HEX_BYTES
-        || !bytes
-            .iter()
-            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
-    {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("API key must contain exactly {API_KEY_HEX_BYTES} lowercase hexadecimal bytes"),
-        ));
-    }
-    String::from_utf8(bytes).map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
-}
-
-fn write_private_new(path: &Path, bytes: &[u8]) -> io::Result<()> {
+pub(in crate::engine) fn write_private_new(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -256,7 +202,7 @@ fn write_private_new(path: &Path, bytes: &[u8]) -> io::Result<()> {
     sync_parent(path)
 }
 
-fn private_regular_file(path: &Path) -> io::Result<std::fs::Metadata> {
+pub(in crate::engine) fn private_regular_file(path: &Path) -> io::Result<std::fs::Metadata> {
     let link = std::fs::symlink_metadata(path)?;
     if link.file_type().is_symlink() || !link.is_file() {
         return Err(io::Error::new(
@@ -297,15 +243,5 @@ mod tests {
         let reopened = load_or_create_token_key(&path).unwrap();
         assert_eq!(created, reopened);
         assert_ne!(created, [0_u8; TOKEN_KEY_BYTES]);
-    }
-
-    #[test]
-    fn create_and_reopen_preserve_one_printable_api_key() {
-        let root = tempfile::tempdir().unwrap();
-        let path = root.path().join("CLIENT.SECRET");
-        let created = load_or_create_api_key(&path).unwrap();
-        let reopened = load_or_create_api_key(&path).unwrap();
-        assert_eq!(created, reopened);
-        assert_eq!(created.len(), API_KEY_HEX_BYTES);
     }
 }

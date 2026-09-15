@@ -1,5 +1,4 @@
-use rrd_contract::CanonicalId;
-use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::RrdEngine;
 use rrd_server::{RrdHttpServer, RrdJwtVerificationKey, RrdMutualTlsServerConfig};
 use rustls::RootCertStore;
 use std::fs::File;
@@ -12,9 +11,9 @@ use std::time::Duration;
 use tracing_subscriber::EnvFilter;
 
 struct Args {
-    root: PathBuf,
+    project: PathBuf,
+    distribution_executable: PathBuf,
     bind: SocketAddr,
-    token_key_file: Option<PathBuf>,
     jwt_key_file: Option<PathBuf>,
     ready_file: Option<PathBuf>,
     shutdown_request_file: Option<PathBuf>,
@@ -22,11 +21,6 @@ struct Args {
     tls_certificate_file: Option<PathBuf>,
     tls_private_key_file: Option<PathBuf>,
     tls_client_ca_file: Option<PathBuf>,
-}
-
-struct InitializeArgs {
-    root: PathBuf,
-    instance: CanonicalId,
 }
 
 #[tokio::main]
@@ -44,30 +38,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .with_env_filter(EnvFilter::from_default_env())
             .try_init()?;
     }
-    let mut arguments = std::env::args().skip(1).collect::<Vec<_>>();
-    if arguments.first().is_some_and(|value| value == "initialize") {
-        arguments.remove(0);
-        let args = parse_initialize_args(arguments.into_iter())
-            .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
-        initialize(args)?;
-        return Ok(());
-    }
-    let args = parse_args(arguments.into_iter())
+    let args = parse_args(std::env::args().skip(1))
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
-    let binding = InstanceBinding::discover(&args.root).map_err(invalid_input)?;
-    binding.require_runtime_ready().map_err(invalid_input)?;
-    let database = binding.expected_store();
-    binding
-        .verify_store_path(&database)
-        .map_err(invalid_input)?;
-    let key_path = args
-        .token_key_file
-        .unwrap_or_else(|| database.join("RRD.SECRET"));
-    let instance = CanonicalId::new(binding.manifest.id.clone())?;
-    let engine = RrdEngine::open_bound_with_token_key_file(&binding, instance, &key_path, now())?;
-    let project = engine
-        .project_authority_binding()?
-        .ok_or("bound RRD engine has no persisted project authority")?;
+    let engine = RrdEngine::open_installed(&args.project, &args.distribution_executable)?;
     let tls = load_mtls(
         args.tls_certificate_file,
         args.tls_private_key_file,
@@ -75,12 +48,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     )?;
     let jwt = args.jwt_key_file.map(load_jwt_key).transpose()?;
     let server = match (tls, jwt) {
-        (Some(tls), Some(jwt)) => {
-            RrdHttpServer::bind_project_mtls_with_jwt(engine, project, args.bind, tls, jwt)?
-        }
-        (Some(tls), None) => RrdHttpServer::bind_project_mtls(engine, project, args.bind, tls)?,
-        (None, Some(jwt)) => RrdHttpServer::bind_project_with_jwt(engine, project, args.bind, jwt)?,
-        (None, None) => RrdHttpServer::bind_project(engine, project, args.bind)?,
+        (Some(tls), Some(jwt)) => RrdHttpServer::bind_mtls_with_jwt(engine, args.bind, tls, jwt)?,
+        (Some(tls), None) => RrdHttpServer::bind_mtls(engine, args.bind, tls)?,
+        (None, Some(jwt)) => RrdHttpServer::bind_with_jwt(engine, args.bind, jwt)?,
+        (None, None) => RrdHttpServer::bind(engine, args.bind)?,
     };
     eprintln!(
         "rrd-server: {}://{}",
@@ -102,23 +73,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if let Some(path) = shutdown_complete_file {
         write_shutdown_completion(&path)?;
     }
-    Ok(())
-}
-
-fn initialize(args: InitializeArgs) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    std::fs::create_dir_all(&args.root)?;
-    let (_, created) = InstanceManifest::ensure_dedicated_as(&args.root, args.instance.as_str())
-        .map_err(invalid_input)?;
-    let root = std::fs::canonicalize(&args.root)?;
-    println!(
-        "{}",
-        serde_json::to_string(&serde_json::json!({
-            "format": 1,
-            "instance_id": args.instance,
-            "project_root": root,
-            "created": created,
-        }))?
-    );
     Ok(())
 }
 
@@ -182,9 +136,9 @@ fn write_readiness(path: &Path, scheme: &str, address: SocketAddr) -> io::Result
 }
 
 fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
-    let mut root = None;
+    let mut project = None;
+    let mut distribution_executable = None;
     let mut bind = "127.0.0.1:9477".parse().expect("static bind address");
-    let mut token_key_file = None;
     let mut jwt_key_file = None;
     let mut ready_file = None;
     let mut shutdown_request_file = None;
@@ -195,20 +149,20 @@ fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
     let mut arguments = arguments;
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
-            "--root" => {
-                root = Some(PathBuf::from(required_value(&mut arguments, "--root")?));
+            "--project" => {
+                project = Some(PathBuf::from(required_value(&mut arguments, "--project")?));
+            }
+            "--distribution-executable" => {
+                distribution_executable = Some(PathBuf::from(required_value(
+                    &mut arguments,
+                    "--distribution-executable",
+                )?));
             }
             "--bind" => {
                 let value = required_value(&mut arguments, "--bind")?;
                 bind = value
                     .parse()
                     .map_err(|error| format!("invalid --bind {value:?}: {error}"))?;
-            }
-            "--token-key-file" => {
-                token_key_file = Some(PathBuf::from(required_value(
-                    &mut arguments,
-                    "--token-key-file",
-                )?));
             }
             "--jwt-key-file" => {
                 jwt_key_file = Some(PathBuf::from(required_value(
@@ -288,9 +242,10 @@ fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
         }
     }
     Ok(Args {
-        root: root.ok_or_else(|| format!("--root is required\n{}", usage()))?,
+        project: project.ok_or_else(|| format!("--project is required\n{}", usage()))?,
+        distribution_executable: distribution_executable
+            .ok_or_else(|| format!("--distribution-executable is required\n{}", usage()))?,
         bind,
-        token_key_file,
         jwt_key_file,
         ready_file,
         shutdown_request_file,
@@ -298,40 +253,6 @@ fn parse_args(arguments: impl Iterator<Item = String>) -> Result<Args, String> {
         tls_certificate_file,
         tls_private_key_file,
         tls_client_ca_file,
-    })
-}
-
-fn parse_initialize_args(
-    arguments: impl Iterator<Item = String>,
-) -> Result<InitializeArgs, String> {
-    let mut root = None;
-    let mut instance = None;
-    let mut arguments = arguments;
-    while let Some(argument) = arguments.next() {
-        match argument.as_str() {
-            "--root" => {
-                root = Some(PathBuf::from(required_value(&mut arguments, "--root")?));
-            }
-            "--instance" => {
-                let value = required_value(&mut arguments, "--instance")?;
-                instance = Some(
-                    CanonicalId::new(value)
-                        .map_err(|error| format!("invalid --instance: {error}"))?,
-                );
-            }
-            "--help" | "-h" => return Err(initialize_usage().into()),
-            value => {
-                return Err(format!(
-                    "unknown initialize argument {value:?}\n{}",
-                    initialize_usage()
-                ));
-            }
-        }
-    }
-    Ok(InitializeArgs {
-        root: root.ok_or_else(|| format!("--root is required\n{}", initialize_usage()))?,
-        instance: instance
-            .ok_or_else(|| format!("--instance is required\n{}", initialize_usage()))?,
     })
 }
 
@@ -408,25 +329,7 @@ fn required_value(
 }
 
 fn usage() -> &'static str {
-    "usage: rrd-server --root PROJECT [--bind 127.0.0.1:9477] [--token-key-file PATH] [--jwt-key-file PATH] [--ready-file PATH] [--tls-cert PATH --tls-key PATH --tls-client-ca PATH] [--shutdown-request-file PATH --shutdown-complete-file PATH]\n       rrd-server initialize --root PROJECT --instance ID"
-}
-
-fn initialize_usage() -> &'static str {
-    "usage: rrd-server initialize --root PROJECT --instance ID"
-}
-
-fn now() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis()
-        .max(1) as u64
-}
-
-fn invalid_input(error: impl std::fmt::Display) -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidInput, error.to_string())
+    "usage: rrd-server --project PROJECT --distribution-executable RRFLOW [--bind 127.0.0.1:9477] [--jwt-key-file PATH] [--ready-file PATH] [--tls-cert PATH --tls-key PATH --tls-client-ca PATH] [--shutdown-request-file PATH --shutdown-complete-file PATH]"
 }
 
 #[cfg(test)]
@@ -434,30 +337,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn arguments_require_one_explicit_project_root() {
+    fn arguments_require_one_installed_project_and_distribution_executable() {
         assert!(parse_args(std::iter::empty()).is_err());
         assert!(parse_args(["--db".into(), "state".into()].into_iter()).is_err());
-        let args = parse_args(["--root".into(), "project".into()].into_iter()).unwrap();
-        assert_eq!(args.bind, "127.0.0.1:9477".parse().unwrap());
-        assert_eq!(args.root, PathBuf::from("project"));
-    }
-
-    #[test]
-    fn initialization_requires_an_explicit_root_and_instance() {
-        assert!(parse_initialize_args(std::iter::empty()).is_err());
-        assert!(parse_initialize_args(["--root".into(), "project".into()].into_iter()).is_err());
-        let args = parse_initialize_args(
+        assert!(parse_args(["initialize".into()].into_iter()).is_err());
+        assert!(parse_args(["--root".into(), "project".into()].into_iter()).is_err());
+        assert!(parse_args(["--project".into(), "project".into()].into_iter()).is_err());
+        let args = parse_args(
             [
-                "--root".into(),
+                "--project".into(),
                 "project".into(),
-                "--instance".into(),
-                "project-a".into(),
+                "--distribution-executable".into(),
+                "rrflow".into(),
             ]
             .into_iter(),
         )
         .unwrap();
-        assert_eq!(args.root, PathBuf::from("project"));
-        assert_eq!(args.instance.as_str(), "project-a");
+        assert_eq!(args.bind, "127.0.0.1:9477".parse().unwrap());
+        assert_eq!(args.project, PathBuf::from("project"));
+        assert_eq!(args.distribution_executable, PathBuf::from("rrflow"));
     }
 
     #[test]
@@ -466,16 +364,20 @@ mod tests {
         let request = root.join("shutdown.request");
         let complete = root.join("shutdown.complete");
         let incomplete = vec![
-            "--root".into(),
+            "--project".into(),
             "project".into(),
+            "--distribution-executable".into(),
+            "rrflow".into(),
             "--shutdown-request-file".into(),
             request.to_string_lossy().into_owned(),
         ];
         assert!(parse_args(incomplete.into_iter()).is_err());
 
         let arguments = vec![
-            "--root".into(),
+            "--project".into(),
             "project".into(),
+            "--distribution-executable".into(),
+            "rrflow".into(),
             "--shutdown-request-file".into(),
             request.to_string_lossy().into_owned(),
             "--shutdown-complete-file".into(),
@@ -490,8 +392,10 @@ mod tests {
         let root = std::env::current_dir().unwrap();
         let ready = root.join("rrd.ready");
         let arguments = vec![
-            "--root".into(),
+            "--project".into(),
             "project".into(),
+            "--distribution-executable".into(),
+            "rrflow".into(),
             "--ready-file".into(),
             ready.to_string_lossy().into_owned(),
         ];
@@ -499,8 +403,10 @@ mod tests {
         assert_eq!(args.ready_file, Some(ready.clone()));
         assert!(parse_args(
             [
-                "--root".into(),
+                "--project".into(),
                 "project".into(),
+                "--distribution-executable".into(),
+                "rrflow".into(),
                 "--ready-file".into(),
                 "relative.ready".into(),
             ]
@@ -509,8 +415,10 @@ mod tests {
         .is_err());
 
         let shutdown = vec![
-            "--root".into(),
+            "--project".into(),
             "project".into(),
+            "--distribution-executable".into(),
+            "rrflow".into(),
             "--ready-file".into(),
             ready.to_string_lossy().into_owned(),
             "--shutdown-request-file".into(),
@@ -526,8 +434,10 @@ mod tests {
     #[test]
     fn mutual_tls_files_are_an_all_or_nothing_contract() {
         let incomplete = [
-            "--root".into(),
+            "--project".into(),
             "project".into(),
+            "--distribution-executable".into(),
+            "rrflow".into(),
             "--tls-cert".into(),
             "server.pem".into(),
         ];

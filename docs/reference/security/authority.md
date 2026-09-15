@@ -147,11 +147,11 @@ environment.
 
 ## Installation trust bootstrap
 
-Initial security authority is part of the canonical B-01
-`initialize_instance` installation action. It is not a separate executable,
-manifest dialect, database opener, HTTP endpoint, or Kubernetes lifecycle.
-`rrflow install --preview` resolves the complete action and
-`rrflow install --apply <plan>` submits the exact reviewed digest to
+Initial security authority is part of the canonical installation action. It is
+not a separate executable, manifest dialect, database opener, HTTP endpoint, or
+Kubernetes lifecycle. `rrflow install plan` resolves the complete action and
+`rrflow install apply --plan <file> --expect <sha256>` submits the exact
+reviewed digest to
 `RrdEngine`. The server cannot listen for application traffic until that action
 has committed an installed-estate binding and initial security authority.
 
@@ -165,9 +165,9 @@ operation or an explicit recovery procedure. The cold-start path is local and
 privileged by the operator's OS/deployment boundary and is never remotely
 callable.
 
-### Previewed initialization input
+### Previewed installation input
 
-The `initialize_instance` action input digest commits to one normalized,
+The installation action input digest commits to one normalized,
 bounded document containing:
 
 - project, estate, and instance identities plus the selected rrflowMX or
@@ -227,9 +227,9 @@ by the final typed verifier contract before security qualification.
 
 ### Commit, replay, and failure boundaries
 
-`RrdEngine` obtains installation time from its injected trusted clock; callers
-do not supply credential-validity or audit time. The accepted
-`initialize_instance` transaction atomically commits the installed-estate
+The target `RrdEngine` obtains installation time from a versioned trusted-clock
+capability; ordinary callers do not supply credential-validity or audit time.
+The accepted installation transaction atomically commits the installed-estate
 binding, initial policy/verifier metadata, exact plan/action identity,
 installation checkpoint, security-administration audit, outbox/commit evidence,
 and authoritative cursor. rrflowMX and rrflowKV execute the same semantic
@@ -256,22 +256,32 @@ and mount escape, oversized/empty/non-regular inputs, Unix modes, Windows ACLs,
 Kubernetes projected volumes, provider revision drift, cancellation, and
 revocation.
 
-### Current helper disposition
+### Current installation disposition
 
-The current `rrd-security-bootstrap` code preserves only useful
-characterization: strict JSON decoding, bounded non-empty regular inputs,
-unique identities, complete `SecurityState` validation, verifier-only
-persistence, atomic policy-plus-audit initialization, exact no-op replay, and
-drift denial. Its successful shape is not retained. It opens a caller-selected
-rrflowKV path before manifest validation, accepts caller-selected time and
-absolute credential paths, performs resolve/metadata/open as separate
-filesystem operations, has a no-op non-Unix privacy check, derives operation
-identity from only the manifest bytes, and lets the CLI supervisor manufacture
-its own principal/grants. The Kubernetes renderer invokes the same helper as a
-second initializer. A-07 and D-01 absorb the listed safeguards into the one
-installation action and delete the engine helper, standalone binary, CLI
-supervisor call, Kubernetes call, manifest/test shape, and every direct-store
-entrypoint without an alias or reader.
+The standalone `rrd-security-bootstrap` helper/binary, its manifest shape and
+tests, the CLI supervisor call, and the Kubernetes bootstrap container are
+removed. The canonical local installer now generates one high-entropy API key
+and token key, freezes their exact bytes plus first-apply time in an owner-only,
+plan-addressed recovery intent, creates or verifies their owner-only files, and
+atomically commits `SecurityState`, security audit, installed binding,
+configuration, install checkpoint, attunement plan/job, outbox, and cursor
+before publishing the locator. Deterministic failure injection at the intent,
+directory, store, token, credential, commit, locator, and acknowledgement
+stages proves exact retry without another credential, policy, or audit outcome.
+Malformed, foreign, mismatched, symbolic, partly committed, or missing-secret
+state fails closed.
+
+That is a bounded local pre-release result, not final secret qualification. The
+recovery intent necessarily contains serialized raw secret staging bytes until
+acknowledgement; it is private, size-bounded, digest-bound, redacted from
+`Debug`, and removed on success, but it has not passed native Windows ACL,
+crash-residue secret accounting, memory zeroization, provider handoff, rotation,
+or handle-relative path-replacement proof. In addition, the current public
+apply method accepts an injected `at_unix_ms`; the primary CLI supplies its host
+wall clock, but the trusted-clock capability and rollback/skew/failure tests in
+the target contract are not implemented. The target capability-scoped secret
+source/sink, clock, and prepared-effect receipt rules above still govern
+D-02/D-06/J.
 
 ## Policy and data stamp
 
@@ -371,11 +381,11 @@ The complete review found these direct-convergence requirements:
    policy/data stamp are not.
 4. The missing-policy loopback branch grants anonymous application operation;
    it is current characterization, not an accepted pre-release fallback.
-5. Security bootstrap is a standalone rrflowKV-only database-path command. It
-   opens storage before validating its input, accepts caller time and arbitrary
-   absolute secret paths, has a resolve-then-open race and no non-Unix privacy
-   enforcement, and is independently driven by CLI and Kubernetes code rather
-   than the digest-bound `initialize_instance` action.
+5. Initial product security now has one exact-plan installation path and the
+   standalone bootstrap is absent. Its current private recovery intent stages
+   raw secret bytes on disk, Unix privacy checks are not native Windows ACL
+   qualification, and external capability-scoped secret sources/sinks plus
+   prepared delivery receipts are not implemented.
 6. Authorization and completion audit are not atomic with domain mutation;
    audit values also lack the final stamp, plan, effect, and commit evidence.
 7. Current actions cover existing endpoints but not all planned install,
@@ -389,9 +399,9 @@ The complete review found these direct-convergence requirements:
    into a broad allowed audit label. A-07 must absorb its seven real effect
    distinctions into this authority and delete the parallel types and path.
 
-These are tracked by the [POA&M](../../poam/rrflow-1.0-alpha.md). They are not
-silently repaired during this documentation-classification package and do not
-create a legacy security mode.
+These are tracked by the [POA&M](../../poam/rrflow-1.0-alpha.md). The completed
+installation convergence does not silently close them or create a parallel
+pre-release security mode.
 
 ## Evidence and acceptance map
 
@@ -402,7 +412,7 @@ create a legacy security mode.
 | Server/client real-process tests | Current API-key sessions, denials, redaction, audit read/export, TLS 1.3 mTLS identity, authenticated HTTP/WSS, and selected reopen behavior. They do not qualify every adapter, provider, rotation mode, or deployment. |
 | A-07 | Remove the direct-store/public-repository authority, obsolete RRO language, ambiguous action vocabulary, and dependency-direction conflicts while mapping every retained invariant to its one owner. |
 | C-01 through C-04 | Encode and transact security/audit state through the one accepted rrflowMX/rrflowKV substrate; bind policy and data observations; atomically include audit with accepted writes. |
-| D-01/D-02/D-06 | Implement the local-only installation trust bootstrap: exact preview/apply, fresh-target proof, engine clock, capability-scoped secret I/O, typed verifiers, atomic binding/policy/audit/checkpoint commit, effect receipts, crash-safe replay, external identity providers, and optional adapters without copying credentials into canonical state. |
+| D-01/D-02/D-06 | D-01 now proves exact local preview/apply, fresh-target checks, one engine-generated credential/token, atomic binding/policy/audit/checkpoint commit, and eight-stage same-plan replay. Complete capability-scoped secret I/O, typed verifiers, delivery/rotation receipts, native ACLs, external identity providers, and optional adapters without copying credentials into canonical state. |
 | F-01 through F-05 | Prove native and DataFusion plans see only authorized stamped batches, enforce budgets, and never return stale authorization-scoped cache entries. |
 | H-04/H-05/H-07 | Prove cross-surface authorization equivalence, complete redacted causal evidence, RRD TLS identity, and mesh independence. |
 | J-01 through J-05 | Remove superseded branches and pass denial, crash/reopen, resource, clean-install, secret-accounting, and deployment qualification before release. |
@@ -413,9 +423,8 @@ create a legacy security mode.
   `crates/authority/rrd-security/src/lib.rs`
 - Sole accepted composition boundary and invocation policy:
   `crates/authority/rrd-engine/src/engine/{security,session,invocation}.rs`
-- Current bootstrap helper:
-  `crates/authority/rrd-engine/src/engine/security_bootstrap.rs` and
-  `crates/adapters/rrflow-cli/src/bin/rrd-security-bootstrap.rs`
+- Canonical installation and private recovery staging:
+  `crates/authority/rrd-engine/src/engine/{installation,installation/recovery,token_key}.rs`
 - HTTP credentials and invocation wrapping:
   `crates/transport/rrd-server/src/http/{auth,envelope,server}.rs`
 - Public action and audit shapes:

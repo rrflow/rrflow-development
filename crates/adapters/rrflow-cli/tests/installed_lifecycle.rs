@@ -5,8 +5,6 @@
 //! discovery, accepts its generated credential, handles SIGINT, reopens, and
 //! passes the read-only verifier.
 
-#![cfg(unix)]
-
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CanonicalId, CloseSession, CommitTransaction,
@@ -72,6 +70,7 @@ fn inventory(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     output
 }
 
+#[cfg(unix)]
 fn stop_gracefully(child: &mut Child) {
     let signal = Command::new("kill")
         .args(["-INT", &child.id().to_string()])
@@ -92,6 +91,95 @@ fn stop_gracefully(child: &mut Child) {
     }
 }
 
+#[test]
+fn primary_help_exposes_only_the_installed_product_lifecycle() {
+    let output = invoke(&["--help"]);
+    assert_success(&output, "primary help");
+    let help = String::from_utf8(output.stdout).unwrap();
+    for command in ["version", "install", "serve", "ready", "verify"] {
+        assert!(
+            help.contains(command),
+            "missing {command} from help:\n{help}"
+        );
+    }
+    for removed in [
+        "assert",
+        "as-of",
+        "history",
+        "status",
+        "invocations",
+        "query",
+        "context",
+        "identity",
+        "storage",
+        "dev",
+    ] {
+        assert!(
+            !help.lines().any(|line| {
+                line.trim_start()
+                    .strip_prefix(removed)
+                    .is_some_and(|tail| tail.starts_with(char::is_whitespace))
+            }),
+            "removed command {removed} remains in help:\n{help}"
+        );
+    }
+}
+
+#[test]
+fn raw_database_and_development_commands_fail_during_argument_parsing() {
+    for removed in [
+        "assert",
+        "as-of",
+        "history",
+        "status",
+        "invocations",
+        "query",
+        "context",
+        "identity",
+        "storage",
+        "dev",
+    ] {
+        let output = invoke(&[removed]);
+        assert!(!output.status.success(), "{removed} unexpectedly succeeded");
+        let error = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            error.contains(&format!("unrecognized subcommand '{removed}'")),
+            "unexpected {removed} rejection: {error}"
+        );
+    }
+
+    for removed_option in ["--db", "--reader"] {
+        let output = invoke(&[removed_option, "unbound", "version"]);
+        assert!(
+            !output.status.success(),
+            "{removed_option} unexpectedly succeeded"
+        );
+        let error = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            error.contains("unexpected argument"),
+            "unexpected {removed_option} rejection: {error}"
+        );
+    }
+}
+
+#[test]
+fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
+    let apply = invoke(&["install", "apply", "--project", "."]);
+    assert!(!apply.status.success());
+    let error = String::from_utf8(apply.stderr).unwrap();
+    assert!(error.contains("--plan <PLAN>"));
+    assert!(error.contains("--expect <EXPECT>"));
+
+    let verify = invoke(&["verify", "--help"]);
+    assert_success(&verify, "verify help");
+    let help = String::from_utf8(verify.stdout).unwrap();
+    assert!(help.contains("--level <LEVEL>"));
+    assert!(help.contains("quick"));
+    assert!(!help.contains("repair"));
+    assert!(!help.contains("restore"));
+}
+
+#[cfg(unix)]
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     let root = tempfile::tempdir().unwrap();

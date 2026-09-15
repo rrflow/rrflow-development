@@ -204,10 +204,11 @@ and active configuration must agree before the engine opens. A future
 configure operation may advance this record through a plan/apply transaction;
 editing the locator or startup TOML is not reconfiguration.
 
-Legacy `.rrflow/instance.toml` or any other pre-existing `.rrflow` tree is
+Pre-canonical `.rrflow/instance.toml` or any other pre-existing `.rrflow` tree is
 rejected for a new install. This package intentionally does not guess whether
-those bytes may be deleted or migrated. Direct legacy convergence needs its
-own full traceability and interruption proof.
+those user-owned bytes may be deleted or migrated. R1 supplied its own full
+traceability and interruption proof before deleting the product reader; the
+collision remains preserved and fail-closed rather than becoming migration.
 
 ## Configuration model and precedence
 
@@ -285,24 +286,32 @@ only after replacement evidence passes.
   capabilities; and
 - prove the exact primary-binary lifecycle with a custom configuration.
 
-This is a usable development slice, not D-01 completion. Crash cleanup,
-adversarial path replacement, native ACL qualification, legacy removal, and
-release artifacts remain open.
+This is a usable development slice, not D-01 completion. Its successor R1
+supplies bounded install retry and direct pre-canonical startup removal;
+adversarial path replacement, native ACL qualification, and release artifacts
+remain open.
 
-### R1 — direct legacy convergence and interrupted-install recovery
+### R1 — direct pre-canonical convergence and interrupted-install recovery (implemented)
 
 - characterize every `InstanceManifest`, `ensure_dedicated`, raw-root server,
   create-or-open, supervisor, and standalone initializer caller;
 - map useful behavior and tests into the installed estate boundary;
 - add fault points before/after directory creation, key/credential creation,
   engine commit, locator publication, and acknowledgement;
-- resume the same sealed plan or remove only proven uncommitted owned staging;
-  and
+- resume the same sealed plan, exactly verify owned partial state, and remove
+  only its acknowledged intent/pending locator; and
 - delete the competing success paths without a compatibility lane.
 
-Exit proof: one project can have only one creation authority, every crash point
-has a deterministic next action, and no credential/policy/audit outcome is
-duplicated.
+Implemented result: one owner-only plan-addressed intent freezes first-apply
+time and generated token/credential bytes. Typed tests stop at eight durable
+stages and prove exact-plan retry, one credential/token and semantic install
+outcome, locator publication, intent cleanup, and fail-closed malformed,
+symbolic, foreign, drifted, partial-control, or missing-secret state. Primary
+CLI, internal server, embedded MCP, installed SDK conformance, deployment
+catalogue, and Kubernetes rendering use canonical install/open; manifest,
+private binding, raw product commands, supervisor, security initializer, and
+server initializer are absent. This exits R1 locally without closing D-01,
+native-platform qualification, external secret delivery, or release proof.
 
 ### R2 — governed reconfiguration and attunement recommendations
 
@@ -403,18 +412,20 @@ for analytical work or vice versa.
   decoding would perpetuate conflicting semantics.
 - **Using TUF/release metadata as installed state:** rejected because artifact
   provenance and project lifecycle are separate trust domains.
-- **Closing D-01 from one happy-path test:** rejected because interrupted apply,
-  legacy convergence, native platform security, and release bundle proofs are
-  still absent.
+- **Closing D-01 from the local startup package:** rejected because typed
+  interrupted apply and pre-canonical convergence now pass, but hostile
+  filesystem/native platform security, attunement execution, maintenance, and
+  release-bundle proofs remain absent.
 
 ## Immediate implementation handoff
 
-The next RRFlow package should begin with R1, not a new UI schema. The separate
-Connectome session can proceed against the new generated discovery shape and
-build the bootstrap/configuration screens, but must keep unavailable operations
-disabled and retain capability/catalogue change handling. R2 and R3 can then
-add operations without changing the estate identity or reintroducing client-
-owned lifecycle state.
+The next RRFlow package should begin with R2's governed configuration and
+attunement boundary, not a second UI-owned schema. A separate Connectome session
+can proceed against the generated discovery shape and build installation,
+readiness, and configuration screens, but must keep unavailable operations
+disabled and retain capability/catalogue change handling. R2 and R3 can add
+operations without changing the estate identity or reintroducing client-owned
+lifecycle state.
 
 The stable handoff is:
 

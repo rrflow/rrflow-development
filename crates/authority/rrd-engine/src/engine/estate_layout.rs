@@ -8,12 +8,16 @@ pub(super) const STORAGE_DIRECTORY: &str = ".rrflow/rrd";
 pub(super) const STORAGE_ROOTS_DIRECTORY: &str = ".rrflow/rrd/roots";
 pub(super) const CREDENTIAL_DIRECTORY: &str = ".rrflow/credentials";
 pub(super) const LOCATOR_RELATIVE_PATH: &str = ".rrflow/config.toml";
+const INSTALL_INTENT_PREFIX: &str = ".rrflow-install-";
+const INSTALL_INTENT_SUFFIX: &str = ".json";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct EstateLayout {
     pub storage_root: String,
     pub token_key: String,
     pub operator_credential: String,
+    pub install_intent: String,
+    pub locator_pending: String,
 }
 
 impl EstateLayout {
@@ -22,15 +26,21 @@ impl EstateLayout {
             storage_root: format!("{STORAGE_ROOTS_DIRECTORY}/{storage_root_id}"),
             token_key: format!("{STORAGE_ROOTS_DIRECTORY}/{storage_root_id}/RRD.TOKEN"),
             operator_credential: format!("{CREDENTIAL_DIRECTORY}/{principal_id}.json"),
+            install_intent: format!(
+                "{INSTALL_INTENT_PREFIX}{storage_root_id}{INSTALL_INTENT_SUFFIX}"
+            ),
+            locator_pending: format!("{ESTATE_DIRECTORY}/.config.{storage_root_id}.pending"),
         };
         for relative in [
             layout.storage_root.as_str(),
             layout.token_key.as_str(),
             layout.operator_credential.as_str(),
+            layout.locator_pending.as_str(),
             LOCATOR_RELATIVE_PATH,
         ] {
             validate_managed_relative(relative)?;
         }
+        validate_intent_relative(&layout.install_intent)?;
         Ok(layout)
     }
 
@@ -90,15 +100,28 @@ impl EstateLayout {
     }
 }
 
-/// A new install may not coexist with either an old `.rrflow/instance.toml`
-/// estate or an unrecognized `.rrflow` tree. Replay is resolved from the
-/// canonical locator before this check is called.
+/// A new install may not coexist with either a pre-canonical
+/// `.rrflow/instance.toml` estate or an unrecognized `.rrflow` tree. Replay is
+/// resolved from the canonical locator before this check is called.
 pub(super) fn reject_existing_estate(project: &Path) -> Result<()> {
     match std::fs::symlink_metadata(project.join(ESTATE_DIRECTORY)) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Ok(_) => Err(ServiceError::ProjectBindingMismatch),
         Err(error) => Err(ServiceError::Storage(error.to_string())),
+    }?;
+    let entries =
+        std::fs::read_dir(project).map_err(|error| ServiceError::Storage(error.to_string()))?;
+    for entry in entries {
+        let name = entry
+            .map_err(|error| ServiceError::Storage(error.to_string()))?
+            .file_name()
+            .into_string()
+            .map_err(|_| ServiceError::ProjectBindingMismatch)?;
+        if name.starts_with(INSTALL_INTENT_PREFIX) && name.ends_with(INSTALL_INTENT_SUFFIX) {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
     }
+    Ok(())
 }
 
 pub(super) fn create_estate_directories(project: &Path) -> Result<()> {
@@ -109,8 +132,13 @@ pub(super) fn create_estate_directories(project: &Path) -> Result<()> {
         CREDENTIAL_DIRECTORY,
     ] {
         let path = project.join(relative);
-        if std::fs::symlink_metadata(&path).is_ok() {
-            return Err(ServiceError::ProjectBindingMismatch);
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            Ok(_) => continue,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(ServiceError::Storage(error.to_string())),
         }
         let parent = path.parent().ok_or(ServiceError::ProjectBindingMismatch)?;
         let mut builder = std::fs::DirBuilder::new();
@@ -124,6 +152,71 @@ pub(super) fn create_estate_directories(project: &Path) -> Result<()> {
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
         rrd_store::sync_directory_metadata(parent)
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
+    }
+    Ok(())
+}
+
+pub(super) fn validate_recovery_estate(project: &Path, layout: &EstateLayout) -> Result<()> {
+    let storage_id = Path::new(&layout.storage_root)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or(ServiceError::ProjectBindingMismatch)?;
+    let credential_name = Path::new(&layout.operator_credential)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or(ServiceError::ProjectBindingMismatch)?;
+    let locator_pending = Path::new(&layout.locator_pending)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or(ServiceError::ProjectBindingMismatch)?;
+    validate_directory_entries(
+        project,
+        ESTATE_DIRECTORY,
+        &["rrd", "credentials", "config.toml", locator_pending],
+    )?;
+    validate_directory_entries(project, STORAGE_DIRECTORY, &["roots"])?;
+    validate_directory_entries(project, STORAGE_ROOTS_DIRECTORY, &[storage_id])?;
+    validate_directory_entries(project, CREDENTIAL_DIRECTORY, &[credential_name])
+}
+
+fn validate_directory_entries(project: &Path, relative: &str, allowed: &[&str]) -> Result<()> {
+    let path = project.join(relative);
+    let metadata = match std::fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(ServiceError::Storage(error.to_string())),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    let entries =
+        std::fs::read_dir(&path).map_err(|error| ServiceError::Storage(error.to_string()))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| ServiceError::Storage(error.to_string()))?;
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| ServiceError::ProjectBindingMismatch)?;
+        if !allowed.contains(&name.as_str()) {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn install_intent_path(project: &Path, layout: &EstateLayout) -> Result<PathBuf> {
+    validate_intent_relative(&layout.install_intent)?;
+    Ok(project.join(&layout.install_intent))
+}
+
+fn validate_intent_relative(relative: &str) -> Result<()> {
+    if !relative.starts_with(INSTALL_INTENT_PREFIX)
+        || !relative.ends_with(INSTALL_INTENT_SUFFIX)
+        || relative.contains('/')
+        || relative.contains('\\')
+        || relative.len() > 256
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
     }
     Ok(())
 }

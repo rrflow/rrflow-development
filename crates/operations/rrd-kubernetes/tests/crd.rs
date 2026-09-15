@@ -18,8 +18,22 @@ fn generated_crd_is_namespaced_structural_and_status_enabled() {
             .as_array()
             .unwrap()
             .len(),
-        8
+        7
     );
+    let properties = &schema["properties"]["spec"]["properties"];
+    assert!(properties["installationPlanConfigMap"].is_object());
+    assert!(properties["installationPlanSha256"].is_object());
+    for removed in [
+        "instanceId",
+        "bootstrapManifestConfigMap",
+        "bootstrapCredentialSecret",
+        "bootstrapAtUnixMs",
+    ] {
+        assert!(
+            properties.get(removed).is_none(),
+            "obsolete field {removed} remains"
+        );
+    }
 }
 
 #[test]

@@ -6,7 +6,6 @@
 
 pub mod cluster_transfer;
 pub mod data_plane;
-pub mod instance;
 pub mod operator_knowledge;
 pub mod query;
 mod read_evidence;
@@ -20,10 +19,6 @@ pub use cluster_transfer::{
 pub use data_plane::{
     execute_traced_embedding, execute_traced_vector_search, TracedEmbeddingExecution,
     TracedVectorSearch,
-};
-pub use instance::{
-    InstanceBinding, InstanceManifest, InstanceMode, ProjectAuthorityBinding, INSTANCE_FILE,
-    INSTANCE_FORMAT, PROJECT_AUTHORITY_FORMAT, STORE_DIR,
 };
 pub use operator_knowledge::{
     execute_traced_operator_search, execute_traced_operator_sync, TracedOperatorSearch,

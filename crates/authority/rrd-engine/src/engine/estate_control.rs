@@ -1167,7 +1167,10 @@ impl EngineLocalBackupDriver {
                 format!("backup catalogue authentication failed: {error}"),
             )
         })?;
-        let source_engine = RrdEngine::open(
+        // This retained component path is not the canonical installed-estate
+        // resolver. It must never create a database when the fixed source is
+        // absent or now contains the installed `roots/<install-id>` layout.
+        let source_engine = RrdEngine::open_existing(
             &canonical_source,
             request.instance_id.clone(),
             [0_u8; TOKEN_KEY_BYTES],

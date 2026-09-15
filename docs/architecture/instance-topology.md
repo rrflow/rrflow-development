@@ -1,6 +1,6 @@
 # RRFlow instance topology
 
-**Status:** active accepted logical and physical topology; canonical installed identity implemented, direct convergence remains incomplete
+**Status:** active accepted logical and physical topology; canonical installed startup implemented, resource and controller convergence remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/architecture/instance-topology`
 **Owner:** project, estate, RRD instance, environment, deployment, and physical-placement relationships
 **Decision:** [`../decisions/0001-single-engine-authority.md`](../decisions/0001-single-engine-authority.md)
@@ -224,16 +224,15 @@ re-inventoried and committed through `RrdEngine` before it becomes estate state.
 
 ## Current implementation audit
 
-The passing current tests characterize several safety properties; they do not
-establish the accepted topology.
+The passing current tests establish one canonical installed startup identity
+and remove its competing pre-canonical product paths. They do not complete the
+resource grammar, duplicate estate hierarchy, cluster binding, or release
+qualification required by the accepted topology.
 
 | Current construct | Useful behavior to preserve | Conflict to remove directly |
 |---|---|---|
-| `InstalledEstateIdentity`, `EstateLayout`, and `.rrflow/config.toml` | The new install plan carries distinct project/estate/instance IDs, eight ordered project-relative managed paths, no fabricated organization or absolute host path, and one locator bound to an engine-owned installed record/configuration. Exact apply/open/verify and legacy-collision tests pass. | This is the canonical destination but not full D-01: interrupted apply, legacy-manifest removal, remaining raw-root callers, hostile pathname replacement, and native-platform qualification remain open. |
-| `InstanceManifest`, `InstanceMode::Dedicated`, and `.rrflow/instance.toml` | Strict unknown-field/version rejection, create-new publication, canonical instance IDs, exact-root discovery, and rejection of nested/neighbor projects. | It is a second installer with frozen compatibility fields, lacks estate/project/environment semantics, and lets server/CLI/test startup create authority outside D-01. Replace it with the one locator plus installed binding; retain no reader or alias. |
-| `ProjectAuthorityBinding` at `server/state/project-authority/{instance}` | Digest validation, exact canonical root/store checking, and refusal to rebind a foreign store. | It stores absolute paths and manifest shape in a JSON control value, omits accepted installation/security revisions, is rrflowKV-specific, and is committed through a private control transition with fabricated invocation coordinates. Replace it with a semantic installed binding committed through the normal transaction. |
-| `RrdEngine::open_project_store`, `open_bound`, and `bind_project_authority` | One composition point opens storage and checks binding before use. | Opening is coupled to `.rrflow/rrd`, normal startup can create token material, and binding is not proven equivalent across MX/KV or authorized through the installed operation. |
-| `rrd-server initialize` and CLI/MCP/test `ensure_dedicated*` callers | Provide repeatable current test setup. | They are independent authority-creation paths. Test fixtures must invoke the real install plan/apply boundary or a test-only pure fixture builder over the same contract. The release command is removed. |
+| `InstalledEstateIdentity`, `EstateLayout`, and `.rrflow/config.toml` | The install plan carries distinct project/estate/instance IDs, eight ordered project-relative managed paths, no fabricated organization or absolute host path, and one locator bound to an engine-owned installed record/configuration. Apply freezes first-apply time and secret bytes in a private plan-addressed intent, classifies partial state, resumes the exact plan across eight typed durable stages, publishes one locator, and removes acknowledged recovery state. Exact apply/open/verify, whole-project relocation, nested/neighbor/foreign rejection, interruption, tamper, and pre-canonical-collision tests pass. | This is the sole product startup destination, but not full D-01: hostile pathname/mount replacement, native ACL/platform qualification, durable attunement, repair/restore/uninstall, and signed offline release evidence remain open. |
+| Removed pre-canonical startup authority | `.rrflow/instance.toml`, `InstanceManifest`, `InstanceMode`, `ProjectAuthorityBinding`, `open_project_store`, `open_bound`, `bind_project_authority`, `rrd-server initialize`, `ensure_dedicated*`, raw primary-CLI commands, the development supervisor, and the standalone security initializer have no current product source or successful reader. CLI, internal server, embedded MCP, SDK conformance, deployment-catalogue, and Kubernetes-rendered startup use installation/open instead. | Retain no reader, alias, migration lane, or second success path. Historical evidence may name deleted symbols but cannot make them callable. Create-or-open construction remains only in component tests that do not claim product installation. The retained application-backup driver is deliberately open-existing-only and fails on canonical installed layout until its later lifecycle package supplies locator/distribution-bound resolution. |
 | `PLATFORM_TERMS`, `ResourceKind`, and `ResourcePath` | Bounded typed resource components and duplicate-kind rejection. | The active table mirrors a superseded historical document; environment is omitted; organization/estate/project/instance roles conflict; and arbitrary kind order is accepted. Replace with operation-specific canonical topology/resource contracts. |
 | `EstateAuthorityResourceKind` and `rrd-estate::AuthorityResourceKind` | Bounded IDs, desired/observed validation, parent existence, receipt lineage, and some strict relationships. | The organization/account/project/environment/instance/node/shard/job/health/secret hierarchy duplicates installation, security, estate, job, health, and cluster owners inside a monolithic estate document. Split every useful semantic into its one owner and remove the catalogue. |
 | `rrd-cluster` identity and placement contracts | Multi-zone voter checks, placement epochs, read stamps, snapshot-vector consistency, explicit cross-shard denial, transfer digests, and reshard cutover checks. | Cluster IDs use a separate loose string family and free-form scope strings; the contract is not yet bound to installed instance/estate identity or one engine transaction. Converge it at the cluster/deployment gates without making cluster an estate owner. |
@@ -254,10 +253,10 @@ defect, not proof of canonical terminology.
    JSON control authority rather than wrapping it.
 3. **D-01 install:** retain the implemented bundle-resident configuration,
    portable `.rrflow/config.toml`, canonical installed-estate identity, no-write
-   preview, and exact apply/open boundary. In the next bounded package, prove
-   interruption recovery and replacement parity, then remove
-   `.rrflow/instance.toml`, `InstanceManifest`, `rrd-server initialize`, and
-   every `ensure_dedicated*` success path without a compatibility lane.
+   preview, exact apply/open boundary, eight-stage interruption recovery, and
+   direct removal of the pre-canonical startup authorities. Complete the
+   remaining hostile-path/native-platform, attunement, maintenance, and release
+   proofs without adding another lifecycle lane.
 4. **D-02/D-03 attunement:** persist jobs and commit the bounded project tree
    using the installed root and stable project/estate identities. Environments,
    workspaces, and external systems enter only as evidenced project data or
@@ -274,10 +273,16 @@ defect, not proof of canonical terminology.
 
 ## Characterization evidence and missing proof
 
-At the review baseline, these focused tests pass:
+At the current bounded-package revision, these focused tests pass:
 
-- `rrd-engine/tests/runtime_instance.rs`: seven tests for manifest shape,
-  containment, foreign stores, binding persistence, and relocation failure;
+- `rrd-engine`'s installation unit corpus: sixteen tests for byte-identical
+  planning, exact apply/open/verify, configuration sealing, symbolic and
+  pre-canonical collisions, relocation, nested/foreign state, eight-stage
+  retry, stable secrets/time, partial commit, and recovery-state tamper;
+- `rrflow-cli/tests/installed_lifecycle.rs`: four primary-binary tests for the
+  reduced command surface, required plan digest, installed service/authenticated
+  discovery, quick verification, close/reopen, and raw/development-command
+  rejection;
 - `rrd-contract/tests/platform_terminology.rs`: three tests freezing the
   current term table and its historical-file order;
 - `rrd-estate/tests/authority_catalogue.rs`: two tests for the duplicate
@@ -285,10 +290,13 @@ At the review baseline, these focused tests pass:
 - `rrd-cluster/tests/contracts.rs`: ten tests for placement, stamps, routing,
   transfer, telemetry, and reshard contract validation.
 
-They do not prove real installation, one identity vocabulary, rrflowMX/rrflowKV
-semantic parity, atomic topology/index/audit commits, cross-surface resolution,
-clustered engine operation, relocation/reconfiguration, or offline deployment.
-Those remain open in the roadmap and POA&M.
+The first two bullets prove the local installed-startup replacement, not the
+whole topology. The corpus does not prove one operation-specific resource
+vocabulary, complete rrflowMX/rrflowKV semantic parity, clustered engine
+operation, governed reconfiguration, hostile mount/path races, native-platform
+ACLs, or signed offline deployment. Those remain open in the roadmap and
+POA&M. The exact replacement map and commands are in the linked
+[Gate D change journal](../evidence/change-journals/gate-d/d-01-precanonical-authority-convergence-and-install-recovery.md).
 
 ## Acceptance
 
@@ -299,7 +307,8 @@ authenticated `RrdEngine`; rrflowMX and rrflowKV pass the complete
 storage-profile semantic differential; rrflowKV survives reopen;
 environment/workspace/external capability
 records cannot alter authority; physical placement cannot alter logical
-identity; unauthorized, nested, neighboring, escaped, foreign, moved, and
-superseded bindings fail closed; and no `.rrflow/instance.toml`, initializer,
+identity; an authorized whole-project relocation succeeds while unauthorized,
+nested, neighboring, escaped, foreign, partial-move, and superseded bindings
+fail closed; and no `.rrflow/instance.toml`, initializer,
 generic historical path hierarchy, private binding store, or alternate reader
 remains.

@@ -1,4 +1,5 @@
-use rrd_contract::CanonicalId;
+use rrd_contract::{CanonicalId, InstallationTargetKind};
+use rrd_engine::RrdEngine;
 use rrd_estate::{
     DesiredInstance, DesiredPhase, DesiredTarget, DriverErrorKind, DriverRequest, EstateDriver,
     EstateRepository, LocalArgument, LocalDeployment, LocalDeploymentCatalog, LocalProcessDriver,
@@ -73,69 +74,100 @@ fn workspace_binary(name: &str) -> PathBuf {
 
 struct TestCatalog {
     _snapshot_directory: tempfile::TempDir,
+    distribution_executable: PathBuf,
     value: LocalDeploymentCatalog,
 }
 
-fn catalog() -> LocalDeploymentCatalog {
+fn catalog_fixture() -> &'static TestCatalog {
     static CATALOG: OnceLock<TestCatalog> = OnceLock::new();
-    CATALOG
-        .get_or_init(|| {
-            let cargo_executable = std::fs::canonicalize(env!("CARGO_BIN_EXE_rrd-server")).unwrap();
-            let snapshot_directory =
-                tempfile::tempdir_in(cargo_executable.parent().unwrap()).unwrap();
-            let executable = snapshot_directory
-                .path()
-                .join(cargo_executable.file_name().unwrap());
-            std::fs::hard_link(&cargo_executable, &executable).unwrap();
-            let executable = std::fs::canonicalize(executable).unwrap();
-            let value = LocalDeploymentCatalog {
-                format: LOCAL_DEPLOYMENT_FORMAT,
-                deployments: BTreeMap::from([(
-                    "rrd-server".into(),
-                    LocalDeployment {
-                        id: id("rrd-server"),
-                        version: "1.0.0".into(),
-                        executable_sha256: file_sha256(&executable),
-                        executable,
-                        preparation_arguments: vec![
-                            LocalArgument::Literal("initialize".into()),
-                            LocalArgument::Literal("--root".into()),
-                            LocalArgument::InstanceRoot,
-                            LocalArgument::Literal("--instance".into()),
-                            LocalArgument::InstanceId,
-                        ],
-                        arguments: vec![
-                            LocalArgument::Literal("--root".into()),
-                            LocalArgument::InstanceRoot,
-                            LocalArgument::Literal("--bind".into()),
-                            LocalArgument::Literal("127.0.0.1:0".into()),
-                            LocalArgument::Literal("--ready-file".into()),
-                            LocalArgument::InstancePath(PathBuf::from("RRD.READY")),
-                            LocalArgument::Literal("--shutdown-request-file".into()),
-                            LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.REQUEST")),
-                            LocalArgument::Literal("--shutdown-complete-file".into()),
-                            LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.COMPLETE")),
-                        ],
-                        environment: BTreeMap::new(),
-                        readiness: LocalReadiness::File {
-                            path: PathBuf::from("RRD.READY"),
-                            timeout_ms: 90_000,
-                        },
-                        shutdown: LocalShutdown::RequestFile {
-                            request: PathBuf::from("SHUTDOWN.REQUEST"),
-                            complete: PathBuf::from("SHUTDOWN.COMPLETE"),
-                            timeout_ms: 5_000,
-                        },
+    CATALOG.get_or_init(|| {
+        let cargo_executable = std::fs::canonicalize(env!("CARGO_BIN_EXE_rrd-server")).unwrap();
+        let snapshot_directory = tempfile::tempdir_in(cargo_executable.parent().unwrap()).unwrap();
+        let executable = snapshot_directory
+            .path()
+            .join(cargo_executable.file_name().unwrap());
+        std::fs::hard_link(&cargo_executable, &executable).unwrap();
+        let executable = std::fs::canonicalize(executable).unwrap();
+        let distribution_executable = snapshot_directory.path().join("rrflow-distribution");
+        std::fs::write(
+            &distribution_executable,
+            b"rrflow local-process test distribution v1\n",
+        )
+        .unwrap();
+        let distribution_executable = std::fs::canonicalize(distribution_executable).unwrap();
+        let value = LocalDeploymentCatalog {
+            format: LOCAL_DEPLOYMENT_FORMAT,
+            deployments: BTreeMap::from([(
+                "rrd-server".into(),
+                LocalDeployment {
+                    id: id("rrd-server"),
+                    version: "1.0.0".into(),
+                    executable_sha256: file_sha256(&executable),
+                    executable,
+                    preparation_arguments: Vec::new(),
+                    arguments: vec![
+                        LocalArgument::Literal("--project".into()),
+                        LocalArgument::InstanceRoot,
+                        LocalArgument::Literal("--distribution-executable".into()),
+                        LocalArgument::Literal(
+                            distribution_executable.to_string_lossy().into_owned(),
+                        ),
+                        LocalArgument::Literal("--bind".into()),
+                        LocalArgument::Literal("127.0.0.1:0".into()),
+                        LocalArgument::Literal("--ready-file".into()),
+                        LocalArgument::InstancePath(PathBuf::from("RRD.READY")),
+                        LocalArgument::Literal("--shutdown-request-file".into()),
+                        LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.REQUEST")),
+                        LocalArgument::Literal("--shutdown-complete-file".into()),
+                        LocalArgument::InstancePath(PathBuf::from("SHUTDOWN.COMPLETE")),
+                    ],
+                    environment: BTreeMap::new(),
+                    readiness: LocalReadiness::File {
+                        path: PathBuf::from("RRD.READY"),
+                        timeout_ms: 90_000,
                     },
-                )]),
-            };
-            TestCatalog {
-                _snapshot_directory: snapshot_directory,
-                value,
-            }
-        })
-        .value
-        .clone()
+                    shutdown: LocalShutdown::RequestFile {
+                        request: PathBuf::from("SHUTDOWN.REQUEST"),
+                        complete: PathBuf::from("SHUTDOWN.COMPLETE"),
+                        timeout_ms: 5_000,
+                    },
+                },
+            )]),
+        };
+        TestCatalog {
+            _snapshot_directory: snapshot_directory,
+            distribution_executable,
+            value,
+        }
+    })
+}
+
+fn catalog() -> LocalDeploymentCatalog {
+    catalog_fixture().value.clone()
+}
+
+fn install_instance(state_root: &Path, instance_id: &str) {
+    let project = state_root.join("instances").join(instance_id);
+    std::fs::create_dir_all(&project).unwrap();
+    let executable = &catalog_fixture().distribution_executable;
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        executable,
+    )
+    .unwrap();
+    let result = RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1,
+        executable,
+    )
+    .unwrap();
+    assert!(!result.idempotent_replay);
 }
 
 fn step(database: &Path, state_root: &Path, at: u64) -> ReconcileOutcome {
@@ -317,6 +349,7 @@ fn real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion() {
     let _cleanup = ProcessCleanup {
         state_root: state_root.clone(),
     };
+    install_instance(&state_root, "project-a");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));
@@ -499,6 +532,7 @@ fn graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback() {
     let _cleanup = ProcessCleanup {
         state_root: state_root.clone(),
     };
+    install_instance(&state_root, "project-a");
     let mut fallback_catalog = catalog();
     let deployment = fallback_catalog.deployments.get_mut("rrd-server").unwrap();
     deployment.shutdown = LocalShutdown::RequestFile {
@@ -568,6 +602,7 @@ fn controller_process_kill_matrix_converges_across_start_and_stop_effect_gaps() 
     let _cleanup = ProcessCleanup {
         state_root: state_root.clone(),
     };
+    install_instance(&state_root, "project-a");
     {
         let engine = RrflowKvStore::open(&database).unwrap();
         let repository = EstateRepository::new(&engine, id("estate-a"));

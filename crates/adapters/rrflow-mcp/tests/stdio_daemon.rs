@@ -1,125 +1,59 @@
-use rrd_contract::{CanonicalId, ResourceId, ResourceKind, ResourcePath};
-use rrd_core::{
-    digest, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
-    RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
-    RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
-};
-use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
-use rrd_security::{
-    Action, Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState,
-    SECURITY_FORMAT,
-};
+use rrd_contract::{CanonicalId, InstallationTargetKind};
+use rrd_engine::RrdEngine;
+use rrd_security::{Action, SecurityRepository};
 use rrd_server::RrdHttpServer;
-use rrd_store::{RrflowKvStore, StorageEngine};
+use rrd_store::RrflowKvStore;
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
 use std::io::Write as _;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+fn distribution_executable() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml")
+}
+
+fn install(project: &Path, executable: &Path) {
+    std::fs::write(project.join("README.md"), "MCP daemon project\n").unwrap();
+    let preview = RrdEngine::plan_installation(
+        project,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        executable,
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        project,
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_700_000_000_000,
+        executable,
+    )
+    .unwrap();
+}
+
+fn make_private(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).unwrap();
+    }
+}
+
 #[test]
-fn daemon_mode_uses_one_authenticated_project_bound_authority() {
+fn daemon_mode_uses_one_authenticated_installed_authority() {
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");
-    std::fs::create_dir_all(&project).unwrap();
-    InstanceManifest::ensure_dedicated_as(&project, "mcp-daemon-test").unwrap();
-    let binding = InstanceBinding::discover(&project).unwrap();
-    let store = binding.expected_store();
-    let instance = CanonicalId::new("mcp-daemon-test").unwrap();
-    let resource = ResourcePath {
-        segments: vec![ResourceId::new(ResourceKind::Instance, instance.as_str()).unwrap()],
-    };
-    let api_key = "mcp-daemon-api-key";
-    let principal = Principal {
-        id: CanonicalId::new("mcp-daemon-client").unwrap(),
-        kind: PrincipalKind::Service,
-        credential_sha256: digest::sha256_hex(api_key.as_bytes()),
-        credential_revision: 1,
-        not_before_unix_ms: 1,
-        expires_at_unix_ms: u64::MAX,
-        disabled: false,
-        role_ids: Default::default(),
-        grants: [
-            Action::SessionCreate,
-            Action::SessionClose,
-            Action::MemoryContextRead,
-        ]
-        .into_iter()
-        .map(|action| ResourceGrant {
-            action,
-            resource_prefix: resource.clone(),
-            data_policy: None,
-        })
-        .collect(),
-    };
-    let storage = RrflowKvStore::open(&store).unwrap();
-    let mut registry = RuntimeSchemaRegistry::empty(1, "Daemon context fixture");
-    registry
-        .define_record_table(
-            RuntimeType::new("note").unwrap(),
-            RuntimeLogicalModel::Relational,
-            RuntimeRecordSchema {
-                properties: BTreeMap::from([(
-                    "body".into(),
-                    RuntimePropertySchema::required(RuntimeValueType::String),
-                )]),
-                ..RuntimeRecordSchema::default()
-            },
-        )
-        .unwrap();
-    storage
-        .runtime()
-        .commit(&RuntimeCommit {
-            scope: ScopeId::new("instance:mcp-daemon-test").unwrap(),
-            at: 100,
-            actor: "daemon-context-fixture".into(),
-            expected_cursor: 0,
-            mutations: vec![
-                RuntimeMutation::Schema { registry },
-                RuntimeMutation::Record {
-                    record: RuntimeRecord {
-                        reference: RuntimeRef::new("note", "daemon-alpha").unwrap(),
-                        valid_from: 100,
-                        valid_to: None,
-                        properties: RuntimeProperties::from([(
-                            "body".into(),
-                            RuntimeValue::String("Authenticated daemon context flow".into()),
-                        )]),
-                    },
-                },
-            ],
-        })
-        .unwrap();
-    SecurityRepository::new(&storage, instance.clone())
-        .initialize(
-            SecurityState {
-                format_version: SECURITY_FORMAT,
-                revision: 1,
-                principals: BTreeMap::from([(principal.id.clone(), principal)]),
-                roles: BTreeMap::new(),
-                identity_bindings: BTreeMap::new(),
-                jwt_issuers: BTreeMap::new(),
-            },
-            1,
-            "bootstrap",
-            "request-bootstrap",
-            "operation-bootstrap",
-        )
-        .unwrap();
-    drop(storage);
+    std::fs::create_dir(&project).unwrap();
+    let executable = distribution_executable();
+    install(&project, &executable);
+    let locator = RrdEngine::read_project_locator(&project).unwrap();
+    let credential = RrdEngine::read_installed_api_key(&project).unwrap();
+    let storage_root = project.join(&locator.storage_root);
 
-    let engine = RrdEngine::open_bound_with_token_key_file(
-        &binding,
-        instance.clone(),
-        &store.join("RRD.SERVER.SECRET"),
-        2,
-    )
-    .unwrap();
-    let server = RrdHttpServer::bind_project(
-        engine,
-        binding.authority_binding().unwrap(),
-        "127.0.0.1:0".parse().unwrap(),
-    )
-    .unwrap();
+    let engine = RrdEngine::open_installed(&project, &executable).unwrap();
+    let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
     let address = server.local_addr();
     let (shutdown, receiver) = tokio::sync::oneshot::channel();
     let server_thread = std::thread::spawn(move || {
@@ -131,20 +65,16 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
     });
 
     let api_key_file = temporary.path().join("mcp-api-key");
-    std::fs::write(&api_key_file, api_key).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&api_key_file, std::fs::Permissions::from_mode(0o600)).unwrap();
-    }
+    std::fs::write(&api_key_file, credential.credential()).unwrap();
+    make_private(&api_key_file);
     let mut child = Command::new(env!("CARGO_BIN_EXE_rrflow-mcp"))
         .arg("daemon")
         .arg("--url")
         .arg(format!("http://{address}"))
         .arg("--instance")
-        .arg(instance.as_str())
+        .arg(locator.identity.instance_id.as_str())
         .arg("--principal")
-        .arg("mcp-daemon-client")
+        .arg(credential.principal_id.as_str())
         .arg("--api-key-file")
         .arg(&api_key_file)
         .stdin(Stdio::piped())
@@ -154,7 +84,7 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .unwrap();
     for request in [
         json!({"jsonrpc":"2.0","id":1,"method":"tools/list"}),
-        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rrflow_context","arguments":{"query":"authenticated daemon","valid_at":200}}}),
+        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"rrflow_context","arguments":{"query":"","seeds":[{"kind":"rrflow-seat","id":"local-reasoning-seat"}],"valid_at":1800000000001_u64}}}),
     ] {
         serde_json::to_writer(child.stdin.as_mut().unwrap(), &request).unwrap();
         child.stdin.as_mut().unwrap().write_all(b"\n").unwrap();
@@ -172,7 +102,6 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         .map(|line| serde_json::from_str::<Value>(line).unwrap())
         .collect::<Vec<_>>();
     assert_eq!(responses.len(), 2);
-    let listed = responses[0]["result"]["tools"].as_array().unwrap();
     let profile = &responses[0]["result"]["_meta"]["io.rrflow/runtimeProfile"];
     assert_eq!(profile["mode"], "daemon");
     assert_eq!(profile["execution_authority"], "rrd_server_via_rrd_client");
@@ -181,31 +110,32 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
         profile["caller_authentication"],
         "principal_api_key_session"
     );
-    assert_eq!(profile["context_engine"], "temporal_text_vector_graph");
-    assert_eq!(listed.len(), 1);
-    assert_eq!(listed[0]["name"], "rrflow_context");
+    assert_eq!(responses[0]["result"]["tools"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        responses[1]["result"]["isError"], false,
+        "unexpected daemon context response: {}",
+        responses[1]
+    );
     let packet: Value = serde_json::from_str(
         responses[1]["result"]["content"][0]["text"]
             .as_str()
             .unwrap(),
     )
     .unwrap();
-    assert_eq!(responses[1]["result"]["isError"], false);
-    assert_eq!(packet["items"][0]["identity"], "record:note:daemon-alpha");
-    assert!(packet["items"][0]["evidence"]
+    assert!(packet["items"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|evidence| evidence["kind"] == "text"));
+        .any(|item| item["identity"] == "record:rrflow-seat:local-reasoning-seat"));
 
     shutdown.send(()).unwrap();
     server_thread.join().unwrap().unwrap();
-    let storage = RrflowKvStore::open(&store).unwrap();
-    let audit = SecurityRepository::new(&storage, instance)
+    let storage = RrflowKvStore::open_existing(&storage_root).unwrap();
+    let audit = SecurityRepository::new(&storage, locator.identity.instance_id)
         .audit_since(0, 256)
         .unwrap();
     assert!(audit.records.iter().any(|(_, record)| {
-        record.principal_id.as_ref().map(CanonicalId::as_str) == Some("mcp-daemon-client")
+        record.principal_id.as_ref().map(CanonicalId::as_str) == Some("local-operator")
             && record.action == Action::MemoryContextRead
             && record.phase == rrd_contract::AuditPhase::Completed
             && record.decision == rrd_contract::AuditDecision::Allowed
@@ -213,27 +143,16 @@ fn daemon_mode_uses_one_authenticated_project_bound_authority() {
 }
 
 #[test]
-fn daemon_mode_refuses_an_unsecured_server() {
+fn daemon_mode_refuses_an_explicit_unsecured_component_server() {
     let temporary = tempfile::tempdir().unwrap();
-    let project = temporary.path().join("project");
-    std::fs::create_dir_all(&project).unwrap();
-    InstanceManifest::ensure_dedicated_as(&project, "mcp-unsecured-test").unwrap();
-    let binding = InstanceBinding::discover(&project).unwrap();
-    let store = binding.expected_store();
-    let instance = CanonicalId::new("mcp-unsecured-test").unwrap();
-    let engine = RrdEngine::open_bound_with_token_key_file(
-        &binding,
+    let instance = CanonicalId::new("mcp-unsecured-component").unwrap();
+    let engine = RrdEngine::open(
+        &temporary.path().join("component-store"),
         instance.clone(),
-        &store.join("RRD.SERVER.SECRET"),
-        1,
+        [7; 32],
     )
     .unwrap();
-    let server = RrdHttpServer::bind_project(
-        engine,
-        binding.authority_binding().unwrap(),
-        "127.0.0.1:0".parse().unwrap(),
-    )
-    .unwrap();
+    let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
     let address = server.local_addr();
     let (shutdown, receiver) = tokio::sync::oneshot::channel();
     let server_thread = std::thread::spawn(move || {
@@ -246,11 +165,7 @@ fn daemon_mode_refuses_an_unsecured_server() {
 
     let api_key_file = temporary.path().join("mcp-api-key");
     std::fs::write(&api_key_file, "not-an-authenticated-key").unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&api_key_file, std::fs::Permissions::from_mode(0o600)).unwrap();
-    }
+    make_private(&api_key_file);
     let output = Command::new(env!("CARGO_BIN_EXE_rrflow-mcp"))
         .arg("daemon")
         .arg("--url")

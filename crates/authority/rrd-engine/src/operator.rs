@@ -4,12 +4,10 @@
 //! engine-owned value types, never a second storage-opening handle or an
 //! `rrd_store::StorageEngine` escape.
 
-use crate::{InstanceBinding, RrdEngine, ServiceError};
-use rrd_contract::CanonicalId;
+use crate::RrdEngine;
 use rrd_core::{RuntimeCommit, RuntimeMutation};
 use rrd_store::StorageEngine as _;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::Path;
 
 pub use rrd_core::{
     digest, Claim, ClaimReader, Millis, Predicate, Producer, Reader, ScopeId, Subject,
@@ -22,99 +20,11 @@ pub use rrd_store::{
 
 pub type OperatorResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-const LOCAL_TOKEN_KEY_FILE: &str = "RRD.SECRET";
-
 impl RrdEngine {
     fn persistent_storage(&self) -> OperatorResult<&rrd_store::RrflowKvStore> {
         self.storage
             .as_rrflow_kv()
             .ok_or_else(|| "operation requires a persistent RRD root".into())
-    }
-
-    /// Opens the canonical project-bound engine authority identified by an RRD
-    /// store path. Only `<project>/.rrflow/rrd` is accepted.
-    pub fn open_project_store(path: &Path) -> crate::Result<Self> {
-        let absolute = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            std::env::current_dir()
-                .map_err(|error| ServiceError::Storage(error.to_string()))?
-                .join(path)
-        };
-        let state_root = absolute
-            .parent()
-            .ok_or_else(|| ServiceError::Contract("RRD store path has no .rrflow parent".into()))?;
-        if absolute.file_name().and_then(|value| value.to_str()) != Some("rrd")
-            || state_root.file_name().and_then(|value| value.to_str()) != Some(".rrflow")
-        {
-            return Err(ServiceError::Contract(
-                "embedded RRD must use the canonical <project>/.rrflow/rrd path".into(),
-            ));
-        }
-        let project_root = state_root
-            .parent()
-            .ok_or_else(|| ServiceError::Contract("RRD store path has no project root".into()))?;
-        let binding = InstanceBinding::discover(project_root)
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        binding
-            .verify_store_path(&absolute)
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        Self::open_bound(&binding)
-    }
-
-    /// Opens the one embedded RRD authority bound to a discovered project.
-    pub fn open_bound(binding: &InstanceBinding) -> crate::Result<Self> {
-        binding
-            .require_runtime_ready()
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        let instance = CanonicalId::new(binding.manifest.id.clone())
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        let database = binding.expected_store();
-        let engine = Self::open_with_token_key_file(
-            &database,
-            instance,
-            &database.join(LOCAL_TOKEN_KEY_FILE),
-        )?;
-        engine.bind_project_authority(binding, wall_clock_millis())?;
-        Ok(engine)
-    }
-
-    /// Opens one project-bound engine using a durable local token-key file.
-    /// Storage initialization always precedes credential creation.
-    pub fn open_bound_with_token_key_file(
-        binding: &InstanceBinding,
-        instance: CanonicalId,
-        token_key_file: &Path,
-        at: u64,
-    ) -> crate::Result<Self> {
-        binding
-            .require_runtime_ready()
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        binding
-            .verify_store_path(&binding.expected_store())
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        let engine =
-            Self::open_with_token_key_file(&binding.expected_store(), instance, token_key_file)?;
-        engine.bind_project_authority(binding, at)?;
-        Ok(engine)
-    }
-
-    /// Opens a bound engine with caller-supplied token material.
-    pub fn open_bound_with_token_key(
-        binding: &InstanceBinding,
-        instance: CanonicalId,
-        token_key: [u8; 32],
-        at: u64,
-    ) -> crate::Result<Self> {
-        binding
-            .require_runtime_ready()
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        binding
-            .verify_store_path(&binding.expected_store())
-            .map_err(|error| ServiceError::Contract(error.to_string()))?;
-        let engine = Self::open(&binding.expected_store(), instance, token_key)?;
-        engine.bind_project_authority(binding, at)?;
-        Ok(engine)
     }
 
     pub fn path(&self) -> OperatorResult<&Path> {
@@ -269,16 +179,6 @@ impl RrdEngine {
         )?)
     }
 
-    pub fn verify_project_store(&self, root: &Path) -> OperatorResult<()> {
-        let binding = InstanceBinding::discover(root)?;
-        binding.require_runtime_ready()?;
-        binding.verify_store_path(self.path()?)?;
-        if binding.manifest.id != self.instance_id().as_str() {
-            return Err("engine instance identity does not match the project manifest".into());
-        }
-        Ok(())
-    }
-
     pub fn execute_operator_query(
         &self,
         scope: ScopeId,
@@ -319,30 +219,4 @@ impl RrdEngine {
             catalogue, backup_id, db, now,
         )?)
     }
-
-    pub fn canonical_project_root_for_store(path: &Path) -> OperatorResult<PathBuf> {
-        let absolute = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            std::env::current_dir()?.join(path)
-        };
-        let state = absolute
-            .parent()
-            .ok_or("RRD store has no state directory")?;
-        if absolute.file_name().and_then(|value| value.to_str()) != Some("rrd")
-            || state.file_name().and_then(|value| value.to_str()) != Some(".rrflow")
-        {
-            return Err("RRD store must be <project>/.rrflow/rrd".into());
-        }
-        Ok(std::fs::canonicalize(
-            state.parent().ok_or("RRD store has no project root")?,
-        )?)
-    }
-}
-
-fn wall_clock_millis() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
 }

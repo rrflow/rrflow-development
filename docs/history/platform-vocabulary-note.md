@@ -68,7 +68,7 @@ partitions or dedicated shards.
 | `estate` | Control-plane resource | A managed fleet and lifecycle aggregate of instances and clusters owned by one organization. It owns desired state, reconciliation, fleet backup policy, and operational inventory. | Keep `rrd-estate`; never use estate as a database, tenant, namespace, or cluster synonym. |
 | `project` | Governed workload identity | One software/product codebase governed by RRFlow. | Each project deployment instance binds exactly one project; no umbrella membership. |
 | `environment` | Instance attribute | The deployment context of a project instance, such as development, staging, or production. | Add an explicit typed attribute; never encode environment by overloading namespace, tenant, or instance mode. |
-| `instance` | Deployment and authority | One deployed RRFlow runtime bound to exactly one project and one environment, backed by exactly one logical RRD authority. It may be embedded, single-node, or served by a cluster. | Preserve `.rrflow/instance.toml`; retire `Dedicated`/`Umbrella` as public topology. |
+| `instance` | Deployment and authority | One deployed RRFlow runtime bound to exactly one project and one environment, backed by exactly one logical RRD authority. It may be embedded, single-node, or served by a cluster. | Historical direction preserved `.rrflow/instance.toml`; the current topology instead uses the canonical installed-estate locator/record and has removed that pre-canonical reader. |
 | `workspace` | Discovered build fact only | A Cargo, pnpm, npm, uv, Go, Gradle, Maven, .NET, or similar workspace found while attuning a project. | Never add `WorkspaceId`, `ResourceKind::Workspace`, `/workspaces`, tenancy, or data ownership. |
 | `namespace` | Logical catalogue and isolation resource | The highest logical data/security container inside an instance. It contains databases and supplies an administration/policy scope. | Public `ResourceKind` exists; catalogue persistence remains incomplete. Kubernetes and language namespaces are unrelated. |
 | `database` | Logical data resource | A schema/catalogue and transaction container inside one namespace. It owns tables, collections, relations, indexes, aliases, triggers, and functions. | Public `ResourceKind` exists; persistence must enter the single `rrd-engine` catalogue. It is not an instance or filesystem directory. |
@@ -164,10 +164,13 @@ gap, while G01 must first preserve one security authority.
   fail on term/order drift and rejected public resource synonyms. Resource-path
   validation still checks uniqueness rather than enforcing every hierarchy
   shown above.
-- [`runtime/instance.rs`](../../crates/authority/rrd-engine/src/runtime/instance.rs)
-  accepts only the frozen format-1 `Dedicated` plus `members = ["."]` shape.
-  Those fields remain serialized solely to preserve existing authority bytes;
-  explicit environment identity requires a successor-format migration.
+- The removed `crates/authority/rrd-engine/src/runtime/instance.rs` accepted
+  only the format-1 `Dedicated` plus `members = ["."]` shape. The
+  [canonical topology](../architecture/instance-topology.md#installation-and-binding-resolution)
+  now uses one project-local locator plus engine-owned installed record, and
+  the linked [D-01 convergence evidence](../evidence/change-journals/gate-d/d-01-precanonical-authority-convergence-and-install-recovery.md)
+  proves direct reader/caller removal. This historical shape has no current
+  parser, alias, or migration authority.
 - [`rrd-vector/collection.rs`](../../crates/compute/rrd-vector/src/collection.rs)
   implements a separate vector collection catalogue that must become an
   internal operator of the unified RRD catalogue.

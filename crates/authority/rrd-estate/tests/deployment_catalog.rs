@@ -6,11 +6,16 @@ fn generator_authenticates_an_explicit_executable_and_refuses_overwrite() {
     let temporary = tempfile::tempdir().unwrap();
     let output = temporary.path().join("deployments.json");
     let server = std::fs::canonicalize(std::env::current_exe().unwrap()).unwrap();
+    let distribution = temporary.path().join("rrflow-distribution");
+    std::fs::write(&distribution, b"rrflow test distribution v1\n").unwrap();
+    let distribution = std::fs::canonicalize(distribution).unwrap();
     let generator = env!("CARGO_BIN_EXE_rrd-deployment-catalog");
     let first = Command::new(generator)
         .args([
             "--server",
             server.to_str().unwrap(),
+            "--distribution-executable",
+            distribution.to_str().unwrap(),
             "--output",
             output.to_str().unwrap(),
         ])
@@ -26,14 +31,19 @@ fn generator_authenticates_an_explicit_executable_and_refuses_overwrite() {
     let deployment = &catalog.deployments["rrd-server"];
     assert_eq!(deployment.executable, server);
     assert_eq!(deployment.version, env!("CARGO_PKG_VERSION"));
-    assert!(deployment
-        .preparation_arguments
-        .contains(&LocalArgument::InstanceId));
+    assert!(deployment.preparation_arguments.is_empty());
     assert!(deployment.arguments.windows(2).any(|arguments| {
         arguments
             == [
-                LocalArgument::Literal("--root".into()),
+                LocalArgument::Literal("--project".into()),
                 LocalArgument::InstanceRoot,
+            ]
+    }));
+    assert!(deployment.arguments.windows(2).any(|arguments| {
+        arguments
+            == [
+                LocalArgument::Literal("--distribution-executable".into()),
+                LocalArgument::Literal(distribution.to_string_lossy().into_owned()),
             ]
     }));
     assert!(matches!(
@@ -55,6 +65,8 @@ fn generator_authenticates_an_explicit_executable_and_refuses_overwrite() {
         .args([
             "--server",
             server.to_str().unwrap(),
+            "--distribution-executable",
+            distribution.to_str().unwrap(),
             "--output",
             output.to_str().unwrap(),
         ])

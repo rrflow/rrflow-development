@@ -322,6 +322,99 @@ fn one_engine_authority_owns_every_product_storage_opening() {
 }
 
 #[test]
+fn pre_canonical_startup_authorities_are_absent_from_product_tree() {
+    let metadata = workspace_metadata();
+    for relative in [
+        ".rrflow/instance.toml",
+        "crates/authority/rrd-engine/src/runtime/instance.rs",
+        "crates/authority/rrd-engine/src/engine/security_bootstrap.rs",
+        "crates/authority/rrd-engine/tests/runtime_instance.rs",
+        "crates/adapters/rrflow-cli/src/dev.rs",
+        "crates/adapters/rrflow-cli/src/dev/supervisor.rs",
+        "crates/adapters/rrflow-cli/src/bin/rrd-security-bootstrap.rs",
+        "crates/adapters/rrflow-cli/tests/operator_surface.rs",
+        "crates/adapters/rrflow-cli/tests/security_bootstrap.rs",
+    ] {
+        assert!(
+            !metadata.root.join(relative).exists(),
+            "pre-canonical authority path remains: {relative}"
+        );
+    }
+
+    let mut violations = Vec::new();
+    for relative in [
+        "crates/authority/rrd-engine/src",
+        "crates/adapters/rrflow-cli/src",
+        "crates/adapters/rrflow-mcp/src",
+        "crates/transport/rrd-server/src",
+        "crates/transport/rrd-client/examples",
+        "crates/authority/rrd-estate/src/commands",
+        "crates/operations/rrd-kubernetes/src",
+    ] {
+        for forbidden in [
+            "InstanceManifest",
+            "InstanceBinding",
+            "ProjectAuthorityBinding",
+            "open_project_store",
+            "canonical_project_root_for_store",
+            "open_bound(",
+            "ensure_dedicated",
+            "apply_security_bootstrap",
+            "SecurityBootstrapOutcome",
+        ] {
+            collect_rust_sources(&metadata.root.join(relative), &mut violations, forbidden);
+        }
+    }
+    violations.sort();
+    violations.dedup();
+    assert!(
+        violations.is_empty(),
+        "pre-canonical startup symbols remain in product source: {violations:#?}"
+    );
+
+    let server = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/transport/rrd-server/src/main.rs"),
+    )
+    .expect("server source must be readable");
+    let server_product = server.split("#[cfg(test)]").next().unwrap_or(&server);
+    assert!(
+        !server_product.contains("InitializeArgs")
+            && !server_product.contains("rrd-security-bootstrap")
+            && !server_product.contains("\"initialize\""),
+        "the internal server regained an initializer or standalone bootstrap"
+    );
+
+    let kubernetes = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/operations/rrd-kubernetes/src/lib.rs"),
+    )
+    .expect("Kubernetes renderer source must be readable");
+    assert!(
+        kubernetes.contains("install")
+            && kubernetes.contains("apply")
+            && kubernetes.contains("--distribution-executable")
+            && !kubernetes.contains("rrd-security-bootstrap")
+            && !kubernetes.contains("initialize"),
+        "Kubernetes startup must use one canonical install apply handoff"
+    );
+
+    let estate_control = fs::read_to_string(
+        metadata
+            .root
+            .join("crates/authority/rrd-engine/src/engine/estate_control.rs"),
+    )
+    .expect("estate control source must be readable");
+    assert!(
+        !estate_control.contains("RrdEngine::open(")
+            && estate_control.contains("RrdEngine::open_existing("),
+        "the retained backup component path must fail closed instead of creating a second store"
+    );
+}
+
+#[test]
 fn alpha_storage_closure_has_one_required_physical_dependency_and_current_reader() {
     let metadata = workspace_metadata();
 
@@ -788,14 +881,13 @@ fn storage_semantics_use_repositories_over_one_transaction_port() {
 }
 
 #[test]
-fn outward_cli_owns_product_executables_while_physical_crates_own_none() {
+fn outward_cli_owns_current_auxiliary_executables_while_physical_crates_own_none() {
     let metadata = workspace_metadata();
     let product_executables = names(&[
         "rrd-backup-controller",
         "rrd-estate-admin",
         "rrd-estate-controller",
         "rrd-recovery-controller",
-        "rrd-security-bootstrap",
     ]);
     let cli_targets = &metadata.packages["rrflow-cli"].targets;
     let missing = product_executables
@@ -805,6 +897,10 @@ fn outward_cli_owns_product_executables_while_physical_crates_own_none() {
     assert!(
         missing.is_empty(),
         "rrflow-cli must own every thin product executable; missing={missing:?}"
+    );
+    assert!(
+        !cli_targets.contains("rrd-security-bootstrap"),
+        "standalone security bootstrap must not remain a Cargo target"
     );
     for package in ["rrd-estate", "rrd-security"] {
         let unexpected = metadata.packages[package]
@@ -1181,6 +1277,14 @@ fn active_product_text_uses_canonical_rrflowql_spelling() {
             continue;
         }
         let path = metadata.root.join(&entry.path);
+        // `git ls-files --stage` still reports an intentionally deleted path
+        // until the convergence commit is created. Deleted source is not active
+        // product text; the repository-closure checks still reject untracked
+        // replacement targets and the architecture absence test names each
+        // forbidden pre-canonical path explicitly.
+        if !path.exists() {
+            continue;
+        }
         let bytes = fs::read(&path)
             .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
         if bytes

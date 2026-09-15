@@ -48,7 +48,7 @@ definition; this portal does not reproduce those bodies.
 | One project ↔ one estate/rrflowDB ↔ one RRD instance; deployment form, storage profile, endpoint presentation, security, and physical placement remain distinct | [Locked alpha topology](docs/architecture/instance-topology.md#locked-alpha-topology) and [deployment profiles](docs/reference/deployment/modes.md#independent-profile-coordinates) |
 | One semantic, security, transaction, mutation, and context authority | [ADR-0001 decision](docs/decisions/0001-single-engine-authority.md#decision) |
 | Adaptive exploration and model reasoning; closed contracts at durable state, external effect, replay, and evidence boundaries | [ADR-0002 decision](docs/decisions/0002-adaptive-reasoning-governed-effects.md#decision) |
-| No legacy product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
+| No parallel product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
 | Persistent rrflowDB versus volatile rrflowMX | [Persistence and memory boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary) |
 | Temporal graph, scalar, BM25, and vector data under one transaction model | [Native multi-model boundary](docs/architecture/system-overview.md#native-multi-model-boundary) |
 | rrflowQL fast and analytical paths over stamped Arrow/DataFusion work | [Query and analytical boundary](docs/architecture/system-overview.md#query-and-analytical-boundary) |
@@ -200,7 +200,18 @@ configuration revision, digest, and reasoning/recall/query ceilings. A real
 process rejects over-ceiling query work as resource exhausted before executing
 it. The linked
 [canonical-estate journal](docs/evidence/change-journals/gate-d/d-01-canonical-estate-layout-and-configuration.md)
-records the exact implementation and tests. The reasoning runner remains
+records the exact implementation and tests. A third bounded prerequisite now
+makes that sealed installation the only product startup authority. The same
+plan resumes after deterministic interruptions at each of eight durable stages
+without changing its first-apply time or duplicating its token, credential,
+installed record, audit, checkpoint, or locator. The primary CLI, internal
+server process, embedded MCP mode, six-language SDK conformance daemon,
+deployment catalogue, and Kubernetes renderer now enter through installed
+state; the pre-canonical manifest, private project binding, raw product CLI,
+standalone security initializer, development supervisor, and server initializer
+were removed directly. The linked
+[authority-convergence journal](docs/evidence/change-journals/gate-d/d-01-precanonical-authority-convergence-and-install-recovery.md)
+records the exact replacement and limits. The reasoning runner remains
 truthfully unavailable. This is still not a streamed DataFusion `RecordBatch`
 provider, native graph/BM25/vector access, complete attunement, turnkey release
 distribution, or persistent reasoning/recall proof.
@@ -208,9 +219,12 @@ distribution, or persistent reasoning/recall proof.
 The source-built walking product is not yet a releasable installed
 distribution. The primary executable now composes `version`, `install plan`,
 `install apply`, `serve`, authenticated `ready`, and read-only
-`verify --level quick`; repair remains absent, checkout-oriented `dev doctor`
-is not release readiness, and legacy companion binaries remain pending direct
-convergence. No signed/offline-complete platform bundle or native Windows
+`verify --level quick`; its help and parser reject the removed raw-database and
+development commands. Repair, restore, uninstall, durable attunement execution,
+and release service management remain absent. The retained internal server and
+adapter binaries open only an already-installed estate, but they are not a
+second supported operator command tree. No signed/offline-complete platform
+bundle or native Windows
 `rrflow.exe` has been built and run. D-01 owns the remaining single-executable
 walking lifecycle, D-11 owns complete repair/restore/uninstall, and Gate J owns
 native signed platform distributions. See the

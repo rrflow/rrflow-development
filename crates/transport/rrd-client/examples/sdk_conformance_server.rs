@@ -1,15 +1,14 @@
 use rrd_contract::{
-    CanonicalId, ResourceId, ResourceKind, ResourcePath, SdkConformanceCorpus, SecurityAction,
+    CanonicalId, InstallationManagedPathKind, InstallationTargetKind, ResourceId, ResourceKind,
+    ResourcePath, SdkConformanceCorpus, SecurityAction,
 };
 use rrd_core::{
     digest, RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimePropertySchema,
-    RuntimeRecordSchema, RuntimeSchemaRegistry, RuntimeType, RuntimeValueType, ScopeId,
+    RuntimeRecordSchema, RuntimeTableSchema, RuntimeType, RuntimeValueType, ScopeId,
 };
-use rrd_engine::{InstanceBinding, InstanceManifest, RrdEngine};
+use rrd_engine::RrdEngine;
 use rrd_estate::{EstateRepository, MutationContext};
-use rrd_security::{
-    Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState, SECURITY_FORMAT,
-};
+use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SECURITY_FORMAT};
 use rrd_server::RrdHttpServer;
 use rrd_store::{RrflowKvStore, StorageEngine};
 use serde::Serialize;
@@ -23,6 +22,10 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::task::JoinHandle;
 
 const LANGUAGES: [&str; 6] = ["rust", "typescript", "python", "go", "java", "dotnet"];
+const INSTALL_ANCHOR_BYTES: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../fixtures/rrflow-sdk-conformance-install-anchor-v1.bin"
+));
 
 #[derive(Debug, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -44,26 +47,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     corpus.validate()?;
 
     let temporary = tempfile::tempdir()?;
+    let distribution = temporary
+        .path()
+        .join("rrflow-sdk-conformance-install-anchor-v1.bin");
+    std::fs::write(&distribution, INSTALL_ANCHOR_BYTES)?;
     let project = temporary.path().join("project");
     std::fs::create_dir_all(&project)?;
-    InstanceManifest::ensure_dedicated_as(&project, corpus.identity.instance.as_str())?;
-    let binding = InstanceBinding::discover(&project)?;
-    let root = binding.expected_store();
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        "default",
+        None,
+        &distribution,
+    )?;
+    if preview.installation.target.instance_id != corpus.identity.instance
+        || preview.installation.target.estate_id != corpus.identity.estate
+    {
+        return Err(format!(
+            "checked SDK corpus identity drifted: expected instance={} estate={}, planned instance={} estate={}",
+            corpus.identity.instance,
+            corpus.identity.estate,
+            preview.installation.target.instance_id,
+            preview.installation.target.estate_id,
+        )
+        .into());
+    }
+    let plan_sha256 = preview.installation.plan_sha256.clone();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &preview,
+        &plan_sha256,
+        1,
+        &distribution,
+    )?;
+    let root = project.join(
+        &preview
+            .installation
+            .managed_path(InstallationManagedPathKind::StorageRoot)
+            .relative_path,
+    );
     let storage = RrflowKvStore::open(&root)?;
     seed_schema(&storage, &corpus)?;
     seed_estate(&storage, &corpus)?;
     seed_security(&storage, &corpus)?;
     drop(storage);
 
-    let engine = RrdEngine::open_bound_with_token_key_file(
-        &binding,
-        corpus.identity.instance.clone(),
-        &root.join("RRD.SERVER.SECRET"),
-        2,
-    )?;
-    let authority = binding.authority_binding()?;
-    let server =
-        RrdHttpServer::bind_project(engine, authority, "127.0.0.1:0".parse::<SocketAddr>()?)?;
+    let engine = RrdEngine::open_installed(&project, &distribution)?;
+    let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse::<SocketAddr>()?)?;
     let server_address = server.local_addr();
     let (server_shutdown, receiver) = tokio::sync::oneshot::channel();
     let server_task = tokio::spawn(server.serve_until(async move {
@@ -140,7 +171,14 @@ fn seed_schema(
     storage: &RrflowKvStore,
     corpus: &SdkConformanceCorpus,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut registry = RuntimeSchemaRegistry::empty(1, "SDK conformance schema");
+    let scope = ScopeId::new(format!("instance:{}", corpus.identity.instance))?;
+    let read = storage.runtime().read_stamp(&scope)?;
+    let mut registry = storage
+        .runtime()
+        .schema(&scope)?
+        .ok_or_else(|| std::io::Error::other("canonical SDK installation has no runtime schema"))?;
+    registry.revision += 1;
+    registry.migration = "extend canonical installation for SDK conformance".into();
     registry.define_record_table(
         RuntimeType::new("document")?,
         RuntimeLogicalModel::Relational,
@@ -152,11 +190,15 @@ fn seed_schema(
             ..RuntimeRecordSchema::default()
         },
     )?;
+    registry.tables.insert(
+        RuntimeType::new("embedding")?,
+        RuntimeTableSchema::schemaless(RuntimeLogicalModel::Vector),
+    );
     storage.runtime().commit(&RuntimeCommit {
-        scope: ScopeId::new(format!("instance:{}", corpus.identity.instance))?,
+        scope,
         at: 100,
         actor: "sdk-conformance-harness".into(),
-        expected_cursor: 0,
+        expected_cursor: read.commit_cursor,
         mutations: vec![RuntimeMutation::Schema { registry }],
     })?;
     Ok(())
@@ -233,15 +275,21 @@ fn seed_security(
         role_ids: Default::default(),
         grants,
     };
-    SecurityRepository::new(storage, corpus.identity.instance.clone()).initialize(
-        SecurityState {
-            format_version: SECURITY_FORMAT,
-            revision: 1,
-            principals: BTreeMap::from([(principal.id.clone(), principal)]),
-            roles: BTreeMap::new(),
-            identity_bindings: BTreeMap::new(),
-            jwt_issuers: BTreeMap::new(),
-        },
+    let security = SecurityRepository::new(storage, corpus.identity.instance.clone());
+    let mut state = security
+        .load()?
+        .ok_or_else(|| std::io::Error::other("canonical SDK installation has no security state"))?;
+    if state.format_version != SECURITY_FORMAT || state.revision != 1 {
+        return Err(std::io::Error::other(
+            "canonical SDK installation security state has an unexpected revision",
+        )
+        .into());
+    }
+    state.revision = 2;
+    state.principals.insert(principal.id.clone(), principal);
+    security.replace(
+        1,
+        state,
         120,
         "sdk-conformance-harness",
         "request-sdk-security",

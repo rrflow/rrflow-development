@@ -118,7 +118,6 @@ mod retrieval;
 mod retrieval_query;
 mod rollback;
 mod security;
-mod security_bootstrap;
 mod session;
 mod subscription;
 mod token_key;
@@ -145,11 +144,9 @@ pub use invocation::{
 };
 use model::*;
 pub use security::{MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES};
-pub use security_bootstrap::SecurityBootstrapOutcome;
 use session::*;
-pub use token_key::{
-    load_or_create_api_key, load_or_create_token_key, API_KEY_HEX_BYTES, TOKEN_KEY_BYTES,
-};
+use token_key::load_or_create_token_key;
+pub use token_key::TOKEN_KEY_BYTES;
 
 const SESSION_STATE_FORMAT: u16 = 3;
 const MAX_SESSION_RENEWALS: usize = 64;

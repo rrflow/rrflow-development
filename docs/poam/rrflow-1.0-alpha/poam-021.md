@@ -12,19 +12,22 @@ independently.
 
 Local RRD process control is split between `rrd-estate::LocalProcessDriver`, a standalone
 deployment-catalogue generator, static direct-store reconciliation plus
-`rrd-estate-controller`, and a second `rrflow-cli` development supervisor. They create
-private JSON process/catalogue/supervisor state, accept arbitrary physical roots and caller
-time/configuration, run `rrd-server initialize` before start, treat file existence as
-readiness/shutdown completion, and do not bind the authenticated digest to the exact
-executed image. Plaintext environment values and unbounded diagnostic logs/tails also cross
-this boundary.
+`rrd-estate-controller`. The second `rrflow-cli` development supervisor and
+`rrd-server initialize` are removed; generated launch catalogues now have no preparation
+command and start the internal server with an installed project plus explicit distribution
+executable. The remaining controller path still creates private JSON process/catalogue
+state, accepts arbitrary physical roots and caller time/configuration, treats file
+existence as readiness/shutdown completion, and does not bind the authenticated digest to
+the exact executed image. Plaintext environment values and unbounded diagnostic logs/tails
+also cross this boundary.
 
 ## Impact
 
-Process launch can become a second installation, storage, and lifecycle authority; a
-replaced executable or forged/stale marker can be trusted; restart recovery can depend on
-private files instead of engine state; secrets can leak; and diagnostics can exhaust the
-host. Passing PID-reuse and effect-gap tests can falsely qualify this topology.
+Process launch no longer runs a second product installer, but the remaining controller can
+still become a storage and lifecycle authority; a replaced executable or forged/stale
+marker can be trusted; restart recovery can depend on private files instead of engine
+state; secrets can leak; and diagnostics can exhaust the host. Passing PID-reuse and
+effect-gap tests can falsely qualify this topology.
 
 ## Owning gates
 

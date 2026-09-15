@@ -4,7 +4,7 @@ use rrd_contract::{
     AssembleContext, CanonicalId, CapabilityStatus, CloseSession, CorrelationId, CreateSession,
     DataReference, SessionLease, SessionLimits,
 };
-use rrd_engine::{InstanceBinding, RrdEngine};
+use rrd_engine::RrdEngine;
 use serde::Deserialize;
 use serde_json::Value;
 use std::fs::File;
@@ -65,20 +65,15 @@ impl RuntimeAuthority {
     pub(crate) fn open(config: RuntimeConfig) -> Result<Self, Box<dyn std::error::Error>> {
         match config {
             RuntimeConfig::Embedded {
-                database,
-                project_root,
+                project,
+                distribution_executable,
             } => {
-                let binding = InstanceBinding::discover(&project_root)?;
-                binding.verify_store_path(&database)?;
-                let engine = RrdEngine::open_bound(&binding)?;
-                if engine.security_enforced()? {
-                    return Err(
-                        "embedded MCP cannot bypass initialized security; use daemon mode with an API key"
-                            .into(),
-                    );
-                }
+                let credential = RrdEngine::read_installed_api_key(&project)?;
+                let engine = RrdEngine::open_installed(&project, &distribution_executable)?;
                 let coordinate = next_coordinate();
-                let session = engine.create_session(
+                let session = engine.create_authenticated_session(
+                    &credential.principal_id,
+                    credential.credential().as_bytes(),
                     &session_request(),
                     &CorrelationId::new(format!("session-{coordinate}"))?,
                     now(),
@@ -137,8 +132,8 @@ impl RuntimeAuthority {
             Self::Embedded { .. } => RuntimeAuthorityProfile {
                 mode: "embedded",
                 execution_authority: "rrd_engine",
-                storage_access: "exclusive_bound_engine",
-                caller_authentication: "local_session",
+                storage_access: "installed_engine_only",
+                caller_authentication: "installed_operator_api_key_session",
                 context_engine: "temporal_text_vector_graph",
             },
             Self::Daemon(_) => RuntimeAuthorityProfile {

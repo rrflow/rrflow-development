@@ -201,13 +201,14 @@ its qualification corpus remains far below the preceding acceptance boundary.
 
 | Current implementation | Characterized behavior worth retaining | Required direct convergence |
 |---|---|---|
-| `DeploymentProfile`, `InstalledEstateIdentity`, and `ServiceCapabilities::{deployment,installed_estate,configuration}` | Strict independent axes, identity/configuration validation, generated OpenAPI/TypeScript projection, and rejection of the removed scalar now pass. A-07 is accepted. | Retain this as the sole contract while D-01 removes remaining conflicting startup/topology authority and H-04 qualifies every generated client against a real installed process. |
-| `RrdEngine::storage_profile_kind` | MX and KV constructors now report only the explicit storage axis and never infer process form from root presence. Installed open also binds identity and configuration; the outward composition owns form and endpoint. | Carry the installed descriptor into every remaining raw-root/legacy composition and remove their creation authority; complete the full semantic differential. |
+| `DeploymentProfile`, `InstalledEstateIdentity`, and `ServiceCapabilities::{deployment,installed_estate,configuration}` | Strict independent axes, identity/configuration validation, generated OpenAPI/TypeScript projection, and rejection of the removed scalar now pass. A-07 is accepted. | Retain this as the sole contract while H-04/J qualify every generated client and deployment form against release-equivalent installed processes. |
+| `RrdEngine::storage_profile_kind` and `open_installed` | MX and KV constructors report only the explicit storage axis and never infer process form from root presence. Installed open binds identity/configuration and verifies project-relative locator plus distribution executable; outward composition owns form and endpoint. Pre-canonical manifest/private-binding product openers are absent. | Keep raw construction confined to explicit component tests and complete the full storage/deployment semantic differential without making it a product startup mode. |
 | `rrd-server::http::capabilities` | Reports single-node form, engine-selected storage, endpoint presentation from the bound address, installed identity when present, and effective ceilings. TLS no longer selects a database mode. | Qualify configured network listeners and every active presentation; do not count a raw-root standalone fixture as the installed product proof. |
 | `rrd-deployment-conformance-v1.json` and contract validation | Strictly validates a versioned fixture with unique non-empty document IDs, bounds, and expected output membership. | Replace the overclaimed shared-deployment meaning with the layered semantic, form, transport, durability, and artifact corpora above. |
 | engine deployment tests | Exercise one schema plus two records on rrflowMX and rrflowKV, run one exact-ID rrflowQL query through the current DataFusion executor, reject a durability operation on rrflowMX, deny a second rrflowKV writer, and reopen at cursor three. | Retain this as a seed characterization only. It does not prove streaming/pushdown, native graph/index/vector access, complete semantic parity, failure atomicity, reasoning, or resource bounds. |
-| Rust client loopback and mutual-TLS tests | Exercise real sockets and verify selected TLS identity behavior without using TLS to choose the database or deployment profile. | Run the complete cross-surface corpus against an installed real process. |
-| standalone server-process test | Starts a real child, observes readiness, exercises the seed corpus, proves writer exclusion, shuts down, and reopens. | Replace raw-root initialization, marker authority, and private process state through D-01 and the accepted local-process adapter before counting it as deployment proof. |
+| Rust client loopback and mutual-TLS tests | Exercise real sockets and verify selected TLS identity behavior without using TLS to choose the database or deployment profile. Installed-identity fixtures use plan/apply; unrelated transport component fixtures construct their engine explicitly. | Run the complete cross-surface corpus against a release-equivalent installed process. |
+| installed SDK conformance daemon | Canonically installs an empty temporary project from a checked inert distribution anchor, extends its schema/security through the installed engine, requires the derived instance/estate identities to match the shared corpus, and drives Rust, TypeScript, Python, Go, Java, and .NET against one real daemon. | The shared corpus remains narrow and does not prove the full layered semantic, deployment, transport, durability, failure, or resource matrices. |
+| standalone server-process and process-driver tests | The internal server process now requires project plus distribution executable and opens only installed state; process-driver fixtures preinstall the estate and retain real child, writer, stop, and fault behavior. | Replace marker/private controller authority and qualify authenticated launch/readiness, resources, distribution identity, and cross-platform behavior before counting it as deployment proof. |
 | `rrflow-edge` offline test | Builds, mmap-opens, and queries a deterministic feature-hash artifact from the two fixture documents. | Keep it as derived-artifact evidence. It parses the fixture as untyped JSON and does not enter `RrdEngine`, rrflowQL, transactions, graph/index semantics, or the shared storage profile. |
 
 The control journal and global runtime cursor are not two ordering authorities.
@@ -221,10 +222,10 @@ commit; logs and traces observe it and never manufacture it.
 1. **Accepted foundation:** retain A-07's three-coordinate contract, C-02's
    shared transaction port, accepted C-03 atomic semantic commit, and accepted
    C-04 direct stamped reads without a compatibility shim.
-2. **D-01:** extend the implemented preview/apply identity, profile, and sealed
-   configuration through every startup path; remove raw-root and legacy
-   initialization authority; add interruption-safe lifecycle and platform
-   qualification.
+2. **D-01:** retain the implemented preview/apply identity, profile, sealed
+   configuration, installed-only product startup, and eight-stage exact-plan
+   retry. Complete hostile-path/native-platform lifecycle qualification without
+   reintroducing the removed pre-canonical initialization authority.
 3. **B-04/H-04:** retain the closed WebSocket vocabulary and run one operation
    catalogue across HTTP, WebSocket, SDK, MCP, CLI, and Connectome.
 4. **C-07/E/F/G/H/I:** complete durability/maintenance qualification and fill

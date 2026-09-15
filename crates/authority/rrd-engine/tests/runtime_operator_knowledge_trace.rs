@@ -1,3 +1,4 @@
+use rrd_contract::{CanonicalId, InstalledEstateIdentity};
 use rrd_core::{
     digest, EmbeddingProvenance, ProjectionStamp, ProjectionState, RuntimeCommit,
     RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord, RuntimeRecordSchema,
@@ -5,7 +6,7 @@ use rrd_core::{
     RuntimeVector, ScopeId, VectorCollectionAddress, VectorNormalization, VectorValue,
     DATA_RUNTIME_CONTRACT_VERSION,
 };
-use rrd_engine::{execute_traced_operator_search, InstanceBinding, InstanceManifest};
+use rrd_engine::execute_traced_operator_search;
 use rrd_operator_knowledge::{
     OperatorAccessPath, OperatorAdapterDescriptor, OperatorKnowledgeBinding,
     OperatorSearchControls, OperatorSearchRequest, OperatorSourceRevision, OperatorSyncWork,
@@ -116,12 +117,24 @@ fn fixture<E: StorageEngine>(store: &E) -> Vec<VectorCandidate> {
         .collect()
 }
 
-fn knowledge(instance: &InstanceBinding) -> OperatorKnowledgeBinding {
+fn canonical(value: &str) -> CanonicalId {
+    CanonicalId::new(value).unwrap()
+}
+
+fn installed_identity() -> InstalledEstateIdentity {
+    InstalledEstateIdentity {
+        project_id: canonical("operator-trace-project"),
+        estate_id: canonical("operator-trace-estate"),
+        instance_id: canonical("operator-trace-instance"),
+    }
+}
+
+fn knowledge(installed: &InstalledEstateIdentity) -> OperatorKnowledgeBinding {
     OperatorKnowledgeBinding {
         contract_version: OPERATOR_KNOWLEDGE_CONTRACT_VERSION,
         adapter: "pgvector".into(),
-        project_id: instance.manifest.id.clone(),
-        member: instance.member.to_string_lossy().into_owned(),
+        project_id: installed.project_id.to_string(),
+        member: ".".into(),
         scope: scope(),
         config_digest: "22".repeat(32),
         source_identity_digest: "33".repeat(32),
@@ -260,15 +273,15 @@ fn traces<E: StorageEngine>(store: &E) -> Vec<TraceView> {
 
 fn exercise<E: StorageEngine>(
     store: &E,
-    instance: &InstanceBinding,
+    installed: &InstalledEstateIdentity,
 ) -> (rrd_engine::TracedOperatorSearch, Vec<TraceView>) {
     let candidates = fixture(store);
-    let knowledge = knowledge(instance);
+    let knowledge = knowledge(installed);
     let request = request(store, &knowledge);
     let mut adapter = adapter(&knowledge, candidates, "project-revision-7");
     let result = execute_traced_operator_search(
         store,
-        instance,
+        installed,
         &knowledge,
         &mut adapter,
         &request,
@@ -281,16 +294,14 @@ fn exercise<E: StorageEngine>(
 
 #[test]
 fn operator_search_is_project_bound_private_and_equal_across_engines() {
-    let instance_root = tempfile::tempdir().unwrap();
-    InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
-    let instance = InstanceBinding::discover(instance_root.path()).unwrap();
+    let installed = installed_identity();
     let memory = RrflowMxStore::new();
     let rrflow_kv_root = tempfile::tempdir().unwrap();
     let rrflow_kv_path = rrflow_kv_root.path().join("rrflow-kv");
     let rrflow_kv = RrflowKvStore::open(&rrflow_kv_path).unwrap();
 
-    let (memory_result, memory_traces) = exercise(&memory, &instance);
-    let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv, &instance);
+    let (memory_result, memory_traces) = exercise(&memory, &installed);
+    let (rrflow_kv_result, rrflow_kv_traces) = exercise(&rrflow_kv, &installed);
     assert_eq!(memory_result, rrflow_kv_result);
     assert_eq!(memory_result.result.hits.len(), 2);
     assert_eq!(memory.runtime().cursor().unwrap(), 12);
@@ -343,18 +354,16 @@ fn operator_search_is_project_bound_private_and_equal_across_engines() {
 
 #[test]
 fn stale_projection_revision_and_foreign_project_are_durable_denials() {
-    let instance_root = tempfile::tempdir().unwrap();
-    InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
-    let instance = InstanceBinding::discover(instance_root.path()).unwrap();
+    let installed = installed_identity();
 
     let stale_store = RrflowMxStore::new();
     let candidates = fixture(&stale_store);
-    let stale_knowledge = knowledge(&instance);
+    let stale_knowledge = knowledge(&installed);
     let stale_request = request(&stale_store, &stale_knowledge);
     let mut stale = adapter(&stale_knowledge, candidates, "project-revision-6");
     let error = execute_traced_operator_search(
         &stale_store,
-        &instance,
+        &installed,
         &stale_knowledge,
         &mut stale,
         &stale_request,
@@ -373,14 +382,14 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
 
     let projection_store = RrflowMxStore::new();
     let candidates = fixture(&projection_store);
-    let mut projection_knowledge = knowledge(&instance);
+    let mut projection_knowledge = knowledge(&installed);
     projection_knowledge.projection.source_cursor = 6;
     let mut projection_request = request(&projection_store, &projection_knowledge);
     projection_request.required_source_cursor = 7;
     let mut projection_adapter = adapter(&projection_knowledge, candidates, "project-revision-7");
     let error = execute_traced_operator_search(
         &projection_store,
-        &instance,
+        &installed,
         &projection_knowledge,
         &mut projection_adapter,
         &projection_request,
@@ -399,13 +408,13 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
 
     let foreign_store = RrflowMxStore::new();
     let candidates = fixture(&foreign_store);
-    let mut foreign = knowledge(&instance);
+    let mut foreign = knowledge(&installed);
     foreign.project_id = "another-project".into();
     let request = request(&foreign_store, &foreign);
     let mut adapter = adapter(&foreign, candidates, "project-revision-7");
     let error = execute_traced_operator_search(
         &foreign_store,
-        &instance,
+        &installed,
         &foreign,
         &mut adapter,
         &request,
@@ -413,7 +422,7 @@ fn stale_projection_revision_and_foreign_project_are_durable_denials() {
         100,
     )
     .unwrap_err();
-    assert!(error.to_string().contains("not instance"));
+    assert!(error.to_string().contains("not installed project"));
     assert_eq!(traces(&foreign_store).len(), 2);
     assert_eq!(traces(&foreign_store)[1].outcome, "denied");
 }
@@ -429,12 +438,10 @@ fn raw_query_identity_is_digest_only() {
 
 #[test]
 fn traced_outbox_retry_applies_external_payload_once() {
-    let instance_root = tempfile::tempdir().unwrap();
-    InstanceManifest::ensure_dedicated(instance_root.path()).unwrap();
-    let instance = InstanceBinding::discover(instance_root.path()).unwrap();
+    let installed = installed_identity();
     let store = RrflowMxStore::new();
     let candidates = fixture(&store);
-    let knowledge = knowledge(&instance);
+    let knowledge = knowledge(&installed);
     let source = store
         .runtime()
         .outbox_since(0, 100)
@@ -466,7 +473,7 @@ fn traced_outbox_retry_applies_external_payload_once() {
 
     let first = rrd_engine::execute_traced_operator_sync(
         &store,
-        &instance,
+        &installed,
         &knowledge,
         &mut writer,
         &work,
@@ -477,7 +484,7 @@ fn traced_outbox_retry_applies_external_payload_once() {
     .unwrap();
     let retry = rrd_engine::execute_traced_operator_sync(
         &store,
-        &instance,
+        &installed,
         &knowledge,
         &mut writer,
         &work,

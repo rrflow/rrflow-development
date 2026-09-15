@@ -271,14 +271,20 @@ The current corpus overstates several rows:
 | `cancellation` | caller wraps one follow future in a local timeout; separate B-04 Rust proof covers a correlated fail-closed request and terminal `not_found` cancellation | H-04 cancellation of actual shared-dispatch work, including disconnect and commit races |
 | `versions` | one incompatible capability response | protocol, catalogue/schema digest, package, and supported-release matrix |
 
-The harness currently seeds schema, estate, and security by directly opening
-`RrflowKvStore` and repositories and creates its own `InstanceManifest`. That
-is a useful fixture shortcut but cannot qualify installation or the SDK. The
-release corpus starts a D-01-installed instance using only public operations,
-runs the same semantic cases against rrflowMX and rrflowKV where applicable,
-adds rrflowKV crash/reopen cases, and compares loopback, authenticated network,
-HTTP, multiplexed WebSocket, Rust, generated languages, CLI, MCP, GraphQL, and
-Connectome at one expected engine result.
+The harness now materializes one checked inert distribution-anchor fixture,
+canonically plans/applies an empty temporary project, requires the derived
+instance and estate IDs to equal the checked corpus, and opens the installed
+engine. It extends that fixture's schema and security state without replacing
+the installed identity, then starts one real daemon for Rust, TypeScript,
+Python, Go, Java, and .NET. This proves that all six checked SDKs execute the
+present shared rrflowKV corpus against one canonically installed identity; it
+does not qualify distribution acquisition, public schema/security setup,
+rrflowMX parity, release operation coverage, or the product lifecycle. The
+release corpus must use only public operations, run the same semantic cases
+against rrflowMX and rrflowKV where applicable, add rrflowKV crash/reopen cases,
+and compare loopback, authenticated network, HTTP, multiplexed WebSocket, Rust,
+generated languages, CLI, MCP, GraphQL, and Connectome at one expected engine
+result.
 
 The Rust conformance test must never report a successful scenario when
 `RRD_SDK_CONFORMANCE_MANIFEST` is absent. It must either be an explicitly
@@ -295,7 +301,7 @@ names.
 | `cargo test -p rrd-client --test real_server --locked` | 3 passed | Real loopback, generic WSS, independent attach permission, two-stream multiplexing, exact replay/ACK, and narrow deployment behavior; not H-04 operation execution, storage-profile, or release conformance. |
 | `cargo test -p rrd-client --test transport_faults --locked` | 3 tests covering 6 malicious-server scenarios passed | B-04 connection, sequence, shape, binary, size, and response-correlation rejection; not every transport/TLS/failure race. |
 | Rust conformance test with no manifest | Cargo reported 1 passed in 0.00 s | The test returned before executing a scenario; this is not conformance evidence. |
-| Rust conformance test against the live example harness with the absolute shared-corpus path | 1 passed; runner reported the expected corpus SHA-256 | Real execution of the present limited rrflowKV corpus; not installation, rrflowMX parity, full labelled behavior, or cross-language proof. |
+| `python3 scripts/ci/run_sdk_conformance.py` | Rust, TypeScript, Python, Go, Java, and .NET passed one real installed daemon; corpus SHA-256 was `0f6ba4c172d58a64c69757c26bf502e93ed8b9cbe8394d84aaad1defe80fd09e`. | Canonical installed identity and six-language execution of the present limited rrflowKV corpus; not public setup, rrflowMX parity, full labelled behavior, or release proof. |
 | Generated-surface parity check | 33 HTTP operations matched OpenAPI | Checks generated TypeScript/Python/Go/Java/.NET endpoint maps; it does not inspect Rust method coverage. |
 | Normal dependency inspection | no RRFlow implementation crate below `rrd-client` | Correct client dependency direction; dev-only server/engine/store dependencies remain test fixtures. |
 

@@ -24,21 +24,6 @@
             "properties": {
               "spec": {
                 "properties": {
-                  "bootstrapAtUnixMs": {
-                    "format": "uint64",
-                    "minimum": 0.0,
-                    "type": "integer"
-                  },
-                  "bootstrapCredentialSecret": {
-                    "maxLength": 63,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "bootstrapManifestConfigMap": {
-                    "maxLength": 63,
-                    "minLength": 1,
-                    "type": "string"
-                  },
                   "contractVersion": {
                     "format": "uint16",
                     "maximum": 65535.0,
@@ -49,8 +34,14 @@
                     "description": "Immutable image reference. Tags are rejected; a sha256 digest is required.",
                     "type": "string"
                   },
-                  "instanceId": {
-                    "description": "A canonical public identifier component.\n\nIDs are lowercase ASCII and intentionally URL/path safe. Human-facing\nlabels are separate data and may use arbitrary Unicode.",
+                  "installationPlanConfigMap": {
+                    "description": "ConfigMap containing the exact installation preview at `plan.json`.",
+                    "maxLength": 63,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "installationPlanSha256": {
+                    "description": "Explicit operator acceptance of the installation plan's canonical digest.",
                     "type": "string"
                   },
                   "storage": {
@@ -79,12 +70,10 @@
                   }
                 },
                 "required": [
-                  "bootstrapAtUnixMs",
-                  "bootstrapCredentialSecret",
-                  "bootstrapManifestConfigMap",
                   "contractVersion",
                   "image",
-                  "instanceId",
+                  "installationPlanConfigMap",
+                  "installationPlanSha256",
                   "storage",
                   "tlsSecret"
                 ],
@@ -95,8 +84,8 @@
                     "rule": "self.contractVersion == 1"
                   },
                   {
-                    "message": "bootstrapAtUnixMs must be positive",
-                    "rule": "self.bootstrapAtUnixMs > 0"
+                    "message": "installationPlanSha256 must be canonical lowercase SHA-256",
+                    "rule": "self.installationPlanSha256.matches('^[0-9a-f]{64}$')"
                   },
                   {
                     "message": "PVC retention is mandatory in v1alpha1",
@@ -115,12 +104,8 @@
                     "rule": "self.tlsSecret.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
                   },
                   {
-                    "message": "bootstrapManifestConfigMap must be one DNS label",
-                    "rule": "self.bootstrapManifestConfigMap.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
-                  },
-                  {
-                    "message": "bootstrapCredentialSecret must be one DNS label",
-                    "rule": "self.bootstrapCredentialSecret.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+                    "message": "installationPlanConfigMap must be one DNS label",
+                    "rule": "self.installationPlanConfigMap.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
                   }
                 ]
               },

@@ -77,9 +77,11 @@ read-only `rrflow verify --level quick` flow. Planning previews and seals the
 canonical estate and configuration; apply consumes those sealed bytes; serve
 opens that installed identity read-only before composing the listener. This is
 pre-release implementation evidence, not complete D-01 or release evidence.
-`rrd-server initialize` and raw-project-root startup remain
-characterization-only convergence inventory, not supported installation
-guidance. The
+The internal `rrd-server` process likewise requires an installed project plus
+the exact distribution executable and calls `RrdEngine::open_installed`;
+`initialize`, raw database-root, manifest, and private-binding startup are
+absent. Low-level generic server composition remains available only for
+explicit component tests and embeddings that already own a composed engine. The
 [local-process adapter reference](../deployment/local-process-driver.md) owns
 the exact target launch, authenticated readiness, and shutdown boundary.
 
@@ -95,7 +97,8 @@ The current explicit configured-network invocation supplies all TLS inputs
 together:
 
 ```text
-rrd-server --root PROJECT --bind 0.0.0.0:9477 \
+rrd-server --project PROJECT --distribution-executable /installed/rrflow \
+  --bind 0.0.0.0:9477 \
   --tls-cert SERVER_CHAIN.pem --tls-key SERVER_KEY.pem \
   --tls-client-ca CLIENT_CA.pem \
   --jwt-key-file JWT_SIGNING_KEY
@@ -136,14 +139,17 @@ On a secured instance, session creation accepts a principal/API key or a
 configured RRD-issued JWT; each later operation rechecks the stored principal,
 credential revision, exact action, and resource policy through `RrdEngine`.
 
-With no initialized security authority, the server advertises an anonymous
-loopback development mode. Configured-network TLS and JWT configuration require
-initialized security. That local mode is current characterization, not proof of
-the alpha security or installation outcome.
+An explicit low-level component engine with no security authority still
+advertises an anonymous loopback mode. A product process cannot reach that
+state through startup because canonical installation commits security before
+locator publication and installed open requires it. Configured-network TLS and
+JWT configuration require initialized security. The component-only branch is a
+tracked authorization deficiency, not a product installation fallback.
 
-The database-local token derivation secret is generated from operating-system
-entropy and is permission-checked on Unix. The optional token-key and JWT-key
-files are read under bounded file rules. Persisted session and audit records
+The installed token derivation secret is generated once from operating-system
+entropy during installation, recovered exactly across retry, and
+permission-checked on Unix. Installed open resolves it through the locator; the
+optional JWT-key file is read under bounded file rules. Persisted session and audit records
 store digests and credential revisions, not raw API keys, JWTs, signing keys,
 or bearer lease tokens.
 
@@ -244,9 +250,10 @@ vocabulary; H-05 owns complete propagation, persistence, and export proof.
 | Evidence boundary | What current tests establish | What they do not establish |
 |---|---|---|
 | Contract/router parity | Every catalogued HTTP operation has exactly one dispatch; generated OpenAPI is derived from the same catalogue. | Released SDK or GraphQL conformance. |
+| Installed startup | Primary `rrflow serve`, the internal server process, embedded MCP, and the shared SDK daemon all resolve canonical installed state; manifest/private-binding/raw-root product startup and the server initializer are absent. | Signed bundle/service integration, hostile-path/native ACL qualification, and the complete cross-surface semantic matrix. |
 | Real socket process | Loopback enforcement, liveness/readiness, authentication and scope denial, bounded envelopes, session/transaction replay, concurrent idempotency, multi-model commit/reopen, query, vector, changefeed, backup/restore, secret exclusion, and B-04 generic WebSocket request/cancel plus two-subscription/replay behavior. | Native target storage/index execution, H-04 operation cancellation, or full resource/trace export. |
 | Mutual-TLS transport | The CLI requires the certificate, key, and client CA together; a real-process Rust client test rejects a missing client certificate and wrong server name, accepts the configured identities, and carries HTTPS plus generic multiplexed WSS subscription traffic. | Untrusted-client-chain coverage, certificate rotation and revocation, external identity, and production deployment integration remain open. |
-| Local process implementation | Root containment, restart/reopen, identity-safe process control, bounded stop escalation, and controller kill-gap convergence. | Sole installed authority, artifact-to-exec binding, authenticated readiness, rrflowMX parity, or a released service manager; the canonical target and disposition are in the local-process adapter reference. |
+| Local process implementation | Installed-only child startup, root containment, restart/reopen, identity-safe process control, bounded stop escalation, and controller kill-gap convergence. | Engine-prepared process authority, artifact-to-exec race binding, authenticated receipt-based readiness, rrflowMX parity, or a released service manager; the canonical target and disposition are in the local-process adapter reference. |
 
 The focused characterization commands are:
 

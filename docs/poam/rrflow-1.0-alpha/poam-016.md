@@ -14,21 +14,23 @@ Security policy, sessions, and audit have useful validation and denial behavior,
 `rrd-security` still exposes a direct `StorageEngine` repository; policy and runtime data
 use separate observations; transaction authorization is operation-wide rather than
 effect-complete; missing policy enables anonymous loopback application access; and
-authorized/domain/completed audit writes are split commits. Initial security is additionally
-a rrflowKV-only `rrd-security-bootstrap` path used by CLI and Kubernetes code: it opens
-caller-selected storage before input validation, accepts caller time and arbitrary absolute
-secret paths, resolves then reopens files, performs no non-Unix privacy enforcement, derives
-idempotency from incomplete coordinates, and lets the development supervisor manufacture a
-policy outside installation.
+authorized/domain/completed audit writes are split commits. Initial local security now
+enters through the exact sealed installation plan: engine-generated token and operator
+credential bytes are recovered or created once, verified on readback, and the installed
+record, policy, checkpoint, audit, and outbox are committed as one semantic outcome before
+locator publication. The standalone bootstrap helper/binary and its CLI, supervisor, and
+Kubernetes callers are removed. Capability-scoped external secret providers, non-Unix ACL
+qualification, trusted installation time, rotation/delivery receipts, and effect-complete
+authorization remain open.
 
 ## Impact
 
 Code can bypass `RrdEngine`, a concurrent policy change can race a data read, a permitted
 transaction can contain unauthorized graph/index/vector or field effects, an uninitialized
-instance can grant application access, a domain mutation can commit without final
-audit/outbox evidence, and cold-start races or adapter-specific paths can initialize the
-wrong estate, ingest replaced secret bytes, duplicate credentials, or persist an unreviewed
-grant set.
+component fixture can grant loopback application access, and a domain mutation can commit
+without final audit/outbox evidence. Platform or provider credential handling remains
+unqualified even though the removed product bootstrap paths can no longer initialize a
+different estate or grant set.
 
 ## Owning gates
 
@@ -47,10 +49,10 @@ Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
 Make security a pure vocabulary and decision dependency of `RrdEngine`; transact policy,
 sessions, state, indexes, audit, outbox, and cursors through one accepted rrflowMX/rrflowKV
 boundary; bind authorization to the data stamp; authorize every semantic effect before
-commit; and replace both absence-driven access and the standalone bootstrap with D-01's
-local-only, fresh-target, exact-plan `initialize_instance` action. Use engine time,
-capability-scoped/versioned secret adapters, typed verifiers, one atomic
-installed-binding/policy/checkpoint/audit commit, and prepared/effect receipts for
-credential delivery; then delete every old helper/caller/shape and pass MX/KV differential,
+commit; and replace absence-driven access with D-01's local-only, fresh-target, exact-plan
+installation action. Retain the now-implemented one-time engine secret generation and
+atomic installed-binding/policy/checkpoint/audit outcome; add capability-scoped/versioned
+secret and clock adapters, typed verifiers, and prepared/effect receipts for credential
+delivery; then pass MX/KV differential,
 conflict, effect-boundary crash/reopen, path/link/ACL/provider-drift, denial, redaction,
 cross-surface, secret-accounting, and clean-deployment tests.

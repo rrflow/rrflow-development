@@ -75,7 +75,7 @@ impl RrdHttpServer {
         if !bind.ip().is_loopback() {
             return Err(HttpError::RemoteBindDenied(bind));
         }
-        Self::bind_inner(engine, bind, None, None, None)
+        Self::bind_inner(engine, bind, None, None)
     }
 
     pub fn bind_with_jwt(
@@ -86,36 +86,7 @@ impl RrdHttpServer {
         if !bind.ip().is_loopback() {
             return Err(HttpError::RemoteBindDenied(bind));
         }
-        Self::bind_inner(engine, bind, None, None, Some(jwt_verification_key))
-    }
-
-    pub fn bind_project(
-        engine: RrdEngine,
-        project: ProjectAuthorityBinding,
-        bind: SocketAddr,
-    ) -> Result<Self> {
-        if !bind.ip().is_loopback() {
-            return Err(HttpError::RemoteBindDenied(bind));
-        }
-        Self::bind_inner(engine, bind, None, Some(project), None)
-    }
-
-    pub fn bind_project_with_jwt(
-        engine: RrdEngine,
-        project: ProjectAuthorityBinding,
-        bind: SocketAddr,
-        jwt_verification_key: RrdJwtVerificationKey,
-    ) -> Result<Self> {
-        if !bind.ip().is_loopback() {
-            return Err(HttpError::RemoteBindDenied(bind));
-        }
-        Self::bind_inner(
-            engine,
-            bind,
-            None,
-            Some(project),
-            Some(jwt_verification_key),
-        )
+        Self::bind_inner(engine, bind, None, Some(jwt_verification_key))
     }
 
     pub fn bind_mtls(
@@ -123,27 +94,11 @@ impl RrdHttpServer {
         bind: SocketAddr,
         tls: RrdMutualTlsServerConfig,
     ) -> Result<Self> {
-        Self::bind_inner(engine, bind, Some(TlsAcceptor::from(tls.inner)), None, None)
+        Self::bind_inner(engine, bind, Some(TlsAcceptor::from(tls.inner)), None)
     }
 
-    pub fn bind_project_mtls(
+    pub fn bind_mtls_with_jwt(
         engine: RrdEngine,
-        project: ProjectAuthorityBinding,
-        bind: SocketAddr,
-        tls: RrdMutualTlsServerConfig,
-    ) -> Result<Self> {
-        Self::bind_inner(
-            engine,
-            bind,
-            Some(TlsAcceptor::from(tls.inner)),
-            Some(project),
-            None,
-        )
-    }
-
-    pub fn bind_project_mtls_with_jwt(
-        engine: RrdEngine,
-        project: ProjectAuthorityBinding,
         bind: SocketAddr,
         tls: RrdMutualTlsServerConfig,
         jwt_verification_key: RrdJwtVerificationKey,
@@ -152,7 +107,6 @@ impl RrdHttpServer {
             engine,
             bind,
             Some(TlsAcceptor::from(tls.inner)),
-            Some(project),
             Some(jwt_verification_key),
         )
     }
@@ -161,30 +115,9 @@ impl RrdHttpServer {
         engine: RrdEngine,
         bind: SocketAddr,
         tls: Option<TlsAcceptor>,
-        project: Option<ProjectAuthorityBinding>,
         jwt_verification_key: Option<RrdJwtVerificationKey>,
     ) -> Result<Self> {
         let instance = engine.instance_id().clone();
-        if let Some(project) = &project {
-            project
-                .validate()
-                .map_err(|error| HttpError::Contract(error.to_string()))?;
-            if project.instance_id != instance {
-                return Err(HttpError::Contract(
-                    "project authority and engine instance identities differ".into(),
-                ));
-            }
-            if engine
-                .project_authority_binding()
-                .map_err(|error| HttpError::Contract(error.to_string()))?
-                .as_ref()
-                != Some(project)
-            {
-                return Err(HttpError::Contract(
-                    "project authority is not persisted by this engine".into(),
-                ));
-            }
-        }
         let security_enforced = engine
             .security_enforced()
             .map_err(|error| HttpError::Contract(error.to_string()))?;

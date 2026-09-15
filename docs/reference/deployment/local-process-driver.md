@@ -219,11 +219,11 @@ canonical destination.
 | Current implementation | Useful behavior to preserve | Conflict to remove directly |
 |---|---|---|
 | `rrd-estate/src/local_process.rs` | typed argv without a shell; strict relative paths; executable hashing; PID/start/image checks; bounded readiness and stop; child cleanup; durable staging pattern; retained data on delete | OS/process/filesystem/hashing dependencies inside the estate domain; arbitrary state root; standalone process JSON; marker existence as truth; digest-to-exec race; plaintext environment; unbounded logs and raw stderr tail |
-| `LocalDeploymentCatalog` and `rrd-deployment-catalog` | bounded strict decoding, content digest, create-new publication, and explicit timeouts | a second installation/configuration authority with absolute paths, generic literals/environment, hardcoded `initialize`, and no installed binding, signature, policy, or secret-reference contract |
+| `LocalDeploymentCatalog` and `rrd-deployment-catalog` | bounded strict decoding, content digest, create-new publication, explicit timeouts, empty preparation arguments, and an installed-only server invocation bound to project and distribution-executable digests | still a second launch/configuration document with absolute paths and generic literals/environment; it has no engine-prepared effect/receipt port, signature/policy/secret-reference contract, or artifact-to-exec race protection |
 | `rrd-engine::reconcile_estate_store` and `rrd-estate-controller` | one-step reconciliation, stable operation replay, and testable effect-gap boundaries | static arbitrary-path store opening, caller-selected clock/worker/catalogue, direct repository mutation, release debug holds, and a second control-plane executable |
-| `rrflow-cli/src/dev/supervisor.rs` | identity-safe stop, bounded log tail, port probing, and child reaping | a second `supervisor.json` authority, duplicated process implementation, startup manifest/security creation, and readiness inferred outside the installed engine contract |
-| `rrd-server` ready/shutdown marker support | listener publication after bind, synced bounded files, and graceful drain intent | unauthenticated file-existence readiness/completion, independently supplied paths, no challenge/plan/process binding, and a release `initialize` command |
-| `rrd-server/tests/local_estate_driver.rs` | real child, controller reopen, idempotent same-PID replay, forged-PID denial, graceful-timeout fallback, effect-gap kills, and retained data | direct store/catalogue/root setup, old manifest/bootstrap, rrflowKV-only control state, debug controller dependence, and no public/security/install/resource proof |
+| removed `rrflow-cli` development supervisor | Its identity-safe stop, bounded log tail, port probing, and child-reaping expectations remain represented by narrower installed-lifecycle or process-driver tests. | `supervisor.json`, duplicated startup implementation, manifest/security creation, and `dev` command success paths are absent; retain no replacement private authority. |
+| `rrd-server` ready/shutdown marker support | installed-only engine open, listener publication after bind, synced bounded files, and graceful drain intent | unauthenticated file-existence readiness/completion, independently supplied marker paths, and no challenge/plan/process binding; the release initializer is now absent |
+| `rrd-server/tests/local_estate_driver.rs` | canonically installs its temporary estate before starting a real child, then covers controller reopen, idempotent same-PID replay, forged-PID denial, graceful-timeout fallback, effect-gap kills, and retained data | rrflowKV-only private controller state, marker authority, debug controller dependence, and no public-operation, authenticated-readiness, resource, distribution, or cross-platform proof |
 
 The superseded flat record cited
 [GitHub Actions run 32667681611](https://github.com/EonsofStupid/rrflow/actions/runs/32667681611)
@@ -242,8 +242,9 @@ source, exact distribution, platform versions, and acceptance corpus.
    than wrapping or aliasing them.
 3. D-01 makes the signed, repository-contained distribution plus install
    preview/apply the sole source of artifact, configuration, locator, service,
-   and launch-plan state. Remove `rrd-server initialize` and every startup
-   creation path in the same cutover.
+   and launch-plan state. The current source has removed `rrd-server
+   initialize` and every product startup-creation path; distribution/service
+   qualification remains open.
 4. C/D persist prepared effects and accepted receipts through the installed
    `RrdEngine`; prove shared rrflowMX semantics and rrflowKV effect-gap
    recovery without a private JSON authority.
@@ -256,24 +257,27 @@ source, exact distribution, platform versions, and acceptance corpus.
 ## Focused characterization and missing proof
 
 The current source has focused tests for one hard-link-versus-copy executable
-identity check, one deployment-catalogue generator, four CLI supervisor cases,
-two controller argument cases, and four real-process/effect-gap cases. The
-focused commands are:
+identity check, one installed-only deployment-catalogue generator, controller
+argument cases, and four real-process/effect-gap cases over a canonically
+preinstalled estate. The shortest replacement checks are:
 
 ```text
 cargo test -p rrd-estate --lib local_process --locked
 cargo test -p rrd-estate --test deployment_catalog --locked
-cargo test -p rrflow-cli --bin rrflow dev::supervisor --locked
 cargo test -p rrflow-cli --bin rrd-estate-controller --locked
-cargo test -p rrd-server --test local_estate_driver --locked
+cargo test -p rrd-server --test local_estate_driver real_rrd_child_survives_controller_reopen_and_stops_without_data_deletion --locked
+cargo test -p rrd-server --test local_estate_driver local_driver_refuses_to_signal_a_reused_or_forged_pid_identity --locked
+cargo test -p rrd-server --test local_estate_driver graceful_timeout_reauthenticates_then_uses_the_bounded_kill_fallback --locked
 ```
 
-These tests do not prove the target ownership boundary, installed launch-plan
-resolution, signature or secret handling, artifact-to-exec race safety,
+These tests do not prove the target ownership boundary, engine-prepared
+launch-plan resolution, signature or secret handling, artifact-to-exec race safety,
 authenticated readiness, marker rejection, bounded diagnostics/resources,
 rrflowMX/rrflowKV semantics, public operation equivalence, clean packaging, or
-cross-platform final behavior. Passing them cannot close the associated POA&M
-row or any release gate.
+cross-platform final behavior. The separate full process-kill matrix repeatedly
+terminates the controller around effect gaps; it is fault-injection evidence,
+not a product-readiness workload or performance benchmark. Passing any of these
+cannot close the associated POA&M row or a release gate.
 
 ## Acceptance
 

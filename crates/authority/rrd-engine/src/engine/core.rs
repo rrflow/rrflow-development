@@ -58,9 +58,10 @@ impl RrdEngine {
         )
     }
 
-    /// Opens a local engine authority for engine-owned control/bootstrap
-    /// operations that cannot yet rely on a project manifest. The constructor
-    /// remains private to `rrd-engine`; outward adapters call typed operations.
+    /// Opens a local engine authority for pre-release engine-owned estate
+    /// control operations that do not yet resolve an installed-project
+    /// locator. The constructor remains private to `rrd-engine`; outward
+    /// adapters call typed operations.
     pub(in crate::engine) fn open_local_authority(
         root: &Path,
         instance: CanonicalId,
@@ -89,7 +90,7 @@ impl RrdEngine {
     /// token-signing key. rrflowKV intentionally requires an empty directory
     /// when it creates a new database, so file-backed credentials must never
     /// be created in the engine root first.
-    pub fn open_with_token_key_file(
+    fn open_with_token_key_file(
         root: &Path,
         instance: CanonicalId,
         token_key_file: &Path,

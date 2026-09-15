@@ -1,9 +1,9 @@
 # RRFlow installed lifecycle
 
-**Status:** active target contract; canonical local-estate slice implemented, convergence and qualification remain open
+**Status:** active target contract; canonical local-estate startup and retry slice implemented, operation and release qualification remain open
 **Coordinate:** `rrflow://rrflow-instance/data/reference/deployment/installed-lifecycle`
 **Owner:** default-distribution acquisition, project installation, readiness, verification, repair, restore, salvage, and removal semantics
-**Reviewed:** 2026-09-14
+**Reviewed:** 2026-09-15
 
 This record defines the stable target behavior of an installed RRFlow 1.0
 estate. The [alpha objective](../../objectives/rrflow-1.0-alpha.md) owns the
@@ -74,9 +74,11 @@ rrflow mcp ...
 ```
 
 Names may change only through the roadmap owner before implementation. The
-semantics may not be weakened by aliases. The current `dev up`, `dev doctor`,
-`rrd-server initialize`, and standalone security/backup/recovery-controller
-flows are implementation inventory, not alternate supported commands.
+semantics may not be weakened by aliases. `dev up`, `dev doctor`,
+`rrd-server initialize`, and the standalone security initializer have been
+removed rather than retained as alternate commands. Existing standalone
+backup/recovery controller flows remain implementation inventory, not an
+alternate supported lifecycle.
 
 ## Installed state and ownership
 
@@ -200,9 +202,9 @@ binding are committed.
 
 ## Current pre-release slice and rollout
 
-Package `D01-02-canonical-estate-layout-and-configuration-v1` implements the
-first concrete estate/configuration slice without claiming the complete target
-above:
+Packages `D01-02-canonical-estate-layout-and-configuration-v1` and
+`D01-04-precanonical-authority-convergence-and-install-recovery-v5` implement
+the current concrete startup slice without claiming the complete target above:
 
 - `rrd-contract` owns `InstalledEstateIdentity`, three independent deployment
   coordinates, and a strict self-digesting `EstateConfiguration`;
@@ -221,14 +223,42 @@ above:
   ceiling fail before their data operation; and
 - server capabilities and generated OpenAPI/SDK types expose the effective
   configuration and exact deployment coordinates. Reasoning ceilings are
-  visible, while `governed-reasoning-runner` remains honestly unavailable.
+  visible, while `governed-reasoning-runner` remains honestly unavailable;
+- before the first `.rrflow` directory exists, apply publishes one owner-only,
+  plan-addressed recovery intent containing the frozen first-apply time and the
+  exact generated token/credential bytes. Retry accepts it only when its own
+  digest and the plan, target, project precondition, profile, executable, and
+  configuration still match;
+- apply creates or exactly verifies each declared directory, store, token,
+  credential, one semantic installation commit, pending locator, and active
+  locator. It classifies empty, committed, published, and complete states and
+  removes only the exact pending locator and acknowledged intent it owns;
+- deterministic test-only observation stops before or after each of the eight
+  durable stages: intent, directories, store, token, credential, engine commit,
+  locator publication, and intent acknowledgement. Retrying the same plan
+  preserves first-apply time and leaves one token, credential, installed
+  record, policy, audit/checkpoint result, attunement plan/job, and locator;
+- malformed, symbolic, foreign, mismatched, partly committed, or missing-secret
+  recovery state is preserved and rejected rather than guessed or overwritten;
+  and
+- primary CLI, internal server process, embedded MCP, checked six-language SDK
+  conformance daemon, deployment catalogue, and Kubernetes rendering now use
+  canonical installation/open. The pre-canonical manifest/private binding,
+  raw product CLI, development supervisor, standalone security initializer,
+  and server initializer are removed with no successful compatibility reader.
 
 The implementation rejects any pre-existing `.rrflow` tree for a new install.
-It does not migrate, merge, or delete legacy `.rrflow/instance.toml` state.
-Interrupted-install resume/cleanup, handle-relative race hardening, complete
-native ACL qualification, configuration plan/apply, executable attunement,
-full repair/uninstall, release assembly, and clean-machine qualification remain
-separate packages. The staged rationale and exit proofs are in the
+It does not migrate, merge, or delete a user's pre-canonical
+`.rrflow/instance.toml` state; that collision remains a fail-closed diagnostic.
+The tracked development manifest has been deleted because no source path reads
+it. The source-built CLI obtains first-apply time from its host wall clock and
+passes it into the engine; a versioned trusted-clock capability and its
+rollback/skew/failure qualification remain open. Handle-relative race
+hardening, complete native ACL qualification, configuration plan/apply,
+attunement phase execution, full
+verify/repair/restore/uninstall, service integration, release assembly, and
+clean-machine qualification remain separate packages. The staged rationale and
+exit proofs are in the
 [canonical estate/configuration research](../../research/rrflow-canonical-estate-configuration-and-runtime-controls.md#rollout-sequence).
 
 ## Open, serve, and readiness
@@ -384,19 +414,24 @@ supported target:
   plan/apply, foreground serve, authenticated ready, and quick verification;
   it remains a thin adapter over lifecycle operations owned by `RrdEngine`.
 - The new portable locator and engine-owned active configuration are the only
-  accepted destination. The legacy manifest/raw-root paths remain blocked
-  implementation inventory until the next traceable convergence package
-  absorbs their required behavior and deletes their success paths.
-- `rrd-server` and `rrflow-mcp` expose library composition APIs; their default
-  standalone binaries are removed after equivalent primary-binary tests pass.
+  accepted product destination. The pre-canonical manifest/private binding,
+  raw-root startup openers, and creation callers are removed; explicit
+  create-or-open engine construction remains only in component tests that do
+  not claim installation.
+- The internal `rrd-server` process and embedded `rrflow-mcp` mode require an
+  installed project plus the exact distribution executable and call
+  `RrdEngine::open_installed`; neither can initialize absent state. They remain
+  internal/adapter artifacts rather than additional operator lifecycle roots.
 - `RrflowKvStore::open` is split into explicit create-new and open-existing
   operations; inspection is separate and read-only.
-- `rrflow-cli::dev::supervisor`, its private files, standalone security
-  bootstrap, `rrd-server initialize`, and create-on-start paths are removed in
-  the D-01 direct-convergence package after replacement evidence passes.
-- current backup/restore algorithms are retained behind installed engine
-  resolution; arbitrary-root standalone controllers are removed after public
-  command and authorization parity.
+- `rrflow-cli::dev::supervisor`, its private files, the standalone security
+  initializer, `rrd-server initialize`, and create-on-start product paths are
+  absent after the D-01 replacement tests passed.
+- the retained application-backup component now opens only an existing complete
+  component root. It intentionally cannot resolve the canonical installed
+  `roots/<install-id>` estate yet and cannot create a second store at the old
+  `.rrflow/rrd` parent. Installed backup/restore commands and
+  locator/distribution-bound controller inputs remain D-11/POA&M work.
 - current WAL torn-tail repair is retained only as a physical primitive invoked
   by an exact engine repair plan.
 

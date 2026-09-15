@@ -63,32 +63,31 @@ struct AuthenticatedReady {
     session_closed: bool,
 }
 
-pub fn execute(command: &Command, now: u64, json: bool) -> Option<Result<Execution, BoxError>> {
+pub fn execute(command: &Command, now: u64, json: bool) -> Result<Execution, BoxError> {
     match command {
-        Command::Version => Some(version(json)),
-        Command::Install { action } => Some(install(action, now, json)),
+        Command::Version => version(json),
+        Command::Install { action } => install(action, now, json),
         Command::Serve {
             project,
             bind,
             test_distribution_executable,
-        } => Some(serve(
+        } => serve(
             project,
             *bind,
             test_distribution_executable.as_deref(),
             json,
-        )),
-        Command::Ready { project, address } => Some(ready(project, *address, now, json)),
+        ),
+        Command::Ready { project, address } => ready(project, *address, now, json),
         Command::Verify {
             project,
             level,
             test_distribution_executable,
-        } => Some(verify(
+        } => verify(
             project,
             *level,
             test_distribution_executable.as_deref(),
             json,
-        )),
-        _ => None,
+        ),
     }
 }
 
@@ -186,7 +185,6 @@ fn install(action: &InstallAction, now: u64, json: bool) -> Result<Execution, Bo
             )?;
             Ok(Execution {
                 text,
-                detail: Some(format!("installation={}", result.result_sha256)),
                 success: true,
             })
         }
@@ -251,7 +249,6 @@ fn serve(
     );
     Ok(Execution {
         text: String::new(),
-        detail: Some(format!("served={address}")),
         success: true,
     })
 }
@@ -353,7 +350,6 @@ fn ready(
     );
     Ok(Execution {
         text: render(&report, json, human)?,
-        detail: Some(format!("readiness={}", report.openapi_sha256)),
         success: true,
     })
 }
@@ -393,7 +389,6 @@ fn verify(
     );
     Ok(Execution {
         text: render(&report, json, human)?,
-        detail: Some(format!("verified={}", report.plan_sha256)),
         success: true,
     })
 }

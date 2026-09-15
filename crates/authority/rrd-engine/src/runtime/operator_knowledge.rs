@@ -1,6 +1,7 @@
 //! Durable execution boundary for project-scoped external operator knowledge.
 
-use super::{DurableTraceSpan, InstanceBinding, TraceIdentity};
+use super::{DurableTraceSpan, TraceIdentity};
+use rrd_contract::InstalledEstateIdentity;
 use rrd_core::{
     digest, Millis, RuntimeProperties, RuntimeValue, TraceBoundary, TraceDataClass, TraceLink,
     TraceOutcome,
@@ -30,7 +31,7 @@ pub struct TracedOperatorSync {
 #[allow(clippy::too_many_arguments)]
 pub fn execute_traced_operator_sync<E, W>(
     store: &E,
-    instance: &InstanceBinding,
+    installed: &InstalledEstateIdentity,
     knowledge: &OperatorKnowledgeBinding,
     writer: &mut W,
     work: &OperatorSyncWork,
@@ -96,7 +97,7 @@ where
             ),
         ]),
     )?;
-    if let Err(error) = require_project_binding(instance, knowledge) {
+    if let Err(error) = require_project_binding(installed, knowledge) {
         return fail_operator(
             store,
             None,
@@ -203,7 +204,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn execute_traced_operator_search<E, A>(
     store: &E,
-    instance: &InstanceBinding,
+    installed: &InstalledEstateIdentity,
     knowledge: &OperatorKnowledgeBinding,
     adapter: &mut A,
     request: &OperatorSearchRequest,
@@ -284,7 +285,7 @@ where
         ]),
     )?;
 
-    if let Err(error) = require_project_binding(instance, knowledge) {
+    if let Err(error) = require_project_binding(installed, knowledge) {
         return fail_operator(
             store,
             None,
@@ -376,15 +377,15 @@ where
 }
 
 fn require_project_binding(
-    instance: &InstanceBinding,
+    installed: &InstalledEstateIdentity,
     knowledge: &OperatorKnowledgeBinding,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    instance.require_runtime_ready()?;
-    let member = instance.member.to_string_lossy();
-    if knowledge.project_id != instance.manifest.id || knowledge.member != member {
+    installed.validate()?;
+    const PROJECT_MEMBER: &str = ".";
+    if knowledge.project_id != installed.project_id.as_str() || knowledge.member != PROJECT_MEMBER {
         return Err(format!(
-            "operator binding belongs to project {}/{}, not instance {}/{}",
-            knowledge.project_id, knowledge.member, instance.manifest.id, member
+            "operator binding belongs to project {}/{}, not installed project {}/{}",
+            knowledge.project_id, knowledge.member, installed.project_id, PROJECT_MEMBER
         )
         .into());
     }

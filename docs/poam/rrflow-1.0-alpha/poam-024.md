@@ -11,9 +11,13 @@ independently.
 ## Observed deficiency
 
 `rrd-kubernetes` is an outward deployment controller implemented as a parallel desired-state
-and lifecycle authority. Its CRD directly owns instance/image/storage/bootstrap inputs and
-caller time; renderer code hardcodes commands, paths, resources, and two independent
-initialization paths; the controller watches all namespaces, owns only StatefulSet events,
+and lifecycle authority. Its CRD still directly owns image, storage, TLS, and installation
+projection inputs, but caller-selected instance identity, caller time, bootstrap manifest,
+and credential fields have been replaced by one installation-plan ConfigMap name and exact
+plan SHA-256. The renderer now emits one `rrflow install apply` init container and an
+installed-only server command; the separate server initializer and security bootstrap are
+absent. Renderer code still hardcodes commands, paths, resources, and probes; the
+controller watches all namespaces, owns only StatefulSet events,
 unconditionally force-applies fields, declares application readiness from one ready
 replica/TCP sockets, labels desired JSON as applied state, and removes its finalizer after
 background delete requests without engine-prepared retention, backup, fence, absence, or
@@ -22,11 +26,12 @@ real API-server test exists, and the example image is not deployable.
 
 ## Impact
 
-Kubernetes edits or controller restarts can create installation, policy, deployment,
-completion, and deletion truth outside `RrdEngine`; foreign fields can be stolen; an
-uninitialized or wrong RRD can appear ready; data protection can be released before effects
-complete; cluster-wide permissions and namespace-label reachability can exceed the intended
-project boundary; and passing manifests can falsely qualify the persistent
+Kubernetes edits or controller restarts can still create deployment, completion, and
+deletion truth outside `RrdEngine`; the rendered install handoff is not yet an
+engine-prepared controller receipt, foreign fields can be stolen, and a wrong RRD can
+appear ready from TCP alone. Data protection can be released before effects complete;
+cluster-wide permissions and namespace-label reachability can exceed the intended project
+boundary; and passing manifests can falsely qualify the persistent
 graph/index/vector/Arrow/DataFusion reasoning engine.
 
 ## Owning gates
@@ -47,11 +52,12 @@ Roadmap owners: [Gate A](../../roadmap/rrflow-1.0/gate-a.md),
 ## Closure evidence
 
 Move useful mechanics into outward `rrflow-kubernetes` with no forwarding crate; accept only
-the sealed D-01 cold-start handoff or an engine-prepared fenced effect plan; return bounded
+the now-shaped sealed D-01 cold-start handoff or an engine-prepared fenced effect plan;
+return bounded
 observations/receipts for engine acceptance; replace phase/TCP status with standard
 conditions and authenticated identity/digest readiness; use namespace-scoped least privilege
 and explicit SSA conflict handling; gate finalization on retention/backup/absence/receipt
-proof; remove both old bootstrap paths and hardcoded authority; then pass closed-contract,
+proof; remove hardcoded authority; then pass closed-contract,
 real API-server, watch/relist/restart, effect-gap, field-conflict, RBAC/Secret/network,
 retained-delete/recovery, clean offline install, rrflowKV crash/reopen, resource, and
 complete document/graph/BM25/vector/RRF/reasoning/Arrow/DataFusion public-endpoint corpora.

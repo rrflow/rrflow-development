@@ -80,46 +80,40 @@ not open physical keys or create a second retrieval mechanism.
 
 ## CLI operations
 
-Bind or update one seat and one provider representation explicitly:
+No seat-identity CLI operation is currently exposed. The implemented engine
+boundary is `RrdEngine::plan_memory_estate`, followed by
+the ordinary authenticated transaction commit,
+`RrdEngine::resolve_seat_identity`, and `RrdEngine::resolve_memory_warp`. The
+planner produces strict seat, provider-identity, and representation-relation
+mutations; it owns no second write path. Resolve reads after reopen from the
+selected RRFlow storage profile, and warp resolution enters the same bounded
+context assembly path as other context requests. None bypasses mutation
+authorization or creates provider-owned identity state.
 
-```bash
-rrflow identity bind \
-  --seat clyffy \
-  --provider openai \
-  --provider-identity codex \
-  --provider-subject '<provider-subject>' \
-  --representation codex-represents-clyffy
-```
-
-Resolve self or follow a record warp:
-
-```bash
-rrflow identity resolve --seat clyffy
-rrflow context \
-  --warp rrflow://rrflow-instance/data/rrflow-seat/clyffy \
-  --max-graph-depth 1
-```
-
-`identity bind` first produces strict seat, provider-identity, and relation
-schema plus mutation plans, then commits them through the ordinary
-authenticated data-transaction boundary. `identity resolve` and `context
---warp` read after reopen from the selected RRFlow storage profile. They never
-bypass mutation authorization or create provider-owned identity state.
+The primary `rrflow` executable intentionally exposes only the implemented
+installed lifecycle during D-01 convergence; its former raw `identity` and
+`context --warp` commands were removed rather than retained as an alternate
+database opener. A future public identity mutation/resolution operation must
+begin in the executable operation catalogue and generate CLI/SDK/UI projections
+from that owner. Documentation examples cannot make that operation available.
 
 ## Executable proof and remaining boundary
 
-The CLI real-boundary test
-[`identity_bind_resolve_and_readme_warp_share_the_persistent_engine`](../../crates/adapters/rrflow-cli/tests/operator_surface.rs)
-binds an identity, proves plaintext provider subject is absent, reopens the
-persistent engine, resolves the same seat URI, follows the warp through context
-assembly, verifies the representation edge evidence, and checks invocation
-records contain only the subject digest.
+The focused engine corpus
+[`seat_becomes_self_through_provider_neutral_edges_and_survives_reopen`](../../crates/authority/rrd-engine/src/engine/tests/memory_estate.rs)
+binds an identity through an authenticated transaction, proves the persisted
+provider value is a subject digest, reopens the persistent engine, resolves the
+same seat URI, follows the warp through context assembly, and verifies the
+representation-edge evidence. Canonical installation also creates the initial
+seat in its one semantic install commit. The deleted raw CLI test is no longer
+product evidence.
 
 This is characterization of a useful persisted foundation, not proof of the
 complete installed Clyffy path. The current `MemoryEstate*` type and module
-names conflate seat identity with an estate; the CLI supplies Clyffy-specific
-defaults instead of consuming an installed specialization; its caller commits
-the returned mutation plan manually; resolution reconstructs a broad runtime
+names conflate seat identity with an estate; the bundled install profile
+supplies Clyffy-specific defaults instead of consuming a versioned installed
+specialization; callers still commit the returned mutation plan through the
+generic transaction API; resolution reconstructs a broad runtime
 snapshot; the older claim path accepts an arbitrary producer actor string; and
 the authenticated session, representation edge, authorization decision, route
 packet, router proposal, and resulting mutation are not yet bound at one read

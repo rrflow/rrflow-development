@@ -4,8 +4,8 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum RuntimeConfig {
     Embedded {
-        database: PathBuf,
-        project_root: PathBuf,
+        project: PathBuf,
+        distribution_executable: PathBuf,
     },
     Daemon {
         url: String,
@@ -37,10 +37,10 @@ pub(crate) fn parse_args(
 
     match mode.as_str() {
         "embedded" => {
-            reject_unknown(&values, &["--db", "--root"])?;
+            reject_unknown(&values, &["--project", "--distribution-executable"])?;
             Ok(RuntimeConfig::Embedded {
-                database: required(&values, "--db")?.into(),
-                project_root: required(&values, "--root")?.into(),
+                project: required(&values, "--project")?.into(),
+                distribution_executable: required(&values, "--distribution-executable")?.into(),
             })
         }
         "daemon" => {
@@ -85,7 +85,7 @@ fn reject_unknown(
 }
 
 fn usage() -> String {
-    "usage: rrflow-mcp embedded --db PATH --root PROJECT | rrflow-mcp daemon --url http://LOOPBACK:PORT --instance ID --principal ID --api-key-file ABSOLUTE_PATH".into()
+    "usage: rrflow-mcp embedded --project PROJECT --distribution-executable RRFLOW | rrflow-mcp daemon --url http://LOOPBACK:PORT --instance ID --principal ID --api-key-file ABSOLUTE_PATH".into()
 }
 
 #[cfg(test)]
@@ -99,7 +99,14 @@ mod tests {
     #[test]
     fn modes_are_explicit_complete_and_mutually_exclusive() {
         assert!(matches!(
-            parse(&["embedded", "--db", "db", "--root", "project"]).unwrap(),
+            parse(&[
+                "embedded",
+                "--project",
+                "project",
+                "--distribution-executable",
+                "rrflow"
+            ])
+            .unwrap(),
             RuntimeConfig::Embedded { .. }
         ));
         assert!(matches!(
@@ -118,14 +125,14 @@ mod tests {
             RuntimeConfig::Daemon { .. }
         ));
         for invalid in [
-            vec!["--db", "db"],
-            vec!["embedded", "--db", "db"],
+            vec!["--project", "project"],
+            vec!["embedded", "--project", "project"],
             vec![
                 "embedded",
-                "--db",
-                "db",
-                "--root",
+                "--project",
                 "project",
+                "--distribution-executable",
+                "rrflow",
                 "--url",
                 "http://127.0.0.1:9477",
             ],
@@ -139,8 +146,8 @@ mod tests {
                 "agent",
                 "--api-key-file",
                 "/secret",
-                "--db",
-                "db",
+                "--project",
+                "project",
             ],
         ] {
             assert!(parse(&invalid).is_err(), "accepted {invalid:?}");

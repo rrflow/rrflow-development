@@ -1,13 +1,14 @@
 use rrd_contract::{
     transaction_operation_sha256, CanonicalId, CorrelationId, DeploymentConformanceCorpus,
-    ReadAccessPath, ReadEvidence, TransactionMutation,
+    InstallationManagedPathKind, InstallationTargetKind, ReadAccessPath, ReadEvidence,
+    TransactionMutation,
 };
 use rrd_core::{
     RuntimeCommit, RuntimeEventSchema, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties,
     RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry,
     RuntimeType, RuntimeValue, RuntimeValueType, ScopeId,
 };
-use rrd_engine::{load_or_create_token_key, InstanceManifest, RrdEngine};
+use rrd_engine::RrdEngine;
 use rrd_security::{
     Action as SecurityAction, AuditDecision, AuditPhase, DataPolicy, JwtIssueRequest, JwtIssuer,
     Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState, SECURITY_FORMAT,
@@ -27,6 +28,7 @@ use std::time::{Duration, Instant};
 
 const MAX_CONCURRENT_SERVER_FIXTURES: usize = 4;
 const INTEGRATION_IO_TIMEOUT: Duration = Duration::from_secs(30);
+const COMPONENT_TOKEN_KEY: [u8; 32] = [0x5a; 32];
 static ACTIVE_SERVER_FIXTURES: Mutex<usize> = Mutex::new(0);
 static SERVER_FIXTURE_AVAILABLE: Condvar = Condvar::new();
 
@@ -141,10 +143,10 @@ fn start_configured(
     jwt_verification_key: Option<RrdJwtVerificationKey>,
 ) -> RunningServer {
     let fixture = acquire_server_fixture();
-    let engine = RrdEngine::open_with_token_key_file(
+    let engine = RrdEngine::open(
         root,
         CanonicalId::new("socket-test").unwrap(),
-        &root.join("RRD.SERVER.SECRET"),
+        COMPONENT_TOKEN_KEY,
     )
     .unwrap();
     let bind = "127.0.0.1:0".parse().unwrap();
@@ -433,6 +435,38 @@ fn deployment_mutations() -> Vec<TransactionMutation> {
         })
     }));
     serde_json::from_value(Value::Array(mutations)).unwrap()
+}
+
+fn extend_installed_schema_for_deployment_corpus(root: &Path, scope: &str) {
+    let storage = RrflowKvStore::open(root).unwrap();
+    let scope = ScopeId::new(scope).unwrap();
+    let read = storage.runtime().read_stamp(&scope).unwrap();
+    let mut registry = storage.runtime().schema(&scope).unwrap().unwrap();
+    registry.revision += 1;
+    registry.migration = "extend installed schema for deployment corpus".into();
+    registry
+        .define_record_table(
+            RuntimeType::new("document").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema {
+                properties: BTreeMap::from([(
+                    "body".into(),
+                    RuntimePropertySchema::required(RuntimeValueType::String),
+                )]),
+                ..RuntimeRecordSchema::default()
+            },
+        )
+        .unwrap();
+    storage
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope,
+            at: 2,
+            actor: "rrd-server-installed-fixture".into(),
+            expected_cursor: read.commit_cursor,
+            mutations: vec![RuntimeMutation::Schema { registry }],
+        })
+        .unwrap();
 }
 
 #[test]
@@ -754,10 +788,10 @@ fn jwt_session_exchange_reopens_and_credential_rotation_revokes_token_and_lease(
         )
         .unwrap();
     drop(storage);
-    let engine = RrdEngine::open_with_token_key_file(
+    let engine = RrdEngine::open(
         &root,
         CanonicalId::new("socket-test").unwrap(),
-        &root.join("RRD.SERVER.SECRET"),
+        COMPONENT_TOKEN_KEY,
     )
     .unwrap();
     let jwt = engine
@@ -2240,9 +2274,34 @@ fn binary_refuses_remote_bind() {
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");
     std::fs::create_dir(&project).unwrap();
-    InstanceManifest::ensure_dedicated(&project).unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_rrd-server"))
-        .args(["--root", project.to_str().unwrap(), "--bind", "0.0.0.0:0"])
+    let server_binary = PathBuf::from(env!("CARGO_BIN_EXE_rrd-server"));
+    let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let installation = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        &executable,
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &installation,
+        &installation.installation.plan_sha256,
+        1,
+        &executable,
+    )
+    .unwrap();
+    let output = Command::new(&server_binary)
+        .args([
+            "--project",
+            project.to_str().unwrap(),
+            "--distribution-executable",
+            executable.to_str().unwrap(),
+            "--bind",
+            "0.0.0.0:0",
+        ])
         .output()
         .unwrap();
     assert!(!output.status.success());
@@ -2259,16 +2318,50 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");
     std::fs::create_dir(&project).unwrap();
-    InstanceManifest::ensure_dedicated_as(&project, "socket-test").unwrap();
-    let root = project.join(".rrflow/rrd");
+    let server_binary = PathBuf::from(env!("CARGO_BIN_EXE_rrd-server"));
+    let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let installation = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        "default",
+        None,
+        &executable,
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &installation,
+        &installation.installation.plan_sha256,
+        1,
+        &executable,
+    )
+    .unwrap();
+    let instance = installation.installation.target.instance_id.clone();
+    let scope = format!("instance:{instance}");
+    let root = project.join(
+        &installation
+            .installation
+            .managed_path(InstallationManagedPathKind::StorageRoot)
+            .relative_path,
+    );
+    let api_key = RrdEngine::read_installed_api_key(&project).unwrap();
+    extend_installed_schema_for_deployment_corpus(&root, &scope);
+    let installed_envelope = |payload, idempotency_key, deadline| {
+        let mut value = envelope(payload, idempotency_key, deadline);
+        value["resource"]["segments"][0]["id"] = json!(instance.as_str());
+        value
+    };
 
     let ready = temporary.path().join("RRD.READY");
     let shutdown_request = temporary.path().join("SHUTDOWN.REQUEST");
     let shutdown_complete = temporary.path().join("SHUTDOWN.COMPLETE");
-    let mut child = Command::new(env!("CARGO_BIN_EXE_rrd-server"))
+    let mut child = Command::new(&server_binary)
         .args([
-            "--root",
+            "--project",
             project.to_str().unwrap(),
+            "--distribution-executable",
+            executable.to_str().unwrap(),
             "--bind",
             "127.0.0.1:0",
             "--ready-file",
@@ -2322,8 +2415,12 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         payload(&capabilities)["deployment"]["endpoint_presentation"],
         "loopback_http_websocket"
     );
+    assert_eq!(
+        payload(&capabilities)["installed_estate"]["instance_id"],
+        instance.as_str()
+    );
 
-    let create = envelope(
+    let create = installed_envelope(
         json!({
             "limits": {
                 "idle_timeout_ms": 60_000,
@@ -2339,14 +2436,18 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         process.address,
         "POST",
         "/v1/sessions",
-        &[("Content-Type", "application/json")],
+        &[
+            ("Content-Type", "application/json"),
+            ("X-RRD-Principal", api_key.principal_id.as_str()),
+            ("Authorization", &format!("ApiKey {}", api_key.credential())),
+        ],
         &create_bytes,
     );
     assert_eq!(status, 200, "{created}");
     let session = payload(&created)["session_id"].as_str().unwrap();
     let token = payload(&created)["token"].as_str().unwrap();
     let authorization = format!("Bearer {token}");
-    let begin = envelope(
+    let begin = installed_envelope(
         json!({"scope": "data", "timeout_ms": 10_000}),
         Some("deployment-process-begin"),
         None,
@@ -2368,9 +2469,12 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         .as_str()
         .unwrap()
         .to_owned();
-    let mutations = deployment_mutations();
+    let mutations = deployment_mutations()
+        .into_iter()
+        .skip(1)
+        .collect::<Vec<_>>();
     let operation_sha256 = transaction_operation_sha256(&mutations);
-    let commit = envelope(
+    let commit = installed_envelope(
         json!({
             "operation_sha256": operation_sha256,
             "mutations": mutations
@@ -2391,14 +2495,14 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         &commit_bytes,
     );
     assert_eq!(status, 200, "{committed}");
-    assert_eq!(payload(&committed)["first_runtime_cursor"], 1);
-    assert_eq!(payload(&committed)["last_runtime_cursor"], 3);
-    assert_eq!(payload(&committed)["mutation_count"], 3);
+    assert_eq!(payload(&committed)["first_runtime_cursor"], 4);
+    assert_eq!(payload(&committed)["last_runtime_cursor"], 5);
+    assert_eq!(payload(&committed)["mutation_count"], 2);
 
     let corpus = deployment_corpus();
-    let query = envelope(
+    let query = installed_envelope(
         json!({
-            "scope": "instance:socket-test",
+            "scope": scope,
             "query": corpus.query.rrflowql,
             "parameters": {},
             "budget": {
@@ -2459,26 +2563,7 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
 
     process.stop();
     let reopened = RrflowKvStore::open(&root).unwrap();
-    assert_eq!(reopened.runtime().cursor().unwrap(), 3);
-}
-
-#[test]
-fn token_key_is_stable_exact_and_private() {
-    let temporary = tempfile::tempdir().unwrap();
-    let path = temporary.path().join("RRD.SERVER.SECRET");
-    let first = load_or_create_token_key(&path).unwrap();
-    let second = load_or_create_token_key(&path).unwrap();
-    assert_eq!(first, second);
-    assert_ne!(first, [0; 32]);
-    assert_eq!(std::fs::read(&path).unwrap().len(), 32);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        assert_eq!(
-            std::fs::metadata(path).unwrap().permissions().mode() & 0o077,
-            0
-        );
-    }
+    assert_eq!(reopened.runtime().cursor().unwrap(), 5);
 }
 
 #[test]

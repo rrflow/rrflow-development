@@ -327,9 +327,9 @@ The current package and checked manifests are characterization inputs only:
 | Current path or behavior | Observed reality | Required disposition |
 |---|---|---|
 | `crates/operations/rrd-kubernetes/Cargo.toml` | Depends on `rrd-contract` and `rrd-core`, not `rrd-engine`; the controller receives no prepared engine operation or receipt port. | Move useful pure/API mechanics into `rrflow-kubernetes`; consume the accepted implementation-free plan/observation contracts and an injected public client boundary. |
-| `RrdInstanceSpec` | Directly owns instance ID, image, PVC, TLS/bootstrap object names, and caller-supplied bootstrap time. | Replace with the minimal sealed installation/effect projection; remove caller time and Kubernetes-owned domain authority. |
-| `desired_resources` | Deterministically hardcodes five resources, paths, commands, CPU/memory, ports, storage behavior, and security settings. | Preserve deterministic closed rendering, but drive it from a versioned, previewed, digest-bound template/plan with explained bounds. |
-| init containers | Run `rrd-server initialize` and a separate `rrd-security-bootstrap` against physical paths. | Delete both paths after D-01 provides the one engine-owned installer workload and installed binding. |
+| `RrdInstanceSpec` | Now carries contract version, digest-pinned image, PVC policy, TLS Secret name, and one installation-plan ConfigMap name plus exact SHA-256. Caller-selected instance ID, caller time, bootstrap manifest, and credential Secret fields are absent. | This is the correct cold-start projection shape, but it is not yet an engine-issued/fenced effect contract and still exposes hardcoded controller policy. Preserve the sealed-plan handoff while moving lifecycle authority outward. |
+| `desired_resources` | Deterministically hardcodes five resources, paths, commands, CPU/memory, ports, storage behavior, and security settings. It now renders one `rrflow install apply --plan ... --expect ...` init container and an installed-only `rrd-server --project ... --distribution-executable ...` main process. | Preserve the single plan handoff and deterministic closed rendering, but drive all operational values from a versioned, previewed, digest-bound template/plan with explained bounds. |
+| removed initializer/bootstrap containers | The server initializer, standalone security bootstrap, caller time, raw database root, caller identity, and credential-file arguments are absent from the CRD and rendered startup. | Retain no second cold-start path; prove idempotent real-volume install/reopen and engine-accepted observations before this renderer counts as deployment evidence. |
 | server probes | Startup, liveness, and readiness are all TCP socket checks. | Split their meanings and add authenticated, identity/digest-bound application readiness plus an engine-accepted receipt. |
 | controller watch | Watches all namespaces and only declares the StatefulSet as an owned watch source. | Default to bounded namespace scope and reconcile/watch every owned kind; qualify relist/restart behavior. |
 | server-side apply | Calls `.force()` for every rendered resource. | Own exact fields with a stable manager; surface foreign conflicts and require an explicit engine plan before any ownership transfer. |
@@ -351,7 +351,8 @@ The current package and checked manifests are characterization inputs only:
 | Restricted container settings and data-plane token denial | Preserve | Pod Security admission and negative RBAC/secret/API-token tests |
 | Owner references, PDB, and NetworkPolicy | Preserve with honest limits | API-server ownership/GC, voluntary/involuntary disruption, explicit network allow/deny corpus |
 | Kubernetes-owned desired RRFlow state, phase lifecycle, and readiness | Reject | sealed engine plan, standard observations/conditions, authenticated readiness, accepted receipt, repository absence checks |
-| Hardcoded commands, paths, resources, bootstrap time, and two initializers | Reject | D-01 preview/apply templates, exact plan digest, idempotent installer crash/reopen, no initializer symbol/path |
+| Single sealed install-plan handoff and installed-only server invocation | Preserve and strengthen | engine-issued plan/fence, ConfigMap byte/digest verification, idempotent real-volume install/reopen, authenticated readiness, and accepted receipt |
+| Remaining hardcoded commands, paths, probes, and resources | Reject | versioned preview/apply templates, explained bounds, exact artifact binding, and no hidden controller authority |
 | Cluster-wide default watch and forced SSA takeover | Reject | namespace-scoped RBAC/watch, conflict/fence tests, explicit opt-in cluster mode if ever added |
 | Eager finalizer deletion | Reject | retained-data, backup/hold, absent-resource, stuck-delete, stale-fence, lost-ack, restart, and receipt tests |
 
@@ -374,8 +375,9 @@ The current package and checked manifests are characterization inputs only:
    the operation; they never complete it.
 5. **H-07:** add optional configured mesh carriage/resolution without changing
    identity, authorization, endpoint presentation, or operator authority.
-6. **J-01/J-02:** remove the old package, initializer/bootstrap paths, phase
-   schema, forced apply, and old successful fixtures; pass controller restart,
+6. **J-01/J-02:** retain the already-removed initializer/bootstrap paths as
+   negative absence checks; remove the old package, phase schema, forced apply,
+   and old successful controller fixtures; pass controller restart,
    effect-gap, field-conflict, deletion, security, resource, and failure
    matrices.
 7. **J-03/J-05:** install from the signed offline-verifiable distribution into
@@ -451,9 +453,11 @@ framework defaults as RRFlow design authority:
 
 ## Completion boundary
 
-This reference is accepted architecture, not completed implementation. The
-current four Rust tests passed at the reviewed baseline and prove only local
-rendering/schema assertions. The Kubernetes adapter remains unavailable as an
-alpha-qualified deployment until A-07 and its dependent C/D/H/J work remove
-the parallel authority and the complete acceptance matrix above passes at one
+This reference is accepted architecture, not completed implementation. Current
+Rust tests prove only local schema/rendering determinism, one sealed-plan init
+container, installed-only server arguments, and absence of the removed caller
+time/identity/credential/bootstrap inputs. No Kubernetes API server or real
+controller/Pod/volume is exercised. The adapter remains unavailable as an
+alpha-qualified deployment until its dependent C/D/H/J work removes the
+parallel authority and the complete acceptance matrix above passes at one
 recorded revision.

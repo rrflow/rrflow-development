@@ -6,7 +6,6 @@
 //! pods as a distributed database.
 
 use kube::{CustomResource, CustomResourceExt};
-use rrd_contract::CanonicalId;
 use rrd_core::digest;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -35,14 +34,14 @@ pub const RRD_KUBERNETES_CONTRACT_VERSION: u16 = 1;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RrdInstanceSpec {
     pub contract_version: u16,
-    pub instance_id: CanonicalId,
     /// Immutable image reference. Tags are rejected; a sha256 digest is required.
     pub image: String,
     pub storage: RrdStorageSpec,
     pub tls_secret: String,
-    pub bootstrap_manifest_config_map: String,
-    pub bootstrap_credential_secret: String,
-    pub bootstrap_at_unix_ms: u64,
+    /// ConfigMap containing the exact installation preview at `plan.json`.
+    pub installation_plan_config_map: String,
+    /// Explicit operator acceptance of the installation plan's canonical digest.
+    pub installation_plan_sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -124,16 +123,10 @@ impl RrdInstanceSpec {
         validate_image(&self.image)?;
         validate_dns_name(&self.tls_secret, "tls_secret")?;
         validate_dns_name(
-            &self.bootstrap_manifest_config_map,
-            "bootstrap_manifest_config_map",
+            &self.installation_plan_config_map,
+            "installation_plan_config_map",
         )?;
-        validate_dns_name(
-            &self.bootstrap_credential_secret,
-            "bootstrap_credential_secret",
-        )?;
-        if self.bootstrap_at_unix_ms == 0 {
-            return Err("bootstrap_at_unix_ms must be greater than zero".into());
-        }
+        validate_sha256(&self.installation_plan_sha256, "installation_plan_sha256")?;
         self.storage.validate()
     }
 }
@@ -253,36 +246,21 @@ pub fn desired_resources(input: &DesiredInstanceInput<'_>) -> Result<Vec<Desired
                     "securityContext": pod_security,
                     "initContainers": [
                         {
-                            "name": "project-authority",
+                            "name": "rrflow-install",
                             "image": input.spec.image,
                             "imagePullPolicy": "IfNotPresent",
-                            "command": ["rrd-server"],
+                            "command": ["rrflow"],
                             "args": [
-                                "initialize",
-                                "--root", "/var/lib/rrd/project",
-                                "--instance", input.spec.instance_id.as_str(),
+                                "install", "apply",
+                                "--project", "/var/lib/rrd/project",
+                                "--mode", "fresh",
+                                "--plan", "/etc/rrflow/install/plan.json",
+                                "--expect", input.spec.installation_plan_sha256,
                             ],
                             "securityContext": container_security,
                             "volumeMounts": [
-                                {"name": data_claim_name, "mountPath": "/var/lib/rrd"},
-                            ],
-                        },
-                        {
-                            "name": "security-bootstrap",
-                            "image": input.spec.image,
-                            "imagePullPolicy": "IfNotPresent",
-                            "command": ["rrd-security-bootstrap"],
-                            "args": [
-                                "--db", "/var/lib/rrd/project/.rrflow/rrd",
-                                "--instance", input.spec.instance_id.as_str(),
-                                "--manifest", "/etc/rrd/bootstrap/manifest/bootstrap.json",
-                                "--at-unix-ms", input.spec.bootstrap_at_unix_ms.to_string(),
-                            ],
-                            "securityContext": container_security,
-                            "volumeMounts": [
-                                {"name": data_claim_name, "mountPath": "/var/lib/rrd"},
-                                {"name": "bootstrap-manifest", "mountPath": "/etc/rrd/bootstrap/manifest", "readOnly": true},
-                                {"name": "bootstrap-credentials", "mountPath": "/etc/rrd/bootstrap/credentials", "readOnly": true},
+                                {"name": data_claim_name, "mountPath": "/var/lib/rrd/project"},
+                                {"name": "installation-plan", "mountPath": "/etc/rrflow/install", "readOnly": true},
                             ],
                         }
                     ],
@@ -292,7 +270,8 @@ pub fn desired_resources(input: &DesiredInstanceInput<'_>) -> Result<Vec<Desired
                         "imagePullPolicy": "IfNotPresent",
                         "command": ["rrd-server"],
                         "args": [
-                            "--root", "/var/lib/rrd/project",
+                            "--project", "/var/lib/rrd/project",
+                            "--distribution-executable", "/usr/local/bin/rrflow",
                             "--bind", format!("0.0.0.0:{RRD_CLIENT_PORT}"),
                             "--tls-cert", "/etc/rrd/tls/tls.crt",
                             "--tls-key", "/etc/rrd/tls/tls.key",
@@ -308,14 +287,13 @@ pub fn desired_resources(input: &DesiredInstanceInput<'_>) -> Result<Vec<Desired
                         },
                         "securityContext": container_security,
                         "volumeMounts": [
-                            {"name": data_claim_name, "mountPath": "/var/lib/rrd"},
+                            {"name": data_claim_name, "mountPath": "/var/lib/rrd/project"},
                             {"name": "rrd-tls", "mountPath": "/etc/rrd/tls", "readOnly": true},
                         ],
                     }],
                     "volumes": [
                         {"name": "rrd-tls", "secret": {"secretName": input.spec.tls_secret, "defaultMode": 288}},
-                        {"name": "bootstrap-manifest", "configMap": {"name": input.spec.bootstrap_manifest_config_map, "defaultMode": 292}},
-                        {"name": "bootstrap-credentials", "secret": {"secretName": input.spec.bootstrap_credential_secret, "defaultMode": 288}},
+                        {"name": "installation-plan", "configMap": {"name": input.spec.installation_plan_config_map, "defaultMode": 292, "items": [{"key": "plan.json", "path": "plan.json"}]}},
                     ],
                 },
             },
@@ -388,19 +366,14 @@ pub fn crd_document() -> Value {
         &mut document["spec"]["versions"][0]["schema"]["openAPIV3Schema"]["properties"]["spec"];
     spec["x-kubernetes-validations"] = json!([
         {"rule": "self.contractVersion == 1", "message": "contractVersion must be 1"},
-        {"rule": "self.bootstrapAtUnixMs > 0", "message": "bootstrapAtUnixMs must be positive"},
+        {"rule": "self.installationPlanSha256.matches('^[0-9a-f]{64}$')", "message": "installationPlanSha256 must be canonical lowercase SHA-256"},
         {"rule": "self.storage.retainOnDelete == true", "message": "PVC retention is mandatory in v1alpha1"},
         {"rule": "self.image.matches('^.+@sha256:[0-9a-f]{64}$')", "message": "image must be pinned by canonical sha256 digest"},
         {"rule": "self.storage.size.matches('^[1-9][0-9]*(Ki|Mi|Gi|Ti)$')", "message": "storage size must be a positive binary quantity"},
         {"rule": "self.tlsSecret.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')", "message": "tlsSecret must be one DNS label"},
-        {"rule": "self.bootstrapManifestConfigMap.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')", "message": "bootstrapManifestConfigMap must be one DNS label"},
-        {"rule": "self.bootstrapCredentialSecret.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')", "message": "bootstrapCredentialSecret must be one DNS label"}
+        {"rule": "self.installationPlanConfigMap.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')", "message": "installationPlanConfigMap must be one DNS label"}
     ]);
-    for property in [
-        "tlsSecret",
-        "bootstrapManifestConfigMap",
-        "bootstrapCredentialSecret",
-    ] {
+    for property in ["tlsSecret", "installationPlanConfigMap"] {
         spec["properties"][property]["minLength"] = json!(1);
         spec["properties"][property]["maxLength"] = json!(63);
     }
@@ -482,6 +455,17 @@ fn validate_image(image: &str) -> Result<(), String> {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     {
         return Err("RRD image repository or sha256 digest is invalid".into());
+    }
+    Ok(())
+}
+
+fn validate_sha256(value: &str, field: &str) -> Result<(), String> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+    {
+        return Err(format!("{field} must be lowercase SHA-256 hex"));
     }
     Ok(())
 }
