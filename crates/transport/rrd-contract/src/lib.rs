@@ -7,6 +7,7 @@
 
 mod attunement;
 mod capability_surface;
+mod deployment;
 mod diagnostic;
 mod function;
 #[path = "generated/signal_catalogue.rs"]
@@ -40,6 +41,13 @@ pub use attunement::{
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
     SurfaceDisposition,
+};
+pub use deployment::{
+    estate_configuration_sha256, DeploymentForm, DeploymentProfile, EndpointPresentation,
+    EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity, ReasoningLimits,
+    RecallLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
+    ESTATE_CONFIGURATION_FORMAT_VERSION, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
+    MAX_REASONING_STEP_ELAPSED_MS,
 };
 pub use diagnostic::{
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
@@ -160,7 +168,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b";
+    "0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -4863,17 +4871,6 @@ impl IdempotencyBinding {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum DeploymentMode {
-    RrflowMx,
-    Embedded,
-    LocalDaemon,
-    Edge,
-    Remote,
-    Distributed,
-}
-
 /// One checked-in logical corpus used unchanged by every deployment adapter.
 /// Physical cursors, transport evidence, and storage receipts remain
 /// mode-specific; the expected logical identities may not diverge.
@@ -5016,7 +5013,10 @@ pub struct ServiceCapabilities {
     pub protocol_version: u16,
     pub implementation: CanonicalId,
     pub implementation_version: String,
-    pub deployment_mode: DeploymentMode,
+    pub deployment: DeploymentProfile,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed_estate: Option<InstalledEstateIdentity>,
+    pub configuration: EstateConfiguration,
     pub instance: ResourceId,
     pub capabilities: Vec<CapabilityDescriptor>,
     pub product_capabilities: ProductCapabilityCatalogue,
@@ -5025,8 +5025,18 @@ pub struct ServiceCapabilities {
 impl ServiceCapabilities {
     pub fn validate(&self) -> Result<()> {
         validate_protocol(&self.protocol, self.protocol_version)?;
+        self.deployment.validate()?;
+        self.configuration.validate()?;
         if self.instance.kind != ResourceKind::Instance {
             return invalid("service capability identity must be an instance resource");
+        }
+        if let Some(installed) = &self.installed_estate {
+            installed.validate()?;
+            if installed.instance_id != self.instance.id {
+                return invalid(
+                    "service capability instance differs from installed estate identity",
+                );
+            }
         }
         if self.implementation_version.is_empty()
             || self.implementation_version.len() > MAX_ID_BYTES

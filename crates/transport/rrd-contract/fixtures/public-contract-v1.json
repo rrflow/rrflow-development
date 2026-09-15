@@ -1,165 +1,200 @@
 {
-  "service": {
-    "protocol": "rrd",
-    "protocol_version": 1,
-    "implementation": "rrflow",
-    "implementation_version": "1.0.0",
-    "deployment_mode": "embedded",
-    "instance": {
-      "kind": "instance",
-      "id": "project-alpha"
-    },
-    "capabilities": [
-      {
-        "name": "logical-archive",
-        "contract_version": 1,
-        "status": "unavailable",
-        "limitation": "F1 implementation gate is not complete"
-      },
-      {
-        "name": "native-persistence",
-        "contract_version": 1,
-        "status": "experimental",
-        "limits": {
-          "max-snapshot-bytes": 1073741824
-        },
-        "limitation": "local alpha; independent-host qualification remains open"
-      }
-    ],
-    "product_capabilities": {
-      "contract_version": 1,
-      "capabilities": [
-        {
-          "id": "backup-create",
-          "label": "Backup Create",
-          "category": "backup",
-          "summary": "Create one authenticated logical backup.",
-          "bindings": [
-            {
-              "surface": "engine",
-              "disposition": "available",
-              "entrypoints": [
-                "rrd-engine:RrdOperation::CreateInstanceBackup"
-              ]
-            },
-            {
-              "surface": "rrflowql",
-              "disposition": "unavailable",
-              "reason": "No rrflowQL statement maps this fixture operation."
-            },
-            {
-              "surface": "graphql",
-              "disposition": "unavailable",
-              "reason": "No GraphQL field maps this fixture operation."
-            },
-            {
-              "surface": "rrd_http",
-              "disposition": "available",
-              "entrypoints": [
-                "POST /v1/backups/create"
-              ]
-            },
-            {
-              "surface": "websocket",
-              "disposition": "unavailable",
-              "reason": "No WebSocket operation maps this fixture operation."
-            },
-            {
-              "surface": "grpc",
-              "disposition": "unavailable",
-              "reason": "No gRPC method maps this fixture operation."
-            },
-            {
-              "surface": "mcp",
-              "disposition": "unavailable",
-              "reason": "No MCP runtime tool is present in this fixture."
-            },
-            {
-              "surface": "cli",
-              "disposition": "unavailable",
-              "reason": "No CLI command is present in this fixture."
-            },
-            {
-              "surface": "sdk",
-              "disposition": "available",
-              "entrypoints": [
-                "openapi:operation#backup-create"
-              ]
-            },
-            {
-              "surface": "connectome",
-              "disposition": "planned",
-              "reason": "Connectome exposure is planned in this fixture."
-            }
-          ]
-        }
-      ]
-    }
-  },
-  "request": {
-    "protocol": "rrd",
-    "protocol_version": 1,
-    "context": {
-      "request_id": "req-01j5y0h4k7",
-      "operation_id": "op-01j5y0h4k8",
-      "idempotency_key": "idem-01j5y0h4k9",
-      "deadline_unix_ms": 1800000000000
-    },
-    "resource": {
-      "segments": [
-        {
-          "kind": "organization",
-          "id": "local"
-        },
-        {
-          "kind": "estate",
-          "id": "developer"
-        },
-        {
-          "kind": "project",
-          "id": "alpha"
-        },
-        {
-          "kind": "instance",
-          "id": "project-alpha"
-        }
-      ]
-    },
-    "payload": {
-      "action": "backup.create"
-    }
-  },
-  "success": {
-    "protocol": "rrd",
-    "protocol_version": 1,
-    "request_id": "req-01j5y0h4k7",
-    "operation_id": "op-01j5y0h4k8",
-    "outcome": {
-      "status": "ok",
-      "payload": {
-        "action": "backup.created"
-      }
-    }
-  },
   "failure": {
-    "protocol": "rrd",
-    "protocol_version": 1,
-    "request_id": "req-01j5y0h4k7",
     "operation_id": "op-01j5y0h4k8",
     "outcome": {
-      "status": "error",
       "error": {
         "code": "failed_precondition",
-        "message": "source read stamp is no longer current",
-        "retryable": true,
         "details": {
           "observed-cursor": "42"
-        }
-      }
-    }
+        },
+        "message": "source read stamp is no longer current",
+        "retryable": true
+      },
+      "status": "error"
+    },
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "req-01j5y0h4k7"
   },
   "idempotency": {
     "key": "idem-01j5y0h4k9",
     "operation_sha256": "3c94150b4ea4f9dcb27d3b602e9f190debe656533c047b99e11367bc6a28017f"
+  },
+  "request": {
+    "context": {
+      "deadline_unix_ms": 1800000000000,
+      "idempotency_key": "idem-01j5y0h4k9",
+      "operation_id": "op-01j5y0h4k8",
+      "request_id": "req-01j5y0h4k7"
+    },
+    "payload": {
+      "action": "backup.create"
+    },
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "resource": {
+      "segments": [
+        {
+          "id": "local",
+          "kind": "organization"
+        },
+        {
+          "id": "developer",
+          "kind": "estate"
+        },
+        {
+          "id": "alpha",
+          "kind": "project"
+        },
+        {
+          "id": "project-alpha",
+          "kind": "instance"
+        }
+      ]
+    }
+  },
+  "service": {
+    "capabilities": [
+      {
+        "contract_version": 1,
+        "limitation": "F1 implementation gate is not complete",
+        "name": "logical-archive",
+        "status": "unavailable"
+      },
+      {
+        "contract_version": 1,
+        "limitation": "local alpha; independent-host qualification remains open",
+        "limits": {
+          "max-snapshot-bytes": 1073741824
+        },
+        "name": "native-persistence",
+        "status": "experimental"
+      }
+    ],
+    "configuration": {
+      "configuration_sha256": "bf8a4557c1465ab4bf0e8640be42f65b28e4d65dff5f3147b2892edfe9db31be",
+      "format_version": 1,
+      "query": {
+        "max_batch_rows": 256,
+        "max_elapsed_ms": 30000,
+        "max_memory_bytes": 67108864,
+        "max_output_bytes": 524288,
+        "max_rows": 10000,
+        "max_spill_bytes": 268435456,
+        "max_storage_keys": 100000
+      },
+      "reasoning": {
+        "max_run_elapsed_ms": 900000,
+        "max_step_elapsed_ms": 60000,
+        "max_steps": 256
+      },
+      "recall": {
+        "max_graph_depth": 4,
+        "max_items": 128,
+        "max_output_bytes": 524288,
+        "max_storage_keys": 100000
+      },
+      "revision": 1
+    },
+    "deployment": {
+      "contract_version": 1,
+      "deployment_form": "embedded",
+      "endpoint_presentation": "in_process",
+      "storage_profile": "rrflow_kv"
+    },
+    "implementation": "rrflow",
+    "implementation_version": "1.0.0",
+    "installed_estate": {
+      "estate_id": "alpha-estate",
+      "instance_id": "project-alpha",
+      "project_id": "alpha-project"
+    },
+    "instance": {
+      "id": "project-alpha",
+      "kind": "instance"
+    },
+    "product_capabilities": {
+      "capabilities": [
+        {
+          "bindings": [
+            {
+              "disposition": "available",
+              "entrypoints": [
+                "rrd-engine:RrdOperation::CreateInstanceBackup"
+              ],
+              "surface": "engine"
+            },
+            {
+              "disposition": "unavailable",
+              "reason": "No rrflowQL statement maps this fixture operation.",
+              "surface": "rrflowql"
+            },
+            {
+              "disposition": "unavailable",
+              "reason": "No GraphQL field maps this fixture operation.",
+              "surface": "graphql"
+            },
+            {
+              "disposition": "available",
+              "entrypoints": [
+                "POST /v1/backups/create"
+              ],
+              "surface": "rrd_http"
+            },
+            {
+              "disposition": "unavailable",
+              "reason": "No WebSocket operation maps this fixture operation.",
+              "surface": "websocket"
+            },
+            {
+              "disposition": "unavailable",
+              "reason": "No gRPC method maps this fixture operation.",
+              "surface": "grpc"
+            },
+            {
+              "disposition": "unavailable",
+              "reason": "No MCP runtime tool is present in this fixture.",
+              "surface": "mcp"
+            },
+            {
+              "disposition": "unavailable",
+              "reason": "No CLI command is present in this fixture.",
+              "surface": "cli"
+            },
+            {
+              "disposition": "available",
+              "entrypoints": [
+                "openapi:operation#backup-create"
+              ],
+              "surface": "sdk"
+            },
+            {
+              "disposition": "planned",
+              "reason": "Connectome exposure is planned in this fixture.",
+              "surface": "connectome"
+            }
+          ],
+          "category": "backup",
+          "id": "backup-create",
+          "label": "Backup Create",
+          "summary": "Create one authenticated logical backup."
+        }
+      ],
+      "contract_version": 1
+    },
+    "protocol": "rrd",
+    "protocol_version": 1
+  },
+  "success": {
+    "operation_id": "op-01j5y0h4k8",
+    "outcome": {
+      "payload": {
+        "action": "backup.created"
+      },
+      "status": "ok"
+    },
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "req-01j5y0h4k7"
   }
 }

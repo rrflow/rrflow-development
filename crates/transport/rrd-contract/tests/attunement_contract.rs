@@ -4,11 +4,12 @@ use rrd_contract::{
     AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
     AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
     AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
-    CancelAttunement, CanonicalId, InstallationActionDisposition, InstallationActionKind,
+    CancelAttunement, CanonicalId, DeploymentForm, DeploymentProfile, EndpointPresentation,
+    EstateConfiguration, InstallationActionDisposition, InstallationActionKind,
     InstallationActionResult, InstallationManagedPath, InstallationManagedPathKind,
     InstallationPlan, InstallationPlanAction, InstallationRemovalRule, InstallationResult,
-    InstallationTargetKind, MemorySeatDefinition, ResourceId, ResourceKind, ResourcePath,
-    ResumeAttunement, SecurityAction, ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    InstallationTargetKind, InstalledEstateIdentity, MemorySeatDefinition, ResumeAttunement,
+    SecurityAction, StorageProfileKind, ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -54,14 +55,11 @@ fn digest(value: u64) -> String {
     format!("{value:064x}")
 }
 
-fn target() -> ResourcePath {
-    ResourcePath {
-        segments: vec![
-            ResourceId::new(ResourceKind::Organization, "local").unwrap(),
-            ResourceId::new(ResourceKind::Estate, "developer-estate").unwrap(),
-            ResourceId::new(ResourceKind::Project, "rrflow").unwrap(),
-            ResourceId::new(ResourceKind::Instance, "rrflow-dev").unwrap(),
-        ],
+fn target() -> InstalledEstateIdentity {
+    InstalledEstateIdentity {
+        project_id: canonical_id("rrflow"),
+        estate_id: canonical_id("developer-estate"),
+        instance_id: canonical_id("rrflow-dev"),
     }
 }
 
@@ -96,14 +94,19 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
         id: canonical_id("install-01"),
         target: target(),
         target_kind: InstallationTargetKind::ExistingProject,
+        deployment: DeploymentProfile {
+            contract_version: 1,
+            deployment_form: DeploymentForm::SingleNodeServer,
+            storage_profile: StorageProfileKind::RrflowKv,
+            endpoint_presentation: EndpointPresentation::LoopbackHttpWebsocket,
+        },
         product_version: "1.0.0".into(),
         executable_sha256: digest(40),
         profile_id: canonical_id("default"),
         profile_sha256: digest(41),
-        project_root: "/srv/projects/rrflow".into(),
         project_precondition_sha256: digest(42),
         storage_root_id: canonical_id("install-01"),
-        configuration_sha256: digest(2),
+        configuration: EstateConfiguration::default(),
         initial_seat: MemorySeatDefinition {
             id: canonical_id("rrflow-local-seat"),
             display_name: "Local RRFlow".into(),
@@ -123,27 +126,51 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
         ],
         managed_paths: vec![
             InstallationManagedPath {
+                kind: InstallationManagedPathKind::EstateDirectory,
+                relative_path: ".rrflow".into(),
+                precondition_sha256: digest(43),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            },
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::StorageDirectory,
+                relative_path: ".rrflow/rrd".into(),
+                precondition_sha256: digest(44),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            },
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::StorageRootsDirectory,
+                relative_path: ".rrflow/rrd/roots".into(),
+                precondition_sha256: digest(45),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            },
+            InstallationManagedPath {
+                kind: InstallationManagedPathKind::CredentialDirectory,
+                relative_path: ".rrflow/credentials".into(),
+                precondition_sha256: digest(46),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            },
+            InstallationManagedPath {
                 kind: InstallationManagedPathKind::StorageRoot,
                 relative_path: ".rrflow/rrd/roots/install-01".into(),
-                precondition_sha256: digest(43),
-                removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+                precondition_sha256: digest(47),
+                removal_rule: InstallationRemovalRule::RemoveIfOwnedTreeDigestMatches,
             },
             InstallationManagedPath {
                 kind: InstallationManagedPathKind::TokenKey,
-                relative_path: ".rrflow/rrd/roots/install-01/token.key".into(),
-                precondition_sha256: digest(44),
+                relative_path: ".rrflow/rrd/roots/install-01/RRD.TOKEN".into(),
+                precondition_sha256: digest(48),
                 removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
             },
             InstallationManagedPath {
                 kind: InstallationManagedPathKind::OperatorCredential,
                 relative_path: ".rrflow/credentials/local-operator.json".into(),
-                precondition_sha256: digest(45),
+                precondition_sha256: digest(49),
                 removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
             },
             InstallationManagedPath {
                 kind: InstallationManagedPathKind::ProjectLocator,
                 relative_path: ".rrflow/config.toml".into(),
-                precondition_sha256: digest(46),
+                precondition_sha256: digest(50),
                 removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
             },
         ],
@@ -157,33 +184,39 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
                 estimated_write_bytes: 0,
             },
             InstallationPlanAction {
-                kind: InstallationActionKind::CreateStorageRoot,
+                kind: InstallationActionKind::CreateEstateDirectories,
                 disposition: InstallationActionDisposition::Create,
                 input_sha256: digest(4),
+                estimated_write_bytes: 0,
+            },
+            InstallationPlanAction {
+                kind: InstallationActionKind::CreateStorageRoot,
+                disposition: InstallationActionDisposition::Create,
+                input_sha256: digest(5),
                 estimated_write_bytes: 4_096,
             },
             InstallationPlanAction {
                 kind: InstallationActionKind::PrepareCredentials,
                 disposition: InstallationActionDisposition::Create,
-                input_sha256: digest(5),
+                input_sha256: digest(6),
                 estimated_write_bytes: 96,
             },
             InstallationPlanAction {
                 kind: InstallationActionKind::InitializeInstance,
                 disposition: InstallationActionDisposition::Create,
-                input_sha256: digest(6),
+                input_sha256: digest(7),
                 estimated_write_bytes: 4_096,
             },
             InstallationPlanAction {
                 kind: InstallationActionKind::CreateAttunementJob,
                 disposition: InstallationActionDisposition::Create,
-                input_sha256: digest(7),
+                input_sha256: digest(8),
                 estimated_write_bytes: 1_024,
             },
             InstallationPlanAction {
                 kind: InstallationActionKind::PublishProjectLocator,
                 disposition: InstallationActionDisposition::Create,
-                input_sha256: digest(8),
+                input_sha256: digest(9),
                 estimated_write_bytes: 256,
             },
         ],

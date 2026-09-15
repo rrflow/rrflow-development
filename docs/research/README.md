@@ -38,6 +38,13 @@ receives a separate full review and link-preserving classification.
 
 ## Cross-system lifecycle research
 
+- [`rrflow-canonical-estate-configuration-and-runtime-controls.md`](rrflow-canonical-estate-configuration-and-runtime-controls.md)
+  maps primary-source configuration, canonicalization, filesystem creation,
+  Arrow/DataFusion, OpenTelemetry, OpenAPI, and release-trust guidance to the
+  project-local estate, runtime ceilings, generated discovery, and staged
+  rollout. It distinguishes the implemented D-01 slice from later legacy
+  convergence, governed reconfiguration, reasoning, Connectome, and release
+  qualification.
 - [`rrflow-build-debug-trace-optimize-architecture-research.md`](rrflow-build-debug-trace-optimize-architecture-research.md)
   provides primary-source implementation guidance for reproducible builds,
   release-equivalent diagnostics, causal signal projections, deterministic

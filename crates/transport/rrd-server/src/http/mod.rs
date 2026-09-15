@@ -10,14 +10,14 @@ use hyper_util::service::TowerToHyperService;
 use rrd_contract::{
     AbortTransaction, AssembleContext, AuditDecision, BeginTransaction, CanonicalId,
     CapabilityDescriptor, CapabilityStatus, CloseSession, CloseSubscription, CommitTransaction,
-    CorrelationId, CreateInstanceBackup, CreateSession, DeploymentMode, EnsureQueryIndex,
-    EnsureVectorCollection, ErrorBody, ErrorCode, ExecuteQuery, ExportAudit, FollowChangefeed,
-    HttpMethod as ContractHttpMethod, ListInstanceBackups, ListQueryIndexes, ListVectorCollections,
-    Liveness, OpenSubscription, PollLiveQuery, PreviewTransaction, ReadAudit, ReadChangefeed,
-    ReadDiagnosticSnapshot, ReadEstate, Readiness, RenewSession, RequestContext, RequestEnvelope,
-    ResourceId, ResourceKind, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
-    RetrieveVectorPoints, ScrollVectorPoints, SearchVectors, ServiceCapabilities, PROTOCOL,
-    PROTOCOL_VERSION,
+    CorrelationId, CreateInstanceBackup, CreateSession, DeploymentForm, DeploymentProfile,
+    EndpointPresentation, EnsureQueryIndex, EnsureVectorCollection, ErrorBody, ErrorCode,
+    ExecuteQuery, ExportAudit, FollowChangefeed, HttpMethod as ContractHttpMethod,
+    ListInstanceBackups, ListQueryIndexes, ListVectorCollections, Liveness, OpenSubscription,
+    PollLiveQuery, PreviewTransaction, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
+    ReadEstate, Readiness, RenewSession, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
+    ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup, RetrieveVectorPoints,
+    ScrollVectorPoints, SearchVectors, ServiceCapabilities, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_engine::{
     product_capability_catalogue, AuthorizedInvocation, Invocation, InvocationCompletion,

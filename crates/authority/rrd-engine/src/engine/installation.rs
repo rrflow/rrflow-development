@@ -1,4 +1,8 @@
 use super::*;
+use crate::engine::estate_layout::{
+    create_estate_directories, reject_existing_estate, reject_existing_symlink_path, safe_join,
+    validate_managed_relative, EstateLayout, LOCATOR_RELATIVE_PATH,
+};
 use crate::engine::memory_estate::build_memory_estate_plan;
 use crate::engine::token_key::{
     create_api_key_document, create_token_key, read_api_key_document, read_token_key,
@@ -6,11 +10,12 @@ use crate::engine::token_key::{
 };
 use rrd_contract::{
     attunement_plan_sha256, installation_plan_sha256, installation_result_sha256, AttunementJob,
-    AttunementJobState, AttunementPhase, AttunementPhasePlan, AttunementPlan,
-    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
-    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
-    InstallationRemovalRule, InstallationResult, InstallationTargetKind, MemorySeatDefinition,
-    PersistMemoryEstate, ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    AttunementJobState, AttunementPhase, AttunementPhasePlan, AttunementPlan, DeploymentProfile,
+    EstateConfiguration, EstateConfigurationInput, InstallationActionDisposition,
+    InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
+    InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
+    InstalledEstateIdentity, MemorySeatDefinition, PersistMemoryEstate, StorageProfileKind,
+    ATTUNEMENT_PHASES, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityState, SECURITY_FORMAT};
@@ -21,20 +26,24 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 
 const INSTALL_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/default-profile-v1.json");
+const DEFAULT_CONFIGURATION_BYTES: &[u8] =
+    include_bytes!("../../assets/install/default-estate-configuration-v1.toml");
 const INSTALL_PROFILE_FORMAT: u16 = 1;
 const LOCATOR_FORMAT: u16 = 1;
 const INSTALLED_RECORD_FORMAT: u16 = 1;
 const INSTALL_CHECKPOINT_FORMAT: u16 = 1;
-const LOCATOR_RELATIVE_PATH: &str = ".rrflow/config.toml";
 const INSTALLED_RECORD_KEY: &str = "server/state/install/record";
 const INSTALL_CHECKPOINT_KEY: &str = "server/state/install/checkpoint";
 const MAX_LOCATOR_BYTES: u64 = 64 * 1024;
+const MAX_CONFIGURATION_BYTES: u64 = 64 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DefaultInstallProfile {
     pub format_version: u16,
     pub id: CanonicalId,
+    pub configuration_asset: String,
+    pub deployment: DeploymentProfile,
     pub initial_seat: MemorySeatDefinition,
     pub initial_principal_id: CanonicalId,
     pub credential_bytes: u16,
@@ -71,6 +80,7 @@ impl DefaultInstallProfile {
     fn validate(&self) -> Result<()> {
         if self.format_version != INSTALL_PROFILE_FORMAT
             || self.id.as_str() != "default"
+            || self.configuration_asset != "default-estate-configuration-v1.toml"
             || self.initial_grant_policy.as_str() != "local-owner-all-actions"
             || !(32..=4_096).contains(&self.credential_bytes)
             || self.inventory_max_files == 0
@@ -84,6 +94,14 @@ impl DefaultInstallProfile {
         self.initial_seat
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        self.deployment
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        if self.deployment.storage_profile != StorageProfileKind::RrflowKv {
+            return Err(ServiceError::Contract(
+                "default installation profile must use durable rrflowKV".into(),
+            ));
+        }
         if self
             .inactive_capabilities
             .windows(2)
@@ -108,6 +126,41 @@ impl DefaultInstallProfile {
     }
 }
 
+/// Loads the bundled default or one explicitly selected, bounded operator
+/// configuration. Planning is the only lifecycle stage that reads this file;
+/// apply consumes the effective configuration sealed into the plan.
+pub fn load_estate_configuration(path: Option<&Path>) -> Result<EstateConfiguration> {
+    let bytes = match path {
+        None => DEFAULT_CONFIGURATION_BYTES.to_vec(),
+        Some(path) => {
+            let metadata = std::fs::symlink_metadata(path)
+                .map_err(|error| ServiceError::Storage(error.to_string()))?;
+            if metadata.file_type().is_symlink()
+                || !metadata.is_file()
+                || metadata.len() > MAX_CONFIGURATION_BYTES
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            let mut bytes = Vec::with_capacity(metadata.len() as usize);
+            File::open(path)
+                .map_err(|error| ServiceError::Storage(error.to_string()))?
+                .take(MAX_CONFIGURATION_BYTES + 1)
+                .read_to_end(&mut bytes)
+                .map_err(|error| ServiceError::Storage(error.to_string()))?;
+            if bytes.len() as u64 > MAX_CONFIGURATION_BYTES {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            bytes
+        }
+    };
+    let input: EstateConfigurationInput = toml::from_str(
+        std::str::from_utf8(&bytes).map_err(|error| ServiceError::Contract(error.to_string()))?,
+    )
+    .map_err(|error| ServiceError::Contract(error.to_string()))?;
+    EstateConfiguration::from_input(1, input)
+        .map_err(|error| ServiceError::Contract(error.to_string()))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InstallationPreview {
@@ -128,8 +181,7 @@ impl InstallationPreview {
 pub struct ProjectLocator {
     pub format_version: u16,
     pub product_version: String,
-    pub project_root: String,
-    pub instance_id: CanonicalId,
+    pub identity: InstalledEstateIdentity,
     pub storage_root: String,
     pub token_key: String,
     pub operator_credential: String,
@@ -138,6 +190,8 @@ pub struct ProjectLocator {
     pub profile_sha256: String,
     pub executable_sha256: String,
     pub installed_record_sha256: String,
+    pub configuration_revision: u64,
+    pub configuration_sha256: String,
 }
 
 impl ProjectLocator {
@@ -148,11 +202,16 @@ impl ProjectLocator {
             || !is_sha256(&self.profile_sha256)
             || !is_sha256(&self.executable_sha256)
             || !is_sha256(&self.installed_record_sha256)
+            || self.configuration_revision == 0
+            || !is_sha256(&self.configuration_sha256)
         {
             return Err(ServiceError::Contract(
                 "project locator identity or digest is invalid".into(),
             ));
         }
+        self.identity
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
         for path in [
             self.storage_root.as_str(),
             self.token_key.as_str(),
@@ -269,37 +328,31 @@ impl RrdEngine {
         project: &Path,
         target_kind: InstallationTargetKind,
         profile_id: &str,
+        configuration_path: Option<&Path>,
         executable: &Path,
     ) -> Result<InstallationPreview> {
         let project = canonical_project(project, target_kind)?;
+        reject_existing_estate(&project)?;
         let (profile, profile_sha256) = DefaultInstallProfile::load(profile_id)?;
+        let configuration = load_estate_configuration(configuration_path)?;
         let executable_sha256 = sha256_file(executable)?;
         let project_precondition_sha256 = project_inventory_sha256(&project, &profile)?;
-        let project_root = utf8_project_path(&project)?.to_owned();
-        let identity_seed = json_sha256(&(
-            "rrflow-installed-estate-v1",
-            &project_root,
+        let identity_seed = installation_identity_seed(
             target_kind,
             &project_precondition_sha256,
             &profile_sha256,
             &executable_sha256,
-        ))?;
+            &configuration.configuration_sha256,
+        )?;
         let install_id = canonical_prefixed("install", &identity_seed)?;
         let attunement_id = canonical_prefixed("attune", &identity_seed)?;
         let instance_id = canonical_prefixed("instance", &identity_seed)?;
         let estate_id = canonical_prefixed("estate", &identity_seed)?;
         let project_id = canonical_prefixed("project", &identity_seed)?;
-        let target = ResourcePath {
-            segments: vec![
-                ResourceId::new(ResourceKind::Organization, "local")
-                    .map_err(|error| ServiceError::Contract(error.to_string()))?,
-                ResourceId::new(ResourceKind::Estate, estate_id.as_str())
-                    .map_err(|error| ServiceError::Contract(error.to_string()))?,
-                ResourceId::new(ResourceKind::Project, project_id.as_str())
-                    .map_err(|error| ServiceError::Contract(error.to_string()))?,
-                ResourceId::new(ResourceKind::Instance, instance_id.as_str())
-                    .map_err(|error| ServiceError::Contract(error.to_string()))?,
-            ],
+        let target = InstalledEstateIdentity {
+            project_id,
+            estate_id,
+            instance_id,
         };
         let phases = profile
             .attunement_phases
@@ -327,95 +380,27 @@ impl RrdEngine {
         attunement.plan_sha256 = attunement_plan_sha256(&attunement)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
 
-        let storage_relative = format!(".rrflow/rrd/roots/{install_id}");
-        let token_relative = format!("{storage_relative}/RRD.TOKEN");
-        let credential_relative =
-            format!(".rrflow/credentials/{}.json", profile.initial_principal_id);
+        let layout = EstateLayout::new(&install_id, &profile.initial_principal_id)?;
         let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
-        let managed_paths = [
-            (InstallationManagedPathKind::StorageRoot, storage_relative),
-            (InstallationManagedPathKind::TokenKey, token_relative),
-            (
-                InstallationManagedPathKind::OperatorCredential,
-                credential_relative,
-            ),
-            (
-                InstallationManagedPathKind::ProjectLocator,
-                LOCATOR_RELATIVE_PATH.into(),
-            ),
-        ]
-        .into_iter()
-        .map(|(kind, relative_path)| {
-            let path = project.join(&relative_path);
-            if std::fs::symlink_metadata(&path).is_ok() {
-                return Err(ServiceError::ProjectBindingMismatch);
-            }
-            if let Some(parent) = path.parent() {
-                reject_existing_symlink_path(&project, parent)?;
-            }
-            Ok(InstallationManagedPath {
-                kind,
-                relative_path,
-                precondition_sha256: absent.clone(),
-                removal_rule: InstallationRemovalRule::RemoveIfOwnedDigestMatches,
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
-        let configuration_sha256 = json_sha256(&(
-            &profile,
-            &target,
-            &managed_paths,
-            &project_precondition_sha256,
-        ))?;
-        let action_kinds = [
-            InstallationActionKind::ValidateProject,
-            InstallationActionKind::CreateStorageRoot,
-            InstallationActionKind::PrepareCredentials,
-            InstallationActionKind::InitializeInstance,
-            InstallationActionKind::CreateAttunementJob,
-            InstallationActionKind::PublishProjectLocator,
-        ];
-        let estimates = [
-            0,
-            4_096,
-            u64::from(profile.credential_bytes) * 2 + 512,
-            16_384,
-            4_096,
-            1_024,
-        ];
-        let actions = action_kinds
-            .into_iter()
-            .zip(estimates)
-            .map(|(kind, estimated_write_bytes)| {
-                Ok(InstallationPlanAction {
-                    kind,
-                    disposition: if kind == InstallationActionKind::ValidateProject {
-                        InstallationActionDisposition::Unchanged
-                    } else {
-                        InstallationActionDisposition::Create
-                    },
-                    input_sha256: json_sha256(&(
-                        kind,
-                        &configuration_sha256,
-                        &attunement.plan_sha256,
-                    ))?,
-                    estimated_write_bytes,
-                })
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let managed_paths = layout.managed_paths(&absent);
+        let actions = installation_actions(
+            &configuration.configuration_sha256,
+            &attunement.plan_sha256,
+            profile.credential_bytes,
+        )?;
         let mut installation = InstallationPlan {
             contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
             id: install_id.clone(),
             target,
             target_kind,
+            deployment: profile.deployment,
             product_version: env!("CARGO_PKG_VERSION").into(),
             executable_sha256,
             profile_id: profile.id,
             profile_sha256,
-            project_root,
             project_precondition_sha256,
             storage_root_id: install_id,
-            configuration_sha256,
+            configuration,
             initial_seat: profile.initial_seat,
             initial_principal_id: profile.initial_principal_id,
             initial_grants: SecurityAction::ALL.to_vec(),
@@ -457,12 +442,11 @@ impl RrdEngine {
             ));
         }
         let project = canonical_project_root(project)?;
-        if preview.installation.project_root != utf8_project_path(&project)?
-            || sha256_file(executable)? != preview.installation.executable_sha256
-        {
+        let executable_sha256 = sha256_file(executable)?;
+        if executable_sha256 != preview.installation.executable_sha256 {
             return Err(ServiceError::ProjectBindingMismatch);
         }
-        let (_, profile_sha256) =
+        let (profile, profile_sha256) =
             DefaultInstallProfile::load(preview.installation.profile_id.as_str())?;
         if profile_sha256 != preview.installation.profile_sha256 {
             return Err(ServiceError::ProjectBindingMismatch);
@@ -472,22 +456,14 @@ impl RrdEngine {
         if locator_path.exists() {
             return replay_installation_result(&project, preview, executable);
         }
-        let canonical = Self::plan_installation(
-            &project,
-            target_kind,
-            preview.installation.profile_id.as_str(),
-            executable,
-        )?;
-        if &canonical != preview {
-            return Err(ServiceError::ProjectBindingMismatch);
-        }
+        reject_existing_estate(&project)?;
         validate_installation_target(&project, target_kind)?;
-        let (profile, _) = DefaultInstallProfile::load("default")?;
         if project_inventory_sha256(&project, &profile)?
             != preview.installation.project_precondition_sha256
         {
             return Err(ServiceError::ProjectBindingMismatch);
         }
+        validate_sealed_preview(preview, &profile, &profile_sha256, &executable_sha256)?;
         for managed in &preview.installation.managed_paths {
             if std::fs::symlink_metadata(project.join(&managed.relative_path)).is_ok() {
                 return Err(ServiceError::ProjectBindingMismatch);
@@ -509,12 +485,11 @@ impl RrdEngine {
             .managed_path(InstallationManagedPathKind::OperatorCredential)
             .relative_path
             .clone();
-        ensure_managed_parent(&project, &storage_relative)?;
-        ensure_managed_parent(&project, &credential_relative)?;
+        create_estate_directories(&project)?;
         let storage_root = safe_join(&project, &storage_relative)?;
         let token_path = safe_join(&project, &token_relative)?;
         let credential_path = safe_join(&project, &credential_relative)?;
-        let instance_id = target_instance(&preview.installation.target)?.clone();
+        let instance_id = preview.installation.target.instance_id.clone();
         let mut engine = RrdEngine::create_new(&storage_root, instance_id.clone(), [0; 32])?;
         let token_key = create_token_key(&token_path)
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
@@ -608,7 +583,7 @@ impl RrdEngine {
             &request_id,
             &operation_id,
         )?;
-        let bootstrap_control_sequence = transitions.len() as u64 + 4;
+        let bootstrap_control_sequence = transitions.len() as u64 + 5;
         let mut installed = InstalledEstateRecord {
             format_version: INSTALLED_RECORD_FORMAT,
             installation: preview.installation.clone(),
@@ -652,6 +627,14 @@ impl RrdEngine {
         job.validate(&preview.attunement)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
         transitions.extend([
+            control_create(
+                &estate_configuration_key(&instance_id),
+                &preview.installation.configuration,
+                at_unix_ms,
+                &request_id,
+                &operation_id,
+                "configuration.installed",
+            )?,
             control_create(
                 INSTALLED_RECORD_KEY,
                 &installed,
@@ -703,8 +686,7 @@ impl RrdEngine {
         let locator = ProjectLocator {
             format_version: LOCATOR_FORMAT,
             product_version: env!("CARGO_PKG_VERSION").into(),
-            project_root: utf8_project_path(&project)?.to_owned(),
-            instance_id,
+            identity: preview.installation.target.clone(),
             storage_root: storage_relative,
             token_key: token_relative,
             operator_credential: credential_relative,
@@ -713,6 +695,12 @@ impl RrdEngine {
             profile_sha256: preview.installation.profile_sha256.clone(),
             executable_sha256: preview.installation.executable_sha256.clone(),
             installed_record_sha256: installed.record_sha256.clone(),
+            configuration_revision: preview.installation.configuration.revision,
+            configuration_sha256: preview
+                .installation
+                .configuration
+                .configuration_sha256
+                .clone(),
         };
         locator.validate()?;
         let locator_bytes = toml::to_string(&locator)
@@ -750,8 +738,11 @@ impl RrdEngine {
         let storage_root = safe_join(&project, &locator.storage_root)?;
         let token_key = read_token_key(&token_path)
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
-        let engine =
-            RrdEngine::open_existing(&storage_root, locator.instance_id.clone(), token_key)?;
+        let mut engine = RrdEngine::open_existing(
+            &storage_root,
+            locator.identity.instance_id.clone(),
+            token_key,
+        )?;
         let bytes = engine
             .storage
             .control()
@@ -760,6 +751,26 @@ impl RrdEngine {
         let installed: InstalledEstateRecord = decode_json(&bytes, "installed estate record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
+        let configuration_bytes = engine
+            .storage
+            .control()
+            .get(&estate_configuration_key(&locator.identity.instance_id))?
+            .ok_or_else(|| ServiceError::Storage("estate configuration is missing".into()))?;
+        let configuration: EstateConfiguration =
+            decode_json(&configuration_bytes, "estate configuration")?;
+        configuration
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        if configuration.revision != locator.configuration_revision
+            || configuration.configuration_sha256 != locator.configuration_sha256
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        engine.bind_installed_state(
+            locator.identity.clone(),
+            installed.installation.deployment.clone(),
+            configuration,
+        )?;
         if !engine.security_enforced()? {
             return Err(ServiceError::Storage(
                 "installed security authority is missing".into(),
@@ -808,6 +819,19 @@ impl RrdEngine {
             decode_control(&inspector, INSTALLED_RECORD_KEY, "installed estate record")?;
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
+        let configuration: EstateConfiguration = decode_control(
+            &inspector,
+            &estate_configuration_key(&locator.identity.instance_id),
+            "estate configuration",
+        )?;
+        configuration
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        if configuration.revision != locator.configuration_revision
+            || configuration.configuration_sha256 != locator.configuration_sha256
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
         let project_inventory_sha256 = project_inventory_sha256(&project, &profile)?;
         let attunement_source_current =
             project_inventory_sha256 == installed.installation.project_precondition_sha256;
@@ -821,7 +845,10 @@ impl RrdEngine {
         {
             return Err(ServiceError::ProjectBindingMismatch);
         }
-        let security_key = format!("server/state/{}/security/policy", locator.instance_id);
+        let security_key = format!(
+            "server/state/{}/security/policy",
+            locator.identity.instance_id
+        );
         let security: SecurityState = decode_control(&inspector, &security_key, "security state")?;
         security.validate()?;
         let principal = security
@@ -841,7 +868,7 @@ impl RrdEngine {
         let attunement: AttunementPlan = decode_control(
             &inspector,
             &attunement_plan_key(
-                &locator.instance_id,
+                &locator.identity.instance_id,
                 &installed.installation.attunement_plan_id,
             ),
             "attunement plan",
@@ -853,7 +880,7 @@ impl RrdEngine {
         let job_id = canonical_prefixed("job", &attunement.plan_sha256)?;
         let job: AttunementJob = decode_control(
             &inspector,
-            &attunement_job_key(&locator.instance_id, &job_id),
+            &attunement_job_key(&locator.identity.instance_id, &job_id),
             "attunement job",
         )?;
         job.validate(&attunement)
@@ -879,6 +906,7 @@ impl RrdEngine {
             ("project-inventory", project_inventory_sha256.clone()),
             ("physical", json_sha256(&inspector.inspection())?),
             ("installed-record", installed.record_sha256.clone()),
+            ("configuration", configuration.configuration_sha256.clone()),
             ("credentials", installed.credential_sha256.clone()),
             ("security", json_sha256(&security)?),
             ("runtime", runtime_manifest_sha256.clone()),
@@ -899,7 +927,7 @@ impl RrdEngine {
         Ok(InstallationVerificationReport {
             status: InstallationVerificationStatus::Passed,
             product_version: locator.product_version,
-            instance_id: locator.instance_id,
+            instance_id: locator.identity.instance_id,
             plan_sha256: locator.plan_sha256,
             project_inventory_sha256,
             attunement_source_current,
@@ -910,6 +938,135 @@ impl RrdEngine {
             checks,
         })
     }
+}
+
+fn installation_identity_seed(
+    target_kind: InstallationTargetKind,
+    project_precondition_sha256: &str,
+    profile_sha256: &str,
+    executable_sha256: &str,
+    configuration_sha256: &str,
+) -> Result<String> {
+    json_sha256(&(
+        "rrflow-installed-estate-v2",
+        target_kind,
+        project_precondition_sha256,
+        profile_sha256,
+        executable_sha256,
+        configuration_sha256,
+    ))
+}
+
+fn installation_actions(
+    configuration_sha256: &str,
+    attunement_plan_sha256: &str,
+    credential_bytes: u16,
+) -> Result<Vec<InstallationPlanAction>> {
+    let action_kinds = [
+        InstallationActionKind::ValidateProject,
+        InstallationActionKind::CreateEstateDirectories,
+        InstallationActionKind::CreateStorageRoot,
+        InstallationActionKind::PrepareCredentials,
+        InstallationActionKind::InitializeInstance,
+        InstallationActionKind::CreateAttunementJob,
+        InstallationActionKind::PublishProjectLocator,
+    ];
+    let estimates = [
+        0,
+        0,
+        4_096,
+        u64::from(credential_bytes) * 2 + 512,
+        16_384,
+        4_096,
+        1_024,
+    ];
+    action_kinds
+        .into_iter()
+        .zip(estimates)
+        .map(|(kind, estimated_write_bytes)| {
+            Ok(InstallationPlanAction {
+                kind,
+                disposition: if kind == InstallationActionKind::ValidateProject {
+                    InstallationActionDisposition::Unchanged
+                } else {
+                    InstallationActionDisposition::Create
+                },
+                input_sha256: json_sha256(&(kind, configuration_sha256, attunement_plan_sha256))?,
+                estimated_write_bytes,
+            })
+        })
+        .collect()
+}
+
+fn validate_sealed_preview(
+    preview: &InstallationPreview,
+    profile: &DefaultInstallProfile,
+    profile_sha256: &str,
+    executable_sha256: &str,
+) -> Result<()> {
+    let installation = &preview.installation;
+    let seed = installation_identity_seed(
+        installation.target_kind,
+        &installation.project_precondition_sha256,
+        profile_sha256,
+        executable_sha256,
+        &installation.configuration.configuration_sha256,
+    )?;
+    let install_id = canonical_prefixed("install", &seed)?;
+    let expected_target = InstalledEstateIdentity {
+        project_id: canonical_prefixed("project", &seed)?,
+        estate_id: canonical_prefixed("estate", &seed)?,
+        instance_id: canonical_prefixed("instance", &seed)?,
+    };
+    let expected_attunement_id = canonical_prefixed("attune", &seed)?;
+    let expected_phases = profile
+        .attunement_phases
+        .iter()
+        .map(|phase| {
+            Ok(AttunementPhasePlan {
+                phase: phase.phase,
+                sequence: phase.phase.sequence(),
+                configuration_sha256: json_sha256(phase)?,
+                estimated_items: phase.estimated_items,
+                estimated_input_bytes: phase.estimated_input_bytes,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
+    let expected_paths =
+        EstateLayout::new(&install_id, &profile.initial_principal_id)?.managed_paths(&absent);
+    let expected_actions = installation_actions(
+        &installation.configuration.configuration_sha256,
+        &preview.attunement.plan_sha256,
+        profile.credential_bytes,
+    )?;
+    if installation.id != install_id
+        || installation.target != expected_target
+        || installation.deployment != profile.deployment
+        || installation.product_version != env!("CARGO_PKG_VERSION")
+        || installation.executable_sha256 != executable_sha256
+        || installation.profile_id != profile.id
+        || installation.profile_sha256 != profile_sha256
+        || installation.storage_root_id != installation.id
+        || installation.configuration.revision != 1
+        || installation.initial_seat != profile.initial_seat
+        || installation.initial_principal_id != profile.initial_principal_id
+        || installation.initial_grants != SecurityAction::ALL
+        || installation.credential_bytes != profile.credential_bytes
+        || installation.inactive_capabilities != profile.inactive_capabilities
+        || installation.managed_paths != expected_paths
+        || installation.attunement_plan_id != expected_attunement_id
+        || installation.actions != expected_actions
+        || preview.attunement.id != expected_attunement_id
+        || preview.attunement.target != expected_target
+        || preview.attunement.source_sha256 != installation.project_precondition_sha256
+        || preview.attunement.phases != expected_phases
+        || preview.attunement.estimated_min_duration_ms != profile.estimated_min_duration_ms
+        || preview.attunement.estimated_max_duration_ms != profile.estimated_max_duration_ms
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    Ok(())
 }
 
 fn canonical_project(project: &Path, target_kind: InstallationTargetKind) -> Result<PathBuf> {
@@ -1040,77 +1197,6 @@ fn sha256_file(path: &Path) -> Result<String> {
     Ok(hasher.finalize_hex())
 }
 
-fn ensure_managed_parent(project: &Path, relative: &str) -> Result<()> {
-    validate_managed_relative(relative)?;
-    let parent = Path::new(relative)
-        .parent()
-        .ok_or(ServiceError::ProjectBindingMismatch)?;
-    let mut current = project.to_owned();
-    for component in parent.components() {
-        let std::path::Component::Normal(segment) = component else {
-            return Err(ServiceError::ProjectBindingMismatch);
-        };
-        current.push(segment);
-        match std::fs::symlink_metadata(&current) {
-            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => {
-                return Err(ServiceError::ProjectBindingMismatch);
-            }
-            Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                std::fs::create_dir(&current)
-                    .map_err(|error| ServiceError::Storage(error.to_string()))?;
-                rrd_store::sync_directory_metadata(
-                    current.parent().expect("managed directory has a parent"),
-                )
-                .map_err(|error| ServiceError::Storage(error.to_string()))?;
-            }
-            Err(error) => return Err(ServiceError::Storage(error.to_string())),
-        }
-    }
-    Ok(())
-}
-
-fn reject_existing_symlink_path(project: &Path, path: &Path) -> Result<()> {
-    let relative = path
-        .strip_prefix(project)
-        .map_err(|_| ServiceError::ProjectBindingMismatch)?;
-    let mut current = project.to_owned();
-    for component in relative.components() {
-        current.push(component);
-        match std::fs::symlink_metadata(&current) {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
-                return Err(ServiceError::ProjectBindingMismatch);
-            }
-            Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
-            Err(error) => return Err(ServiceError::Storage(error.to_string())),
-        }
-    }
-    Ok(())
-}
-
-fn validate_managed_relative(relative: &str) -> Result<()> {
-    if relative.is_empty()
-        || relative.len() > 4_096
-        || relative.starts_with('/')
-        || relative.contains('\\')
-        || relative
-            .split('/')
-            .any(|segment| segment.is_empty() || matches!(segment, "." | ".."))
-        || !relative.starts_with(".rrflow/")
-    {
-        return Err(ServiceError::ProjectBindingMismatch);
-    }
-    Ok(())
-}
-
-fn safe_join(project: &Path, relative: &str) -> Result<PathBuf> {
-    validate_managed_relative(relative)?;
-    let path = project.join(relative);
-    reject_existing_symlink_path(project, &path)?;
-    Ok(path)
-}
-
 fn read_locator(project: &Path) -> Result<(PathBuf, ProjectLocator, Vec<u8>)> {
     let project = canonical_project(project, InstallationTargetKind::ExistingProject)?;
     let path = project.join(LOCATOR_RELATIVE_PATH);
@@ -1134,14 +1220,7 @@ fn read_locator(project: &Path) -> Result<(PathBuf, ProjectLocator, Vec<u8>)> {
     )
     .map_err(|error| ServiceError::Contract(error.to_string()))?;
     locator.validate()?;
-    if locator.project_root != utf8_project_path(&project)? {
-        return Err(ServiceError::ProjectBindingMismatch);
-    }
     Ok((project, locator, bytes))
-}
-
-fn utf8_project_path(project: &Path) -> Result<&str> {
-    project.to_str().ok_or(ServiceError::ProjectBindingMismatch)
 }
 
 fn publish_new_file(path: &Path, plan_sha256: &str, bytes: &[u8]) -> Result<()> {
@@ -1211,6 +1290,7 @@ fn build_installation_result(
 ) -> Result<InstallationResult> {
     let outputs = [
         preview.installation.project_precondition_sha256.clone(),
+        json_sha256(&preview.installation.managed_paths[..4])?,
         json_sha256(&(
             &preview.installation.storage_root_id,
             preview
@@ -1302,20 +1382,28 @@ fn require_locator_record_match(
         || locator.profile_sha256 != installed.installation.profile_sha256
         || locator.executable_sha256 != installed.installation.executable_sha256
         || locator.installed_record_sha256 != installed.record_sha256
-        || locator.instance_id != *target_instance(&installed.installation.target)?
+        || locator.identity != installed.installation.target
+        || locator.configuration_revision != installed.installation.configuration.revision
+        || locator.configuration_sha256 != installed.installation.configuration.configuration_sha256
+        || locator.storage_root
+            != installed
+                .installation
+                .managed_path(InstallationManagedPathKind::StorageRoot)
+                .relative_path
+        || locator.token_key
+            != installed
+                .installation
+                .managed_path(InstallationManagedPathKind::TokenKey)
+                .relative_path
+        || locator.operator_credential
+            != installed
+                .installation
+                .managed_path(InstallationManagedPathKind::OperatorCredential)
+                .relative_path
     {
         return Err(ServiceError::ProjectBindingMismatch);
     }
     Ok(())
-}
-
-fn target_instance(target: &ResourcePath) -> Result<&CanonicalId> {
-    target
-        .segments
-        .last()
-        .filter(|segment| segment.kind == ResourceKind::Instance)
-        .map(|segment| &segment.id)
-        .ok_or_else(|| ServiceError::Contract("installation target has no instance".into()))
 }
 
 fn attunement_plan_key(instance: &CanonicalId, plan: &CanonicalId) -> String {
@@ -1326,11 +1414,16 @@ fn attunement_job_key(instance: &CanonicalId, job: &CanonicalId) -> String {
     format!("server/state/{instance}/attunement/job/{job}")
 }
 
+fn estate_configuration_key(instance: &CanonicalId) -> String {
+    format!("server/state/{instance}/configuration/active")
+}
+
 fn runtime_manifest_from_inspection(
     inspector: &RrflowKvInspector,
     locator: &ProjectLocator,
 ) -> Result<String> {
-    let scope = ScopeId::new(format!("instance:{}", locator.instance_id)).map_err(core_contract)?;
+    let scope = ScopeId::new(format!("instance:{}", locator.identity.instance_id))
+        .map_err(core_contract)?;
     let read = inspector.runtime_read_stamp(&scope)?;
     if read.commit_cursor != inspector.inspection().runtime_cursor {
         return Err(ServiceError::StorageConflict(
@@ -1366,7 +1459,7 @@ fn installation_checkpoint_sha256(checkpoint: &InstallationCheckpoint) -> Result
     ))
 }
 
-fn json_sha256<T: Serialize>(value: &T) -> Result<String> {
+fn json_sha256<T: Serialize + ?Sized>(value: &T) -> Result<String> {
     serde_json::to_vec(value)
         .map(|bytes| digest::sha256_hex(&bytes))
         .map_err(contract_json)

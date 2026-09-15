@@ -36,6 +36,7 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
+        self.enforce_query_configuration("query.execute", &request.budget)?;
         let (_, _, authorization) = self.authorize_resource(
             session_id,
             token,
@@ -167,6 +168,7 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
+        self.enforce_query_configuration("query.live.poll", &request.budget)?;
         self.authorize(
             session_id,
             token,
@@ -185,6 +187,7 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
+        self.enforce_query_configuration("query.live.page", &request.budget)?;
         let expected_scope = format!("instance:{}", self.instance);
         if request.scope != expected_scope {
             return Err(ServiceError::WrongScope);
@@ -282,6 +285,7 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Query(error.to_string()))?;
+        self.enforce_query_configuration("query.index.ensure", &request.budget)?;
         let (session_bytes, mut session) = self.load_authenticated(session_id, token)?;
         self.authorize_session_policy(&session, SecurityAction::QueryIndexEnsure, now)?;
         let scope = self.query_scope(&request.scope)?;

@@ -1,9 +1,9 @@
 # RRFlow installed lifecycle
 
-**Status:** active target contract; implementation and qualification remain open
+**Status:** active target contract; canonical local-estate slice implemented, convergence and qualification remain open
 **Coordinate:** `rrflow://rrflow-instance/data/reference/deployment/installed-lifecycle`
 **Owner:** default-distribution acquisition, project installation, readiness, verification, repair, restore, salvage, and removal semantics
-**Reviewed:** 2026-09-10
+**Reviewed:** 2026-09-14
 
 This record defines the stable target behavior of an installed RRFlow 1.0
 estate. The [alpha objective](../../objectives/rrflow-1.0-alpha.md) owns the
@@ -54,7 +54,7 @@ The target command vocabulary is:
 
 ```text
 rrflow version
-rrflow install plan   --project <root> --mode fresh|existing --profile <id>
+rrflow install plan   --project <root> --mode fresh|existing --profile <id> [--configuration <toml>]
 rrflow install apply  --project <root> --plan <file> --expect <sha256>
 rrflow install status --project <root>
 rrflow attune status|resume|cancel ...
@@ -82,9 +82,12 @@ flows are implementation inventory, not alternate supported commands.
 
 The project locator is `.rrflow/config.toml`. It contains only bounded,
 non-secret coordinates needed to locate and authenticate the installed estate:
-format identity, project-relative rrflowDB location, installed-estate identity,
-storage/deployment/profile identities, and the digest of the installation
-receipt. Canonical mutable state never lives in this file.
+format and product identity; project, estate, and instance IDs;
+project-relative rrflowDB, token-key, and operator-credential locations; and
+the plan, profile, executable, installed-record, and active-configuration
+digests. Canonical mutable state never lives in this file. In particular, it
+contains no absolute host path, endpoint, plaintext secret, model-provider
+setting, or UI preference.
 
 The managed persistent container is `.rrflow/rrd/` in the project's writable
 layer. Each install, repaired candidate, or restored candidate has a distinct
@@ -157,8 +160,12 @@ adapter. The plan is canonical serialized data whose SHA-256 covers:
 
 - binary/bundle, template, specialization, attunement-profile, schema, runtime,
   model, and configuration identities;
-- project root identity, fresh/existing mode, and the exact precondition digest
-  for every inspected path;
+- stable project/estate/instance identity, fresh/existing mode, and the exact
+  project-inventory precondition digest without embedding an absolute host
+  path;
+- the full effective revisioned configuration, not an opaque or caller-supplied
+  digest, plus independent deployment-form, storage-profile, and endpoint-
+  presentation coordinates;
 - every create, bounded edit, permission/ACL, directory, locator, state,
   principal, role, grant, seat, representation candidate, adapter candidate,
   credential generation/delivery, service, verification, and removal action;
@@ -190,6 +197,39 @@ Every crash boundary resumes the same plan or fails closed. It cannot create a
 second credential, policy, estate, instance, audit outcome, or project edit.
 No listener becomes ready before authentication policy and the installed
 binding are committed.
+
+## Current pre-release slice and rollout
+
+Package `D01-02-canonical-estate-layout-and-configuration-v1` implements the
+first concrete estate/configuration slice without claiming the complete target
+above:
+
+- `rrd-contract` owns `InstalledEstateIdentity`, three independent deployment
+  coordinates, and a strict self-digesting `EstateConfiguration`;
+- the bundled default configuration or one explicit regular, non-symlinked
+  TOML file up to 64 KiB is read during planning, validated below hard compiled
+  maxima, assigned revision 1, and sealed into the plan;
+- apply never rereads that mutable input. It consumes the sealed value and
+  creates, in declared order, `.rrflow/`, `.rrflow/rrd/`,
+  `.rrflow/rrd/roots/`, `.rrflow/credentials/`, one create-new storage root,
+  token key, credential document, and `.rrflow/config.toml`;
+- the active configuration is committed inside rrflowDB at
+  `server/state/<instance>/configuration/active` before locator publication;
+- installed open validates locator, installed record, configuration revision
+  and digest, then binds the same identity/configuration into `RrdEngine`;
+- query, live-query, query-index, and context requests above the installed
+  ceiling fail before their data operation; and
+- server capabilities and generated OpenAPI/SDK types expose the effective
+  configuration and exact deployment coordinates. Reasoning ceilings are
+  visible, while `governed-reasoning-runner` remains honestly unavailable.
+
+The implementation rejects any pre-existing `.rrflow` tree for a new install.
+It does not migrate, merge, or delete legacy `.rrflow/instance.toml` state.
+Interrupted-install resume/cleanup, handle-relative race hardening, complete
+native ACL qualification, configuration plan/apply, executable attunement,
+full repair/uninstall, release assembly, and clean-machine qualification remain
+separate packages. The staged rationale and exit proofs are in the
+[canonical estate/configuration research](../../research/rrflow-canonical-estate-configuration-and-runtime-controls.md#rollout-sequence).
 
 ## Open, serve, and readiness
 
@@ -340,8 +380,13 @@ supported target:
 
 ## Current-to-target disposition
 
-- `rrflow-cli` becomes the primary executable composition root and a thin
-  adapter over lifecycle operations owned by `RrdEngine`.
+- `rrflow-cli` is now the primary executable for version, deterministic install
+  plan/apply, foreground serve, authenticated ready, and quick verification;
+  it remains a thin adapter over lifecycle operations owned by `RrdEngine`.
+- The new portable locator and engine-owned active configuration are the only
+  accepted destination. The legacy manifest/raw-root paths remain blocked
+  implementation inventory until the next traceable convergence package
+  absorbs their required behavior and deletes their success paths.
 - `rrd-server` and `rrflow-mcp` expose library composition APIs; their default
   standalone binaries are removed after equivalent primary-binary tests pass.
 - `RrflowKvStore::open` is split into explicit create-new and open-existing

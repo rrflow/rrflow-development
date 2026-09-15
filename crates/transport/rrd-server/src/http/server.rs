@@ -185,10 +185,6 @@ impl RrdHttpServer {
                 ));
             }
         }
-        let backend = engine
-            .readiness(0)
-            .map(|readiness| readiness.backend)
-            .map_err(|error| HttpError::Contract(error.to_string()))?;
         let security_enforced = engine
             .security_enforced()
             .map_err(|error| HttpError::Contract(error.to_string()))?;
@@ -205,9 +201,40 @@ impl RrdHttpServer {
         let listener =
             TcpListener::bind(bind).map_err(|error| HttpError::Bind(error.to_string()))?;
         listener.set_nonblocking(true)?;
+        let endpoint_presentation = if listener
+            .local_addr()
+            .map_err(HttpError::Io)?
+            .ip()
+            .is_loopback()
+        {
+            EndpointPresentation::LoopbackHttpWebsocket
+        } else {
+            EndpointPresentation::NetworkHttpWebsocket
+        };
+        let deployment = match engine.installed_deployment_profile() {
+            Some(installed)
+                if installed.deployment_form == DeploymentForm::SingleNodeServer
+                    && installed.storage_profile == engine.storage_profile_kind()
+                    && installed.endpoint_presentation == endpoint_presentation =>
+            {
+                installed.clone()
+            }
+            Some(_) => {
+                return Err(HttpError::Contract(
+                    "installed deployment profile does not match server composition".into(),
+                ));
+            }
+            None => DeploymentProfile {
+                contract_version: rrd_contract::DEPLOYMENT_PROFILE_CONTRACT_VERSION,
+                deployment_form: DeploymentForm::SingleNodeServer,
+                storage_profile: engine.storage_profile_kind(),
+                endpoint_presentation,
+            },
+        };
         let capabilities = capabilities(
+            &engine,
             &instance,
-            backend,
+            deployment,
             security_enforced,
             tls_enabled,
             jwt_enabled,
@@ -215,6 +242,19 @@ impl RrdHttpServer {
         capabilities
             .validate()
             .map_err(|error| HttpError::Contract(error.to_string()))?;
+        tracing::debug!(
+            target: "rrflow::deployment",
+            instance_id = %instance,
+            deployment_form = ?capabilities.deployment.deployment_form,
+            storage_profile = ?capabilities.deployment.storage_profile,
+            endpoint_presentation = ?capabilities.deployment.endpoint_presentation,
+            configuration_revision = capabilities.configuration.revision,
+            configuration_sha256 = %capabilities.configuration.configuration_sha256,
+            security_enforced,
+            tls_enabled,
+            jwt_enabled,
+            "RRD server composition bound"
+        );
         let state = Arc::new(AppState {
             service: engine,
             capabilities,

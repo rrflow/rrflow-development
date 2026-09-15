@@ -55,9 +55,27 @@ func TestCapabilitiesRetryAndIdentity(t *testing.T) {
 			return okEnvelope("server-request", "server-operation", map[string]any{
 				"protocol": "rrd", "protocol_version": 1,
 				"implementation": "rrd-server", "implementation_version": "1.0.0",
-				"deployment_mode": "local_daemon",
-				"instance":        map[string]any{"kind": "instance", "id": "sdk-test"},
-				"capabilities":    []any{},
+				"deployment": map[string]any{
+					"contract_version": 1, "deployment_form": "single_node_server",
+					"storage_profile": "rrflow_kv", "endpoint_presentation": "loopback_http_websocket",
+				},
+				"configuration": map[string]any{
+					"format_version": 1, "revision": 1,
+					"reasoning": map[string]any{
+						"max_run_elapsed_ms": 900000, "max_steps": 256, "max_step_elapsed_ms": 60000,
+					},
+					"recall": map[string]any{
+						"max_graph_depth": 4, "max_items": 128, "max_output_bytes": 524288, "max_storage_keys": 100000,
+					},
+					"query": map[string]any{
+						"max_storage_keys": 100000, "max_rows": 10000, "max_output_bytes": 524288,
+						"max_batch_rows": 256, "max_memory_bytes": 67108864,
+						"max_spill_bytes": 268435456, "max_elapsed_ms": 30000,
+					},
+					"configuration_sha256": "bf8a4557c1465ab4bf0e8640be42f65b28e4d65dff5f3147b2892edfe9db31be",
+				},
+				"instance":     map[string]any{"kind": "instance", "id": "sdk-test"},
+				"capabilities": []any{},
 			}), nil
 		}),
 	})
@@ -70,6 +88,10 @@ func TestCapabilitiesRetryAndIdentity(t *testing.T) {
 	}
 	if capabilities["protocol_version"] != float64(1) || attempts != 2 {
 		t.Fatalf("unexpected capabilities or attempts: %#v %d", capabilities, attempts)
+	}
+	deployment := capabilities["deployment"].(map[string]any)
+	if deployment["deployment_form"] != "single_node_server" {
+		t.Fatalf("unexpected deployment profile: %#v", deployment)
 	}
 }
 

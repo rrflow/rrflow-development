@@ -10,12 +10,14 @@ independently.
 
 ## Observed deficiency
 
-Public `DeploymentMode` places `rrflow_mx`, `embedded`, `local_daemon`, `edge`, `remote`,
-and `distributed` in one scalar even though they represent storage, composition, process
-locality, an offline artifact, a client-relative transport view, and an unavailable cluster
-claim. `RrdEngine` infers the value from persistent-root presence, the server infers it from
-TLS, generated SDKs repeat it, and the shared “deployment conformance” fixture contains only
-two documents plus one exact-ID query; the edge test never enters `RrdEngine`.
+At the recorded baseline, public `DeploymentMode` placed `rrflow_mx`,
+`embedded`, `local_daemon`, `edge`, `remote`, and `distributed` in one scalar
+even though they represented storage, composition, process locality, an
+offline artifact, a client-relative transport view, and an unavailable cluster
+claim. `RrdEngine` inferred it from persistent-root presence, the server
+inferred it from TLS, generated SDKs repeated it, and the shared “deployment
+conformance” fixture contained only two documents plus one exact-ID query; the
+edge test never entered `RrdEngine`.
 
 ## Impact
 
@@ -50,3 +52,21 @@ authorized transactions, temporal graph/index/vector/RRF behavior, stamped strea
 Arrow/DataFusion results, persisted reasoning/context/evidence, delivery, limits, and traces
 across valid profiles, with rrflowKV-only crash/reopen and clean installed real-process
 evidence.
+
+## Current remediation evidence
+
+Package `D01-02-canonical-estate-layout-and-configuration-v1` removes
+`DeploymentMode` and its wire field without an alias. `DeploymentProfile` now
+separates deployment form, storage profile, and endpoint presentation;
+`RrdEngine` carries the explicit storage fact; the server derives only endpoint
+presentation from the bound address; TLS remains a separate security fact; and
+OpenAPI plus TypeScript and all five SDK fixtures use the generated structured
+shape. Focused contract, engine, server-process, Rust-client, installed-primary-
+binary, and SDK tests reject the old scalar and exercise the new discovery.
+
+This is material remediation but not closure. The storage-semantic,
+rrflowKV-durability, complete deployment-form, configured-network endpoint,
+cluster, derived-artifact, streamed Arrow/DataFusion, native graph/index/vector,
+reasoning/recall, delivery, trace, and clean release-candidate corpora in the
+closure requirement remain incomplete. Parent status therefore remains
+`Sequenced` and no owning roadmap gate is checked.

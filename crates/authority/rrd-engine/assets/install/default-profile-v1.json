@@ -1,6 +1,13 @@
 {
   "format_version": 1,
   "id": "default",
+  "configuration_asset": "default-estate-configuration-v1.toml",
+  "deployment": {
+    "contract_version": 1,
+    "deployment_form": "single_node_server",
+    "storage_profile": "rrflow_kv",
+    "endpoint_presentation": "loopback_http_websocket"
+  },
   "initial_seat": {
     "id": "local-reasoning-seat",
     "display_name": "Local reasoning workspace",

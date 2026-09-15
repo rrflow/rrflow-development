@@ -4,14 +4,15 @@ use rrd_contract::{
     CloseSession, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
     DataCatalogueIdentity, DataLogicalModel, DataRecordSchema, DataReference, DataSchemaMode,
     DataSchemaRegistry, DataSnapshot, DataTableSchema, DataTarget, DeleteVectorCollection,
-    DeleteVectorPayloadIndex, DeploymentMode, EmbedAndSearchVectors, EmbeddingInput,
-    EmbeddingNetworkPolicy, EnsureQueryIndex, EnsureVectorCollection, EnsureVectorIndex,
-    EnsureVectorPayloadIndex, ErrorBody, ErrorCode, EstateActivityPolicySnapshot,
-    EstateAuthoritySnapshot, EstateBackupJobSnapshot, EstateBackupJobState,
-    EstateBackupJobsSnapshot, EstateBackupRecoveryPolicySnapshot, EstateMutationResult,
-    EstateSnapshot, ExecuteQuery, ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed,
-    ForwardRollbackCounts, ForwardRollbackRequest, GenerateEmbeddings, HybridFusion,
-    IdempotencyBinding, ListQueryIndexes, ListVectorCollections, ListVectorPayloadIndexes,
+    DeleteVectorPayloadIndex, DeploymentForm, DeploymentProfile, EmbedAndSearchVectors,
+    EmbeddingInput, EmbeddingNetworkPolicy, EndpointPresentation, EnsureQueryIndex,
+    EnsureVectorCollection, EnsureVectorIndex, EnsureVectorPayloadIndex, ErrorBody, ErrorCode,
+    EstateActivityPolicySnapshot, EstateAuthoritySnapshot, EstateBackupJobSnapshot,
+    EstateBackupJobState, EstateBackupJobsSnapshot, EstateBackupRecoveryPolicySnapshot,
+    EstateConfiguration, EstateMutationResult, EstateSnapshot, ExecuteQuery,
+    ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed, ForwardRollbackCounts,
+    ForwardRollbackRequest, GenerateEmbeddings, HybridFusion, IdempotencyBinding,
+    InstalledEstateIdentity, ListQueryIndexes, ListVectorCollections, ListVectorPayloadIndexes,
     ListVectorQuantizationArtifacts, Liveness, NamedVectorDefinition, PollLiveQuery,
     PreviewTransaction, ProductCapability, ProductCapabilityCatalogue, ProductSurface, QueryBudget,
     QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot, QueryIndexKind, QueryPlanCandidate,
@@ -22,11 +23,11 @@ use rrd_contract::{
     ResponseOutcome, RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrievalFusion,
     RetrievalPrefetch, RetrievalQuery, RetrievalResultShape, SearchHybrid, SearchVectors,
     ServiceCapabilities, SessionEndState, SessionLease, SessionLimits, SessionTermination,
-    SurfaceBinding, SurfaceDisposition, TransactionMutation, TransactionPreview, TransactionState,
-    VectorIndexBuildPolicy, VectorIndexConfiguration, VectorMemoryTier, VectorPayloadCondition,
-    VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
-    VectorQuantizationMethod, VectorSearchMetric, VectorSearchMode, VectorSearchQuery,
-    VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
+    StorageProfileKind, SurfaceBinding, SurfaceDisposition, TransactionMutation,
+    TransactionPreview, TransactionState, VectorIndexBuildPolicy, VectorIndexConfiguration,
+    VectorMemoryTier, VectorPayloadCondition, VectorPayloadFilter, VectorPayloadIndexKind,
+    VectorPayloadOperator, VectorProductCompression, VectorQuantizationMethod, VectorSearchMetric,
+    VectorSearchMode, VectorSearchQuery, VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -81,7 +82,18 @@ fn contract_fixture() -> ContractFixture {
             protocol_version: PROTOCOL_VERSION,
             implementation: CanonicalId::new("rrflow").unwrap(),
             implementation_version: "1.0.0".into(),
-            deployment_mode: DeploymentMode::Embedded,
+            deployment: DeploymentProfile {
+                contract_version: 1,
+                deployment_form: DeploymentForm::Embedded,
+                storage_profile: StorageProfileKind::RrflowKv,
+                endpoint_presentation: EndpointPresentation::InProcess,
+            },
+            installed_estate: Some(InstalledEstateIdentity {
+                project_id: CanonicalId::new("alpha-project").unwrap(),
+                estate_id: CanonicalId::new("alpha-estate").unwrap(),
+                instance_id: CanonicalId::new("project-alpha").unwrap(),
+            }),
+            configuration: EstateConfiguration::default(),
             instance: ResourceId::new(ResourceKind::Instance, "project-alpha").unwrap(),
             capabilities: vec![
                 CapabilityDescriptor {
@@ -251,14 +263,20 @@ fn public_contract_matches_frozen_golden_json() {
     let expected: serde_json::Value =
         serde_json::from_str(include_str!("../fixtures/public-contract-v1.json")).unwrap();
     let actual = serde_json::to_value(&fixture).unwrap();
-    assert_eq!(actual, expected);
+    assert!(actual["service"].get("deployment_mode").is_none());
+    assert_eq!(
+        actual,
+        expected,
+        "{}",
+        serde_json::to_string_pretty(&actual).unwrap()
+    );
 
     let reopened: ContractFixture = serde_json::from_value(expected).unwrap();
     assert_eq!(reopened, fixture);
 }
 
 #[test]
-fn deployment_modes_and_shared_conformance_corpus_are_versioned_and_strict() {
+fn deployment_axes_and_shared_conformance_corpus_are_versioned_and_strict() {
     let corpus: rrd_contract::DeploymentConformanceCorpus = serde_json::from_str(include_str!(
         "../../../../fixtures/rrd-deployment-conformance-v1.json"
     ))
@@ -267,21 +285,28 @@ fn deployment_modes_and_shared_conformance_corpus_are_versioned_and_strict() {
     assert_eq!(corpus.expected_ids[0].as_str(), "alpha");
     assert_eq!(
         serde_json::to_value([
-            DeploymentMode::RrflowMx,
-            DeploymentMode::Embedded,
-            DeploymentMode::LocalDaemon,
-            DeploymentMode::Edge,
-            DeploymentMode::Remote,
-            DeploymentMode::Distributed,
+            DeploymentForm::Embedded,
+            DeploymentForm::SingleNodeServer,
+            DeploymentForm::ClusteredServer,
+        ])
+        .unwrap(),
+        serde_json::json!(["embedded", "single_node_server", "clustered_server"])
+    );
+    assert_eq!(
+        serde_json::to_value([StorageProfileKind::RrflowMx, StorageProfileKind::RrflowKv]).unwrap(),
+        serde_json::json!(["rrflow_mx", "rrflow_kv"])
+    );
+    assert_eq!(
+        serde_json::to_value([
+            EndpointPresentation::InProcess,
+            EndpointPresentation::LoopbackHttpWebsocket,
+            EndpointPresentation::NetworkHttpWebsocket,
         ])
         .unwrap(),
         serde_json::json!([
-            "rrflow_mx",
-            "embedded",
-            "local_daemon",
-            "edge",
-            "remote",
-            "distributed"
+            "in_process",
+            "loopback_http_websocket",
+            "network_http_websocket"
         ])
     );
 

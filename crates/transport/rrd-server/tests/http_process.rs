@@ -2310,7 +2310,18 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
     assert!(RrflowKvStore::open(&root).is_err());
     let (status, capabilities) = http(process.address, "GET", "/v1/capabilities", &[], &[]);
     assert_eq!(status, 200);
-    assert_eq!(payload(&capabilities)["deployment_mode"], "local_daemon");
+    assert_eq!(
+        payload(&capabilities)["deployment"]["deployment_form"],
+        "single_node_server"
+    );
+    assert_eq!(
+        payload(&capabilities)["deployment"]["storage_profile"],
+        "rrflow_kv"
+    );
+    assert_eq!(
+        payload(&capabilities)["deployment"]["endpoint_presentation"],
+        "loopback_http_websocket"
+    );
 
     let create = envelope(
         json!({
@@ -2479,7 +2490,22 @@ fn real_socket_exercises_lifecycle_commit_and_restart_replay() {
     assert_eq!(live["outcome"]["status"], "ok");
     let (status, capabilities) = http(server.address, "GET", "/v1/capabilities", &[], &[]);
     assert_eq!(status, 200);
-    assert_eq!(payload(&capabilities)["deployment_mode"], "local_daemon");
+    assert_eq!(
+        payload(&capabilities)["deployment"]["deployment_form"],
+        "single_node_server"
+    );
+    assert_eq!(
+        payload(&capabilities)["deployment"]["storage_profile"],
+        "rrflow_kv"
+    );
+    assert_eq!(
+        payload(&capabilities)["deployment"]["endpoint_presentation"],
+        "loopback_http_websocket"
+    );
+    assert_eq!(
+        payload(&capabilities)["configuration"]["reasoning"]["max_run_elapsed_ms"],
+        900_000
+    );
     assert!(payload(&capabilities)["capabilities"]
         .as_array()
         .unwrap()

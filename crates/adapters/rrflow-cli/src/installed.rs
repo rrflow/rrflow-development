@@ -117,12 +117,18 @@ fn install(action: &InstallAction, now: u64, json: bool) -> Result<Execution, Bo
             project,
             mode,
             profile,
+            configuration,
             test_distribution_executable,
         } => {
             let started = Instant::now();
             let executable = distribution_executable_path(test_distribution_executable.as_deref())?;
-            let preview =
-                RrdEngine::plan_installation(project, target_kind(*mode), profile, &executable)?;
+            let preview = RrdEngine::plan_installation(
+                project,
+                target_kind(*mode),
+                profile,
+                configuration.as_deref(),
+                &executable,
+            )?;
             tracing::info!(
                 target: "rrflow::installed",
                 operation = "install.plan",
@@ -172,7 +178,7 @@ fn install(action: &InstallAction, now: u64, json: bool) -> Result<Execution, Bo
                 format!(
                     "RRFlow installed: {}\ninstance: {}\nruntime cursor: {}\ncontrol journal: {}\nidempotent replay: {}",
                     result.plan_sha256,
-                    preview.installation.target.segments.last().expect("validated target").id,
+                    preview.installation.target.instance_id,
                     result.runtime_cursor,
                     result.control_journal_sequence,
                     result.idempotent_replay,
@@ -196,14 +202,15 @@ fn serve(
     let started = Instant::now();
     let executable = distribution_executable_path(test_distribution_executable)?;
     let locator = RrdEngine::read_project_locator(project)?;
+    let project_root = std::fs::canonicalize(project)?.display().to_string();
     let engine = RrdEngine::open_installed(project, &executable)?;
     let server = RrdHttpServer::bind(engine, bind)?;
     let address = server.local_addr();
     let announcement = ServeAnnouncement {
         status: "listening",
         url: format!("http://{address}"),
-        project_root: locator.project_root,
-        instance_id: locator.instance_id.to_string(),
+        project_root,
+        instance_id: locator.identity.instance_id.to_string(),
         product_version: locator.product_version,
         readiness_path: "/v1/health/ready",
         capability_path: "/v1/capabilities",
@@ -258,8 +265,13 @@ fn ready(
     let started = Instant::now();
     let invocation = format!("{now}-{}", std::process::id());
     let locator = RrdEngine::read_project_locator(project)?;
+    let project_root = std::fs::canonicalize(project)?.display().to_string();
     let credential = RrdEngine::read_installed_api_key(project)?;
-    let client = RrdClient::connect_local(address, locator.instance_id, ClientConfig::default())?;
+    let client = RrdClient::connect_local(
+        address,
+        locator.identity.instance_id,
+        ClientConfig::default(),
+    )?;
     let (readiness, capabilities, endpoint_catalogue, openapi) = runtime()?.block_on(async {
         let session = client
             .create_session(
@@ -307,7 +319,7 @@ fn ready(
     let report = UiDiscoveryReport {
         status: "ready",
         url: format!("http://{address}"),
-        project_root: locator.project_root,
+        project_root,
         openapi_sha256,
         authentication: AuthenticatedReady {
             principal_id: credential.principal_id.to_string(),

@@ -8,13 +8,13 @@ use rrd_client::{
 use rrd_contract::{
     transaction_operation_sha256, AbortTransaction, AssembleContext, BeginTransaction, CanonicalId,
     CloseSubscription, CommitTransaction, ContextEvidenceKind, CreateSession,
-    DeploymentConformanceCorpus, DeploymentMode, ErrorCode, ExecuteQuery, ExportAudit,
-    OpenSubscription, PreviewTransaction, QueryBudget, ReadAccessPath, ReadAudit, ReadChangefeed,
-    ReadDiagnosticSnapshot, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
-    ResourcePath, SessionLimits, SubscriptionAcknowledgement, SubscriptionDelivery,
-    SubscriptionResume, SubscriptionStream, TransactionMutation, WebSocketCancel,
-    WebSocketCancellationDisposition, WebSocketErrorTarget, WebSocketFrame, WebSocketPayload,
-    WebSocketRequest, PROTOCOL, PROTOCOL_VERSION,
+    DeploymentConformanceCorpus, DeploymentForm, EndpointPresentation, ErrorCode, ExecuteQuery,
+    ExportAudit, OpenSubscription, PreviewTransaction, QueryBudget, ReadAccessPath, ReadAudit,
+    ReadChangefeed, ReadDiagnosticSnapshot, RequestContext, RequestEnvelope, ResourceId,
+    ResourceKind, ResourcePath, SessionLimits, StorageProfileKind, SubscriptionAcknowledgement,
+    SubscriptionDelivery, SubscriptionResume, SubscriptionStream, TransactionMutation,
+    WebSocketCancel, WebSocketCancellationDisposition, WebSocketErrorTarget, WebSocketFrame,
+    WebSocketPayload, WebSocketRequest, PROTOCOL, PROTOCOL_VERSION,
 };
 use rrd_core::{
     digest, RuntimeCommit, RuntimeLogicalModel, RuntimeProperties, RuntimePropertySchema,
@@ -221,10 +221,23 @@ async fn commit_client_deployment_corpus(client: &RrdClient, session: &Session, 
 async fn assert_client_deployment_corpus(
     client: &RrdClient,
     session: &Session,
-    mode: DeploymentMode,
+    endpoint_presentation: EndpointPresentation,
 ) {
     let corpus = deployment_corpus();
-    assert_eq!(client.capabilities().await.unwrap().deployment_mode, mode);
+    let capabilities = client.capabilities().await.unwrap();
+    assert_eq!(
+        capabilities.deployment.deployment_form,
+        DeploymentForm::SingleNodeServer
+    );
+    assert_eq!(
+        capabilities.deployment.storage_profile,
+        StorageProfileKind::RrflowKv
+    );
+    assert_eq!(
+        capabilities.deployment.endpoint_presentation,
+        endpoint_presentation
+    );
+    capabilities.configuration.validate().unwrap();
     let result = client
         .execute_query(
             session,
@@ -1232,7 +1245,12 @@ async fn loopback_rust_client_passes_the_shared_deployment_corpus() {
         .await
         .unwrap();
     commit_client_deployment_corpus(&client, &session, "local-conformance").await;
-    assert_client_deployment_corpus(&client, &session, DeploymentMode::LocalDaemon).await;
+    assert_client_deployment_corpus(
+        &client,
+        &session,
+        EndpointPresentation::LoopbackHttpWebsocket,
+    )
+    .await;
 
     shutdown.send(()).unwrap();
     task.await.unwrap().unwrap();
@@ -1357,7 +1375,18 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
         RrdClient::connect_mtls(endpoint, instance, client_tls, ClientConfig::default()).unwrap();
     let capabilities = client.capabilities().await.unwrap();
     assert_eq!(capabilities.protocol_version, 1);
-    assert_eq!(capabilities.deployment_mode, DeploymentMode::Remote);
+    assert_eq!(
+        capabilities.deployment.deployment_form,
+        DeploymentForm::SingleNodeServer
+    );
+    assert_eq!(
+        capabilities.deployment.storage_profile,
+        StorageProfileKind::RrflowKv
+    );
+    assert_eq!(
+        capabilities.deployment.endpoint_presentation,
+        EndpointPresentation::LoopbackHttpWebsocket
+    );
     assert_eq!(
         capabilities
             .capabilities
@@ -1388,7 +1417,12 @@ async fn remote_transport_requires_mutual_tls_and_exact_server_identity() {
         .await
         .unwrap();
     commit_client_deployment_corpus(&client, &session, "remote-conformance").await;
-    assert_client_deployment_corpus(&client, &session, DeploymentMode::Remote).await;
+    assert_client_deployment_corpus(
+        &client,
+        &session,
+        EndpointPresentation::LoopbackHttpWebsocket,
+    )
+    .await;
     let subscription_id = rrd_contract::CorrelationId::new("mtls-subscription").unwrap();
     let opened = client
         .open_subscription(

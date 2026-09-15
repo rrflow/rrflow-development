@@ -39,6 +39,7 @@ pub enum ServiceError {
     Backup(String),
     Function(String),
     FunctionLimit(String),
+    ConfigurationLimit(String),
     FunctionNotFound,
     FunctionCatalogueRevisionNotFound,
     MemoryTargetNotFound,
@@ -98,6 +99,7 @@ impl ServiceError {
             | Self::RenewalQuota
             | Self::SubscriptionBackpressure
             | Self::FunctionLimit(_)
+            | Self::ConfigurationLimit(_)
             | Self::VectorPressure(_) => ServiceErrorKind::ResourceExhausted,
             Self::DeadlineExceeded => ServiceErrorKind::DeadlineExceeded,
             Self::StorageConflict(_) => ServiceErrorKind::Conflict,

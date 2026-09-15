@@ -34,12 +34,18 @@ pub(super) fn estate_action<'a>(path: &'a str, action: &str) -> Option<&'a str> 
 }
 
 pub(super) fn capabilities(
+    engine: &RrdEngine,
     instance: &CanonicalId,
-    backend: CanonicalId,
+    deployment: DeploymentProfile,
     security_enforced: bool,
     tls_enabled: bool,
     jwt_enabled: bool,
 ) -> ServiceCapabilities {
+    let configuration = engine.estate_configuration();
+    let backend = match engine.storage_profile_kind() {
+        rrd_contract::StorageProfileKind::RrflowMx => "rrflow_mx",
+        rrd_contract::StorageProfileKind::RrflowKv => "rrflow_kv",
+    };
     let mut capabilities = vec![
         CapabilityDescriptor {
             name: CanonicalId::new("changefeed-follow").unwrap(),
@@ -93,6 +99,33 @@ pub(super) fn capabilities(
             ),
         },
         CapabilityDescriptor {
+            name: CanonicalId::new("context-assembly").unwrap(),
+            contract_version: 1,
+            status: CapabilityStatus::Experimental,
+            limits: BTreeMap::from([
+                (
+                    CanonicalId::new("max-graph-depth").unwrap(),
+                    u64::from(configuration.recall.max_graph_depth),
+                ),
+                (
+                    CanonicalId::new("max-items").unwrap(),
+                    configuration.recall.max_items,
+                ),
+                (
+                    CanonicalId::new("max-output-bytes").unwrap(),
+                    configuration.recall.max_output_bytes,
+                ),
+                (
+                    CanonicalId::new("max-storage-keys").unwrap(),
+                    configuration.recall.max_storage_keys,
+                ),
+            ]),
+            limitation: Some(
+                "bounded authenticated temporal context assembly with source and read evidence; attunement and release recall-quality gates remain open"
+                    .into(),
+            ),
+        },
+        CapabilityDescriptor {
             name: CanonicalId::new("exact-rrflowql-query").unwrap(),
             contract_version: 1,
             status: CapabilityStatus::Experimental,
@@ -103,7 +136,27 @@ pub(super) fn capabilities(
                 ),
                 (
                     CanonicalId::new("max-output-bytes").unwrap(),
-                    rrd_contract::MAX_QUERY_OUTPUT_BYTES,
+                    configuration.query.max_output_bytes,
+                ),
+                (
+                    CanonicalId::new("max-rows").unwrap(),
+                    configuration.query.max_rows,
+                ),
+                (
+                    CanonicalId::new("max-storage-keys").unwrap(),
+                    configuration.query.max_storage_keys,
+                ),
+                (
+                    CanonicalId::new("max-memory-bytes").unwrap(),
+                    configuration.query.max_memory_bytes,
+                ),
+                (
+                    CanonicalId::new("max-spill-bytes").unwrap(),
+                    configuration.query.max_spill_bytes,
+                ),
+                (
+                    CanonicalId::new("max-elapsed-ms").unwrap(),
+                    configuration.query.max_elapsed_ms,
                 ),
             ]),
             limitation: Some(
@@ -137,6 +190,29 @@ pub(super) fn capabilities(
             limits: BTreeMap::new(),
             limitation: Some(
                 "read-only estate snapshots; estate mutations remain unavailable"
+                    .into(),
+            ),
+        },
+        CapabilityDescriptor {
+            name: CanonicalId::new("governed-reasoning-runner").unwrap(),
+            contract_version: 1,
+            status: CapabilityStatus::Unavailable,
+            limits: BTreeMap::from([
+                (
+                    CanonicalId::new("max-run-elapsed-ms").unwrap(),
+                    configuration.reasoning.max_run_elapsed_ms,
+                ),
+                (
+                    CanonicalId::new("max-step-elapsed-ms").unwrap(),
+                    configuration.reasoning.max_step_elapsed_ms,
+                ),
+                (
+                    CanonicalId::new("max-steps").unwrap(),
+                    configuration.reasoning.max_steps,
+                ),
+            ]),
+            limitation: Some(
+                "operator ceilings are configured, but the governed reasoning executor and activation receipts are not implemented; private exploratory reasoning remains outside this durable-effect capability"
                     .into(),
             ),
         },
@@ -297,11 +373,9 @@ pub(super) fn capabilities(
         protocol_version: PROTOCOL_VERSION,
         implementation: CanonicalId::new("rrflow").unwrap(),
         implementation_version: env!("CARGO_PKG_VERSION").into(),
-        deployment_mode: if tls_enabled {
-            DeploymentMode::Remote
-        } else {
-            DeploymentMode::LocalDaemon
-        },
+        deployment,
+        installed_estate: engine.installed_estate_identity().cloned(),
+        configuration: configuration.clone(),
         instance: ResourceId {
             kind: ResourceKind::Instance,
             id: instance.clone(),

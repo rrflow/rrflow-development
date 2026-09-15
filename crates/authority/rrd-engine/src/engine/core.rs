@@ -2,6 +2,10 @@ use super::*;
 
 pub struct RrdEngine {
     pub(crate) storage: StorageProfile,
+    pub(crate) storage_profile_kind: StorageProfileKind,
+    pub(crate) estate_configuration: EstateConfiguration,
+    pub(crate) installed_estate: Option<InstalledEstateIdentity>,
+    pub(crate) installed_deployment: Option<DeploymentProfile>,
     pub(crate) objects: ObjectStoreBox,
     pub(crate) storage_root: Option<PathBuf>,
     pub(in crate::engine) instance: CanonicalId,
@@ -118,6 +122,10 @@ impl RrdEngine {
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
         Ok(Self {
             storage: StorageProfile::rrflow_kv(storage),
+            storage_profile_kind: StorageProfileKind::RrflowKv,
+            estate_configuration: EstateConfiguration::default(),
+            installed_estate: None,
+            installed_deployment: None,
             objects: ObjectStoreBox::new(objects),
             storage_root: Some(root.to_path_buf()),
             instance,
@@ -153,6 +161,10 @@ impl RrdEngine {
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
         Ok(Self {
             storage: StorageProfile::rrflow_mx(),
+            storage_profile_kind: StorageProfileKind::RrflowMx,
+            estate_configuration: EstateConfiguration::default(),
+            installed_estate: None,
+            installed_deployment: None,
             objects: ObjectStoreBox::new(MemoryObjectStore::new()),
             storage_root: None,
             instance,
@@ -176,12 +188,110 @@ impl RrdEngine {
         self.storage_root.is_some()
     }
 
-    pub fn deployment_mode(&self) -> DeploymentMode {
-        if self.has_persistent_root() {
-            DeploymentMode::Embedded
-        } else {
-            DeploymentMode::RrflowMx
+    pub fn storage_profile_kind(&self) -> StorageProfileKind {
+        self.storage_profile_kind
+    }
+
+    pub fn estate_configuration(&self) -> &EstateConfiguration {
+        &self.estate_configuration
+    }
+
+    pub fn installed_estate_identity(&self) -> Option<&InstalledEstateIdentity> {
+        self.installed_estate.as_ref()
+    }
+
+    pub fn installed_deployment_profile(&self) -> Option<&DeploymentProfile> {
+        self.installed_deployment.as_ref()
+    }
+
+    pub(in crate::engine) fn enforce_query_configuration(
+        &self,
+        operation: &'static str,
+        requested: &rrd_contract::QueryBudget,
+    ) -> Result<()> {
+        if let Err(error) = self.estate_configuration.validate_query_budget(requested) {
+            let configured = &self.estate_configuration.query;
+            tracing::debug!(
+                target: "rrflow::configuration",
+                operation,
+                instance_id = %self.instance,
+                configuration_revision = self.estate_configuration.revision,
+                configuration_sha256 = %self.estate_configuration.configuration_sha256,
+                requested_max_storage_keys = requested.max_storage_keys,
+                configured_max_storage_keys = configured.max_storage_keys,
+                requested_max_rows = requested.max_rows,
+                configured_max_rows = configured.max_rows,
+                requested_max_output_bytes = requested.max_output_bytes,
+                configured_max_output_bytes = configured.max_output_bytes,
+                requested_max_batch_rows = requested.max_batch_rows,
+                configured_max_batch_rows = configured.max_batch_rows,
+                requested_max_memory_bytes = requested.max_memory_bytes,
+                configured_max_memory_bytes = configured.max_memory_bytes,
+                requested_max_spill_bytes = requested.max_spill_bytes,
+                configured_max_spill_bytes = configured.max_spill_bytes,
+                requested_max_elapsed_ms = requested.max_elapsed_ms,
+                configured_max_elapsed_ms = configured.max_elapsed_ms,
+                reason = %error,
+                "estate configuration rejected query budget"
+            );
+            return Err(ServiceError::ConfigurationLimit(error.to_string()));
         }
+        Ok(())
+    }
+
+    pub(in crate::engine) fn enforce_recall_configuration(
+        &self,
+        operation: &'static str,
+        requested: &rrd_contract::AssembleContext,
+    ) -> Result<()> {
+        if let Err(error) = self.estate_configuration.recall.validate_request(requested) {
+            let configured = &self.estate_configuration.recall;
+            tracing::debug!(
+                target: "rrflow::configuration",
+                operation,
+                instance_id = %self.instance,
+                configuration_revision = self.estate_configuration.revision,
+                configuration_sha256 = %self.estate_configuration.configuration_sha256,
+                requested_max_graph_depth = requested.max_graph_depth,
+                configured_max_graph_depth = configured.max_graph_depth,
+                requested_max_items = requested.max_items,
+                configured_max_items = configured.max_items,
+                requested_max_output_bytes = requested.max_output_bytes,
+                configured_max_output_bytes = configured.max_output_bytes,
+                requested_max_storage_keys = requested.max_storage_keys,
+                configured_max_storage_keys = configured.max_storage_keys,
+                reason = %error,
+                "estate configuration rejected recall request"
+            );
+            return Err(ServiceError::ConfigurationLimit(error.to_string()));
+        }
+        Ok(())
+    }
+
+    pub(in crate::engine) fn bind_installed_state(
+        &mut self,
+        identity: InstalledEstateIdentity,
+        deployment: DeploymentProfile,
+        configuration: EstateConfiguration,
+    ) -> Result<()> {
+        identity
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        configuration
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        deployment
+            .validate()
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        if identity.instance_id != self.instance
+            || deployment.storage_profile != self.storage_profile_kind
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        self.installed_estate = Some(identity);
+        self.installed_deployment = Some(deployment);
+        self.estate_configuration = configuration;
+        Ok(())
     }
 
     pub(in crate::engine) fn require_persistent_root(&self, operation: &str) -> Result<&Path> {

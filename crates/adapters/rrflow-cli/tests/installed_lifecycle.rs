@@ -10,7 +10,8 @@
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::{
     transaction_operation_sha256, BeginTransaction, CanonicalId, CloseSession, CommitTransaction,
-    CreateSession, ExecuteQuery, QueryBudget, QueryValue, SessionLimits, TransactionMutation,
+    CreateSession, ErrorCode, ExecuteQuery, QueryBudget, QueryValue, SessionLimits,
+    TransactionMutation,
 };
 use rrd_engine::RrdEngine;
 use std::collections::BTreeMap;
@@ -98,10 +99,38 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     std::fs::create_dir(&project).unwrap();
     std::fs::write(project.join("README.md"), "installed walking product\n").unwrap();
     let plan_file = root.path().join("install-plan.json");
+    let configuration_file = root.path().join("estate-configuration.toml");
+    std::fs::write(
+        &configuration_file,
+        r#"format_version = 1
+
+[reasoning]
+max_run_elapsed_ms = 720000
+max_steps = 192
+max_step_elapsed_ms = 45000
+
+[recall]
+max_graph_depth = 3
+max_items = 96
+max_output_bytes = 393216
+max_storage_keys = 75000
+
+[query]
+max_storage_keys = 75000
+max_rows = 768
+max_output_bytes = 393216
+max_batch_rows = 192
+max_memory_bytes = 33554432
+max_spill_bytes = 67108864
+max_elapsed_ms = 20000
+"#,
+    )
+    .unwrap();
     let project_arg = project.to_str().unwrap();
     let plan_arg = plan_file.to_str().unwrap();
     let executable = distribution_fixture();
     let executable_arg = executable.to_str().unwrap();
+    let configuration_arg = configuration_file.to_str().unwrap();
     let mut lifecycle_output = Vec::new();
 
     let version = invoke(&["--json", "version"]);
@@ -117,6 +146,8 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
         "plan",
         "--project",
         project_arg,
+        "--configuration",
+        configuration_arg,
         "--test-distribution-executable",
         executable_arg,
     ];
@@ -129,6 +160,26 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     assert_eq!(first.stdout, second.stdout, "preview must be byte stable");
     assert_eq!(inventory(&project), before, "preview mutated the project");
     let preview: serde_json::Value = serde_json::from_slice(&first.stdout).unwrap();
+    assert_eq!(
+        preview["installation"]["configuration"]["reasoning"]["max_run_elapsed_ms"],
+        720_000
+    );
+    assert_eq!(
+        preview["installation"]["configuration"]["recall"]["max_items"],
+        96
+    );
+    assert_eq!(
+        preview["installation"]["deployment"]["deployment_form"],
+        "single_node_server"
+    );
+    let managed_paths = preview["installation"]["managed_paths"].as_array().unwrap();
+    assert_eq!(managed_paths.len(), 8);
+    assert!(managed_paths
+        .iter()
+        .any(|path| path["relative_path"] == ".rrflow/config.toml"));
+    assert!(managed_paths
+        .iter()
+        .all(|path| !path["relative_path"].as_str().unwrap().starts_with('/')));
     let plan_sha256 = preview["installation"]["plan_sha256"]
         .as_str()
         .unwrap()
@@ -169,7 +220,7 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     let applied: serde_json::Value = serde_json::from_slice(&applied.stdout).unwrap();
     assert_eq!(applied["plan_sha256"], plan_sha256);
     assert_eq!(applied["runtime_cursor"], 2);
-    assert_eq!(applied["control_journal_sequence"], 7);
+    assert_eq!(applied["control_journal_sequence"], 8);
     assert_eq!(applied["idempotent_replay"], false);
     let installed_at = applied["applied_at_unix_ms"].as_u64().unwrap();
 
@@ -264,6 +315,18 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     assert_eq!(ready["authentication"]["principal_id"], "local-operator");
     assert_eq!(ready["authentication"]["session_closed"], true);
     assert_eq!(ready["openapi"]["openapi"], "3.1.0");
+    assert_eq!(
+        ready["capabilities"]["configuration"]["reasoning"]["max_run_elapsed_ms"],
+        720_000
+    );
+    assert_eq!(
+        ready["capabilities"]["configuration"]["recall"]["max_items"],
+        96
+    );
+    assert_eq!(
+        ready["capabilities"]["deployment"]["endpoint_presentation"],
+        "loopback_http_websocket"
+    );
     assert!(
         ready["endpoint_catalogue"]["endpoints"]
             .as_array()
@@ -276,7 +339,7 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     let credential = RrdEngine::read_installed_api_key(&project).unwrap();
     let client = RrdClient::connect_local(
         address.parse().unwrap(),
-        locator.instance_id,
+        locator.identity.instance_id,
         ClientConfig::default(),
     )
     .unwrap();
@@ -350,16 +413,50 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
                 .unwrap();
             assert_eq!(receipt.mutation_count, 1);
 
+            let query_text = format!(
+                "FROM claim:status AT VALID {installed_at} KNOWN HEAD WHERE subject = \"installed-walking-product\" PROJECT subject, object EXPLAIN CONTRACT"
+            );
+            let denied = client
+                .execute_query(
+                    &session,
+                    ExecuteQuery {
+                        scope: format!("instance:{}", client.instance_id()),
+                        query: query_text.clone(),
+                        parameters: BTreeMap::new(),
+                        budget: QueryBudget::default(),
+                    },
+                    RequestOptions::read(
+                        "installed-test-over-ceiling-request",
+                        "installed-test-over-ceiling-operation",
+                    )
+                    .unwrap(),
+                )
+                .await
+                .unwrap_err();
+            match denied {
+                rrd_client::Error::Api { status, error } => {
+                    assert_eq!(status.as_u16(), 429);
+                    assert_eq!(error.code, ErrorCode::ResourceExhausted);
+                }
+                other => panic!("unexpected configured-ceiling error: {other}"),
+            }
+
             let query = client
                 .execute_query(
                     &session,
                     ExecuteQuery {
                         scope: format!("instance:{}", client.instance_id()),
-                        query: format!(
-                            "FROM claim:status AT VALID {installed_at} KNOWN HEAD WHERE subject = \"installed-walking-product\" PROJECT subject, object EXPLAIN CONTRACT"
-                        ),
+                        query: query_text,
                         parameters: BTreeMap::new(),
-                        budget: QueryBudget::default(),
+                        budget: QueryBudget {
+                            max_storage_keys: 75_000,
+                            max_rows: 768,
+                            max_output_bytes: 393_216,
+                            max_batch_rows: 192,
+                            max_memory_bytes: 33_554_432,
+                            max_spill_bytes: 67_108_864,
+                            max_elapsed_ms: 20_000,
+                        },
                     },
                     RequestOptions::read(
                         "installed-test-query-request",
@@ -430,7 +527,7 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     assert_success(&reopened, "post-shutdown reopen and verify");
     let reopened: serde_json::Value = serde_json::from_slice(&reopened.stdout).unwrap();
     assert_eq!(reopened["status"], "passed");
-    assert!(reopened["control_journal_sequence"].as_u64().unwrap() > 7);
+    assert!(reopened["control_journal_sequence"].as_u64().unwrap() > 8);
 
     // Neither successful nor rejected lifecycle stdout/stderr may contain the
     // generated credential.

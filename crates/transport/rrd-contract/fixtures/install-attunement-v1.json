@@ -133,35 +133,20 @@
         "sequence": 11
       }
     ],
-    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
+    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
     "source_sha256": "0000000000000000000000000000000000000000000000000000000000000001",
     "target": {
-      "segments": [
-        {
-          "id": "local",
-          "kind": "organization"
-        },
-        {
-          "id": "developer-estate",
-          "kind": "estate"
-        },
-        {
-          "id": "rrflow",
-          "kind": "project"
-        },
-        {
-          "id": "rrflow-dev",
-          "kind": "instance"
-        }
-      ]
+      "estate_id": "developer-estate",
+      "instance_id": "rrflow-dev",
+      "project_id": "rrflow"
     }
   },
   "cancel": {
     "contract_version": 1,
     "expected_job_revision": 3,
     "job_id": "job-01",
-    "last_checkpoint_sha256": "e6b9202facc09231a11c543d657b81d177111a72618a03282b51ab51ffe7db57",
-    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
+    "last_checkpoint_sha256": "e1467c32a58549f9d64466f12ff085e08512d602f57a1c26b894565cbc3efc94",
+    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
     "reason": "operator requested cancellation",
     "requested_at_unix_ms": 1800000003001
   },
@@ -175,40 +160,76 @@
       },
       {
         "disposition": "create",
-        "estimated_write_bytes": 4096,
+        "estimated_write_bytes": 0,
         "input_sha256": "0000000000000000000000000000000000000000000000000000000000000004",
+        "kind": "create_estate_directories"
+      },
+      {
+        "disposition": "create",
+        "estimated_write_bytes": 4096,
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
         "kind": "create_storage_root"
       },
       {
         "disposition": "create",
         "estimated_write_bytes": 96,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000006",
         "kind": "prepare_credentials"
       },
       {
         "disposition": "create",
         "estimated_write_bytes": 4096,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000006",
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000007",
         "kind": "initialize_instance"
       },
       {
         "disposition": "create",
         "estimated_write_bytes": 1024,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000007",
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000008",
         "kind": "create_attunement_job"
       },
       {
         "disposition": "create",
         "estimated_write_bytes": 256,
-        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000008",
+        "input_sha256": "0000000000000000000000000000000000000000000000000000000000000009",
         "kind": "publish_project_locator"
       }
     ],
     "attunement_plan_id": "attune-01",
-    "attunement_plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
-    "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000002",
+    "attunement_plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
+    "configuration": {
+      "configuration_sha256": "bf8a4557c1465ab4bf0e8640be42f65b28e4d65dff5f3147b2892edfe9db31be",
+      "format_version": 1,
+      "query": {
+        "max_batch_rows": 256,
+        "max_elapsed_ms": 30000,
+        "max_memory_bytes": 67108864,
+        "max_output_bytes": 524288,
+        "max_rows": 10000,
+        "max_spill_bytes": 268435456,
+        "max_storage_keys": 100000
+      },
+      "reasoning": {
+        "max_run_elapsed_ms": 900000,
+        "max_step_elapsed_ms": 60000,
+        "max_steps": 256
+      },
+      "recall": {
+        "max_graph_depth": 4,
+        "max_items": 128,
+        "max_output_bytes": 524288,
+        "max_storage_keys": 100000
+      },
+      "revision": 1
+    },
     "contract_version": 1,
     "credential_bytes": 32,
+    "deployment": {
+      "contract_version": 1,
+      "deployment_form": "single_node_server",
+      "endpoint_presentation": "loopback_http_websocket",
+      "storage_profile": "rrflow_kv"
+    },
     "executable_sha256": "0000000000000000000000000000000000000000000000000000000000000028",
     "id": "install-01",
     "inactive_capabilities": [
@@ -229,56 +250,64 @@
     },
     "managed_paths": [
       {
-        "kind": "storage_root",
+        "kind": "estate_directory",
         "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002b",
+        "relative_path": ".rrflow",
+        "removal_rule": "remove_if_owned_and_empty"
+      },
+      {
+        "kind": "storage_directory",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002c",
+        "relative_path": ".rrflow/rrd",
+        "removal_rule": "remove_if_owned_and_empty"
+      },
+      {
+        "kind": "storage_roots_directory",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002d",
+        "relative_path": ".rrflow/rrd/roots",
+        "removal_rule": "remove_if_owned_and_empty"
+      },
+      {
+        "kind": "credential_directory",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002e",
+        "relative_path": ".rrflow/credentials",
+        "removal_rule": "remove_if_owned_and_empty"
+      },
+      {
+        "kind": "storage_root",
+        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002f",
         "relative_path": ".rrflow/rrd/roots/install-01",
-        "removal_rule": "remove_if_owned_digest_matches"
+        "removal_rule": "remove_if_owned_tree_digest_matches"
       },
       {
         "kind": "token_key",
-        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002c",
-        "relative_path": ".rrflow/rrd/roots/install-01/token.key",
+        "precondition_sha256": "0000000000000000000000000000000000000000000000000000000000000030",
+        "relative_path": ".rrflow/rrd/roots/install-01/RRD.TOKEN",
         "removal_rule": "remove_if_owned_digest_matches"
       },
       {
         "kind": "operator_credential",
-        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002d",
+        "precondition_sha256": "0000000000000000000000000000000000000000000000000000000000000031",
         "relative_path": ".rrflow/credentials/local-operator.json",
         "removal_rule": "remove_if_owned_digest_matches"
       },
       {
         "kind": "project_locator",
-        "precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002e",
+        "precondition_sha256": "0000000000000000000000000000000000000000000000000000000000000032",
         "relative_path": ".rrflow/config.toml",
         "removal_rule": "remove_if_owned_digest_matches"
       }
     ],
-    "plan_sha256": "cfbe3e9df83052c88777ef3ff417e33a3d89a934f5405cd1e721161f83cc097d",
+    "plan_sha256": "507ef6a808a95af022c1ff3eaff5a56d6ebea19735505b354bbce2e5246ca68f",
     "product_version": "1.0.0",
     "profile_id": "default",
     "profile_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
     "project_precondition_sha256": "000000000000000000000000000000000000000000000000000000000000002a",
-    "project_root": "/srv/projects/rrflow",
     "storage_root_id": "install-01",
     "target": {
-      "segments": [
-        {
-          "id": "local",
-          "kind": "organization"
-        },
-        {
-          "id": "developer-estate",
-          "kind": "estate"
-        },
-        {
-          "id": "rrflow",
-          "kind": "project"
-        },
-        {
-          "id": "rrflow-dev",
-          "kind": "instance"
-        }
-      ]
+      "estate_id": "developer-estate",
+      "instance_id": "rrflow-dev",
+      "project_id": "rrflow"
     },
     "target_kind": "existing_project"
   },
@@ -289,24 +318,28 @@
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000014"
       },
       {
-        "kind": "create_storage_root",
+        "kind": "create_estate_directories",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000015"
       },
       {
-        "kind": "prepare_credentials",
+        "kind": "create_storage_root",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000016"
       },
       {
-        "kind": "initialize_instance",
+        "kind": "prepare_credentials",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000017"
       },
       {
-        "kind": "create_attunement_job",
+        "kind": "initialize_instance",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000018"
       },
       {
-        "kind": "publish_project_locator",
+        "kind": "create_attunement_job",
         "output_sha256": "0000000000000000000000000000000000000000000000000000000000000019"
+      },
+      {
+        "kind": "publish_project_locator",
+        "output_sha256": "000000000000000000000000000000000000000000000000000000000000001a"
       }
     ],
     "applied_at_unix_ms": 1800000000010,
@@ -318,8 +351,8 @@
     "installed_record_sha256": "000000000000000000000000000000000000000000000000000000000000001f",
     "locator_sha256": "0000000000000000000000000000000000000000000000000000000000000021",
     "plan_id": "install-01",
-    "plan_sha256": "cfbe3e9df83052c88777ef3ff417e33a3d89a934f5405cd1e721161f83cc097d",
-    "result_sha256": "388a873f72d2e4cd9b3e80c3b59d928c8c35a4c59d64b8b1e9875878125a56f2",
+    "plan_sha256": "507ef6a808a95af022c1ff3eaff5a56d6ebea19735505b354bbce2e5246ca68f",
+    "result_sha256": "74c7e6482b4a9451814fa3319eefaa680cc30c2330ddc508225a958195e7c01a",
     "runtime_cursor": 1,
     "runtime_manifest_sha256": "000000000000000000000000000000000000000000000000000000000000001e"
   },
@@ -327,8 +360,8 @@
     "contract_version": 1,
     "expected_job_revision": 3,
     "job_id": "job-01",
-    "last_checkpoint_sha256": "e6b9202facc09231a11c543d657b81d177111a72618a03282b51ab51ffe7db57",
-    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
+    "last_checkpoint_sha256": "e1467c32a58549f9d64466f12ff085e08512d602f57a1c26b894565cbc3efc94",
+    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
     "requested_at_unix_ms": 1800000003001,
     "resume_from_phase": "inventory"
   },
@@ -388,7 +421,7 @@
     "job": {
       "checkpoints": [
         {
-          "checkpoint_sha256": "e6b9202facc09231a11c543d657b81d177111a72618a03282b51ab51ffe7db57",
+          "checkpoint_sha256": "e1467c32a58549f9d64466f12ff085e08512d602f57a1c26b894565cbc3efc94",
           "committed_at_unix_ms": 1800000000101,
           "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000065",
           "contract_version": 1,
@@ -402,7 +435,7 @@
           "job_id": "job-01",
           "output_sha256": "00000000000000000000000000000000000000000000000000000000000000c9",
           "phase": "connect",
-          "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
+          "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
           "sequence": 1
         }
       ],
@@ -418,7 +451,7 @@
         "id": "lease-01"
       },
       "plan_id": "attune-01",
-      "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
+      "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
       "revision": 2,
       "state": "running",
       "updated_at_unix_ms": 1800000002000
@@ -436,11 +469,11 @@
     "contract_version": 1,
     "job_id": "job-01",
     "job_revision": 20,
-    "last_checkpoint_sha256": "e0f7b249fa921434d6788725c32e2560de8c2ce23fe7f9354db01847149f536d",
-    "plan_sha256": "d935ef2d40538eb4bdc45c49ae04fbd714ec8c623716aca0f3d74df9b12503be",
+    "last_checkpoint_sha256": "ac65ce32a7161564316f47877e619cdc80317b880d5c90ffe91d7abbde44225f",
+    "plan_sha256": "3813d050efdd0b627a942a6a7a77b593245afafe222cb99ad336688189e1625d",
     "runtime_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000137",
     "status": "passed",
-    "verification_sha256": "1aaa3d92ebc6136e6c9d0cfde7535e66f186012e880b6e4aff81576724614969",
+    "verification_sha256": "e0a8d9ab4f799b8094aacc956779c1017c8b82563ea2a2833409b43d7c4d4395",
     "verified_at_unix_ms": 1800000020001
   }
 }

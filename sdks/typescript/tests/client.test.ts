@@ -35,7 +35,38 @@ test("public negotiation retries transport loss and validates the ArkType envelo
           protocol_version: 1,
           implementation: "rrd-server",
           implementation_version: "1.0.0",
-          deployment_mode: "local_daemon",
+          deployment: {
+            contract_version: 1,
+            deployment_form: "single_node_server",
+            storage_profile: "rrflow_kv",
+            endpoint_presentation: "loopback_http_websocket",
+          },
+          configuration: {
+            format_version: 1,
+            revision: 1,
+            reasoning: {
+              max_run_elapsed_ms: 900_000,
+              max_steps: 256,
+              max_step_elapsed_ms: 60_000,
+            },
+            recall: {
+              max_graph_depth: 4,
+              max_items: 128,
+              max_output_bytes: 524_288,
+              max_storage_keys: 100_000,
+            },
+            query: {
+              max_storage_keys: 100_000,
+              max_rows: 10_000,
+              max_output_bytes: 524_288,
+              max_batch_rows: 256,
+              max_memory_bytes: 67_108_864,
+              max_spill_bytes: 268_435_456,
+              max_elapsed_ms: 30_000,
+            },
+            configuration_sha256:
+              "bf8a4557c1465ab4bf0e8640be42f65b28e4d65dff5f3147b2892edfe9db31be",
+          },
           instance: { kind: "instance", id: "sdk-test" },
           capabilities: [],
         },
@@ -49,6 +80,8 @@ test("public negotiation retries transport loss and validates the ArkType envelo
   });
   const capabilities = await client.capabilities();
   assert.equal(capabilities.protocol_version, 1);
+  assert.equal(capabilities.deployment.deployment_form, "single_node_server");
+  assert.equal(capabilities.configuration.reasoning.max_run_elapsed_ms, 900_000);
   assert.equal(attempts, 2);
 });
 

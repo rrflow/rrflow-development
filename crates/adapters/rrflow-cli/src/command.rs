@@ -222,6 +222,9 @@ pub enum InstallAction {
         mode: InstallMode,
         #[arg(long, default_value = "default")]
         profile: String,
+        /// Operator-authored estate ceilings sealed into the installation plan.
+        #[arg(long)]
+        configuration: Option<std::path::PathBuf>,
         /// Debug-test surrogate for the distribution executable.
         #[arg(long = "test-distribution-executable", hide = true)]
         test_distribution_executable: Option<std::path::PathBuf>,
@@ -454,12 +457,20 @@ impl Command {
                         project,
                         mode,
                         profile,
+                        configuration,
                         test_distribution_executable,
                     },
             } => vec![
                 format!("project={}", project.display()),
                 format!("mode={mode:?}"),
                 format!("profile={profile}"),
+                format!(
+                    "configuration={}",
+                    configuration.as_deref().map_or_else(
+                        || "bundled-default".into(),
+                        |path| path.display().to_string()
+                    )
+                ),
                 format!(
                     "test_distribution_executable={}",
                     test_distribution_executable

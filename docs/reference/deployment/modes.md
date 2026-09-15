@@ -1,6 +1,6 @@
 # RRFlow deployment profiles
 
-**Status:** active accepted deployment classification; implementation convergence is incomplete
+**Status:** active accepted deployment classification; typed discovery implemented, full conformance remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/deployment/modes`
 **Owner:** deployment-form, storage-profile, and endpoint-presentation combinations plus their conformance boundaries
 
@@ -73,9 +73,12 @@ stamps, evidence, and commit semantics.
 
 Gate D-01 selects the complete profile during preview/apply and commits it in
 the installed project-estate-instance binding. Startup resolves that binding
-read-only. The composition root supplies the resolved descriptor to
-`RrdEngine` and outward transports; no component may reconstruct it from
-incidental facts.
+read-only. The current canonical install profile selects
+`single_node_server` + `rrflow_kv` + `loopback_http_websocket`; engine
+constructors expose only the storage profile they actually own. An embedded or
+server composition supplies deployment form, and the server supplies endpoint
+presentation from the actual bound listener address. No component reconstructs
+storage or process form from incidental facts.
 
 In particular:
 
@@ -87,7 +90,7 @@ In particular:
 - compiled enum variants cannot advertise unavailable cluster or artifact
   behavior.
 
-The target public capability descriptor reports these facts independently:
+The public capability descriptor now reports these facts independently:
 
 ```text
 installed instance/project/estate identity
@@ -98,11 +101,12 @@ security/configuration/capability revisions and digests
 available operation and resource-limit capabilities
 ```
 
-The exact Rust type split and wire encoding are frozen during A-07 after the
-complete naming and generated-surface inventory. The semantic rule is already
-fixed: the existing scalar `deployment_mode` field must not survive as an
-ambiguous authority, and unavailable combinations must not be emitted as
-active capability values.
+The exact v1 Rust/wire fields are `DeploymentProfile { contract_version,
+deployment_form, storage_profile, endpoint_presentation }`. Strict decoding
+rejects the removed scalar `deployment_mode`; OpenAPI and the TypeScript
+projection are generated from the same owner. This implemented vocabulary does
+not close A-07 or the profile conformance matrix, and unavailable combinations
+must not be emitted as active capability values.
 
 ## One engine flow in every profile
 
@@ -197,9 +201,9 @@ boundary.
 
 | Current implementation | Characterized behavior worth retaining | Required direct convergence |
 |---|---|---|
-| `rrd_contract::DeploymentMode::{RrflowMx, Embedded, LocalDaemon, Edge, Remote, Distributed}` and `ServiceCapabilities::deployment_mode` | Closed decoding, deterministic capability serialization, and generated-client projection. | Split the storage, deployment-form, and endpoint facts; remove artifact/client-relative/speculative values from the active profile field; regenerate every SDK from the one contract with no alias. |
-| `RrdEngine::deployment_mode()` | Deterministically reports `RrflowMx` without a persistent root and `Embedded` with one. | Remove inference from storage-root presence. The installed composition root supplies the explicit profile descriptor. |
-| `rrd-server::http::capabilities` | Reports a deterministic current capability response. | Remove `Remote` versus `LocalDaemon` inference from the TLS flag. Project the installed deployment form, selected storage profile, active endpoints, and security capability independently. |
+| `DeploymentProfile`, `InstalledEstateIdentity`, and `ServiceCapabilities::{deployment,installed_estate,configuration}` | Strict independent axes, identity/configuration validation, generated OpenAPI/TypeScript projection, and rejection of the removed scalar now pass. | Retain this as the sole contract while A-07 removes remaining conflicting topology vocabulary and H-04 qualifies every generated client against a real installed process. |
+| `RrdEngine::storage_profile_kind` | MX and KV constructors now report only the explicit storage axis and never infer process form from root presence. Installed open also binds identity and configuration; the outward composition owns form and endpoint. | Carry the installed descriptor into every remaining raw-root/legacy composition and remove their creation authority; complete the full semantic differential. |
+| `rrd-server::http::capabilities` | Reports single-node form, engine-selected storage, endpoint presentation from the bound address, installed identity when present, and effective ceilings. TLS no longer selects a database mode. | Qualify configured network listeners and every active presentation; do not count a raw-root standalone fixture as the installed product proof. |
 | `rrd-deployment-conformance-v1.json` and contract validation | Strictly validates a versioned fixture with unique non-empty document IDs, bounds, and expected output membership. | Replace the overclaimed shared-deployment meaning with the layered semantic, form, transport, durability, and artifact corpora above. |
 | engine deployment tests | Exercise one schema plus two records on rrflowMX and rrflowKV, run one exact-ID rrflowQL query through the current DataFusion executor, reject a durability operation on rrflowMX, deny a second rrflowKV writer, and reopen at cursor three. | Retain this as a seed characterization only. It does not prove streaming/pushdown, native graph/index/vector access, complete semantic parity, failure atomicity, reasoning, or resource bounds. |
 | Rust client loopback and mutual-TLS tests | Exercise real sockets and verify selected TLS identity behavior. | Stop deriving a database mode from TLS. Run the complete cross-surface corpus against an installed real process. |
@@ -213,9 +217,9 @@ commit. Logs and traces observe that commit and never manufacture it.
 
 ## Direct-convergence sequence
 
-1. **A-07:** freeze the three coordinates and their exact public/internal
-   vocabulary; split the contract module mechanically; inventory and remove
-   every ambiguous current mode and generated projection without a shim.
+1. **A-07/D-01 foundation:** retain the now-frozen three-coordinate contract
+   and generated projection; finish the inventory and remove remaining
+   ambiguous topology/composition callers without a shim.
 2. **B-04/H-04:** expose the structured installed descriptor and run one
    operation catalogue across HTTP, WebSocket, SDK, MCP, CLI, and Connectome.
 3. **C-02 through C-04:** prove the full semantic differential on rrflowMX and

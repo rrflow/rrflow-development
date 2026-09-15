@@ -1,6 +1,6 @@
 # RRFlow instance topology
 
-**Status:** active accepted logical and physical topology; implementation convergence is incomplete
+**Status:** active accepted logical and physical topology; canonical installed identity implemented, direct convergence remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/architecture/instance-topology`
 **Owner:** project, estate, RRD instance, environment, deployment, and physical-placement relationships
 **Decision:** [`../decisions/0001-single-engine-authority.md`](../decisions/0001-single-engine-authority.md)
@@ -151,10 +151,10 @@ or change an installed topology. Installation has two distinct layers:
    second project model.
 2. A canonical installed-estate binding is committed through `RrdEngine`. It
    binds the stable instance, estate, and project identities to the selected
-   deployment form, storage profile, endpoint presentations, admitted project
-   root, installed
-   configuration/template/attunement revisions, and security authority. Host
-   paths and endpoints are locators/evidence, never identities or authorization.
+   deployment form, storage profile, endpoint presentations, project-inventory
+   precondition, installed configuration/template/attunement revisions, and
+   security authority. The project-local locator uses relative paths; absolute
+   host paths and endpoints are never identities or authorization.
 
 The exact serialized fields remain owned by D-01. The semantic requirements do
 not: a valid binding must make the following checks possible before ordinary
@@ -164,7 +164,7 @@ state is read or changed.
 |---|---|
 | Locator format/profile is supported and its referenced installation exists. | Fail closed; startup must not create or repair it. |
 | Instance, estate, and project identities match the canonical binding. | Fail closed without opening another scope. |
-| The requested project root is the exact admitted root; nested, neighboring, symlink-escaped, mount-escaped, and foreign stores are rejected. | Fail before project content or rrflowDB state is mutated. |
+| The requested directory contains the locator and every referenced path remains inside it; nested, neighboring, symlink-escaped, mount-escaped, and foreign stores are rejected. | Fail before project content or rrflowDB state is mutated. |
 | Configuration, template, attunement profile, and security revisions match their committed digests. | Require an explicit preview/apply reconfiguration operation. |
 | Credential reference resolves and the authenticated principal is authorized for the requested operation/resource. | Deny without falling back to anonymous or provider identity. |
 | Selected storage profile satisfies the requested durability capability. | Return an explicit unsupported-capability result; never silently switch profiles. |
@@ -174,12 +174,14 @@ this installed binding read-only and then opens the one engine. No client or
 daemon startup path may call an `ensure`, `initialize`, `load-or-create`, or
 directory-derived identity function to manufacture installation authority.
 
-Project relocation, data-root relocation, profile changes, and endpoint changes
-are explicit previewed operations with a new plan digest. They validate source
-and target containment, preserve stable semantic identities where authorized,
-commit the new binding and evidence atomically, and leave the old locator
-unusable. RRFlow 1.0 has no successful earlier manifest reader, implicit
-migration, or read-old/write-new branch.
+Moving the complete project tree does not rename its project, estate, or
+instance and does not require an absolute-path rewrite. Relocating only the
+data root, changing profile or endpoints, or rebinding project content is an
+explicit previewed operation with a new plan digest. It validates containment,
+preserves stable semantic identities where authorized, commits the new binding
+and evidence atomically, and leaves the old locator unusable. RRFlow 1.0 has no
+successful earlier manifest reader, implicit migration, or read-old/write-new
+branch.
 
 ## Routing and authorization
 
@@ -227,6 +229,7 @@ establish the accepted topology.
 
 | Current construct | Useful behavior to preserve | Conflict to remove directly |
 |---|---|---|
+| `InstalledEstateIdentity`, `EstateLayout`, and `.rrflow/config.toml` | The new install plan carries distinct project/estate/instance IDs, eight ordered project-relative managed paths, no fabricated organization or absolute host path, and one locator bound to an engine-owned installed record/configuration. Exact apply/open/verify and legacy-collision tests pass. | This is the canonical destination but not full D-01: interrupted apply, legacy-manifest removal, remaining raw-root callers, hostile pathname replacement, and native-platform qualification remain open. |
 | `InstanceManifest`, `InstanceMode::Dedicated`, and `.rrflow/instance.toml` | Strict unknown-field/version rejection, create-new publication, canonical instance IDs, exact-root discovery, and rejection of nested/neighbor projects. | It is a second installer with frozen compatibility fields, lacks estate/project/environment semantics, and lets server/CLI/test startup create authority outside D-01. Replace it with the one locator plus installed binding; retain no reader or alias. |
 | `ProjectAuthorityBinding` at `server/state/project-authority/{instance}` | Digest validation, exact canonical root/store checking, and refusal to rebind a foreign store. | It stores absolute paths and manifest shape in a JSON control value, omits accepted installation/security revisions, is rrflowKV-specific, and is committed through a private control transition with fabricated invocation coordinates. Replace it with a semantic installed binding committed through the normal transaction. |
 | `RrdEngine::open_project_store`, `open_bound`, and `bind_project_authority` | One composition point opens storage and checks binding before use. | Opening is coupled to `.rrflow/rrd`, normal startup can create token material, and binding is not proven equivalent across MX/KV or authorized through the installed operation. |
@@ -249,11 +252,12 @@ defect, not proof of canonical terminology.
    topology relations, audit, outbox, and runtime log through the same
    authorized semantic transaction on rrflowMX and rrflowKV. Remove private
    JSON control authority rather than wrapping it.
-3. **D-01 install:** introduce the bundle-resident `.rrflow/config.toml`
-   template and canonical installed-estate binding; make preview side-effect
-   free and apply the sole creator. Remove `.rrflow/instance.toml`,
-   `InstanceManifest`, `rrd-server initialize`, and every `ensure_dedicated*`
-   success path in the same convergence package.
+3. **D-01 install:** retain the implemented bundle-resident configuration,
+   portable `.rrflow/config.toml`, canonical installed-estate identity, no-write
+   preview, and exact apply/open boundary. In the next bounded package, prove
+   interruption recovery and replacement parity, then remove
+   `.rrflow/instance.toml`, `InstanceManifest`, `rrd-server initialize`, and
+   every `ensure_dedicated*` success path without a compatibility lane.
 4. **D-02/D-03 attunement:** persist jobs and commit the bounded project tree
    using the installed root and stable project/estate identities. Environments,
    workspaces, and external systems enter only as evidenced project data or

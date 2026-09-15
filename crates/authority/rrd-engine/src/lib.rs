@@ -19,14 +19,15 @@ pub use capabilities::product_capability_catalogue;
 pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQueryResult};
 #[cfg(feature = "full")]
 pub use engine::{
-    load_or_create_api_key, load_or_create_token_key, AuthorizedInvocation, DefaultAttunementPhase,
-    DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute, EstateAdminAction,
-    EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome, InstallationPreview,
-    InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
-    InstalledEstateRecord, Invocation, InvocationCompletion, InvocationCredential,
-    PreparedDistributedAuthority, ProjectLocator, Result, RrdEngine, RrdOperation,
-    SecurityBootstrapOutcome, ServiceError, ServiceErrorKind, API_KEY_HEX_BYTES,
-    MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
+    load_estate_configuration, load_or_create_api_key, load_or_create_token_key,
+    AuthorizedInvocation, DefaultAttunementPhase, DefaultInstallProfile, DistributedAuthorityRead,
+    DistributedReadRoute, EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome,
+    EstateReconcileOutcome, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    Invocation, InvocationCompletion, InvocationCredential, PreparedDistributedAuthority,
+    ProjectLocator, Result, RrdEngine, RrdOperation, SecurityBootstrapOutcome, ServiceError,
+    ServiceErrorKind, API_KEY_HEX_BYTES, MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES,
+    TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{

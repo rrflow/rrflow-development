@@ -63,7 +63,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b`.
+`0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface. Neither the protocol number nor the product
 version may be changed merely to describe implementation progress.
@@ -110,22 +110,18 @@ endpoint presentation: in_process | loopback_http_websocket |
                        network_http_websocket
 ```
 
-Current code has one `DeploymentMode` enum containing `rrflow_mx`, `embedded`,
-`local_daemon`, `edge`, `remote`, and `distributed`. That list is conflicting
-pre-release implementation inventory: it mixes a storage profile, deployment
-forms, a derived artifact, a client-relative location, and an unavailable
-cluster claim. A-07 removes that scalar classification directly and freezes
-the structured contract with no forwarding field or successful old-shape
-decoder.
+The former `DeploymentMode` scalar has been removed. Strict decoding rejects
+its `deployment_mode` field and its mixed `rrflow_mx`, `embedded`,
+`local_daemon`, `edge`, `remote`, and `distributed` values. The current
+`DeploymentProfile` instead binds `contract_version`, `deployment_form`,
+`storage_profile`, and `endpoint_presentation`. `ServiceCapabilities` also
+projects the optional installed project/estate/instance identity and complete
+effective `EstateConfiguration` revision/digest.
 
-`ServiceCapabilities` currently binds protocol and implementation identity,
-one ambiguous deployment mode, one instance resource, sorted versioned
-capability descriptors, and the cross-surface `ProductCapabilityCatalogue`.
-The target descriptor instead projects the explicitly installed deployment
-form, storage profile, active endpoint presentations, security/configuration
-revisions, and available operations independently. It is supplied by the
-installed composition root; neither the engine nor server infers it from a
-storage root, TLS, address, or caller location. Each capability must still say
+The installed composition root supplies identity, storage, and configuration;
+the server supplies endpoint presentation from the actual bound address.
+Neither engine nor server infers a database kind from TLS, address, caller
+location, or persistence alone. Each capability must still say
 whether it is unavailable, experimental, or available and may publish bounded
 limits plus an honest limitation. Product capabilities enumerate engine,
 rrflowQL, GraphQL, HTTP, WebSocket, gRPC, MCP, CLI, SDK, and Connectome
@@ -205,13 +201,15 @@ not currently reject:
 
 These are pre-release conflicts, not supported compatibility promises. They
 are recorded in the [POA&M](../../poam/rrflow-1.0-alpha.md) for traceable direct
-convergence through A-07 and the owning C/H/J gates. They are deliberately not
-silently repaired during this KB-05 documentation-classification package.
+convergence through A-07 and the owning C/H/J gates. They remain separate
+tracked convergence work and are deliberately not silently repaired by this
+D-01 estate/configuration slice.
 
 ## Current evidence
 
 | Evidence | What it establishes | What it does not establish |
 |---|---|---|
+| `cargo test -p rrd-contract --test deployment_configuration_contract --locked` | Strict project/estate/instance identity, valid deployment combinations, configuration maxima/digest, and rejection of unknown or old scalar fields. | Installation, runtime enforcement, reasoning execution, or profile equivalence. |
 | `cargo test -p rrd-contract --test public_contract --locked` | Strict selected wire shapes, bounds, 33-operation catalogue, one generic WebSocket descriptor, OpenAPI digest, deployment/SDK corpus validation, and selected cross-language digest vectors. | Server dispatch, storage semantics, DataFusion streaming, native indexes, reasoning execution, or all-language SDK conformance. |
 | `cargo test -p rrd-contract --test signal_catalogue_projection --locked` | Exact kernel-to-OpenAPI catalogue/fingerprint equality, 4/9/22 closure, and a discovery-only field boundary. | Signal emission, level activation, propagation, export, diagnostic parity, overhead, or engine behavior. |
 | `cargo test -p rrd-contract --test websocket_contract --locked` | The B-04 golden frame contract, sender directions, sequence and connection integrity, exact correlations/resume coordinates, negotiated/hard resource limits, and malformed/unknown representation rejection. | H-04 operation execution, generated-language carriage, or release qualification. |
@@ -224,6 +222,8 @@ silently repaired during this KB-05 documentation-classification package.
 
 - Shared wire types, validation, catalogue, and OpenAPI projection:
   `crates/transport/rrd-contract/src/lib.rs`
+- Installed identity, deployment, and effective-configuration contract:
+  `crates/transport/rrd-contract/src/deployment.rs`
 - Signal semantic owner: `crates/kernel/rrd-core/src/telemetry.rs`
 - Private generated contract projection:
   `crates/transport/rrd-contract/src/generated/signal_catalogue.rs`

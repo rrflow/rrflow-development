@@ -1,6 +1,6 @@
 # RRFlow Connectome client contract
 
-**Status:** active target client contract; the separate checkout is partial non-conforming implementation inventory
+**Status:** active target client contract; canonical RRFlow discovery handoff exists, separate checkout remains non-conforming
 **Coordinate:** `rrflow://rrflow-instance/data/reference/client/connectome`
 **Owner:** Connectome connection, projection, interaction, local-state, and conformance requirements
 
@@ -111,6 +111,36 @@ Navigation and controls are derived from the validated operation and product
 capability catalogue. An unavailable capability is absent or explicitly marked
 unavailable with its stated limitation. A planned type, a client implementation,
 or a familiar inherited screen cannot make it available.
+
+The current generated handoff is:
+
+```text
+ServiceCapabilities
+  installed_estate? { project_id, estate_id, instance_id }
+  deployment {
+    contract_version, deployment_form, storage_profile,
+    endpoint_presentation
+  }
+  configuration {
+    format_version, revision, configuration_sha256,
+    reasoning { max_run_elapsed_ms, max_steps, max_step_elapsed_ms },
+    recall { max_graph_depth, max_items, max_output_bytes, max_storage_keys },
+    query { max_storage_keys, max_rows, max_output_bytes, max_batch_rows,
+            max_memory_bytes, max_spill_bytes, max_elapsed_ms }
+  }
+  capabilities[]
+  product_capabilities
+```
+
+`installed_estate` is required for the D-01-installed product even though the
+field remains optional for embedded/test compositions. Connectome must reject
+an identity mismatch between it and `instance`. It renders the effective
+configuration revision and ceilings but never edits `.rrflow/config.toml` or
+assumes that a ceiling activates a feature. In particular,
+`governed-reasoning-runner` is currently unavailable; its configured limits
+support future plan/apply and UI preparation, not a success badge. Context and
+query controls must default at or below the advertised estate ceilings rather
+than blindly sending the protocol hard maximum.
 
 ## One object, many bounded lenses
 
@@ -260,7 +290,7 @@ H-06.
 |---|---|---|
 | Separate React/Tauri repository and production build | Connectome remains independently built and released. | The production bundle still carries SurrealDB client/UI/CBOR/Wasm aliases, QL Wasm packages, inherited surfaces, and multi-megabyte chunks. They are removed when the corresponding RRFlow surface exists; no compatibility or migration mode survives. |
 | `src-tauri/src/rrd/client.rs` and `transport.rs` | Native loopback validation, redirect denial, response limits, one authenticated session, and explicit close have four passing focused tests. | The client handwrites a partial RRD contract, exposes generic JSON, supports only capabilities/session/diagnostics/context, has no network TLS or WebSocket path, and is not generated from or conformed against the shared public contract/SDK corpus. |
-| `src/rrflow/runtime.ts` | Bounded URL construction and response-shape checks are useful client defenses. | It duplicates protocol truth and consumes the superseded scalar deployment list (`memory`, `embedded`, `local_daemon`, `edge`, `remote`, `distributed`) rather than the structured descriptor. |
+| `src/rrflow/runtime.ts` | Bounded URL construction and response-shape checks are useful client defenses. | It duplicates protocol truth and consumes the now-rejected scalar deployment list (`memory`, `embedded`, `local_daemon`, `edge`, `remote`, `distributed`). Replace it from generated RRFlow OpenAPI digest `0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040`; retain no fallback decoder. |
 | `src/rrflow/attunement.ts` and runtime-connection UI | The eleven phase names and honest progress presentation can be projected from RRD. | The client duplicates attunement phases, estimates, trigger/routine/hook/skill definitions, status, and static automation rows. All lifecycle state must come from public engine job records and capabilities. |
 | `src/rrflow/diagnostics.ts` | A detailed trace/run inspector remains a required view. | It defines a retired diagnostics protocol, provider-flight state and runners, and private `/api/*` routes. This is a parallel diagnostics/reasoning lifecycle and is removed directly. |
 | `src/rrflow/control-plane.ts` | Multi-instance navigation remains a valid client use case. | It invents a client-owned `rrflow-control` protocol and managed-instance state without an accepted engine/fleet contract. It cannot be treated as current RRFlow capability. |
@@ -277,8 +307,10 @@ prove a compilable, renderable, partially connected rough draft only.
 Implementation remains one reviewed package at a time in the separate
 Connectome repository:
 
-1. Generate or consume one qualified public RRD client surface and delete the
-   handwritten/old-vocabulary contract branches in the same package.
+1. Generate or consume one qualified public RRD client surface at the exact
+   OpenAPI digest above; implement the structured identity/deployment/
+   configuration bootstrap and delete handwritten/old-vocabulary branches in
+   the same package.
 2. Implement the native credential, endpoint, HTTP/WebSocket, session,
    cancellation, retry/uncertainty, and W3C propagation boundary; keep the
    renderer outside the secret boundary.

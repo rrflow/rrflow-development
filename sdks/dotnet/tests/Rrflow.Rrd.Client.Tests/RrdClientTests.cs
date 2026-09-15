@@ -35,7 +35,43 @@ public sealed class RrdClientTests
                     ["protocol_version"] = 1,
                     ["implementation"] = "rrd-server",
                     ["implementation_version"] = "1.0.0",
-                    ["deployment_mode"] = "local_daemon",
+                    ["deployment"] = new Dictionary<string, object?>
+                    {
+                        ["contract_version"] = 1,
+                        ["deployment_form"] = "single_node_server",
+                        ["storage_profile"] = "rrflow_kv",
+                        ["endpoint_presentation"] = "loopback_http_websocket",
+                    },
+                    ["configuration"] = new Dictionary<string, object?>
+                    {
+                        ["format_version"] = 1,
+                        ["revision"] = 1,
+                        ["reasoning"] = new Dictionary<string, object?>
+                        {
+                            ["max_run_elapsed_ms"] = 900_000,
+                            ["max_steps"] = 256,
+                            ["max_step_elapsed_ms"] = 60_000,
+                        },
+                        ["recall"] = new Dictionary<string, object?>
+                        {
+                            ["max_graph_depth"] = 4,
+                            ["max_items"] = 128,
+                            ["max_output_bytes"] = 524_288,
+                            ["max_storage_keys"] = 100_000,
+                        },
+                        ["query"] = new Dictionary<string, object?>
+                        {
+                            ["max_storage_keys"] = 100_000,
+                            ["max_rows"] = 10_000,
+                            ["max_output_bytes"] = 524_288,
+                            ["max_batch_rows"] = 256,
+                            ["max_memory_bytes"] = 67_108_864,
+                            ["max_spill_bytes"] = 268_435_456,
+                            ["max_elapsed_ms"] = 30_000,
+                        },
+                        ["configuration_sha256"] =
+                            "bf8a4557c1465ab4bf0e8640be42f65b28e4d65dff5f3147b2892edfe9db31be",
+                    },
                     ["instance"] = new Dictionary<string, object?>
                     {
                         ["kind"] = "instance",
@@ -47,6 +83,9 @@ public sealed class RrdClientTests
         using RrdClient client = Client(handler);
         JsonElement capabilities = await client.CapabilitiesAsync(TestContext.Current.CancellationToken);
         Assert.Equal(1, capabilities.GetProperty("protocol_version").GetInt32());
+        Assert.Equal(
+            "single_node_server",
+            capabilities.GetProperty("deployment").GetProperty("deployment_form").GetString());
         Assert.Equal(2, attempts);
     }
 

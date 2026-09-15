@@ -75,6 +75,7 @@ impl RrdEngine {
         request
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        self.enforce_recall_configuration("memory.context.assemble", request)?;
         let (security_policy_revision, authorization_sha256) = authorization.map_or_else(
             || {
                 Ok((

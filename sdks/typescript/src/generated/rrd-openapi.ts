@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b
+// OpenAPI SHA-256: 0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -3063,8 +3063,80 @@ export interface operations {
                                     /** @enum {string} */
                                     status: "unavailable" | "experimental" | "available";
                                 }[];
-                                /** @enum {string} */
-                                deployment_mode: "rrflow_mx" | "embedded" | "local_daemon" | "edge" | "remote" | "distributed";
+                                /**
+                                 * @description Effective, immutable configuration bound to an installation plan and
+                                 *     surfaced to every client. Mutating it requires a future governed
+                                 *     configure-plan/configure-apply operation.
+                                 */
+                                configuration: {
+                                    configuration_sha256: string;
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    query: {
+                                        /** Format: uint64 */
+                                        max_batch_rows: number;
+                                        /**
+                                         * Format: uint64
+                                         * @default 30000
+                                         */
+                                        max_elapsed_ms: number;
+                                        /**
+                                         * Format: uint64
+                                         * @default 67108864
+                                         */
+                                        max_memory_bytes: number;
+                                        /** Format: uint64 */
+                                        max_output_bytes: number;
+                                        /** Format: uint64 */
+                                        max_rows: number;
+                                        /**
+                                         * Format: uint64
+                                         * @default 268435456
+                                         */
+                                        max_spill_bytes: number;
+                                        /** Format: uint64 */
+                                        max_storage_keys: number;
+                                    };
+                                    reasoning: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Wall-clock ceiling for a future governed reasoning run. This is not a
+                                         *     limit on private analysis performed before a durable/effect boundary.
+                                         */
+                                        max_run_elapsed_ms: number;
+                                        /** Format: uint64 */
+                                        max_step_elapsed_ms: number;
+                                        /** Format: uint64 */
+                                        max_steps: number;
+                                    };
+                                    recall: {
+                                        /** Format: uint8 */
+                                        max_graph_depth: number;
+                                        /** Format: uint64 */
+                                        max_items: number;
+                                        /** Format: uint64 */
+                                        max_output_bytes: number;
+                                        /** Format: uint64 */
+                                        max_storage_keys: number;
+                                    };
+                                    /** Format: uint64 */
+                                    revision: number;
+                                };
+                                /**
+                                 * @description Actual service composition. The three axes cannot be collapsed into one
+                                 *     mode because storage, process shape, and listener reachability vary
+                                 *     independently.
+                                 */
+                                deployment: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** @enum {string} */
+                                    deployment_form: "embedded" | "single_node_server" | "clustered_server";
+                                    /** @enum {string} */
+                                    endpoint_presentation: "in_process" | "loopback_http_websocket" | "network_http_websocket";
+                                    /** @enum {string} */
+                                    storage_profile: "rrflow_mx" | "rrflow_kv";
+                                };
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -3073,6 +3145,33 @@ export interface operations {
                                  */
                                 implementation: string;
                                 implementation_version: string;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                installed_estate?: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    estate_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                } | null;
                                 instance: {
                                     /**
                                      * @description A canonical public identifier component.
@@ -3155,8 +3254,80 @@ export interface operations {
                                     /** @enum {string} */
                                     status: "unavailable" | "experimental" | "available";
                                 }[];
-                                /** @enum {string} */
-                                deployment_mode: "rrflow_mx" | "embedded" | "local_daemon" | "edge" | "remote" | "distributed";
+                                /**
+                                 * @description Effective, immutable configuration bound to an installation plan and
+                                 *     surfaced to every client. Mutating it requires a future governed
+                                 *     configure-plan/configure-apply operation.
+                                 */
+                                configuration: {
+                                    configuration_sha256: string;
+                                    /** Format: uint16 */
+                                    format_version: number;
+                                    query: {
+                                        /** Format: uint64 */
+                                        max_batch_rows: number;
+                                        /**
+                                         * Format: uint64
+                                         * @default 30000
+                                         */
+                                        max_elapsed_ms: number;
+                                        /**
+                                         * Format: uint64
+                                         * @default 67108864
+                                         */
+                                        max_memory_bytes: number;
+                                        /** Format: uint64 */
+                                        max_output_bytes: number;
+                                        /** Format: uint64 */
+                                        max_rows: number;
+                                        /**
+                                         * Format: uint64
+                                         * @default 268435456
+                                         */
+                                        max_spill_bytes: number;
+                                        /** Format: uint64 */
+                                        max_storage_keys: number;
+                                    };
+                                    reasoning: {
+                                        /**
+                                         * Format: uint64
+                                         * @description Wall-clock ceiling for a future governed reasoning run. This is not a
+                                         *     limit on private analysis performed before a durable/effect boundary.
+                                         */
+                                        max_run_elapsed_ms: number;
+                                        /** Format: uint64 */
+                                        max_step_elapsed_ms: number;
+                                        /** Format: uint64 */
+                                        max_steps: number;
+                                    };
+                                    recall: {
+                                        /** Format: uint8 */
+                                        max_graph_depth: number;
+                                        /** Format: uint64 */
+                                        max_items: number;
+                                        /** Format: uint64 */
+                                        max_output_bytes: number;
+                                        /** Format: uint64 */
+                                        max_storage_keys: number;
+                                    };
+                                    /** Format: uint64 */
+                                    revision: number;
+                                };
+                                /**
+                                 * @description Actual service composition. The three axes cannot be collapsed into one
+                                 *     mode because storage, process shape, and listener reachability vary
+                                 *     independently.
+                                 */
+                                deployment: {
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** @enum {string} */
+                                    deployment_form: "embedded" | "single_node_server" | "clustered_server";
+                                    /** @enum {string} */
+                                    endpoint_presentation: "in_process" | "loopback_http_websocket" | "network_http_websocket";
+                                    /** @enum {string} */
+                                    storage_profile: "rrflow_mx" | "rrflow_kv";
+                                };
                                 /**
                                  * @description A canonical public identifier component.
                                  *
@@ -3165,6 +3336,33 @@ export interface operations {
                                  */
                                 implementation: string;
                                 implementation_version: string;
+                                /**
+                                 * @description Stable project-local identity. Organization is deliberately absent: a
+                                 *     local installation must not fabricate a tenant merely to address itself.
+                                 */
+                                installed_estate?: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    estate_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    instance_id: string;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    project_id: string;
+                                } | null;
                                 instance: {
                                     /**
                                      * @description A canonical public identifier component.

@@ -1,4 +1,5 @@
 use super::*;
+use crate::ServiceErrorKind;
 use std::collections::BTreeMap;
 
 use rrd_contract::{
@@ -163,8 +164,8 @@ fn rrflow_mx_and_rrflow_kv_composition_roots_pass_one_datafusion_corpus() {
     let rrflow_mx = RrdEngine::rrflow_mx(instance(), TOKEN_KEY);
     assert!(!rrflow_mx.has_persistent_root());
     assert_eq!(
-        rrflow_mx.deployment_mode(),
-        rrd_contract::DeploymentMode::RrflowMx
+        rrflow_mx.storage_profile_kind(),
+        rrd_contract::StorageProfileKind::RrflowMx
     );
     assert_eq!(
         rrflow_mx.readiness(1).unwrap().backend.as_str(),
@@ -176,8 +177,8 @@ fn rrflow_mx_and_rrflow_kv_composition_roots_pass_one_datafusion_corpus() {
     let embedded = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
     assert!(embedded.has_persistent_root());
     assert_eq!(
-        embedded.deployment_mode(),
-        rrd_contract::DeploymentMode::Embedded
+        embedded.storage_profile_kind(),
+        rrd_contract::StorageProfileKind::RrflowKv
     );
     assert_eq!(embedded.readiness(1).unwrap().backend.as_str(), "rrflow_kv");
     assert!(RrdEngine::open(root.path(), instance(), TOKEN_KEY).is_err());
@@ -186,6 +187,41 @@ fn rrflow_mx_and_rrflow_kv_composition_roots_pass_one_datafusion_corpus() {
 
     let reopened = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
     assert_eq!(reopened.readiness(1).unwrap().runtime_cursor, 3);
+}
+
+#[test]
+fn configured_query_ceiling_rejects_excess_work_as_resource_exhaustion() {
+    let engine = RrdEngine::rrflow_mx(instance(), TOKEN_KEY);
+    let lease = engine
+        .create_session(
+            &session_request(5_000, 1),
+            &id("configuration-limit-session"),
+            1_000,
+            "request-configuration-limit-session",
+            "operation-configuration-limit-session",
+        )
+        .unwrap();
+    let budget = QueryBudget {
+        max_rows: engine.estate_configuration().query.max_rows + 1,
+        ..QueryBudget::default()
+    };
+    let error = engine
+        .execute_query(
+            &lease.session_id,
+            &lease.token,
+            &ExecuteQuery {
+                scope: format!("instance:{}", instance()),
+                query: "SELECT * FROM document".into(),
+                parameters: BTreeMap::new(),
+                budget,
+            },
+            1_100,
+            "request-configuration-limit-query",
+            "operation-configuration-limit-query",
+        )
+        .unwrap_err();
+    assert_eq!(error.kind(), ServiceErrorKind::ResourceExhausted);
+    assert!(matches!(error, ServiceError::ConfigurationLimit(_)));
 }
 
 #[test]

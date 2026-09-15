@@ -5,8 +5,8 @@
 //! authority that may persist transitions and checkpoints.
 
 use crate::{
-    invalid, sha256_bytes, validate_sha256, CanonicalId, MemorySeatDefinition, ResourceKind,
-    ResourcePath, Result, SecurityAction,
+    invalid, sha256_bytes, validate_sha256, CanonicalId, DeploymentProfile, EstateConfiguration,
+    InstalledEstateIdentity, MemorySeatDefinition, Result, SecurityAction,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -87,6 +87,7 @@ pub enum InstallationTargetKind {
 #[serde(rename_all = "snake_case")]
 pub enum InstallationActionKind {
     ValidateProject,
+    CreateEstateDirectories,
     CreateStorageRoot,
     PrepareCredentials,
     InitializeInstance,
@@ -128,6 +129,10 @@ impl InstallationPlanAction {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum InstallationManagedPathKind {
+    EstateDirectory,
+    StorageDirectory,
+    StorageRootsDirectory,
+    CredentialDirectory,
     StorageRoot,
     TokenKey,
     OperatorCredential,
@@ -138,6 +143,8 @@ pub enum InstallationManagedPathKind {
 #[serde(rename_all = "snake_case")]
 pub enum InstallationRemovalRule {
     RemoveIfOwnedDigestMatches,
+    RemoveIfOwnedTreeDigestMatches,
+    RemoveIfOwnedAndEmpty,
 }
 
 /// One RRFlow-owned path whose state is bound by the preview. The path is
@@ -168,16 +175,16 @@ impl InstallationManagedPath {
 pub struct InstallationPlan {
     pub contract_version: u16,
     pub id: CanonicalId,
-    pub target: ResourcePath,
+    pub target: InstalledEstateIdentity,
     pub target_kind: InstallationTargetKind,
+    pub deployment: DeploymentProfile,
     pub product_version: String,
     pub executable_sha256: String,
     pub profile_id: CanonicalId,
     pub profile_sha256: String,
-    pub project_root: String,
     pub project_precondition_sha256: String,
     pub storage_root_id: CanonicalId,
-    pub configuration_sha256: String,
+    pub configuration: EstateConfiguration,
     pub initial_seat: MemorySeatDefinition,
     pub initial_principal_id: CanonicalId,
     pub initial_grants: Vec<SecurityAction>,
@@ -193,19 +200,16 @@ pub struct InstallationPlan {
 impl InstallationPlan {
     pub fn validate(&self) -> Result<()> {
         validate_contract_version(self.contract_version)?;
-        validate_installation_target(&self.target)?;
+        self.target.validate()?;
+        self.deployment.validate()?;
         validate_bounded_text(&self.product_version, "installation product_version", 64)?;
         validate_sha256(&self.executable_sha256, "installation executable_sha256")?;
         validate_sha256(&self.profile_sha256, "installation profile_sha256")?;
-        validate_absolute_project_root(&self.project_root)?;
         validate_sha256(
             &self.project_precondition_sha256,
             "installation project_precondition_sha256",
         )?;
-        validate_sha256(
-            &self.configuration_sha256,
-            "installation configuration_sha256",
-        )?;
+        self.configuration.validate()?;
         self.initial_seat.validate()?;
         if self.initial_grants.is_empty() {
             return invalid("installation initial_grants cannot be empty");
@@ -222,18 +226,51 @@ impl InstallationPlan {
             "installation inactive_capabilities must be sorted and unique",
         )?;
         let expected_paths = [
-            InstallationManagedPathKind::StorageRoot,
-            InstallationManagedPathKind::TokenKey,
-            InstallationManagedPathKind::OperatorCredential,
-            InstallationManagedPathKind::ProjectLocator,
+            (
+                InstallationManagedPathKind::EstateDirectory,
+                InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            ),
+            (
+                InstallationManagedPathKind::StorageDirectory,
+                InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            ),
+            (
+                InstallationManagedPathKind::StorageRootsDirectory,
+                InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            ),
+            (
+                InstallationManagedPathKind::CredentialDirectory,
+                InstallationRemovalRule::RemoveIfOwnedAndEmpty,
+            ),
+            (
+                InstallationManagedPathKind::StorageRoot,
+                InstallationRemovalRule::RemoveIfOwnedTreeDigestMatches,
+            ),
+            (
+                InstallationManagedPathKind::TokenKey,
+                InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            ),
+            (
+                InstallationManagedPathKind::OperatorCredential,
+                InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            ),
+            (
+                InstallationManagedPathKind::ProjectLocator,
+                InstallationRemovalRule::RemoveIfOwnedDigestMatches,
+            ),
         ];
         if self.managed_paths.len() != expected_paths.len() {
             return invalid("installation plan must bind every managed path exactly once");
         }
         let mut paths = BTreeSet::new();
-        for (managed, expected_kind) in self.managed_paths.iter().zip(expected_paths) {
+        for (managed, (expected_kind, expected_rule)) in
+            self.managed_paths.iter().zip(expected_paths)
+        {
             managed.validate()?;
-            if managed.kind != expected_kind || !paths.insert(&managed.relative_path) {
+            if managed.kind != expected_kind
+                || managed.removal_rule != expected_rule
+                || !paths.insert(&managed.relative_path)
+            {
                 return invalid("installation managed paths are duplicated or out of order");
             }
         }
@@ -246,6 +283,7 @@ impl InstallationPlan {
         }
         let expected = [
             InstallationActionKind::ValidateProject,
+            InstallationActionKind::CreateEstateDirectories,
             InstallationActionKind::CreateStorageRoot,
             InstallationActionKind::PrepareCredentials,
             InstallationActionKind::InitializeInstance,
@@ -282,10 +320,14 @@ impl InstallationPlan {
 
     pub fn managed_path(&self, kind: InstallationManagedPathKind) -> &InstallationManagedPath {
         let index = match kind {
-            InstallationManagedPathKind::StorageRoot => 0,
-            InstallationManagedPathKind::TokenKey => 1,
-            InstallationManagedPathKind::OperatorCredential => 2,
-            InstallationManagedPathKind::ProjectLocator => 3,
+            InstallationManagedPathKind::EstateDirectory => 0,
+            InstallationManagedPathKind::StorageDirectory => 1,
+            InstallationManagedPathKind::StorageRootsDirectory => 2,
+            InstallationManagedPathKind::CredentialDirectory => 3,
+            InstallationManagedPathKind::StorageRoot => 4,
+            InstallationManagedPathKind::TokenKey => 5,
+            InstallationManagedPathKind::OperatorCredential => 6,
+            InstallationManagedPathKind::ProjectLocator => 7,
         };
         &self.managed_paths[index]
     }
@@ -399,7 +441,7 @@ impl AttunementPhasePlan {
 pub struct AttunementPlan {
     pub contract_version: u16,
     pub id: CanonicalId,
-    pub target: ResourcePath,
+    pub target: InstalledEstateIdentity,
     pub source_sha256: String,
     pub phases: Vec<AttunementPhasePlan>,
     pub estimated_min_duration_ms: u64,
@@ -410,7 +452,7 @@ pub struct AttunementPlan {
 impl AttunementPlan {
     pub fn validate(&self) -> Result<()> {
         validate_contract_version(self.contract_version)?;
-        validate_installation_target(&self.target)?;
+        self.target.validate()?;
         validate_sha256(&self.source_sha256, "attunement source_sha256")?;
         if self.phases.len() != ATTUNEMENT_PHASES.len() || self.phases.len() > MAX_ATTUNEMENT_PHASES
         {
@@ -1039,16 +1081,16 @@ pub fn installation_plan_sha256(plan: &InstallationPlan) -> Result<String> {
                 &plan.id,
                 &plan.target,
                 plan.target_kind,
+                &plan.deployment,
                 &plan.product_version,
                 &plan.executable_sha256,
                 &plan.profile_id,
                 &plan.profile_sha256,
-                &plan.project_root,
                 &plan.project_precondition_sha256,
                 &plan.storage_root_id,
             ),
             (
-                &plan.configuration_sha256,
+                &plan.configuration,
                 &plan.initial_seat,
                 &plan.initial_principal_id,
                 &plan.initial_grants,
@@ -1139,36 +1181,6 @@ fn validate_contract_version(version: u16) -> Result<()> {
         return invalid(format!(
             "unsupported install/attunement contract version {version}; expected {INSTALL_ATTUNEMENT_CONTRACT_VERSION}"
         ));
-    }
-    Ok(())
-}
-
-fn validate_installation_target(target: &ResourcePath) -> Result<()> {
-    target.validate()?;
-    let kinds = target
-        .segments
-        .iter()
-        .map(|segment| segment.kind)
-        .collect::<Vec<_>>();
-    if kinds
-        != [
-            ResourceKind::Organization,
-            ResourceKind::Estate,
-            ResourceKind::Project,
-            ResourceKind::Instance,
-        ]
-    {
-        return invalid(
-            "installation target must be organization/estate/project/instance in that order",
-        );
-    }
-    Ok(())
-}
-
-fn validate_absolute_project_root(value: &str) -> Result<()> {
-    validate_bounded_text(value, "installation project_root", 4_096)?;
-    if !std::path::Path::new(value).is_absolute() {
-        return invalid("installation project_root must be absolute");
     }
     Ok(())
 }
