@@ -9,8 +9,6 @@ import tools.jackson.databind.json.JsonMapper;
 
 final class SignalCatalogueTest {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final String EXPECTED_OPENAPI_SHA256 =
-            "8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b";
     private static final String EXPECTED_SIGNAL_SHA256 =
             "239df2ced5974d4351ca01565369646964cb65c63d0fbae01dddccb4c3ac5a07";
 
@@ -19,7 +17,7 @@ final class SignalCatalogueTest {
         JsonNode catalogue = JSON.readTree(SignalCatalogue.JSON);
 
         assertEquals(EXPECTED_SIGNAL_SHA256, SignalCatalogue.SIGNAL_CATALOGUE_SHA256);
-        assertEquals(EXPECTED_OPENAPI_SHA256, SignalCatalogue.OPENAPI_DOCUMENT_SHA256);
+        assertEquals(OperationId.OPENAPI_DOCUMENT_SHA256, SignalCatalogue.OPENAPI_DOCUMENT_SHA256);
         assertEquals(1, catalogue.path("contract_version").asInt());
         assertEquals(4, catalogue.path("diagnostic_levels").size());
         assertEquals(9, catalogue.path("metric_attributes").size());
