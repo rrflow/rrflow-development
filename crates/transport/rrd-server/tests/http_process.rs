@@ -2289,7 +2289,6 @@ fn binary_refuses_remote_bind() {
         InstallationTargetKind::ExistingProject,
         &installation,
         &installation.installation.plan_sha256,
-        1,
         &executable,
     )
     .unwrap();
@@ -2333,7 +2332,6 @@ fn standalone_daemon_process_passes_the_shared_corpus_and_exclusively_owns_its_r
         InstallationTargetKind::ExistingProject,
         &installation,
         &installation.installation.plan_sha256,
-        1,
         &executable,
     )
     .unwrap();

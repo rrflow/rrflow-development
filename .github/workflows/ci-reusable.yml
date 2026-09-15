@@ -33,7 +33,7 @@ jobs:
         with:
           shared-key: linux-topology
           cache-on-failure: true
-      - name: Test the real install, serve, authenticate, stop, reopen lifecycle
+      - name: Test the real install, serve, authenticate, kill, reopen lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
 
   estate-portability:
@@ -65,6 +65,8 @@ jobs:
         run: cargo build -p rrflow-cli --bin rrd-estate-controller --locked
       - name: Test process fault injection (not product-readiness evidence)
         run: cargo test -p rrd-server --test local_estate_driver --locked -- --nocapture
+      - name: Test the real install, serve, authenticate, kill, reopen lifecycle
+        run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
       - name: Deny process-boundary warnings
         run: cargo clippy -p rrd-estate -p rrd-server --all-targets --locked -- -D warnings
 

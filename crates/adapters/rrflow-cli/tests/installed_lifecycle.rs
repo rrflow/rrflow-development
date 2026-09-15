@@ -2,8 +2,8 @@
 //!
 //! This is one bounded child lifecycle, not a generic process-kill matrix: the
 //! exact installed RRFlow process publishes its address, serves generated
-//! discovery, accepts its generated credential, handles SIGINT, reopens, and
-//! passes the read-only verifier.
+//! discovery, accepts its generated credential, survives abrupt termination,
+//! reopens, and passes the read-only verifier.
 
 use rrd_client::{ClientConfig, RequestOptions, RrdClient};
 use rrd_contract::{
@@ -70,22 +70,19 @@ fn inventory(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     output
 }
 
-#[cfg(unix)]
-fn stop_gracefully(child: &mut Child) {
-    let signal = Command::new("kill")
-        .args(["-INT", &child.id().to_string()])
-        .status()
-        .expect("send SIGINT to the exact rrflow child");
-    assert!(signal.success());
+fn terminate_abruptly(child: &mut Child) {
+    child.kill().expect("terminate the exact rrflow child");
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         if let Some(status) = child.try_wait().unwrap() {
-            assert!(status.success(), "rrflow serve exited with {status}");
+            assert!(
+                !status.success(),
+                "abruptly killed rrflow exited successfully"
+            );
             return;
         }
         if Instant::now() >= deadline {
-            child.kill().unwrap();
-            panic!("rrflow serve did not complete graceful SIGINT shutdown");
+            panic!("rrflow serve did not exit after abrupt termination");
         }
         std::thread::sleep(Duration::from_millis(10));
     }
@@ -179,7 +176,6 @@ fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
     assert!(!help.contains("restore"));
 }
 
-#[cfg(unix)]
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     let root = tempfile::tempdir().unwrap();
@@ -190,7 +186,10 @@ fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     let configuration_file = root.path().join("estate-configuration.toml");
     std::fs::write(
         &configuration_file,
-        r#"format_version = 1
+        r#"format_version = 2
+
+[clock]
+maximum_rollback_ms = 0
 
 [reasoning]
 max_run_elapsed_ms = 720000
@@ -255,6 +254,10 @@ max_elapsed_ms = 20000
     assert_eq!(
         preview["installation"]["configuration"]["recall"]["max_items"],
         96
+    );
+    assert_eq!(
+        preview["installation"]["configuration"]["clock"]["maximum_rollback_ms"],
+        0
     );
     assert_eq!(
         preview["installation"]["deployment"]["deployment_form"],
@@ -328,6 +331,13 @@ max_elapsed_ms = 20000
     let verified: serde_json::Value = serde_json::from_slice(&verified.stdout).unwrap();
     assert_eq!(verified["status"], "passed");
     assert_eq!(verified["runtime_cursor"], 2);
+    assert_eq!(verified["clock"]["status"], "current");
+    assert_eq!(verified["clock"]["anchor"]["source"], "host_system_time");
+    assert_eq!(verified["clock"]["anchor"]["trust"], "unverified");
+    assert_eq!(
+        verified["clock"]["anchor"]["observed_at_unix_ms"],
+        installed_at
+    );
     assert_eq!(inventory(&project), installed_before_verify);
 
     let replay = invoke(&[
@@ -593,7 +603,7 @@ max_elapsed_ms = 20000
         "offline verifier must not race the live writer"
     );
 
-    stop_gracefully(&mut child);
+    terminate_abruptly(&mut child);
     stdout.read_to_end(&mut lifecycle_output).unwrap();
     child
         .stderr
@@ -612,7 +622,7 @@ max_elapsed_ms = 20000
         executable_arg,
     ]);
     capture_output(&reopened, &mut lifecycle_output);
-    assert_success(&reopened, "post-shutdown reopen and verify");
+    assert_success(&reopened, "post-kill reopen and verify");
     let reopened: serde_json::Value = serde_json::from_slice(&reopened.stdout).unwrap();
     assert_eq!(reopened["status"], "passed");
     assert!(reopened["control_journal_sequence"].as_u64().unwrap() > 8);

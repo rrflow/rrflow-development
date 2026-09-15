@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040
+// OpenAPI SHA-256: 96a232bda6cfb3135e75df86e8b97a77b8a5f098545ce9fe8dc0d3e7a6d6ad26
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -3069,6 +3069,17 @@ export interface operations {
                                  *     configure-plan/configure-apply operation.
                                  */
                                 configuration: {
+                                    /**
+                                     * @description Policy for wall-clock observations at governed durable-effect boundaries.
+                                     *
+                                     *     A value of zero is strict: any observed rollback from a persisted anchor is
+                                     *     rejected. A nonzero value is an explicit operator-selected allowance, not
+                                     *     evidence that the host clock is synchronized or trustworthy.
+                                     */
+                                    clock: {
+                                        /** Format: uint64 */
+                                        maximum_rollback_ms: number;
+                                    };
                                     configuration_sha256: string;
                                     /** Format: uint16 */
                                     format_version: number;
@@ -3260,6 +3271,17 @@ export interface operations {
                                  *     configure-plan/configure-apply operation.
                                  */
                                 configuration: {
+                                    /**
+                                     * @description Policy for wall-clock observations at governed durable-effect boundaries.
+                                     *
+                                     *     A value of zero is strict: any observed rollback from a persisted anchor is
+                                     *     rejected. A nonzero value is an explicit operator-selected allowance, not
+                                     *     evidence that the host clock is synchronized or trustworthy.
+                                     */
+                                    clock: {
+                                        /** Format: uint64 */
+                                        maximum_rollback_ms: number;
+                                    };
                                     configuration_sha256: string;
                                     /** Format: uint16 */
                                     format_version: number;
