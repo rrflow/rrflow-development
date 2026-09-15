@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "D01-02-canonical-estate-layout-and-configuration-v1",
+  "package_id": "D01-03-current-state-documentation-alignment-v1",
   "status": "active",
-  "package_kind": "canonical-estate-installation-and-operator-configuration",
+  "package_kind": "current-state-documentation-alignment",
   "baseline": {
-    "revision": "f2f6991627996f1120e7ffa55f19cc740556a6fa",
-    "tree": "7cee601125aa9d380ce5b59689b47f9b971c34bd",
+    "revision": "a6648de1a5b4be32ef1ab9c71db16974cbf13e81",
+    "tree": "8291393b2d189dc25b45516d2b5995e9bdbfb4e4",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -13,36 +13,30 @@
     "cargo_lock_sha256": "316533e7512dbb9029e494386503ca8430b0c69853b3b78ef02319dcbab93a27"
   },
   "authority": {
-    "alpha_prerequisite": "Continue D-01 by replacing inconsistent scalar deployment and implicit path/configuration behavior with one canonical installed-estate tree and one generated typed contract that the CLI, server, UI and SDKs consume. This package supplies bounded D-01 and POAM-022 evidence only; it cannot close D-01, D-02, F-01, any J gate, POAM-006/020/022, the alpha objective, or promotion.",
+    "alpha_prerequisite": "Align bootstrap and reference documentation with accepted C-03/C-04 evidence and the bounded D-01 canonical-estate implementation without closing D-01, weakening its remaining acceptance work, or creating another product or lifecycle authority.",
     "roadmap_gates": [
+      "C-03",
+      "C-04",
       "D-01",
-      "D-02",
-      "F-01",
-      "H-04",
-      "J-01",
-      "J-02",
-      "J-03",
-      "J-05"
+      "H-04"
     ],
     "poam_items": [
       "POAM-006",
+      "POAM-011",
       "POAM-020",
       "POAM-022"
     ],
-    "architecture_owner": "docs/reference/deployment/installed-lifecycle.md"
+    "architecture_owner": "docs/reference/protocol/public-contract.md"
   },
-  "current_behavior": "At clean baseline f2f69916, the walking product can plan/apply/open/serve/ready/verify, but its public API exposes one DeploymentMode enum that conflates storage, process topology and listener presentation. Installation invents an organization segment, includes an absolute project_root in the durable plan and locator, creates parent directories implicitly, and identifies configuration only by an opaque digest derived from the profile. RrdEngine infers embedded versus rrflowMX from storage-root presence while the server independently infers local-daemon versus remote from TLS. Request QueryBudget and context limits are validated only against compile-time maxima, not an installed operator ceiling. The repository also contains legacy .rrflow/instance.toml plus an old direct .rrflow/rrd root, so silently installing the new roots/<instance> layout here would create two authorities.",
-  "target_behavior": "Establish one canonical project-local estate contract and rollout boundary. A new transport-neutral module owns InstalledEstateIdentity, independent deployment_form/storage_profile/endpoint_presentation axes, and a revisioned self-digesting EstateConfiguration containing reasoning, recall and query ceilings. Install planning accepts the bundled default or an explicit bounded TOML input, seals the complete effective configuration into the deterministic plan, previews every parent directory/file in exact order, and carries no absolute host path. Apply consumes only those sealed bytes, creates owner-only directories and secret files, persists the same identity/configuration with the installed record, then publishes a minimal portable locator. Installed open verifies and binds the values into RrdEngine. Query and context work above the installed ceiling fails before reads or mutations. Server capabilities project the same values, derive endpoint presentation from the actual bound address, report the missing reasoning executor honestly, and regenerate OpenAPI/SDK discovery. Existing legacy .rrflow state is rejected, not migrated or allowed to coexist; its direct convergence is a following package.",
+  "current_behavior": "At clean baseline a6648de1, the code, generated OpenAPI/SDK surfaces, installed-lifecycle owner, README, roadmap, accepted Gate C evidence, and D-01 journal establish a structured deployment profile, canonical project-local estate, sealed operator configuration, accepted atomic semantic commit, and accepted direct stamped reads. Three implementation references still describe the old TLS-derived scalar mode, absence of an alpha bootstrap command, and C-03/C-04 behavior as future work. README records only the preceding walking-product slice and therefore omits the new estate/configuration boundary from the current-status owner.",
+  "target_behavior": "Make README state the exact bounded canonical-estate/configuration result and its remaining D-01 limits. Make the server reference describe listener-derived endpoint presentation, the accepted source-built install plan/apply/serve/ready/verify path, accepted C-03 atomic semantic commit, and accepted C-04 direct stamped reads. Make the public-contract proof map separate accepted C-03/C-04 behavior from still-open F/H/J and D/KB qualification. Make the deployment reference describe the implemented three-axis classification and treat A-07/C-02/C-03/C-04 as retained accepted foundations rather than future work. Preserve all owner links, open-gate status, honest limitations, and generated contract identity.",
   "unchanged_behavior": [
-    "README identity, version 1.0.0, pre-release maturity, roadmap and POA&M owners remain unchanged; no gate or deficiency closes.",
-    "RrdEngine remains the only durable-effect authority. Configuration governs effects and resource ceilings, not exploratory reading, hypothesis formation, private model reasoning or a schema of thought.",
-    "rrflowKV remains the durable profile, rrflowMX remains volatile, and Arrow/DataFusion remain in-process compute. No subprocess, model provider, external database, sibling checkout, network fetch or Connectome runtime becomes a default prerequisite.",
-    "Connectome remains a separate optional client/integration and must consume generated capabilities; this package does not edit its repository or create Connectome-owned RRFlow state.",
-    "Hard compiled safety maxima remain absolute. Durable estate configuration may only lower them, and a request may only choose a value at or below the durable ceiling.",
-    "Attunement may discover and later recommend configuration, but it cannot activate a recommendation in this package. A later digest-bound configure plan/apply operation is required.",
-    "No current legacy .rrflow path is deleted, moved or rewritten. New-install collision detection preserves user state and blocks parallel authority until a separately planned convergence/migration package.",
-    "Release acquisition, signatures, SBOM, offline bundle assembly, shell/platform installers, uninstall, repair, full attunement execution and clean-machine qualification remain J/D follow-on work.",
-    "No storage format, WAL durability policy, benchmark threshold, promotion result, endpoint operation identity, authentication rule or authorization boundary is weakened."
+    "README remains the product identity and current-status owner; the roadmap remains the sole gate-status owner; the POA&M remains the open-gap ledger.",
+    "D-01, H-04, Gate J, POAM-006, POAM-011, POAM-020, and POAM-022 remain open. This package does not change a checkbox, deficiency lifecycle, version, release, or promotion decision.",
+    "No Rust implementation, public schema, OpenAPI bytes, SDK binding, route, storage format, configuration default, runtime behavior, test fixture, dependency, or Cargo.lock changes.",
+    "The canonical installer remains a source-built pre-release slice, not a signed/offline-complete distribution; repair, uninstall, interruption recovery, complete attunement, platform qualification, and legacy executable convergence remain explicit follow-on work.",
+    "Adaptive exploratory reasoning remains fluid under ADR-0002. Durable effects and installed limits remain governed through RrdEngine without modeling private thought.",
+    "No network access, external effect, remote push, official-origin operation, or Connectome repository change is authorized by this documentation package."
   ],
   "planning_commit": {
     "must_precede_implementation": true,
@@ -54,11 +48,11 @@
   "reviewed_files": [
     {
       "path": "docs/roadmap/rrflow-1.0-active-change.json",
-      "baseline_sha256": "485085c31846fa18453d76b0daae45f358fd6caf31d3ec96f86bb8bf0968b1ff",
-      "baseline_lines": 214,
-      "reviewed_lines": "1-214",
+      "baseline_sha256": "d8839556999ceb6061c4108f268111a12a01e0081ed60c98efde78e0a4984212",
+      "baseline_lines": 1111,
+      "reviewed_lines": "1-1111",
       "symbols": [
-        "complete prior D01-01 package plan, scope, evidence and stop boundaries"
+        "complete prior D01-02 planning boundary"
       ]
     },
     {
@@ -67,25 +61,7 @@
       "baseline_lines": 245,
       "reviewed_lines": "1-245",
       "symbols": [
-        "product identity, maturity, canonical owners, installation and API warp points"
-      ]
-    },
-    {
-      "path": "AGENTS.md",
-      "baseline_sha256": "6ed5e45f260a42f8a0a008b3023d50cb165df788bee94485390c5af5938c6ef1",
-      "baseline_lines": 161,
-      "reviewed_lines": "1-161",
-      "symbols": [
-        "complete repository engineering, planning, integration, generation and promotion rules"
-      ]
-    },
-    {
-      "path": "docs/objectives/rrflow-1.0-alpha.md",
-      "baseline_sha256": "c65cc500a92e67caf919299033efabc2c94106426c2e30cf206a3b65aa3ddec9",
-      "baseline_lines": 65,
-      "reviewed_lines": "1-65",
-      "symbols": [
-        "complete measurable alpha outcomes and non-claims"
+        "complete product identity, current status, operation map, and knowledge warp points"
       ]
     },
     {
@@ -94,7 +70,25 @@
       "baseline_lines": 165,
       "reviewed_lines": "1-165",
       "symbols": [
-        "complete dependency order, D-01 acceptance and current status"
+        "complete canonical completion status for C-03, C-04, and D-01"
+      ]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-c.md",
+      "baseline_sha256": "9affea93de8709909b9bca3239988936321ce5e8be75779db0996bf701962943",
+      "baseline_lines": 27,
+      "reviewed_lines": "1-27",
+      "symbols": [
+        "complete Gate C acceptance requirements and status"
+      ]
+    },
+    {
+      "path": "docs/roadmap/rrflow-1.0/gate-c-evidence.md",
+      "baseline_sha256": "d9569a454f0f78bd9785aca4b44fcf0ae1715d42f8d523172a63ffdb8f665d4e",
+      "baseline_lines": 375,
+      "reviewed_lines": "1-375",
+      "symbols": [
+        "complete accepted C-03 atomic semantic commit and C-04 direct stamped-read evidence"
       ]
     },
     {
@@ -103,439 +97,43 @@
       "baseline_lines": 31,
       "reviewed_lines": "1-31",
       "symbols": [
-        "complete Gate D acceptance and exit condition"
+        "complete D-01 acceptance and remaining Gate D work"
       ]
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha.md",
-      "baseline_sha256": "e68ae3e9221cfa77f56ffac54a30450e30d3798fa975d374b465e08e58c8012f",
-      "baseline_lines": 43,
-      "reviewed_lines": "1-43",
+      "path": "docs/evidence/change-journals/gate-d/d-01-canonical-estate-layout-and-configuration.md",
+      "baseline_sha256": "f5132e7ae5085943b79b77b4b417f11d3e94c944a1386df8fb441bc1a56361d1",
+      "baseline_lines": 456,
+      "reviewed_lines": "1-456",
       "symbols": [
-        "complete open-gap ledger"
+        "complete D01-02 implementation, test evidence, limitations, and explicit documentation follow-up"
       ]
     },
     {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-006.md",
-      "baseline_sha256": "bb05150f468258dea4e27753c68fb4ad7d80804c889f3cfc709ce6fd229d2d99",
-      "baseline_lines": 40,
-      "reviewed_lines": "1-40",
+      "path": "docs/reference/protocol/server.md",
+      "baseline_sha256": "f09a7f4bfd2bcf73ac3c6cc53281b70fda1df61d83e7356d96bfddfd7066c4bd",
+      "baseline_lines": 264,
+      "reviewed_lines": "1-264",
       "symbols": [
-        "installed product and attunement deficiency"
-      ]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-020.md",
-      "baseline_sha256": "81db731c5b581363b814f6885f58dbad52187ad6855841e933fdc67d2900cce5",
-      "baseline_lines": 50,
-      "reviewed_lines": "1-50",
-      "symbols": [
-        "canonical project estate instance topology deficiency"
-      ]
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-022.md",
-      "baseline_sha256": "3320fe364e50e7b17393ad25a7e1383e73f108fc6c7e459951ef3cdbaaf89559",
-      "baseline_lines": 52,
-      "reviewed_lines": "1-52",
-      "symbols": [
-        "deployment profile and conformance deficiency"
-      ]
-    },
-    {
-      "path": "docs/architecture/instance-topology.md",
-      "baseline_sha256": "8d8d92d0bef5ca474eb92db7085d9f7a3b55cf0f745bf3dd2823193bf97086cf",
-      "baseline_lines": 301,
-      "reviewed_lines": "1-301",
-      "symbols": [
-        "complete canonical topology, path and identity rules"
-      ]
-    },
-    {
-      "path": "docs/decisions/0002-adaptive-reasoning-governed-effects.md",
-      "baseline_sha256": "6dc7f29b4168d3ccdb479f43fb58129909ebdd6154208a86d42b3d4b815556bb",
-      "baseline_lines": 122,
-      "reviewed_lines": "1-122",
-      "symbols": [
-        "complete adaptive reasoning and governed durable-effect boundary"
-      ]
-    },
-    {
-      "path": "docs/reference/agent-bootstrap.md",
-      "baseline_sha256": "c1fad006cb9454eb83739b1a7b056b66707417a4b063261537bb0484b6ee16ac",
-      "baseline_lines": 324,
-      "reviewed_lines": "1-324",
-      "symbols": [
-        "complete independent engine, project integration, install and attunement rules"
-      ]
-    },
-    {
-      "path": "docs/reference/deployment/installed-lifecycle.md",
-      "baseline_sha256": "9853be5c957e4c7b3f174fd6a274ca2c61de47279421dd6a1bc7d49e1acc4a53",
-      "baseline_lines": 364,
-      "reviewed_lines": "1-364",
-      "symbols": [
-        "complete installation, configuration, verification and disposition contract"
-      ]
-    },
-    {
-      "path": "docs/reference/deployment/modes.md",
-      "baseline_sha256": "09c0316b363de121ea1d3c6b9e038ba68c5958f4874a9c53b900a0755b0c54f8",
-      "baseline_lines": 243,
-      "reviewed_lines": "1-243",
-      "symbols": [
-        "complete deployment-form, storage-profile and endpoint-presentation model"
+        "complete server bootstrap, capability, transaction, query, and remaining-work reference"
       ]
     },
     {
       "path": "docs/reference/protocol/public-contract.md",
-      "baseline_sha256": "9a2bf3592abeab1cafcd7a195abb609d5d98b5695ee3d29d954d8e7d07a22d3e",
+      "baseline_sha256": "21ef8d90cb9a1d41cfa34a7fd2bd3cd3495b58fb3a8ac6b639b08b93e343287b",
       "baseline_lines": 267,
       "reviewed_lines": "1-267",
       "symbols": [
-        "complete generated public API and capability contract"
+        "complete generated public contract, proof map, known inconsistencies, and evidence"
       ]
     },
     {
-      "path": "docs/reference/client/connectome.md",
-      "baseline_sha256": "04a6dad4468dc829b143cc790e1e7feb672f16e315ded0e28cdfffba9f0a0b3b",
-      "baseline_lines": 355,
-      "reviewed_lines": "1-355",
-      "symbols": [
-        "complete Connectome consumer boundary and non-authority rules"
-      ]
-    },
-    {
-      "path": "docs/research/README.md",
-      "baseline_sha256": "d87399440cce930baa2aab8c23a1cf2465a94a1385f1b8786ef28ed07ca41a85",
-      "baseline_lines": 104,
-      "reviewed_lines": "1-104",
-      "symbols": [
-        "complete research index and ownership rules"
-      ]
-    },
-    {
-      "path": "docs/roadmap/rrflow-1.0-execution-map.md",
-      "baseline_sha256": "982d8af7b77a21c9c1768d6356a03c978e556cb7b43d78d3fca931404b459877",
-      "baseline_lines": 124,
-      "reviewed_lines": "1-124",
-      "symbols": [
-        "complete execution portal and package journaling warp points"
-      ]
-    },
-    {
-      "path": "docs/roadmap/rrflow-1.0-execution/change-authoring.md",
-      "baseline_sha256": "6ea5ed28b4621e824c53e503dae84ef46de549fed0f02d6be6298d9e7979bb42",
-      "baseline_lines": 145,
-      "reviewed_lines": "1-145",
-      "symbols": [
-        "complete codebase-grounded change-authoring and evidence template"
-      ]
-    },
-    {
-      "path": "docs/roadmap/rrflow-1.0-execution/implementation-navigation.md",
-      "baseline_sha256": "ff793cb28791183b0df2476cd7731c5575da7c3643eb2228236e9869f7f0169c",
-      "baseline_lines": 89,
-      "reviewed_lines": "1-89",
-      "symbols": [
-        "complete traceability and generated inventory procedure"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-contract/src/lib.rs",
-      "baseline_sha256": "0696be5b14a258ff501ee3175392a5626c6c97c83c9bcd91c26a1153ae230dca",
-      "baseline_lines": 6368,
-      "reviewed_lines": "1-6368",
-      "symbols": [
-        "complete transport-neutral contract, QueryBudget, DeploymentMode and ServiceCapabilities"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-contract/src/attunement.rs",
-      "baseline_sha256": "675bfecc01be120055da1ee14929708f68923f4c658915909450d2c1531b02df",
-      "baseline_lines": 1239,
-      "reviewed_lines": "1-1239",
-      "symbols": [
-        "complete installation and attunement contracts, validation and digests"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-contract/tests/attunement_contract.rs",
-      "baseline_sha256": "c6c5140dfdf4e0de35a0aeac0aac044c181c4d994f73500beaa4a341aebaf021",
-      "baseline_lines": 768,
-      "reviewed_lines": "1-768",
-      "symbols": [
-        "complete install and attunement golden and negative tests"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-contract/tests/public_contract.rs",
-      "baseline_sha256": "cf6d19aa6ea88bfdf6dde87e6aa06d7f108f6b0c8188d8ce3655b5729ef8205a",
-      "baseline_lines": 1802,
-      "reviewed_lines": "1-1802",
-      "symbols": [
-        "complete public contract, schema and capability fixture tests"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-contract/fixtures/install-attunement-v1.json",
-      "baseline_sha256": "b36dff15abaa09788ccf23d80bd951999bcfe024a40e0e8f8467da3f8685f65f",
-      "baseline_lines": 446,
-      "reviewed_lines": "1-446",
-      "symbols": [
-        "complete install and attunement golden fixture"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-contract/fixtures/public-contract-v1.json",
-      "baseline_sha256": "f3bdf491b1a7d01bb40bc28d5ddfc2c4a2356910a5c200ac96c595bfe1f46b09",
-      "baseline_lines": 165,
-      "reviewed_lines": "1-165",
-      "symbols": [
-        "complete service capability and request golden fixture"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/assets/install/default-profile-v1.json",
-      "baseline_sha256": "64521340b915353319de8135754ed3f5dde65f6bd8c7a947567a5f0b0b3646dd",
-      "baseline_lines": 35,
-      "reviewed_lines": "1-35",
-      "symbols": [
-        "complete bundled generic installation profile"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/lib.rs",
-      "baseline_sha256": "93ceb06f568ccda91c372e7cbc4681970330c3afa4f7c2ecb14073d8f6cd28a0",
-      "baseline_lines": 38,
-      "reviewed_lines": "1-38",
-      "symbols": [
-        "complete public engine composition exports"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/mod.rs",
-      "baseline_sha256": "100420f930d5043e706d5217269ffe86866051e320374c2f9da606aa706da180",
+      "path": "docs/reference/deployment/modes.md",
+      "baseline_sha256": "52f292095d7b063d71f3a56f921d0884e9889b44728acb40253d3c4d279b1234",
       "baseline_lines": 247,
       "reviewed_lines": "1-247",
       "symbols": [
-        "complete engine imports, modules and exports"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/core.rs",
-      "baseline_sha256": "1041f9442aeac09f54d847885323db9365af99cd8d21c783633180023c618c50",
-      "baseline_lines": 235,
-      "reviewed_lines": "1-235",
-      "symbols": [
-        "complete RrdEngine composition, persistent and volatile constructors and scalar deployment inference"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/error.rs",
-      "baseline_sha256": "790440e01f0a8b0a8ca0254f25953ef99280dce58c7710c2a151549417228e7d",
-      "baseline_lines": 158,
-      "reviewed_lines": "1-158",
-      "symbols": [
-        "complete typed service error kinds and mappings"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/installation.rs",
-      "baseline_sha256": "e7fff18d746f4231b92085aa3b9c0e992f38c8c31219e74d706a2e1db3d84b29",
-      "baseline_lines": 1394,
-      "reviewed_lines": "1-1394",
-      "symbols": [
-        "complete plan, apply, locator, installed open, inspection and path-safety implementation"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/context.rs",
-      "baseline_sha256": "ee8345cbe5165447b44fce1f11283c03bd2e771657162ec201c5646078cce2b5",
-      "baseline_lines": 937,
-      "reviewed_lines": "1-937",
-      "symbols": [
-        "complete context assembly, budgets, ranking, evidence and truncation"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/query.rs",
-      "baseline_sha256": "3e58c43bf851867dfddbf93a6c06609496411436a7c56418797e81e908e79df0",
-      "baseline_lines": 723,
-      "reviewed_lines": "1-723",
-      "symbols": [
-        "complete query, live query and query-index execution and budget translation"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/tests/installation.rs",
-      "baseline_sha256": "3a920de890ebb379600b3bed2598f78fa5e2fd566a47d608aad5d4ca629672ed",
-      "baseline_lines": 260,
-      "reviewed_lines": "1-260",
-      "symbols": [
-        "complete installation plan/apply/open/verify tests"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/tests/context.rs",
-      "baseline_sha256": "1e51ba81bf5e90ca6662956fe2219a3292c6d69b27aa0f252aa8dce77069846f",
-      "baseline_lines": 624,
-      "reviewed_lines": "1-624",
-      "symbols": [
-        "complete context assembly and limit tests"
-      ]
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/tests/deployment_conformance.rs",
-      "baseline_sha256": "e47fa56c47290dc04c9dd4a8a34c8f3b64c2519aad4857e52ad013441ed8716a",
-      "baseline_lines": 218,
-      "reviewed_lines": "1-218",
-      "symbols": [
-        "complete MX and KV deployment conformance tests"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-server/src/http/mod.rs",
-      "baseline_sha256": "d9bff8524f8af223592b5add28d11cf7ddba2d8b07ad406efb868557fc55e0a0",
-      "baseline_lines": 110,
-      "reviewed_lines": "1-110",
-      "symbols": [
-        "complete HTTP composition imports, errors and shared state"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-server/src/http/capabilities.rs",
-      "baseline_sha256": "8d1502e96c6803ee0fdc5cc5d8b6afc4deac64dcb7124dc029b2fff871c7a376",
-      "baseline_lines": 321,
-      "reviewed_lines": "1-321",
-      "symbols": [
-        "complete capability projection and scalar deployment inference"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-server/src/http/server.rs",
-      "baseline_sha256": "44a54da64d6f1674cc754ca4342988bc6a16323897d77d4e06e925e322d83586",
-      "baseline_lines": 324,
-      "reviewed_lines": "1-324",
-      "symbols": [
-        "complete listener security, capability construction and lifecycle"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-server/tests/http_process.rs",
-      "baseline_sha256": "76089935dbfc6ce400307de978b836a1a16761195e4b1e97b5d9bbd35f950ecc",
-      "baseline_lines": 2998,
-      "reviewed_lines": "1-2998",
-      "symbols": [
-        "complete real-process HTTP, TLS, authentication, capability and operation tests"
-      ]
-    },
-    {
-      "path": "crates/transport/rrd-client/tests/real_server.rs",
-      "baseline_sha256": "ac02db75b7f0596816b8b05bf8e2c9187f79a71653fc8f6c481696face0dfede",
-      "baseline_lines": 1451,
-      "reviewed_lines": "1-1451",
-      "symbols": [
-        "complete real-server client discovery and operation tests"
-      ]
-    },
-    {
-      "path": "crates/adapters/rrflow-cli/src/command.rs",
-      "baseline_sha256": "ac64def2417f33e038193cc4edc23be8cf3aa43fb16e0d73885ef623a63308f1",
-      "baseline_lines": 1512,
-      "reviewed_lines": "1-1512",
-      "symbols": [
-        "complete CLI vocabulary and parser"
-      ]
-    },
-    {
-      "path": "crates/adapters/rrflow-cli/src/installed.rs",
-      "baseline_sha256": "d9603da8c3c726f2769327ef1a0cab72c92ede69f57132e31e2f5a3b73ecce9d",
-      "baseline_lines": 435,
-      "reviewed_lines": "1-435",
-      "symbols": [
-        "complete installed lifecycle CLI adapter"
-      ]
-    },
-    {
-      "path": "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs",
-      "baseline_sha256": "bbb2b272bfea57269521702373dae3c424a76fb01e40ea24856b8249cbf4881d",
-      "baseline_lines": 438,
-      "reviewed_lines": "1-438",
-      "symbols": [
-        "complete real-process installed lifecycle test"
-      ]
-    },
-    {
-      "path": "sdks/typescript/scripts/generate.ts",
-      "baseline_sha256": "6f3ac002eea0594568bede31720ee160f2cc8f94272455aeefcfcefdff54c2f7",
-      "baseline_lines": 76,
-      "reviewed_lines": "1-76",
-      "symbols": [
-        "complete OpenAPI to TypeScript deterministic generator"
-      ]
-    },
-    {
-      "path": "sdks/typescript/tests/client.test.ts",
-      "baseline_sha256": "81c1c1b424043a984fda7795191be20c2a7a0a9af96e1d4085d7f2a49ffa73ad",
-      "baseline_lines": 244,
-      "reviewed_lines": "1-244",
-      "symbols": [
-        "complete TypeScript client fixture and transport tests"
-      ]
-    },
-    {
-      "path": "sdks/python/tests/test_client.py",
-      "baseline_sha256": "2574d4260beec00ad1b5aec2fb6feb06051d96300f528cf1ad5494a4d46f7897",
-      "baseline_lines": 216,
-      "reviewed_lines": "1-216",
-      "symbols": [
-        "complete Python client fixture and transport tests"
-      ]
-    },
-    {
-      "path": "sdks/go/client_test.go",
-      "baseline_sha256": "e0fbb45c74d43004811295ae9afaedd209ff52ffaa07d85ecc276a438d912d2a",
-      "baseline_lines": 177,
-      "reviewed_lines": "1-177",
-      "symbols": [
-        "complete Go client fixture and transport tests"
-      ]
-    },
-    {
-      "path": "sdks/java/src/test/java/io/rrflow/rrd/RrdClientTest.java",
-      "baseline_sha256": "6bada1500eb8f508eb75178e833b90246ad5aa5630ed1f99615e14e853fb8311",
-      "baseline_lines": 219,
-      "reviewed_lines": "1-219",
-      "symbols": [
-        "complete Java client fixture and transport tests"
-      ]
-    },
-    {
-      "path": "sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/RrdClientTests.cs",
-      "baseline_sha256": "2726449f79cae6ac8db976c3ff7e476dc618f37b8a6b6cc876f5456bb2c02c12",
-      "baseline_lines": 258,
-      "reviewed_lines": "1-258",
-      "symbols": [
-        "complete .NET client fixture and transport tests"
-      ]
-    },
-    {
-      "path": "scripts/ci/check_change_plan.py",
-      "baseline_sha256": "7cb42018ebd26ee8fc15aac8e51ddf16d76cfa43f179bc8713779f92e911a604",
-      "baseline_lines": 828,
-      "reviewed_lines": "1-828",
-      "symbols": [
-        "complete planning schema, baseline and changed-path enforcement"
-      ]
-    },
-    {
-      "path": "scripts/ci/build_execution_inventory.py",
-      "baseline_sha256": "ec296e503f1247a8d19b9013109c2683d9fb0df94dcb3f6463da7d04caa2f3cb",
-      "baseline_lines": 1969,
-      "reviewed_lines": "1-1969",
-      "symbols": [
-        "complete deterministic Git-backed execution inventory generator and routing"
+        "complete deployment taxonomy, current code audit, convergence sequence, and acceptance"
       ]
     },
     {
@@ -544,392 +142,66 @@
       "baseline_lines": 351,
       "reviewed_lines": "1-351",
       "symbols": [
-        "complete coordinated-document navigation generator"
+        "complete generated nearest-index and relationship-graph renderer"
+      ]
+    },
+    {
+      "path": "scripts/ci/build_execution_inventory.py",
+      "baseline_sha256": "ec296e503f1247a8d19b9013109c2683d9fb0df94dcb3f6463da7d04caa2f3cb",
+      "baseline_lines": 1969,
+      "reviewed_lines": "1-1969",
+      "symbols": [
+        "complete Git-backed file/digest/gate inventory generator"
       ]
     }
   ],
   "implementation_changes": [
     {
-      "path": "crates/transport/rrd-contract/src/deployment.rs",
-      "baseline_state": "absent",
-      "symbols": [
-        "InstalledEstateIdentity",
-        "DeploymentProfile",
-        "EstateConfiguration",
-        "ReasoningLimits",
-        "RecallLimits"
-      ],
-      "action": "Create the versioned canonical identity, three-axis deployment profile, and digest-bound operator ceiling contracts with strict validation and deterministic defaults.",
-      "failure_semantics": "Reject unknown fields, invalid identities, zero/out-of-range limits, internally inconsistent deployment axes, stale revisions, and configuration self-digest mismatch."
-    },
-    {
-      "path": "crates/transport/rrd-contract/src/lib.rs",
+      "path": "README.md",
       "baseline_state": "present",
       "symbols": [
-        "deployment module exports",
-        "ServiceCapabilities"
+        "Current status"
       ],
-      "action": "Replace the scalar deployment_mode capability field with one structured deployment profile, optional installed identity, and effective estate configuration; keep per-request instance identity explicit.",
-      "failure_semantics": "Reject installed identity/instance mismatch and any invalid nested deployment or configuration contract."
+      "action": "Add the implemented canonical estate, sealed configuration, installed identity, structured capability, and real-process ceiling behavior to the bootstrap current-status narrative while retaining the exact open D-01 boundary.",
+      "failure_semantics": "Do not claim a released installer, executable reasoning loop, completed D-01, complete attunement, or platform qualification."
     },
     {
-      "path": "crates/transport/rrd-contract/src/attunement.rs",
+      "path": "docs/reference/protocol/server.md",
       "baseline_state": "present",
       "symbols": [
-        "InstallationPlan",
-        "AttunementPlan",
-        "managed paths and actions",
-        "installation_plan_sha256"
+        "Client bootstrap",
+        "Commit semantics",
+        "Query and vector semantics",
+        "Current evidence and remaining qualification"
       ],
-      "action": "Bind installation and attunement to InstalledEstateIdentity and the complete sealed EstateConfiguration; remove absolute host path identity and enumerate the canonical estate directory tree.",
-      "failure_semantics": "Reject omitted/out-of-order paths or actions, fake organization requirements, escaping paths, configuration digest substitution, and plan/attunement identity mismatch."
+      "action": "Replace stale pre-C-03/C-04/D01-02 statements with exact accepted behavior and remaining boundaries.",
+      "failure_semantics": "Do not turn a bounded source-built path into release evidence or erase still-open F/H/J, recovery, attunement, and convergence work."
     },
     {
-      "path": "crates/transport/rrd-contract/tests/deployment_configuration_contract.rs",
-      "baseline_state": "absent",
-      "symbols": [
-        "structured deployment round trip",
-        "configuration digest",
-        "ceiling validation",
-        "legacy scalar rejection"
-      ],
-      "action": "Add focused golden and negative tests before implementation.",
-      "failure_semantics": "Fail until the new contract exists and fail thereafter on scalar compatibility, schema drift, or accepted invalid ceilings."
-    },
-    {
-      "path": "crates/transport/rrd-contract/tests/attunement_contract.rs",
+      "path": "docs/reference/protocol/public-contract.md",
       "baseline_state": "present",
       "symbols": [
-        "installation_and_attunement_golden_contract",
-        "negative managed-path and identity cases"
+        "Contract-to-engine proof map"
       ],
-      "action": "Move fixtures to canonical estate identity/configuration and explicit directory ownership.",
-      "failure_semantics": "Fail on nondeterministic bytes, missing canonical directories, absolute path identity, or digest drift."
+      "action": "Separate accepted C-03/C-04 engine proof and implemented D-01 plan/apply configuration from the remaining native execution, cross-surface, installation, knowledge, and release proof.",
+      "failure_semantics": "Do not let generated representation stand in for runtime proof or close any owning gate from this supporting reference."
     },
     {
-      "path": "crates/transport/rrd-contract/tests/public_contract.rs",
+      "path": "docs/reference/deployment/modes.md",
       "baseline_state": "present",
       "symbols": [
-        "service_capabilities fixture",
-        "OpenAPI schema assertions"
+        "Current code audit",
+        "Direct convergence sequence",
+        "Acceptance"
       ],
-      "action": "Prove the public projection exposes the structured profile, installed identity and effective configuration and omits deployment_mode.",
-      "failure_semantics": "Fail on generated schema/fixture drift or reappearance of the scalar field."
-    },
-    {
-      "path": "crates/transport/rrd-contract/fixtures/install-attunement-v1.json",
-      "baseline_state": "present",
-      "symbols": [
-        "installation_plan",
-        "attunement_plan"
-      ],
-      "action": "Regenerate the accepted install/attunement fixture from tested values.",
-      "failure_semantics": "Reject fixture bytes that differ from the validating value or contain an absolute project root."
-    },
-    {
-      "path": "crates/transport/rrd-contract/fixtures/public-contract-v1.json",
-      "baseline_state": "present",
-      "symbols": [
-        "service_capabilities"
-      ],
-      "action": "Regenerate the accepted public capability fixture.",
-      "failure_semantics": "Reject schema drift, invalid nested contracts, and scalar deployment_mode."
-    },
-    {
-      "path": "crates/authority/rrd-engine/assets/install/default-estate-configuration-v1.toml",
-      "baseline_state": "absent",
-      "symbols": [
-        "bundled operator ceilings"
-      ],
-      "action": "Add one human-editable, versioned default configuration asset with conservative reasoning, recall and query ceilings.",
-      "failure_semantics": "Reject unknown keys, invalid bounds, and configuration that cannot round-trip into the public contract."
-    },
-    {
-      "path": "crates/authority/rrd-engine/assets/install/default-profile-v1.json",
-      "baseline_state": "present",
-      "symbols": [
-        "configuration_asset",
-        "deployment defaults"
-      ],
-      "action": "Bind the generic installation profile to the bundled configuration and explicit deployment axes.",
-      "failure_semantics": "Reject undeclared configuration assets and profile/deployment mismatch."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/estate_layout.rs",
-      "baseline_state": "absent",
-      "symbols": [
-        "EstateLayout",
-        "canonical managed paths",
-        "legacy collision check"
-      ],
-      "action": "Centralize every project-local RRFlow path and its ownership/removal class; detect the tracked legacy instance manifest or old direct root rather than creating a parallel estate.",
-      "failure_semantics": "Fail closed on symlinks, escaping paths, wrong path kinds, legacy collisions, foreign contents, or missing parent ownership."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/mod.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "deployment imports",
-        "estate_layout module",
-        "installation exports"
-      ],
-      "action": "Compose the new canonical contracts and layout through the existing engine boundary.",
-      "failure_semantics": "Do not expose a parallel store, lifecycle authority, or provider-specific state."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/lib.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "installation configuration exports"
-      ],
-      "action": "Expose only the engine-owned configuration input/loading and installed lifecycle types needed by the CLI.",
-      "failure_semantics": "Do not expose storage internals or mutable global configuration."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/core.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "RrdEngine deployment_profile",
-        "estate_configuration",
-        "installed_estate"
-      ],
-      "action": "Store explicit deployment/configuration state in the engine and remove storage-path-derived DeploymentMode inference; constructors receive safe typed defaults and installed open binds verified durable values.",
-      "failure_semantics": "Fail if installed identity/configuration cannot be proven; volatile and legacy constructors remain explicit non-installed defaults."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/error.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "ConfigurationLimit",
-        "ServiceErrorKind"
-      ],
-      "action": "Add a typed operator-ceiling failure classified as resource exhausted.",
-      "failure_semantics": "Never collapse configuration-limit denials into query parse, permission, or internal storage failures."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/installation.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "DefaultInstallProfile",
-        "EstateConfigurationInput loader",
-        "InstallationPreview",
-        "ProjectLocator",
-        "plan_installation",
-        "apply_installation",
-        "open_installed"
-      ],
-      "action": "Use the canonical layout; accept an optional bounded configuration file at plan time; seal the complete effective config into the plan and durable installed record; publish a relative locator without host absolute paths; bind verified installed state on open.",
-      "failure_semantics": "Planning performs no writes; apply must not reread mutable configuration, create a parallel legacy tree, silently migrate existing state, expose secrets, or publish before durable readback."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/context.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "assemble_context_at operator-ceiling enforcement"
-      ],
-      "action": "Reject context requests whose storage, graph, item or output bounds exceed the installed recall ceiling before reads.",
-      "failure_semantics": "Never silently raise the ceiling or turn truncation into a claimed complete result."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/query.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "query ceiling enforcement",
-        "execute_query_scoped",
-        "poll_live_query_page",
-        "ensure_query_index"
-      ],
-      "action": "Check all request QueryBudget fields against the effective estate query ceiling before execution or index work.",
-      "failure_semantics": "Reject over-ceiling work before reads/mutations without weakening existing hard contract maxima."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/tests/installation.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "canonical layout plan/apply/open tests",
-        "custom configuration test",
-        "legacy collision test"
-      ],
-      "action": "Prove exact directory/path ordering, plan no-write behavior, custom configuration sealing, locator portability and installed readback.",
-      "failure_semantics": "Fail on implicit parents, absolute locator identity, mutable-plan reread, legacy coexistence, or config/record drift."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/tests/context.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "configured recall ceiling test"
-      ],
-      "action": "Prove a request within the ceiling executes and one above it fails before storage work.",
-      "failure_semantics": "Fail if an over-ceiling context request executes or reports a misleading query error."
-    },
-    {
-      "path": "crates/authority/rrd-engine/src/engine/tests/deployment_conformance.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "explicit MX/KV deployment profile",
-        "configured query ceiling"
-      ],
-      "action": "Replace scalar assertions and prove explicit storage profile plus ceiling enforcement across volatile and persistent engines.",
-      "failure_semantics": "Fail on inferred endpoint presentation, incorrect storage profile, or accepted over-ceiling query work."
-    },
-    {
-      "path": "crates/transport/rrd-server/src/http/mod.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "structured deployment imports"
-      ],
-      "action": "Replace scalar type imports with the canonical deployment contract.",
-      "failure_semantics": "Do not introduce server-owned configuration or identity."
-    },
-    {
-      "path": "crates/transport/rrd-server/src/http/capabilities.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "capabilities projection",
-        "reasoning/recall/query limits"
-      ],
-      "action": "Project engine-owned installed identity/configuration and actual listener endpoint presentation; advertise configured ceilings and mark the absent reasoning runner unavailable.",
-      "failure_semantics": "Never infer storage from TLS, claim an unavailable executor, or advertise hard maxima above installed policy."
-    },
-    {
-      "path": "crates/transport/rrd-server/src/http/server.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "listener-bound capability construction"
-      ],
-      "action": "Pass the bound address and engine state into capability construction after security validation.",
-      "failure_semantics": "Reject network presentation without the existing authenticated TLS boundary."
-    },
-    {
-      "path": "crates/transport/rrd-server/tests/http_process.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "structured capability process assertions"
-      ],
-      "action": "Prove loopback and network servers report correct independent deployment axes and effective limits.",
-      "failure_semantics": "Fail if TLS changes storage identity, loopback is reported remote, or configuration is absent."
-    },
-    {
-      "path": "crates/transport/rrd-client/tests/real_server.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "capability discovery assertions"
-      ],
-      "action": "Consume and validate the structured profile/configuration through the real server.",
-      "failure_semantics": "Fail on scalar fallback or missing installed/default configuration."
-    },
-    {
-      "path": "crates/adapters/rrflow-cli/src/command.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "InstallAction::Plan configuration",
-        "--configuration parser"
-      ],
-      "action": "Add an optional explicit configuration input only to installation planning.",
-      "failure_semantics": "Reject missing values, duplicate options and configuration on apply; preserve exact-plan apply semantics."
-    },
-    {
-      "path": "crates/adapters/rrflow-cli/src/installed.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "install plan configuration adapter",
-        "portable serve/ready reports"
-      ],
-      "action": "Pass the selected configuration into pure planning and derive display paths from the operator argument rather than a locator absolute path.",
-      "failure_semantics": "Never reread the configuration during apply or print a secret."
-    },
-    {
-      "path": "crates/adapters/rrflow-cli/tests/installed_lifecycle.rs",
-      "baseline_state": "present",
-      "symbols": [
-        "custom configuration real-process flow",
-        "portable locator assertions"
-      ],
-      "action": "Prove plan/apply/serve/ready exposes the same sealed configuration and that the locator contains no host absolute root.",
-      "failure_semantics": "Fail on configuration drift, legacy layout, missing UI discovery fields, or secret leakage."
-    },
-    {
-      "path": "sdks/typescript/tests/client.test.ts",
-      "baseline_state": "present",
-      "symbols": [
-        "structured capability fixture"
-      ],
-      "action": "Update the typed client fixture to consume deployment, identity and configuration fields.",
-      "failure_semantics": "Fail if the client depends on deployment_mode."
-    },
-    {
-      "path": "sdks/python/tests/test_client.py",
-      "baseline_state": "present",
-      "symbols": [
-        "structured capability fixture"
-      ],
-      "action": "Update the client fixture to consume deployment, identity and configuration fields.",
-      "failure_semantics": "Fail if the client depends on deployment_mode."
-    },
-    {
-      "path": "sdks/go/client_test.go",
-      "baseline_state": "present",
-      "symbols": [
-        "structured capability fixture"
-      ],
-      "action": "Update the client fixture to consume deployment, identity and configuration fields.",
-      "failure_semantics": "Fail if the client depends on deployment_mode."
-    },
-    {
-      "path": "sdks/java/src/test/java/io/rrflow/rrd/RrdClientTest.java",
-      "baseline_state": "present",
-      "symbols": [
-        "structured capability fixture"
-      ],
-      "action": "Update the client fixture to consume deployment, identity and configuration fields.",
-      "failure_semantics": "Fail if the client depends on deployment_mode."
-    },
-    {
-      "path": "sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/RrdClientTests.cs",
-      "baseline_state": "present",
-      "symbols": [
-        "structured capability fixture"
-      ],
-      "action": "Update the client fixture to consume deployment, identity and configuration fields.",
-      "failure_semantics": "Fail if the client depends on deployment_mode."
+      "action": "Describe the current structured classification accurately and move accepted A-07/C-02/C-03/C-04 work from future directives into retained foundations.",
+      "failure_semantics": "Do not infer mode from TLS/root/location, revive DeploymentMode compatibility, or overstate the seed conformance corpus."
     }
   ],
   "evidence_changes": [
     {
-      "path": "docs/architecture/instance-topology.md",
-      "action": "Record the implemented canonical project-local estate tree and explicit legacy-collision boundary without changing identity ownership."
-    },
-    {
-      "path": "docs/reference/deployment/installed-lifecycle.md",
-      "action": "Specify the plan-time configuration input, sealed effective configuration, portable locator and exact rollout sequence."
-    },
-    {
-      "path": "docs/reference/deployment/modes.md",
-      "action": "Replace remaining scalar compatibility language with the implemented three-axis public contract and configuration precedence."
-    },
-    {
-      "path": "docs/reference/protocol/public-contract.md",
-      "action": "Document the generated structured capability payload and operator-ceiling failure semantics."
-    },
-    {
-      "path": "docs/reference/client/connectome.md",
-      "action": "Give the separate Connectome worktree one authoritative generated-consumer contract and prohibit duplicated configuration/lifecycle state."
-    },
-    {
-      "path": "docs/poam/rrflow-1.0-alpha/poam-022.md",
-      "action": "Record this bounded implementation evidence while keeping the deficiency open for the full conformance matrix."
-    },
-    {
-      "path": "docs/research/README.md",
-      "action": "Link the new focused research record from the coordinated research index."
-    },
-    {
-      "path": "docs/research/rrflow-canonical-estate-configuration-and-runtime-controls.md",
-      "action": "Author the comprehensive primary-source/code-grounded decision record for identity, configuration, Arrow/DataFusion execution, telemetry and rollout."
-    },
-    {
-      "path": "docs/evidence/change-journals/gate-d/d-01-canonical-estate-layout-and-configuration.md",
-      "action": "Record baseline, full reads, research, first failures, changed paths, exact commands/results, surfaced failures, non-runs, remaining gaps and unchanged owner status."
+      "path": "docs/evidence/change-journals/gate-d/d-01-current-state-documentation-alignment.md",
+      "action": "Record the clean baseline, complete-file reads, exact contradictions, changed paths, commands/results, surfaced failures, non-runs, remaining gaps, and unchanged roadmap/POA&M status."
     },
     {
       "path": "docs/evidence/change-journals/gate-d/README.md",
@@ -942,170 +214,61 @@
       "action": "Regenerate the Git-backed path/digest/gate inventory.",
       "generated": true,
       "generator": "scripts/ci/build_execution_inventory.py"
-    },
-    {
-      "path": "sdks/typescript/src/generated/rrd-openapi.ts",
-      "action": "Regenerate the TypeScript schema from rrd-contract OpenAPI.",
-      "generated": true,
-      "generator": "sdks/typescript/scripts/generate.ts"
-    },
-    {
-      "path": "sdks/typescript/src/generated/endpoints.ts",
-      "action": "Regenerate the endpoint projection header from the same OpenAPI owner.",
-      "generated": true,
-      "generator": "sdks/typescript/scripts/generate.ts"
     }
   ],
   "research": {
-    "decision": "required",
-    "reason": "The user explicitly requested deep research and this package sets long-lived identity, configuration, process and observability boundaries. The implementation uses primary specifications and official project documentation, mapped to existing RRFlow code rather than copied as a foreign architecture.",
-    "sources": [
-      {
-        "title": "RFC 8785 JSON Canonicalization Scheme",
-        "url": "https://www.rfc-editor.org/rfc/rfc8785.html",
-        "retained_behavior": "Configuration and plan digests require deterministic, domain-separated serialization over typed values; cross-language canonical JSON is a future outward-signing option.",
-        "rejected_assumption": "Ordinary object JSON text is automatically stable across languages or map orderings."
-      },
-      {
-        "title": "Apache Arrow columnar format introduction",
-        "url": "https://arrow.apache.org/docs/format/Intro.html",
-        "retained_behavior": "Use Arrow as the standardized in-memory/IPC representation at an explicitly measured boundary.",
-        "rejected_assumption": "Arrow owns RRFlow configuration, identity or durable lifecycle."
-      },
-      {
-        "title": "Apache Arrow columnar format",
-        "url": "https://arrow.apache.org/docs/format/Columnar.html",
-        "retained_behavior": "Keep hot analytical data columnar and bounded; choose layouts for measured access patterns.",
-        "rejected_assumption": "Every reasoning or recall object should be forced into one columnar schema."
-      },
-      {
-        "title": "Apache Arrow security",
-        "url": "https://arrow.apache.org/docs/format/Security.html",
-        "retained_behavior": "Treat Arrow IPC input as untrusted and keep allocation/resource validation at the RRFlow boundary.",
-        "rejected_assumption": "A standardized memory format supplies authorization or safe allocation by itself."
-      },
-      {
-        "title": "Apache DataFusion configuration",
-        "url": "https://datafusion.apache.org/user-guide/configs.html",
-        "retained_behavior": "Translate engine-owned policy into explicit DataFusion session/runtime options when the streamed provider lands.",
-        "rejected_assumption": "DataFusion environment variables should become RRFlow's durable source of truth."
-      },
-      {
-        "title": "DataFusion execution module",
-        "url": "https://docs.rs/datafusion/latest/datafusion/execution/index.html",
-        "retained_behavior": "Preserve distinct runtime, session and task state with bounded memory/disk resources.",
-        "rejected_assumption": "A dedicated subprocess is inherently faster or is required for DataFusion correctness."
-      },
-      {
-        "title": "OpenTelemetry signals",
-        "url": "https://opentelemetry.io/docs/concepts/signals/",
-        "retained_behavior": "Use traces for bounded operation paths and metrics for aggregate resource behavior.",
-        "rejected_assumption": "Private reasoning text or arbitrary project content should be logged as telemetry."
-      },
-      {
-        "title": "OpenTelemetry Trace API",
-        "url": "https://opentelemetry.io/docs/specs/otel/trace/api/",
-        "retained_behavior": "Correlate install/config/query stages with stable identifiers and bounded attributes.",
-        "rejected_assumption": "Creating spans establishes lifecycle authority or evidence correctness."
-      },
-      {
-        "title": "OpenAPI Specification",
-        "url": "https://spec.openapis.org/oas/",
-        "retained_behavior": "Project the canonical contract for UI and SDK discovery rather than hand-maintaining consumer schemas.",
-        "rejected_assumption": "OpenAPI availability proves an operation is authorized, configured or production-qualified."
-      },
-      {
-        "title": "Rust OpenOptions create_new",
-        "url": "https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new",
-        "retained_behavior": "Use atomic create-new semantics for collision-sensitive files; dangling symlinks fail.",
-        "rejected_assumption": "An exists check followed by create is a safe publication primitive."
-      },
-      {
-        "title": "Kubernetes configuration best practices",
-        "url": "https://kubernetes.io/docs/concepts/configuration/overview/",
-        "retained_behavior": "Separate versioned declarative configuration from code and credentials and make precedence explicit.",
-        "rejected_assumption": "Discovery or a default silently authorizes activation."
-      },
-      {
-        "title": "The Update Framework specification",
-        "url": "https://theupdateframework.github.io/specification/v1.0.26/",
-        "retained_behavior": "Keep release acquisition/signature/rollback trust separate from project-local installation and configuration.",
-        "rejected_assumption": "A local executable digest is equivalent to signed release provenance."
-      }
-    ]
+    "decision": "not_required",
+    "reason": "This package makes no new architecture or implementation decision. It reconciles supporting prose against the repository-owned roadmap status, accepted Gate C evidence, generated contract, and the immediately preceding fully researched and tested D01-02 implementation record.",
+    "sources": []
   },
   "trace_resource_debug": {
     "runtime_trace": {
-      "decision": "add",
-      "reason": "Emit bounded stage, deployment-axis, configuration revision/digest, instance and requested-versus-ceiling fields; never raw prompts, project content, credentials or private reasoning."
+      "decision": "not_applicable",
+      "reason": "No runtime path or signal changes; existing bounded trace behavior remains untouched."
     },
     "resource_evidence": {
-      "decision": "add",
-      "reason": "Expose effective query/recall/reasoning ceilings in capabilities and test that over-ceiling work is rejected before reads/mutations; retain exact install path/action inventories."
+      "decision": "not_applicable",
+      "reason": "No execution, allocation, persistence, or limit behavior changes; the package reports previously measured and tested behavior only."
     },
     "debugging_evidence": {
-      "decision": "add",
-      "reason": "Distinguish invalid configuration, configuration-limit denial, legacy-layout collision, installed configuration drift and endpoint-presentation mismatch with typed failures."
+      "decision": "not_applicable",
+      "reason": "The failure oracle is deterministic documentation contradiction detection rather than a runtime debugging path."
     }
   },
   "first_failure_oracle": [
-    "cargo test -p rrd-contract --test deployment_configuration_contract --locked initially fails because the test target and canonical deployment/configuration types do not exist.",
-    "Updated installation contract tests initially fail because InstallationPlan still requires ResourcePath plus absolute project_root and does not enumerate parent directories.",
-    "Updated deployment conformance tests initially fail because RrdEngine and ServiceCapabilities still expose DeploymentMode and no effective EstateConfiguration.",
-    "Over-ceiling query/context tests initially fail because existing execution validates only compile-time contract maxima."
+    "Before edits, exact searches find server.md claiming TLS derives local_daemon/remote, no accepted alpha bootstrap exists, C-03 atomic commit remains future, C-04 normal reads may rebuild from the runtime log, and Gate C one-transaction work remains.",
+    "Before edits, the public-contract proof map assigns accepted C-03 and C-04 work to the future, and modes.md tells future work to stop TLS inference and prove C-02 through C-04 despite the accepted owner records.",
+    "After edits, a bounded text assertion must reject those stale formulations and require explicit accepted-C-03, accepted-C-04, bounded-D-01, listener-derived endpoint, and open-D-01 language."
   ],
   "edit_sequence": [
-    "Commit this active record alone as the direct child of clean baseline f2f6991627996f1120e7ffa55f19cc740556a6fa, then require check_change_plan.py to accept zero post-plan paths.",
-    "Add focused failing contract tests and fixtures for identity, deployment axes, configuration digest/bounds and scalar rejection.",
-    "Implement the transport-neutral contract, then migrate installation/attunement types and exact plan digests.",
-    "Implement the canonical layout and bundled/default-or-explicit configuration loader; prove plan no-write, legacy collision, exact apply, portable locator and installed readback.",
-    "Bind configuration/profile/identity to RrdEngine and enforce query/context ceilings before reads or mutation.",
-    "Project the engine-owned state through the listener-aware capability catalogue; regenerate OpenAPI and update each SDK fixture from that owner.",
-    "Run focused tests before package suites; diagnose intermediate failures without compatibility aliases, silent fallback, relaxed ceilings or false capability claims.",
-    "Synchronize the owning references, focused research record, POA&M evidence and linked journal; regenerate navigation and the Git-backed file inventory.",
-    "Reread every changed source/evidence file and inspect the complete final diff. Commit one coherent implementation only when all declared acceptance checks pass.",
-    "Do not push. A later separate package must converge legacy .rrflow state and another must qualify release installers/bundles before Gate J promotion."
+    "Commit this machine-readable plan alone as the direct child of a6648de1 and require the validator to accept the declared documentation-only scope.",
+    "Update README current status with the exact D01-02 result and non-claims.",
+    "Update server.md transaction/query/bootstrap/current-qualification text against accepted owner evidence.",
+    "Update public-contract.md proof rows so accepted behavior and remaining proof are distinct.",
+    "Update modes.md audit and convergence sequence so completed foundations are retained rather than rescheduled.",
+    "Run the stale-claim oracle, documentation checks, focused contract and installed-process tests, then create the linked journal.",
+    "Regenerate the Gate D index and execution inventory, rerun all declared checks, reread every changed file and inspect the complete diff before committing the bounded package."
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "cargo test -p rrd-contract --test deployment_configuration_contract --locked",
-    "cargo test -p rrd-contract --test attunement_contract --locked",
-    "cargo test -p rrd-contract --test public_contract --locked",
-    "cargo test -p rrd-engine installation --locked",
-    "cargo test -p rrd-engine deployment_conformance --locked",
-    "cargo test -p rrd-engine context --locked",
-    "cargo test -p rrd-server --test http_process --locked",
-    "cargo test -p rrd-client --test real_server --locked",
-    "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
-    "cargo test -p rrd-contract -p rrd-engine -p rrd-server -p rrd-client -p rrflow-cli --all-targets --locked",
-    "pnpm exec tsx sdks/typescript/scripts/generate.ts --check",
-    "pnpm --dir sdks/typescript test",
-    "uv run --project sdks/python pytest sdks/python/tests/test_client.py",
-    "go -C sdks/go test ./...",
-    "mvn -q -f sdks/java/pom.xml test",
-    "dotnet test sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/Rrflow.Rrd.Client.Tests.csproj --locked-mode",
-    "cargo clippy -p rrd-contract -p rrd-engine -p rrd-server -p rrd-client -p rrflow-cli --all-targets --locked -- -D warnings",
-    "cargo fmt --all -- --check",
-    "cargo test --workspace --all-targets --locked",
+    "python3 -c \"from pathlib import Path; docs={p:Path(p).read_text() for p in ['README.md','docs/reference/protocol/server.md','docs/reference/protocol/public-contract.md','docs/reference/deployment/modes.md']}; joined='\\n'.join(docs.values()); forbidden=['incorrectly derives `local_daemon` versus `remote`','There is no accepted alpha bootstrap command yet','Gate C-03 owns the target atomic write batch','C-03 must commit canonical model state','C-02 through C-04:** prove']; assert all(x not in joined for x in forbidden); assert 'D-01 remains open' in docs['README.md']; assert 'accepted C-03' in joined; assert 'accepted C-04' in joined\"",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/knowledge/render_navigation.py --check",
-    "python3 scripts/knowledge/test_navigation.py",
+    "python3 -m unittest scripts.knowledge.test_navigation",
     "python3 scripts/ci/build_execution_inventory.py --check",
-    "python3 scripts/knowledge/test_export.py",
+    "cargo test -p rrd-contract --test deployment_configuration_contract --locked",
+    "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture",
     "python3 scripts/check_version.py",
     "git diff --check"
   ],
   "stop_conditions": [
-    "Any implementation edit exists before the planning-only commit or the validator cannot bind the exact clean baseline and changed paths.",
-    "The canonical identity requires a fabricated organization, absolute host root, Connectome-owned state, provider identity or a second lifecycle/configuration authority.",
-    "Planning writes, activates an adapter, reads credentials, executes project code, fetches a resource or accepts an unbounded/symlinked configuration input.",
-    "Apply rereads mutable configuration instead of the sealed plan, silently migrates legacy state, coexists with .rrflow/instance.toml or the old direct .rrflow/rrd root, or publishes before durable readback.",
-    "A configured ceiling can exceed a compiled safety maximum, be bypassed by query/live-query/index/context paths, or silently change through attunement.",
-    "Reasoning limits would require modeling private thought or falsely claiming a reasoning executor exists; retain the typed ceiling as unavailable future capability instead.",
-    "Arrow/DataFusion would become identity/configuration authority, an undeclared subprocess, a mandatory external service or a claimed zero-copy boundary without measurement.",
-    "SDK/UI discovery requires a hand-maintained schema that differs from rrd-contract/OpenAPI or retains DeploymentMode compatibility.",
-    "Tests require credential disclosure, weakened authentication/durability, changed storage bytes, a benchmark threshold change, a version bump, gate closure or official-origin activity.",
-    "Scope expands into legacy migration/deletion, configure apply, full attunement, install bundle/signing, repair/uninstall, cross-platform ACL qualification or Connectome implementation."
+    "Any implementation/documentation edit exists before the planning-only commit or the validator cannot bind this exact clean baseline and path set.",
+    "Resolving a sentence would require changing generated contract bytes, code behavior, a roadmap checkbox, a POA&M lifecycle, version 1.0.0, or promotion status.",
+    "The prose would claim D-01 complete, a signed/offline release, a reasoning executor, complete attunement, full cross-profile conformance, or complete F/H/J qualification.",
+    "A reference would become a second status or lifecycle authority instead of linking the README, roadmap, POA&M, generated catalogue, or accepted evidence owner.",
+    "The change would revive scalar DeploymentMode, infer storage/deployment from TLS or a root path, add a schema of thought, or make an external system a default dependency.",
+    "Focused contract or installed-process behavior differs from the evidence being described; stop and open a separately planned implementation package instead of editing around it.",
+    "Scope expands into Connectome code, installer recovery/repair/uninstall, legacy migration/deletion, attunement execution, SDK runtime completion, or remote activity."
   ],
-  "roadmap_status_change": "None. This package provides partial D-01 and POAM-022 evidence by establishing a canonical install layout/configuration/deployment contract and enforcing currently available query/context ceilings. D-01, D-02, F-01, H-04, J-01 through J-05, POAM-006/020/022, alpha outcomes, release qualification, strict storage promotion and official promotion remain open. Legacy layout convergence, durable configure plan/apply, reasoning execution, streamed DataFusion and clean-machine distribution are explicitly following packages."
+  "roadmap_status_change": "None. C-03 and C-04 remain accepted; D-01, H-04, all relevant POA&M items, the alpha objective, and promotion remain open."
 }
