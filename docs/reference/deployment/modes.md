@@ -104,9 +104,10 @@ available operation and resource-limit capabilities
 The exact v1 Rust/wire fields are `DeploymentProfile { contract_version,
 deployment_form, storage_profile, endpoint_presentation }`. Strict decoding
 rejects the removed scalar `deployment_mode`; OpenAPI and the TypeScript
-projection are generated from the same owner. This implemented vocabulary does
-not close A-07 or the profile conformance matrix, and unavailable combinations
-must not be emitted as active capability values.
+projection are generated from the same owner. This implemented vocabulary
+preserves the accepted A-07 discovery baseline but does not complete the
+profile conformance matrix, and unavailable combinations must not be emitted as
+active capability values.
 
 ## One engine flow in every profile
 
@@ -165,7 +166,7 @@ tests.
 Execute the same public semantic operations through an embedded composition
 and a real standalone single-node process. Compare instance/estate identity,
 authorization, result, stamp, digest, cancellation, limits, and traces. The
-standalone process must be installed through the accepted D-01 boundary and
+standalone process must use the implemented bounded D-01 install boundary and
 must prove authenticated readiness and bounded shutdown; a raw root, marker
 file, or in-test server object does not qualify it.
 
@@ -195,53 +196,55 @@ those ordinary engine paths.
 
 ## Current implementation audit
 
-The current code passes useful characterization tests, but its classification
-is structurally wrong and its corpus is far below the preceding acceptance
-boundary.
+The current classification now uses the accepted independent coordinates, but
+its qualification corpus remains far below the preceding acceptance boundary.
 
 | Current implementation | Characterized behavior worth retaining | Required direct convergence |
 |---|---|---|
-| `DeploymentProfile`, `InstalledEstateIdentity`, and `ServiceCapabilities::{deployment,installed_estate,configuration}` | Strict independent axes, identity/configuration validation, generated OpenAPI/TypeScript projection, and rejection of the removed scalar now pass. | Retain this as the sole contract while A-07 removes remaining conflicting topology vocabulary and H-04 qualifies every generated client against a real installed process. |
+| `DeploymentProfile`, `InstalledEstateIdentity`, and `ServiceCapabilities::{deployment,installed_estate,configuration}` | Strict independent axes, identity/configuration validation, generated OpenAPI/TypeScript projection, and rejection of the removed scalar now pass. A-07 is accepted. | Retain this as the sole contract while D-01 removes remaining conflicting startup/topology authority and H-04 qualifies every generated client against a real installed process. |
 | `RrdEngine::storage_profile_kind` | MX and KV constructors now report only the explicit storage axis and never infer process form from root presence. Installed open also binds identity and configuration; the outward composition owns form and endpoint. | Carry the installed descriptor into every remaining raw-root/legacy composition and remove their creation authority; complete the full semantic differential. |
 | `rrd-server::http::capabilities` | Reports single-node form, engine-selected storage, endpoint presentation from the bound address, installed identity when present, and effective ceilings. TLS no longer selects a database mode. | Qualify configured network listeners and every active presentation; do not count a raw-root standalone fixture as the installed product proof. |
 | `rrd-deployment-conformance-v1.json` and contract validation | Strictly validates a versioned fixture with unique non-empty document IDs, bounds, and expected output membership. | Replace the overclaimed shared-deployment meaning with the layered semantic, form, transport, durability, and artifact corpora above. |
 | engine deployment tests | Exercise one schema plus two records on rrflowMX and rrflowKV, run one exact-ID rrflowQL query through the current DataFusion executor, reject a durability operation on rrflowMX, deny a second rrflowKV writer, and reopen at cursor three. | Retain this as a seed characterization only. It does not prove streaming/pushdown, native graph/index/vector access, complete semantic parity, failure atomicity, reasoning, or resource bounds. |
-| Rust client loopback and mutual-TLS tests | Exercise real sockets and verify selected TLS identity behavior. | Stop deriving a database mode from TLS. Run the complete cross-surface corpus against an installed real process. |
+| Rust client loopback and mutual-TLS tests | Exercise real sockets and verify selected TLS identity behavior without using TLS to choose the database or deployment profile. | Run the complete cross-surface corpus against an installed real process. |
 | standalone server-process test | Starts a real child, observes readiness, exercises the seed corpus, proves writer exclusion, shuts down, and reopens. | Replace raw-root initialization, marker authority, and private process state through D-01 and the accepted local-process adapter before counting it as deployment proof. |
 | `rrflow-edge` offline test | Builds, mmap-opens, and queries a deterministic feature-hash artifact from the two fixture documents. | Keep it as derived-artifact evidence. It parses the fixture as untyped JSON and does not enter `RrdEngine`, rrflowQL, transactions, graph/index semantics, or the shared storage profile. |
 
-The current control journal and global runtime cursor are also not two accepted
-ordering authorities. Gate C converges authoritative semantic state, index and
-projection deltas, audit, outbox, and cursor into one atomic engine-owned
-commit. Logs and traces observe that commit and never manufacture it.
+The control journal and global runtime cursor are not two ordering authorities.
+Accepted C-03 evidence commits authoritative semantic state, index and
+projection deltas, function results, audit, outbox, and cursor through one
+engine-owned semantic transaction. Control recovery reconciles around that
+commit; logs and traces observe it and never manufacture it.
 
 ## Direct-convergence sequence
 
-1. **A-07/D-01 foundation:** retain the now-frozen three-coordinate contract
-   and generated projection; finish the inventory and remove remaining
-   ambiguous topology/composition callers without a shim.
-2. **B-04/H-04:** expose the structured installed descriptor and run one
-   operation catalogue across HTTP, WebSocket, SDK, MCP, CLI, and Connectome.
-3. **C-02 through C-04:** prove the full semantic differential on rrflowMX and
-   rrflowKV, then add rrflowKV-only durability evidence.
-4. **D-01:** make preview/apply choose and persist the profile; make all startup
-   paths resolve it without inference or implicit initialization.
-5. **E/F/G/H/I:** fill the shared corpus with native graph, lexical, vector,
+1. **Accepted foundation:** retain A-07's three-coordinate contract, C-02's
+   shared transaction port, accepted C-03 atomic semantic commit, and accepted
+   C-04 direct stamped reads without a compatibility shim.
+2. **D-01:** extend the implemented preview/apply identity, profile, and sealed
+   configuration through every startup path; remove raw-root and legacy
+   initialization authority; add interruption-safe lifecycle and platform
+   qualification.
+3. **B-04/H-04:** retain the closed WebSocket vocabulary and run one operation
+   catalogue across HTTP, WebSocket, SDK, MCP, CLI, and Connectome.
+4. **C-07/E/F/G/H/I:** complete durability/maintenance qualification and fill
+   the shared corpus with native graph, lexical, vector,
    streamed Arrow/DataFusion, reasoning, context, feedback, delivery, and
    automation behavior as each owning gate lands.
-6. **H-07:** add configured mesh endpoint resolution as an optional transport
+5. **H-07:** add configured mesh endpoint resolution as an optional transport
    adapter, never as identity, authentication, storage, or deployment mode.
-7. **J:** reject every superseded value/shape, qualify the complete matrix on
+6. **J:** reject every superseded value/shape, qualify the complete matrix on
    clean installed artifacts, and publish raw comparative deployment evidence.
 
 ## Acceptance
 
-This profile contract is implemented only when installation binds one explicit
-valid combination; capability discovery reports its independent coordinates;
-no caller infers a mode from root/TLS/network location; rrflowMX and rrflowKV
-pass the complete non-durability semantic differential; rrflowKV passes the
-durability matrix; embedded and installed single-node forms plus every active
-endpoint pass cross-surface equivalence; cluster values remain unavailable
-until independent-host proof; derived edge artifacts remain outside deployment
-semantics; and no current `DeploymentMode` alias, speculative value, or
-two-document fixture is accepted as substitute evidence.
+The typed classification contract is implemented: installation binds one
+explicit valid combination, capability discovery reports independent
+coordinates, and no current caller may infer a mode from root, TLS, or network
+location. Full deployment-profile acceptance still requires rrflowMX and
+rrflowKV to pass the complete non-durability semantic differential, rrflowKV to
+pass the durability matrix, embedded and installed single-node forms plus every
+active endpoint to pass cross-surface equivalence, cluster values to remain
+unavailable until independent-host proof, and derived edge artifacts to remain
+outside deployment semantics. No `DeploymentMode` alias, speculative value, or
+two-document fixture is substitute evidence.

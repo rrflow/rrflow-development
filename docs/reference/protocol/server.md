@@ -63,19 +63,23 @@ GET /v1/schema/openapi     # when a generated HTTP description is required
 Liveness proves only that the process answers. Readiness opens the configured
 instance and checks its current format and operational state. Capabilities
 characterize the installed profile and supported operations; they are not
-release evidence. The current response incorrectly derives `local_daemon`
-versus `remote` solely from whether TLS is configured. A-07 froze the direct
-replacement; C-02, D-01, and H-04 must implement independently installed
-deployment-form, storage-profile, endpoint-presentation, and security facts.
-Connectome and SDKs
-must reject an unexpected protocol version or instance resource rather than
-inferring compatibility.
+release evidence. The current response carries independent deployment form,
+storage profile, and endpoint presentation plus the installed identity and
+effective configuration. Endpoint presentation comes from the listener that
+the process actually bound; TLS remains a separate security property and does
+not select storage or deployment form. Connectome and SDKs must reject an
+unexpected protocol version or instance resource rather than inferring
+compatibility.
 
-There is no accepted alpha bootstrap command yet. Current code still exposes
-`rrd-server initialize` and permits startup from a raw project root; those are
-characterization-only pre-release conflicts, not supported installation
-guidance. Gate D-01 replaces them directly with one previewed/applied
-`rrflow install` contract and a read-only installed binding. The
+The accepted bounded D-01 bootstrap is the source-built `rrflow install plan`,
+`rrflow install apply`, `rrflow serve`, authenticated `rrflow ready`, and
+read-only `rrflow verify --level quick` flow. Planning previews and seals the
+canonical estate and configuration; apply consumes those sealed bytes; serve
+opens that installed identity read-only before composing the listener. This is
+pre-release implementation evidence, not complete D-01 or release evidence.
+`rrd-server initialize` and raw-project-root startup remain
+characterization-only convergence inventory, not supported installation
+guidance. The
 [local-process adapter reference](../deployment/local-process-driver.md) owns
 the exact target launch, authenticated readiness, and shutdown boundary.
 
@@ -185,8 +189,7 @@ digest-chained journal. Renewal, expiry, close, prepare, commit intent,
 terminal commit, and abort have explicit states. A disconnect is not a commit
 or abort decision, and cleanup does not delete canonical data.
 
-The current commit path is intentionally characterized without overstating
-atomicity:
+The public transaction lifecycle brackets the authoritative semantic commit:
 
 ```text
 durable transaction prepare
@@ -195,28 +198,34 @@ durable transaction prepare
 ```
 
 Restart reconciliation uses the frozen operation identity and runtime receipt
-to close either process-failure gap without duplicating data. This is not one
-cross-keyspace atomic transaction. Gate C-03 owns the target atomic write batch
-for canonical model changes, temporal versions, graph adjacency, synchronous
-indexes, runtime-log state, and durable projection deltas.
+to close either process-failure gap without duplicating data. Accepted C-03
+evidence establishes that the authoritative middle step is one
+`SemanticCommitPlan` applied through one storage transaction: canonical and
+temporal model state, both graph directions, synchronous index-source changes,
+runtime state, durable projection work, function receipt/proposal, audit,
+outbox, cursor, and outcome become visible together or not at all. The durable
+prepare and terminal control states make a lost acknowledgement recoverable;
+they do not split that semantic data commit or create a second data authority.
 
 The public transaction contract also still accepts separate `claims` and
 `data` scopes. That is conflicting pre-release inventory, not a compatibility
-promise. Gates C-03, H-04, and J-01 must preserve claim semantics inside the
-one canonical multi-model transaction and remove the claim-only successful
-path, contract branch, and fixtures.
+promise. Gates H-04 and J-01 must preserve accepted C-03 claim semantics across
+the public surfaces and remove the claim-only successful path, contract branch,
+and fixtures.
 
 ## Query, context, and delivery limits
 
 Query and context operations pass through the engine's binder, planner,
 authorization, and explicit public budgets. Their transport does not prove
-that target physical access exists. Current reads may reconstruct state from
-the runtime log and allocate materialized rows; current live-query polling
-executes two stamped snapshots and computes a deterministic difference.
-Roadmap Gates C, E, F, and H replace those costs with direct stamped reads,
-native graph/lexical/vector indexes, streamed Arrow batches, bounded
-DataFusion execution, and commit-impact delivery without changing transport
-authority.
+that every target physical access path exists. Accepted C-04 evidence
+establishes bounded, authenticated point/prefix/version reads at one
+`ReadStamp`; normal query, vector, retrieval, context, memory, and inference
+paths no longer reconstruct state from the runtime log. Current query output
+may still allocate materialized rows, and current live-query polling executes
+two stamped snapshots and computes a deterministic difference. Roadmap Gates
+E, F, and H own native graph/lexical/vector indexes, streamed Arrow batches,
+bounded DataFusion execution, and commit-impact delivery without changing
+transport authority.
 
 `changes/follow` is a bounded waiting read over the durable cursor contract.
 It is neither the canonical multiplexed stream nor a promise to retain two
@@ -250,10 +259,12 @@ python3 scripts/ci/check_generated_surfaces.py
 ```
 
 Remaining product work is governed by the roadmap and POA&M. In particular,
-this server reference cannot close the one-transaction storage work in Gate C,
-the native access paths in Gate E, streamed Arrow/DataFusion execution in Gate
-F, reasoning/context integration in Gates G/H, install and attunement in Gate
-D, automation in Gate I, or release proof in Gate J.
+this server reference cannot close the remaining C-07 recovery and maintenance
+qualification, native access paths in Gate E, streamed Arrow/DataFusion
+execution in Gate F, reasoning/context integration in Gates G/H, the remaining
+install and attunement work in Gate D, automation in Gate I, or release proof
+in Gate J. It preserves accepted C-03 atomic-commit and accepted C-04
+direct-read evidence rather than rescheduling either as server work.
 
 ## Implementation anchors
 
