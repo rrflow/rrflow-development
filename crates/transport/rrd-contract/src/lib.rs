@@ -43,11 +43,11 @@ pub use capability_surface::{
     SurfaceDisposition,
 };
 pub use deployment::{
-    estate_configuration_sha256, DeploymentForm, DeploymentProfile, EndpointPresentation,
-    EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity, ReasoningLimits,
-    RecallLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
-    ESTATE_CONFIGURATION_FORMAT_VERSION, MAX_REASONING_RUN_ELAPSED_MS, MAX_REASONING_STEPS,
-    MAX_REASONING_STEP_ELAPSED_MS,
+    estate_configuration_sha256, ClockPolicy, DeploymentForm, DeploymentProfile,
+    EndpointPresentation, EstateConfiguration, EstateConfigurationInput, InstalledEstateIdentity,
+    ReasoningLimits, RecallLimits, StorageProfileKind, DEPLOYMENT_PROFILE_CONTRACT_VERSION,
+    ESTATE_CONFIGURATION_FORMAT_VERSION, MAX_CLOCK_ROLLBACK_MS, MAX_REASONING_RUN_ELAPSED_MS,
+    MAX_REASONING_STEPS, MAX_REASONING_STEP_ELAPSED_MS,
 };
 pub use diagnostic::{
     DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
@@ -168,7 +168,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040";
+    "96a232bda6cfb3135e75df86e8b97a77b8a5f098545ce9fe8dc0d3e7a6d6ad26";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
