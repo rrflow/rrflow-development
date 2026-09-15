@@ -4,8 +4,8 @@
   "status": "active",
   "package_kind": "installed-lifecycle-clock-substrate",
   "baseline": {
-    "revision": "fdf013dc3341070bd10d4bec0af1611dd7c66d72",
-    "tree": "4ed13ec4504e089ff85d68656b2071adcb08144d",
+    "revision": "e28c16d1ad3231ee785b54359226a78a39c997d4",
+    "tree": "16a07658ab9c60133d9495b91570a3437d29f784",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -36,7 +36,7 @@
     "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
   },
   "reviewed_files": [
-    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"4000088557691e7b391ffa1734bd99607e9be22e2cc5533eea9ce26a5a1283ad","baseline_lines":234,"reviewed_lines":"1-234","symbols":["complete D01 clock plan before corrective planning commit"]},
+    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"580cf32389715052cfc4f2fcccfc10daf0454e9b393a369ef8fd287272c750fe","baseline_lines":233,"reviewed_lines":"1-233","symbols":["complete corrected D01 clock plan before final command correction"]},
     {"path":"AGENTS.md","baseline_sha256":"6ed5e45f260a42f8a0a008b3023d50cb165df788bee94485390c5af5938c6ef1","baseline_lines":161,"reviewed_lines":"1-161","symbols":["complete repository engineering rules"]},
     {"path":"README.md","baseline_sha256":"8024b14732431c46380da0a94fed6f9060a4cdd67e8daa67fbf217e5f81fbfa3","baseline_lines":270,"reviewed_lines":"1-270","symbols":["complete identity, status, warp points, and gaps"]},
     {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"1b0f0d10d6c1e5ae9f22a157f21baa44d539550ac98a3e88b96278bf6c75df01","baseline_lines":65,"reviewed_lines":"1-65","symbols":["complete alpha outcomes"]},
@@ -179,7 +179,7 @@
     "Old configuration shape/digest fails deterministic generators or typed SDK fixtures."
   ],
   "edit_sequence": [
-    "Commit this file alone directly after 75a1415 and require planning-only change-plan acceptance.",
+    "Commit this file alone directly after the declared baseline and require planning-only change-plan acceptance.",
     "Add canonical format-2 clock policy, replace v1 asset directly, update profile, and test validation/digest.",
     "Implement private source/public diagnostics, errors, deterministic assessment tests, and tracing.",
     "Seal anchor into intent/record, remove public time, enforce recovery/replay/open, and add read-only verification.",
@@ -210,7 +210,7 @@
     "cd sdks/python && uv run pytest tests/test_client.py tests/test_signal_catalogue.py",
     "cd sdks/go && go test ./...",
     "cd sdks/java && mvn -q -Dtest=RrdClientTest,SignalCatalogueTest test",
-    "dotnet test sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/Rrflow.Rrd.Client.Tests.csproj --filter FullyQualifiedName~RrdClientTests|FullyQualifiedName~SignalCatalogueTests",
+    "dotnet test sdks/dotnet/tests/Rrflow.Rrd.Client.Tests/Rrflow.Rrd.Client.Tests.csproj --filter 'FullyQualifiedName~RrdClientTests|FullyQualifiedName~SignalCatalogueTests'",
     "python3 scripts/ci/check_documentation.py",
     "python3 scripts/knowledge/render_navigation.py --check",
     "python3 -m unittest scripts.knowledge.test_navigation",
