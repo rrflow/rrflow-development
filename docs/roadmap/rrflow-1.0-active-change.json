@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "package_id": "A07-2b-openapi-sdk-projection-convergence",
+  "package_id": "A07-2b-openapi-sdk-projection-convergence-v2",
   "status": "active",
   "package_kind": "generated-public-surface-baseline-repair",
   "baseline": {
-    "revision": "cfa0e8073c1a5479427beb29c7c88ee0a71f2f01",
-    "tree": "f47d6cc06310d026fa9ab0d2ebfbe81f6ad00af1",
+    "revision": "a407825efdcbfba2bb531751f6ab3705cebf20f2",
+    "tree": "fac6e80d44c32738747a57cbab88e6254c5a1fdf",
     "branch": "agent/connectome-temporal-runtime-visualizer",
     "development_remote": "development",
     "development_url": "https://github.com/rrflow/rrflow-development.git",
@@ -18,7 +18,7 @@
     "poam_items": ["POAM-015"],
     "architecture_owner": "docs/roadmap/rrflow-1.0-execution/generated-surfaces.md"
   },
-  "current_behavior": "At clean baseline cfa0e807, rrd-contract-export, the Rust OPENAPI_DOCUMENT_SHA256 constant, the public-contract reference, and both TypeScript endpoint projections agree on OpenAPI SHA-256 0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040. Python, Go, Java, and .NET endpoint projections plus all five language signal projections still carry prior digest 8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b. Consequently python3 scripts/ci/check_generated_surfaces.py fails immediately at the Python endpoint. Each language's signal test also copies the prior OpenAPI digest as handwritten expected data instead of comparing its two generated projections, allowing a partial regeneration and its test to drift together.",
+  "current_behavior": "At clean implementation baseline a407825, whose only change from source baseline cfa0e807 is the first planning-only record, rrd-contract-export, the Rust OPENAPI_DOCUMENT_SHA256 constant, the public-contract reference, and both TypeScript endpoint projections agree on OpenAPI SHA-256 0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040. Python, Go, Java, and .NET endpoint projections plus all five language signal projections still carry prior digest 8f9efc7be194e4900812f93b422e252fab187facf854c9459f1c84be70971f8b. Consequently python3 scripts/ci/check_generated_surfaces.py fails immediately at the Python endpoint. Each language's signal test also copies the prior OpenAPI digest as handwritten expected data instead of comparing its two generated projections, allowing a partial regeneration and its test to drift together. Validation of the first plan then correctly failed because package-manager aliases did not place each exact generator path and --check token in its acceptance command; this v2 plan corrects only that planning evidence before implementation.",
   "target_behavior": "The existing language-specific endpoint generators each emit a generated endpoint-projection OpenAPI digest constant alongside the current digest header. The five signal tests retain the independently frozen kernel signal fingerprint but compare the signal projection's generated OpenAPI identity to the endpoint projection's generated identity. All endpoint and signal files are regenerated from the unchanged rrd-contract-export owner, every projection carries 0ef644d8b65019d3fdbb3cf6bf5dd0961473d41d66b0080529801d0008cd9040, and the common generated-surface checker plus all five focused SDK tests pass. No endpoint, wire type, operation, signal semantic, capability, protocol version, or product version changes.",
   "unchanged_behavior": [
     "README remains product identity/current-status authority; the alpha objective, roadmap, and POA&M remain their respective outcome, dependency/status, and deficiency owners.",
@@ -36,7 +36,7 @@
     "allowed_paths": ["docs/roadmap/rrflow-1.0-active-change.json"]
   },
   "reviewed_files": [
-    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"8308c7b8d878d44cd4141eeba0fd094d0ba2cc608a186e479e17102986e7bf85","baseline_lines":300,"reviewed_lines":"1-300","symbols":["complete prior D01-04 plan, accepted implementation boundary, evidence paths, commands, and stop conditions"]},
+    {"path":"docs/roadmap/rrflow-1.0-active-change.json","baseline_sha256":"09cab3725d864fc4452089de6adce8137d617666e513bccbbe275ffb1851aaaf","baseline_lines":147,"reviewed_lines":"1-147","symbols":["complete A07-2b v1 projection-repair plan and the package-alias acceptance-command defect surfaced by canonical validation"]},
     {"path":"AGENTS.md","baseline_sha256":"6ed5e45f260a42f8a0a008b3023d50cb165df788bee94485390c5af5938c6ef1","baseline_lines":161,"reviewed_lines":"1-161","symbols":["complete repository authority, generated-projection, planning-only commit, linked journal, verification, and promotion rules"]},
     {"path":"README.md","baseline_sha256":"8024b14732431c46380da0a94fed6f9060a4cdd67e8daa67fbf217e5f81fbfa3","baseline_lines":270,"reviewed_lines":"1-270","symbols":["complete product identity, current status, operation map, generated-surface warp, and open lifecycle gaps"]},
     {"path":"docs/objectives/rrflow-1.0-alpha.md","baseline_sha256":"1b0f0d10d6c1e5ae9f22a157f21baa44d539550ac98a3e88b96278bf6c75df01","baseline_lines":65,"reviewed_lines":"1-65","symbols":["complete measurable alpha outcomes and objective evidence rules"]},
@@ -107,7 +107,7 @@
     "After regeneration, every endpoint descriptor remains byte-semantically equal to canonical_endpoints(rrd-contract-export); only generated identity metadata/constants differ from the baseline."
   ],
   "edit_sequence": [
-    "Commit this active-change file alone as the direct child of cfa0e807 and require python3 scripts/ci/check_change_plan.py to report planning-only state.",
+    "Commit this corrected active-change file alone as the direct child of a407825 and require python3 scripts/ci/check_change_plan.py to report planning-only state before any implementation edit.",
     "Add one generated endpoint OpenAPI identity constant to each of the five existing language generators without changing its endpoint extraction, ordering, authentication, mutation, or formatting behavior.",
     "Change the five focused signal tests to compare their signal projection against their endpoint projection; retain the fixed kernel signal fingerprint and all existing shape/inertness assertions.",
     "Run each endpoint generator in write mode, then run scripts/ci/check_generated_surfaces.py --write to refresh the six signal projections.",
@@ -116,9 +116,9 @@
   ],
   "acceptance_commands": [
     "python3 scripts/ci/check_change_plan.py",
-    "pnpm --dir sdks/typescript generate:check",
-    "cd sdks/python && uv run python scripts/generate.py --check",
-    "cd sdks/go && go run ./cmd/generate --check",
+    "test -f sdks/typescript/scripts/generate.ts && cd sdks/typescript && pnpm exec tsx scripts/generate.ts --check",
+    "test -f sdks/python/scripts/generate.py && cd sdks/python && uv run python scripts/generate.py --check",
+    "test -f sdks/go/cmd/generate/main.go && cd sdks/go && go run ./cmd/generate --check",
     "python3 sdks/java/scripts/generate.py --check",
     "python3 sdks/dotnet/scripts/generate.py --check",
     "python3 scripts/ci/check_generated_surfaces.py",
