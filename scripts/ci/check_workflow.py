@@ -428,6 +428,22 @@ def main() -> None:
         "python3 scripts/ci/check_generated_surfaces.py" in jobs["verify"],
         "repository policy must reject generated product-surface drift",
     )
+    installed_lifecycle = (
+        "cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture"
+    )
+    require(
+        jobs["topology-smoke"].count(installed_lifecycle) == 1,
+        "Linux topology smoke must run the primary installed lifecycle exactly once",
+    )
+    require(
+        jobs["estate-portability"].count(installed_lifecycle) == 1,
+        "macOS/Windows portability must run the same primary installed lifecycle exactly once",
+    )
+    require(
+        "- windows-latest" in jobs["estate-portability"]
+        and "- macos-latest" in jobs["estate-portability"],
+        "estate portability must retain Windows and macOS development runners",
+    )
 
     suite_count, package_count = verify_engine_suites(jobs["engine-suites"])
     verify_sdk_conformance(jobs["sdk-conformance"])
