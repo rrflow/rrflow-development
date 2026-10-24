@@ -6,6 +6,21 @@
 
 ## Observed deficiency
 
+The [filler allocation-sync correction](../../evidence/change-journals/gate-c/c-07f-filler-allocation-sync.md)
+removes Apple hardware-cache flush requests from disposable capacity filler
+files while preserving native allocation errors, existing limits and every
+engine durability barrier. Windows focused/process and orchestration checks
+pass; the actual APFS exhaustion deadline and native matrix still require
+candidate evidence. This is a fixture correction, not native qualification.
+
+The [Desktop-corpus preflight launch](../../evidence/change-journals/gate-c/c-07g-desktop-preflight-launch.md)
+advances to the actual 100000-record/500000-edge/100000-vector corpus under
+the two-GiB engine cap. Its launch is not a completed result: ingestion,
+independent readback and the frozen short load phases must finish before any
+success claim. The eight-GiB host profile, complete repetitions/native matrix
+and 24-hour qualification remain outstanding. The same record retains a
+further macOS metadata-fill deadline failure from PR108; this gap stays open.
+
 The [session retention regression and repair](../../evidence/change-journals/gate-c/c-07g-session-transaction-retention.md)
 reproduced 52280 bytes of hot session state after 32 completed transactions on
 both rrflowMX and rrflowKV. Historical transaction accumulation could exhaust
