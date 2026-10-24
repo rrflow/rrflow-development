@@ -721,3 +721,12 @@ rechecks ownership on EBUSY retries within one deadline and preserves failure
 retention. Thirteen orchestration checks pass; native candidate rerun remains
 required. This new observed cleanup deficiency does not erase PR115 evidence
 or qualify PR116, and C-07 remains open.
+
+
+The [bounded backup scheduling repair](../../evidence/change-journals/gate-c/c-07g-backup-scheduling.md)
+removes the per-segment management join from offered-load dispatch. One task
+keeps its original deadline across segments; stream validation reconstructs
+its start, acknowledged-write overlap and verified completion without retaining
+old ledgers. Missing or unfinished evidence fails. Native smoke and contract
+checks support the implementation; integrated growth, profile repetitions and
+the actual 24-hour soak remain required before C-07 can close.
