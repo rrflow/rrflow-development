@@ -82,6 +82,39 @@ Separate observed provider/model usage from tokenizer estimates and local
 storage work, as required by the [objective](../objectives/rrflow-1.0-alpha.md#observable-engine-objective).
 No new public metric or token-savings claim is established here.
 
+### Turnkey capability comparison and proof obligations
+
+Official product documentation was checked on 2026-10-25. "Fold in their
+capabilities" means implement selected behavior at RRFlow's canonical boundary
+and qualify it, or expose an explicitly admitted external knowledge path. It
+does not mean copy another engine, inherit its benchmarks or claim all-feature
+parity. The following comparison defines relevant obligations, not a status
+ledger; current findings are in the linked package evidence.
+
+| Reference capability | RRFlow requirement and existing owner | Proof needed before claiming the capability |
+|---|---|---|
+| [Pinecone integrated embedding](https://docs.pinecone.io/guides/search/integrated-embedding) and [namespace isolation](https://docs.pinecone.io/guides/index-data/implement-multitenancy) | D-01/D-05 automatically bind each project estate and admitted embedding space; D-06 optionally reads a Pinecone namespace. | Real source text produces model-bound vectors; edits/deletes invalidate them; filtered queries cannot cross project grants. A vector dimension or manually seeded vector does not prove semantic indexing. |
+| [SurrealDB relations](https://surrealdb.com/docs/reference/query-language/statements/relate), [indexes](https://surrealdb.com/docs/reference/query-language/statements/define/indexes) and [transactions](https://surrealdb.com/docs/reference/query-language/language-primitives/transactions) | C/E/H preserve one transaction for canonical facts, relations and index deltas; rrflowQL combines authorized evidence. | Record/edge/vector updates are atomically visible, exact traversal and current-source retrieval survive crash/reopen, and failed mutations publish no partial semantic state. PostgreSQL compatibility has its separate H-08 proof. |
+| [Qdrant hybrid queries](https://qdrant.tech/documentation/search/hybrid-queries/) and [multitenancy](https://qdrant.tech/documentation/manage-data/multitenancy/) | E-03/E-04/E-05/H-01 supply lexical/vector retrieval, eligible filtering, exact reranking and tenant-aware execution. | Compare each path and fusion at matched quality and budgets; qualify filtered recall, deletion freshness, index update/rebuild and resource cost. External Qdrant partitioning does not replace RRFlow's project estate/authorization design. |
+| [Apache Parquet](https://parquet.apache.org/docs/overview/) | D-06/F typed interchange through a locked bundled Rust codec; H-06 operator controls. | Decode actual exports and compare typed authorized values after restart. Independently qualify import and bounded streaming; a linked codec alone proves neither. |
+
+For scale comparisons, freeze product versions, source/model/corpus, filters,
+hardware, offered load and quality targets. Report indexing, update/delete,
+query, maintenance, recovery and total costs separately. Vendor docs establish
+what to investigate; J-04 measured results alone support RRFlow performance
+claims. Qdrant's shared-collection/tenant approach and Pinecone namespaces are
+reference alternatives, not authorization to combine project context implicitly.
+
+The [Connectome journey](../reference/client/connectome.md#turnkey-project-entry-and-progressive-detail)
+requires minimum upfront decisions and progressive detail; the
+[effort inheritance contract](../reference/inference/lfg-swag.md#inheriting-effort-from-the-calling-ai)
+keeps inherited preferences explicit and bounded; the
+[rroflow.ai handoff](../reference/client/devpulse-cloud.md#turnkey-rroflowai-handoff)
+keeps account, data transfer, learning and activation independently provable.
+All three remain subject to the existing D/G/H/I admission decisions and source
+truth. No provider subscription, learned controller or cloud endpoint is assumed
+available merely because its integration is planned.
+
 ## One engine across desktop and service
 
 ```mermaid

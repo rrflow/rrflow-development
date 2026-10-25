@@ -114,6 +114,25 @@ point/graph/exact queries do not acquire a DataFusion dependency merely because
 a later analytical path exists. Optional knowledge-source adapters follow D-06
 and reuse this same provenance/publication pipeline.
 
+## Turnkey provisioning acceptance
+
+D-01/D-02/D-05 compose the [minimal-input Connectome flow](../../reference/client/connectome.md#turnkey-project-entry-and-progressive-detail).
+The installed plan must bind generated project identity, canonical estate,
+versioned bootstrap schemas, graph/source definitions, admitted model and vector
+collection parameters. Users select a project and review effects; they do not
+manually construct three DB/KV/QL databases or pre-seed records to make the demo
+work. D-02a still owns explicit ingestion activation and missing public controls.
+D-02c/G own [effort inheritance](../../reference/inference/lfg-swag.md#inheriting-effort-from-the-calling-ai);
+engine-enforced limits cannot be replaced with UI presets or client timers.
+
+Prove a no-account local installation, automatic source-derived data, first
+source-citing query and changed/deleted-source readback through the same estate.
+State which modalities and languages the admitted profile actually supports;
+unsupported input cannot silently become indexed content. Default local model
+assets follow J-05's bundle requirement. External models, knowledge paths and
+rroflow.ai remain separate opt-in effects. Failure to qualify those optional
+profiles must not silently change the meaning of local indexing readiness.
+
 ## [Accepted evidence](gate-d-evidence.md)
 
 ## D-01 remaining closure packages

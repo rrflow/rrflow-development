@@ -27,6 +27,31 @@ selection/consent, durable transfer checkpoints, duplicate/replay handling,
 conflict and revocation behavior require the real-service acceptance in that
 contract; endpoint reachability alone cannot qualify synchronization.
 
+## Turnkey client and service proof
+
+H-06 consumes the [minimum-input project flow](../../reference/client/connectome.md#turnkey-project-entry-and-progressive-detail)
+and existing D-02/D-05 phase evidence. Its next client prerequisite is one
+qualified current engine/SDK/install-adapter pair; the pinned older workbench
+cannot establish current installation, effort or indexing behavior. Wire the
+existing task-effort controls at their current operations before claiming a
+complete effort UI; AI-inherited preference resolution remains the separately
+specified G/D configuration work. No new top-level feature area substitutes for
+clear nested project data and evidence views.
+
+H-05 requires causal signals for setup/admission, source inventory, parsing,
+embedding/index publication, retrieval, model dispatch, commit, Stop and retained
+readback. Each carries the available authoritative project/run/configuration/
+source identity, outcome and bounded resource evidence. A missing stage is
+unavailable, not a zero-duration success. UI progress reports admitted/completed
+units separately; an unknown total cannot produce a fabricated percentage.
+Distinguish installed, indexed, retrieval-ready and learning-enabled behavior
+using current engine evidence rather than a single connected/green badge.
+
+H-07's [rroflow.ai handoff](../../reference/client/devpulse-cloud.md#turnkey-rroflowai-handoff)
+adds real account/transfer proof to G/I learning proof. Login alone closes no
+learning/synchronization requirement. Keep the all-local project proof independent
+of cloud availability and retain no-sharing defaults during parallel projects.
+
 ## H-07 DevPulse, managed cloud and homelab packages
 
 The [existing integration contract](../../reference/client/devpulse-cloud.md)

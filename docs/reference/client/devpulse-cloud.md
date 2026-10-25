@@ -77,6 +77,34 @@ baseline method is shown as unknown. Views and metrics are configurable.
 Operators extend them with versioned, authorized, removable definitions, and
 an extension cannot read outside its grant or change engine records.
 
+### Turnkey rroflow.ai handoff
+
+rroflow.ai remains an optional learning destination, not a default indexing
+prerequisite. Under Connectome's existing Learning and Services areas, separately
+show local engine readiness, account binding, authorized dataset transfer,
+remote experiment state, returned artifact verification and local activation.
+Logging in, transferring a project or opening a cloud page proves none of the
+later states. Local work remains usable when the service is disabled or offline.
+
+The required H-07/G/I sequence is: configure and authenticate an endpoint with
+expected account/service identity; preview the exact allowed project datasets
+and purposes; authorize transfer; resume by durable checkpoint; receive a
+source/model/configuration-bound candidate; verify held-out evaluation; preview
+and authorize promotion. Upload consent, training consent and activation consent
+are distinct. Supplied endpoints are configured and authenticated, never inferred
+as trusted just from the displayed `rroflow.ai` name. Credentials remain secret
+references; raw private model reasoning is not a dataset.
+
+Prove the flow against a real admitted service and separately against the
+supported self-hosted profile: offline retry, duplicate/lost ACK, source deletion,
+revoked consent, foreign account, interrupted transfer, stale candidate, failed
+quality gate, competing promotion and rollback. Revoke prevents further export
+and candidate activation; remote deletion/retention acknowledgement is explicit,
+not inferred from local deletion. A returned candidate cannot overwrite local
+active settings or a running job silently. Show exact receipts and unresolved
+remote outcomes. No current service integration or bidirectional sync is claimed
+by this specification; H-07 plus G-06/I-03/I-07 own its acceptance.
+
 ## Guided installation and Windows-first DevPulse
 
 DevPulse ships first on Windows and bundles the qualified RRFlow artifact and
