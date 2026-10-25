@@ -3,7 +3,7 @@
 **Status:** active researched target design; implementation and capacity unqualified
 **Coordinate:** `rrflow://rrflow-instance/data/architecture/engine-scale-and-contracts`
 **Owner:** researched tradeoffs supporting existing schema, execution, signal and qualification owners
-**Reviewed:** 2026-10-24
+**Reviewed:** 2026-10-25
 
 Keep the native engine foundation and repair or complete its canonical paths.
 Do not replace rrflowKV with a vendor database, copy an upstream engine tree,
@@ -36,35 +36,51 @@ the shared transaction port and the measured cache policy.
 
 ## Next executable cut
 
-The 2026-10-24 review starts from public main `94d0567f`. The earlier
-revision of this record incorrectly treated D-01 installation and H-05a
-build identity as work to start; their owning records now carry implementation
-and evidence. Preserve those accepted boundaries and follow the current
-[C-07 execution reset](../roadmap/rrflow-1.0/gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
-Do not rebuild installation or introduce another build/configuration identity.
+The 2026-10-25 audit at `337d136210ff59b2359f898e717166c087dd5bfc`
+found that the prior storage-first paragraph contradicted the corrected roadmap.
+Follow the [current dependency spine](../roadmap/rrflow-1.0/executable-dependency-spine.md)
+and [Gate D build packages](../roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages).
+Installation is accepted; ingestion is not. D-02a must first resolve the actual
+admission/authorization contract, followed by durable worker execution and the
+real-project source-to-retrieval flow. Status/resume/cancel types without handlers
+are a specific blocker, not an available API. The owner's planning hold prevents
+runtime work while required decisions remain unresolved.
 
-The next acceptance sequence is integrated growth repair, frozen full-corpus
-preflight, the required allocation/load/seed/reopen/24-hour-soak matrix, then
-the existing acceptance collector. [PR 126](https://github.com/rrflow/rrflow-development/pull/126)
-contains the integrated growth and native failure repairs; live CI and campaign
-results belong to their exact candidate receipts, not this design note. A
-successful Desktop operating point cannot qualify the other Desktop points,
-Single, Fleet or Cold profiles. A short preflight cannot qualify a 24-hour soak.
+Preserve existing native growth repairs and frozen campaign evidence. C-07
+still requires its complete native/profile/repetition/24-hour qualification;
+a failed stage cannot be relabeled and a source change cannot inherit an older
+binary's results. Qualification no longer postpones missing project ingestion.
+The existing [local database example](../reference/sdk/rrflowdb-local.md)
+exercises records/edges/queries/reopen; it is not source indexing, vector quality,
+model reasoning, PostgreSQL compatibility or cloud synchronization proof.
 
-During that run, the existing [local database example](../reference/sdk/rrflowdb-local.md)
-can exercise the public engine independently: initialize schema/records/edge,
-verify one committed view, update, abort, reopen and verify retained state.
-Its `read` binds both queries to one known cursor; `verify open|done` checks
-independent expected values and refuses partial or differently stamped output.
-This is usable DB/graph/QL integration evidence, not vector quality, model
-reasoning, PostgreSQL compatibility or cloud-sync qualification.
+### Evidence-based build decisions
 
-After C-07 acceptance, resume the existing source-inventory/knowledge path,
-E/F index and streaming, G bounded inference, and H public-client/UI packages
-in dependency order. The [C-07 prompt/knowledge/UI handoff](../roadmap/rrflow-1.0/gate-c-07.md)
-and [engine data-flow owner](engine-data-flow.md) already describe that complete
-flow. Keep cost, freshness, cancellation and source-change readback in those
-acceptance oracles; no additional global checklist or engine authority is needed.
+The following primary sources were checked online on 2026-10-25. These are
+bounded design inputs, not proof RRFlow already implements or outperforms them.
+The chosen scope and dependency order are RRFlow engineering decisions.
+
+| Evidence and limitation | Decision at the existing owner | Alternative and falsifying experiment |
+|---|---|---|
+| [Google SRE pipeline design](https://sre.google/workbook/data-processing/) describes idempotent mutations, validation before publication and checkpointing. | D-02/D-05 use durable progress and validated engine-owned publication. | Restart-from-zero work and unrelated per-store writes are rejected for durable jobs. Duplicate delivery and crash between output/ACK must not duplicate accepted effects or mark incomplete output complete. |
+| [PostgreSQL WAL](https://www.postgresql.org/docs/18/wal-intro.html) explains durable log-before-data ordering and redo. It does not specify RRFlow's exact physical format. | Preserve rrflowKV's one durable transaction authority and C-07 recovery proof. | Reject a second graph/vector durability owner. Native crash/readback of one semantic mutation proves all accepted families agree; a surviving row alone is insufficient. |
+| [Qdrant hybrid queries](https://qdrant.tech/documentation/search/hybrid-queries/) combine distinct ranked retrieval results. A documented algorithm does not establish code-search quality. | E/H qualify lexical, vector and graph contributions independently before combined ranking. | Compare lexical-only, exact-vector-only and combined retrieval at equal corpus, authorization, token/context limits and freshness. Keep the simpler path when extra work does not improve the declared quality/cost result. |
+| [BEIR](https://arxiv.org/abs/2104.08663v4) evaluates heterogeneous retrieval and finds strong lexical baselines alongside model tradeoffs. Its tasks do not qualify RRFlow source-code understanding. | J-04/G-06 require held-out task classes and a lexical baseline, not one favorable prompt. | Evaluate symbols, cross-file dependencies, natural-language intent, changed/deleted source and no-answer cases on independently labeled project questions. Report per-class quality and cost instead of an average that hides regressions. |
+| [GraphRAG](https://arxiv.org/abs/2404.16130v2) reports gains for global sensemaking over document corpora. It is not evidence that every local code query benefits from graph summaries. | D-05/H-01 treat inferred summaries/relationships as source-linked candidates and retain direct source facts. | Test graph summaries only after direct retrieval works; compare global questions separately from exact symbol lookup, include build/update cost and source-delete freshness, and do not promote unsupported relationships as facts. |
+
+No source algorithm or dependency is adopted by this planning correction.
+Existing HydraDB/SurrealDB/Pinecone references below remain design comparisons;
+each actual knowledge-path adapter needs a pinned product/API, authorization,
+provenance and live-service proof at D-06. A similarly named graph product and
+hosted context service are not interchangeable contracts.
+
+Telemetry references also need provenance: the old OpenTelemetry GenAI web
+pages now redirect readers to the [GenAI conventions repository](https://github.com/open-telemetry/semantic-conventions-genai).
+H-05 must pin the supported convention revision and reconcile it with RRFlow's
+existing signal catalogue; this audit does not import changing field names.
+Separate observed provider/model usage from tokenizer estimates and local
+storage work, as required by the [objective](../objectives/rrflow-1.0-alpha.md#observable-engine-objective).
+No new public metric or token-savings claim is established here.
 
 ## One engine across desktop and service
 

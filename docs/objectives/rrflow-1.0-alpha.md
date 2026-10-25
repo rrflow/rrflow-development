@@ -44,6 +44,47 @@ that compatibility outcome. H-08 supplies the ordered implementation and
 real-client proof, including independent logical export, source-exit rehearsal,
 and recovery without a vendor service.
 
+## Observable engine objective
+
+A user selects a real project, reviews the exact installation and permissions,
+and receives its isolated RRFlow estate. The engine turns authorized source
+revisions into retrievable records, source spans, semantic relationships and
+lexical/vector access paths. A prompt retrieves current permitted evidence,
+uses configured local or external inference only when admitted, and returns
+inspectable results with bounded work and durable effect receipts. Editing or
+deleting source invalidates dependent evidence; restart preserves accepted
+state. Connectome displays that engine-owned state and its limitations.
+
+This journey binds the existing objectives, rather than replacing them:
+
+| User-visible result | Required objective owners | Observable proof |
+|---|---|---|
+| Install and choose a project | OBJ-01/02/03/07/09 | Actual installed binary; explicit plan/apply; project identity; permission denial; exact acknowledged readback after reopen. |
+| Turn project source into knowledge | OBJ-04/05/07 | Committed inventory and parser/model identities; source spans; graph and vector records generated from that source; incremental edit/delete and exclusions. |
+| Ask a bounded question using that knowledge | OBJ-06/09/11 | One authorized stamped retrieval, citations checked against source, selected/skipped avenue reasons, declared inference and actual usage; explicit abstention or exhaustion when evidence/budget is insufficient. |
+| Inspect, tune and repeat | OBJ-07/10/11 | Effective settings with origins and hard limits; a retained baseline; repeatable read-only inspection; separately authorized new execution; local work and provider usage reported separately. |
+| Add optional capabilities safely | OBJ-08/09/12/13 | Typed knowledge-path/learning/model bindings, explicit activation, held-out qualification and revocation; unavailable integrations shown as unavailable. |
+| Operate and distribute reliably | OBJ-02/03/07/10 | Native faults, growth, resource bounds, fixed-profile sustained qualification and signed clean-machine install/recovery evidence. |
+
+The first working local-project checkpoint is an intermediate engineering
+milestone, **not the thirteen-objective alpha exit**. The existing alpha exit
+below remains unchanged, including SQL compatibility, learning and TurboQuant
+requirements. Naming a checkpoint must never silently narrow that scope.
+
+Claims must be falsifiable. Successful retrieval is not proof that an answer is
+correct; deterministic parser relations differ from model-inferred relations;
+a model confidence score is not a fact. Every inferred claim retains source,
+method and verification disposition. Hidden chain-of-thought is neither a
+required artifact nor a correctness oracle. Observable decisions, tool calls,
+returned evidence and validated effects are the inspectable record.
+
+Provider input/output/cached tokens, measured local-model tokens and local
+retrieval work are separate quantities. No tokenizer or usage receipt means
+unknown usage, not zero. Cache entries and graph visits are not "reasoning
+tokens". Token savings compare a declared baseline at matched answer quality
+and include ingestion, embedding, index maintenance and readback costs; reduced
+context alone does not prove reduced total cost or improved quality.
+
 ## Required outcomes
 
 An outcome is `complete` only after its end-to-end proof passes at an exact

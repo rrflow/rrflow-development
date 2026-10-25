@@ -24,7 +24,7 @@ either independently.
 
 ## Real-project implementation and acceptance
 
-D-02 is the next runtime package. Installation currently writes a pending
+D-02 is the next runtime outcome, subject to D-02a admission. Installation currently writes a pending
 `AttunementJob`; `installation/inventory.rs` explicitly supplies installation
 preconditions, not a committed D-03 source snapshot. Job types and Connectome's
 phase descriptions do not execute ingestion. Complete the existing job state
@@ -54,6 +54,65 @@ Each package proves its particular before/after transition. D-02 alone does not
 claim parsing or retrieval; a configured embedding provider alone does not prove
 vectors were generated. The complete journey requires all relevant package
 receipts and does not erase remaining release qualification.
+
+## Project-workflow build packages
+
+These refine D-02 through D-05, not a second roadmap. Current source baseline
+is `337d136210ff59b2359f898e717166c087dd5bfc`. The file-plan generator already
+marks `engine/attunement.rs`, `tests/attunement_resume.rs` and the
+`crates/compute/rrd-attunement/` modules as **planned**, not implemented.
+No runtime work is authorized by the existence of this table alone while the
+owner's planning hold and the admission decision below remain unresolved.
+
+| Package / dependency | Input, owning code and durable output | Failure oracle and acceptance |
+|---|---|---|
+| D-02a admission decision; before executor implementation | Existing `rrd-contract/src/attunement.rs` job/plan/resume/cancel validators, `src/lib.rs::endpoint_catalogue`, CLI installed command dispatch and installation preview. Map each public action to authorization and actual engine dispatch. | Today `ResumeAttunement`, `CancelAttunement` and `AttunementStatus` occur in contracts/tests/exports, not executable handlers. Installation previews `CreateAttunementJob`, not unlimited execution. Publish the exact operation/permission/activation decision before source effects. Preserve existing APIs; if adding missing planned operations is disallowed, public control remains blocked. Do not reinterpret task-open, readiness, install or arbitrary query as an ingestion command. |
+| D-02b durable worker; after D-02a | Extend `RrdEngine` at planned `engine/attunement.rs`, using the existing installed job, `AttunementJob::validate_transition`, lease generation and canonical transaction authority. Input binds job revision, plan, principal, configuration and source identity; output is the job transition and checkpoint with effect evidence. | Two workers compete for one revision; only the fenced winner publishes. Crash before effect, after effect and before ACK; retry resolves the same receipt. Expired generation cannot commit. Cancel releases owned resources and never publishes a false success. An unimplemented phase stops explicitly, never gets a fabricated checkpoint. Planned `tests/attunement_resume.rs` plus real installed-process proof. |
+| D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. |
+| D-03 source snapshot; after durable worker and bounded filesystem admission | Planned `rrd-attunement/src/inventory.rs` builds pure proposals from engine-authorized reads; existing `installation/inventory.rs` remains installation precondition logic. Commit stable root-relative source identities, content digests, containment, exclusions and a change set through engine transactions. | Ordered/shuffled traversal gives identical snapshot; unchanged rerun reads zero content bytes. Git tracked/ignored rules, non-Git roots, secrets, symlink/mount escape and concurrent source edits have explicit outcomes. Interrupt/restart never exposes a partial snapshot as complete. Planned inventory test target; real repository fixture after small authored adversarial fixtures. |
+| D-04 parse and source spans; after D-03 | Planned `rrd-attunement/src/parse.rs`; pinned parser/language revisions consume one committed change set. Output is source-linked syntax/symbol/chunk proposals with byte ranges and parse errors. | One-file edit reparses only affected inputs; delete invalidates their spans. Unsupported languages remain explicit and incomplete syntax retains errors. Parser/model guesses cannot overwrite source facts. Planned incremental-parse target and installed readback prove digest/range identity after restart. |
+| D-05a normalize and entity links; after D-04 and consumed E-01/E-02 paths | Planned `normalize.rs`/`entity_link.rs` plus canonical schema/data/relation commits. Deterministic source facts and inferred relationships carry distinct method/source/configuration identities. | Duplicate source or ambiguous symbol names cannot merge unrelated identities. Reprocessing is idempotent; source change/delete retires dependents at a new cursor, old-stamp reads remain valid. Semantic effects and checkpoint are atomically visible or explicitly staged then published. |
+| D-05b lexical access; after D-05a and E-03 | Persistent dictionary/statistics/postings/tombstones at source cursor; use existing query/store boundaries. No per-request full rebuild as the completed scalable path. | Incremental insert/edit/delete/reopen matches full-rebuild oracle and returns exact current spans. Record visited/read work separately from overall estate size. Stale projections are reported or handled by the qualified canonical fallback, never silently presented as current. |
+| D-05c embeddings and vector access; after source provenance and canonical E-04 exact path | Existing embedding registry/engine inference and vector collection APIs consume authorized chunks with pinned model/tokenizer/dimension/metric. Commit canonical vectors and derived-index deltas; approximate generations remain separate acceleration. | Real admitted embedding provider, not fabricated vectors, proves source-to-vector generation. Model mismatch, wrong dimensions, timeout, late output, revoke, duplicate and delete tests retain one accepted publication. Exact filtered search is the oracle; HNSW/quantization requires its own E-04 quality/build/recovery evidence. |
+| D-05d graph, grounding and verification; after prior outputs | Planned `ground.rs`/`verify.rs`, temporal adjacency and stamped context/query paths consume committed source/model identities. Verify relationship/citation closure, freshness and evidence coverage; complete the job only when all required phase outputs exist. | A known-answer query returns actual spans and graph/vector evidence. Edit/delete source, rebuild, restart, and repeat with two projects concurrently; no stale or foreign source appears. Missing evidence causes explicit incompleteness/abstention. This joined proof is the first local-project checkpoint, not full alpha. |
+
+The joined proof uses an authored, revision-pinned small project with a named
+symbol, cross-file call, natural-language documentation, ambiguous names, an
+ignored generated file and a secret sentinel. Its expected spans and relations
+are independently enumerated, not generated by the implementation under test.
+Run these cases in order: initial source ingestion; exact symbol query; lexical
+and real-vector intent queries; multi-file relation query; change one source;
+delete one source; rerun unchanged; cancel/restart midway; repeat after engine
+restart; execute a second project with conflicting names. No-answer and denied
+queries must not fabricate citations or disclose the sentinel. Every asserted
+exact result must match; approximate quality uses the predeclared E-04/J-04
+profile rather than an invented threshold. Then use a pinned real repository
+revision for growth. The authored project is a correctness fixture, not evidence
+of scale or competitive quality.
+
+Package commands use the existing contract regression target
+`cargo test -p rrd-contract --test attunement_contract --locked` for preserved
+wire semantics. That target validates types; it cannot prove the worker.
+New phase targets above must be created in their implementation package before
+claiming execution. The owning installed-process suite and native platforms are
+selected from the existing CI contract for the changed boundary. No parser
+crate, model file or external service may become an undeclared runtime fetch.
+
+All phase proposals flow through one transaction authority. A checkpoint may
+reference an already committed bounded group only with durable idempotency and
+publication state that distinguishes partial from complete output. Never write
+rrflowDB, graph and vector state through unrelated commits and then assert the
+job succeeded. The phase plan's digest chain must remain valid across resume;
+changed source/configuration requires explicit replan or rejection, not editing
+the accepted plan in place.
+
+E/F are consumed at specific boundaries: semantic records/adjacency require
+E-01/E-02; persisted lexical access E-03; exact and approximate vector stages
+E-04; access selection E-05. Analytical streaming consumes F-01/F-02/F-04;
+mixed analytical operators consume F-03 and cache qualification F-05. Native
+point/graph/exact queries do not acquire a DataFusion dependency merely because
+a later analytical path exists. Optional knowledge-source adapters follow D-06
+and reuse this same provenance/publication pipeline.
 
 ## [Accepted evidence](gate-d-evidence.md)
 

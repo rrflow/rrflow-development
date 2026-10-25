@@ -37,6 +37,13 @@ release-ready. There is one current pre-release implementation. This alignment
 preserves the existing public API, operation identities and wire contracts; it
 does not introduce a deprecation, migration or alternate implementation lane.
 
+The [observable engine objective](docs/objectives/rrflow-1.0-alpha.md#observable-engine-objective)
+defines the user journey and proof. The [build-plan admission rules](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#package-readiness-and-evidence)
+and [next build packages](docs/roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages)
+separate planned behavior from executable work. Known admission/configuration
+blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
+a roadmap is not evidence that those capabilities already work.
+
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer

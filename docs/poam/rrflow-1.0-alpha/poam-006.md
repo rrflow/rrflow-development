@@ -58,6 +58,34 @@ and distribution binding and act on the instance's own catalogue and staging roo
 estate cannot yet register backups the served engine created, so a retention decision over
 such a catalogue is refused.
 
+## Build-plan admission gaps
+
+Verified at `337d136210ff59b2359f898e717166c087dd5bfc`:
+
+- `AttunementStatus`, `ResumeAttunement` and `CancelAttunement` have public
+  contract validators/tests, but source search found no engine/HTTP handler
+  referencing them. `endpoint_catalogue()` does not advertise those operations.
+  `engine/task.rs` explicitly says a task orchestrates nothing. Reusing task
+  open/close as ingestion would be an undocumented semantic API change.
+- Installation's action enum includes job creation, not authorization for all
+  later source/provider effects. Automatic work at server readiness cannot be
+  assumed. D-02a must bind activation, authorization and dispatch explicitly.
+- Phase plan fields are estimates and configuration digests. They do not prove
+  a worker enforces time, memory or retry limits. D-02c must map actual enforced
+  budgets, setting ownership and revision behavior before unattended work.
+- The global-default/per-project settings UI needs an admitted configuration
+  operation; sealed `EstateConfiguration` and endpoint configuration alone do
+  not establish it. Public action/field changes remain disallowed pending the
+  owner's clarification of whether missing planned operations may be added.
+
+Remediation is the existing [D-02a/D-02c build package](../../roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages),
+not a new lifecycle or a lowered acceptance threshold. Until the public-action
+constraint is resolved, installed/UI job control and global configuration are
+explicitly **blocked for implementation admission**, not merely unscheduled.
+No runtime implementation resumes under the owner's current planning hold.
+Other future algorithm choices remain owned experiments at E/F/G/J; they must
+not be described as validated decisions before their named evidence exists.
+
 ## Impact
 
 The [D-01.3 real-process oracle](../../evidence/change-journals/gate-d/d-01-install-exclusion-oracle.md)

@@ -16,6 +16,17 @@ either independently.
 | [ ] | E-04 | Commit canonical vectors with an atomic index delta; search an immutable HNSW generation plus exact delta overlay and exact-rerank final candidates. Evaluate TurboQuant_prod (MSE quantizer plus one-bit QJL residual) as an authenticated candidate representation and evaluate an LSM-VEC-style disk graph only after the exact/HNSW baseline exists; neither is an assumed default. | `rrd-vector`, `rrd-store`, `rrd-engine` | Exact oracle, recall@k, estimator error/bias, filtered search, update/delete, stale generation, reopen, interrupted-build, build/compaction amplification, RSS, and latency tests pass on declared RRFlow corpora. Approximate candidates never become authoritative results and exact reranking/fallback remains available. |
 | [ ] | E-05 | Add cost/selectivity estimates choosing point, range, scalar, BM25, exact-vector, or HNSW access without caller-selected internals. | `rrd-query` | Stable explain plans and adversarial fixtures prove correctness fallback when statistics or projections are absent/stale. |
 
+## Consumption by the real-project build
+
+[Gate D's phase packages](gate-d.md#project-workflow-build-packages) consume
+these exact access paths. E-01/E-02 support canonical source relationships;
+E-03 completes persistent lexical access; E-04 first qualifies exact filtered
+vectors and atomic deltas before approximate generations; E-05 selects only
+available qualified paths. The full gate stays open when a bounded path passes.
+HNSW/quantization or disk graph changes must improve a matched quality/cost
+experiment against the exact baseline; they are not prerequisites to prove a
+correct source-grounded exact-vector query.
+
 ## Exit condition
 
 Gate E exits only when graph, lexical, scalar, and vector routes are real

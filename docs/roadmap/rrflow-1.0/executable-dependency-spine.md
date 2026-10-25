@@ -27,7 +27,8 @@ There is one pre-release engine and the existing public API remains unchanged.
 | 8 | G-01 through G-06 and I-01 through I-07, with remaining H integration | Optional LFG/SWAG, model routing and learning proposals compose through governed effects, bounded inference and explicit durable capabilities. Evaluation preparation may proceed earlier; claims require the actual behavior and held-out evidence. |
 | 9 | J-01 through J-03, KB-08, J-04 and J-05 | Complete native qualification, matched comparative evidence and signed distribution; all required C/D/E/F/G/H/I exits still apply. No abbreviated run qualifies release. |
 
-The next code package is **D-02's engine-owned attunement executor**, reconciled
+The next decision is **D-02a admission mapping**; only after it is resolved does
+**D-02's engine-owned attunement executor** become a candidate code package, reconciled
 against the existing job/phase contracts and pending job created by installation.
 Its brief must identify the supported operation that admits work and the exact
 phase boundary it executes. A persisted `Pending` job alone is the starting gap,
@@ -35,6 +36,42 @@ not an exit. If an existing operation cannot express required behavior, record
 that specific blocker before changing the API; this correction authorizes no
 new endpoint. Configuration and all later phases remain incomplete until their
 own executable proofs pass.
+
+## Package readiness and evidence
+
+An implementation package is ready only when its existing gate owner and PR
+brief answer all of these questions with specific artifacts:
+
+1. What user behavior changes, and what exact baseline fails it today?
+2. Which existing operation admits it, with which identity, authorization,
+   configuration and limits? If no such operation exists, name the contract
+   decision and hold dependent implementation; do not overload an unrelated API.
+3. Which source revision and input digests enter, which canonical records and
+   derived outputs leave, and what transaction/checkpoint publishes them?
+4. What does denial, partial work, stale lease, duplicate delivery, cancellation,
+   disk/resource exhaustion and crash/restart do? Who resolves uncertain effects?
+5. Which exact source/test paths are existing or planned, which prerequisite
+   evidence is consumed, and what smallest failing oracle proves the change?
+6. Which native command runs the joined proof; what fixture/model/corpus is
+   pinned; which quality/resource thresholds are frozen before execution?
+7. What bounded evidence proves the promised behavior, which work remains,
+   and which condition stops the package for redesign?
+
+The PR supplies executable commands when its code/test targets exist. A planned
+test name is an implementation deliverable, never a command represented as
+already runnable. Readiness does not require every later algorithm to be
+selected, but each deferred choice must identify its owner, prerequisite,
+alternatives, experiment and forbidden assumption. No ETA is justified merely
+by file counts or an agent's confidence.
+
+Use existing gate/J-04 capacity thresholds where applicable. For a new retrieval
+or model quality profile, freeze the held-out corpus, scoring rubric, comparison
+baseline and acceptance threshold in the owning package before measuring it.
+Until that exists, report characterization, not qualification or superiority.
+The current [admission gaps](../../poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps)
+prevent calling the whole next workflow implementation-ready. Runtime work is
+held under the owner's current instruction while this audit and required
+contract decisions are incomplete.
 
 ## Project-to-learning acceptance journey
 

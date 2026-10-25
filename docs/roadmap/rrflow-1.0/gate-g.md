@@ -25,8 +25,9 @@ support this owner. The [LFG/SWAG reference](../../reference/inference/lfg-swag.
 corrects the earlier combined LFG/router framing without changing the existing
 three-decision wire union. All packages below are open. The
 [dependency spine](executable-dependency-spine.md) remains in force: D-01 is
-active; installed durability, inventory, native access and analytics cannot be
-skipped by adding a model loop. Specification/golden preparation can proceed
+accepted and the real-project workflow is next, subject to explicit build-plan
+admission. Required inventory, access and budget evidence cannot be skipped by
+adding a model loop. Specification/golden preparation can proceed
 without claiming runtime completion. Each implementation package is one
 bounded PR, split further when its exact diff requires it.
 
