@@ -852,7 +852,7 @@ def main() -> int:
         "## Gate D work packages",
         "## Gate E work packages",
         "## Gate F work packages",
-        "## Deferred D-05 work package after Gates E and F",
+        "## D-05 work package and canonical E/F prerequisites",
         "## Gates G through J work packages",
         "## Repository-wide run checklist",
         "## Evidence record template",

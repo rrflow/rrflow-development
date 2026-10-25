@@ -8,43 +8,45 @@ This chapter is part of the canonical RRFlow 1.0 roadmap. The parent
 record owns release order and completion status; this file cannot change
 either independently.
 
-This is the one implementation order. It removes three circular or temporary
-paths from an alphabetical sequence: knowledge import cannot block the storage
-and attunement code it requires; D-05 cannot build temporary lexical/vector/
-graph paths before Gates E and F establish their canonical access and
-analytical boundaries; and final storage qualification cannot postpone the
-first real installed binary until after every internal subsystem. C-06 finishes
-the active physical-format package first, then D-01 establishes the walking
-product spine. C-07 subsequently qualifies that installed path rather than a
-checkout-only constructor.
+This is the one implementation order. Gate letters classify outcomes; they
+are not a requirement to finish every storage benchmark before implementing a
+usable project. Accepted installation and storage foundations support the next
+project slice. Required correctness failures stop the affected slice; final
+qualification follows the integrated behavior it is intended to qualify.
+There is one pre-release engine and the existing public API remains unchanged.
 
-| Wave | Work | Required exit before continuing |
+| Order | Work | Required exit before its dependent work |
 |---:|---|---|
-| 0 | Finish A-06 through KB-05, then execute A-07 | One deterministic checkout knowledge package; every current behavior/file/test/fixture mapped; source, package, public, and trace vocabulary frozen. |
-| 1 | B-03 through B-05 | Model handshake, multiplexed WebSocket, and GraphQL lowering are provider-neutral contracts with golden equivalence. |
-| 2 | Finish C-06 | One accepted hybrid segment reader, selective projected pages, physical counters, property/fuzz and mixed-family evidence, and measured format-policy decisions exist. |
-| 3 | D-01 | One natively executable `rrflow`/`rrflow.exe` command tree can plan/apply installation, serve, prove authenticated readiness, commit, close, reopen, and perform baseline read-only verification without checkout-built companions. |
-| 4 | C-07 | WAL/manifest recovery, bounded maintenance, write backpressure, pinned generations, storage-full behavior, and sustained lifetime pass through the D-01-installed composition. |
-| 5 | D-02 through D-04 | Persisted jobs, deterministic committed project tree, and incremental parse evidence exist through the installed engine. |
-| 6 | E-01 through E-05 | Graph, scalar/unique, BM25, exact vector, HNSW/quantized candidate, and planner paths are persistent, incremental, stamped, and exact-oracle checked. |
-| 7 | F-01 through F-05 | rrflowKV streams bounded Arrow batches into native/DataFusion operators with honest pushdown, one resource budget, and a measured cache decision. |
-| 8 | D-05 through D-11, then KB-06 and KB-07 | Every attunement phase uses accepted C/E/F paths; external sources remain adapters; placement/accounting/hibernation and complete verify/repair/restore/uninstall pass; the checkout knowledge package imports and survives readback/recovery. |
-| 9 | G-01 through G-06 | Optional LFG CPU observations feed configured SWAG selection and bounded model/router proposals while `RrdEngine` retains predicates, physical planning, authorization, CAS, and persistence. |
-| 10 | H-01 through H-10 | Dynamic context, pure RRF feedback, live deltas, all public surfaces, complete traces, Connectome, mesh resolution, the PostgreSQL core profile, configurable prompt graph families, and opt-in project links observe one engine. H-08a reference preparation may precede this wave; H-08b through H-08h follow their explicit prerequisite DAG. |
-| 11 | I-01 through I-07 | Canonical events, triggers, routines, skills, and optional host adapters are explicit persisted capabilities, not hooks or a parallel runtime. |
-| 12 | J-01 through J-03, then KB-08, then J-04 and J-05 | Alternate paths are absent; failure and clean-install qualification pass on every supported native artifact; rrflowDB becomes the normal warp path; comparative evidence and the signed distribution close release. |
+| 1 | Accepted A/B, C-01 through C-06 foundations and D-01; retain open C-04 obligations | Preserve accepted evidence and the installed transaction, authorization and read-stamp boundaries. Open subrequirements do not become completed by this ordering. |
+| 2 | D-02 durable attunement execution and effective configuration | An authorized installed project advances a real job through durable transitions; resume/cancel/leases and phase digests survive restart. Global defaults and project overrides resolve at one engine owner with field origins, limits and an effective digest. No UI or worker becomes lifecycle authority. |
+| 3 | D-03 committed inventory, then D-04 incremental parsing | A real authorized source tree yields a committed snapshot, bounded chunks/symbols and source spans. Edit/delete, exclusion, cancellation and restart are proven; unchanged inputs do not trigger full work. |
+| 4 | D-05 phases with the specific E-01 through E-05 and F-01 through F-05 capabilities each consumes | Normalize, link, index, embed, graph, ground and verify against canonical persistent access paths. Implement missing selective/incremental access and bounded streaming where consumed; no temporary index or second store. rrflowQL returns source-grounded graph/lexical/vector results from the project's rrflowDB/rrflowKV at one read stamp. Remaining E/F qualification stays open. |
+| 5 | H-06 incremental project controls and evidence through H-04 public contracts; bounded C-07 correctness throughout orders 2-5 | Add/reopen two real projects, inspect effective settings and real stored source relationships/vectors, query, edit/delete/reindex and restart without cross-project leakage. Missing phases remain explicitly unavailable. Client projections accompany each supported engine behavior; full H-04/H-06 acceptance is not inferred. |
+| 6 | C-07 growth and final sustained qualification; complete remaining E/F requirements | First matched real-project ingestion/index/query characterization, then the unchanged full profile/repetition and actual 24-hour matrix on a frozen integrated candidate. Retain all crash, disk-full, resource, acknowledged-write, readback and isolation oracles. Synthetic storage evidence is not project ingestion proof. |
+| 7 | D-06 through D-11, KB-06/07 and remaining H capabilities in their explicit dependency order | Typed opt-in knowledge paths, placement/accounting, operational lifecycle, dynamic context and public surfaces use the same authority. KB import survives readback/recovery. H-08 PostgreSQL and H-07 remote work retain their own prerequisite DAGs; neither is required for default readiness. |
+| 8 | G-01 through G-06 and I-01 through I-07, with remaining H integration | Optional LFG/SWAG, model routing and learning proposals compose through governed effects, bounded inference and explicit durable capabilities. Evaluation preparation may proceed earlier; claims require the actual behavior and held-out evidence. |
+| 9 | J-01 through J-03, KB-08, J-04 and J-05 | Complete native qualification, matched comparative evidence and signed distribution; all required C/D/E/F/G/H/I exits still apply. No abbreviated run qualifies release. |
+
+The next code package is **D-02's engine-owned attunement executor**, reconciled
+against the existing job/phase contracts and pending job created by installation.
+Its brief must identify the supported operation that admits work and the exact
+phase boundary it executes. A persisted `Pending` job alone is the starting gap,
+not an exit. If an existing operation cannot express required behavior, record
+that specific blocker before changing the API; this correction authorizes no
+new endpoint. Configuration and all later phases remain incomplete until their
+own executable proofs pass.
 
 ## Project-to-learning acceptance journey
 
-The owner-requested experience below maps onto the waves above. It is not a
+The owner-requested experience below maps onto the order above. It is not a
 second implementation order, an added runtime workflow or a completion ledger.
-**C-07 remains the active implementation gate.** Existing installed local
+**D-02 begins the active real-project implementation sequence above.** Existing installed local
 database and bounded Connectome evidence do not qualify the full journey.
 
 | User milestone | Existing owners and prerequisite exit | Real-world acceptance that must be retained |
 |---|---|---|
 | Create or reopen a project | D-01 installed identity/plan/apply; C-07 durability; D-02/D-03 jobs and inventory; H-06 guided client. | In fresh/existing modes, accept an exact preview and automatically provision one project estate/rrflowDB with native rrflowKV; reopen reuses its identities and acknowledged data. Cancel/deny performs no unauthorized effect. Two projects remain isolated during simultaneous work, UI switching and restart. |
-| Add a knowledge path | D-06 typed binding and requirements; D-05 ingestion after E/F; H-04 public operations; H-09 derived families. | A qualified real source yields versioned chunks, relations and citations with ACL/freshness evidence. Edit/delete/revoke, duplicate delivery, source outage, interrupted ingest and restart cannot silently publish stale, partial or foreign knowledge. HydraDB, Pinecone Nexus, Qdrant and SurrealDB each need their own admitted real-service profile. |
+| Add a knowledge path | D-06 typed binding and requirements; D-05 ingestion with its specific E/F prerequisites; H-04 public operations; H-09 derived families. | A qualified real source yields versioned chunks, relations and citations with ACL/freshness evidence. Edit/delete/revoke, duplicate delivery, source outage, interrupted ingest and restart cannot silently publish stale, partial or foreign knowledge. HydraDB, Pinecone Nexus, Qdrant and SurrealDB each need their own admitted real-service profile. |
 | Establish and edit against a baseline | D/E/F provenance, stamped access and budgets; H-02 feedback and H-09 graph families; H-06 comparison projection. | Capture an authorized retained baseline, change a graph/retrieval candidate, compare equal corpus/budgets, reject or promote by exact revision, then reopen and verify. Layout changes leave semantics unchanged; knowledge corrections create new revisions. Expired artifacts, ACL changes, stale promotion and resource exhaustion fail explicitly. |
 | Understand and replay a session | H-05 causal/redacted evidence and H-06 public projections; G and I prerequisites for the specific reasoning/routine records displayed. | Inspect a real retained session/run after restart with source/configuration identity and visible evidence gaps; a model/tool effect counter remains unchanged during inspection. A requested new run has new identity, current authorization, budget and receipts. No old bearer session, hidden reasoning or uncertain mutation is replayed as new work. |
 | Attune and improve locally | G-06 fixed-corpus evaluation may prepare early; installed comparisons require G-01–G-05; I-03/I-07 depend on their generic routine/configuration/evidence foundations. | Supervised and unsupervised candidates remain distinct proposals. Held-out quality, denied-data exclusion, bounded recursion, drift/regression, restart, competing promotions and rollback prove governed improvement. Failed candidates never replace the active revision. An operator-added learning method produces proposals only. |
@@ -78,7 +80,7 @@ A-07 freezes the operation-name, causal-link, attribute, and propagation
 vocabulary. Each later work package adds the trace and physical counters for
 its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
-Wave 8.
+the final integration wave.
 
 The owner-directed [rrflowDB compatibility plan](../../reference/protocol/postgresql.md)
 adds H-08 without reopening accepted storage-format work or bypassing unfinished
@@ -89,20 +91,16 @@ requires E/F access and streaming/budget evidence; H-08e requires the H-04
 public-capability foundation. The [H-08 package table](gate-h.md#h-08-postgresql-compatibility-packages)
 owns the remaining dependencies. A wire-only server cannot skip those exits.
 
-The active executable item is **C-07**, following its
-[ordered durability and growth packages](gate-c-07.md#ordered-implementation-packages).
-C-07a's [bounded measurement contract and evidence](../../evidence/change-journals/gate-c/c-07a-storage-measurement-contract.md)
-establish the first implementation package. C-07b's
-[I/O fault and recovery oracle](../../evidence/change-journals/gate-c/c-07b-io-fault-oracle.md)
-adds bounded model evidence and publication repairs accepted through PR 56
-and CI run 39705515593. C-07c is next; its
-[remaining implementation contracts](gate-c-07.md#remaining-implementation-contracts)
-bind installed histories through final sustained qualification. The requested
-[DuckDB interoperability packages](gate-d.md#duckdb-interoperability-packages)
-follow C-07; bounded export conformance can precede full F streaming, while
-source import and optional worker execution retain their F/D prerequisites.
-DuckDB never becomes native persistence or default readiness. D-01 has
-[accepted installed-foundation evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
+The active executable work is the real-project sequence above. C-07 retains
+its [durability and growth requirements](gate-c-07.md#ordered-implementation-packages)
+and [staged qualification](gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
+Its historical component receipts remain valid only for their stated behavior
+and candidate. Full qualification cannot establish an absent ingestion executor.
+The [DuckDB interoperability packages](gate-d.md#duckdb-interoperability-packages)
+retain their explicit prerequisites; export does not imply import or native
+persistence. DuckDB never becomes default readiness.
+
+D-01 has [accepted installed-foundation evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 through the actual primary executable on Linux, macOS and Windows. Accepted C-06 replaced
 row-record immutable segments with segment v6's ordered key/version spine,
 six Arrow-layout page buffers, authenticated persisted membership filters, and

@@ -33,7 +33,9 @@ may explain or prove an owner, but cannot override it.
 The target release-train version is `1.0.0`. It is frozen while the alpha
 baseline is established. Current maturity is **pre-alpha**. The version is a
 contract line, not a claim that the complete system is stable, optimized, or
-release-ready.
+release-ready. There is one current pre-release implementation. This alignment
+preserves the existing public API, operation identities and wire contracts; it
+does not introduce a deprecation, migration or alternate implementation lane.
 
 ## Engine, UI, cloud, and desktop
 
@@ -271,7 +273,12 @@ D-01 is complete for the bounded installed-engine foundation. Its
 [acceptance matrix and native receipts](docs/roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 bind one candidate to successful Linux, macOS and Windows isolation, native
 filesystem/ownership denial, recovery and actual primary-binary lifecycle
-checks. C-07 is the active executable item. The original walking prerequisite
+checks. The active implementation is the [real-project workflow](docs/roadmap/rrflow-1.0/executable-dependency-spine.md):
+durable attunement, committed source inventory, incremental parsing and
+source-grounded retrieval through the existing engine. Installation and data
+lenses do not yet prove automatic project indexing. C-07 remains required
+reliability qualification; its full growth/soak matrix does not postpone this
+missing workflow. The original walking prerequisite
 remains: a source-built primary `rrflow` 1.0.0 executable can
 deterministically preview and apply a fresh or existing local-project
 installation, serve the generated public contract, complete an authenticated

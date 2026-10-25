@@ -10,6 +10,23 @@ independently.
 
 ## Observed deficiency
 
+The immediate remediation is D-02's durable attunement executor, then the
+D-03/D-04/D-05 real-project workflow and consumed E/F prerequisites in the
+[current dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md).
+`engine/installation.rs` persists a pending job; its `installation/inventory.rs`
+provides installation preconditions, not the committed source inventory.
+`EstateConfiguration` is sealed installed configuration, not proof of live global
+preference inheritance. Connectome's phase descriptions are `contract-pending`;
+its real data lenses do not establish source-generated graph/vector content.
+These are verified implementation gaps, not requests for another storage soak.
+
+Close this part only with installed execution, effective-setting origins,
+source-to-query evidence, edit/delete invalidation, restart and two-project
+isolation. The [Gate D requirements](../../roadmap/rrflow-1.0/gate-d.md#real-project-implementation-and-acceptance)
+define the flow. Existing API contracts stay unchanged; an operation that cannot
+express a required action is a specific blocker to resolve, not an implied
+new endpoint. POAM-006 remains open.
+
 D-01's bounded installed foundation is now [accepted](../../roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21).
 The native proof covers Linux, macOS and Windows source/outbound isolation,
 owner/permission/path/mount denial, exclusive install recovery and both actual

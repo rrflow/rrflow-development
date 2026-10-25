@@ -6,6 +6,23 @@
 
 ## Observed deficiency
 
+Current scheduling follows the [parent-authorized dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md)
+and [staged C-07 qualification](../../roadmap/rrflow-1.0/gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
+Final growth/24-hour qualification remains open but does not prohibit D-02's
+missing real-project executor or its dependent ingestion/retrieval packages.
+Correctness defects affecting those slices remain blockers. Preserve every
+failed candidate and all transaction, readback, resource and isolation oracles.
+Synthetic storage receipts establish only their exercised storage behavior.
+
+The source review also identifies growth work at existing owners:
+`engine/context.rs::assemble_context_at` uses a full snapshot and builds lexical
+state per request; `engine/vector.rs::read_vector_versions` and
+`read_vector_search_versions` read vectors before collection filtering. Carry
+selective/indexed access into E-01/E-03/H-01 and the owning vector/retrieval
+packages when consumed by the project workflow, rather than creating a second
+retrieval path. These observations are implementation inventory, not measured
+causes of every native timeout or evidence of C-07 completion.
+
 The [fill-write recovery correction](../../evidence/change-journals/gate-c/c-07f-fill-write-recovery.md)
 retains PR114 run 40167630906: after 24 successful native macOS cases, disposable
 filling exceeded its original 25-second deadline. A deterministic regression

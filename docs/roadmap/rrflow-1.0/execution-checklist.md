@@ -36,7 +36,13 @@ Checklist rules:
 - require close/reopen evidence for persisted state and crash/failure evidence
   for acknowledged writes;
 - require every public surface to reach the same `RrdEngine` operation; and
-- stop at the first failed gate, repair it, and rerun the smallest owning test
-  before continuing.
+- stop dependent work at a failed owning acceptance, retain the failure, repair
+  the relevant boundary and rerun its smallest oracle. Unfinished long-running
+  qualification does not prohibit missing feature implementation allowed by
+  the dependency spine;
+- require a concrete before/after behavior and its evidence for each runtime
+  change. Code volume, elapsed time and test counts are not feature progress.
+  If that change cannot demonstrate the promised advancement, stop and rework
+  it at its owner. A documentation correction proves alignment only.
 
 ## [Executable dependency spine](executable-dependency-spine.md)

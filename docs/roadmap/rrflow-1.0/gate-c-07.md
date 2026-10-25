@@ -96,33 +96,44 @@ reported 1,981,981,149,033 cumulative segment bytes read for 1,414,786,770 bytes
 of segments, one failed compaction and a corpus-operation deadline. Those are
 attribution leads, not a diagnosed root cause, an OOM result or a completed soak.
 
-1. **Preserve the native result and finish engine growth:** PR115 merged PR112
-   and passed candidate CI, including all three native capacity platforms. Its
-   conflict-probe optimization is implemented; sustained growth is still open. Use current public
-   main as the source baseline and preserve each failed campaign. Do not start
-   new UI/provider/configuration packages while these storage blockers remain.
-2. **Attribute and remove growth costs at their owner.** First measure native
-   conflict validation's unnecessary value-page reads using the existing page
-   and I/O counters. Preserve conflict/tombstone/reopen behavior while selecting
-   only authenticated key/sequence pages and honoring the active-memory version.
-   Then use existing write-phase/maintenance diagnostics on bounded growth
-   characterizations (1,000 and 10,000 records before the full profile)
-   to distinguish validation, read amplification, compaction and publication.
-   This first optimization is not assumed to explain all Desktop read traffic.
-3. **Freeze one integrated candidate and run preflight.** Keep the Desktop
-   corpus, allocation, 30-second operation deadline and acceptance limits.
-   Require complete ingestion and independent readback, restart, backup under
-   writes, pin interference and burst/drain. A failed stage stops its dependent
-   soak, not independent native failure qualification. Never relabel setup as
-   soak, shrink the qualification corpus or extend a timeout to conceal failure.
-4. **Run the required profile/repetition matrix and actual soak.** Follow J-04's
-   allocations and the existing C-07g seeds, durations and 24-hour requirement.
-   Use the existing bounded launcher, exact artifact identities and independent
-   ledgers. A short characterization diagnoses; it cannot close this step.
-5. **Close against evidence, then hand off.** The existing acceptance collector
-   must bind all required native and sustained cases to the candidate. Merge
-   only passing candidate PRs and update Gate C/POAM035 only when their named
-   exits pass. Then resume dependent indexing/retrieval, knowledge paths and UI.
+The previous storage-first sequence postponed missing project functionality.
+The parent roadmap now prioritizes the real-project workflow. Qualification is
+staged by the behavior it can actually prove:
+
+1. **Implement and prove the source-to-retrieval capability.** D-02 through
+   D-05 and their consumed E/F prerequisites must execute against a real project
+   using the installed engine. Retain source spans, real embedding identity,
+   query results, edit/delete invalidation, effective configuration and restart.
+   A pending job or synthetic seeded storage corpus cannot prove this stage.
+   If the executor is absent, implement it; another synthetic soak cannot do so.
+2. **Prove bounded installed correctness for each implemented slice.** Run its
+   owning failure/retry, acknowledgement, transaction, resource, isolation and
+   reopen oracles. A reproduced correctness failure affecting the slice stops
+   that slice and is repaired at its canonical owner. Retain C-07's native
+   crash/disk-exhaustion tests and all earlier failures. An unrelated incomplete
+   long capacity campaign does not prohibit implementing missing behavior.
+3. **Characterize matched real-project growth.** Freeze source revisions,
+   workload/query set, quality oracle, configuration and hardware. Measure source
+   ingestion, index construction/update, retrieval quality/latency, maintenance
+   and independent readback separately. Attribute a failing operating point
+   before optimization. Synthetic storage profiles still isolate storage costs;
+   they are supporting evidence, not a replacement for this joined flow.
+4. **Qualify the integrated candidate.** Freeze revision/tree, binaries, harness,
+   configuration, corpus and limits. Run the existing C-07g/J-04 profile and
+   repetition matrix, pre-soak admission and actual 24-hour requirement. Keep
+   warmup, measured, burst, drain, backup interference and settled ownership
+   requirements. New source cannot inherit an earlier candidate's acceptance.
+5. **Close only the named exit.** The existing acceptance collector must bind
+   every required native and sustained case to its candidate. Its success
+   semantics do not change. Full C-07g/h and release requirements remain open
+   until their exact evidence passes; short characterizations do not close them.
+
+Do not change deadlines, corpus or success thresholds within a frozen run,
+relabel setup as soak, erase a failed operating point, or waive acknowledged-write
+readback. Historical receipts retain their original meaning. Already running
+campaigns keep their original identity; they do not control all feature work.
+The existing API and single pre-release implementation remain unchanged.
+
 
 The [pre-soak admission and readback record](../../evidence/change-journals/gate-c/c-07g-soak-admission.md)
 binds the merged native result, retained failed characterization and the next
