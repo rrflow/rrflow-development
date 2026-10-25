@@ -63,7 +63,11 @@ is local RRFlow with explicitly selected bidirectional synchronization to
 **shippin.cloud**, targeting hosted project engines/data and a private devspace.
 Local-only operation and configurable custom/self-hosted destinations remain
 supported targets. The [identity and delivery contract](docs/reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
-separates shared login from project access and records the missing integration.
+defines automatic local connection, a simple offer to share project data/access
+with selected services and AI tools, and automatic session/sync resumption after
+setup. Nomen restores shared product login; supported provider adapters make
+existing Claude, Codex and other AI subscriptions usable without manual grant
+configuration. These integrations remain implementation targets.
 The initial friends-and-family experience will
 demonstrate current AI-assisted development: create projects, run Rust,
 Python, and Go code, load the running project's UI inside the private cloud

@@ -65,8 +65,13 @@ replication and remote-only access are separate choices. This priority does not
 remove local-only, cloud-hosted or custom deployment targets, or postpone local
 engine correctness behind cloud work. No account is required for local use.
 
-Shared login identifies the user; each service and project still requires its
-own explicit authorization. Nomen identity is distinct from the engine's
+The nontechnical setup offers to share the selected project's data and access
+with the user's chosen services and AI tools. One understandable confirmation
+can authorize that selected set; the client derives and applies the underlying
+service/project bindings. Do not require the user to configure each grant or
+reapprove unchanged authorized operations. Shared login identifies the user;
+remembered sharing choices determine which bindings can activate automatically.
+Nomen identity is distinct from the engine's
 [durable seat identity](../seat-identity.md), estate identity and transaction
 authority. Binding an account must not replace those identities, silently merge
 estates, enable cross-project context sharing or grant training/provisioning
@@ -82,12 +87,51 @@ may become an undeclared dependency of local or homelab operation. Unknown or
 unsupported service/identity profiles remain unavailable. Loss of cloud login
 must stop unauthorized remote work while preserving local data and operation.
 
-Connectome can offer these extensions after local operation is established.
-Account creation, remote engine access, bidirectional sync, cross-project
-context sharing, training export and compute provisioning are independent
-choices. They may share an understandable setup flow but retain separate
-previews, scopes and receipts. Default installation enables none. A failed or
-revoked service binding leaves local data and operation usable.
+Connectome automatically connects to the installed or previously selected local
+instance using its existing authenticated installation binding. It offers cloud
+sync and sharing with connected services as part of the project setup, including
+rrflow.ai access and a later rroflow.ai recursive-learning extension. A single
+setup screen presents useful presets, selected recipients, what they can read or
+do and any cost; advanced grant details stay expandable. After the user chooses,
+create the necessary bindings and maintain them automatically. Data sharing,
+sync, learning and provisioning have distinct recorded effects, but they do not
+require separate dialogs when the setup choice already covers them.
+
+Reuse a valid Nomen session and saved connector authorization automatically.
+Refresh/resume through the supported contract; request sign-in only when it is
+actually needed, then return to the pending setup or transfer. Resume approved
+sync from its acknowledged checkpoint after restart or network recovery. A new
+installation offers sharing before sending project data; a returning installation
+restores its saved choices rather than behaving as an unconfigured install.
+Changed account, recipient, scope or cost requires only the changed decision.
+Local operation remains usable if cloud/identity/connector access is unavailable.
+
+### Existing AI subscriptions and practical delivery
+
+Offer Claude, Codex and other admitted frontier-AI tools in the same setup flow.
+Detect a supported installed client/session through its documented interface,
+show the account and access/billing mode, and guide only missing connection
+steps. Where a provider supports it, expose the selected RRFlow project through
+its connector/MCP/tool integration so the user's existing subscription client
+can consume grounded context. Nomen coordinates RRFlow product identity and
+connection state; it does not itself issue third-party subscription entitlement.
+Do not copy third-party credentials between services to simulate shared login.
+
+Qualify each adapter against its actual provider contract. Official
+[Codex authentication](https://developers.openai.com/codex/auth) distinguishes
+ChatGPT sign-in from API-key access. Official
+[Claude account authentication](https://support.claude.com/en/articles/13189465-log-in-to-your-claude-account)
+distinguishes native subscription use from third-party access and billing.
+These are inputs to adapter design, not evidence that RRFlow already integrates
+either. Never silently replace an unavailable subscription path with paid API
+calls; show the supported path and any charge before activation.
+
+The first usable release may support a bounded set of clients and sharing
+capabilities, then extend it. Record each limitation and improve the adapters
+without forcing users to learn credentials, scopes, schema or synchronization
+internals. Basic acceptance measures successful setup and recovery with minimal
+interaction as well as correct isolation; security work belongs in the adapter,
+not a maze of manual setup requirements.
 
 RROFLOW may be prepared and used locally when its capabilities qualify; the
 cloud is not a prerequisite for learning. Conversely, a user may choose remote
@@ -236,14 +280,18 @@ separation keeps project code execution outside the database authority.
 
 ## Required user behavior
 
-1. Start and use the local project without sign-in. The initial sync state is
-   disabled; there is no account discovery request or background upload.
-2. Offer an admitted managed-service sign-in or an operator-configured homelab
-   endpoint and trust/credential binding. Creating an account or discovering a
-   host alone does not authorize provisioning or data transfer.
-3. Preview the exact local project/estate, remote account and destination
-   instance, selected data families and files, both transfer directions, permissions, limits,
-   excluded secrets and initial-transfer size. Require explicit sync consent.
+1. Automatically connect to the installed/selected local engine and open the
+   project without requiring cloud sign-in. Restore existing local bindings;
+   do not attach to an arbitrary discovered process.
+2. Offer sharing with selected services/AI tools and cloud sync. Reuse valid
+   Nomen and connector sessions; when needed, offer sign-in/reconnect and return
+   to the same project. Offer a custom destination through advanced setup.
+3. Show one clear setup summary: project, recipients/cloud instance, data and
+   access offered, sync direction and costs. Make exact families, limits,
+   exclusions and transfer estimate expandable. One confirmation authorizes
+   the displayed sharing/sync bundle; provision its bindings automatically.
+   Resume an existing authorized bundle without asking again. Do not upload
+   project data from a new offer until the user accepts it.
 4. Establish authenticated transport, verify remote protocol/instance/catalogue
    identities, then activate the authorized adapter binding. Never upload the
    local operator credential, token signing key, model-provider secrets, or raw
@@ -344,11 +392,12 @@ configuration schema does not qualify either behavior.
 ### Optional login and maintained updates
 
 RRFlow authentication works locally through its configured identity authority.
-Offer configured managed-service account linking as an explicit extension,
-alongside a homelab endpoint; never substitute hosted identity for local engine readiness.
-Sign-in lists authorized service choices and prices but enables no upload,
-connector, provisioning, shared cache or paid model call by itself. Disconnect
-must leave local login and local data usable.
+Offer Nomen account linking and selected service sharing in the guided setup,
+alongside custom hosting in advanced settings. Automatically restore valid saved
+sessions and authorized connector/sync bindings. Sign-in resumes already
+approved work; a new sharing, provisioning or paid-use choice is presented only
+when it is not covered by the saved configuration. Hosted identity remains
+optional for local readiness. Disconnect leaves local login and data usable.
 
 Publish signed, digest-bound engine and adapter bundles through Gate J's
 release mechanism. Preview platform/protocol/schema/format compatibility,

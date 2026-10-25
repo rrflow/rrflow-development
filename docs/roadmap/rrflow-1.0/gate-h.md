@@ -73,6 +73,16 @@ survives identity/cloud outages, and reconnect resumes authorized durable
 changes without loss or duplication. An authenticated page alone is no sync
 proof. No Nomen protocol or production endpoint is assumed by this plan.
 
+H-06/H-07 must also prove the [guided sharing and resumption flow](../../reference/client/devpulse-cloud.md#required-user-behavior):
+automatic local attachment; one clear service-sharing/sync choice; reuse of
+valid Nomen and provider sessions; expired-session reconnect returning to the
+pending action; automatic restart/offline recovery under saved authorization;
+and a changed-scope prompt without restarting setup. Test a selected supported
+AI client consuming actual project context, identify subscription versus API
+billing, and retain a declined-sharing case. A novice must not configure
+individual grants. Provider/client support can be delivered incrementally;
+unsupported adapters stay explicit, not a reason to block the usable local flow.
+
 | Package | Prerequisites and canonical boundary | Smallest oracle and required exit |
 |---|---|---|
 | H-07a: executable sync contract and admitted profile | Existing contract; inspect `rrd-contract` operation catalogue, `rrd-engine` transaction/idempotency boundary, `rrd-store` committed change groups and public export coverage. Specification/fixture work may begin now. | Versioned cases name each selected family, source/destination identity, atomic group, snapshot/cursor handoff, conflict policy and unsupported condition. Absent public import/export reports unimplemented, never a passing sync fixture. |

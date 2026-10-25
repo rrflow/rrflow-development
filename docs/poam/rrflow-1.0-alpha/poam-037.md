@@ -49,6 +49,12 @@ resolve that contract before implementation, and H-07b/c/d/g must retain
 service/project authorization, revocation, offline continuation and reconnect
 proof. Central login is not a second engine authority or permission to share
 project context. Custom/self-hosted profiles remain configurable targets.
+The owner's follow-up corrects the manual-authorization framing: offer one
+sharing/sync setup bundle, create its selected service bindings automatically,
+reuse Nomen/provider sessions and resume previously approved work. Automatic
+local attachment, saved-choice resumption and actual Claude/Codex subscription
+client integration still require H-06/H-07 implementation evidence. A disabled
+cloud toggle or documented permission boundary alone does not satisfy this UX.
 
 ## Impact
 

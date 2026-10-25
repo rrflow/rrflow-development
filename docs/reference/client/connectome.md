@@ -371,6 +371,17 @@ manual database name, UUID, schema DDL, vector dimension or graph setup is
 required for the standard bundled profile. Advanced controls remain available
 without becoming the initial form.
 
+Connect to the installed/selected local engine automatically. In the same setup,
+offer sharing this project with selected services and supported Claude, Codex
+or other AI tools, plus cloud sync. Reuse valid Nomen/connector sessions; ask for
+sign-in only when required, then continue the pending action. Present a clear
+sharing preset and recipients with expandable details; one confirmation can
+configure the complete selected bundle. Returning users resume approved sharing
+and sync automatically, without repeating the setup. The
+[connection and subscription contract](devpulse-cloud.md#existing-ai-subscriptions-and-practical-delivery)
+owns supported provider paths and billing disclosure. Keep local readiness,
+provider connection and cloud sync status distinguishable in the UI.
+
 The client prepares an exact engine plan, including generated identity,
 project-bound rrflowDB/rrflowKV storage, bootstrap schema and admitted vector
 collection/model/metric bindings. rrflowQL is the query interface to this same
