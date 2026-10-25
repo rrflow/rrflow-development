@@ -36,7 +36,12 @@ cannot establish current installation, effort or indexing behavior. Wire the
 existing task-effort controls at their current operations before claiming a
 complete effort UI; AI-inherited preference resolution remains the separately
 specified G/D configuration work. No new top-level feature area substitutes for
-clear nested project data and evidence views.
+clear nested project data and evidence views. The
+[workspace learning and controller contract](../../reference/client/connectome.md#learning-in-the-workspace-and-controller-configuration)
+requires contextual tooltips, evidence-based suggestions, novice-to-advanced
+drill-down and global/project LFG and SWAG System One controls. Prove actual
+configuration readback and observed behavior with the G-owned execution path;
+labels, local UI preferences and tooltips alone do not qualify those controls.
 
 H-05 requires causal signals for setup/admission, source inventory, parsing,
 embedding/index publication, retrieval, model dispatch, commit, Stop and retained

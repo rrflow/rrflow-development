@@ -49,7 +49,12 @@ a roadmap is not evidence that those capabilities already work.
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
 UI, maintained in its own repository and pinned here as the optional
 `connectome/` Git submodule. The [Connectome client contract](docs/reference/client/connectome.md#repository-checkout)
-owns checkout instructions and the UI's public-engine boundary.
+owns checkout instructions and the UI's public-engine boundary. Connectome is
+the UI package for the complete guided experience: nontechnical users can start
+with plain-language controls, learn through contextual tooltips and suggestions,
+and drill into advanced technical evidence in the same workspace. It exposes
+configurable LFG analysis and SWAG, the System One controller, through engine
+contracts; these controls and the complete journey still require qualification.
 
 Planned **rrflow.ai** and **rroflow.ai** services are optional. rrflow.ai is
 the hosted reasoning engine, offering remote access, synchronization and

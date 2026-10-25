@@ -408,6 +408,42 @@ each algorithm:
 | Learning | Disabled/available/experiment/candidate status, separate supervised and unsupervised choices | Dataset authorization, model/configuration identity, held-out quality, promotion/rollback and RROFLOW receipts |
 | Services | Local operation, optional account/knowledge-path setup and transfer state | Expected endpoint/account/instance, scope, selected datasets, checkpoints, conflict/revocation and failure evidence |
 
+#### Learning in the workspace and controller configuration
+
+Connectome is the UI package driving the entire guided experience, from adding
+a project through knowledge, reasoning, services and optional learning. The
+engine remains independently operable. Basic mode must be useful without database,
+model-routing or infrastructure knowledge. Technical detail expands within the
+same selected project, record, relationship or run rather than sending users
+to a separate dashboard with different state.
+
+Contextual tooltips explain what a control does, why it matters, its cost or
+effort tradeoff and how to undo it. Suggestions use current project evidence:
+state the observed condition, the proposed next action and expected benefit;
+show uncertainty and offer a preview/apply action. Do not invent savings or
+present unavailable capabilities as working. An expandable explanation lets
+users learn how source evidence, retrieval, relationships and model synthesis
+contribute to the answer, with links back to real source and execution receipts.
+It does not expose or depend on hidden model chain of thought.
+
+Global settings and per-project overrides expose
+[LFG and SWAG](../inference/lfg-swag.md): LFG supplies CPU prompt-analysis data
+points; SWAG is the configurable System One controller and model gateway.
+Basic controls offer understandable effort, local/cloud preference and time/cost
+limits with effective values and inheritance shown. Advanced drill-down exposes
+available analyzer/policy/model revisions, routing inputs and selected-binding
+reasons, fallback and budget/cache settings. Enablement, installed availability
+and observed execution are distinct; render only supported settings as operable.
+Apply through the engine's existing configuration authority and read back the
+effective revision. Neither a UI-only value nor a switch proves execution.
+
+H-06 acceptance must let a novice add a project, understand a useful grounded
+result, follow a contextual suggestion, change an available setting and see
+its effective behavior without raw IDs or hand-edited configuration. From the
+same view, a technical user must inspect the underlying source, relationship,
+policy and receipt. G acceptance separately proves LFG/SWAG behavior and limits;
+the UI must accurately show unavailable execution until that proof exists.
+
 These are target presentations over existing authority, not new engine status
 enums. Basic and advanced views must show the same source/configuration/read
 identity. Every metric says whether it is measured, estimated, unsupported or
