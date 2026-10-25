@@ -130,6 +130,79 @@ offline/interrupted acquisition, engine-ready/runtime-not-ready distinction,
 and a real containerized project whose UI opens privately. Cloud opt-in stays
 off throughout these local tests.
 
+## First-run comparison and optional free-tier experience
+
+This is an owner-directed delivery requirement, not an available service or a
+claim of improvement for every task. After installed readiness, Connectome must
+offer a bounded first useful task and an explicitly selected background
+health/soak workload. Show what each runs, its duration, CPU/RAM/disk/network
+and model-call limits, progress, stop state and retained result. A first answer,
+a short health check and an accepted C-07 endurance campaign are different
+results. Do not delay ordinary use until a qualification soak finishes or
+present a short check as 24-hour evidence. An operator can choose a lighter
+profile; a performance claim remains bound to the profile actually measured.
+
+For each project, show **available**, **configured** and **enabled** separately
+for local retrieval, each knowledge path, LFG analysis, SWAG routing, RROFLOW
+learning and hosted capabilities. Show the effective revision, field origins,
+remaining budget and a concrete unavailable reason. Discovery, a subscription,
+an installed model, sign-in or a high-complexity prompt does not activate an
+adapter. LFG observations may inform SWAG's qualified policy only within the
+accepted user effort ceiling. Missing required analysis must cause an explicit
+abstention; it cannot silently escalate effort, send data elsewhere or fabricate
+a complexity score. Configuration, dispatch and failure behavior remain owned
+by the [LFG/SWAG contract](../inference/lfg-swag.md); learning activation and
+promotion remain owned by the [learning contract](../inference/learning/controller-training.md).
+
+The comparison view must make the benefit or lack of benefit reviewable:
+
+| Evidence | Required comparison behavior |
+|---|---|
+| Same task and declared baseline | Bind task/input and authorized code/context identities, model/provider revision, settings, effort budget, evaluation rubric and baseline method. Distinguish a direct-provider baseline from a separately observed subscription-app session; label differing inputs or unavailable controls. Never claim a controlled comparison when those differ. |
+| Quality and grounding | Show success/failure and cited source revisions, unsupported or stale evidence and the held-out rubric result. Lower token use alone is not success. Include regressions and inconclusive outcomes. |
+| Work and usage | Separate local retrieval/graph/database work, local model inference, controller overhead, web/connector calls and frontier inference. Report observed input/output/cache/reasoning tokens only where the provider supplies them; local bytes, rows, graph traversals or CPU time are not invented model tokens. |
+| Time and cost | Include initialization/indexing/maintenance and controller overhead, end-to-end latency and recurring local/cloud resources. Identify actual billed usage, estimates and unknowns separately, with price source/time/currency. A flat-rate subscription cannot be converted into per-call savings without a declared allocation method. |
+| Trace and debug | Drill from the lay summary into correlated request/run/attempt IDs, configuration/source/read stamps, admitted route, retrieval contribution, receipts, limits, stop/uncertain states and bounded redacted diagnostic export. Replay of retained evidence must not invoke the provider again. Traces observe execution; they are not hidden model thought or lifecycle authority. |
+
+The user authorizes any additional baseline or shadow provider calls and their
+budget before dispatch. Provider subscription access and API entitlement are
+distinct; no paid API, browser automation or model access is inferred from a
+subscription name. Unavailable usage or an absent baseline stays unknown.
+A first-run demonstration may use a declared bundled fixture; it must not be
+presented as measured improvement on the user's private project. J-04 owns
+repeatable comparative claims, including warm/cold and enabled/disabled
+component comparisons at the same authorized snapshot.
+
+The intended shippin.cloud offering includes an optional free-tier experience.
+Before enabling it, the configured service must return an authenticated,
+versioned entitlement bound to the service/account/project and eligible
+capabilities, with finite resource/usage/concurrency limits, validity/reset
+semantics and the service's authoritative usage state. Exact commercial limits
+are undecided and must not be invented in engine defaults or UI. The effective
+admission is the intersection of engine authorization, project/user budgets
+and service entitlement. Free service access grants no project sharing,
+training export, connector activation, paid upgrade or additional model access.
+
+The UI previews data disclosure, eligible endpoints and remaining allowance.
+The service enforces its quotas; a client counter alone is not an enforcement
+boundary. Expiry, revocation, exhausted quota, unsupported capability and an
+offline or unverifiable entitlement have distinct visible states. A retry,
+new session or restart cannot reset consumption. Lost acknowledgements require
+receipt-based reconciliation before another possibly charged call. Local work
+continues within its own admitted capabilities; there is no automatic paid
+fallback, upload or account requirement. Account disconnection preserves local
+data and independently authorized local inference.
+
+Acceptance follows existing owners: D-01/D-06 for installation/configuration,
+G-01/G-02/G-06 for analysis, routing and shared budgets, H-05/H-06 for public
+signals and Connectome, H-07 for actual service admission, I-03/I-07 for learning
+and J-04 for comparative evidence. Exercise disabled/missing LFG/SWAG/RROFLOW,
+low/high/inconclusive complexity, budget stop, restart, two competing requests
+at the last quota unit, expired/revoked/offline entitlement, lost reply and
+account switch. Prove no duplicate charge, widened authority or cross-project
+data disclosure, and show a negative or unknown comparison honestly. A schema,
+mock entitlement, UI switch or successful sign-in does not pass these cases.
+
 ## Relationship and authority
 
 ```mermaid
