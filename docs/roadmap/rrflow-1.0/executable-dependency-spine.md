@@ -34,6 +34,57 @@ checkout-only constructor.
 | 11 | I-01 through I-07 | Canonical events, triggers, routines, skills, and optional host adapters are explicit persisted capabilities, not hooks or a parallel runtime. |
 | 12 | J-01 through J-03, then KB-08, then J-04 and J-05 | Alternate paths are absent; failure and clean-install qualification pass on every supported native artifact; rrflowDB becomes the normal warp path; comparative evidence and the signed distribution close release. |
 
+## Engine-first alpha execution focus
+
+Owner direction of 2026-10-25 prioritizes the installed local engine, scalable
+project context and useful debug signals. Cloud accounts, commercial tiers,
+connector expansion and additional UI surfaces are paused while the engine's
+active reliability and growth blockers remain. This refines the waves above;
+it does not declare unfinished gates complete or replace their dependencies.
+The [code-grounded review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+binds the inspected code, evidence limits and primary research.
+
+An estate must represent the authorized project's source and knowledge without
+requiring the entire project to fit in RAM or a model prompt. Queries select a
+bounded, relevant working context from persisted indexes at a declared source
+revision. Oversized inputs and incomplete indexes are visible states, not
+silent omission. An installed binary, successful commit or small context demo
+alone is not that alpha.
+
+| Order within existing owners | Implementation boundary and concrete change | Required failure/scale oracle before handoff |
+|---|---|---|
+| 1. Finish installed storage and expose its costs ? C-07g/h | Integrate the current handle-limit and native-capacity repairs at rrflowKV and the installed harness. Extend existing engine/public diagnostics with bounded write-phase attribution and setup/readback progress; preserve the accepted physical format and transaction authority. | Same frozen corpus, resources and limits completes ingestion, independent readback, backup-under-write, restart and drain before the actual soak. Native errors, uncertain effects, ownership leaks and cap violations fail. Debug capture has bounded cost and cannot perturb commit semantics. |
+| 2. Make a project a durable incremental input ? D-02/D-03/D-04 | Use engine-owned persisted jobs and committed inventory, content digests, source/chunk relationships, exclusions and parse revisions. Installation's precondition hash remains installation evidence. Admit and process bounded batches, persist checkpoints with resulting changes, and resume without duplicate work. | Create/reopen a real multi-language fixture; edit, rename, delete, revoke and interrupt at each checkpoint. Only affected files/chunks/relationships change. Secret/generated/dependency exclusions hold; stale source never presents as current. Measure files/bytes scanned and parsed per incremental change. |
+| 3. Make retrieval work proportional to selected data ? E-01?E-04 and C-04 | Reuse native temporal adjacency for graph expansion. Persist BM25 postings/statistics and transactional deltas. Select collection/named-vector indexes before hydrating candidates; combine an eligible immutable ANN generation with exact new/changed/deleted deltas at one read stamp. Preserve exact search as the oracle. | Increasing unrelated estate data does not increase point/adjacency/posting work linearly. Differential update/delete/reopen results match canonical truth. Missing/stale artifacts, selective filters and interruption expose completeness/fallback cost. Approximate quality includes recall and rerank work; no hidden full-vector hydration. |
+| 4. Enforce one bounded execution budget ? E-05/F | Plan access paths before materialization; stream admitted row/page batches through native/Arrow/DataFusion operators. Charge scans, candidates, decoded/retained bytes, spill and elapsed work to the same request budget. | Adversarial fan-out, wide rows, slow consumers, cancellation and full spill disk cannot grow retained owners unboundedly. Explicit truncation/denial is distinct from an empty correct answer. Physical counters prove selected pushdown rather than a cosmetic plan label. |
+| 5. Assemble useful grounded context and bounded reasoning ? G and H-01/H-02/H-05 | Replace context.rs's per-request scope snapshot and BM25 rebuild with accepted stamped access paths. Fuse eligible lexical/vector/graph evidence, deduplicate source revisions, optionally rerank within the same budget and return citations plus completeness. Retain existing task stop/replay authority; LFG/SWAG are optional qualified adapters. | A fixed code-question corpus includes symbols, dependencies, renames, contradictions and stale facts. Measure recall/grounding/task success and total local/provider work. Stop, unknown outcomes and restart preserve budgets and receipts. Retained evidence replay dispatches no model/tool work. |
+| 6. Prove the joined installed engine ? J with owning gates | Run the public engine flow from project installation through ingestion, relationship/index maintenance, contextual query, source edit, restart and recovery. Consume engine-owned diagnostics through existing clients; UI polish and remote services do not gate this local proof. | Pinned small/medium/large fixtures and declared hardware retain raw quality, p50/p95/p99, throughput, RSS, I/O, disk growth, index lag and cost results. Include cold/warm, update/delete, concurrent read/write, budget exhaustion and recovery. Report largest sustainable tested envelope and all failures; no inferred competitor superiority. |
+
+Each row is decomposed into bounded PRs at its existing gate. The first runtime
+package after the integrated C-07 repair is the diagnostic/growth slice below,
+not another cloud or naming package. Preparation of later exact oracles can run
+while native qualification is executing; dependent runtime paths must consume
+the accepted substrate rather than introducing temporary parallel stores.
+
+### Signals ship with every engine change
+
+Every package declares its observable operation, units, scope, source and
+configuration identities, cumulative-versus-window semantics, reset identity,
+missing measurements and finite collection/export limits. Show admission/queue
+wait separately from execution, and physical work separately from answer size.
+At minimum retain ingestion/checkpoint progress, index source cursor and lag,
+selected/skipped access paths, examined keys/pages/candidates/edges, cache hit
+and miss deltas, retained memory, open segment handles, WAL sync/maintenance
+cost, rejected/cancelled work and unresolved effects. Do not use project paths,
+prompts or per-request IDs as unbounded metric labels.
+
+Debug mode must be opt-in, bounded, redacted and usable through the engine's
+public contracts without Connectome. A compact summary can link to detailed
+samples/receipts; it cannot invent metrics or store a second truth. Capture
+limits and dropped-sample counts remain visible. Measure debug-enabled overhead
+against debug-disabled execution on the same workload. Existing A-07 vocabulary
+and H-05 conformance own signal naming and cross-surface correlation.
+
 ## Project-to-learning acceptance journey
 
 The owner-requested experience below maps onto the waves above. It is not a
