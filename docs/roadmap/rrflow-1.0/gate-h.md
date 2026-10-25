@@ -60,6 +60,19 @@ managed or operator-controlled destinations. All packages below remain open.
 They are dependencies to implement, not completed work or new engine APIs.
 The native engine must remain independently installable and operable.
 
+The [Nomen identity and delivery priority](../../reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
+binds the first managed profile: local RRFlow synchronizes both ways with
+shippin.cloud using Nomen's central login. Resolve the actual Nomen contract in
+H-07a; qualify account/service/project binding, expiry and revocation alongside
+H-07b/c/d. First demonstrate that engine-only sync flow without waiting for
+DevPulse VM/container provisioning, then complete the H-07e/f/g product flow.
+Additional custom/homelab profiles use the same configurable contracts and
+retain their own acceptance; this priority closes none of them. H-07g must
+prove shared login does not confer cross-project/service access, local work
+survives identity/cloud outages, and reconnect resumes authorized durable
+changes without loss or duplication. An authenticated page alone is no sync
+proof. No Nomen protocol or production endpoint is assumed by this plan.
+
 | Package | Prerequisites and canonical boundary | Smallest oracle and required exit |
 |---|---|---|
 | H-07a: executable sync contract and admitted profile | Existing contract; inspect `rrd-contract` operation catalogue, `rrd-engine` transaction/idempotency boundary, `rrd-store` committed change groups and public export coverage. Specification/fixture work may begin now. | Versioned cases name each selected family, source/destination identity, atomic group, snapshot/cursor handoff, conflict policy and unsupported condition. Absent public import/export reports unimplemented, never a passing sync fixture. |

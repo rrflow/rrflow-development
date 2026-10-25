@@ -57,8 +57,14 @@ evidence views. rroflow.ai is the learning service, offering governed
 supervised, unsupervised and recursive learning. Like the engine and
 Connectome, their service software is open source and self-hostable. Their
 [service roles and opt-in boundaries](docs/reference/client/devpulse-cloud.md#optional-managed-service-roles)
-are targets, not deployed-service claims. **shippin.cloud** extends this
-experience with a private devspace. The initial friends-and-family experience will
+are targets, not deployed-service claims. **Nomen** is the planned central
+identity manager and login across these products. The first hosted integration
+is local RRFlow with explicitly selected bidirectional synchronization to
+**shippin.cloud**, targeting hosted project engines/data and a private devspace.
+Local-only operation and configurable custom/self-hosted destinations remain
+supported targets. The [identity and delivery contract](docs/reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
+separates shared login from project access and records the missing integration.
+The initial friends-and-family experience will
 demonstrate current AI-assisted development: create projects, run Rust,
 Python, and Go code, load the running project's UI inside the private cloud
 devspace, and launch projects on the web.

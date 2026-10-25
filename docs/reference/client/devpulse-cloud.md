@@ -34,7 +34,7 @@ endpoints, account federation or available service APIs:
 | Local RRFlow and Connectome | Open-source engine with one estate per project, usable without an account. Connectome offers guided operation and learning from visible evidence. | D-01/C-07 and H-06/J installed product and client acceptance. First-party licence texts/notices remain a J-05/POAM-013 release requirement. |
 | rrflow.ai | The hosted reasoning engine: optional managed access to hosted project engines, explicitly selected synchronization including access from another authorized device, and the evidence views below. | H-07 account, instance, transfer and real-service acceptance; remote access is not proof of two-way synchronization. |
 | rroflow.ai | The learning service: optional supervised, unsupervised and recursive learning over authorized datasets, experiments and qualified improvement artifacts, exposed through Connectome with the learning-results view. | G-06/I-03/I-07 learning acceptance plus H-07 transfer/account controls for selected data. Upload and artifact activation require distinct authorization. |
-| shippin.cloud | Optional private development space that consumes RRFlow and can run project toolchains, containers/VMs and private UI previews. | H-07e/f/g project-runtime, file/environment and real-service acceptance. A synchronized database is not a working devspace. |
+| shippin.cloud | First hosted destination for local RRFlow bidirectional synchronization and managed project engines/data; also the private development space for toolchains, containers/VMs and UI previews. | H-07a/b/c/d/g identity, engine distribution and real sync acceptance; H-07e/f adds the distinct devspace and file/environment proof. A synchronized database is not a working devspace. |
 | Operator-controlled homelab | Self-hosted engine and optional development/learning capabilities under the same admitted public profiles, including self-hosted rrflow.ai and rroflow.ai service software. | Independent identity, recovery and transfer qualification with managed services unavailable. |
 
 By the repository owner's direction of 2026-10-24, the rrflow.ai and rroflow.ai
@@ -46,12 +46,41 @@ owner; it does not add proprietary engine, learning, or evidence behavior.
 The licensing approach and the source location of the service software are not
 yet decided.
 
+### Nomen identity and delivery priority
+
+By the repository owner's direction of 2026-10-25, **Nomen is the central
+identity manager and login for all products**, including RRFlow, Connectome,
+DevPulse, shippin.cloud, rrflow.ai and rroflow.ai. This is the shared identity
+target, not evidence of an available account service or implemented integration.
+Nomen's authoritative protocol, issuer/trust model, client registration,
+credential lifecycle and supported deployment profiles must be obtained from
+its owning implementation before authoring an adapter; do not invent endpoints
+or assume a protocol from the product name.
+
+Delivery order is a working local engine, then opt-in local-to-shippin.cloud
+bidirectional synchronization using Nomen login, then qualification of additional
+custom/self-hosted service profiles through the same configurable boundaries.
+Hosted engines can store and operate project estates on shippin.cloud; local
+replication and remote-only access are separate choices. This priority does not
+remove local-only, cloud-hosted or custom deployment targets, or postpone local
+engine correctness behind cloud work. No account is required for local use.
+
+Shared login identifies the user; each service and project still requires its
+own explicit authorization. Nomen identity is distinct from the engine's
+[durable seat identity](../seat-identity.md), estate identity and transaction
+authority. Binding an account must not replace those identities, silently merge
+estates, enable cross-project context sharing or grant training/provisioning
+permission. Credentials must be validated for their intended service and scope;
+account binding, expiry, rotation and revocation must have explicit outcomes.
+
 Use configured endpoint profiles, trust and credential references rather than
 hardcoded domains in engine or client dispatch. Show the actual service,
-account and destination estate for each operation. Linking one service does
-not imply that the others share its account, can read its data or can provision
-resources. If federation is later supported, its trust and audience must be
-qualified explicitly. Unknown or unsupported services remain unavailable.
+account, destination estate and synchronization state for each operation.
+Central login never implies access to every product's data. Custom deployments
+must declare their supported identity/trust profile; no managed Nomen service
+may become an undeclared dependency of local or homelab operation. Unknown or
+unsupported service/identity profiles remain unavailable. Loss of cloud login
+must stop unauthorized remote work while preserving local data and operation.
 
 Connectome can offer these extensions after local operation is established.
 Account creation, remote engine access, bidirectional sync, cross-project
