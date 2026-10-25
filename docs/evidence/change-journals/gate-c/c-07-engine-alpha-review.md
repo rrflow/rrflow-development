@@ -113,6 +113,9 @@ preflight continue under their own exact identities; they are not evidence of
 this document implementing missing engine features. C-07, the full alpha and
 actual 24-hour soak remain incomplete.
 
+Final rendered-text review corrected six table separators and one gate range
+that the shell had reduced to question marks; no scope or status changed.
+
 Change checklist: pre-effect review brief published; owners and relevant code
 inspected; concrete findings and replacement oracles named; primary research
 mapped to existing boundaries with rejected alternatives; debug/resource and
