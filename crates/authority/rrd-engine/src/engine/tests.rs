@@ -80,6 +80,7 @@ fn commit_request(object: &str) -> CommitTransaction {
     }
 }
 
+mod attunement;
 mod catalogue;
 mod context;
 mod data_crud;

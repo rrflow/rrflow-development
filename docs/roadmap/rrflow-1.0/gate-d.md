@@ -57,17 +57,38 @@ receipts and does not erase remaining release qualification.
 
 ## Project-workflow build packages
 
-These refine D-02 through D-05, not a second roadmap. Current source baseline
-is `337d136210ff59b2359f898e717166c087dd5bfc`. The file-plan generator already
-marks `engine/attunement.rs`, `tests/attunement_resume.rs` and the
+These refine D-02 through D-05, not a second roadmap. At audit baseline
+`337d136210ff59b2359f898e717166c087dd5bfc`, the file-plan generator marked
+`engine/attunement.rs`, `tests/attunement_resume.rs` and the
 `crates/compute/rrd-attunement/` modules as **planned**, not implemented.
-No runtime work is authorized by the existence of this table alone while the
-owner's planning hold and the admission decision below remain unresolved.
+The embedded package below now implements the engine control module; the
+remaining phase/compute modules and complete qualification remain open.
+The owner's subsequent instruction to implement authorizes the bounded D-02
+embedded-engine package below. It does not reinterpret installation/readiness
+as permission for source effects or change the existing transport API.
+
+### Embedded D-02 control implementation
+
+`RrdEngine::read_attunement` and `control_attunement` now use the installed job
+and existing EstateRead/EstateAdmin permissions. Additive Rust commands start,
+step, pause, recover an expired lease, resume and request/acknowledge cancellation;
+no existing HTTP operation, wire model, installation action or readiness meaning
+changes. There is no unattended worker or source/provider activation.
+
+Each mutation binds revision, principal-scoped idempotency and plan/lease identity
+as applicable. Job and exact response receipt commit in one control transaction.
+The Connect worker verifies installed identity/configuration and records a real
+runtime read stamp. Inventory currently produces `phase-unavailable` with no
+checkpoint. Configurable finite leases, bounded encoding, a lifetime transition
+limit and cancellation reserve bound this package; D-02c's complete scheduling
+and project settings remain open. This is partial D-02 implementation, not
+source indexing or C-07/D-02 completion. The [package journal](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
+owns exact tests and remaining qualification.
 
 | Package / dependency | Input, owning code and durable output | Failure oracle and acceptance |
 |---|---|---|
-| D-02a admission decision; before executor implementation | Existing `rrd-contract/src/attunement.rs` job/plan/resume/cancel validators, `src/lib.rs::endpoint_catalogue`, CLI installed command dispatch and installation preview. Map each public action to authorization and actual engine dispatch. | Today `ResumeAttunement`, `CancelAttunement` and `AttunementStatus` occur in contracts/tests/exports, not executable handlers. Installation previews `CreateAttunementJob`, not unlimited execution. Publish the exact operation/permission/activation decision before source effects. Preserve existing APIs; if adding missing planned operations is disallowed, public control remains blocked. Do not reinterpret task-open, readiness, install or arbitrary query as an ingestion command. |
-| D-02b durable worker; after D-02a | Extend `RrdEngine` at planned `engine/attunement.rs`, using the existing installed job, `AttunementJob::validate_transition`, lease generation and canonical transaction authority. Input binds job revision, plan, principal, configuration and source identity; output is the job transition and checkpoint with effect evidence. | Two workers compete for one revision; only the fenced winner publishes. Crash before effect, after effect and before ACK; retry resolves the same receipt. Expired generation cannot commit. Cancel releases owned resources and never publishes a false success. An unimplemented phase stops explicitly, never gets a fabricated checkpoint. Planned `tests/attunement_resume.rs` plus real installed-process proof. |
+| D-02a admission decision; before executor implementation | Existing `rrd-contract/src/attunement.rs` job/plan/resume/cancel validators, `src/lib.rs::endpoint_catalogue`, CLI installed command dispatch and installation preview. Map each public action to authorization and actual engine dispatch. | The initial audit found only contract types. The embedded package above adds authenticated engine dispatch; public HTTP/SDK dispatch remains absent. Installation previews `CreateAttunementJob`, not unlimited execution. Publish the exact operation/permission/activation decision before source effects. Preserve existing APIs; if adding missing planned operations is disallowed, public control remains blocked. Do not reinterpret task-open, readiness, install or arbitrary query as an ingestion command. |
+| D-02b durable worker; after D-02a | Extend `RrdEngine` at `engine/attunement.rs`, using the existing installed job, `AttunementJob::validate_transition`, lease generation and canonical transaction authority. Input binds job revision, plan, principal, configuration and source identity; output is the job transition and checkpoint with effect evidence. | Two workers compete for one revision; only the fenced winner publishes. Crash before effect, after effect and before ACK; retry resolves the same receipt. Expired generation cannot commit. Cancel releases owned resources and never publishes a false success. An unimplemented phase stops explicitly, never gets a fabricated checkpoint. Planned `tests/attunement_resume.rs` plus real installed-process proof. |
 | D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. |
 | D-03 source snapshot; after durable worker and bounded filesystem admission | Planned `rrd-attunement/src/inventory.rs` builds pure proposals from engine-authorized reads; existing `installation/inventory.rs` remains installation precondition logic. Commit stable root-relative source identities, content digests, containment, exclusions and a change set through engine transactions. | Ordered/shuffled traversal gives identical snapshot; unchanged rerun reads zero content bytes. Git tracked/ignored rules, non-Git roots, secrets, symlink/mount escape and concurrent source edits have explicit outcomes. Interrupt/restart never exposes a partial snapshot as complete. Planned inventory test target; real repository fixture after small authored adversarial fixtures. |
 | D-04 parse and source spans; after D-03 | Planned `rrd-attunement/src/parse.rs`; pinned parser/language revisions consume one committed change set. Output is source-linked syntax/symbol/chunk proposals with byte ranges and parse errors. | One-file edit reparses only affected inputs; delete invalidates their spans. Unsupported languages remain explicit and incomplete syntax retains errors. Parser/model guesses cannot overwrite source facts. Planned incremental-parse target and installed readback prove digest/range identity after restart. |

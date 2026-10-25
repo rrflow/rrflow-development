@@ -82,7 +82,14 @@ Remediation is the existing [D-02a/D-02c build package](../../roadmap/rrflow-1.0
 not a new lifecycle or a lowered acceptance threshold. Until the public-action
 constraint is resolved, installed/UI job control and global configuration are
 explicitly **blocked for implementation admission**, not merely unscheduled.
-No runtime implementation resumes under the owner's current planning hold.
+The owner's later implementation instruction lifts the planning hold for the
+bounded embedded D-02 package. `read_attunement`/`control_attunement` now operate
+on the installed job under existing EstateRead/EstateAdmin grants, with durable
+CAS/receipts, lease fencing, cancellation/recovery and a real Connect checkpoint.
+No HTTP operation or UI control is added. Inventory fails explicitly as
+unavailable, so source ingestion, complete budgets/settings and turnkey dispatch
+remain open. [The package journal](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
+records the evidence; this does not close POAM-006 or D-02.
 Other future algorithm choices remain owned experiments at E/F/G/J; they must
 not be described as validated decisions before their named evidence exists.
 
