@@ -1002,3 +1002,13 @@ verifications. No measured load segment or actual soak started. The final
 handle sample remained bounded at 128 with zero denials. Complete independent
 readback and the full profile/24-hour matrix remain open; neither ACK counts
 nor the component proof-read improvement qualifies this native operating point.
+
+
+The [bounded corpus readback package](../../evidence/change-journals/gate-c/c-07g-bounded-corpus-readback.md)
+replaces sequential setup verification with owned windows bounded by the
+already-declared client/queue allowance. All independent record/edge/vector
+checks, canonical digest ordering, original deadlines and resource limits
+remain. Component overlap/cancellation and real installed mixed-family smoke
+pass. This is a driver scheduling remedy, not a measured engine speedup or
+complete native setup; fresh frozen full-corpus/profile/24-hour evidence remains
+required and earlier failed estates stay retained.

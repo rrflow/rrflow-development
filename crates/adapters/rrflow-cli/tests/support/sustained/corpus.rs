@@ -1,6 +1,36 @@
 //! Bounded ingestion and a complete second readback pass. No input/result list
-//! grows with corpus size: each rolling digest retains one record at a time.
+//! grows with corpus size: verification retains only one admitted window.
 use super::*;
+
+#[path = "corpus_window.rs"]
+mod window;
+
+pub(super) async fn verify_window(
+    work: &Workload,
+    first: u64,
+    end: u64,
+    clients: usize,
+    operation_deadline: Duration,
+) -> DriverResult<Vec<(u64, Digest)>> {
+    let count = end
+        .checked_sub(first)
+        .ok_or("invalid corpus readback range")?;
+    if clients == 0 || clients > 64 || count > clients as u64 {
+        return Err("corpus readback window exceeds admitted clients".into());
+    }
+    window::ordered(
+        (0..count as usize).map(|offset| async move {
+            let record = first + offset as u64;
+            let request = work.seed_record(record)?;
+            tokio::time::timeout(operation_deadline, work.verify(&request))
+                .await
+                .map_err(|_| "corpus readback deadline".to_owned())??;
+            Ok((record, request.effect_sha256))
+        }),
+        clients,
+    )
+    .await
+}
 
 pub(super) async fn seed(
     estate: &Estate,
@@ -105,7 +135,14 @@ async fn seed_inner(
     }
     // Only a complete independent readback can attest the seeded allocation.
     // Expected values are regenerated, never learned from the database answer.
-    for record in 0..work.records {
+    let clients = progress
+        .point
+        .clients
+        .get()
+        .min(campaign.storage.budgets.queue_requests.get())
+        .min(64) as usize;
+    for first in (0..work.records).step_by(clients) {
+        // Every previous future is complete before closing/renewing its session.
         rotate_session(
             estate,
             work,
@@ -115,25 +152,22 @@ async fn seed_inner(
             opened,
         )
         .await?;
-        let request = work.seed_record(record)?;
-        tokio::time::timeout(operation_deadline, work.verify(&request))
-            .await
-            .map_err(|_| "corpus readback deadline")??;
-        progress
-            .writer
-            .record_event(&ProgressEvent::CorpusVerified {
-                point: progress.point.id.clone(),
-                seed: work.seed,
-                ordinal: record,
-                effect_sha256: request.effect_sha256.clone(),
-            })?;
-        if record % 64 == 63 {
-            progress.writer.checkpoint_progress()?;
+        let end = first.saturating_add(clients as u64).min(work.records);
+        let verified = verify_window(work, first, end, clients, operation_deadline).await?;
+        for (record, effect_sha256) in verified {
+            progress
+                .writer
+                .record_event(&ProgressEvent::CorpusVerified {
+                    point: progress.point.id.clone(),
+                    seed: work.seed,
+                    ordinal: record,
+                    effect_sha256: effect_sha256.clone(),
+                })?;
+            if record % 64 == 63 {
+                progress.writer.checkpoint_progress()?;
+            }
+            readback = digest("c07g.corpus.readback", &(readback, record, &effect_sha256))?;
         }
-        readback = digest(
-            "c07g.corpus.readback",
-            &(readback, record, &request.effect_sha256),
-        )?;
     }
     progress.writer.checkpoint_progress()?;
     Ok(CorpusEvidence {
