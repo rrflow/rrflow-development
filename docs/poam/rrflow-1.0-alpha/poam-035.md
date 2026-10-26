@@ -1002,3 +1002,10 @@ verifications. No measured load segment or actual soak started. The final
 handle sample remained bounded at 128 with zero denials. Complete independent
 readback and the full profile/24-hour matrix remain open; neither ACK counts
 nor the component proof-read improvement qualifies this native operating point.
+
+The [proof-read trace correction](../../evidence/change-journals/gate-c/c-07g-proof-read-trace-conformance.md)
+records candidate 40265699310 failing an obsolete 16-value trace expectation
+when proof-node reuse correctly reports 14. The local failure was reproduced;
+the corrected fixture checks exact execution work and storage/query trace
+agreement on MX and KV. Corrected candidate CI and full native qualification
+remain required; this trace-test repair does not close capacity acceptance.
