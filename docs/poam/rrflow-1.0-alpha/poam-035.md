@@ -1019,3 +1019,10 @@ when proof-node reuse correctly reports 14. The local failure was reproduced;
 the corrected fixture checks exact execution work and storage/query trace
 agreement on MX and KV. Corrected candidate CI and full native qualification
 remain required; this trace-test repair does not close capacity acceptance.
+
+
+The [bounded-window terminal outcome](../../evidence/change-journals/gate-c/c-07g-window-native-outcome.md)
+records frozen 04559542 failing the unchanged two-hour setup deadline after
+100000 acknowledgements and 64724 independent verifications. Complete corpus
+readback and measured/24-hour acceptance remain open. Partial verification
+counts are not a passing capacity result; original failed estates remain retained.
