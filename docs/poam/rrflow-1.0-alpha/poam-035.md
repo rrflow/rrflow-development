@@ -1045,3 +1045,11 @@ preparation. It defers periodic synchronization of disposable APFS filler while
 preserving final file/volume settlement, fresh capacity denial and every
 resource bound. The scheduling regression fails before the change and passes
 afterward; actual repeated native APFS acceptance remains required.
+
+
+The [indexed native candidate](../../evidence/change-journals/gate-c/c-07g-indexed-native-candidate.md)
+integrates PR141 point-range indexing and PR140 APFS settlement with PR139's
+bounded readback and PR134's proof reuse. Exact source provenance was checked;
+normal candidate CI, fresh frozen full-corpus completion and actual 24-hour
+qualification remain required. Preparation or partial setup does not close
+this gap.
