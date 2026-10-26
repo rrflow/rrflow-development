@@ -1012,3 +1012,10 @@ remain. Component overlap/cancellation and real installed mixed-family smoke
 pass. This is a driver scheduling remedy, not a measured engine speedup or
 complete native setup; fresh frozen full-corpus/profile/24-hour evidence remains
 required and earlier failed estates stay retained.
+
+The [proof-read trace correction](../../evidence/change-journals/gate-c/c-07g-proof-read-trace-conformance.md)
+records candidate 40265699310 failing an obsolete 16-value trace expectation
+when proof-node reuse correctly reports 14. The local failure was reproduced;
+the corrected fixture checks exact execution work and storage/query trace
+agreement on MX and KV. Corrected candidate CI and full native qualification
+remain required; this trace-test repair does not close capacity acceptance.
