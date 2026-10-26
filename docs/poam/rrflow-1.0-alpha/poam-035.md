@@ -1037,3 +1037,11 @@ reduction does not qualify full installed throughput: the frozen full-size
 setup failed after 64724 independent verifications, and actual soak remains
 not started. Candidate integration and unchanged full-profile acceptance are
 still required; no closure is recorded.
+
+
+The [APFS capacity-settlement correction](../../evidence/change-journals/gate-c/c-07f-apfs-capacity-settlement.md)
+records PR134 candidate40266752462 timing out during fresh WAL pressure
+preparation. It defers periodic synchronization of disposable APFS filler while
+preserving final file/volume settlement, fresh capacity denial and every
+resource bound. The scheduling regression fails before the change and passes
+afterward; actual repeated native APFS acceptance remains required.
