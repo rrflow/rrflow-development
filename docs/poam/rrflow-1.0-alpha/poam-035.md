@@ -1053,3 +1053,11 @@ bounded readback and PR134's proof reuse. Exact source provenance was checked;
 normal candidate CI, fresh frozen full-corpus completion and actual 24-hour
 qualification remain required. Preparation or partial setup does not close
 this gap.
+
+
+The [indexed candidate launch](../../evidence/change-journals/gate-c/c-07g-indexed-native-launch.md)
+records integrated source 7c329d49 passing real installed smoke and starting
+fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
+The initial 896 setup acknowledgements are not independent full readback or
+qualification. Preserve this source's terminal evidence; no actual 24-hour
+soak or gap closure is claimed.
