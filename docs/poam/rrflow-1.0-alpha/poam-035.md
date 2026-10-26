@@ -985,3 +985,11 @@ barriers from final waited volume settlement, preserving all caps and the
 selected native-error/readback oracle. Local deterministic and installed crash
 checks pass; native APFS repetitions remain required. This fixture gap and the
 independent full-profile/actual 24-hour qualification remain open.
+
+
+The [APFS capacity-settlement correction](../../evidence/change-journals/gate-c/c-07f-apfs-capacity-settlement.md)
+records PR134 candidate40266752462 timing out during fresh WAL pressure
+preparation. It defers periodic synchronization of disposable APFS filler while
+preserving final file/volume settlement, fresh capacity denial and every
+resource bound. The scheduling regression fails before the change and passes
+afterward; actual repeated native APFS acceptance remains required.
