@@ -987,3 +987,25 @@ point-read, backup scheduling, startup diagnostic and metadata-pressure repairs
 in one current-main landing PR. Its own complete candidate pipeline must pass;
 predecessor checks and short native characterizations cannot substitute.
 Full profile and actual 24-hour acceptance remain open.
+
+
+The [bounded allocation settlement package](../../evidence/change-journals/gate-c/c-07f-batched-allocation-settlement.md)
+records PR130's macOS candidate timeout before existing-project manifest
+creation: 693 metadata files, 260046848 data bytes and the shared 25-second
+limit. It batches disposable metadata settlement and separates periodic file
+barriers from final waited volume settlement, preserving all caps and the
+selected native-error/readback oracle. Local deterministic and installed crash
+checks pass; native APFS repetitions remain required. This fixture gap and the
+independent full-profile/actual 24-hour qualification remain open.
+
+
+PR136 candidate `337d136210ff59b2359f898e717166c087dd5bfc`, run
+[40218400444](https://github.com/rrflow/rrflow-development/actions/runs/40218400444),
+macOS job `121244432897`, still uses the pre-PR131 filler and fails `bounded
+joint pressure` before fresh manifest creation resumes. The [dependency
+refresh record](../../evidence/change-journals/gate-d/d-02-capacity-dependency-refresh.md)
+preserves the failure and integrates the existing PR131 repair. PR131's exact
+head passed full candidate CI, but normal queue admission reports the required
+check as expected; a fresh readiness-triggered run is in progress. No rule is
+bypassed. Both candidate landing and final profile/24-hour qualification remain
+open; this fixture failure is not proof of acknowledged-data loss.
