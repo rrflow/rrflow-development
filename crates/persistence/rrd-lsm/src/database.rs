@@ -360,7 +360,8 @@ impl CompactionBoundary {
 pub struct Database {
     root: AnchoredPath,
     manifests: ManifestStore,
-    manifest: Manifest,
+    // Shared immutable generation: reads retain it without copying every descriptor.
+    manifest: Arc<Manifest>,
     wal: WalWriter,
     memtable: Arc<crate::mutable_memory::MutableGeneration>,
     mutable_memory: crate::MutableMemory,
@@ -471,7 +472,7 @@ impl Database {
         Ok(Self {
             root: root.to_owned(),
             manifests,
-            manifest,
+            manifest: Arc::new(manifest),
             wal,
             memtable: mutable_memory.empty(0),
             mutable_memory,
@@ -637,7 +638,7 @@ impl Database {
         Ok(Self {
             root: root.to_owned(),
             manifests,
-            manifest,
+            manifest: Arc::new(manifest),
             wal,
             memtable: Arc::new(mutable_memory.wrap(memtable)?),
             mutable_memory,
@@ -764,7 +765,7 @@ impl Database {
         let cache_access = next_projected_cache_access()?;
         let lease = ActiveReadViews::acquire(
             &self.active_read_views,
-            self.manifest.clone(),
+            Arc::clone(&self.manifest),
             pinned_bytes,
             request.budget,
         )?;
@@ -1476,7 +1477,7 @@ impl Database {
         self.memtable = self.mutable_memory.empty(sequence);
         self.wal_payload_bytes = 0;
         self.segments.extend(flushed.into_iter().map(Arc::new));
-        self.manifest = next.clone();
+        self.manifest = Arc::new(next.clone());
         self.reclamation_pending = true;
         inject_failure(failure, FlushBoundary::ManifestPublished)?;
         Ok(Some(next))
@@ -1520,7 +1521,7 @@ impl Database {
                 })
             })
             .collect::<Result<Vec<_>>>()?;
-        SnapshotBundle::new(self.manifest.clone(), segments)
+        SnapshotBundle::new(self.manifest.as_ref().clone(), segments)
     }
 
     /// Flushes and writes the authenticated snapshot bundle directly to a new
@@ -1533,7 +1534,7 @@ impl Database {
     ) -> Result<SnapshotBundleFile> {
         self.flush_memtable(at)?;
         SnapshotBundleFile::create(
-            self.manifest.clone(),
+            self.manifest.as_ref().clone(),
             &self.root.join(SEGMENT_DIRECTORY),
             destination,
         )
@@ -1548,7 +1549,7 @@ impl Database {
     ) -> Result<SnapshotBundleFile> {
         self.flush_memtable(at)?;
         SnapshotBundleFile::create_with_hook(
-            self.manifest.clone(),
+            self.manifest.as_ref().clone(),
             &self.root.join(SEGMENT_DIRECTORY),
             destination,
             |reached| {
@@ -1614,7 +1615,7 @@ impl Database {
         if source_sequence == current_sequence
             && self.manifest.segments == bundle.source_manifest.segments
         {
-            return Ok(self.manifest.clone());
+            return Ok(self.manifest.as_ref().clone());
         }
         if source_sequence <= current_sequence {
             return Err(Error::InvalidManifest(format!(
@@ -1666,7 +1667,7 @@ impl Database {
         self.memtable = self.mutable_memory.empty(source_sequence);
         self.wal_payload_bytes = 0;
         self.segments = imported;
-        self.manifest = manifest.clone();
+        self.manifest = Arc::new(manifest.clone());
         self.reclamation_pending = true;
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::ManifestPublished)?;
         Ok(manifest)
@@ -1701,7 +1702,7 @@ impl Database {
         if source_sequence == current_sequence
             && self.manifest.segments == bundle.source_manifest.segments
         {
-            return Ok(self.manifest.clone());
+            return Ok(self.manifest.as_ref().clone());
         }
         if source_sequence <= current_sequence {
             return Err(Error::InvalidManifest(format!(
@@ -1752,7 +1753,7 @@ impl Database {
         self.memtable = self.mutable_memory.empty(source_sequence);
         self.wal_payload_bytes = 0;
         self.segments = imported;
-        self.manifest = manifest.clone();
+        self.manifest = Arc::new(manifest.clone());
         self.reclamation_pending = true;
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::ManifestPublished)?;
         Ok(manifest)
@@ -1962,7 +1963,7 @@ impl Database {
             .collect::<Vec<_>>();
         retained_segments.extend(compacted_segments.into_iter().map(Arc::new));
         self.segments = retained_segments;
-        self.manifest = next.clone();
+        self.manifest = Arc::new(next.clone());
         inject_compaction_failure(failure, CompactionBoundary::ManifestPublished)?;
         Ok(Some(CompactionOutcome {
             previous_manifest,
