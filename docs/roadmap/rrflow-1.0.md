@@ -16,6 +16,24 @@
 
 [Open the executable dependency spine](rrflow-1.0/executable-dependency-spine.md)
 
+The active priority is the installed real-project workflow: D-02 through D-05
+with their specific canonical E/F prerequisites and incremental H-06 evidence.
+Accepted D-01 enables this work now. C-07 correctness failures that affect the
+workflow must be repaired, but final capacity/profile/24-hour qualification
+does not block implementing missing ingestion and retrieval. Full release
+requirements and every unchecked gate remain open. Preserve the existing API
+and converge the one pre-release implementation directly.
+
+### Build-plan admission
+
+The [package readiness rules](rrflow-1.0/executable-dependency-spine.md#package-readiness-and-evidence)
+apply before implementation. The [D-02 through D-05 build packages](rrflow-1.0/gate-d.md#project-workflow-build-packages)
+identify the next concrete boundaries. A requirement, type or planned file is
+not an available capability. Known missing admission/configuration decisions
+are recorded in [POAM-006](../poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps).
+The owner has paused runtime implementation for this planning audit; unresolved
+required decisions cannot be treated as permission or silently guessed.
+
 ### Gate A — freeze authority, names, and boundaries
 
 [Open Gate A requirements](rrflow-1.0/gate-a.md)

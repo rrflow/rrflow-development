@@ -33,14 +33,28 @@ may explain or prove an owner, but cannot override it.
 The target release-train version is `1.0.0`. It is frozen while the alpha
 baseline is established. Current maturity is **pre-alpha**. The version is a
 contract line, not a claim that the complete system is stable, optimized, or
-release-ready.
+release-ready. There is one current pre-release implementation. This alignment
+preserves the existing public API, operation identities and wire contracts; it
+does not introduce a deprecation, migration or alternate implementation lane.
+
+The [observable engine objective](docs/objectives/rrflow-1.0-alpha.md#observable-engine-objective)
+defines the user journey and proof. The [build-plan admission rules](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#package-readiness-and-evidence)
+and [next build packages](docs/roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages)
+separate planned behavior from executable work. Known admission/configuration
+blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
+a roadmap is not evidence that those capabilities already work.
 
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
 UI, maintained in its own repository and pinned here as the optional
 `connectome/` Git submodule. The [Connectome client contract](docs/reference/client/connectome.md#repository-checkout)
-owns checkout instructions and the UI's public-engine boundary.
+owns checkout instructions and the UI's public-engine boundary. Connectome is
+the UI package for the complete guided experience: nontechnical users can start
+with plain-language controls, learn through contextual tooltips and suggestions,
+and drill into advanced technical evidence in the same workspace. It exposes
+configurable LFG analysis and SWAG, the System One controller, through engine
+contracts; these controls and the complete journey still require qualification.
 
 Planned **rrflow.ai** and **rroflow.ai** services are optional. rrflow.ai is
 the hosted reasoning engine, offering remote access, synchronization and
@@ -48,8 +62,18 @@ evidence views. rroflow.ai is the learning service, offering governed
 supervised, unsupervised and recursive learning. Like the engine and
 Connectome, their service software is open source and self-hostable. Their
 [service roles and opt-in boundaries](docs/reference/client/devpulse-cloud.md#optional-managed-service-roles)
-are targets, not deployed-service claims. **shippin.cloud** extends this
-experience with a private devspace. The initial friends-and-family experience will
+are targets, not deployed-service claims. **Nomen** is the planned central
+identity manager and login across these products. The first hosted integration
+is local RRFlow with explicitly selected bidirectional synchronization to
+**shippin.cloud**, targeting hosted project engines/data and a private devspace.
+Local-only operation and configurable custom/self-hosted destinations remain
+supported targets. The [identity and delivery contract](docs/reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
+defines automatic local connection, a simple offer to share project data/access
+with selected services and AI tools, and automatic session/sync resumption after
+setup. Nomen restores shared product login; supported provider adapters make
+existing Claude, Codex and other AI subscriptions usable without manual grant
+configuration. These integrations remain implementation targets.
+The initial friends-and-family experience will
 demonstrate current AI-assisted development: create projects, run Rust,
 Python, and Go code, load the running project's UI inside the private cloud
 devspace, and launch projects on the web.
@@ -271,7 +295,12 @@ D-01 is complete for the bounded installed-engine foundation. Its
 [acceptance matrix and native receipts](docs/roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 bind one candidate to successful Linux, macOS and Windows isolation, native
 filesystem/ownership denial, recovery and actual primary-binary lifecycle
-checks. C-07 is the active executable item. The original walking prerequisite
+checks. The active implementation is the [real-project workflow](docs/roadmap/rrflow-1.0/executable-dependency-spine.md):
+durable attunement, committed source inventory, incremental parsing and
+source-grounded retrieval through the existing engine. Installation and data
+lenses do not yet prove automatic project indexing. C-07 remains required
+reliability qualification; its full growth/soak matrix does not postpone this
+missing workflow. The original walking prerequisite
 remains: a source-built primary `rrflow` 1.0.0 executable can
 deterministically preview and apply a fresh or existing local-project
 installation, serve the generated public contract, complete an authenticated

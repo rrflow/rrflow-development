@@ -1990,11 +1990,11 @@ pub(super) fn require_locator_record_match(
     Ok(())
 }
 
-fn attunement_plan_key(instance: &CanonicalId, plan: &CanonicalId) -> String {
+pub(super) fn attunement_plan_key(instance: &CanonicalId, plan: &CanonicalId) -> String {
     format!("server/state/{instance}/attunement/plan/{plan}")
 }
 
-fn attunement_job_key(instance: &CanonicalId, job: &CanonicalId) -> String {
+pub(super) fn attunement_job_key(instance: &CanonicalId, job: &CanonicalId) -> String {
     format!("server/state/{instance}/attunement/job/{job}")
 }
 

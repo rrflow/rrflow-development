@@ -10,6 +10,23 @@ independently.
 
 ## Observed deficiency
 
+The immediate remediation is D-02's durable attunement executor, then the
+D-03/D-04/D-05 real-project workflow and consumed E/F prerequisites in the
+[current dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md).
+`engine/installation.rs` persists a pending job; its `installation/inventory.rs`
+provides installation preconditions, not the committed source inventory.
+`EstateConfiguration` is sealed installed configuration, not proof of live global
+preference inheritance. Connectome's phase descriptions are `contract-pending`;
+its real data lenses do not establish source-generated graph/vector content.
+These are verified implementation gaps, not requests for another storage soak.
+
+Close this part only with installed execution, effective-setting origins,
+source-to-query evidence, edit/delete invalidation, restart and two-project
+isolation. The [Gate D requirements](../../roadmap/rrflow-1.0/gate-d.md#real-project-implementation-and-acceptance)
+define the flow. Existing API contracts stay unchanged; an operation that cannot
+express a required action is a specific blocker to resolve, not an implied
+new endpoint. POAM-006 remains open.
+
 D-01's bounded installed foundation is now [accepted](../../roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21).
 The native proof covers Linux, macOS and Windows source/outbound isolation,
 owner/permission/path/mount denial, exclusive install recovery and both actual
@@ -40,6 +57,41 @@ backup, prune, and restore paths resolve a managed instance through its installe
 and distribution binding and act on the instance's own catalogue and staging roots; the
 estate cannot yet register backups the served engine created, so a retention decision over
 such a catalogue is refused.
+
+## Build-plan admission gaps
+
+Verified at `337d136210ff59b2359f898e717166c087dd5bfc`:
+
+- `AttunementStatus`, `ResumeAttunement` and `CancelAttunement` have public
+  contract validators/tests, but source search found no engine/HTTP handler
+  referencing them. `endpoint_catalogue()` does not advertise those operations.
+  `engine/task.rs` explicitly says a task orchestrates nothing. Reusing task
+  open/close as ingestion would be an undocumented semantic API change.
+- Installation's action enum includes job creation, not authorization for all
+  later source/provider effects. Automatic work at server readiness cannot be
+  assumed. D-02a must bind activation, authorization and dispatch explicitly.
+- Phase plan fields are estimates and configuration digests. They do not prove
+  a worker enforces time, memory or retry limits. D-02c must map actual enforced
+  budgets, setting ownership and revision behavior before unattended work.
+- The global-default/per-project settings UI needs an admitted configuration
+  operation; sealed `EstateConfiguration` and endpoint configuration alone do
+  not establish it. Public action/field changes remain disallowed pending the
+  owner's clarification of whether missing planned operations may be added.
+
+Remediation is the existing [D-02a/D-02c build package](../../roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages),
+not a new lifecycle or a lowered acceptance threshold. Until the public-action
+constraint is resolved, installed/UI job control and global configuration are
+explicitly **blocked for implementation admission**, not merely unscheduled.
+The owner's later implementation instruction lifts the planning hold for the
+bounded embedded D-02 package. `read_attunement`/`control_attunement` now operate
+on the installed job under existing EstateRead/EstateAdmin grants, with durable
+CAS/receipts, lease fencing, cancellation/recovery and a real Connect checkpoint.
+No HTTP operation or UI control is added. Inventory fails explicitly as
+unavailable, so source ingestion, complete budgets/settings and turnkey dispatch
+remain open. [The package journal](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
+records the evidence; this does not close POAM-006 or D-02.
+Other future algorithm choices remain owned experiments at E/F/G/J; they must
+not be described as validated decisions before their named evidence exists.
 
 ## Impact
 

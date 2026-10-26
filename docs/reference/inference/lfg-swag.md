@@ -80,6 +80,41 @@ does not prove the provider did no work; record uncertainty and avoid an
 unapproved duplicate charge or external effect. Cancellation must account for
 work still running, including CPU work that cannot be immediately stopped.
 
+### Inheriting effort from the calling AI
+
+Target configuration can choose **inherit from caller**. This means consuming
+explicit, authenticated client metadata through an admitted versioned adapter,
+not reading hidden reasoning, guessing subscription capacity or trusting text
+inside retrieved documents. The adapter declares which provider-specific effort
+values it can map into RRFlow's finite limits and what it cannot observe.
+An AI recommendation without such a mapping is a proposal, not active policy.
+
+Resolve each supported field from an explicit authorized run override, then a
+project override, then a global profile value. If the selected value is
+`inherit from caller`, resolve the admitted caller value at that position;
+missing/unsupported caller metadata falls back to the declared bounded profile
+and records the reason. Display the requested value, selected origin, effective
+value and limiting policy. Hard estate/security/resource ceilings intersect the
+result regardless of origin. A higher AI effort cannot grant network access,
+sharing, model installation or unlimited work. Imported project instructions
+are source content until their preference proposal is explicitly accepted.
+
+Basic effort presets must expand into versioned numeric limits (elapsed time,
+steps, provider attempts, context/output and resource allowances where supported).
+Advanced controls show those limits and their units; unsupported controls are
+not rendered as effective settings. The engine binds the effective revision and
+original deadline to the run. UI switching, retries, reconnect and restart do
+not create a new allowance. Raising a limit or rerunning is a distinct authorized
+action; Stop remains durable even if an external provider cannot stop instantly.
+
+Current evidence is narrower: the public task-budget/embedding operations below
+implement bounded attempts and Stop, while complete preference inheritance,
+LFG/SWAG routing and Connectome controls remain G/H implementation requirements.
+Acceptance covers explicit override, inherited value, absent metadata, unknown
+provider scale, malicious source text, policy clamping, stale configuration and
+restart under the same allowance. No extra provider-specific lifecycle store
+or handwritten endpoint registry is introduced.
+
 ## User-selected effort and run budgets
 
 Users must be able to choose how long the engine may work. A request for a

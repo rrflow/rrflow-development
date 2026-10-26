@@ -8,43 +8,132 @@ This chapter is part of the canonical RRFlow 1.0 roadmap. The parent
 record owns release order and completion status; this file cannot change
 either independently.
 
-This is the one implementation order. It removes three circular or temporary
-paths from an alphabetical sequence: knowledge import cannot block the storage
-and attunement code it requires; D-05 cannot build temporary lexical/vector/
-graph paths before Gates E and F establish their canonical access and
-analytical boundaries; and final storage qualification cannot postpone the
-first real installed binary until after every internal subsystem. C-06 finishes
-the active physical-format package first, then D-01 establishes the walking
-product spine. C-07 subsequently qualifies that installed path rather than a
-checkout-only constructor.
+This is the one implementation order. Gate letters classify outcomes; they
+are not a requirement to finish every storage benchmark before implementing a
+usable project. Accepted installation and storage foundations support the next
+project slice. Required correctness failures stop the affected slice; final
+qualification follows the integrated behavior it is intended to qualify.
+There is one pre-release engine and the existing public API remains unchanged.
 
-| Wave | Work | Required exit before continuing |
+| Order | Work | Required exit before its dependent work |
 |---:|---|---|
-| 0 | Finish A-06 through KB-05, then execute A-07 | One deterministic checkout knowledge package; every current behavior/file/test/fixture mapped; source, package, public, and trace vocabulary frozen. |
-| 1 | B-03 through B-05 | Model handshake, multiplexed WebSocket, and GraphQL lowering are provider-neutral contracts with golden equivalence. |
-| 2 | Finish C-06 | One accepted hybrid segment reader, selective projected pages, physical counters, property/fuzz and mixed-family evidence, and measured format-policy decisions exist. |
-| 3 | D-01 | One natively executable `rrflow`/`rrflow.exe` command tree can plan/apply installation, serve, prove authenticated readiness, commit, close, reopen, and perform baseline read-only verification without checkout-built companions. |
-| 4 | C-07 | WAL/manifest recovery, bounded maintenance, write backpressure, pinned generations, storage-full behavior, and sustained lifetime pass through the D-01-installed composition. |
-| 5 | D-02 through D-04 | Persisted jobs, deterministic committed project tree, and incremental parse evidence exist through the installed engine. |
-| 6 | E-01 through E-05 | Graph, scalar/unique, BM25, exact vector, HNSW/quantized candidate, and planner paths are persistent, incremental, stamped, and exact-oracle checked. |
-| 7 | F-01 through F-05 | rrflowKV streams bounded Arrow batches into native/DataFusion operators with honest pushdown, one resource budget, and a measured cache decision. |
-| 8 | D-05 through D-11, then KB-06 and KB-07 | Every attunement phase uses accepted C/E/F paths; external sources remain adapters; placement/accounting/hibernation and complete verify/repair/restore/uninstall pass; the checkout knowledge package imports and survives readback/recovery. |
-| 9 | G-01 through G-06 | Optional LFG CPU observations feed configured SWAG selection and bounded model/router proposals while `RrdEngine` retains predicates, physical planning, authorization, CAS, and persistence. |
-| 10 | H-01 through H-10 | Dynamic context, pure RRF feedback, live deltas, all public surfaces, complete traces, Connectome, mesh resolution, the PostgreSQL core profile, configurable prompt graph families, and opt-in project links observe one engine. H-08a reference preparation may precede this wave; H-08b through H-08h follow their explicit prerequisite DAG. |
-| 11 | I-01 through I-07 | Canonical events, triggers, routines, skills, and optional host adapters are explicit persisted capabilities, not hooks or a parallel runtime. |
-| 12 | J-01 through J-03, then KB-08, then J-04 and J-05 | Alternate paths are absent; failure and clean-install qualification pass on every supported native artifact; rrflowDB becomes the normal warp path; comparative evidence and the signed distribution close release. |
+| 1 | Accepted A/B, C-01 through C-06 foundations and D-01; retain open C-04 obligations | Preserve accepted evidence and the installed transaction, authorization and read-stamp boundaries. Open subrequirements do not become completed by this ordering. |
+| 2 | D-02 durable attunement execution and effective configuration | An authorized installed project advances a real job through durable transitions; resume/cancel/leases and phase digests survive restart. Global defaults and project overrides resolve at one engine owner with field origins, limits and an effective digest. No UI or worker becomes lifecycle authority. |
+| 3 | D-03 committed inventory, then D-04 incremental parsing | A real authorized source tree yields a committed snapshot, bounded chunks/symbols and source spans. Edit/delete, exclusion, cancellation and restart are proven; unchanged inputs do not trigger full work. |
+| 4 | D-05 phases with the specific E-01 through E-05 and F-01 through F-05 capabilities each consumes | Normalize, link, index, embed, graph, ground and verify against canonical persistent access paths. Implement missing selective/incremental access and bounded streaming where consumed; no temporary index or second store. rrflowQL returns source-grounded graph/lexical/vector results from the project's rrflowDB/rrflowKV at one read stamp. Remaining E/F qualification stays open. |
+| 5 | H-06 incremental project controls and evidence through H-04 public contracts; bounded C-07 correctness throughout orders 2-5 | Add/reopen two real projects, inspect effective settings and real stored source relationships/vectors, query, edit/delete/reindex and restart without cross-project leakage. Missing phases remain explicitly unavailable. Client projections accompany each supported engine behavior; full H-04/H-06 acceptance is not inferred. |
+| 6 | C-07 growth and final sustained qualification; complete remaining E/F requirements | First matched real-project ingestion/index/query characterization, then the unchanged full profile/repetition and actual 24-hour matrix on a frozen integrated candidate. Retain all crash, disk-full, resource, acknowledged-write, readback and isolation oracles. Synthetic storage evidence is not project ingestion proof. |
+| 7 | D-06 through D-11, KB-06/07 and remaining H capabilities in their explicit dependency order | Typed opt-in knowledge paths, placement/accounting, operational lifecycle, dynamic context and public surfaces use the same authority. KB import survives readback/recovery. H-08 PostgreSQL and H-07 remote work retain their own prerequisite DAGs; neither is required for default readiness. |
+| 8 | G-01 through G-06 and I-01 through I-07, with remaining H integration | Optional LFG/SWAG, model routing and learning proposals compose through governed effects, bounded inference and explicit durable capabilities. Evaluation preparation may proceed earlier; claims require the actual behavior and held-out evidence. |
+| 9 | J-01 through J-03, KB-08, J-04 and J-05 | Complete native qualification, matched comparative evidence and signed distribution; all required C/D/E/F/G/H/I exits still apply. No abbreviated run qualifies release. |
+
+D-02a/b now has an embedded engine implementation for authenticated job
+control, bounded Connect execution, durable receipts and lease fencing. Its
+[implementation record](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
+defines the tested scope. Public client admission and effective configuration
+remain unresolved; Inventory and subsequent ingestion phases remain unavailable.
+The next package must bind the existing public operation or explicit contract
+decision that admits the next supported phase. No unrelated endpoint may be
+overloaded and no source indexing is inferred from a persisted job or Connect
+checkpoint. Configuration and later phases need their own executable proof.
+
+## Package readiness and evidence
+
+An implementation package is ready only when its existing gate owner and PR
+brief answer all of these questions with specific artifacts:
+
+1. What user behavior changes, and what exact baseline fails it today?
+2. Which existing operation admits it, with which identity, authorization,
+   configuration and limits? If no such operation exists, name the contract
+   decision and hold dependent implementation; do not overload an unrelated API.
+3. Which source revision and input digests enter, which canonical records and
+   derived outputs leave, and what transaction/checkpoint publishes them?
+4. What does denial, partial work, stale lease, duplicate delivery, cancellation,
+   disk/resource exhaustion and crash/restart do? Who resolves uncertain effects?
+5. Which exact source/test paths are existing or planned, which prerequisite
+   evidence is consumed, and what smallest failing oracle proves the change?
+6. Which native command runs the joined proof; what fixture/model/corpus is
+   pinned; which quality/resource thresholds are frozen before execution?
+7. What bounded evidence proves the promised behavior, which work remains,
+   and which condition stops the package for redesign?
+
+The PR supplies executable commands when its code/test targets exist. A planned
+test name is an implementation deliverable, never a command represented as
+already runnable. Readiness does not require every later algorithm to be
+selected, but each deferred choice must identify its owner, prerequisite,
+alternatives, experiment and forbidden assumption. No ETA is justified merely
+by file counts or an agent's confidence.
+
+Use existing gate/J-04 capacity thresholds where applicable. For a new retrieval
+or model quality profile, freeze the held-out corpus, scoring rubric, comparison
+baseline and acceptance threshold in the owning package before measuring it.
+Until that exists, report characterization, not qualification or superiority.
+The current [admission gaps](../../poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps)
+prevent calling the whole next workflow implementation-ready. The owner's
+subsequent implementation instruction authorized the bounded embedded package;
+unresolved public admission still holds the work that depends on that decision.
+
+## Engine-first alpha execution focus
+
+The [code-grounded review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+binds inspected scaling gaps and primary research. The dependency table above
+owns implementation order; the technical requirements below do not impose a
+second storage-first sequence. Prioritize the installed engine, real project
+context and useful debug signals. Cloud/service requirements remain captured
+without displacing this local work. Existing qualification remains required.
+
+An estate must represent the authorized project's source and knowledge without
+requiring the entire project to fit in RAM or a model prompt. Queries select a
+bounded, relevant working context from persisted indexes at a declared source
+revision. Oversized inputs and incomplete indexes are visible states, not
+silent omission. An installed binary, successful commit or small context demo
+alone is not that alpha.
+
+| Existing owning boundary | Implementation boundary and concrete change | Required failure/scale oracle before handoff |
+|---|---|---|
+| Finish installed storage and expose its costs - C-07g/h | Integrate the current handle-limit and native-capacity repairs at rrflowKV and the installed harness. Extend existing engine/public diagnostics with bounded write-phase attribution and setup/readback progress; preserve the accepted physical format and transaction authority. | Same frozen corpus, resources and limits completes ingestion, independent readback, backup-under-write, restart and drain before the actual soak. Native errors, uncertain effects, ownership leaks and cap violations fail. Debug capture has bounded cost and cannot perturb commit semantics. |
+| Make a project a durable incremental input - D-02/D-03/D-04 | Use engine-owned persisted jobs and committed inventory, content digests, source/chunk relationships, exclusions and parse revisions. Installation's precondition hash remains installation evidence. Admit and process bounded batches, persist checkpoints with resulting changes, and resume without duplicate work. | Create/reopen a real multi-language fixture; edit, rename, delete, revoke and interrupt at each checkpoint. Only affected files/chunks/relationships change. Secret/generated/dependency exclusions hold; stale source never presents as current. Measure files/bytes scanned and parsed per incremental change. |
+| Make retrieval work proportional to selected data - E-01 through E-04 and C-04 | Reuse native temporal adjacency for graph expansion. Persist BM25 postings/statistics and transactional deltas. Select collection/named-vector indexes before hydrating candidates; combine an eligible immutable ANN generation with exact new/changed/deleted deltas at one read stamp. Preserve exact search as the oracle. | Increasing unrelated estate data does not increase point/adjacency/posting work linearly. Differential update/delete/reopen results match canonical truth. Missing/stale artifacts, selective filters and interruption expose completeness/fallback cost. Approximate quality includes recall and rerank work; no hidden full-vector hydration. |
+| Enforce one bounded execution budget - E-05/F | Plan access paths before materialization; stream admitted row/page batches through native/Arrow/DataFusion operators. Charge scans, candidates, decoded/retained bytes, spill and elapsed work to the same request budget. | Adversarial fan-out, wide rows, slow consumers, cancellation and full spill disk cannot grow retained owners unboundedly. Explicit truncation/denial is distinct from an empty correct answer. Physical counters prove selected pushdown rather than a cosmetic plan label. |
+| Assemble useful grounded context and bounded reasoning - G and H-01/H-02/H-05 | Replace context.rs's per-request scope snapshot and BM25 rebuild with accepted stamped access paths. Fuse eligible lexical/vector/graph evidence, deduplicate source revisions, optionally rerank within the same budget and return citations plus completeness. Retain existing task stop/replay authority; LFG/SWAG are optional qualified adapters. | A fixed code-question corpus includes symbols, dependencies, renames, contradictions and stale facts. Measure recall/grounding/task success and total local/provider work. Stop, unknown outcomes and restart preserve budgets and receipts. Retained evidence replay dispatches no model/tool work. |
+| Prove the joined installed engine - J with owning gates | Run the public engine flow from project installation through ingestion, relationship/index maintenance, contextual query, source edit, restart and recovery. Consume engine-owned diagnostics through existing clients; UI polish and remote services do not gate this local proof. | Pinned small/medium/large fixtures and declared hardware retain raw quality, p50/p95/p99, throughput, RSS, I/O, disk growth, index lag and cost results. Include cold/warm, update/delete, concurrent read/write, budget exhaustion and recovery. Report largest sustainable tested envelope and all failures; no inferred competitor superiority. |
+
+Implement these requirements in bounded packages under the dependency table
+above. Preparation and implementation of the next project slice may proceed
+while native qualification runs. A correctness failure stops affected work;
+accepted substrate and canonical stores remain required. Diagnostic claims
+must identify the actual measured path and its finite collection overhead.
+
+### Signals ship with every engine change
+
+Every package declares its observable operation, units, scope, source and
+configuration identities, cumulative-versus-window semantics, reset identity,
+missing measurements and finite collection/export limits. Show admission/queue
+wait separately from execution, and physical work separately from answer size.
+At minimum retain ingestion/checkpoint progress, index source cursor and lag,
+selected/skipped access paths, examined keys/pages/candidates/edges, cache hit
+and miss deltas, retained memory, open segment handles, WAL sync/maintenance
+cost, rejected/cancelled work and unresolved effects. Do not use project paths,
+prompts or per-request IDs as unbounded metric labels.
+
+Debug mode must be opt-in, bounded, redacted and usable through the engine's
+public contracts without Connectome. A compact summary can link to detailed
+samples/receipts; it cannot invent metrics or store a second truth. Capture
+limits and dropped-sample counts remain visible. Measure debug-enabled overhead
+against debug-disabled execution on the same workload. Existing A-07 vocabulary
+and H-05 conformance own signal naming and cross-surface correlation.
 
 ## Project-to-learning acceptance journey
 
-The owner-requested experience below maps onto the waves above. It is not a
+The owner-requested experience below maps onto the order above. It is not a
 second implementation order, an added runtime workflow or a completion ledger.
-**C-07 remains the active implementation gate.** Existing installed local
+**D-02 begins the active real-project implementation sequence above.** Existing installed local
 database and bounded Connectome evidence do not qualify the full journey.
 
 | User milestone | Existing owners and prerequisite exit | Real-world acceptance that must be retained |
 |---|---|---|
 | Create or reopen a project | D-01 installed identity/plan/apply; C-07 durability; D-02/D-03 jobs and inventory; H-06 guided client. | In fresh/existing modes, accept an exact preview and automatically provision one project estate/rrflowDB with native rrflowKV; reopen reuses its identities and acknowledged data. Cancel/deny performs no unauthorized effect. Two projects remain isolated during simultaneous work, UI switching and restart. |
-| Add a knowledge path | D-06 typed binding and requirements; D-05 ingestion after E/F; H-04 public operations; H-09 derived families. | A qualified real source yields versioned chunks, relations and citations with ACL/freshness evidence. Edit/delete/revoke, duplicate delivery, source outage, interrupted ingest and restart cannot silently publish stale, partial or foreign knowledge. HydraDB, Pinecone Nexus, Qdrant and SurrealDB each need their own admitted real-service profile. |
+| Add a knowledge path | D-06 typed binding and requirements; D-05 ingestion with its specific E/F prerequisites; H-04 public operations; H-09 derived families. | A qualified real source yields versioned chunks, relations and citations with ACL/freshness evidence. Edit/delete/revoke, duplicate delivery, source outage, interrupted ingest and restart cannot silently publish stale, partial or foreign knowledge. HydraDB, Pinecone Nexus, Qdrant and SurrealDB each need their own admitted real-service profile. |
 | Establish and edit against a baseline | D/E/F provenance, stamped access and budgets; H-02 feedback and H-09 graph families; H-06 comparison projection. | Capture an authorized retained baseline, change a graph/retrieval candidate, compare equal corpus/budgets, reject or promote by exact revision, then reopen and verify. Layout changes leave semantics unchanged; knowledge corrections create new revisions. Expired artifacts, ACL changes, stale promotion and resource exhaustion fail explicitly. |
 | Understand and replay a session | H-05 causal/redacted evidence and H-06 public projections; G and I prerequisites for the specific reasoning/routine records displayed. | Inspect a real retained session/run after restart with source/configuration identity and visible evidence gaps; a model/tool effect counter remains unchanged during inspection. A requested new run has new identity, current authorization, budget and receipts. No old bearer session, hidden reasoning or uncertain mutation is replayed as new work. |
 | Attune and improve locally | G-06 fixed-corpus evaluation may prepare early; installed comparisons require G-01–G-05; I-03/I-07 depend on their generic routine/configuration/evidence foundations. | Supervised and unsupervised candidates remain distinct proposals. Held-out quality, denied-data exclusion, bounded recursion, drift/regression, restart, competing promotions and rollback prove governed improvement. Failed candidates never replace the active revision. An operator-added learning method produces proposals only. |
@@ -78,7 +167,7 @@ A-07 freezes the operation-name, causal-link, attribute, and propagation
 vocabulary. Each later work package adds the trace and physical counters for
 its behavior in the same change. H-05 proves complete cross-surface
 correlation, export, and redaction; it does not postpone instrumentation until
-Wave 8.
+the final integration wave.
 
 The owner-directed [rrflowDB compatibility plan](../../reference/protocol/postgresql.md)
 adds H-08 without reopening accepted storage-format work or bypassing unfinished
@@ -89,20 +178,16 @@ requires E/F access and streaming/budget evidence; H-08e requires the H-04
 public-capability foundation. The [H-08 package table](gate-h.md#h-08-postgresql-compatibility-packages)
 owns the remaining dependencies. A wire-only server cannot skip those exits.
 
-The active executable item is **C-07**, following its
-[ordered durability and growth packages](gate-c-07.md#ordered-implementation-packages).
-C-07a's [bounded measurement contract and evidence](../../evidence/change-journals/gate-c/c-07a-storage-measurement-contract.md)
-establish the first implementation package. C-07b's
-[I/O fault and recovery oracle](../../evidence/change-journals/gate-c/c-07b-io-fault-oracle.md)
-adds bounded model evidence and publication repairs accepted through PR 56
-and CI run 39705515593. C-07c is next; its
-[remaining implementation contracts](gate-c-07.md#remaining-implementation-contracts)
-bind installed histories through final sustained qualification. The requested
-[DuckDB interoperability packages](gate-d.md#duckdb-interoperability-packages)
-follow C-07; bounded export conformance can precede full F streaming, while
-source import and optional worker execution retain their F/D prerequisites.
-DuckDB never becomes native persistence or default readiness. D-01 has
-[accepted installed-foundation evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
+The active executable work is the real-project sequence above. C-07 retains
+its [durability and growth requirements](gate-c-07.md#ordered-implementation-packages)
+and [staged qualification](gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
+Its historical component receipts remain valid only for their stated behavior
+and candidate. Full qualification cannot establish an absent ingestion executor.
+The [DuckDB interoperability packages](gate-d.md#duckdb-interoperability-packages)
+retain their explicit prerequisites; export does not imply import or native
+persistence. DuckDB never becomes default readiness.
+
+D-01 has [accepted installed-foundation evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 through the actual primary executable on Linux, macOS and Windows. Accepted C-06 replaced
 row-record immutable segments with segment v6's ordered key/version spine,
 six Arrow-layout page buffers, authenticated persisted membership filters, and

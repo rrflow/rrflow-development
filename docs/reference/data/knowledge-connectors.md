@@ -339,6 +339,30 @@ upstream code, schema authority or runtime is copied.
 | [Microsoft GraphRAG dataflow](https://microsoft.github.io/graphrag/index/default_dataflow/) | Chunk-to-document and extracted-knowledge references inform provenance. Adapt those relationships into existing RRFlow families, not a second GraphRAG store. |
 | [HiChunk / HiCBench](https://arxiv.org/abs/2509.11552), [2026 code chunking study](https://arxiv.org/abs/2605.04763), [2026 academic-text study](https://arxiv.org/abs/2607.01852) | Hierarchical evaluation and differing corpus results argue for task-specific measured choice. Treat these as research candidates; no global best chunk size or algorithm is established. |
 
+## Native capability versus knowledge path
+
+A native RRFlow feature and a connection to an external product are different
+claims. Native graph/vector/lexical behavior must execute through `RrdEngine`,
+rrflowQL and rrflowKV. A Pinecone, SurrealDB, Qdrant or HydraDB knowledge path
+requires an admitted source adapter with explicit product/API revision,
+authentication, namespace/collection scope, provenance, pagination, freshness,
+delete/revoke behavior and resource limits. Registering a URL or recognizing a
+product name qualifies neither ingestion nor query equivalence.
+
+A project can be created without any knowledge path. Adding one later feeds
+versioned source records and derivations through the same D-02/D-05 publication
+and invalidation flow. It does not silently replace rrflowKV or grant another
+project access. External graph facts, vector matches and generated summaries
+retain different provenance and confidence/verification meanings.
+
+Parquet is a columnar interchange format, not the engine or a separate service.
+The bundled bounded export above exists. Full source import, large streaming
+exchange, automatic schema mapping and the dedicated Connectome export control
+remain separate D/F/H requirements. Their tests must include type preservation,
+source identity, authorization, malformed metadata, decompression expansion,
+cancellation, partial output and restart. A valid small exported file cannot
+be reported as a completed import/analytics pipeline.
+
 ## Implementation and qualification
 
 [Gate D](../../roadmap/rrflow-1.0/gate-d.md#connector-and-knowledge-ingestion-packages)

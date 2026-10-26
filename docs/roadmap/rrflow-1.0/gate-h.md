@@ -27,6 +27,36 @@ selection/consent, durable transfer checkpoints, duplicate/replay handling,
 conflict and revocation behavior require the real-service acceptance in that
 contract; endpoint reachability alone cannot qualify synchronization.
 
+## Turnkey client and service proof
+
+H-06 consumes the [minimum-input project flow](../../reference/client/connectome.md#turnkey-project-entry-and-progressive-detail)
+and existing D-02/D-05 phase evidence. Its next client prerequisite is one
+qualified current engine/SDK/install-adapter pair; the pinned older workbench
+cannot establish current installation, effort or indexing behavior. Wire the
+existing task-effort controls at their current operations before claiming a
+complete effort UI; AI-inherited preference resolution remains the separately
+specified G/D configuration work. No new top-level feature area substitutes for
+clear nested project data and evidence views. The
+[workspace learning and controller contract](../../reference/client/connectome.md#learning-in-the-workspace-and-controller-configuration)
+requires contextual tooltips, evidence-based suggestions, novice-to-advanced
+drill-down and global/project LFG and SWAG System One controls. Prove actual
+configuration readback and observed behavior with the G-owned execution path;
+labels, local UI preferences and tooltips alone do not qualify those controls.
+
+H-05 requires causal signals for setup/admission, source inventory, parsing,
+embedding/index publication, retrieval, model dispatch, commit, Stop and retained
+readback. Each carries the available authoritative project/run/configuration/
+source identity, outcome and bounded resource evidence. A missing stage is
+unavailable, not a zero-duration success. UI progress reports admitted/completed
+units separately; an unknown total cannot produce a fabricated percentage.
+Distinguish installed, indexed, retrieval-ready and learning-enabled behavior
+using current engine evidence rather than a single connected/green badge.
+
+H-07's [rroflow.ai handoff](../../reference/client/devpulse-cloud.md#turnkey-rroflowai-handoff)
+adds real account/transfer proof to G/I learning proof. Login alone closes no
+learning/synchronization requirement. Keep the all-local project proof independent
+of cloud availability and retain no-sharing defaults during parallel projects.
+
 ## H-07 DevPulse, managed cloud and homelab packages
 
 The [existing integration contract](../../reference/client/devpulse-cloud.md)
@@ -34,6 +64,29 @@ owns the required local VM/container experience and bidirectional transfer to
 managed or operator-controlled destinations. All packages below remain open.
 They are dependencies to implement, not completed work or new engine APIs.
 The native engine must remain independently installable and operable.
+
+The [Nomen identity and delivery priority](../../reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
+binds the first managed profile: local RRFlow synchronizes both ways with
+shippin.cloud using Nomen's central login. Resolve the actual Nomen contract in
+H-07a; qualify account/service/project binding, expiry and revocation alongside
+H-07b/c/d. First demonstrate that engine-only sync flow without waiting for
+DevPulse VM/container provisioning, then complete the H-07e/f/g product flow.
+Additional custom/homelab profiles use the same configurable contracts and
+retain their own acceptance; this priority closes none of them. H-07g must
+prove shared login does not confer cross-project/service access, local work
+survives identity/cloud outages, and reconnect resumes authorized durable
+changes without loss or duplication. An authenticated page alone is no sync
+proof. No Nomen protocol or production endpoint is assumed by this plan.
+
+H-06/H-07 must also prove the [guided sharing and resumption flow](../../reference/client/devpulse-cloud.md#required-user-behavior):
+automatic local attachment; one clear service-sharing/sync choice; reuse of
+valid Nomen and provider sessions; expired-session reconnect returning to the
+pending action; automatic restart/offline recovery under saved authorization;
+and a changed-scope prompt without restarting setup. Test a selected supported
+AI client consuming actual project context, identify subscription versus API
+billing, and retain a declined-sharing case. A novice must not configure
+individual grants. Provider/client support can be delivered incrementally;
+unsupported adapters stay explicit, not a reason to block the usable local flow.
 
 | Package | Prerequisites and canonical boundary | Smallest oracle and required exit |
 |---|---|---|

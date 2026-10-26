@@ -34,7 +34,7 @@ endpoints, account federation or available service APIs:
 | Local RRFlow and Connectome | Open-source engine with one estate per project, usable without an account. Connectome offers guided operation and learning from visible evidence. | D-01/C-07 and H-06/J installed product and client acceptance. First-party licence texts/notices remain a J-05/POAM-013 release requirement. |
 | rrflow.ai | The hosted reasoning engine: optional managed access to hosted project engines, explicitly selected synchronization including access from another authorized device, and the evidence views below. | H-07 account, instance, transfer and real-service acceptance; remote access is not proof of two-way synchronization. |
 | rroflow.ai | The learning service: optional supervised, unsupervised and recursive learning over authorized datasets, experiments and qualified improvement artifacts, exposed through Connectome with the learning-results view. | G-06/I-03/I-07 learning acceptance plus H-07 transfer/account controls for selected data. Upload and artifact activation require distinct authorization. |
-| shippin.cloud | Optional private development space that consumes RRFlow and can run project toolchains, containers/VMs and private UI previews. | H-07e/f/g project-runtime, file/environment and real-service acceptance. A synchronized database is not a working devspace. |
+| shippin.cloud | First hosted destination for local RRFlow bidirectional synchronization and managed project engines/data; also the private development space for toolchains, containers/VMs and UI previews. | H-07a/b/c/d/g identity, engine distribution and real sync acceptance; H-07e/f adds the distinct devspace and file/environment proof. A synchronized database is not a working devspace. |
 | Operator-controlled homelab | Self-hosted engine and optional development/learning capabilities under the same admitted public profiles, including self-hosted rrflow.ai and rroflow.ai service software. | Independent identity, recovery and transfer qualification with managed services unavailable. |
 
 By the repository owner's direction of 2026-10-24, the rrflow.ai and rroflow.ai
@@ -46,19 +46,92 @@ owner; it does not add proprietary engine, learning, or evidence behavior.
 The licensing approach and the source location of the service software are not
 yet decided.
 
+### Nomen identity and delivery priority
+
+By the repository owner's direction of 2026-10-25, **Nomen is the central
+identity manager and login for all products**, including RRFlow, Connectome,
+DevPulse, shippin.cloud, rrflow.ai and rroflow.ai. This is the shared identity
+target, not evidence of an available account service or implemented integration.
+Nomen's authoritative protocol, issuer/trust model, client registration,
+credential lifecycle and supported deployment profiles must be obtained from
+its owning implementation before authoring an adapter; do not invent endpoints
+or assume a protocol from the product name.
+
+Delivery order is a working local engine, then opt-in local-to-shippin.cloud
+bidirectional synchronization using Nomen login, then qualification of additional
+custom/self-hosted service profiles through the same configurable boundaries.
+Hosted engines can store and operate project estates on shippin.cloud; local
+replication and remote-only access are separate choices. This priority does not
+remove local-only, cloud-hosted or custom deployment targets, or postpone local
+engine correctness behind cloud work. No account is required for local use.
+
+The nontechnical setup offers to share the selected project's data and access
+with the user's chosen services and AI tools. One understandable confirmation
+can authorize that selected set; the client derives and applies the underlying
+service/project bindings. Do not require the user to configure each grant or
+reapprove unchanged authorized operations. Shared login identifies the user;
+remembered sharing choices determine which bindings can activate automatically.
+Nomen identity is distinct from the engine's
+[durable seat identity](../seat-identity.md), estate identity and transaction
+authority. Binding an account must not replace those identities, silently merge
+estates, enable cross-project context sharing or grant training/provisioning
+permission. Credentials must be validated for their intended service and scope;
+account binding, expiry, rotation and revocation must have explicit outcomes.
+
 Use configured endpoint profiles, trust and credential references rather than
 hardcoded domains in engine or client dispatch. Show the actual service,
-account and destination estate for each operation. Linking one service does
-not imply that the others share its account, can read its data or can provision
-resources. If federation is later supported, its trust and audience must be
-qualified explicitly. Unknown or unsupported services remain unavailable.
+account, destination estate and synchronization state for each operation.
+Central login never implies access to every product's data. Custom deployments
+must declare their supported identity/trust profile; no managed Nomen service
+may become an undeclared dependency of local or homelab operation. Unknown or
+unsupported service/identity profiles remain unavailable. Loss of cloud login
+must stop unauthorized remote work while preserving local data and operation.
 
-Connectome can offer these extensions after local operation is established.
-Account creation, remote engine access, bidirectional sync, cross-project
-context sharing, training export and compute provisioning are independent
-choices. They may share an understandable setup flow but retain separate
-previews, scopes and receipts. Default installation enables none. A failed or
-revoked service binding leaves local data and operation usable.
+Connectome automatically connects to the installed or previously selected local
+instance using its existing authenticated installation binding. It offers cloud
+sync and sharing with connected services as part of the project setup, including
+rrflow.ai access and a later rroflow.ai recursive-learning extension. A single
+setup screen presents useful presets, selected recipients, what they can read or
+do and any cost; advanced grant details stay expandable. After the user chooses,
+create the necessary bindings and maintain them automatically. Data sharing,
+sync, learning and provisioning have distinct recorded effects, but they do not
+require separate dialogs when the setup choice already covers them.
+
+Reuse a valid Nomen session and saved connector authorization automatically.
+Refresh/resume through the supported contract; request sign-in only when it is
+actually needed, then return to the pending setup or transfer. Resume approved
+sync from its acknowledged checkpoint after restart or network recovery. A new
+installation offers sharing before sending project data; a returning installation
+restores its saved choices rather than behaving as an unconfigured install.
+Changed account, recipient, scope or cost requires only the changed decision.
+Local operation remains usable if cloud/identity/connector access is unavailable.
+
+### Existing AI subscriptions and practical delivery
+
+Offer Claude, Codex and other admitted frontier-AI tools in the same setup flow.
+Detect a supported installed client/session through its documented interface,
+show the account and access/billing mode, and guide only missing connection
+steps. Where a provider supports it, expose the selected RRFlow project through
+its connector/MCP/tool integration so the user's existing subscription client
+can consume grounded context. Nomen coordinates RRFlow product identity and
+connection state; it does not itself issue third-party subscription entitlement.
+Do not copy third-party credentials between services to simulate shared login.
+
+Qualify each adapter against its actual provider contract. Official
+[Codex authentication](https://developers.openai.com/codex/auth) distinguishes
+ChatGPT sign-in from API-key access. Official
+[Claude account authentication](https://support.claude.com/en/articles/13189465-log-in-to-your-claude-account)
+distinguishes native subscription use from third-party access and billing.
+These are inputs to adapter design, not evidence that RRFlow already integrates
+either. Never silently replace an unavailable subscription path with paid API
+calls; show the supported path and any charge before activation.
+
+The first usable release may support a bounded set of clients and sharing
+capabilities, then extend it. Record each limitation and improve the adapters
+without forcing users to learn credentials, scopes, schema or synchronization
+internals. Basic acceptance measures successful setup and recovery with minimal
+interaction as well as correct isolation; security work belongs in the adapter,
+not a maze of manual setup requirements.
 
 RROFLOW may be prepared and used locally when its capabilities qualify; the
 cloud is not a prerequisite for learning. Conversely, a user may choose remote
@@ -76,6 +149,34 @@ service computes no separate truth, and a savings figure without a declared
 baseline method is shown as unknown. Views and metrics are configurable.
 Operators extend them with versioned, authorized, removable definitions, and
 an extension cannot read outside its grant or change engine records.
+
+### Turnkey rroflow.ai handoff
+
+rroflow.ai remains an optional learning destination, not a default indexing
+prerequisite. Under Connectome's existing Learning and Services areas, separately
+show local engine readiness, account binding, authorized dataset transfer,
+remote experiment state, returned artifact verification and local activation.
+Logging in, transferring a project or opening a cloud page proves none of the
+later states. Local work remains usable when the service is disabled or offline.
+
+The required H-07/G/I sequence is: configure and authenticate an endpoint with
+expected account/service identity; preview the exact allowed project datasets
+and purposes; authorize transfer; resume by durable checkpoint; receive a
+source/model/configuration-bound candidate; verify held-out evaluation; preview
+and authorize promotion. Upload consent, training consent and activation consent
+are distinct. Supplied endpoints are configured and authenticated, never inferred
+as trusted just from the displayed `rroflow.ai` name. Credentials remain secret
+references; raw private model reasoning is not a dataset.
+
+Prove the flow against a real admitted service and separately against the
+supported self-hosted profile: offline retry, duplicate/lost ACK, source deletion,
+revoked consent, foreign account, interrupted transfer, stale candidate, failed
+quality gate, competing promotion and rollback. Revoke prevents further export
+and candidate activation; remote deletion/retention acknowledgement is explicit,
+not inferred from local deletion. A returned candidate cannot overwrite local
+active settings or a running job silently. Show exact receipts and unresolved
+remote outcomes. No current service integration or bidirectional sync is claimed
+by this specification; H-07 plus G-06/I-03/I-07 own its acceptance.
 
 ## Guided installation and Windows-first DevPulse
 
@@ -130,6 +231,79 @@ offline/interrupted acquisition, engine-ready/runtime-not-ready distinction,
 and a real containerized project whose UI opens privately. Cloud opt-in stays
 off throughout these local tests.
 
+## First-run comparison and optional free-tier experience
+
+This is an owner-directed delivery requirement, not an available service or a
+claim of improvement for every task. After installed readiness, Connectome must
+offer a bounded first useful task and an explicitly selected background
+health/soak workload. Show what each runs, its duration, CPU/RAM/disk/network
+and model-call limits, progress, stop state and retained result. A first answer,
+a short health check and an accepted C-07 endurance campaign are different
+results. Do not delay ordinary use until a qualification soak finishes or
+present a short check as 24-hour evidence. An operator can choose a lighter
+profile; a performance claim remains bound to the profile actually measured.
+
+For each project, show **available**, **configured** and **enabled** separately
+for local retrieval, each knowledge path, LFG analysis, SWAG routing, RROFLOW
+learning and hosted capabilities. Show the effective revision, field origins,
+remaining budget and a concrete unavailable reason. Discovery, a subscription,
+an installed model, sign-in or a high-complexity prompt does not activate an
+adapter. LFG observations may inform SWAG's qualified policy only within the
+accepted user effort ceiling. Missing required analysis must cause an explicit
+abstention; it cannot silently escalate effort, send data elsewhere or fabricate
+a complexity score. Configuration, dispatch and failure behavior remain owned
+by the [LFG/SWAG contract](../inference/lfg-swag.md); learning activation and
+promotion remain owned by the [learning contract](../inference/learning/controller-training.md).
+
+The comparison view must make the benefit or lack of benefit reviewable:
+
+| Evidence | Required comparison behavior |
+|---|---|
+| Same task and declared baseline | Bind task/input and authorized code/context identities, model/provider revision, settings, effort budget, evaluation rubric and baseline method. Distinguish a direct-provider baseline from a separately observed subscription-app session; label differing inputs or unavailable controls. Never claim a controlled comparison when those differ. |
+| Quality and grounding | Show success/failure and cited source revisions, unsupported or stale evidence and the held-out rubric result. Lower token use alone is not success. Include regressions and inconclusive outcomes. |
+| Work and usage | Separate local retrieval/graph/database work, local model inference, controller overhead, web/connector calls and frontier inference. Report observed input/output/cache/reasoning tokens only where the provider supplies them; local bytes, rows, graph traversals or CPU time are not invented model tokens. |
+| Time and cost | Include initialization/indexing/maintenance and controller overhead, end-to-end latency and recurring local/cloud resources. Identify actual billed usage, estimates and unknowns separately, with price source/time/currency. A flat-rate subscription cannot be converted into per-call savings without a declared allocation method. |
+| Trace and debug | Drill from the lay summary into correlated request/run/attempt IDs, configuration/source/read stamps, admitted route, retrieval contribution, receipts, limits, stop/uncertain states and bounded redacted diagnostic export. Replay of retained evidence must not invoke the provider again. Traces observe execution; they are not hidden model thought or lifecycle authority. |
+
+The user authorizes any additional baseline or shadow provider calls and their
+budget before dispatch. Provider subscription access and API entitlement are
+distinct; no paid API, browser automation or model access is inferred from a
+subscription name. Unavailable usage or an absent baseline stays unknown.
+A first-run demonstration may use a declared bundled fixture; it must not be
+presented as measured improvement on the user's private project. J-04 owns
+repeatable comparative claims, including warm/cold and enabled/disabled
+component comparisons at the same authorized snapshot.
+
+The intended shippin.cloud offering includes an optional free-tier experience.
+Before enabling it, the configured service must return an authenticated,
+versioned entitlement bound to the service/account/project and eligible
+capabilities, with finite resource/usage/concurrency limits, validity/reset
+semantics and the service's authoritative usage state. Exact commercial limits
+are undecided and must not be invented in engine defaults or UI. The effective
+admission is the intersection of engine authorization, project/user budgets
+and service entitlement. Free service access grants no project sharing,
+training export, connector activation, paid upgrade or additional model access.
+
+The UI previews data disclosure, eligible endpoints and remaining allowance.
+The service enforces its quotas; a client counter alone is not an enforcement
+boundary. Expiry, revocation, exhausted quota, unsupported capability and an
+offline or unverifiable entitlement have distinct visible states. A retry,
+new session or restart cannot reset consumption. Lost acknowledgements require
+receipt-based reconciliation before another possibly charged call. Local work
+continues within its own admitted capabilities; there is no automatic paid
+fallback, upload or account requirement. Account disconnection preserves local
+data and independently authorized local inference.
+
+Acceptance follows existing owners: D-01/D-06 for installation/configuration,
+G-01/G-02/G-06 for analysis, routing and shared budgets, H-05/H-06 for public
+signals and Connectome, H-07 for actual service admission, I-03/I-07 for learning
+and J-04 for comparative evidence. Exercise disabled/missing LFG/SWAG/RROFLOW,
+low/high/inconclusive complexity, budget stop, restart, two competing requests
+at the last quota unit, expired/revoked/offline entitlement, lost reply and
+account switch. Prove no duplicate charge, widened authority or cross-project
+data disclosure, and show a negative or unknown comparison honestly. A schema,
+mock entitlement, UI switch or successful sign-in does not pass these cases.
+
 ## Relationship and authority
 
 ```mermaid
@@ -179,14 +353,18 @@ separation keeps project code execution outside the database authority.
 
 ## Required user behavior
 
-1. Start and use the local project without sign-in. The initial sync state is
-   disabled; there is no account discovery request or background upload.
-2. Offer an admitted managed-service sign-in or an operator-configured homelab
-   endpoint and trust/credential binding. Creating an account or discovering a
-   host alone does not authorize provisioning or data transfer.
-3. Preview the exact local project/estate, remote account and destination
-   instance, selected data families and files, both transfer directions, permissions, limits,
-   excluded secrets and initial-transfer size. Require explicit sync consent.
+1. Automatically connect to the installed/selected local engine and open the
+   project without requiring cloud sign-in. Restore existing local bindings;
+   do not attach to an arbitrary discovered process.
+2. Offer sharing with selected services/AI tools and cloud sync. Reuse valid
+   Nomen and connector sessions; when needed, offer sign-in/reconnect and return
+   to the same project. Offer a custom destination through advanced setup.
+3. Show one clear setup summary: project, recipients/cloud instance, data and
+   access offered, sync direction and costs. Make exact families, limits,
+   exclusions and transfer estimate expandable. One confirmation authorizes
+   the displayed sharing/sync bundle; provision its bindings automatically.
+   Resume an existing authorized bundle without asking again. Do not upload
+   project data from a new offer until the user accepts it.
 4. Establish authenticated transport, verify remote protocol/instance/catalogue
    identities, then activate the authorized adapter binding. Never upload the
    local operator credential, token signing key, model-provider secrets, or raw
@@ -287,11 +465,12 @@ configuration schema does not qualify either behavior.
 ### Optional login and maintained updates
 
 RRFlow authentication works locally through its configured identity authority.
-Offer configured managed-service account linking as an explicit extension,
-alongside a homelab endpoint; never substitute hosted identity for local engine readiness.
-Sign-in lists authorized service choices and prices but enables no upload,
-connector, provisioning, shared cache or paid model call by itself. Disconnect
-must leave local login and local data usable.
+Offer Nomen account linking and selected service sharing in the guided setup,
+alongside custom hosting in advanced settings. Automatically restore valid saved
+sessions and authorized connector/sync bindings. Sign-in resumes already
+approved work; a new sharing, provisioning or paid-use choice is presented only
+when it is not covered by the saved configuration. Hosted identity remains
+optional for local readiness. Disconnect leaves local login and data usable.
 
 Publish signed, digest-bound engine and adapter bundles through Gate J's
 release mechanism. Preview platform/protocol/schema/format compatibility,

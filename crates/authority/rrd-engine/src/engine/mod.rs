@@ -94,6 +94,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+mod attunement;
 mod backup;
 mod changefeed;
 mod clock;
@@ -112,6 +113,7 @@ mod flight;
 mod function;
 mod inference;
 mod installation;
+pub use attunement::{AttunementCommand, AttunementControlResult};
 mod invocation;
 mod knowledge;
 mod maintenance;

@@ -360,6 +360,109 @@ leakage, no external invocation during inspection, no duplicate effect after
 lost ACK and correct deep links under restricted permissions. Mocks and the
 older native workbench's installation tests do not prove this journey.
 
+### Turnkey project entry and progressive detail
+
+Target basic flow: **Add project -> review setup -> index and explore**. Ask for
+the project folder (or an explicitly chosen remote source), and show the derived
+name plus the active effort/privacy defaults. Only ask for a missing decision
+that changes effects: permission to read the selected source, an unavailable
+required model/provider, or an explicitly selected external integration. No
+manual database name, UUID, schema DDL, vector dimension or graph setup is
+required for the standard bundled profile. Advanced controls remain available
+without becoming the initial form.
+
+Connect to the installed/selected local engine automatically. In the same setup,
+offer sharing this project with selected services and supported Claude, Codex
+or other AI tools, plus cloud sync. Reuse valid Nomen/connector sessions; ask for
+sign-in only when required, then continue the pending action. Present a clear
+sharing preset and recipients with expandable details; one confirmation can
+configure the complete selected bundle. Returning users resume approved sharing
+and sync automatically, without repeating the setup. The
+[connection and subscription contract](devpulse-cloud.md#existing-ai-subscriptions-and-practical-delivery)
+owns supported provider paths and billing disclosure. Keep local readiness,
+provider connection and cloud sync status distinguishable in the UI.
+
+The client prepares an exact engine plan, including generated identity,
+project-bound rrflowDB/rrflowKV storage, bootstrap schema and admitted vector
+collection/model/metric bindings. rrflowQL is the query interface to this same
+estate, not another database process. Apply provisions what the user reviewed;
+D-02 executes authorized indexing automatically once its admission contract
+exists. Reopen must reuse the estate. Do not call a pending job "indexed".
+A changed plan is presented again; the client cannot accept a different digest.
+
+The default distribution must supply the qualified local assets required by its
+advertised offline profile, as J-05 requires. If semantic indexing has no admitted
+embedding model, show that capability unavailable and its concrete remedy;
+FeatureHash is a reference adapter, not a substitute semantic model. Existing
+lexical/graph readiness may be shown separately, never as full indexing success.
+No model fetch or cloud charge occurs merely because a folder was selected.
+
+Keep the existing project navigation rather than adding a top-level area for
+each algorithm:
+
+| Existing area | Basic view | Advanced drill-down from that same object |
+|---|---|---|
+| Overview | Project name, indexed/source-changed/blocked status, effective effort, next useful action | Instance, plan/configuration/source identities; phase/checkpoint and exact unavailable reason |
+| Knowledge | Sources, files, relationships, search results and source citations | Schema/records, rrflowQL explain, graph adjacency, vector collection/model/dimension, rrflowKV resource evidence, Parquet export |
+| Activity | Current task, elapsed/remaining allowance, Stop, result and retained session | Original deadline, attempt receipts, selected/skipped retrieval, read stamp, retries, queue/compute/storage/model time and uncertainty |
+| Learning | Disabled/available/experiment/candidate status, separate supervised and unsupervised choices | Dataset authorization, model/configuration identity, held-out quality, promotion/rollback and RROFLOW receipts |
+| Services | Local operation, optional account/knowledge-path setup and transfer state | Expected endpoint/account/instance, scope, selected datasets, checkpoints, conflict/revocation and failure evidence |
+
+#### Learning in the workspace and controller configuration
+
+Connectome is the UI package driving the entire guided experience, from adding
+a project through knowledge, reasoning, services and optional learning. The
+engine remains independently operable. Basic mode must be useful without database,
+model-routing or infrastructure knowledge. Technical detail expands within the
+same selected project, record, relationship or run rather than sending users
+to a separate dashboard with different state.
+
+Contextual tooltips explain what a control does, why it matters, its cost or
+effort tradeoff and how to undo it. Suggestions use current project evidence:
+state the observed condition, the proposed next action and expected benefit;
+show uncertainty and offer a preview/apply action. Do not invent savings or
+present unavailable capabilities as working. An expandable explanation lets
+users learn how source evidence, retrieval, relationships and model synthesis
+contribute to the answer, with links back to real source and execution receipts.
+It does not expose or depend on hidden model chain of thought.
+
+Global settings and per-project overrides expose
+[LFG and SWAG](../inference/lfg-swag.md): LFG supplies CPU prompt-analysis data
+points; SWAG is the configurable System One controller and model gateway.
+Basic controls offer understandable effort, local/cloud preference and time/cost
+limits with effective values and inheritance shown. Advanced drill-down exposes
+available analyzer/policy/model revisions, routing inputs and selected-binding
+reasons, fallback and budget/cache settings. Enablement, installed availability
+and observed execution are distinct; render only supported settings as operable.
+Apply through the engine's existing configuration authority and read back the
+effective revision. Neither a UI-only value nor a switch proves execution.
+
+H-06 acceptance must let a novice add a project, understand a useful grounded
+result, follow a contextual suggestion, change an available setting and see
+its effective behavior without raw IDs or hand-edited configuration. From the
+same view, a technical user must inspect the underlying source, relationship,
+policy and receipt. G acceptance separately proves LFG/SWAG behavior and limits;
+the UI must accurately show unavailable execution until that proof exists.
+
+These are target presentations over existing authority, not new engine status
+enums. Basic and advanced views must show the same source/configuration/read
+identity. Every metric says whether it is measured, estimated, unsupported or
+unknown. Changing projects isolates caches, sessions and in-flight results;
+concurrent engines never imply context sharing.
+
+The current pinned workbench still binds engine/SDK `4860a253663c9c757800aafeb40890b76114c4f0`.
+H-06 must update engine assets, SDK, installation adapter and public-control
+consumers together and qualify the resulting exact pair. An existing UI data
+lens does not prove this new user journey or compatibility with current RRFlow.
+
+The first full demonstration must start from an ordinary empty/existing project,
+without manually seeding engine records. From this UI, prove setup, automatic
+source-generated records/relations/vectors, a source-citing query, effort Stop,
+source edit/delete and reindex, restart and a second isolated project. Include
+cancelled setup, denied source, missing model, resource exhaustion and stale
+configuration cases. Link UI actions to engine receipts. A screenshot or a
+static feature label cannot close H-06.
+
 ## Graph, timeline, and context interaction
 
 The default graph is centered on an explicitly selected record, relation,

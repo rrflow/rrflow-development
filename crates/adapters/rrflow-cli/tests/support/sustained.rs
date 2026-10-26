@@ -1061,11 +1061,24 @@ fn installed_capacity_workload_smoke() {
             assert!(!receipt.idempotent_replay);
             receipts.push(receipt.receipt_sha256);
         }
-        for ordinal in 0..work.records {
-            work.verify(&work.seed_record(ordinal).unwrap())
-                .await
-                .unwrap();
+        let mut verified = 0;
+        for first in (0..work.records).step_by(2) {
+            let results = corpus::verify_window(
+                &work,
+                first,
+                (first + 2).min(work.records),
+                2,
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+            for (ordinal, effect) in results {
+                assert_eq!(ordinal, verified);
+                assert_eq!(effect, work.seed_record(ordinal).unwrap().effect_sha256);
+                verified += 1;
+            }
         }
+        assert_eq!(verified, work.records);
         for (index, kind) in [
             StorageLoadKind::PointRead,
             StorageLoadKind::RangeRead,
