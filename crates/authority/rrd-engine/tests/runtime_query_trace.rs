@@ -234,10 +234,20 @@ fn traced_query_is_observer_safe_causal_and_equal_across_all_engines() {
         memory_traces[8].attributes["read_stamp_validation"],
         RuntimeValue::String("rfc9162_direct_versions".into())
     );
-    assert_eq!(
-        memory_traces[8].attributes["read_values_decoded"],
-        RuntimeValue::Unsigned(16)
-    );
+    // Transaction-local proof reuse eliminates two backing decodes in this
+    // fixed fixture. Trace events must report actual work, not the old count.
+    for (result, traces) in [
+        (&memory_result, &memory_traces),
+        (&rrflow_kv_result, &rrflow_kv_traces),
+    ] {
+        assert_eq!(result.execution.read_evidence.values_decoded, 14);
+        for index in [7, 8] {
+            assert_eq!(
+                traces[index].attributes["read_values_decoded"],
+                RuntimeValue::Unsigned(result.execution.read_evidence.values_decoded)
+            );
+        }
+    }
     assert_eq!(
         memory_traces[7].attributes["backend"],
         RuntimeValue::String("rrflow_mx".into())

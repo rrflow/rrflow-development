@@ -4,6 +4,14 @@
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-035`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
+The [authenticated read-cost repair](../../evidence/change-journals/gate-c/c-07g-proof-node-reuse.md)
+records the next full Desktop failure: candidate `8a6752b2` acknowledged all
+100000 corpus operations but verified only 34191 before its original two-hour
+setup deadline. Segment handles stayed bounded with zero denials. Scoped proof
+node reuse addresses measured repeated backing reads without skipping change
+verification. Component tests are not full-profile or actual soak acceptance;
+C-07 and the repository-wide review remain open.
+
 ## Observed deficiency
 
 Current scheduling follows the [parent-authorized dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md)
@@ -1023,3 +1031,71 @@ windows. C-07g owns the bounded authorized capture/progress repair before
 further growth-cost attribution. Existing E-01/E-03/E-04 and D-02/D-03 own the
 separate context/indexing and committed-inventory gaps; this observation closes
 none of them and does not replace the running native qualification.
+
+
+The [frozen proof-read outcome](../../evidence/change-journals/gate-c/c-07g-proof-read-native-outcome.md)
+records candidate 05817485 acknowledging all 100000 corpus operations, then
+failing the original two-hour setup deadline after 38960 independent
+verifications. No measured load segment or actual soak started. The final
+handle sample remained bounded at 128 with zero denials. Complete independent
+readback and the full profile/24-hour matrix remain open; neither ACK counts
+nor the component proof-read improvement qualifies this native operating point.
+
+
+The [bounded corpus readback package](../../evidence/change-journals/gate-c/c-07g-bounded-corpus-readback.md)
+replaces sequential setup verification with owned windows bounded by the
+already-declared client/queue allowance. All independent record/edge/vector
+checks, canonical digest ordering, original deadlines and resource limits
+remain. Component overlap/cancellation and real installed mixed-family smoke
+pass. This is a driver scheduling remedy, not a measured engine speedup or
+complete native setup; fresh frozen full-corpus/profile/24-hour evidence remains
+required and earlier failed estates stay retained.
+
+The [proof-read trace correction](../../evidence/change-journals/gate-c/c-07g-proof-read-trace-conformance.md)
+records candidate 40265699310 failing an obsolete 16-value trace expectation
+when proof-node reuse correctly reports 14. The local failure was reproduced;
+the corrected fixture checks exact execution work and storage/query trace
+agreement on MX and KV. Corrected candidate CI and full native qualification
+remain required; this trace-test repair does not close capacity acceptance.
+
+
+The [bounded-window terminal outcome](../../evidence/change-journals/gate-c/c-07g-window-native-outcome.md)
+records frozen 04559542 failing the unchanged two-hour setup deadline after
+100000 acknowledgements and 64724 independent verifications. Complete corpus
+readback and measured/24-hour acceptance remain open. Partial verification
+counts are not a passing capacity result; original failed estates remain retained.
+
+
+The [point-range indexing package](../../evidence/change-journals/gate-c/c-07g-point-range-index.md)
+records a bounded diagnostic of the failed 100k estate and replaces linear
+immutable point-candidate enumeration with a derived range index at the
+existing database boundary. Independent lifecycle and MVCC oracles exposed
+and corrected live-vector versus manifest-order mismatches. Component work
+reduction does not qualify full installed throughput: the frozen full-size
+setup failed after 64724 independent verifications, and actual soak remains
+not started. Candidate integration and unchanged full-profile acceptance are
+still required; no closure is recorded.
+
+
+The [APFS capacity-settlement correction](../../evidence/change-journals/gate-c/c-07f-apfs-capacity-settlement.md)
+records PR134 candidate40266752462 timing out during fresh WAL pressure
+preparation. It defers periodic synchronization of disposable APFS filler while
+preserving final file/volume settlement, fresh capacity denial and every
+resource bound. The scheduling regression fails before the change and passes
+afterward; actual repeated native APFS acceptance remains required.
+
+
+The [indexed native candidate](../../evidence/change-journals/gate-c/c-07g-indexed-native-candidate.md)
+integrates PR141 point-range indexing and PR140 APFS settlement with PR139's
+bounded readback and PR134's proof reuse. Exact source provenance was checked;
+normal candidate CI, fresh frozen full-corpus completion and actual 24-hour
+qualification remain required. Preparation or partial setup does not close
+this gap.
+
+
+The [indexed candidate launch](../../evidence/change-journals/gate-c/c-07g-indexed-native-launch.md)
+records integrated source 7c329d49 passing real installed smoke and starting
+fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
+The initial 896 setup acknowledgements are not independent full readback or
+qualification. Preserve this source's terminal evidence; no actual 24-hour
+soak or gap closure is claimed.
