@@ -183,6 +183,26 @@ fn sync_filler_host(file: &File) -> std::io::Result<()> {
     }
 }
 
+// Only disposable pressure files use this schedule. Engine durability is separate.
+fn synchronize_allocation(
+    reason: FillBarrier,
+    periodic_file_sync: bool,
+    sync_file: impl FnOnce() -> std::io::Result<()>,
+    sync_volume: impl FnOnce() -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    // APFS pressure is settled at the final file + waited-volume barrier.
+    // Disposable filler has no intermediate durability requirement. An interval
+    // is never a capacity proof; fill_data still demands fresh denial afterward.
+    if reason == FillBarrier::Interval && !periodic_file_sync {
+        return Ok(());
+    }
+    let file_result = sync_file();
+    match reason {
+        FillBarrier::Interval => file_result,
+        FillBarrier::Capacity => finish_allocation_barrier(file_result, sync_volume),
+    }
+}
+
 fn finish_allocation_barrier(
     file_result: std::io::Result<()>,
     settle_volume: impl FnOnce() -> std::io::Result<()>,
@@ -380,21 +400,22 @@ impl Filler {
         let barrier_us = std::cell::Cell::new(0_u128);
         let allocation_sync = |file: &File, reason: FillBarrier| {
             let began = Instant::now();
-            let file_result = sync_filler_allocation(file);
-            let result = match reason {
-                FillBarrier::Interval => {
-                    interval_barriers.set(interval_barriers.get() + 1);
-                    file_result
-                }
-                FillBarrier::Capacity => {
-                    capacity_barriers.set(capacity_barriers.get() + 1);
-                    finish_allocation_barrier(file_result, || {
-                        #[cfg(target_os = "macos")]
-                        apfs::sync_volume(&volume_root)?;
-                        Ok(())
-                    })
-                }
-            };
+            let result = synchronize_allocation(
+                reason,
+                !cfg!(target_os = "macos"),
+                || {
+                    match reason {
+                        FillBarrier::Interval => interval_barriers.set(interval_barriers.get() + 1),
+                        FillBarrier::Capacity => capacity_barriers.set(capacity_barriers.get() + 1),
+                    }
+                    sync_filler_allocation(file)
+                },
+                || {
+                    #[cfg(target_os = "macos")]
+                    apfs::sync_volume(&volume_root)?;
+                    Ok(())
+                },
+            );
             barrier_us.set(barrier_us.get() + began.elapsed().as_micros());
             result
         };
@@ -779,6 +800,53 @@ mod filler_tests {
         }))
         .is_err());
         assert_eq!(file.remaining.get(), 4, "refill restarted the clock");
+    }
+
+    #[test]
+    fn disposable_apfs_fill_defers_intervals_but_settles_and_drains_delayed_allocation() {
+        const INITIAL: usize = 60 * 4 * 1024 * 1024;
+        for periodic_file_sync in [false, true] {
+            let mut file = DelayedAllocation::new();
+            file.remaining.set(INITIAL);
+            let file_syncs = Cell::new(0);
+            let volume_syncs = Cell::new(0);
+            let (bytes, code) = fill_data(
+                &mut file,
+                (INITIAL + 1024) as u64,
+                Instant::now(),
+                |file, reason| {
+                    synchronize_allocation(
+                        reason,
+                        periodic_file_sync,
+                        || {
+                            file_syncs.set(file_syncs.get() + 1);
+                            Ok(())
+                        },
+                        || {
+                            if volume_syncs.get() == 0 {
+                                file.remaining.set(16);
+                            }
+                            volume_syncs.set(volume_syncs.get() + 1);
+                            Ok(())
+                        },
+                    )
+                },
+            )
+            .unwrap();
+            assert_eq!(bytes, (INITIAL + 16) as u64);
+            assert_eq!(
+                file.remaining.get(),
+                0,
+                "settled allocation escaped pressure"
+            );
+            assert!(capacity_code(code));
+            assert_eq!(volume_syncs.get(), 2, "final settlement was skipped");
+            assert_eq!(
+                file_syncs.get(),
+                if periodic_file_sync { 62 } else { 2 },
+                "disposable APFS intervals consumed unnecessary barriers"
+            );
+        }
     }
 
     #[test]
