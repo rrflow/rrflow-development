@@ -993,3 +993,12 @@ barriers from final waited volume settlement, preserving all caps and the
 selected native-error/readback oracle. Local deterministic and installed crash
 checks pass; native APFS repetitions remain required. This fixture gap and the
 independent full-profile/actual 24-hour qualification remain open.
+
+
+The [frozen proof-read outcome](../../evidence/change-journals/gate-c/c-07g-proof-read-native-outcome.md)
+records candidate 05817485 acknowledging all 100000 corpus operations, then
+failing the original two-hour setup deadline after 38960 independent
+verifications. No measured load segment or actual soak started. The final
+handle sample remained bounded at 128 with zero denials. Complete independent
+readback and the full profile/24-hour matrix remain open; neither ACK counts
+nor the component proof-read improvement qualifies this native operating point.
