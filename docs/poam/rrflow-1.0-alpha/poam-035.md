@@ -1026,3 +1026,14 @@ records frozen 04559542 failing the unchanged two-hour setup deadline after
 100000 acknowledgements and 64724 independent verifications. Complete corpus
 readback and measured/24-hour acceptance remain open. Partial verification
 counts are not a passing capacity result; original failed estates remain retained.
+
+
+The [point-range indexing package](../../evidence/change-journals/gate-c/c-07g-point-range-index.md)
+records a bounded diagnostic of the failed 100k estate and replaces linear
+immutable point-candidate enumeration with a derived range index at the
+existing database boundary. Independent lifecycle and MVCC oracles exposed
+and corrected live-vector versus manifest-order mismatches. Component work
+reduction does not qualify full installed throughput: the frozen full-size
+setup failed after 64724 independent verifications, and actual soak remains
+not started. Candidate integration and unchanged full-profile acceptance are
+still required; no closure is recorded.

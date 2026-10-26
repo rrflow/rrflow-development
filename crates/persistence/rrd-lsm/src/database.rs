@@ -1,3 +1,6 @@
+mod point_index;
+use point_index::PointIndex;
+
 use crate::filesystem::{AnchoredPath, OpenOptions};
 use crate::io::{IoContext, SharedIoContext};
 use crate::mutable::MutableCharge;
@@ -365,6 +368,7 @@ pub struct Database {
     memtable: Arc<crate::mutable_memory::MutableGeneration>,
     mutable_memory: crate::MutableMemory,
     segments: Vec<Arc<Segment>>,
+    point_index: PointIndex,
     page_cache: SharedPageCache,
     segment_io: SharedIoContext,
     segment_open_evidence: SegmentOpenEvidence,
@@ -471,6 +475,7 @@ impl Database {
         Ok(Self {
             root: root.to_owned(),
             manifests,
+            point_index: PointIndex::new(&manifest.segments),
             manifest,
             wal,
             memtable: mutable_memory.empty(0),
@@ -579,6 +584,8 @@ impl Database {
             segment_open_evidence.merge(segment.open_evidence())?;
             segments.push(segment);
         }
+        let point_index = PointIndex::new(&manifest.segments);
+        recovery_budget.tick()?;
         let segments_ms = segments_started.elapsed().as_millis() as u64;
         let path = wal_path(&root, manifest.wal_start_sequence);
         require_existing_regular_file(&path, "active WAL")?;
@@ -637,6 +644,7 @@ impl Database {
         Ok(Self {
             root: root.to_owned(),
             manifests,
+            point_index,
             manifest,
             wal,
             memtable: Arc::new(mutable_memory.wrap(memtable)?),
@@ -1456,8 +1464,15 @@ impl Database {
             WalWriter::create_at_anchored(&next_path, next_sequence)?
         };
         inject_failure(failure, FlushBoundary::SuccessorWalSynced)?;
-        let mut descriptors = self.manifest.segments.clone();
+        // The live vector may differ from the sorted manifest after compaction.
+        // Build point-index ordinals in exactly the order retained below.
+        let mut descriptors = self
+            .segments
+            .iter()
+            .map(|segment| segment.descriptor.clone())
+            .collect::<Vec<_>>();
         descriptors.extend(flushed.iter().map(|segment| segment.descriptor.clone()));
+        let point_index = PointIndex::new(&descriptors);
         let next = new_manifest(
             self.manifest
                 .generation
@@ -1476,6 +1491,7 @@ impl Database {
         self.memtable = self.mutable_memory.empty(sequence);
         self.wal_payload_bytes = 0;
         self.segments.extend(flushed.into_iter().map(Arc::new));
+        self.point_index = point_index;
         self.manifest = next.clone();
         self.reclamation_pending = true;
         inject_failure(failure, FlushBoundary::ManifestPublished)?;
@@ -1661,11 +1677,13 @@ impl Database {
             bundle.source_manifest.segments.clone(),
             self.manifest.application_format,
         )?;
+        let point_index = PointIndex::new(&manifest.segments);
         self.manifests.publish(&manifest, Some(&previous))?;
         self.wal = successor;
         self.memtable = self.mutable_memory.empty(source_sequence);
         self.wal_payload_bytes = 0;
         self.segments = imported;
+        self.point_index = point_index;
         self.manifest = manifest.clone();
         self.reclamation_pending = true;
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::ManifestPublished)?;
@@ -1747,11 +1765,13 @@ impl Database {
             bundle.source_manifest.segments.clone(),
             self.manifest.application_format,
         )?;
+        let point_index = PointIndex::new(&manifest.segments);
         self.manifests.publish(&manifest, Some(&previous))?;
         self.wal = successor;
         self.memtable = self.mutable_memory.empty(source_sequence);
         self.wal_payload_bytes = 0;
         self.segments = imported;
+        self.point_index = point_index;
         self.manifest = manifest.clone();
         self.reclamation_pending = true;
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::ManifestPublished)?;
@@ -1940,6 +1960,7 @@ impl Database {
                 .iter()
                 .map(|segment| segment.descriptor.clone()),
         );
+        let point_index = PointIndex::new(&descriptors);
         let next = new_manifest(
             self.manifest
                 .generation
@@ -1962,6 +1983,7 @@ impl Database {
             .collect::<Vec<_>>();
         retained_segments.extend(compacted_segments.into_iter().map(Arc::new));
         self.segments = retained_segments;
+        self.point_index = point_index;
         self.manifest = next.clone();
         inject_compaction_failure(failure, CompactionBoundary::ManifestPublished)?;
         Ok(Some(CompactionOutcome {
@@ -2416,15 +2438,28 @@ impl Database {
             return Ok(version.value.as_deref().map(<[u8]>::to_vec));
         }
         let mut best_sequence = 0;
+        let mut best_ordinal = usize::MAX;
         let mut selected = None;
-        for segment in &self.segments {
-            if let Some(version) = segment.select_version(key, snapshot.sequence)? {
-                if version.sequence() > best_sequence {
-                    best_sequence = version.sequence();
-                    selected = Some(version);
+        self.point_index.visit(
+            |i| &self.segments[i].descriptor,
+            key,
+            |ordinal| {
+                if let Some(version) =
+                    self.segments[ordinal].select_version(key, snapshot.sequence)?
+                {
+                    // Tree traversal is key-ordered, not manifest-ordered. Preserve
+                    // the original first-segment winner for equal sequences.
+                    if version.sequence() > best_sequence
+                        || (version.sequence() == best_sequence && ordinal < best_ordinal)
+                    {
+                        best_sequence = version.sequence();
+                        best_ordinal = ordinal;
+                        selected = Some(version);
+                    }
                 }
-            }
-        }
+                Ok(())
+            },
+        )?;
         // Selection loads authenticated key/sequence spines, not value pages.
         // Materialize only the winner, including a winning tombstone.
         match selected {
