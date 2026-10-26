@@ -27,15 +27,15 @@ There is one pre-release engine and the existing public API remains unchanged.
 | 8 | G-01 through G-06 and I-01 through I-07, with remaining H integration | Optional LFG/SWAG, model routing and learning proposals compose through governed effects, bounded inference and explicit durable capabilities. Evaluation preparation may proceed earlier; claims require the actual behavior and held-out evidence. |
 | 9 | J-01 through J-03, KB-08, J-04 and J-05 | Complete native qualification, matched comparative evidence and signed distribution; all required C/D/E/F/G/H/I exits still apply. No abbreviated run qualifies release. |
 
-The next decision is **D-02a admission mapping**; only after it is resolved does
-**D-02's engine-owned attunement executor** become a candidate code package, reconciled
-against the existing job/phase contracts and pending job created by installation.
-Its brief must identify the supported operation that admits work and the exact
-phase boundary it executes. A persisted `Pending` job alone is the starting gap,
-not an exit. If an existing operation cannot express required behavior, record
-that specific blocker before changing the API; this correction authorizes no
-new endpoint. Configuration and all later phases remain incomplete until their
-own executable proofs pass.
+D-02a/b now has an embedded engine implementation for authenticated job
+control, bounded Connect execution, durable receipts and lease fencing. Its
+[implementation record](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
+defines the tested scope. Public client admission and effective configuration
+remain unresolved; Inventory and subsequent ingestion phases remain unavailable.
+The next package must bind the existing public operation or explicit contract
+decision that admits the next supported phase. No unrelated endpoint may be
+overloaded and no source indexing is inferred from a persisted job or Connect
+checkpoint. Configuration and later phases need their own executable proof.
 
 ## Package readiness and evidence
 
@@ -69,9 +69,59 @@ or model quality profile, freeze the held-out corpus, scoring rubric, comparison
 baseline and acceptance threshold in the owning package before measuring it.
 Until that exists, report characterization, not qualification or superiority.
 The current [admission gaps](../../poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps)
-prevent calling the whole next workflow implementation-ready. Runtime work is
-held under the owner's current instruction while this audit and required
-contract decisions are incomplete.
+prevent calling the whole next workflow implementation-ready. The owner's
+subsequent implementation instruction authorized the bounded embedded package;
+unresolved public admission still holds the work that depends on that decision.
+
+## Engine-first alpha execution focus
+
+The [code-grounded review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+binds inspected scaling gaps and primary research. The dependency table above
+owns implementation order; the technical requirements below do not impose a
+second storage-first sequence. Prioritize the installed engine, real project
+context and useful debug signals. Cloud/service requirements remain captured
+without displacing this local work. Existing qualification remains required.
+
+An estate must represent the authorized project's source and knowledge without
+requiring the entire project to fit in RAM or a model prompt. Queries select a
+bounded, relevant working context from persisted indexes at a declared source
+revision. Oversized inputs and incomplete indexes are visible states, not
+silent omission. An installed binary, successful commit or small context demo
+alone is not that alpha.
+
+| Existing owning boundary | Implementation boundary and concrete change | Required failure/scale oracle before handoff |
+|---|---|---|
+| Finish installed storage and expose its costs - C-07g/h | Integrate the current handle-limit and native-capacity repairs at rrflowKV and the installed harness. Extend existing engine/public diagnostics with bounded write-phase attribution and setup/readback progress; preserve the accepted physical format and transaction authority. | Same frozen corpus, resources and limits completes ingestion, independent readback, backup-under-write, restart and drain before the actual soak. Native errors, uncertain effects, ownership leaks and cap violations fail. Debug capture has bounded cost and cannot perturb commit semantics. |
+| Make a project a durable incremental input - D-02/D-03/D-04 | Use engine-owned persisted jobs and committed inventory, content digests, source/chunk relationships, exclusions and parse revisions. Installation's precondition hash remains installation evidence. Admit and process bounded batches, persist checkpoints with resulting changes, and resume without duplicate work. | Create/reopen a real multi-language fixture; edit, rename, delete, revoke and interrupt at each checkpoint. Only affected files/chunks/relationships change. Secret/generated/dependency exclusions hold; stale source never presents as current. Measure files/bytes scanned and parsed per incremental change. |
+| Make retrieval work proportional to selected data - E-01 through E-04 and C-04 | Reuse native temporal adjacency for graph expansion. Persist BM25 postings/statistics and transactional deltas. Select collection/named-vector indexes before hydrating candidates; combine an eligible immutable ANN generation with exact new/changed/deleted deltas at one read stamp. Preserve exact search as the oracle. | Increasing unrelated estate data does not increase point/adjacency/posting work linearly. Differential update/delete/reopen results match canonical truth. Missing/stale artifacts, selective filters and interruption expose completeness/fallback cost. Approximate quality includes recall and rerank work; no hidden full-vector hydration. |
+| Enforce one bounded execution budget - E-05/F | Plan access paths before materialization; stream admitted row/page batches through native/Arrow/DataFusion operators. Charge scans, candidates, decoded/retained bytes, spill and elapsed work to the same request budget. | Adversarial fan-out, wide rows, slow consumers, cancellation and full spill disk cannot grow retained owners unboundedly. Explicit truncation/denial is distinct from an empty correct answer. Physical counters prove selected pushdown rather than a cosmetic plan label. |
+| Assemble useful grounded context and bounded reasoning - G and H-01/H-02/H-05 | Replace context.rs's per-request scope snapshot and BM25 rebuild with accepted stamped access paths. Fuse eligible lexical/vector/graph evidence, deduplicate source revisions, optionally rerank within the same budget and return citations plus completeness. Retain existing task stop/replay authority; LFG/SWAG are optional qualified adapters. | A fixed code-question corpus includes symbols, dependencies, renames, contradictions and stale facts. Measure recall/grounding/task success and total local/provider work. Stop, unknown outcomes and restart preserve budgets and receipts. Retained evidence replay dispatches no model/tool work. |
+| Prove the joined installed engine - J with owning gates | Run the public engine flow from project installation through ingestion, relationship/index maintenance, contextual query, source edit, restart and recovery. Consume engine-owned diagnostics through existing clients; UI polish and remote services do not gate this local proof. | Pinned small/medium/large fixtures and declared hardware retain raw quality, p50/p95/p99, throughput, RSS, I/O, disk growth, index lag and cost results. Include cold/warm, update/delete, concurrent read/write, budget exhaustion and recovery. Report largest sustainable tested envelope and all failures; no inferred competitor superiority. |
+
+Implement these requirements in bounded packages under the dependency table
+above. Preparation and implementation of the next project slice may proceed
+while native qualification runs. A correctness failure stops affected work;
+accepted substrate and canonical stores remain required. Diagnostic claims
+must identify the actual measured path and its finite collection overhead.
+
+### Signals ship with every engine change
+
+Every package declares its observable operation, units, scope, source and
+configuration identities, cumulative-versus-window semantics, reset identity,
+missing measurements and finite collection/export limits. Show admission/queue
+wait separately from execution, and physical work separately from answer size.
+At minimum retain ingestion/checkpoint progress, index source cursor and lag,
+selected/skipped access paths, examined keys/pages/candidates/edges, cache hit
+and miss deltas, retained memory, open segment handles, WAL sync/maintenance
+cost, rejected/cancelled work and unresolved effects. Do not use project paths,
+prompts or per-request IDs as unbounded metric labels.
+
+Debug mode must be opt-in, bounded, redacted and usable through the engine's
+public contracts without Connectome. A compact summary can link to detailed
+samples/receipts; it cannot invent metrics or store a second truth. Capture
+limits and dropped-sample counts remain visible. Measure debug-enabled overhead
+against debug-disabled execution on the same workload. Existing A-07 vocabulary
+and H-05 conformance own signal naming and cross-surface correlation.
 
 ## Project-to-learning acceptance journey
 

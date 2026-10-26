@@ -87,6 +87,56 @@ packages as if their implementation were absent.
 | g | `installed_reopen.rs::sustained` driver, bounded corpus generator/independent readback, `run_sustained_capacity.py`, frozen profiles and progress/result receipts. | Desktop corpus ingestion failed at 50,685 acknowledgements. The subsequent 1,000-record characterization completed but failed the 25-RPS operating point. No 24-hour soak has started; measure scheduling/readback and repair growth before full qualification. |
 | h | `collect_storage_acceptance.py` and canonical Rust receipt validation. | No complete joined accepted candidate/profile/native/soak evidence. Collection tooling is implemented; accepted evidence is missing. |
 
+### Immediate engine diagnostic and growth package
+
+The 2026-10-25 [engine review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+keeps C-07 active. The handle and native-fill repairs retain their exact
+candidate evidence. The following diagnostic requirements remain open;
+they do not replace the dependency spine's real-project implementation order.
+Source progress is not acceptance and no short preflight is a 24-hour soak.
+Use existing counters and bounded profiling for measured repairs; implement
+missing public diagnostic capture at its existing owner and do not claim that
+operator-only profiling has delivered that public capability.
+
+1. Characterize the present gap: `WritePathCollector` and
+   `RrflowKvStore::enable_native_write_path_diagnostics` already measure
+   validation, encoding, maintenance, WAL write/sync, memtable work and lock
+   wait for accepted native batches, but `DiagnosticStorageSnapshot` does not expose those samples through
+   installed public diagnostics. `sustained/corpus.rs` records individual
+   intents/ACKs/readbacks without timed setup windows. Reuse these owners;
+   do not create an unrelated profiler or another metrics registry.
+2. Bind an opt-in finite capture to the installed engine's existing
+   configuration/admission and diagnostic authorization. Declare maximum
+   samples, bytes, duration and output size before collection; one capture
+   must not reset or steal another observer's results. The native collector
+   currently keeps the first N samples and counts drops, so report that
+   selection explicitly and make later-growth windows deliberately selectable.
+   Failed/unobserved operations remain distinct from accepted samples; missing
+   phase measurements are never reported as zero cost. An empty/disabled/unsupported
+   capture is not zero latency. Public operation
+   and SDK projections come from their existing catalogue.
+3. Publish stable phase names/units, observed and dropped counts, process/reset
+   identity and independently measured resource limits. Keep queue/lock wait,
+   WAL sync, encoding, maintenance and total elapsed separate. Attribute a
+   measured window without claiming independently read counters are one atomic
+   transaction stamp. Never retain keys, values, prompts or credentials.
+4. Extend the existing progress stream with bounded ingestion and readback
+   windows: intended/acknowledged/verified counts, elapsed time and real samples
+   from the same public engine diagnostics. Preserve original deadlines and
+   independent expected-value generation. Do not repeatedly rescan or retain
+   the entire event log to render progress; no synthetic samples fill gaps.
+5. Prove disabled/enabled parity, concurrent readers, capture exhaustion,
+   unauthorized access, restart/reset and no secret leakage. Run the existing
+   write-diagnostics/store/engine tests first, then an actual installed
+   capture/ingest/readback flow. Measure overhead and sample/export memory;
+   do not label a copied struct or a mock endpoint usable debug mode.
+6. Diagnose the largest observed cost with those results and repair that one
+   owner. Preserve independent correctness and compare the same corpus at
+   1k/10k characterization points before the declared full profile. Fixing
+   storage alone does not remove context.rs's snapshot/BM25 rebuild or the
+   vector candidate hydration path; their E/F/G/H work is explicit in the
+   [engine-first sequence](executable-dependency-spine.md#engine-first-alpha-execution-focus).
+
 ### Execution reset after the failed Desktop corpus
 
 This is the execution order within the existing a-h requirements, not a new

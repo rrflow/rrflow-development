@@ -1009,3 +1009,12 @@ head passed full candidate CI, but normal queue admission reports the required
 check as expected; a fresh readiness-triggered run is in progress. No rule is
 bypassed. Both candidate landing and final profile/24-hour qualification remain
 open; this fixture failure is not proof of acknowledged-data loss.
+
+
+The [engine-first code review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+verified that native write-phase capture is not projected by installed public
+storage diagnostics, while corpus setup progress lacks timed diagnostic
+windows. C-07g owns the bounded authorized capture/progress repair before
+further growth-cost attribution. Existing E-01/E-03/E-04 and D-02/D-03 own the
+separate context/indexing and committed-inventory gaps; this observation closes
+none of them and does not replace the running native qualification.
