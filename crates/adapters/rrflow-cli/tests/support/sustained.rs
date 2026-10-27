@@ -33,6 +33,48 @@ mod workload;
 use workload::{Prepared, Workload};
 
 type DriverResult<T> = std::result::Result<T, String>;
+
+fn retain_failed_lifecycle<T>(
+    estate: &super::owned_directory::OwnedDirectory,
+    result: DriverResult<T>,
+) -> DriverResult<T> {
+    if result.is_err() {
+        eprintln!(
+            "native_lifecycle_failure_estate={}",
+            serde_json::json!({"path": estate.retain(), "private_state": true})
+        );
+    }
+    result
+}
+
+#[test]
+fn lifecycle_failure_retains_its_owned_estate_but_success_cleans_it() {
+    let parent = tempfile::tempdir().unwrap();
+    let success =
+        super::owned_directory::OwnedDirectory::new(tempfile::tempdir_in(parent.path()).unwrap());
+    let success_path = success.path().to_owned();
+    assert_eq!(
+        retain_failed_lifecycle(&success, Ok::<_, String>(7)).unwrap(),
+        7
+    );
+    drop(success);
+    assert!(!success_path.exists());
+
+    let failed =
+        super::owned_directory::OwnedDirectory::new(tempfile::tempdir_in(parent.path()).unwrap());
+    let failed_path = failed.path().to_owned();
+    std::fs::write(failed_path.join("sentinel"), b"retained").unwrap();
+    assert_eq!(
+        retain_failed_lifecycle::<()>(&failed, Err("fixture-failure".into())).unwrap_err(),
+        "fixture-failure"
+    );
+    drop(failed);
+    assert_eq!(
+        std::fs::read(failed_path.join("sentinel")).unwrap(),
+        b"retained"
+    );
+}
+
 fn evidence_id(value: impl Into<String>) -> Id {
     value.into().try_into().unwrap()
 }
@@ -1353,18 +1395,17 @@ async fn run_estate(
                 &mut session_opened,
             )
             .await?;
-            let mut reopens = Some(
-                lifecycle::reopens(
-                    &estate,
-                    &mut child,
-                    &mut work,
-                    campaign,
-                    (clock, Duration::from_millis(lifetime_ms)),
-                    &ProgressContext { writer, point },
-                    (&mut session_ordinal, &mut session_opened),
-                )
-                .await?,
-            );
+            let reopens_result = lifecycle::reopens(
+                &estate,
+                &mut child,
+                &mut work,
+                campaign,
+                (clock, Duration::from_millis(lifetime_ms)),
+                &ProgressContext { writer, point },
+                (&mut session_ordinal, &mut session_opened),
+            )
+            .await;
+            let mut reopens = Some(retain_failed_lifecycle(&estate.temp, reopens_result)?);
             let mut cold_start = if campaign.required_lanes.contains(&CapacityLane::Cold) {
                 Some(
                     cold::run(

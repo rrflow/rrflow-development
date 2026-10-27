@@ -190,6 +190,31 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
     }
 }
 
+// Accept only the exact closed native error grammar. Untrusted text is never
+// echoed; even a valid prefix with an added suffix must not be exported.
+fn pinned_read_denial(message: &str) -> Option<(u64, u64)> {
+    let detail = message
+        .strip_prefix("StorageAdmission(\"")
+        .or_else(|| message.strip_prefix("Storage(\""))?
+        .strip_suffix("\")")?
+        .strip_prefix("projected-read pinned_bytes limit ")?;
+    let (limit, observed) = detail.split_once(" would be exceeded by ")?;
+    if limit.is_empty()
+        || observed.is_empty()
+        || !limit.bytes().all(|byte| byte.is_ascii_digit())
+        || !observed.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return None;
+    }
+    let parsed_limit = limit.parse::<u64>().ok()?;
+    let parsed_observed = observed.parse::<u64>().ok()?;
+    (parsed_limit > 0
+        && parsed_observed > parsed_limit
+        && parsed_limit.to_string() == limit
+        && parsed_observed.to_string() == observed)
+        .then_some((parsed_limit, parsed_observed))
+}
+
 // Preserve only the closed client/API classification and a digest of details.
 // Server messages, transport text and credentials never enter campaign output.
 fn client_error(value: rrd_client::Error) -> String {
@@ -197,6 +222,12 @@ fn client_error(value: rrd_client::Error) -> String {
     let code = match &value {
         Error::Api { error, .. } => {
             let mut code = format!("api-{:?}", error.code).to_ascii_lowercase();
+            if let Some((limit, observed)) = pinned_read_denial(&error.message) {
+                eprintln!(
+                    "native_read_admission={}",
+                    serde_json::json!({"resource":"pinned_bytes","limit":limit,"observed":observed})
+                );
+            }
             if let Some(label) = engine_error_label(&error.message) {
                 code.push('-');
                 code.push_str(label);
@@ -215,6 +246,37 @@ fn client_error(value: rrd_client::Error) -> String {
     };
     let detail = digest("c07g.client-error", &value.to_string()).expect("error digest");
     format!("{code}:{}", detail.as_str())
+}
+
+#[test]
+fn pinned_read_denial_reports_only_exact_numeric_resource_values() {
+    let read = rrd_store::Error::ProjectedReadLimit {
+        resource: rrd_store::ProjectedReadResource::PinnedBytes,
+        limit: 4_294_967_296,
+        observed: 4_294_967_297,
+    };
+    let admission = rrd_engine::ServiceError::StorageAdmission(read.to_string());
+    assert_eq!(
+        pinned_read_denial(&admission.to_string()),
+        Some((4_294_967_296, 4_294_967_297))
+    );
+    let storage = rrd_engine::ServiceError::Storage(read.to_string());
+    assert_eq!(
+        pinned_read_denial(&storage.to_string()),
+        Some((4_294_967_296, 4_294_967_297))
+    );
+    for invalid in [
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by 6 private\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by 5\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 18446744073709551616 would be exceeded by 7\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by -1\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 05 would be exceeded by 6\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 0 would be exceeded by 6\")",
+        "StorageAdmission(\"projected-read runs limit 5 would be exceeded by 6\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by 6\")suffix",
+    ] {
+        assert_eq!(pinned_read_denial(invalid), None, "accepted malformed denial");
+    }
 }
 
 #[test]
