@@ -81,6 +81,104 @@ async fn schema(client: &RrdClient, session: &Session, key: &str) -> DataSchemaS
 }
 
 #[tokio::test]
+async fn installed_attunement_read_reports_stored_plan_and_unchecked_source_after_reopen() {
+    let temporary = tempfile::tempdir().unwrap();
+    let project = temporary.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &RrdEngine::generate_installation_identity().unwrap(),
+        "default",
+        None,
+        &executable(),
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        &executable(),
+    )
+    .unwrap();
+    let request = rrd_contract::ReadAttunement {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: rrd_contract::CanonicalId::new(format!(
+            "job-{}",
+            &preview.attunement.plan_sha256[..24]
+        ))
+        .unwrap(),
+    };
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "attunement-session").await;
+    let first = client
+        .read_attunement(
+            &session,
+            request.clone(),
+            read_options("attunement-read").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(first.plan, preview.attunement);
+    assert_eq!(
+        first.status.job.state,
+        rrd_contract::AttunementJobState::Pending
+    );
+    assert_eq!(
+        first.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    std::fs::write(project.join("new-source.txt"), "source changed").unwrap();
+    let changed = client
+        .read_attunement(
+            &session,
+            request.clone(),
+            read_options("attunement-changed").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(changed.plan, first.plan);
+    assert_eq!(changed.status.job, first.status.job);
+    assert_eq!(
+        changed.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    let missing = rrd_contract::ReadAttunement {
+        job_id: rrd_contract::CanonicalId::new("job-missing").unwrap(),
+        ..request.clone()
+    };
+    assert!(client
+        .read_attunement(
+            &session,
+            missing,
+            read_options("attunement-missing").unwrap()
+        )
+        .await
+        .is_err());
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    let (reopened, shutdown, server) = start(&project).await;
+    let session = login(&reopened, &project, "attunement-reopened-session").await;
+    let after = reopened
+        .read_attunement(
+            &session,
+            request,
+            read_options("attunement-reopened").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(after.plan, first.plan);
+    assert_eq!(after.status.job, first.status.job);
+    assert_eq!(
+        after.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+}
+
+#[tokio::test]
 async fn parquet_export_rejects_truncation_and_foreign_engine_sessions() {
     let temporary = tempfile::tempdir().unwrap();
     let first = temporary.path().join("first");

@@ -40,14 +40,15 @@ pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
     installation_plan_sha256, installation_result_sha256, AttunementFailure, AttunementJob,
     AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
-    AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
-    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
-    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
-    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
-    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
-    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
-    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
-    ResumeAttunement, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    AttunementPhasePlan, AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
+    AttunementSourceVerification, AttunementStatus, AttunementVerification,
+    AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
+    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
+    InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
+    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
+    InstallationRemovalRule, InstallationResult, InstallationSpecialization,
+    InstallationStorageGeneration, InstallationTargetKind, ReadAttunement, ResumeAttunement,
+    ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
     INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
@@ -241,7 +242,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f036bbbf75567ed2e2607581e3bb3abab2b02fed6aadd2891323f80972c4f809";
+    "90d5e7475fa0cd80d36e6724fcfc697c5867a8dd14421c60fef2aab8f37d25e5";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3642,6 +3643,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "DiagnosticSnapshot",
         ),
         endpoint(
+            "attunement-read",
+            HttpMethod::Post,
+            "/v1/attunement/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateRead,
+            "ReadAttunement",
+            "AttunementReadResult",
+        ),
+        endpoint(
             "flight-launch",
             HttpMethod::Post,
             "/v1/flights",
@@ -4451,6 +4462,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "CloseTask" => schema_json::<RequestEnvelope<CloseTask>>(),
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
+        "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
         "ReadEstate" => schema_json::<RequestEnvelope<ReadEstate>>(),
         "RenewSession" => schema_json::<RequestEnvelope<RenewSession>>(),
         "RestoreInstanceBackup" => schema_json::<RequestEnvelope<RestoreInstanceBackup>>(),
@@ -4489,6 +4501,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskResult" => schema_json::<ResponseEnvelope<TaskResult>>(),
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
+        "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
         "EndpointCatalogue" => schema_json::<ResponseEnvelope<EndpointCatalogue>>(),
         "EstateSnapshot" => schema_json::<ResponseEnvelope<EstateSnapshot>>(),
         "InstanceBackupCatalogueSnapshot" => {

@@ -1,9 +1,10 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f036bbbf75567ed2e2607581e3bb3abab2b02fed6aadd2891323f80972c4f809
+// OpenAPI SHA-256: 90d5e7475fa0cd80d36e6724fcfc697c5867a8dd14421c60fef2aab8f37d25e5
 namespace Rrflow.Rrd;
 
 public enum OperationId
 {
+    AttunementRead,
     AuditExport,
     AuditRead,
     BackupCreate,
@@ -77,11 +78,12 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "f036bbbf75567ed2e2607581e3bb3abab2b02fed6aadd2891323f80972c4f809";
-    public const int Count = 55;
+    public const string OpenApiDocumentSha256 = "90d5e7475fa0cd80d36e6724fcfc697c5867a8dd14421c60fef2aab8f37d25e5";
+    public const int Count = 56;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
+        OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
         OperationId.AuditExport => new("audit-export", "POST", "/v1/audit/export", Authentication.SessionBearer, false),
         OperationId.AuditRead => new("audit-read", "POST", "/v1/audit/read", Authentication.SessionBearer, false),
         OperationId.BackupCreate => new("backup-create", "POST", "/v1/backups", Authentication.SessionBearer, true),
