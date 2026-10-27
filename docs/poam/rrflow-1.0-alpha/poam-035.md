@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
+retains the indexed source `7c329d49` native failure: all 100000 corpus writes
+were acknowledged but only 44556 were independently verified before the
+unchanged two-hour setup deadline. No measured segment or 24-hour soak ran.
+Sharing immutable manifest ownership removes per-view copies in the candidate;
+its installed effect on this failure remains unmeasured. Full profile and
+exact-candidate qualification remain open.
+
 Current scheduling follows the [parent-authorized dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md)
 and [staged C-07 qualification](../../roadmap/rrflow-1.0/gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
 Final growth/24-hour qualification remains open but does not prohibit D-02's

@@ -8,7 +8,8 @@ use super::*;
 use rrd_contract::{
     attunement_checkpoint_sha256, AttunementFailure, AttunementJob, AttunementJobState,
     AttunementLease, AttunementPhase, AttunementPhaseCheckpoint, AttunementPlan,
-    AttunementRuntimeCoordinates, AttunementStatus, CancelAttunement, ResumeAttunement,
+    AttunementReadResult, AttunementRuntimeCoordinates, AttunementSourceVerification,
+    AttunementStatus, CancelAttunement, ReadAttunement, ResumeAttunement,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use std::time::Instant;
@@ -107,6 +108,32 @@ impl RrdEngine {
         request_id: &str,
         operation_id: &str,
     ) -> Result<AttunementStatus> {
+        self.read_attunement_detail(
+            session,
+            token,
+            &ReadAttunement {
+                contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+                job_id: job.clone(),
+            },
+            now,
+            request_id,
+            operation_id,
+        )
+        .map(|result| result.status)
+    }
+
+    /// Return the stored plan with its job. Source freshness is not checked.
+    #[allow(clippy::too_many_arguments)]
+    pub fn read_attunement_detail(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        request: &ReadAttunement,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<AttunementReadResult> {
+        request.validate().map_err(contract)?;
         self.authorize(
             session,
             token,
@@ -115,8 +142,14 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        let (_, job, plan) = self.load_attunement(job)?;
-        status(job, &plan, now)
+        let (_, job, plan) = self.load_attunement(&request.job_id)?;
+        let result = AttunementReadResult {
+            status: status(job, &plan, now)?,
+            plan,
+            source_verification: AttunementSourceVerification::NotChecked,
+        };
+        result.validate().map_err(contract)?;
+        Ok(result)
     }
 
     /// One finite, explicitly authorized transition. The job and its immutable

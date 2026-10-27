@@ -8,5 +8,6 @@ The roadmap owns Gate I acceptance. This generated index only discovers its
 linked package evidence.
 
 <!-- rrflow:generated-index:start -->
+- [RROFLOW provider boundary: integrate merged main](provider-observation-main-refresh.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-i/provider-observation-main-refresh`](rrflow://rrflow-instance/data/evidence/change-journal/gate-i/provider-observation-main-refresh) — active integration evidence; refreshed candidate CI pending
 - [I-01/I-04: RROFLOW provider-observation boundary](provider-observation-source-boundary.md) — [`rrflow://rrflow-instance/data/evidence/change-journal/gate-i/provider-observation-source-boundary`](rrflow://rrflow-instance/data/evidence/change-journal/gate-i/provider-observation-source-boundary) — active planning and source evidence; implementation not established
 <!-- rrflow:generated-index:end -->
