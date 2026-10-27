@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: b0b7a6248e37ee650f95f968f6b279ebd2b65a1a773f69cee8b1e684502ab3ff
+// OpenAPI SHA-256: f036bbbf75567ed2e2607581e3bb3abab2b02fed6aadd2891323f80972c4f809
 export interface paths {
     "/v1/audit/export": {
         parameters: {
@@ -19619,12 +19619,16 @@ export interface operations {
                                     name: string;
                                     paths: {
                                         /**
-                                         * @description A logical grouping or an explicit vector-store source. Provider identifiers
+                                         * @description A logical grouping or an explicitly configured source. Provider identifiers
                                          *     are open canonical identities; their presence does not advertise an adapter.
                                          */
                                         binding: {
                                             /** @constant */
                                             kind: "group";
+                                        } | {
+                                            /** @constant */
+                                            kind: "project_directory";
+                                            relative_path?: string | null;
                                         } | {
                                             /**
                                              * @description A canonical public identifier component.
@@ -19830,12 +19834,16 @@ export interface operations {
                                     name: string;
                                     paths: {
                                         /**
-                                         * @description A logical grouping or an explicit vector-store source. Provider identifiers
+                                         * @description A logical grouping or an explicitly configured source. Provider identifiers
                                          *     are open canonical identities; their presence does not advertise an adapter.
                                          */
                                         binding: {
                                             /** @constant */
                                             kind: "group";
+                                        } | {
+                                            /** @constant */
+                                            kind: "project_directory";
+                                            relative_path?: string | null;
                                         } | {
                                             /**
                                              * @description A canonical public identifier component.
@@ -20051,12 +20059,16 @@ export interface operations {
                             name: string;
                             paths: {
                                 /**
-                                 * @description A logical grouping or an explicit vector-store source. Provider identifiers
+                                 * @description A logical grouping or an explicitly configured source. Provider identifiers
                                  *     are open canonical identities; their presence does not advertise an adapter.
                                  */
                                 binding: {
                                     /** @constant */
                                     kind: "group";
+                                } | {
+                                    /** @constant */
+                                    kind: "project_directory";
+                                    relative_path?: string | null;
                                 } | {
                                     /**
                                      * @description A canonical public identifier component.
@@ -20265,12 +20277,16 @@ export interface operations {
                                         name: string;
                                         paths: {
                                             /**
-                                             * @description A logical grouping or an explicit vector-store source. Provider identifiers
+                                             * @description A logical grouping or an explicitly configured source. Provider identifiers
                                              *     are open canonical identities; their presence does not advertise an adapter.
                                              */
                                             binding: {
                                                 /** @constant */
                                                 kind: "group";
+                                            } | {
+                                                /** @constant */
+                                                kind: "project_directory";
+                                                relative_path?: string | null;
                                             } | {
                                                 /**
                                                  * @description A canonical public identifier component.
@@ -20479,12 +20495,16 @@ export interface operations {
                                         name: string;
                                         paths: {
                                             /**
-                                             * @description A logical grouping or an explicit vector-store source. Provider identifiers
+                                             * @description A logical grouping or an explicitly configured source. Provider identifiers
                                              *     are open canonical identities; their presence does not advertise an adapter.
                                              */
                                             binding: {
                                                 /** @constant */
                                                 kind: "group";
+                                            } | {
+                                                /** @constant */
+                                                kind: "project_directory";
+                                                relative_path?: string | null;
                                             } | {
                                                 /**
                                                  * @description A canonical public identifier component.

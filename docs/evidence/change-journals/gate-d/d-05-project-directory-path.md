@@ -1,0 +1,25 @@
+# D-05: project-directory knowledge path binding
+
+**Status:** active implementation evidence; source construction unimplemented
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-d/d-05-project-directory-path`
+**Owner:** OBJ-08 / D-05 / POAM-037 / [PR154](https://github.com/rrflow/rrflow-development/pull/154)
+
+## Baseline and objective
+
+The branch started at development main `86adada6dab6411cc58cb9aaa931e35472c0f452`, tree `42f1a022bf06f1a5c0593203f9a553e1c7d837e0`; opening commit `f8520f0014012c00d002990e9572bc0a587d158a` and the PR brief preceded implementation. The owner clarified that knowledge paths include existing local folders and service sources, with automatic source-grounded relationships. The existing persisted catalogue admitted only group, native vector collection and external vector-store bindings; it could not express a local project directory. Its save operation does not execute ingestion. General external services, outside-project folders and the relationship-building pipeline remain unimplemented.
+
+## Change and oracle
+
+`KnowledgePathBinding::ProjectDirectory` records the project root (`relative_path: null`) or a normalized portable project-relative child directory through the existing authorized revision/CAS catalogue; it opens no path and confers no source-read or background-work authorization. It reuses the existing bounded normalized source path validator, adding portable rejection of drive/stream syntax, Windows-invalid characters, trailing spaces or dots and reserved device names. This does not perform a symlink-safe filesystem resolution; any later source execution must use the admitted engine root and enforce source identity, containment and authorization at the read/effect boundary.
+
+The first focused contract test failed to compile because the variant did not exist; after the change, it passed root and child roundtrips and invalid path cases. The real installed-engine authenticated HTTP `knowledge_trees` test now saves the binding, reads it back, replays the same receipt and reads it after restart; client-side validation rejects `../outside` without changing the catalogue revision. The existing permission, stale-write and replay checks remain. This proves configuration persistence only, not a packaged release, source observation, automatic relationships, arbitrary local folders or connector execution.
+
+## Verification and generated surfaces
+
+Windows commands used `CARGO_TARGET_DIR=D:/localdev/devlabs/rrflow/target/d02-retained-root-build` and locked offline Rust dependencies. `cargo test --offline --locked -p rrd-contract` passed 132 tests after updating the reviewed OpenAPI digest constant. Its first full run failed the expected deliberate OpenAPI drift check; the new digest is `f036bbbf75567ed2e2607581e3bb3abab2b02fed6aadd2891323f80972c4f809`. `cargo test --offline --locked -p rrd-client --test knowledge_trees` passed one real HTTP/engine test. `cargo test --offline --locked -p rrd-engine --lib knowledge` passed 15 tests. `cargo clippy --offline --locked -p rrd-contract --all-targets -- -D warnings`, `cargo clippy --offline --locked -p rrd-client --test knowledge_trees -- -D warnings`, `cargo fmt --all -- --check` and explicit client-test rustfmt check passed. All five SDK operation generators were run against the canonical export and checked, the TypeScript schema generator and typecheck passed, and `python scripts/ci/check_generated_surfaces.py` verified all 55 operation descriptors and signal projections. These projections do not prove language-client semantic conformance.
+
+The first local `pnpm` wrapper failed due to a broken local wrapper; invoking the already installed pinned pnpm module directly installed 44 locked packages from the local store with zero downloads. The first Python generator lacked `ruff` on PATH; the pinned 0.17.1 executable from the local tool cache was used. The first generated-surface check rejected stale current digest citations; the six current reference citations were updated after review. Historical journals were not rewritten.
+
+## Change checklist and limits
+
+Reviewed the relevant README warp points, D-05, POAM-037/038, knowledge-tree and connector references, the contract validator, engine native-binding validation, existing authenticated HTTP test, generated schema diff and the complete package diff. This package introduces no new authority, runtime adapter, source copy, upstream adaptation, provider activation or resource quota; no external research was needed. The source-path validator's visibility is widened inside the same contract crate so both source models share it. Automatic incremental source read, source identity and stale checks, relationship derivation, source deletion/ACL handling and outside-project local folders remain open. Navigation and inventory regeneration and checks, documentation policy, workflow policy and `git diff --check` passed. Candidate CI and merge are pending; no objective, roadmap or POA&M status is closed.
