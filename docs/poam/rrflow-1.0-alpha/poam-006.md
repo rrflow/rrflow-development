@@ -90,6 +90,14 @@ No HTTP operation or UI control is added. Inventory fails explicitly as
 unavailable, so source ingestion, complete budgets/settings and turnkey dispatch
 remain open. [The package journal](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
 records the evidence; this does not close POAM-006 or D-02.
+On 2026-10-26 the owner resolved the job-control part of that constraint
+([OBJ-14](../../objectives/rrflow-1.0-alpha.md#required-outcomes)): the missing
+planned job list, read, status, resume, cancel, receipt-read and job-transition
+journal operations may be added to the operation catalogue under existing
+grants, so installed/UI job control is no longer blocked for implementation
+admission. Global configuration operations remain blocked pending a separate
+owner decision. [POAM-040](poam-040.md) tracks the observability gap; no POA&M
+status changes.
 Other future algorithm choices remain owned experiments at E/F/G/J; they must
 not be described as validated decisions before their named evidence exists.
 

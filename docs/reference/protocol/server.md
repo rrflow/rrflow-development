@@ -166,17 +166,22 @@ dispatcher. No transport frame or connection sequence enters `RrdEngine`.
 
 ## Public operation families
 
-The generated catalogue currently covers these capability families:
+Each catalogue operation names its family and carries its own summary and
+description (`crates/transport/rrd-contract/src/operation_reference.rs`); the
+catalogue's `families` list and the OpenAPI tags project them, and client
+references read them from `endpoint-catalogue` rather than restating them. A
+family groups operations for readers and carries no authorization meaning.
 
 | Family | Server responsibility | Semantic authority |
 |---|---|---|
 | Inspection | Liveness, readiness, capabilities, endpoint catalogue, OpenAPI, and diagnostics. | `RrdEngine` and public contract projections. |
-| Identity and control | Session create, renew, close, estate read, audit read, and capability administration. | RRFlow security and `RrdEngine`. |
+| Identity and control | Session create, renew, close, estate read, audit read and export, and endpoint configuration read, preview, and apply. | RRFlow security and `RrdEngine`. |
 | Transactions | Begin, preview, commit, and abort typed mutation work. | `RrdEngine`; rrflowKV owns durable physical commit. |
-| Query and context | rrflowQL reads, live-query poll, index administration, and context assembly. | `RrdEngine`, rrflowQL, and the selected storage profile. |
+| Query and context | rrflowQL reads and Parquet export, live-query poll, index administration, and context assembly. | `RrdEngine`, rrflowQL, and the selected storage profile. |
+| Knowledge | List and compare-and-swap replace the project's knowledge-tree catalogue. | `RrdEngine`; external bindings are stored configuration, not a provider connection. |
 | Prompt flights | Launch one governed prompt flight, list flight records, and read one flight with its events. | `RrdEngine`; flight rows and events are lifecycle data in the canonical runtime log. |
-| Tasks | Open and close one named task, list task records, and read one task; a flight joins an open task at launch. | `RrdEngine`; task rows and task-to-flight edges are lifecycle data in the canonical runtime log. |
-| Recall | Vector collection, point, and search operations. | RRFlow's vector subsystem under `RrdEngine`; never a separate database authority. |
+| Tasks | Open and close one named task, list task records, and read one task; a flight joins an open task at launch. Configure, read, and stop a task's reasoning budget, run one budgeted embedding attempt, and read an attempt. | `RrdEngine`; task rows and task-to-flight edges are lifecycle data in the canonical runtime log. |
+| Recall | Vector collection, point, and search operations, and activation of the built-in feature-hash embedding backend. | RRFlow's vector subsystem under `RrdEngine`; never a separate database authority. |
 | Delivery | Changefeed read/follow and durable subscriptions over the generic multiplexed WebSocket. | Committed engine state and durable subscription coordinates; WebSocket connection/sequence state remains transport-local. |
 | Recovery | Logical backup catalogue, backup creation, and restore into a generated inactive root. | Engine-authorized logical recovery; no active-root switch. |
 
