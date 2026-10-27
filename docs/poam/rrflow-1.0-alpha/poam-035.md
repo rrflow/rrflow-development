@@ -1092,6 +1092,13 @@ preserving final file/volume settlement, fresh capacity denial and every
 resource bound. The scheduling regression fails before the change and passes
 afterward; actual repeated native APFS acceptance remains required.
 
+The [APFS refill-probe repair](../../evidence/change-journals/gate-c/c-07f-apfs-refill-probe.md)
+records manifest candidate `ab078b83` failing the fresh `current_before_create`
+APFS case during owned pressure preparation at the existing 25-second limit.
+The repair reduces redundant failed refill probes while retaining settlement
+and a fresh native one-byte denial. Local fixture tests pass; native candidate
+acceptance and the full sustained profile remain open.
+
 
 The [indexed native candidate](../../evidence/change-journals/gate-c/c-07g-indexed-native-candidate.md)
 integrates PR141 point-range indexing and PR140 APFS settlement with PR139's
