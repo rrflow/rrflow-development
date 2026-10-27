@@ -59,15 +59,15 @@ This journey binds the existing objectives, rather than replacing them:
 
 | User-visible result | Required objective owners | Observable proof |
 |---|---|---|
-| Install and choose a project | OBJ-01/02/03/07/09 | Actual installed binary; explicit plan/apply; project identity; permission denial; exact acknowledged readback after reopen. |
-| Turn project source into knowledge | OBJ-04/05/07 | Committed inventory and parser/model identities; source spans; graph and vector records generated from that source; incremental edit/delete and exclusions. |
+| Install and choose a project | OBJ-01/02/03/07/09/14 | Actual installed binary; explicit plan/apply; project identity; permission denial; exact acknowledged readback after reopen. |
+| Turn project source into knowledge | OBJ-04/05/07/14 | Committed inventory and parser/model identities; source spans; graph and vector records generated from that source; incremental edit/delete and exclusions. |
 | Ask a bounded question using that knowledge | OBJ-06/09/11 | One authorized stamped retrieval, citations checked against source, selected/skipped avenue reasons, declared inference and actual usage; explicit abstention or exhaustion when evidence/budget is insufficient. |
 | Inspect, tune and repeat | OBJ-07/10/11 | Effective settings with origins and hard limits; a retained baseline; repeatable read-only inspection; separately authorized new execution; local work and provider usage reported separately. |
 | Add optional capabilities safely | OBJ-08/09/12/13 | Typed knowledge-path/learning/model bindings, explicit activation, held-out qualification and revocation; unavailable integrations shown as unavailable. |
 | Operate and distribute reliably | OBJ-02/03/07/10 | Native faults, growth, resource bounds, fixed-profile sustained qualification and signed clean-machine install/recovery evidence. |
 
 The first working local-project checkpoint is an intermediate engineering
-milestone, **not the thirteen-objective alpha exit**. The existing alpha exit
+milestone, **not the fourteen-objective alpha exit**. The existing alpha exit
 below remains unchanged, including SQL compatibility, learning and TurboQuant
 requirements. Naming a checkpoint must never silently narrow that scope.
 
@@ -106,15 +106,32 @@ not passed. A type, fixture, mock, compile, or document alone is not proof.
 | OBJ-11 | Visible, extensible reasoning and learning evidence | Not established: Connectome lenses, H-05 signals, and the feedback and learning contracts define parts of this evidence, but no public operation returns a request's retrieval hits with their delivered and used disposition, usage and savings against a declared baseline, or learning results. No versioned extension model for operator-defined views or metrics exists, and rrflow.ai and rroflow.ai are planned destinations, not deployed services. | For one installed estate, engine-owned typed records and public operations expose four views: (1) retrieval hits for each request, meaning the returned candidates, the context actually delivered, what the caller used or cited, and each avenue's contribution; (2) usage and savings, meaning requests, latency, cache hit/miss/unsupported, and delivered context size against a declared baseline method, with unknown savings shown as unknown; (3) learning results, meaning candidate, evaluation, promotion, and rollback history; and (4) the project's stored records, graph, and knowledge sources. Local Connectome, an operator-controlled self-hosted deployment, and, when explicitly linked, rrflow.ai for the reasoning engine and rroflow.ai for learning show the same identities and values at the same read stamp. Operators configure and extend views and metrics through versioned, authorized, removable definitions over the public operation catalogue; an extension cannot read outside its grant or change engine records. | G, H, I |
 | OBJ-12 | Governed supervised, unsupervised, and recursive learning (RROFLOW) | Not established: the [staged learning contract](../reference/inference/learning/controller-training.md#staged-learning-and-feedback) and the G-06, I-03, and I-07 packages are specified; no learning implementation exists. | In one installed estate, supervised candidates from independently checked labels or preferences, unsupervised candidates from authorized clustering or representation analysis, and bounded recursive I-03 improvement remain distinct proposals. Held-out comparison against simple baselines, denied-data exclusion, bounded iterations and spend, restart, competing promotions, and rollback pass, and a failed candidate never replaces the active revision. Operators configure learning methods and can add one as a versioned, authorized candidate generator or evaluator that produces proposals only. Learning runs locally without an account; a linked rroflow.ai receives only separately authorized datasets and artifacts. | G, H, I |
 | OBJ-13 | Complete TurboQuant | Partial: the deterministic MSE TurboQuant codec and its explicit build/activate/retire lifecycle exist with bounded 512-vector evidence, but its catalogue is rebuilt from cursor zero for every search ([POAM-028](../poam/rrflow-1.0-alpha/poam-028.md)). There is no inner-product variant, model KV-cache format, or quantized transfer profile. | The four parts in the [TurboQuant scope](../reference/vector/quantization-lifecycle.md#required-turboquant-scope) pass with canonical full-precision vectors and exact reranking authoritative: incremental persistent serving through E-04 and the stamped Arrow pipeline through F-03; the inner-product variant measured against the MSE variant and exact search on one corpus; KV-cache format selection only for an admitted model runtime that qualifies it; and a selected-data transfer profile whose quantized-only replicas never present approximate hits as exact. J-04 qualifies recall, memory, and latency claims. | E, F, G, H, J |
+| OBJ-14 | Provable plan-to-effect flow | Partial: installation, endpoint-configuration, restore and tail-repair plans are versioned and digest-bound, refuse changed inputs before any write, and survive real process kills and reopen with exactly-once replay. Attunement does not re-check its source binding before acting ([POAM-038](../poam/rrflow-1.0-alpha/poam-038.md)); no handoff or open-question record exists ([POAM-039](../poam/rrflow-1.0-alpha/poam-039.md)); no public operation lists or reads jobs, job transitions or receipts, and a memory read leaves no durable receipt ([POAM-040](../poam/rrflow-1.0-alpha/poam-040.md)); applied-result checks derive from the plan they verify, and the change, interrupt and restart tests stop at installation and storage ([POAM-041](../poam/rrflow-1.0-alpha/poam-041.md)). | For one installed estate and one real project, effect-bearing work (attunement phases, a project mutation, and a memory write and read) runs from a versioned plan bound to the project's source revision where it has one, its inventory digest, configuration, authorization and budgets, and is handed between two actors as an exact, digest-checked record. Each planned effect names the open questions it depends on: the engine refuses that effect while one is open, unrelated exploration and effects continue, and an answer is an authorized, audited operation that requires an explicit re-plan when it changes the plan. Before every mutation the engine re-reads the bound sources and refuses a stale plan with no write. Catalogue operations list, read and steer background jobs, and every job transition and memory write or read leaves a durable receipt readable after restart. Tests deliberately change a source, a configuration and an answer between plan and apply, kill the shipped `rrflow` at every job transition, restart and resume. An independent checker derives the expected effects from the approved plan alone and compares them with the observed artifacts and the read-back audit trail; the engine does not grade its own run. | D, H, I, J |
 
 OBJ-11 through OBJ-13 record the repository owner's direction of 2026-10-24.
 They bind work to existing gates and leave the
 [executable dependency spine](../roadmap/rrflow-1.0/executable-dependency-spine.md)
 order unchanged.
 
+OBJ-14 records the repository owner's direction of 2026-10-26. Proving the
+intended flow needs a versioned, source-bound plan and handoff; explicit
+decisions about which unanswered questions block an effect; observable
+background-job and memory receipts; stale-plan detection before mutations; and
+tests that change inputs, interrupt work, restart, and compare the
+implementation and audit trail with the approved plan. The owner decided that
+open questions are typed engine records that block only the effects that name
+them, and that the missing planned job list, read, status, resume, cancel,
+receipt-read and job-transition journal operations may be added to the
+operation catalogue under existing grants. That answers the
+[D-02a](../roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages)
+admission question for job control; global configuration operations remain
+undecided. Research may inform these designs, but a schema alone proves neither
+compliance nor research quality. OBJ-14 also binds existing gates and leaves
+the spine order unchanged.
+
 ## Alpha exit
 
-The baseline exists only when all thirteen objectives are complete and their linked
+The baseline exists only when all fourteen objectives are complete and their linked
 roadmap gates carry reproducible evidence. Optimization continues within the
 same frozen version until the repository owner makes an explicit release and
 version decision.

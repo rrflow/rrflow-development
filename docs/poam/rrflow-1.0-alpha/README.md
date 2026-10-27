@@ -47,4 +47,8 @@
 - [POAM-035 — installed storage failure and growth qualification](poam-035.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-035`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-035) — active parent-owned POA&M detail
 - [POAM-036 — DuckDB analytical interoperability is absent](poam-036.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-036`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-036) — active parent-owned POA&M detail
 - [POAM-037 — external knowledge providers and turnkey cloud synchronization](poam-037.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-037`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-037) — active parent-owned POA&M detail
+- [POAM-038 — attunement acts on an unverified source binding](poam-038.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-038`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-038) — active parent-owned POA&M detail
+- [POAM-039 — no versioned handoff or open-question record](poam-039.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-039`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-039) — active parent-owned POA&M detail
+- [POAM-040 — background jobs and memory receipts are not observable](poam-040.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-040`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-040) — active parent-owned POA&M detail
+- [POAM-041 — plan-conformance and change, interrupt and restart evidence stop at installation](poam-041.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-041`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-041) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->
