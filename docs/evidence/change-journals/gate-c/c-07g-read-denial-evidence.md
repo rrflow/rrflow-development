@@ -1,7 +1,7 @@
 # C-07g: retain the read-admission failure boundary
 
-**Status:** active implementation evidence; native qualification and candidate CI pending  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-read-denial-evidence`  
+**Status:** active implementation evidence; native qualification and candidate CI pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-read-denial-evidence`
 **Owner:** OBJ-02 / C-07g / POAM-035 / [PR162](https://github.com/rrflow/rrflow-development/pull/162)
 
 ## Brief and baseline
@@ -27,7 +27,7 @@ On Windows in the isolated `target/c07-denial-evidence-build` target with four b
 - `cargo test --offline --locked -p rrflow-cli --test installed_reopen sustained::installed_capacity_workload_smoke -- --ignored --exact`: one installed smoke passed before the final parser-only tightening.
 - `cargo clippy --offline --locked -p rrflow-cli --test installed_reopen -- -D warnings` and `cargo fmt --all -- --check`: passed after that tightening.
 
-The first documentation-policy check failed because the journal status did not declare an active record; the status was corrected and the generators and checks were rerun.
+The first documentation-policy check failed because the journal status did not declare an active record; the status was corrected and the generators and checks were rerun. A later staged review caught trailing spaces in this new journal that the unstaged diff check could not see; they were removed before the follow-up candidate push.
 
 The read grammar and retention tests are local deterministic oracles, not a native 100,000-record result. A new exact integrated candidate run must establish whether this diagnostic is reached and what it reports; a cause and successful recovery remain unknown. No native capacity matrix, complete profile, or 24-hour soak was run by this package. Candidate CI, integration, review and merge remain pending. C-07 and POAM-035 stay open, with no roadmap status change.
 
