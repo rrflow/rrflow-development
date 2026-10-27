@@ -1111,3 +1111,8 @@ The [post-reopen candidate launch](../../evidence/change-journals/gate-c/c-07g-r
 records a distinct warm-only 33d26f13 Windows characterization with enforced
 2-GiB/four-CPU allocation and partial acknowledgements. Its terminal outcome,
 full native profile and actual 24-hour soak remain open.
+
+The [post-reopen progress sample](../../evidence/change-journals/gate-c/c-07g-reopen-window-windows-progress.md)
+records complete initial readback, two forced reopens with matching replay
+receipt digests and a consecutive prefix of the new post-reopen readback. The
+second pass, measured workload and terminal outcome remain unproven.
