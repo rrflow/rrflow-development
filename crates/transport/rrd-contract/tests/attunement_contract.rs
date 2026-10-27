@@ -19,6 +19,24 @@ use serde::{Deserialize, Serialize};
 
 const CREATED_AT: u64 = 1_800_000_000_000;
 
+#[test]
+fn attunement_status_is_an_authenticated_read_operation() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    let endpoint = catalogue
+        .endpoints
+        .iter()
+        .find(|endpoint| endpoint.operation.as_str() == "attunement-read")
+        .expect("installed job status must have a public operation");
+    assert_eq!(endpoint.path, "/v1/attunement/read");
+    assert!(!endpoint.mutation);
+    assert_eq!(
+        endpoint.action.fixed_action(),
+        Some(SecurityAction::EstateRead)
+    );
+    assert_eq!(endpoint.request_type, "ReadAttunement");
+    assert_eq!(endpoint.response_type, "AttunementReadResult");
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TransitionVector {
@@ -588,6 +606,36 @@ fn golden_contract() -> GoldenAttunementContract {
         verification: verification(&succeeded, AttunementVerificationStatus::Passed),
         allowed_transitions: allowed_transitions(),
     }
+}
+
+#[test]
+fn attunement_read_binds_plan_and_status_and_rejects_unknown_claims() {
+    let fixture = golden_contract();
+    let result = rrd_contract::AttunementReadResult {
+        plan: fixture.attunement_plan,
+        status: fixture.status,
+        source_verification: rrd_contract::AttunementSourceVerification::NotChecked,
+    };
+    result.validate().unwrap();
+    let json = serde_json::to_value(&result).unwrap();
+    assert_eq!(json["source_verification"], "not_checked");
+    let decoded: rrd_contract::AttunementReadResult = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(decoded, result);
+    let mut unknown = json.clone();
+    unknown["source_verification"] = serde_json::json!("verified");
+    assert!(serde_json::from_value::<rrd_contract::AttunementReadResult>(unknown).is_err());
+    let mut extra = json;
+    extra["fresh"] = serde_json::json!(true);
+    assert!(serde_json::from_value::<rrd_contract::AttunementReadResult>(extra).is_err());
+    let mut mismatch = result;
+    mismatch.status.job.plan_sha256 = digest(999);
+    assert!(mismatch.validate().is_err());
+    assert!(rrd_contract::ReadAttunement {
+        contract_version: 0,
+        job_id: mismatch.status.job.id,
+    }
+    .validate()
+    .is_err());
 }
 
 #[test]

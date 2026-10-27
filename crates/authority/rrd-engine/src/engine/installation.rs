@@ -1151,6 +1151,7 @@ impl RrdEngine {
                 "installed security authority is missing".into(),
             ));
         }
+        engine.installed_project_root = Some(project.project().clone());
         Ok(engine)
     }
 
