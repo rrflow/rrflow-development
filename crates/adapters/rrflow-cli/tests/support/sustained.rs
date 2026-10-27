@@ -1061,6 +1061,19 @@ fn installed_capacity_workload_smoke() {
             assert!(!receipt.idempotent_replay);
             receipts.push(receipt.receipt_sha256);
         }
+        // For seed 73 and 16 all-one query dimensions, vector 1 of seed 7
+        // uniquely maximizes dot product: sum(81..=96) / 256 = 5.53125.
+        let winning_key = "seed-00000000000000000007";
+        let before = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
+        super::kill(child, clock);
+        let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+        work.client = client;
+        let after = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
+        assert_eq!(after.known_at_cursor, before.known_at_cursor);
+        assert_eq!(after.hits, before.hits);
+        let replay = work.execute(&work.seed_record(7).unwrap()).await.unwrap();
+        assert!(replay.idempotent_replay);
+        assert_eq!(replay.receipt_sha256, receipts[7]);
         let mut verified = 0;
         for first in (0..work.records).step_by(2) {
             let results = corpus::verify_window(

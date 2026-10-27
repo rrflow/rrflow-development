@@ -985,6 +985,127 @@ impl Workload {
         check(!result.execution.truncated, "capacity read truncated")?;
         Ok(result)
     }
+
+    /// Installed-smoke oracle: join a real exact vector-search hit to the
+    /// record and edges at the search's own read cursor.
+    pub(super) async fn verify_joined_search(
+        &self,
+        expected_key: &str,
+        expected_vector_ordinal: u32,
+        expected_revision: u64,
+        expected_score: f64,
+    ) -> Result<VectorSearchResult> {
+        let result = self
+            .client
+            .search_vectors(
+                &self.session,
+                SearchVectors {
+                    scope: self.scope(),
+                    valid_at: self.valid_at,
+                    collection_id: Some(id("capacity_documents")),
+                    vector_name: Some(id("body")),
+                    field: None,
+                    query: VectorSearchQuery::Dense {
+                        values: vec![1.0; self.dimensions as usize],
+                    },
+                    filter: None,
+                    metric: None,
+                    top_k: 1,
+                    mode: VectorSearchMode::Exact,
+                    max_storage_keys: self
+                        .query_budget
+                        .max_storage_keys
+                        .min(MAX_VECTOR_STORAGE_KEYS),
+                },
+                read_options("capacity-joined-search")?,
+            )
+            .await
+            .map_err(client_error)?;
+        check(
+            result.exact && result.access_path.as_str() == "exact_scan",
+            "search did not use exact production path",
+        )?;
+        check(result.hits.len() == 1, "search did not return one result")?;
+        let hit = &result.hits[0];
+        check(
+            hit.reference
+                == reference(
+                    "capacity_vector",
+                    &format!("vector-{expected_vector_ordinal}-{expected_key}"),
+                )
+                && hit.subject == reference("capacity_document", expected_key),
+            "search winner differs from independent oracle",
+        )?;
+        check(
+            (hit.score - expected_score).abs() < 0.000_001,
+            "search score differs from independent oracle",
+        )?;
+        let filter = format!(
+            "id = {}",
+            serde_json::to_string(expected_key).map_err(error)?
+        );
+        let record = self
+            .query(
+                "record:capacity_document",
+                &filter,
+                "id, body, revision",
+                Some(result.known_at_cursor),
+            )
+            .await?;
+        check(
+            record.known_at_cursor == result.known_at_cursor,
+            "record query did not use search cursor",
+        )?;
+        check(
+            record.rows.len() == 1,
+            "search winner has no unique record at search cursor",
+        )?;
+        check(
+            record.rows[0].values.get("body")
+                == Some(&QueryValue::String(self.body(expected_revision)))
+                && record.rows[0].values.get("revision")
+                    == Some(&QueryValue::Unsigned(expected_revision)),
+            "search winner record differs",
+        )?;
+        let filter = format!(
+            "from_id = {}",
+            serde_json::to_string(expected_key).map_err(error)?
+        );
+        let edges = self
+            .query(
+                "relation:capacity_link",
+                &filter,
+                "id, from_id, to_id, revision",
+                Some(result.known_at_cursor),
+            )
+            .await?;
+        check(
+            edges.known_at_cursor == result.known_at_cursor,
+            "relation query did not use search cursor",
+        )?;
+        check(
+            edges.rows.len() == self.edges_per_record as usize,
+            "search winner relation count differs at search cursor",
+        )?;
+        let mut expected = (0..self.edges_per_record)
+            .map(|n| format!("edge-{n}-{expected_key}"))
+            .collect::<BTreeSet<_>>();
+        for row in edges.rows {
+            let Some(QueryValue::String(edge)) = row.values.get("id") else {
+                return Err("search winner relation identity missing".into());
+            };
+            check(
+                expected.remove(edge)
+                    && row.values.get("from_id") == Some(&QueryValue::String(expected_key.into()))
+                    && row.values.get("to_id") == Some(&QueryValue::String("anchor".into()))
+                    && row.values.get("revision") == Some(&QueryValue::Unsigned(expected_revision)),
+                "search winner relation differs",
+            )?;
+        }
+        check(expected.is_empty(), "search winner relations incomplete")?;
+        Ok(result)
+    }
+
     pub async fn verify(&self, request: &Prepared) -> Result<()> {
         if request.kind == StorageLoadKind::MixedWrite {
             let mut view = self.clone();

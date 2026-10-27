@@ -1126,3 +1126,13 @@ The [read-admission attribution package](../../evidence/change-journals/gate-c/c
 corrects a verified classifier mismatch where read limits wrapped as storage
 admission lost their bounded resource category. It does not infer the original
 redacted cause; fresh full-size characterization and qualification remain open.
+
+The sustained corpus independently retrieves vectors by reference and reads
+records and relations via rrflowQL at the returned cursor, but does not exercise
+nearest-neighbor search, HNSW or TurboQuant quality at the full corpus. The
+installed smoke also lacked a joined search/readback/restart/replay oracle.
+Engine-local tests cover portions of indexed and quantized retrieval, while the
+inspected HTTP server and Rust client do not expose the corresponding index and
+quantization build/activation operations. [C-07's joined evidence sequence](../../roadmap/rrflow-1.0/gate-c-07.md#joined-rrflowdb-evidence-sequence)
+tracks the missing end-to-end and scale evidence; no part of C-07 is closed by
+this observation.
