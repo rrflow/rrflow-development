@@ -2,13 +2,14 @@
 
 package rrd
 
-// OpenAPI SHA-256: 06cd649d80ec2de5fe152da49daa00533d2e5dbf56e0321fea4d86f7b432a7b3
+// OpenAPI SHA-256: d9d95f65139470584c31e08cfc16495d33d689785e42b45b25637d25d0068bca
 
-const EndpointOpenAPIDocumentSHA256 = "06cd649d80ec2de5fe152da49daa00533d2e5dbf56e0321fea4d86f7b432a7b3"
+const EndpointOpenAPIDocumentSHA256 = "d9d95f65139470584c31e08cfc16495d33d689785e42b45b25637d25d0068bca"
 
 type OperationID string
 
 const (
+	OperationAttunementRead               OperationID = "attunement-read"
 	OperationAuditExport                  OperationID = "audit-export"
 	OperationAuditRead                    OperationID = "audit-read"
 	OperationBackupCreate                 OperationID = "backup-create"
@@ -67,6 +68,7 @@ const (
 )
 
 var endpoints = map[OperationID]Endpoint{
+	OperationAttunementRead:               {Method: "POST", Path: "/v1/attunement/read", Authentication: "session_bearer", Mutation: false},
 	OperationAuditExport:                  {Method: "POST", Path: "/v1/audit/export", Authentication: "session_bearer", Mutation: false},
 	OperationAuditRead:                    {Method: "POST", Path: "/v1/audit/read", Authentication: "session_bearer", Mutation: false},
 	OperationBackupCreate:                 {Method: "POST", Path: "/v1/backups", Authentication: "session_bearer", Mutation: true},

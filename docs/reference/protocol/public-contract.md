@@ -63,12 +63,18 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`06cd649d80ec2de5fe152da49daa00533d2e5dbf56e0321fea4d86f7b432a7b3`.
+`d9d95f65139470584c31e08cfc16495d33d689785e42b45b25637d25d0068bca`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
 the live export. Neither the protocol number nor the product version may be
 changed merely to describe implementation progress.
+
+`POST /v1/attunement/read` requires an authenticated session with EstateRead
+and a known job ID. It returns the stored engine plan and job together. Its
+`source_verification` is `not_checked`: this read does not inspect current
+project files, and the stored installation digest is not a freshness guarantee.
+The operation does not discover jobs or advance, resume, or replan work.
 
 The same document projects the kernel-owned signal catalogue. It loads a
 private generated Rust snapshot, exposes it as `x-rrd-signal-catalogue`, and
