@@ -1106,3 +1106,8 @@ verifications, and two forced reopens with matching replay receipt digests,
 then failing with a redacted storage-admission resource-exhaustion classification
 before any measured segment. The specific denied resource is unknown. This run
 is not the full profile or a 24-hour soak and does not close the gap.
+
+The [post-reopen candidate launch](../../evidence/change-journals/gate-c/c-07g-reopen-window-windows-launch.md)
+records a distinct warm-only 33d26f13 Windows characterization with enforced
+2-GiB/four-CPU allocation and partial acknowledgements. Its terminal outcome,
+full native profile and actual 24-hour soak remain open.
