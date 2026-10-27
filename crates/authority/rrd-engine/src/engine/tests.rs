@@ -98,6 +98,7 @@ mod knowledge;
 mod lifecycle;
 mod memory_estate;
 mod native_inference;
+mod observation_source;
 mod query_admission;
 mod query_transaction;
 mod reasoning_budget;
