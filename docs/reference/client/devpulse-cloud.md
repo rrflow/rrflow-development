@@ -33,7 +33,7 @@ endpoints, account federation or available service APIs:
 |---|---|---|
 | Local RRFlow and Connectome | Open-source engine with one estate per project, usable without an account. Connectome offers guided operation and learning from visible evidence. | D-01/C-07 and H-06/J installed product and client acceptance. First-party licence texts/notices remain a J-05/POAM-013 release requirement. |
 | rrflow.ai | The hosted reasoning engine: optional managed access to hosted project engines, explicitly selected synchronization including access from another authorized device, and the evidence views below. | H-07 account, instance, transfer and real-service acceptance; remote access is not proof of two-way synchronization. |
-| rroflow.ai | The learning service: optional supervised, unsupervised and recursive learning over authorized datasets, experiments and qualified improvement artifacts, exposed through Connectome with the learning-results view. | G-06/I-03/I-07 learning acceptance plus H-07 transfer/account controls for selected data. Upload and artifact activation require distinct authorization. |
+| rroflow.ai | The intended AI-observability and learning service: inspect authorized provider activity, signals and tags, and optional supervised, unsupervised and recursive learning over authorized datasets, experiments and qualified improvement artifacts. | I-01/I-04 host-event admission, H-05 evidence, G-06/I-03/I-07 learning acceptance and H-07 transfer/account controls. Collection, upload, training and artifact activation are distinct authorized capabilities. This service and collection path are not yet implemented. |
 | shippin.cloud | First hosted destination for local RRFlow bidirectional synchronization and managed project engines/data; also the private development space for toolchains, containers/VMs and UI previews. | H-07a/b/c/d/g identity, engine distribution and real sync acceptance; H-07e/f adds the distinct devspace and file/environment proof. A synchronized database is not a working devspace. |
 | Operator-controlled homelab | Self-hosted engine and optional development/learning capabilities under the same admitted public profiles, including self-hosted rrflow.ai and rroflow.ai service software. | Independent identity, recovery and transfer qualification with managed services unavailable. |
 
@@ -152,8 +152,10 @@ an extension cannot read outside its grant or change engine records.
 
 ### Turnkey rroflow.ai handoff
 
-rroflow.ai remains an optional learning destination, not a default indexing
-prerequisite. Under Connectome's existing Learning and Services areas, separately
+rroflow.ai remains an optional observability and learning destination, not a
+default indexing prerequisite. Its intended provider-activity ingestion and
+signal/tag organization follow the [provider-observation roadmap](../../roadmap/rrflow-1.0/gate-i.md#provider-observation-for-rroflow).
+Under Connectome's existing Learning and Services areas, separately
 show local engine readiness, account binding, authorized dataset transfer,
 remote experiment state, returned artifact verification and local activation.
 Logging in, transferring a project or opening a cloud page proves none of the
