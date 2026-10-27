@@ -14,6 +14,13 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [draft/ready CI isolation candidate](../../evidence/change-journals/gate-c/c-07-ci-draft-ready-isolation.md)
+records PR154 run 40574700979: every partition was cancelled and the required
+gate failed; a skipped draft run followed. The old common concurrency group
+also permits a delayed draft event to cancel a newer ready candidate. The exact
+event-order cause of that run is not established. Candidate CI must verify the
+new scheduling boundary; it does not clear native C-07 qualification.
+
 The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
 retains the indexed source `7c329d49` native failure: all 100000 corpus writes
 were acknowledged but only 44556 were independently verified before the
