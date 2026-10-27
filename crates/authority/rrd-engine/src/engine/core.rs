@@ -80,6 +80,9 @@ pub struct RrdEngine {
     pub(crate) estate_configuration: EstateConfiguration,
     pub(crate) installed_estate: Option<InstalledEstateIdentity>,
     pub(crate) installed_deployment: Option<DeploymentProfile>,
+    /// The admitted project root of an installed estate. Retaining this
+    /// capability does not authorize reads or establish a source snapshot.
+    pub(crate) installed_project_root: Option<AnchoredPath>,
     /// The managed persistent container `.rrflow/rrd` of an installed estate.
     /// Backups and restore staging roots live beside its storage roots; it is
     /// `None` for component and test roots opened outside an installation.
@@ -259,6 +262,7 @@ impl RrdEngine {
             estate_configuration: EstateConfiguration::default(),
             installed_estate: None,
             installed_deployment: None,
+            installed_project_root: None,
             installed_storage_container: None,
             objects: ObjectStoreBox::new(objects),
             storage_root: Some(root),
@@ -302,6 +306,7 @@ impl RrdEngine {
             estate_configuration: EstateConfiguration::default(),
             installed_estate: None,
             installed_deployment: None,
+            installed_project_root: None,
             installed_storage_container: None,
             objects: ObjectStoreBox::new(MemoryObjectStore::new()),
             storage_root: None,
