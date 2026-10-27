@@ -177,3 +177,113 @@ fn read_view_and_independent_batch_charges_release_with_their_actual_owners() {
     ));
     assert_eq!(database.read_view_ownership().unwrap(), (0, 0));
 }
+
+#[test]
+fn shared_generation_is_charged_once_until_its_last_view_releases() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut database = Database::create(&directory.path().join("shared-pins")).unwrap();
+    database
+        .write_owned(
+            WriteBatch::new(vec![Mutation::Put {
+                key: b"record".to_vec(),
+                value: vec![7; 4096],
+            }])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+    let first = view(&database);
+    let pinned = first.evidence().pinned_bytes;
+    assert!(pinned > 0);
+    let mut bounded = request(&database);
+    bounded.budget.max_pinned_bytes = pinned;
+    let mut second = database.begin_projected_read(bounded).unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (2, pinned));
+    assert_eq!(
+        second.next_batch().unwrap().unwrap().value(0),
+        Some(vec![7; 4096].as_slice())
+    );
+    second.cancel().unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (1, pinned));
+    drop(first);
+    assert_eq!(database.read_view_ownership().unwrap(), (0, 0));
+}
+
+#[test]
+fn shared_segments_do_not_hide_memtable_pins_or_new_generations() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut database = Database::create(&directory.path().join("distinct-pins")).unwrap();
+    database
+        .write_owned(
+            WriteBatch::new(vec![Mutation::Put {
+                key: b"record".to_vec(),
+                value: b"old".to_vec(),
+            }])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+    let mut old = view(&database);
+    let old_pinned = old.evidence().pinned_bytes;
+    database
+        .write_owned(
+            WriteBatch::new(vec![Mutation::Put {
+                key: b"record".to_vec(),
+                value: vec![3; 4096],
+            }])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    let mut too_small = request(&database);
+    too_small.budget.max_pinned_bytes = old_pinned;
+    assert!(matches!(
+        database.begin_projected_read(too_small),
+        Err(Error::ProjectedReadLimit {
+            resource: ProjectedReadResource::PinnedBytes,
+            ..
+        })
+    ));
+    assert_eq!(database.read_view_ownership().unwrap(), (1, old_pinned));
+    let with_memtable = view(&database);
+    let full = with_memtable.evidence().pinned_bytes;
+    assert!(full > old_pinned);
+    assert_eq!(database.read_view_ownership().unwrap(), (2, full));
+    let mut third_request = request(&database);
+    third_request.budget.max_active_views = 3;
+    let second_memtable = database.begin_projected_read(third_request).unwrap();
+    assert_eq!(
+        database.read_view_ownership().unwrap(),
+        (3, full + (full - old_pinned))
+    );
+    drop(with_memtable);
+    assert_eq!(database.read_view_ownership().unwrap(), (2, full));
+    drop(second_memtable);
+    assert_eq!(database.read_view_ownership().unwrap(), (1, old_pinned));
+    database.flush_memtable(2).unwrap();
+    let new_generation = view(&database);
+    let new_pinned = new_generation.evidence().pinned_bytes;
+    assert_eq!(
+        database.read_view_ownership().unwrap(),
+        (2, old_pinned + new_pinned)
+    );
+    drop(new_generation);
+    let mut bounded = request(&database);
+    bounded.budget.max_pinned_bytes = old_pinned.max(new_pinned);
+    assert!(matches!(
+        database.begin_projected_read(bounded),
+        Err(Error::ProjectedReadLimit {
+            resource: ProjectedReadResource::PinnedBytes,
+            ..
+        })
+    ));
+    assert_eq!(database.read_view_ownership().unwrap(), (1, old_pinned));
+    assert_eq!(
+        old.next_batch().unwrap().unwrap().value(0),
+        Some(b"old".as_slice())
+    );
+    old.cancel().unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (0, 0));
+}
