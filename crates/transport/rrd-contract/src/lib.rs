@@ -23,6 +23,7 @@ mod knowledge_tree;
 mod memory_context;
 mod memory_estate;
 mod model_manifest;
+mod operation_reference;
 mod platform;
 mod query_export;
 mod read;
@@ -164,6 +165,9 @@ pub use model_manifest::{
     MAX_ROUTER_THREADS, MAX_ROUTER_TOKENIZER_ARTIFACT_BYTES,
     ROUTER_MODEL_MANIFEST_CONTRACT_VERSION,
 };
+pub use operation_reference::{
+    operation_families, referenced_operations, OperationFamily, OperationFamilyDescriptor,
+};
 pub use platform::{PlatformTermDefinition, PlatformTermRole, PLATFORM_TERMS};
 pub use query_export::{
     ExportQuery, QueryExport, QueryExportSource, MAX_PARQUET_EXPORT_BYTES,
@@ -237,7 +241,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "06cd649d80ec2de5fe152da49daa00533d2e5dbf56e0321fea4d86f7b432a7b3";
+    "b0b7a6248e37ee650f95f968f6b279ebd2b65a1a773f69cee8b1e684502ab3ff";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3358,6 +3362,12 @@ pub struct EndpointDescriptor {
     pub action: EndpointAction,
     pub request_type: String,
     pub response_type: String,
+    /// The reference group; it carries no authorization meaning.
+    pub family: OperationFamily,
+    /// One plain line naming what the operation does.
+    pub summary: String,
+    /// Whole sentences describing what the engine implements for it.
+    pub description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -3368,6 +3378,9 @@ pub struct WebSocketEndpointDescriptor {
     pub authentication: EndpointAuthentication,
     pub connect_action: SecurityAction,
     pub frame_type: String,
+    pub family: OperationFamily,
+    pub summary: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -3377,6 +3390,9 @@ pub struct EndpointCatalogue {
     pub protocol_version: u16,
     pub endpoints: Vec<EndpointDescriptor>,
     pub websocket_endpoints: Vec<WebSocketEndpointDescriptor>,
+    /// Every operation family, in reference order, with its title and
+    /// description.
+    pub families: Vec<OperationFamilyDescriptor>,
 }
 
 impl EndpointCatalogue {
@@ -3421,6 +3437,13 @@ impl EndpointCatalogue {
             if endpoint.mutation && endpoint.method == HttpMethod::Get {
                 return invalid("mutating endpoints may not use GET");
             }
+            if !operation_reference::valid_summary(&endpoint.summary)
+                || !operation_reference::valid_description(&endpoint.description)
+            {
+                return invalid(
+                    "endpoint descriptor needs a one-line summary and a description of whole sentences",
+                );
+            }
         }
         if self
             .endpoints
@@ -3440,6 +3463,8 @@ impl EndpointCatalogue {
                 || endpoint.frame_type.len() > 128
                 || !endpoint.frame_type.is_ascii()
                 || endpoint.authentication != EndpointAuthentication::SessionBearer
+                || !operation_reference::valid_summary(&endpoint.summary)
+                || !operation_reference::valid_description(&endpoint.description)
             {
                 return invalid("WebSocket endpoint descriptor is invalid");
             }
@@ -3455,6 +3480,33 @@ impl EndpointCatalogue {
             .any(|pair| pair[0].operation > pair[1].operation)
         {
             return invalid("WebSocket endpoint descriptors must be sorted by operation");
+        }
+        if self.families.is_empty() || self.families.len() > 32 {
+            return invalid("endpoint catalogue must describe 1..=32 operation families");
+        }
+        let mut families = BTreeSet::new();
+        for family in &self.families {
+            if !families.insert(family.family)
+                || !operation_reference::valid_summary(&family.title)
+                || !operation_reference::valid_description(&family.description)
+            {
+                return invalid(
+                    "operation families must be unique with a one-line title and a description",
+                );
+            }
+        }
+        if self
+            .endpoints
+            .iter()
+            .map(|endpoint| endpoint.family)
+            .chain(
+                self.websocket_endpoints
+                    .iter()
+                    .map(|endpoint| endpoint.family),
+            )
+            .any(|family| !families.contains(&family))
+        {
+            return invalid("every operation must belong to a described family");
         }
         Ok(())
     }
@@ -4035,14 +4087,13 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
         protocol: PROTOCOL.into(),
         protocol_version: PROTOCOL_VERSION,
         endpoints,
-        websocket_endpoints: vec![WebSocketEndpointDescriptor {
-            operation: CanonicalId::new("websocket-connect")
-                .expect("static WebSocket operation is canonical"),
-            path: "/v1/ws".into(),
-            authentication: EndpointAuthentication::SessionBearer,
-            connect_action: SecurityAction::WebSocketConnect,
-            frame_type: "WebSocketFrame".into(),
-        }],
+        websocket_endpoints: vec![websocket_endpoint(
+            "websocket-connect",
+            "/v1/ws",
+            SecurityAction::WebSocketConnect,
+            "WebSocketFrame",
+        )],
+        families: operation_families(),
     };
     debug_assert!(catalogue.validate().is_ok());
     catalogue
@@ -4082,7 +4133,15 @@ pub fn openapi_document() -> Result<serde_json::Value> {
         );
         operation.insert(
             "summary".into(),
-            serde_json::Value::String(format!("RRD {}", descriptor.operation)),
+            serde_json::Value::String(descriptor.summary.clone()),
+        );
+        operation.insert(
+            "description".into(),
+            serde_json::Value::String(descriptor.description.clone()),
+        );
+        operation.insert(
+            "tags".into(),
+            serde_json::json!([descriptor.family.as_str()]),
         );
         operation.insert(
             "x-rrd-action".into(),
@@ -4176,6 +4235,15 @@ pub fn openapi_document() -> Result<serde_json::Value> {
             "version": format!("{PROTOCOL_VERSION}.0.0")
         },
         "servers": [{"url": "http://127.0.0.1:9477"}],
+        "tags": catalogue
+            .families
+            .iter()
+            .map(|family| serde_json::json!({
+                "name": family.family.as_str(),
+                "description": family.description,
+                "x-rrd-title": family.title
+            }))
+            .collect::<Vec<_>>(),
         "paths": paths,
         "components": {
             "schemas": {
@@ -4476,6 +4544,8 @@ fn endpoint(
     request_type: &str,
     response_type: &str,
 ) -> EndpointDescriptor {
+    let reference = operation_reference::operation_reference(operation)
+        .expect("every catalogue operation has reference text");
     EndpointDescriptor {
         operation: CanonicalId::new(operation).expect("static endpoint operation is canonical"),
         method,
@@ -4485,6 +4555,29 @@ fn endpoint(
         action: EndpointAction::fixed(action),
         request_type: request_type.into(),
         response_type: response_type.into(),
+        family: reference.family,
+        summary: reference.summary.into(),
+        description: reference.description.into(),
+    }
+}
+
+fn websocket_endpoint(
+    operation: &str,
+    path: &str,
+    connect_action: SecurityAction,
+    frame_type: &str,
+) -> WebSocketEndpointDescriptor {
+    let reference = operation_reference::operation_reference(operation)
+        .expect("every catalogue operation has reference text");
+    WebSocketEndpointDescriptor {
+        operation: CanonicalId::new(operation).expect("static WebSocket operation is canonical"),
+        path: path.into(),
+        authentication: EndpointAuthentication::SessionBearer,
+        connect_action,
+        frame_type: frame_type.into(),
+        family: reference.family,
+        summary: reference.summary.into(),
+        description: reference.description.into(),
     }
 }
 
