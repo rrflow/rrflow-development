@@ -81,10 +81,13 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
     if message == "Storage(\"substrate: control state exceeds one MiB\")" {
         return Some("control-state-size");
     }
-    // Read pressure can occur after publication, so the engine intentionally
-    // keeps Storage's Internal classification. This label is diagnostic only;
-    // the existing abort/readback evidence still determines durable outcome.
-    if let Some(detail) = message.strip_prefix("Storage(\"") {
+    // Read pressure may be wrapped as Internal storage or ResourceExhausted
+    // storage admission depending on the engine boundary. Labels never infer
+    // durable effects; abort/readback evidence remains authoritative.
+    if let Some(detail) = message
+        .strip_prefix("Storage(\"")
+        .or_else(|| message.strip_prefix("StorageAdmission(\""))
+    {
         for (prefix, label) in [
             ("projected-read active_views limit ", "read-active-views"),
             ("projected-read ranges limit ", "read-ranges"),
@@ -111,6 +114,15 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
                 "read-retained-output-bytes",
             ),
             ("source page allocation limit ", "read-source-pages"),
+            ("segment open-file limit ", "read-segment-handles"),
+        ] {
+            if detail.starts_with(prefix) {
+                return Some(label);
+            }
+        }
+    }
+    if let Some(detail) = message.strip_prefix("Storage(\"") {
+        for (prefix, label) in [
             ("transaction active owners limit ", "transaction-active"),
             (
                 "transaction owned buffer bytes limit ",
@@ -143,6 +155,7 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
             ),
             ("maintenance elapsed_ms limit ", "maintenance-elapsed"),
             ("maintenance l0_segments limit ", "maintenance-l0-segments"),
+            ("checkpoint entry limit ", "storage-admission-checkpoint"),
             ("transaction admission ", "storage-admission-queue"),
             ("transaction request ", "storage-admission-request"),
             ("transaction ", "storage-admission-transaction"),
@@ -228,6 +241,17 @@ fn diagnostic_labels_attribute_read_pressure_without_changing_internal_semantics
         });
         assert_eq!(error.kind(), rrd_engine::ServiceErrorKind::Internal);
         assert_eq!(engine_error_label(&error.to_string()), Some(label));
+        let read_error = rrd_store::Error::ProjectedReadLimit {
+            resource,
+            limit: 5,
+            observed: 6,
+        };
+        let admission = rrd_engine::ServiceError::StorageAdmission(read_error.to_string());
+        assert_eq!(
+            admission.kind(),
+            rrd_engine::ServiceErrorKind::ResourceExhausted
+        );
+        assert_eq!(engine_error_label(&admission.to_string()), Some(label));
         assert_eq!(
             engine_error_label(&format!(
                 "Storage(\"projected-read {} limit private secret\")",
@@ -281,6 +305,54 @@ fn diagnostic_labels_attribute_read_pressure_without_changing_internal_semantics
     assert_eq!(
         engine_error_label("Storage(\"private secret\")"),
         Some("storage")
+    );
+}
+
+#[test]
+fn read_admission_uses_real_store_error_labels_without_private_details() {
+    let cases = [
+        (
+            rrd_store::Error::ProjectedReadLimit {
+                resource: rrd_store::ProjectedReadResource::Runs,
+                limit: 5,
+                observed: 6,
+            },
+            "read-runs",
+        ),
+        (
+            rrd_store::Error::SourcePageLimit {
+                limit: 5,
+                observed: 6,
+            },
+            "read-source-pages",
+        ),
+        (
+            rrd_store::Error::SegmentHandleLimit {
+                limit: 5,
+                observed: 6,
+            },
+            "read-segment-handles",
+        ),
+        (
+            rrd_store::Error::CheckpointLimit {
+                limit: 5,
+                observed: 6,
+            },
+            "storage-admission-checkpoint",
+        ),
+    ];
+    for (cause, expected) in cases {
+        let error = rrd_engine::ServiceError::StorageAdmission(cause.to_string());
+        assert_eq!(
+            error.kind(),
+            rrd_engine::ServiceErrorKind::ResourceExhausted
+        );
+        assert_eq!(engine_error_label(&error.to_string()), Some(expected));
+        assert!(format!("api-resourceexhausted-{expected}:{}", "a".repeat(64)).len() <= 128);
+    }
+    assert_eq!(
+        engine_error_label("StorageAdmission(\"projected-read runs_private limit secret\")"),
+        Some("storage-admission")
     );
 }
 

@@ -1114,3 +1114,15 @@ fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
 The initial 896 setup acknowledgements are not independent full readback or
 qualification. Preserve this source's terminal evidence; no actual 24-hour
 soak or gap closure is claimed.
+
+The [post-reopen readback package](../../evidence/change-journals/gate-c/c-07g-reopen-window-readback.md)
+replaces an unobserved serial full-corpus verification after the final forced
+reopen with bounded, ordered readback windows, joined-session rotation and
+separate progress bound to the reopen receipt. Local installed smoke passes;
+the failed 100000-record campaign's exact admission cause remains unknown and
+full native capacity and 24-hour qualification remain open.
+
+The [read-admission attribution package](../../evidence/change-journals/gate-c/c-07g-read-admission-labels.md)
+corrects a verified classifier mismatch where read limits wrapped as storage
+admission lost their bounded resource category. It does not infer the original
+redacted cause; fresh full-size characterization and qualification remain open.

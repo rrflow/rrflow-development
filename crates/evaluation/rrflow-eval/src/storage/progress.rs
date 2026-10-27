@@ -36,6 +36,12 @@ pub enum ProgressEvent {
         ordinal: u64,
         effect_sha256: Digest,
     },
+    ReopenedCorpusVerified {
+        point: Id,
+        seed: u64,
+        ordinal: u64,
+        effect_sha256: Digest,
+    },
     LifecycleIntent {
         point: Id,
         seed: u64,
@@ -293,6 +299,8 @@ pub(super) fn backup_start_digest(
 
 #[derive(Default)]
 struct PointAudit {
+    reopened_corpus_verified: u64,
+    reopened_corpus_digest: Option<Digest>,
     files: u64,
     bytes: u64,
     pages: u64,
@@ -336,6 +344,34 @@ impl ProgressAudit {
 
     fn observe(&mut self, campaign: &StorageCampaign, event: &ProgressEvent) -> Result<()> {
         match event {
+            ProgressEvent::ReopenedCorpusVerified {
+                point,
+                seed,
+                ordinal,
+                effect_sha256,
+            } => {
+                let state = self
+                    .points
+                    .get_mut(&(point.clone(), *seed))
+                    .ok_or("reopened corpus progress names an undeclared point or seed")?;
+                require(
+                    *ordinal == state.reopened_corpus_verified
+                        && *ordinal < campaign.allocation.records.get(),
+                    "reopened corpus progress is out of order or exceeds the corpus",
+                )?;
+                let previous = match state.reopened_corpus_digest.take() {
+                    Some(value) => value,
+                    None => digest(
+                        "c07g.reopened-corpus",
+                        &(*seed, campaign.allocation.records.get()),
+                    )?,
+                };
+                state.reopened_corpus_digest = Some(digest(
+                    "c07g.reopened-corpus",
+                    &(previous, *ordinal, effect_sha256),
+                )?);
+                state.reopened_corpus_verified += 1;
+            }
             ProgressEvent::BackupStarted {
                 segment,
                 point,
@@ -498,6 +534,21 @@ impl ProgressAudit {
 
     pub(super) fn bind_segment(&mut self, segment: &SustainedSegment) -> Result<()> {
         self.check_readback_order(&segment.point, segment.seed, segment.finished_ns)?;
+        if let Some(reopens) = &segment.reopens {
+            let state = self
+                .points
+                .get(&(segment.point.clone(), segment.seed))
+                .ok_or("reopen segment names undeclared point or seed")?;
+            // Older campaigns did not emit this optional progress. Once present,
+            // the complete sequence must agree with the accepted lane receipt.
+            if let Some(progress_digest) = &state.reopened_corpus_digest {
+                require(
+                    state.reopened_corpus_verified == reopens.corpus_records_verified
+                        && *progress_digest == reopens.corpus_readback_sha256,
+                    "reopened corpus receipt differs from observed readback progress",
+                )?;
+            }
+        }
         if let Some(started_ns) = segment.backup_started_ns {
             self.backup_starts_bound = Some(backup_start_digest(
                 &self.backup_starts_bound,
@@ -601,6 +652,67 @@ fn verify(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reopened_corpus_progress_roundtrips_without_claiming_completion() {
+        let (campaign, _) = super::super::sustained::tests::fixture();
+        let event = ProgressEvent::ReopenedCorpusVerified {
+            point: campaign.points[0].id.clone(),
+            seed: campaign.seeds[0],
+            ordinal: 0,
+            effect_sha256: digest("test-effect", &0u64).unwrap(),
+        };
+        let bytes = serde_json::to_vec(&event).unwrap();
+        let decoded: ProgressEvent = serde_json::from_slice(&bytes).unwrap();
+        assert!(matches!(
+            decoded,
+            ProgressEvent::ReopenedCorpusVerified { ordinal: 0, .. }
+        ));
+        assert!(String::from_utf8(bytes)
+            .unwrap()
+            .contains("reopened_corpus_verified"));
+        let mut audit = ProgressAudit::new(&campaign);
+        let gap = ProgressEvent::ReopenedCorpusVerified {
+            point: campaign.points[0].id.clone(),
+            seed: campaign.seeds[0],
+            ordinal: 1,
+            effect_sha256: digest("test-effect", &1u64).unwrap(),
+        };
+        assert!(audit.observe(&campaign, &gap).is_err());
+        audit.observe(&campaign, &event).unwrap();
+        assert!(
+            audit.observe(&campaign, &event).is_err(),
+            "duplicate cannot count twice"
+        );
+        assert!(
+            audit.observe(&campaign, &gap).is_err(),
+            "readback cannot exceed corpus"
+        );
+        let mut segment = super::super::sustained::tests::fixture().1;
+        let expected = audit.points[&(segment.point.clone(), segment.seed)]
+            .reopened_corpus_digest
+            .clone()
+            .unwrap();
+        segment.reopens = Some(ReopenEvidence {
+            started_ns: 0,
+            finished_ns: 1,
+            corpus_records_verified: 1,
+            corpus_readback_sha256: expected,
+            cycles: vec![],
+        });
+        audit.bind_segment(&segment).unwrap();
+        segment.reopens.as_mut().unwrap().corpus_records_verified = 0;
+        assert!(
+            audit.bind_segment(&segment).is_err(),
+            "partial progress cannot bind a complete lane"
+        );
+        segment.reopens.as_mut().unwrap().corpus_records_verified = 1;
+        segment.reopens.as_mut().unwrap().corpus_readback_sha256 = digest("wrong", &1u64).unwrap();
+        assert!(
+            audit.bind_segment(&segment).is_err(),
+            "wrong digest cannot bind"
+        );
+    }
 
     #[test]
     fn completed_progress_requires_the_exact_backup_start_in_the_segment_chain() {
