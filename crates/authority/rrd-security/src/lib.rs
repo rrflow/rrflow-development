@@ -782,7 +782,9 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
                 reached_control_tail = true;
                 break;
             }
+            let mut consumed = 0;
             for entry in &entries {
+                consumed += 1;
                 cursor = entry.sequence;
                 if entry.action == "security.audit" {
                     records.push((entry.sequence, decode_audit(entry)?));
@@ -791,7 +793,7 @@ impl<'a, E: StorageEngine> SecurityRepository<'a, E> {
                     }
                 }
             }
-            if entries.len() < limit {
+            if entries.len() < limit && consumed == entries.len() {
                 reached_control_tail = true;
                 break;
             }

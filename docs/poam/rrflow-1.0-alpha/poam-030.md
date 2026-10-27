@@ -10,6 +10,12 @@ independently.
 
 ## Observed deficiency
 
+The [candidate correction](../../evidence/change-journals/gate-h/h-05-audit-partial-page.md)
+tracks complete page consumption before declaring the control tail. Its local
+memory, persistent-reopen and engine read/export tests pass for the tested page
+sizes. Candidate CI and final closure reconciliation remain pending; this
+deficiency and the separate POAM-029 remain open.
+
 `SecurityRepository::audit_since` (`crates/authority/rrd-security/src/lib.rs`)
 reads control-journal pages of `limit` entries and keeps audit records until it
 holds `limit` of them. It marks the control tail as reached whenever the last
