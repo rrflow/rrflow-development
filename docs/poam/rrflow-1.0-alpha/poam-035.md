@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
+retains the indexed source `7c329d49` native failure: all 100000 corpus writes
+were acknowledged but only 44556 were independently verified before the
+unchanged two-hour setup deadline. No measured segment or 24-hour soak ran.
+Sharing immutable manifest ownership removes per-view copies in the candidate;
+its installed effect on this failure remains unmeasured. Full profile and
+exact-candidate qualification remain open.
+
 Current scheduling follows the [parent-authorized dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md)
 and [staged C-07 qualification](../../roadmap/rrflow-1.0/gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
 Final growth/24-hour qualification remains open but does not prohibit D-02's
@@ -1084,6 +1092,13 @@ preserving final file/volume settlement, fresh capacity denial and every
 resource bound. The scheduling regression fails before the change and passes
 afterward; actual repeated native APFS acceptance remains required.
 
+The [APFS refill-probe repair](../../evidence/change-journals/gate-c/c-07f-apfs-refill-probe.md)
+records manifest candidate `ab078b83` failing the fresh `current_before_create`
+APFS case during owned pressure preparation at the existing 25-second limit.
+The repair reduces redundant failed refill probes while retaining settlement
+and a fresh native one-byte denial. Local fixture tests pass; native candidate
+acceptance and the full sustained profile remain open.
+
 
 The [indexed native candidate](../../evidence/change-journals/gate-c/c-07g-indexed-native-candidate.md)
 integrates PR141 point-range indexing and PR140 APFS settlement with PR139's
@@ -1099,3 +1114,15 @@ fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
 The initial 896 setup acknowledgements are not independent full readback or
 qualification. Preserve this source's terminal evidence; no actual 24-hour
 soak or gap closure is claimed.
+
+The [post-reopen readback package](../../evidence/change-journals/gate-c/c-07g-reopen-window-readback.md)
+replaces an unobserved serial full-corpus verification after the final forced
+reopen with bounded, ordered readback windows, joined-session rotation and
+separate progress bound to the reopen receipt. Local installed smoke passes;
+the failed 100000-record campaign's exact admission cause remains unknown and
+full native capacity and 24-hour qualification remain open.
+
+The [read-admission attribution package](../../evidence/change-journals/gate-c/c-07g-read-admission-labels.md)
+corrects a verified classifier mismatch where read limits wrapped as storage
+admission lost their bounded resource category. It does not infer the original
+redacted cause; fresh full-size characterization and qualification remain open.
