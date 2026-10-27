@@ -1,10 +1,63 @@
 use std::collections::BTreeMap;
 
 use rrd_contract::{
-    CanonicalId, DataCatalogueIdentity, DataLogicalModel, DataPropertySchema, DataRecordSchema,
-    DataReference, DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataTarget, DataValueType,
-    DataVectorValue, TransactionMutation,
+    CanonicalId, DataCategorySchema, DataCategoryTargets, DataDomainSchema, DataEstateOrganisation,
+    DataLogicalModel, DataPropertySchema, DataRecordSchema, DataReference, DataSchemaMode,
+    DataSchemaRegistry, DataTableSchema, DataTagCardinality, DataTagReference, DataTagSchema,
+    DataTarget, DataValueType, DataVectorValue, TransactionMutation,
 };
+
+/// One domain tree, one category and a kind placed and tagged in it.
+fn organised(document: &CanonicalId) -> DataEstateOrganisation {
+    let id = |value: &str| CanonicalId::new(value).unwrap();
+    DataEstateOrganisation {
+        domains: BTreeMap::from([
+            (
+                id("knowledge"),
+                DataDomainSchema {
+                    title: "Knowledge".into(),
+                    description: "What the project knows".into(),
+                    parent: None,
+                },
+            ),
+            (
+                id("articles"),
+                DataDomainSchema {
+                    title: "Articles".into(),
+                    description: String::new(),
+                    parent: Some(id("knowledge")),
+                },
+            ),
+        ]),
+        categories: BTreeMap::from([(
+            id("lifecycle"),
+            DataCategorySchema {
+                title: "Lifecycle".into(),
+                description: String::new(),
+                targets: DataCategoryTargets::KindsAndRecords,
+                cardinality: DataTagCardinality::Single,
+                open: true,
+                tags: BTreeMap::from([(
+                    id("active"),
+                    DataTagSchema {
+                        title: "Active".into(),
+                        description: String::new(),
+                    },
+                )]),
+            },
+        )]),
+        kind_domains: BTreeMap::from([(document.clone(), id("articles"))]),
+        collection_domains: BTreeMap::from([(id("article-text"), id("articles"))]),
+        kind_tags: BTreeMap::from([(
+            document.clone(),
+            [DataTagReference {
+                category: id("lifecycle"),
+                tag: id("active"),
+            }]
+            .into(),
+        )]),
+    }
+}
 
 #[test]
 fn public_and_canonical_catalogues_round_trip_without_losing_model_or_mode() {
@@ -13,10 +66,7 @@ fn public_and_canonical_catalogues_round_trip_without_losing_model_or_mode() {
     let public = DataSchemaRegistry {
         revision: 7,
         migration: "round-trip unified catalogue".into(),
-        catalogue: DataCatalogueIdentity {
-            namespace: CanonicalId::new("project").unwrap(),
-            database: CanonicalId::new("runtime").unwrap(),
-        },
+        organisation: organised(&document),
         tables: BTreeMap::from([
             (
                 document.clone(),

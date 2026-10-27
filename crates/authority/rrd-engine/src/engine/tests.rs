@@ -4,10 +4,10 @@ use super::{
 };
 use rrd_contract::{
     AbortTransaction, AuditDecision, AuditPhase, BeginTransaction, CanonicalId, CloseSession,
-    CommitTransaction, CorrelationId, CreateSession, DataCatalogueIdentity, EnsureVectorCollection,
-    NamedVectorDefinition, PreviewTransaction, RenewSession, RequestContext, ResourceId,
-    ResourceKind, ResourcePath, SecurityAction, SessionLimits, TransactionMutation,
-    TransactionState, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
+    CommitTransaction, CorrelationId, CreateSession, DataEstateOrganisation,
+    EnsureVectorCollection, NamedVectorDefinition, PreviewTransaction, RenewSession,
+    RequestContext, ResourceId, ResourceKind, ResourcePath, SecurityAction, SessionLimits,
+    TransactionMutation, TransactionState, VectorMemoryTier, VectorSearchMetric, VectorValueKind,
 };
 use rrd_core::digest;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityRepository, SecurityState};
@@ -87,6 +87,7 @@ mod data_crud;
 mod deployment_conformance;
 mod endpoint_configuration;
 mod estate_control;
+mod estate_organisation;
 mod flight;
 mod function;
 mod index_foundation;
