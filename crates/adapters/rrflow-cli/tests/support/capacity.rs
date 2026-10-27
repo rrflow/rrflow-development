@@ -225,13 +225,25 @@ fn fill_data<W: Write>(
     file: &mut W,
     max_bytes: u64,
     started: Instant,
+    synchronize: impl FnMut(&W, FillBarrier) -> std::io::Result<()>,
+) -> std::io::Result<(u64, i32)> {
+    fill_data_with_probe(file, max_bytes, started, false, synchronize)
+}
+
+fn fill_data_with_probe<W: Write>(
+    file: &mut W,
+    max_bytes: u64,
+    started: Instant,
+    refill: bool,
     mut synchronize: impl FnMut(&W, FillBarrier) -> std::io::Result<()>,
 ) -> std::io::Result<(u64, i32)> {
     let buffer = [0xa5u8; 64 * 1024];
     let mut bytes = 0;
     let mut bytes_at_barrier = 0;
     let mut barrier_since_write = false;
-    let mut write_size = buffer.len();
+    // A refill follows a previous capacity denial. Probe the smallest native
+    // allocation first; any successful byte immediately restores bulk writes.
+    let mut write_size = if refill { 1 } else { buffer.len() };
     let mut writes = 0u64;
     loop {
         assert!(
@@ -275,7 +287,7 @@ fn fill_data<W: Write>(
                 }
                 bytes_at_barrier = bytes;
                 barrier_since_write = true;
-                write_size = buffer.len();
+                write_size = if refill { 1 } else { buffer.len() };
                 continue;
             }
         }
@@ -305,7 +317,7 @@ fn fill_remaining_data<W: Write>(
     let remaining = max_bytes
         .checked_sub(*allocated)
         .expect("filler byte bound");
-    let (added, code) = fill_data(file, remaining, started, synchronize)?;
+    let (added, code) = fill_data_with_probe(file, remaining, started, true, synchronize)?;
     *allocated += added;
     Ok(code)
 }
@@ -768,6 +780,107 @@ mod filler_tests {
         fn flush(&mut self) -> std::io::Result<()> {
             Ok(())
         }
+    }
+
+    #[test]
+    fn stable_full_refill_uses_one_byte_before_and_after_settlement() {
+        struct Full {
+            attempts: Vec<usize>,
+        }
+        impl Write for Full {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.attempts.push(bytes.len());
+                Err(std::io::Error::from_raw_os_error(if cfg!(windows) {
+                    112
+                } else {
+                    28
+                }))
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut file = Full {
+            attempts: Vec::new(),
+        };
+        let mut allocated = 128;
+        let mut barriers = Vec::new();
+        let code = fill_remaining_data(
+            &mut file,
+            &mut allocated,
+            1024,
+            Instant::now(),
+            |_, reason| {
+                barriers.push(reason);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert!(capacity_code(code));
+        assert_eq!(allocated, 128);
+        assert_eq!(barriers, [FillBarrier::Capacity]);
+        assert_eq!(
+            file.attempts,
+            [1, 1],
+            "a stable refill must not repeat bulk-sized failed probes"
+        );
+    }
+
+    #[test]
+    fn refill_consumes_space_released_by_settlement_before_final_denial() {
+        struct Refill {
+            remaining: Cell<usize>,
+            attempts: Vec<usize>,
+        }
+        impl Write for Refill {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.attempts.push(bytes.len());
+                let count = bytes.len().min(self.remaining.get());
+                if count == 0 {
+                    return Err(std::io::Error::from_raw_os_error(if cfg!(windows) {
+                        112
+                    } else {
+                        28
+                    }));
+                }
+                self.remaining.set(self.remaining.get() - count);
+                Ok(count)
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut file = Refill {
+            remaining: Cell::new(0),
+            attempts: Vec::new(),
+        };
+        let mut allocated = 0;
+        let mut barriers = 0;
+        let code = fill_remaining_data(
+            &mut file,
+            &mut allocated,
+            128,
+            Instant::now(),
+            |file, reason| {
+                assert_eq!(reason, FillBarrier::Capacity);
+                if barriers == 0 {
+                    file.remaining.set(17);
+                }
+                barriers += 1;
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert!(capacity_code(code));
+        assert_eq!(allocated, 17);
+        assert_eq!(file.remaining.get(), 0);
+        assert_eq!(barriers, 2);
+        assert_eq!(&file.attempts[..2], &[1, 1]);
+        assert!(
+            file.attempts[2] > 1,
+            "successful probe must resume bulk writes"
+        );
+        assert_eq!(file.attempts.last(), Some(&1));
     }
 
     #[test]
