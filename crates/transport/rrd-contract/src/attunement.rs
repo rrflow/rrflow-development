@@ -1030,6 +1030,43 @@ impl AttunementStatus {
     }
 }
 
+/// Read one engine-owned installed job by its durable identity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReadAttunement {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+}
+
+impl ReadAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+/// This operation does not inspect the project's current source tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AttunementSourceVerification {
+    NotChecked,
+}
+
+/// The exact stored plan and job at one authorized engine read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReadResult {
+    pub plan: AttunementPlan,
+    pub status: AttunementStatus,
+    pub source_verification: AttunementSourceVerification,
+}
+
+impl AttunementReadResult {
+    pub fn validate(&self) -> Result<()> {
+        self.plan.validate()?;
+        self.status.validate(&self.plan)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ResumeAttunement {
