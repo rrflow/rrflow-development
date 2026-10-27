@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: d9d95f65139470584c31e08cfc16495d33d689785e42b45b25637d25d0068bca
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "d9d95f65139470584c31e08cfc16495d33d689785e42b45b25637d25d0068bca" as const;
+// OpenAPI SHA-256: eb6e2e724814dc1c8465a650310e7b15c96788835c2357f81331de6a2084ffda
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "eb6e2e724814dc1c8465a650310e7b15c96788835c2357f81331de6a2084ffda" as const;
 
 export const endpoints = {
   "attunement-read": {
