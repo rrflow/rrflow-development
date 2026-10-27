@@ -88,3 +88,8 @@ records the prior inability to represent a project-local folder in the existing
 knowledge-tree catalogue. The candidate adds that configuration binding only;
 folder observation, outside-project folders, connector execution and automatic
 source-grounded relationship construction remain open.
+
+The [device-name correction](../../evidence/change-journals/gate-d/d-05-project-directory-device-names.md)
+records and repairs the first candidate's acceptance of Windows superscript
+device aliases. This does not establish filesystem source access or close the
+remaining local and external knowledge-source gaps.

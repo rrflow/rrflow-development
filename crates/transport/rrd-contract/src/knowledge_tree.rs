@@ -67,9 +67,25 @@ impl KnowledgePathBinding {
                     let reserved = matches!(
                         stem.as_str(),
                         "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
-                    ) || (stem.len() == 4
-                        && (stem.starts_with("COM") || stem.starts_with("LPT"))
-                        && matches!(stem.as_bytes()[3], b'1'..=b'9'));
+                    ) || stem
+                        .strip_prefix("COM")
+                        .or_else(|| stem.strip_prefix("LPT"))
+                        .is_some_and(|suffix| {
+                            matches!(
+                                suffix,
+                                "1" | "2"
+                                    | "3"
+                                    | "4"
+                                    | "5"
+                                    | "6"
+                                    | "7"
+                                    | "8"
+                                    | "9"
+                                    | "\u{b9}"
+                                    | "\u{b2}"
+                                    | "\u{b3}"
+                            )
+                        });
                     if segment.ends_with(['.', ' ']) || reserved {
                         return invalid("project directory contains a non-portable segment");
                     }
@@ -480,6 +496,9 @@ mod tests {
             "a/b.",
             "a/b ",
             "a/NUL.txt",
+            "docs/COM\u{b9}",
+            "com\u{b2}.txt",
+            "Lpt\u{b3}",
         ] {
             let binding = KnowledgePathBinding::ProjectDirectory {
                 relative_path: Some(value.into()),
