@@ -428,13 +428,10 @@ fn shared_segments_do_not_hide_memtable_pins_or_new_generations() {
     database.flush_memtable(2).unwrap();
     let new_generation = view(&database);
     let new_pinned = new_generation.evidence().pinned_bytes;
-    assert_eq!(
-        database.read_view_ownership().unwrap(),
-        (2, old_pinned + new_pinned)
-    );
+    assert_eq!(database.read_view_ownership().unwrap(), (2, new_pinned));
     drop(new_generation);
     let mut bounded = request(&database);
-    bounded.budget.max_pinned_bytes = old_pinned.max(new_pinned);
+    bounded.budget.max_pinned_bytes = new_pinned - 1;
     assert!(matches!(
         database.begin_projected_read(bounded),
         Err(Error::ProjectedReadLimit {
@@ -448,5 +445,105 @@ fn shared_segments_do_not_hide_memtable_pins_or_new_generations() {
         Some(b"old".as_slice())
     );
     old.cancel().unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (0, 0));
+}
+
+#[test]
+fn narrow_view_admission_counts_only_selected_segments() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut database = Database::create(&directory.path().join("narrow-view")).unwrap();
+    for (key, byte) in [(b"a".as_slice(), 1), (b"z".as_slice(), 2)] {
+        database
+            .write_owned(
+                WriteBatch::new(vec![Mutation::Put {
+                    key: key.to_vec(),
+                    value: vec![byte; 4096],
+                }])
+                .unwrap(),
+                Durability::Authoritative,
+            )
+            .unwrap();
+        database.flush_memtable(u64::from(byte)).unwrap();
+    }
+    let segments = &database.manifest().segments;
+    assert_eq!(segments.len(), 2);
+    let first = segments
+        .iter()
+        .find(|s| s.first_key.as_slice() == b"a")
+        .unwrap()
+        .bytes;
+    let second = segments
+        .iter()
+        .find(|s| s.first_key.as_slice() == b"z")
+        .unwrap()
+        .bytes;
+    assert!(first + second > first);
+    let mut narrow = request(&database);
+    narrow.ranges = vec![ProjectedReadRange::new(b"a".to_vec(), Some(b"b".to_vec())).unwrap()];
+    narrow.budget.max_pinned_bytes = first;
+    let mut stream = database
+        .begin_projected_read(narrow)
+        .expect("unrelated segment must not exhaust narrow read budget");
+    assert_eq!(database.read_view_ownership().unwrap(), (1, first));
+    assert_eq!(
+        stream.next_batch().unwrap().unwrap().value(0),
+        Some(vec![1; 4096].as_slice())
+    );
+    stream.cancel().unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (0, 0));
+}
+
+#[test]
+fn selected_segment_pins_charge_shared_union_and_release_independently() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut database = Database::create(&directory.path().join("segment-union")).unwrap();
+    for (key, byte) in [(b"a".as_slice(), 1), (b"z".as_slice(), 2)] {
+        database
+            .write_owned(
+                WriteBatch::new(vec![Mutation::Put {
+                    key: key.to_vec(),
+                    value: vec![byte; 4096],
+                }])
+                .unwrap(),
+                Durability::Authoritative,
+            )
+            .unwrap();
+        database.flush_memtable(u64::from(byte)).unwrap();
+    }
+    let segments = &database.manifest().segments;
+    let first = segments.iter().find(|s| s.first_key == b"a").unwrap().bytes;
+    let second = segments.iter().find(|s| s.first_key == b"z").unwrap().bytes;
+    let narrow = |start: &[u8], end: &[u8], limit| {
+        let mut candidate = request(&database);
+        candidate.ranges =
+            vec![ProjectedReadRange::new(start.to_vec(), Some(end.to_vec())).unwrap()];
+        candidate.budget.max_active_views = 3;
+        candidate.budget.max_pinned_bytes = limit;
+        candidate
+    };
+    let first_view = database
+        .begin_projected_read(narrow(b"a", b"b", first))
+        .unwrap();
+    let second_view = database
+        .begin_projected_read(narrow(b"a", b"b", first))
+        .unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (2, first));
+    assert!(matches!(
+        database.begin_projected_read(narrow(b"z", b"zz", first)),
+        Err(Error::ProjectedReadLimit {
+            resource: ProjectedReadResource::PinnedBytes,
+            ..
+        })
+    ));
+    assert_eq!(database.read_view_ownership().unwrap(), (2, first));
+    let third = database
+        .begin_projected_read(narrow(b"z", b"zz", first + second))
+        .unwrap();
+    assert_eq!(database.read_view_ownership().unwrap(), (3, first + second));
+    drop(first_view);
+    assert_eq!(database.read_view_ownership().unwrap(), (2, first + second));
+    drop(second_view);
+    assert_eq!(database.read_view_ownership().unwrap(), (1, second));
+    drop(third);
     assert_eq!(database.read_view_ownership().unwrap(), (0, 0));
 }

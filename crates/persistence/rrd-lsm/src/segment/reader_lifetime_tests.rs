@@ -81,14 +81,14 @@ fn shared_manifest_admission_retains_content_checks_and_releases_denials() {
     let registry = Arc::new(Mutex::new(ActiveReadViews::default()));
     let budget = ProjectedReadBudget::default();
     let first =
-        ActiveReadViews::acquire(&registry, Arc::clone(&manifest), None, 0, 0, budget).unwrap();
+        ActiveReadViews::acquire(&registry, Arc::clone(&manifest), None, 0, &[], budget).unwrap();
     // A separately allocated but equal generation remains valid.
     let second = ActiveReadViews::acquire(
         &registry,
         Arc::new(manifest.as_ref().clone()),
         None,
         0,
-        0,
+        &[],
         budget,
     )
     .unwrap();
@@ -97,7 +97,7 @@ fn shared_manifest_admission_retains_content_checks_and_releases_denials() {
     let mut inconsistent = manifest.as_ref().clone();
     inconsistent.created_at += 1; // Same claimed digest, different content.
     assert!(matches!(
-        ActiveReadViews::acquire(&registry, Arc::new(inconsistent), None, 0, 0, budget),
+        ActiveReadViews::acquire(&registry, Arc::new(inconsistent), None, 0, &[], budget),
         Err(Error::PoisonedReadViewRegistry)
     ));
     let owners_before = Arc::strong_count(&manifest);
@@ -107,7 +107,7 @@ fn shared_manifest_admission_retains_content_checks_and_releases_denials() {
             Arc::clone(&manifest),
             None,
             0,
-            0,
+            &[],
             ProjectedReadBudget {
                 max_active_views: 1,
                 ..budget
@@ -294,4 +294,27 @@ fn cancelled_stream_releases_sources_and_preserves_copied_batches() {
 #[test]
 fn failed_stream_releases_sources_and_preserves_copied_batches() {
     terminal_owners(ProjectedReadOutcome::Failed);
+}
+
+#[test]
+fn immutable_segment_identity_allows_level_changes_but_rejects_changed_content() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut database = Database::create(&directory.path().join("identity")).unwrap();
+    database
+        .write_owned(
+            WriteBatch::new(vec![Mutation::Put {
+                key: b"a".to_vec(),
+                value: b"value".to_vec(),
+            }])
+            .unwrap(),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+    let descriptor = &database.manifest().segments[0];
+    let mut relocated = descriptor.clone();
+    relocated.level = descriptor.level.saturating_add(1);
+    assert!(same_segment_file(descriptor, &relocated));
+    relocated.bytes += 1;
+    assert!(!same_segment_file(descriptor, &relocated));
 }

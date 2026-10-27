@@ -357,6 +357,7 @@ pub(crate) struct ActiveReadViews {
     active: usize,
     pinned_bytes: u64,
     manifests: BTreeMap<String, ActiveManifest>,
+    segments: BTreeMap<String, ActiveSegment>,
     memtables: BTreeMap<usize, ActiveMemtable>,
 }
 
@@ -364,7 +365,22 @@ pub(crate) struct ActiveReadViews {
 struct ActiveManifest {
     manifest: Arc<Manifest>,
     references: usize,
-    segment_bytes: u64,
+}
+
+#[derive(Debug)]
+struct ActiveSegment {
+    descriptor: crate::SegmentDescriptor,
+    references: usize,
+}
+
+// Level is manifest placement, not immutable segment-file identity.
+fn same_segment_file(first: &crate::SegmentDescriptor, second: &crate::SegmentDescriptor) -> bool {
+    if first == second {
+        return true;
+    }
+    let mut normalized = second.clone();
+    normalized.level = first.level;
+    *first == normalized
 }
 
 #[derive(Debug)]
@@ -388,7 +404,7 @@ impl ActiveReadViews {
         manifest: Arc<Manifest>,
         memtable: Option<&Arc<crate::mutable_memory::MutableGeneration>>,
         memtable_bytes: u64,
-        segment_bytes: u64,
+        segments: &[Arc<Segment>],
         budget: ProjectedReadBudget,
     ) -> Result<ReadViewLease> {
         let mut views = registry
@@ -404,23 +420,45 @@ impl ActiveReadViews {
             next_active as u64,
         )?;
         let digest = manifest.digest.clone();
-        let (next_manifest_refs, new_segment_charge) = match views.manifests.get(&digest) {
+        let next_manifest_refs = match views.manifests.get(&digest) {
             Some(entry) => {
-                if (!Arc::ptr_eq(&entry.manifest, &manifest) && entry.manifest != manifest)
-                    || entry.segment_bytes != segment_bytes
-                {
+                if !Arc::ptr_eq(&entry.manifest, &manifest) && entry.manifest != manifest {
                     return Err(Error::PoisonedReadViewRegistry);
                 }
-                (
+                entry
+                    .references
+                    .checked_add(1)
+                    .ok_or(Error::PoisonedReadViewRegistry)?
+            }
+            None => 1,
+        };
+        let mut next_segments = Vec::with_capacity(segments.len());
+        let mut identities = std::collections::BTreeSet::new();
+        let mut new_segment_charge = 0_u64;
+        for segment in segments {
+            let descriptor = &segment.descriptor;
+            if !identities.insert(&descriptor.id) {
+                return Err(Error::PoisonedReadViewRegistry);
+            }
+            let references = match views.segments.get(&descriptor.id) {
+                Some(entry) => {
+                    if !same_segment_file(&entry.descriptor, descriptor) {
+                        return Err(Error::PoisonedReadViewRegistry);
+                    }
                     entry
                         .references
                         .checked_add(1)
-                        .ok_or(Error::PoisonedReadViewRegistry)?,
-                    0,
-                )
-            }
-            None => (1, segment_bytes),
-        };
+                        .ok_or(Error::PoisonedReadViewRegistry)?
+                }
+                None => {
+                    new_segment_charge = new_segment_charge
+                        .checked_add(descriptor.bytes)
+                        .ok_or(Error::PoisonedReadViewRegistry)?;
+                    1
+                }
+            };
+            next_segments.push((descriptor, references));
+        }
         // Empty views do not retain a mutable generation or cause copy-on-write.
         let mutable = if memtable_bytes == 0 {
             None
@@ -467,10 +505,25 @@ impl ActiveReadViews {
                     ActiveManifest {
                         manifest,
                         references: next_manifest_refs,
-                        segment_bytes,
                     },
                 );
             }
+        }
+        let mut segment_ids = Vec::with_capacity(next_segments.len());
+        for (descriptor, references) in next_segments {
+            match views.segments.get_mut(&descriptor.id) {
+                Some(entry) => entry.references = references,
+                None => {
+                    views.segments.insert(
+                        descriptor.id.clone(),
+                        ActiveSegment {
+                            descriptor: descriptor.clone(),
+                            references,
+                        },
+                    );
+                }
+            }
+            segment_ids.push(descriptor.id.clone());
         }
         let memtable_key = mutable.map(|(key, generation, references, _)| {
             match views.memtables.get_mut(&key) {
@@ -493,20 +546,21 @@ impl ActiveReadViews {
         Ok(ReadViewLease {
             registry: Arc::clone(registry),
             manifest: digest,
+            segment_ids,
             memtable_key,
             released: false,
         })
     }
 
-    pub(crate) fn visit_manifests(
+    pub(crate) fn visit_segments(
         registry: &Arc<Mutex<Self>>,
-        mut visit: impl FnMut(&Manifest) -> Result<()>,
+        mut visit: impl FnMut(&crate::SegmentDescriptor) -> Result<()>,
     ) -> Result<()> {
         let views = registry
             .lock()
             .map_err(|_| Error::PoisonedReadViewRegistry)?;
-        for entry in views.manifests.values() {
-            visit(&entry.manifest)?;
+        for entry in views.segments.values() {
+            visit(&entry.descriptor)?;
         }
         Ok(())
     }
@@ -516,6 +570,7 @@ impl ActiveReadViews {
 pub(crate) struct ReadViewLease {
     registry: Arc<Mutex<ActiveReadViews>>,
     manifest: String,
+    segment_ids: Vec<String>,
     memtable_key: Option<usize>,
     released: bool,
 }
@@ -541,11 +596,24 @@ impl ReadViewLease {
             .references
             .checked_sub(1)
             .ok_or(Error::PoisonedReadViewRegistry)?;
-        let segment_charge = if next_manifest_refs == 0 {
-            manifest.segment_bytes
-        } else {
-            0
-        };
+        let mut segment_charge = 0_u64;
+        let mut next_segments = Vec::with_capacity(self.segment_ids.len());
+        for id in &self.segment_ids {
+            let entry = views
+                .segments
+                .get(id)
+                .ok_or(Error::PoisonedReadViewRegistry)?;
+            let refs = entry
+                .references
+                .checked_sub(1)
+                .ok_or(Error::PoisonedReadViewRegistry)?;
+            if refs == 0 {
+                segment_charge = segment_charge
+                    .checked_add(entry.descriptor.bytes)
+                    .ok_or(Error::PoisonedReadViewRegistry)?;
+            }
+            next_segments.push((id, refs));
+        }
         let mutable = match self.memtable_key {
             Some(key) => {
                 let entry = views
@@ -574,6 +642,17 @@ impl ReadViewLease {
                 .get_mut(&self.manifest)
                 .expect("validated manifest")
                 .references = next_manifest_refs;
+        }
+        for (id, refs) in next_segments {
+            if refs == 0 {
+                views.segments.remove(id);
+            } else {
+                views
+                    .segments
+                    .get_mut(id)
+                    .expect("validated segment")
+                    .references = refs;
+            }
         }
         if let Some((key, refs, _)) = mutable {
             if refs == 0 {

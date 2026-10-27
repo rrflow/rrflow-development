@@ -1144,3 +1144,13 @@ inspected HTTP server and Rust client do not expose the corresponding index and
 quantization build/activation operations. [C-07's joined evidence sequence](../../roadmap/rrflow-1.0/gate-c-07.md#joined-rrflowdb-evidence-sequence)
 tracks the missing end-to-end and scale evidence; no part of C-07 is closed by
 this observation.
+
+The [selected-segment pin repair](../../evidence/change-journals/gate-c/c-07g-selected-segment-read-pins.md)
+records integrated Windows candidate 5d554483 independently verifying all 100000 initial
+records and completing two reopens, then failing after 47240 post-reopen verifications.
+Its exact pinned-byte denial was 4295000211 against 4294967296; the retained current
+manifest contains 1793 segment descriptors totaling 4227071050 bytes. Read admission
+previously charged the entire manifest even for a narrower selected read; the test-first
+repair changes transient view ownership and reclamation to selected segment identities.
+Whether the frozen full workload will pass on the repair remains unproven, and required
+native profile, 24-hour soak, candidate CI and integration remain open.
