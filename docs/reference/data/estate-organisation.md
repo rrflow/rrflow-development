@@ -33,23 +33,35 @@ measures it.
 ## Domains and membership
 
 - **Definition.** A domain definition is part of the schema registry. It holds
-  a `CanonicalId`, a title, a description, an optional parent, and an
-  isolation mode (`shared` or `isolated`). Domains form a tree with no cycles,
-  at most 8 levels deep.
-- **Membership.** Every table kind names exactly one domain, and every vector
-  collection names one. A registry with a kind outside a declared domain, an
-  unknown parent, a cycle or a duplicate is rejected before the cursor
-  advances.
+  a `CanonicalId`, a title, a description, and an optional parent. H-11d adds
+  its isolation mode (`shared` or `isolated`) together with the enforcement,
+  so no registry can declare an isolation the engine does not yet enforce.
+  Domains form a tree with no cycles, at most 8 levels deep.
+- **Built-in domains.** `default` and `rrflow` always exist and cannot be
+  redefined. A declared domain's parent is `default` or another declared
+  domain, never `rrflow`.
+- **Membership.** Every table kind belongs to exactly one domain, and so does
+  every vector collection. A kind or collection with no explicit domain
+  belongs to `default`, or to `rrflow` when it is engine-owned. A registry
+  that names an unknown domain or parent, forms a cycle, exceeds the depth or
+  repeats a domain is rejected before the cursor advances.
 - **Identity.** Kind names stay unique across the estate, so the domain is not
   part of a kind's identity. Moving a kind to another domain is one schema
   revision. It rewrites no record. An old read stamp reads the old membership.
-- **Reserved domain.** The `rrflow` domain holds the engine-owned families,
-  such as prompt flights, tasks, claims, evidence and the tag family below.
-  Operators cannot move engine-owned kinds or add kinds to it.
-- **Retired label.** The registry's `DataCatalogueIdentity`
-  (`namespace`/`database`) and the `Namespace` and `Database` resource kinds
-  are removed in the same package that adds domains. The estate is the one
-  database, and a domain is its catalogue namespace.
+- **Reserved domain.** Kinds and collections whose identity starts with
+  `rrflow-` are engine-owned, such as `rrflow-seat` or
+  `rrflow-reasoning-budget-event`. They always belong to the `rrflow` domain,
+  and no other kind or collection may be placed there. Future engine-owned
+  families, such as prompt flights, tasks and the tag family below, follow the
+  same rule.
+- **Unchanged digests.** A registry whose organisation is all defaults
+  encodes, and therefore digests, exactly as it did before domains existed.
+  Organisation data adds a separately versioned section to the canonical
+  encoding.
+- **Retired label.** H-11a removes the registry's `DataCatalogueIdentity`
+  (`namespace`/`database`). The estate is the one database, and a domain is
+  its catalogue namespace. H-11d replaces the `Namespace` and `Database`
+  resource kinds with `Domain`.
 
 ## Categories and tags
 
@@ -193,10 +205,10 @@ Each step is one pull request with its own oracle.
 
 | Step | Work | Depends on | Proof |
 |---|---|---|---|
-| H-11a | Domain and category definitions, kind and collection membership, and tags on kinds in `rrd-contract` and the `rrd-core` registry; retire `DataCatalogueIdentity`; generated OpenAPI and SDK models | — | Golden registry fixtures; rejection of unknown domains, cycles, excess depth, duplicates and unassigned kinds; membership moves keep record identity; old stamps read old membership; rrflowMX and rrflowKV agree after reopen |
+| H-11a | Domain and category definitions, kind and collection membership, and tags on kinds in `rrd-contract` and the `rrd-core` registry; retire `DataCatalogueIdentity`; generated OpenAPI and SDK models | — | Golden registry fixtures; rejection of unknown domains and parents, cycles, excess depth, redefined built-in domains and reserved-domain violations; a default organisation keeps every existing registry digest; membership moves keep record identity; old stamps read old membership; rrflowMX and rrflowKV agree after reopen |
 | H-11b | Record tags as the reserved `rrflow.tag`/`rrflow.tagged` family, validated in the same commit | H-11a | Cardinality, vocabulary and target violations fail; retirement keeps history; adjacency returns each tag's candidates |
 | H-11c | Scoped reads in rrflowQL (tag predicate), `context-assemble`, `vector-search`, `data-schema-read`, `diagnostics-read` and changefeed, applied as pre-filters | H-11a, H-11b | Golden query vectors; scoped results equal an independent full-replay oracle; a path that cannot pre-filter refuses; results name scope and revision |
-| H-11d | Isolation and domain grants: `ResourceKind::Domain`, isolated read, traversal, retrieval, changefeed and relation-write enforcement, and isolated lexical statistics | H-11c | Every surface is denied without the domain grant and allowed with it; crossing relations are refused unless allowed; an estate-wide grant does not reach an isolated domain |
+| H-11d | Isolation and domain grants: the domain isolation mode, `ResourceKind::Domain` replacing `Namespace` and `Database`, isolated read, traversal, retrieval, changefeed and relation-write enforcement, and isolated lexical statistics | H-11c | Every surface is denied without the domain grant and allowed with it; crossing relations are refused unless allowed; an estate-wide grant does not reach an isolated domain |
 | H-11e | Per-domain evidence in diagnostics and retrieval evidence | H-11c, H-01, H-05 | Fixture counts reconcile with an independent recount; unknown values stay unknown |
 | H-11f | Attunement proposal from the project tree, and organisation experiments | D-03, H-09 M5 | A proposal changes nothing until accepted; an experiment promotes only past both thresholds |
 | H-11g | Connectome projection (H-06) and the PostgreSQL schema projection (H-08) | H-11a–e, H-06, H-08 | Both show the same organisation and values at the same read stamp |
