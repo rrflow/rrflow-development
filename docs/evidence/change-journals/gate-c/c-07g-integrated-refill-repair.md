@@ -14,6 +14,11 @@ failed the macOS `current_before_create` APFS pressure case at the existing
 and separate native candidate requirement are recorded in
 [the refill repair journal](c-07f-apfs-refill-probe.md) and
 [PR150](https://github.com/rrflow/rrflow-development/pull/150).
+After retaining that failed job's log, the driver requested cancellation of the
+already-failed run while its three 100-cycle reopen jobs were incomplete, to
+start the combined candidate sooner. Their unfinished outcomes are not passes.
+The earlier `5e5dcb91` candidate had already passed all three reopen lanes;
+the combined revision still needs its own complete candidate run.
 
 The PR142 brief was updated before an ordinary merge of exact PR150 head
 `824ada03bc9b04888c854a2f66155200aba65587`. Its capacity fixture change,
