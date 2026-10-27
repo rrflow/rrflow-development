@@ -1099,3 +1099,10 @@ fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
 The initial 896 setup acknowledgements are not independent full readback or
 qualification. Preserve this source's terminal evidence; no actual 24-hour
 soak or gap closure is claimed.
+
+The [terminal Windows characterization](../../evidence/change-journals/gate-c/c-07g-windows-characterization-terminal.md)
+records frozen 8721f17 completing 100000 corpus acknowledgements and independent
+verifications, and two forced reopens with matching replay receipt digests,
+then failing with a redacted storage-admission resource-exhaustion classification
+before any measured segment. The specific denied resource is unknown. This run
+is not the full profile or a 24-hour soak and does not close the gap.
