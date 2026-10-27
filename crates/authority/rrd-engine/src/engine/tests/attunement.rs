@@ -170,6 +170,72 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
 }
 
 #[test]
+fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let request = rrd_contract::ReadAttunement {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: installed.job.clone(),
+    };
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "detail-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "detail-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let failed = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "detail-inventory",
+        BASE + 3_000,
+    )
+    .unwrap();
+    std::fs::write(installed.root.path().join("README.md"), "changed source\n").unwrap();
+    let read = engine
+        .read_attunement_detail(
+            &session.session_id,
+            &session.token,
+            &request,
+            BASE + 4_000,
+            "request-detail",
+            "operation-detail",
+        )
+        .unwrap();
+    assert_eq!(read.plan, installed.preview.attunement);
+    assert_eq!(read.status.job, failed.status.job);
+    assert_eq!(read.status.job.state, State::Failed);
+    assert_eq!(
+        read.status.job.failure.as_ref().unwrap().code.as_str(),
+        "phase-unavailable"
+    );
+    assert_eq!(
+        read.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    let invalid_token = id("invalid-token");
+    assert!(engine
+        .read_attunement_detail(
+            &session.session_id,
+            &invalid_token,
+            &request,
+            BASE + 4_001,
+            "request-denied",
+            "operation-denied"
+        )
+        .is_err());
+}
+
+#[test]
 fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
     for mode in [
         InstallationTargetKind::FreshProject,
