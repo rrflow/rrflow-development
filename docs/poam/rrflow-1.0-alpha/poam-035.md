@@ -1099,3 +1099,8 @@ fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
 The initial 896 setup acknowledgements are not independent full readback or
 qualification. Preserve this source's terminal evidence; no actual 24-hour
 soak or gap closure is claimed.
+
+The [Windows reopen CI build experiment](../../evidence/change-journals/gate-c/c-07-ci-windows-reopen-build-workers.md)
+records a 63m24s Windows build versus a 4m06s history step in one successful
+candidate and tests a two-worker build without reducing native coverage. Its
+candidate timing, memory behavior and complete CI result remain pending.
