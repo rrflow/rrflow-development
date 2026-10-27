@@ -14,13 +14,145 @@ either independently.
 | [ ] | D-02 | Persist attunement jobs and checkpoints through `RrdEngine`; implement status, resume, cancel, leases, idempotency, and phase input/output digests. | `rrd-engine` | Kill/restart tests at each transition resume committed work once and never infer completion from emitted events. |
 | [ ] | D-03 | Implement only deterministic project-tree inventory: engine-authorized metadata/content reads, pure proposal building, Git-correct ignore rules, secret/generated/vendor/cache exclusions, stable root-relative identities, Merkle tree digest, containment edges, incremental change set, explicit errors, and bounded work accounting. | `rrd-attunement` through `rrd-engine` | This repository produces the same committed `SourceTreeSnapshot` digest under different traversal schedules; excludes `.git`, `target`, `node_modules`, rrflowDB files, generated bulk data, and secret payloads; handles tracked ignored files, non-Git roots, hidden source, symlink/mount escape, file races, cancellation/restart, and close/reopen; an unchanged rerun reads zero content bytes and commits a no-work checkpoint. |
 | [ ] | D-04 | Add incremental Tree-sitter parsing pinned to one committed source-tree snapshot/change-set digest and parser/language revisions; preserve incomplete syntax and errors as evidence. | `rrd-attunement` through `rrd-engine` | Parse is denied before the D-03 snapshot/checkpoint commit; edit-one-file reparses only the changed source, preserves unaffected identities, records `ERROR`/`MISSING` nodes, and resumes after process restart. |
-| [ ] | D-05 | After Gates E and F pass, implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time against the accepted persistent/index/Arrow paths; add no temporary snapshot index or parallel attunement store. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, physical-plan/trace evidence, and independent acceptance test before the next phase begins; lexical/vector/graph output is readable through the same native and analytical paths used outside attunement. |
+| [ ] | D-05 | With the specific canonical E/F access, index and streaming prerequisites needed by each phase, implement normalize, entity-link, lexical-index, embed, vector-index, graph, ground, and verify one at a time against the accepted persistent/index/Arrow paths; add no temporary snapshot index or parallel attunement store. | `rrd-engine` plus owning subsystem | Every phase has an exact fixture, durable checkpoint, failure/retry case, output digest, physical-plan/trace evidence, and independent acceptance test before the next phase begins; lexical/vector/graph output is readable through the same native and analytical paths used outside attunement. |
 | [ ] | D-06 | Classify project generators, package scripts, build/test/evaluation harnesses, CI/deployment tools, SQL, PostgreSQL, Turso, Dragonfly, object stores, models, meshes, and other application/operator systems as optional external capabilities or sources. Discovery creates an inactive typed candidate; only an exact previewed immutable binding plus explicit configuration, policy, and authorization may activate it. A command binding captures either one authenticated direct-process argv or the complete package-script/toolchain/lockfile/wrapper/lifecycle closure; literal package-manager argv alone is insufficient. Never install, start, execute, or select an external system as RRFlow persistence or lifecycle authority implicitly. | `rrd-contract`, `rrd-attunement`, `rrd-engine` | Fresh/existing fixtures prove RRFlow reaches default readiness without an external capability; discovery executes nothing; preview performs no writes or effects; exact apply/retirement is durable and idempotent; a generator or harness binding is source- and digest-bound and declares its permissions, sandbox, budgets, cancellation, uncertainty, verification, and output policy without invoking it; mutable/incomplete closures and unavailable enforcement fail closed; credentials are never copied; and clean uninstall removes only RRFlow-owned integration state. Project-command execution and output re-inventory are accepted later by I-03/I-07. |
 | [ ] | D-07 | Bind installation to the DevForge CoW placement contract: immutable tools/models may live in the shared lower layer; workspace changes and all rrflowKV WAL, manifest, segment, catalogue, and graph state live in the writable upper layer. | `rrflow-cli`, DevForge adapter | Two clones share the same lower digest while independent writes, crash recovery, and deletion in one upper layer cannot affect the other. |
 | [ ] | D-08 | Recognize content-addressed dependency mounts as shared immutable inputs rather than copying or attuning dependency caches into each estate. | `rrd-attunement`, DevForge adapter | Rust, Go, Node, and model-cache fixture proves stable mount digests, zero duplicate ingestion, and correct invalidation when a mounted digest changes. |
 | [ ] | D-09 | Measure logical size, allocated blocks, compression, WAL growth, and snapshot size separately; never infer zero-byte or sparse-allocation savings from logical file size. | `rrd-lsm`, release harness | Fresh clone and sustained-write reports account for lower, upper, cache, WAL, segment, and snapshot bytes with reproducible filesystem commands. |
 | [ ] | D-10 | Add a hibernation preparation/restore contract that quiesces writes, captures a verified rrflowKV snapshot boundary, exports to the configured cold tier, and resumes without changing estate identity. | `rrd-engine`, DevForge adapter | Interrupted export, corrupt object, restore, rollback, and hot-to-cold-to-hot tests prove no acknowledged-write loss and no split authority. |
 | [ ] | D-11 | Complete the installed operational lifecycle: offline read-only quick/full verification; digest-bound offline repair plan/apply; authenticated backup verification; restore into an absent staging target plus explicit publication; explicitly non-authoritative salvage; and ownership-aware uninstall that retains rrflowDB/backups and reports `RETAINED`. Repair may truncate only a proven incomplete final WAL frame, delete only unreachable physical objects, rebuild derived graph/BM25/vector/TurboQuant/analytical projections from canonical semantic state and exact source cursors, or reconcile durable install/attunement receipts. It never guesses manifest, sequence, transaction, authorization, or acknowledged semantic truth, and it never edits the live root in place. | `rrd-engine`, `rrd-store`, `rrd-lsm`, `rrflow-cli` | On the D-01-installed binary, corruption/fault fixtures prove verify changes no bytes; every plan is deterministic and stale-plan rejection occurs before mutation; apply requires an exclusive offline lease, authenticated snapshot, exact preconditions, an absent reflink/clone or fully accounted same-filesystem candidate, audit receipt, full candidate verification, one durable atomic locator replacement, and retention/quarantine of the prior root. Complete-frame/canonical corruption routes to absent-target restore or labeled salvage rather than reset; projection rebuild matches exact oracles; backup restore never overlays live state; and uninstall removes only unchanged RRFlow-owned integration while preserving project state and retained data. |
+
+## Real-project implementation and acceptance
+
+D-02 is the next runtime outcome, subject to D-02a admission. Installation currently writes a pending
+`AttunementJob`; `installation/inventory.rs` explicitly supplies installation
+preconditions, not a committed D-03 source snapshot. Job types and Connectome's
+phase descriptions do not execute ingestion. Complete the existing job state
+machine at `RrdEngine`, then implement D-03/D-04 and each D-05 phase at their
+canonical owners in the dependency spine. No client-side ingestion database,
+fixture-loaded demo or temporary snapshot index substitutes for these packages.
+
+The configured project must resolve global defaults plus project overrides to
+one versioned, engine-owned effective configuration, with field origins and a
+digest. Hard authorization/resource policy cannot be loosened by preferences.
+A changed global default cannot silently rewrite an installed project's sealed
+configuration, activate a provider or grant context sharing. Changes use the
+existing preview/authorization/effect boundary; an inexpressible public action
+is an explicit blocker, not permission to invent a route or change the API.
+
+The joined acceptance follows one real project through authorized install,
+job execution, committed inventory, source chunks, lexical and graph relations,
+configured real embeddings and vector retrieval. Retain source/model/configuration
+identities, exact spans and a known-answer query. Edit and delete source, reindex,
+prove stale evidence is excluded, restart and repeat readback. Repeat with a
+second project concurrently and prove isolated state and defaults/overrides.
+Connectome progressively exposes supported operations, per-project data and
+phase failures through the existing public contract, with unfinished phases
+clearly unavailable. Its optional presence cannot become engine readiness.
+
+Each package proves its particular before/after transition. D-02 alone does not
+claim parsing or retrieval; a configured embedding provider alone does not prove
+vectors were generated. The complete journey requires all relevant package
+receipts and does not erase remaining release qualification.
+
+## Project-workflow build packages
+
+These refine D-02 through D-05, not a second roadmap. At audit baseline
+`337d136210ff59b2359f898e717166c087dd5bfc`, the file-plan generator marked
+`engine/attunement.rs`, `tests/attunement_resume.rs` and the
+`crates/compute/rrd-attunement/` modules as **planned**, not implemented.
+The embedded package below now implements the engine control module; the
+remaining phase/compute modules and complete qualification remain open.
+The owner's subsequent instruction to implement authorizes the bounded D-02
+embedded-engine package below. It does not reinterpret installation/readiness
+as permission for source effects or change the existing transport API.
+
+### Embedded D-02 control implementation
+
+`RrdEngine::read_attunement` and `control_attunement` now use the installed job
+and existing EstateRead/EstateAdmin permissions. Additive Rust commands start,
+step, pause, recover an expired lease, resume and request/acknowledge cancellation;
+no existing HTTP operation, wire model, installation action or readiness meaning
+changes. There is no unattended worker or source/provider activation.
+
+Each mutation binds revision, principal-scoped idempotency and plan/lease identity
+as applicable. Job and exact response receipt commit in one control transaction.
+The Connect worker verifies installed identity/configuration and records a real
+runtime read stamp. Inventory currently produces `phase-unavailable` with no
+checkpoint. Configurable finite leases, bounded encoding, a lifetime transition
+limit and cancellation reserve bound this package; D-02c's complete scheduling
+and project settings remain open. This is partial D-02 implementation, not
+source indexing or C-07/D-02 completion. The [package journal](../../evidence/change-journals/gate-d/d-02-durable-attunement.md)
+owns exact tests and remaining qualification.
+
+| Package / dependency | Input, owning code and durable output | Failure oracle and acceptance |
+|---|---|---|
+| D-02a admission decision; before executor implementation | Existing `rrd-contract/src/attunement.rs` job/plan/resume/cancel validators, `src/lib.rs::endpoint_catalogue`, CLI installed command dispatch and installation preview. Map each public action to authorization and actual engine dispatch. | The initial audit found only contract types. The embedded package above adds authenticated engine dispatch; public HTTP/SDK dispatch remains absent. Installation previews `CreateAttunementJob`, not unlimited execution. Publish the exact operation/permission/activation decision before source effects. Preserve existing APIs; if adding missing planned operations is disallowed, public control remains blocked. Do not reinterpret task-open, readiness, install or arbitrary query as an ingestion command. |
+| D-02b durable worker; after D-02a | Extend `RrdEngine` at `engine/attunement.rs`, using the existing installed job, `AttunementJob::validate_transition`, lease generation and canonical transaction authority. Input binds job revision, plan, principal, configuration and source identity; output is the job transition and checkpoint with effect evidence. | Two workers compete for one revision; only the fenced winner publishes. Crash before effect, after effect and before ACK; retry resolves the same receipt. Expired generation cannot commit. Cancel releases owned resources and never publishes a false success. An unimplemented phase stops explicitly, never gets a fabricated checkpoint. Planned `tests/attunement_resume.rs` plus real installed-process proof. |
+| D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. |
+| D-03 source snapshot; after durable worker and bounded filesystem admission | Planned `rrd-attunement/src/inventory.rs` builds pure proposals from engine-authorized reads; existing `installation/inventory.rs` remains installation precondition logic. Commit stable root-relative source identities, content digests, containment, exclusions and a change set through engine transactions. | Ordered/shuffled traversal gives identical snapshot; unchanged rerun reads zero content bytes. Git tracked/ignored rules, non-Git roots, secrets, symlink/mount escape and concurrent source edits have explicit outcomes. Interrupt/restart never exposes a partial snapshot as complete. Planned inventory test target; real repository fixture after small authored adversarial fixtures. |
+| D-04 parse and source spans; after D-03 | Planned `rrd-attunement/src/parse.rs`; pinned parser/language revisions consume one committed change set. Output is source-linked syntax/symbol/chunk proposals with byte ranges and parse errors. | One-file edit reparses only affected inputs; delete invalidates their spans. Unsupported languages remain explicit and incomplete syntax retains errors. Parser/model guesses cannot overwrite source facts. Planned incremental-parse target and installed readback prove digest/range identity after restart. |
+| D-05a normalize and entity links; after D-04 and consumed E-01/E-02 paths | Planned `normalize.rs`/`entity_link.rs` plus canonical schema/data/relation commits. Deterministic source facts and inferred relationships carry distinct method/source/configuration identities. | Duplicate source or ambiguous symbol names cannot merge unrelated identities. Reprocessing is idempotent; source change/delete retires dependents at a new cursor, old-stamp reads remain valid. Semantic effects and checkpoint are atomically visible or explicitly staged then published. |
+| D-05b lexical access; after D-05a and E-03 | Persistent dictionary/statistics/postings/tombstones at source cursor; use existing query/store boundaries. No per-request full rebuild as the completed scalable path. | Incremental insert/edit/delete/reopen matches full-rebuild oracle and returns exact current spans. Record visited/read work separately from overall estate size. Stale projections are reported or handled by the qualified canonical fallback, never silently presented as current. |
+| D-05c embeddings and vector access; after source provenance and canonical E-04 exact path | Existing embedding registry/engine inference and vector collection APIs consume authorized chunks with pinned model/tokenizer/dimension/metric. Commit canonical vectors and derived-index deltas; approximate generations remain separate acceleration. | Real admitted embedding provider, not fabricated vectors, proves source-to-vector generation. Model mismatch, wrong dimensions, timeout, late output, revoke, duplicate and delete tests retain one accepted publication. Exact filtered search is the oracle; HNSW/quantization requires its own E-04 quality/build/recovery evidence. |
+| D-05d graph, grounding and verification; after prior outputs | Planned `ground.rs`/`verify.rs`, temporal adjacency and stamped context/query paths consume committed source/model identities. Verify relationship/citation closure, freshness and evidence coverage; complete the job only when all required phase outputs exist. | A known-answer query returns actual spans and graph/vector evidence. Edit/delete source, rebuild, restart, and repeat with two projects concurrently; no stale or foreign source appears. Missing evidence causes explicit incompleteness/abstention. This joined proof is the first local-project checkpoint, not full alpha. |
+
+The joined proof uses an authored, revision-pinned small project with a named
+symbol, cross-file call, natural-language documentation, ambiguous names, an
+ignored generated file and a secret sentinel. Its expected spans and relations
+are independently enumerated, not generated by the implementation under test.
+Run these cases in order: initial source ingestion; exact symbol query; lexical
+and real-vector intent queries; multi-file relation query; change one source;
+delete one source; rerun unchanged; cancel/restart midway; repeat after engine
+restart; execute a second project with conflicting names. No-answer and denied
+queries must not fabricate citations or disclose the sentinel. Every asserted
+exact result must match; approximate quality uses the predeclared E-04/J-04
+profile rather than an invented threshold. Then use a pinned real repository
+revision for growth. The authored project is a correctness fixture, not evidence
+of scale or competitive quality.
+
+Package commands use the existing contract regression target
+`cargo test -p rrd-contract --test attunement_contract --locked` for preserved
+wire semantics. That target validates types; it cannot prove the worker.
+New phase targets above must be created in their implementation package before
+claiming execution. The owning installed-process suite and native platforms are
+selected from the existing CI contract for the changed boundary. No parser
+crate, model file or external service may become an undeclared runtime fetch.
+
+All phase proposals flow through one transaction authority. A checkpoint may
+reference an already committed bounded group only with durable idempotency and
+publication state that distinguishes partial from complete output. Never write
+rrflowDB, graph and vector state through unrelated commits and then assert the
+job succeeded. The phase plan's digest chain must remain valid across resume;
+changed source/configuration requires explicit replan or rejection, not editing
+the accepted plan in place.
+
+E/F are consumed at specific boundaries: semantic records/adjacency require
+E-01/E-02; persisted lexical access E-03; exact and approximate vector stages
+E-04; access selection E-05. Analytical streaming consumes F-01/F-02/F-04;
+mixed analytical operators consume F-03 and cache qualification F-05. Native
+point/graph/exact queries do not acquire a DataFusion dependency merely because
+a later analytical path exists. Optional knowledge-source adapters follow D-06
+and reuse this same provenance/publication pipeline.
+
+## Turnkey provisioning acceptance
+
+D-01/D-02/D-05 compose the [minimal-input Connectome flow](../../reference/client/connectome.md#turnkey-project-entry-and-progressive-detail).
+The installed plan must bind generated project identity, canonical estate,
+versioned bootstrap schemas, graph/source definitions, admitted model and vector
+collection parameters. Users select a project and review effects; they do not
+manually construct three DB/KV/QL databases or pre-seed records to make the demo
+work. D-02a still owns explicit ingestion activation and missing public controls.
+D-02c/G own [effort inheritance](../../reference/inference/lfg-swag.md#inheriting-effort-from-the-calling-ai);
+engine-enforced limits cannot be replaced with UI presets or client timers.
+
+Prove a no-account local installation, automatic source-derived data, first
+source-citing query and changed/deleted-source readback through the same estate.
+State which modalities and languages the admitted profile actually supports;
+unsupported input cannot silently become indexed content. Default local model
+assets follow J-05's bundle requirement. External models, knowledge paths and
+rroflow.ai remain separate opt-in effects. Failure to qualify those optional
+profiles must not silently change the meaning of local indexing readiness.
 
 ## [Accepted evidence](gate-d-evidence.md)
 
@@ -29,7 +161,8 @@ either independently.
 D-01 is accepted as an OBJ-07 prerequisite; OBJ-07 remains partial.
 The [final acceptance matrix](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 binds every required row to candidate `9b6c3571`, native receipts and successful
-CI. C-07 is now the active dependency-spine item. The implementation order below
+CI. The active dependency-spine item is now D-02 and the real-project workflow;
+C-07 final qualification remains open. The historical D-01 implementation order below
 was established on 2026-10-21 against `1815af32a53e161bc5f3d7f0f7b4365462cd9f7a`.
 It refines the D-01 row above;
 it neither changes that row's acceptance nor creates another status owner.
@@ -50,7 +183,7 @@ Package numbers are subdivisions of D-01, not additional release gates.
 | **D-01.3 Exclusive install and recovery / accepted bounded implementation** | [PR 50](https://github.com/rrflow/rrflow-development/pull/50) adds a retained native project lease from admission through final acknowledgement at `apply_installation_with_observer`. Plan format 3 previews its exact path, precondition, acquisition and retained lifetime. Read-only admission is revalidated under the lease; existing filesystem capabilities and storage authority remain in place. The [repair journal](../../evidence/change-journals/gate-d/d-01-exclusive-installation.md) records the original failing process oracle and replacement corpus. Candidate `3817cb5a` passed all 17 jobs in full run `39647536747` and merged as `6ba9dc5a`. Final native qualification is accepted in .5 below. | Two real processes apply the same plan, competing plans, and recovery versus apply at controlled barriers before intent, store, locator and cleanup. Exactly one admitted writer may produce effects; the loser returns a bounded conflict. Kill the owner and retry: one credential, policy, checkpoint, audit outcome and locator remain. A stale owner/lease cannot clear a newer admission. Neither elapsed time nor a PID alone permits takeover. Reuse existing lock semantics where proven; add no sidecar lifecycle database or client lock authority. |
 | **D-01.4 Complete bundled bootstrap / accepted bounded implementation** | [PR 51](https://github.com/rrflow/rrflow-development/pull/51) binds linked generic/Clyffy templates and specialization, all thirteen paths and ten ordered actions, bounded initial records and actual instruction publication/recovery in plan version 4. Unknown or changed bundle/installed bytes deny. Candidate `9cfeeca4` passed all 17 jobs in [run 39654924753](https://github.com/rrflow/rrflow-development/actions/runs/39654924753) and merged as `7aa10e23`. The [implementation journal](../../evidence/change-journals/gate-d/d-01-bundled-bootstrap.md) and [SDK identity correction](../../evidence/change-journals/gate-d/d-01-bootstrap-sdk-identity.md) preserve local and failing-candidate evidence; final native qualification is accepted in .5 below. | An independently enumerated expected-effect fixture detects any unpreviewed file, transient path, canonical record or invocation. Repeated preview of identical explicit inputs is byte-identical and performs no mutation, credential generation/read, process start or provider call. Exact apply materializes only the declared closure; template/specialization/adapter revision, source or permission drift fails before effects. Fresh and existing projects preserve owned content; interruption at each newly introduced effect resumes without duplicates. Contract, schema and client projections are generated from their existing owner and qualified together. |
 | **D-01.5 Native adversarial and offline qualification / accepted** | [PR 52](https://github.com/rrflow/rrflow-development/pull/52) candidate `9b6c3571` passed all 17 required jobs in [run 39674145683](https://github.com/rrflow/rrflow-development/actions/runs/39674145683), with only macOS and its dependent gate retried after hosted-runner capacity cancellation. All three native isolated actual-binary receipts pass; owner/mount/ACL fixtures and eleven-boundary recovery pass. The [accepted evidence](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21) records exact hashes and limits. | Run the matrix below on native Linux, Windows and macOS using actual primary executables. Add asserted outbound denial and checkout/sibling absence for each claimed offline platform, plus deterministic native path/ACL/lease failures. A missing required privilege, unavailable enforcement or skipped adversarial case is an open qualification gap, never a pass. Keep finite deadlines, output ceilings and retained failure artifacts. Do not replace native evidence with cross-compilation or mocks. |
-| **D-01.6 Acceptance reconciliation / reconciled** | The [accepted matrix](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21), retained receipts and [reconciliation journal](../../evidence/change-journals/gate-d/d-01-acceptance-reconciliation.md) bind all eight acceptance rows. D-01 is checked; C-07 is next. POAM-006 stays open and OBJ-07 stays partial. | At one candidate revision, account for every D-01 requirement, OS/filesystem profile, binary digest, command, case count, denial and retained receipt. No required row may be missing or skipped. Only then mark D-01 complete and advance the dependency spine to C-07; parent OBJ-07 and alpha remain open. |
+| **D-01.6 Acceptance reconciliation / reconciled** | The [accepted matrix](gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21), retained receipts and [reconciliation journal](../../evidence/change-journals/gate-d/d-01-acceptance-reconciliation.md) bind all eight acceptance rows. D-01 is checked; the current dependency spine owns subsequent work. POAM-006 stays open and OBJ-07 stays partial. | At one candidate revision, account for every D-01 requirement, OS/filesystem profile, binary digest, command, case count, denial and retained receipt. No required row may be missing or skipped. Only then mark D-01 complete and advance according to the current dependency spine; parent OBJ-07 and alpha remain open. |
 
 ### Bootstrap scope and durable-effect boundary
 
@@ -192,7 +325,8 @@ and bidirectional synchronization remains H-07.
 The [DuckDB contract](../../reference/data/duckdb.md) refines D-06 for the
 owner-requested analytical integration. Native rrflowDB remains Rust-owned;
 DuckDB's C/C++ runtime is optional third-party capability code. No row below
-is implemented or qualified. C-07 remains the next executable gate. Keep
+is implemented or qualified. The real-project workflow has priority in the
+[current dependency spine](executable-dependency-spine.md). Keep
 Gate F's DataFusion provider and H-08's PostgreSQL profile independent.
 
 | Package | Prerequisites and deliverable | First falsifying oracle and exit |

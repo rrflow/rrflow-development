@@ -24,6 +24,25 @@ judgment supplies intent, owners, risks, failure oracles, acceptance evidence,
 and stop conditions. Do not turn the mechanical envelope into a schema of
 thought.
 
+## Demonstrable progress
+
+Every implementation package names the missing behavior or reproduced defect
+and a before/after oracle at its real canonical boundary. For engine workflow
+changes, demonstrate the changed behavior through the real engine and retain
+input, source/configuration identity, result and durable readback where relevant.
+For a component repair, prove its invariant and identify the installed evidence
+still required; do not call it a usable project workflow. A new mock, test count,
+code volume, compilation, elapsed time or synthetic load alone is not product
+progress. Documentation-only changes demonstrate corrected context, never a
+new engine capability.
+
+If the promised behavior does not advance, retain the failure, stop dependent
+work and rework the package at its owning boundary. Do not replace missing
+implementation with unrelated telemetry or repeated benchmarks. Record what
+changed, what the oracle proved, and what remains unavailable in the journal
+and handoff. This is the existing repository procedure, not a runtime hook or
+another completion authority.
+
 ## Change sequence
 
 1. Follow `README.md` to the owning objective, roadmap item, POA&M item,
@@ -60,7 +79,8 @@ reviewable without attempting to encode the reasoning process:
   and stop conditions;
 - complete owner and implementation files actually reviewed for the proposed
   change;
-- the first failure or characterization oracle and acceptance commands;
+- the missing behavior or defect, explicit before/after oracle, demonstrated
+  advancement and acceptance commands;
 - research, source-adaptation, trace, resource, and debugging decisions; and
 - created, changed, moved, deleted, generated, and evidence paths.
 
