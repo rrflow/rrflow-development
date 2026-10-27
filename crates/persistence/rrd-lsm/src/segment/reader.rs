@@ -81,6 +81,7 @@ pub struct ProjectedReadBudget {
     pub max_active_views: usize,
     pub max_ranges: usize,
     pub max_runs: usize,
+    /// Ceiling for retained segment generations and per-view memtable snapshots.
     pub max_pinned_bytes: u64,
     pub max_versions_examined: u64,
     pub max_page_requests: u64,
@@ -252,6 +253,7 @@ pub struct ProjectedReadEvidence {
     pub selected_ranges: u64,
     pub selected_runs: u64,
     pub selected_row_groups: u64,
+    /// Logical footprint of this view; overlapping views can share a generation.
     pub pinned_bytes: u64,
     pub versions_examined: u64,
     pub page_requests: u64,
@@ -357,10 +359,13 @@ pub(crate) struct ActiveReadViews {
 }
 
 #[derive(Debug)]
+// Segment retention is shared by a generation; captured memtables are
+// conservatively charged per view, including copy-on-write snapshots.
 struct ActiveManifest {
     manifest: Arc<Manifest>,
     references: usize,
-    pinned_bytes: u64,
+    segment_bytes: u64,
+    memtable_bytes: u64,
 }
 
 impl ActiveReadViews {
@@ -374,7 +379,8 @@ impl ActiveReadViews {
     pub(crate) fn acquire(
         registry: &Arc<Mutex<Self>>,
         manifest: Arc<Manifest>,
-        pinned_bytes: u64,
+        memtable_bytes: u64,
+        segment_bytes: u64,
         budget: ProjectedReadBudget,
     ) -> Result<ReadViewLease> {
         let mut views = registry
@@ -389,38 +395,43 @@ impl ActiveReadViews {
             budget.max_active_views as u64,
             next_active as u64,
         )?;
+        let digest = manifest.digest.clone();
+        let (next_references, next_memtable_bytes, new_segment_charge) =
+            match views.manifests.get(&digest) {
+                Some(entry) => {
+                    if (!Arc::ptr_eq(&entry.manifest, &manifest) && entry.manifest != manifest)
+                        || entry.segment_bytes != segment_bytes
+                    {
+                        return Err(Error::PoisonedReadViewRegistry);
+                    }
+                    (
+                        entry
+                            .references
+                            .checked_add(1)
+                            .ok_or(Error::PoisonedReadViewRegistry)?,
+                        entry
+                            .memtable_bytes
+                            .checked_add(memtable_bytes)
+                            .ok_or(Error::PoisonedReadViewRegistry)?,
+                        0,
+                    )
+                }
+                None => (1, memtable_bytes, segment_bytes),
+            };
         let next_pinned = views
             .pinned_bytes
-            .checked_add(pinned_bytes)
+            .checked_add(memtable_bytes)
+            .and_then(|bytes| bytes.checked_add(new_segment_charge))
             .ok_or(Error::PoisonedReadViewRegistry)?;
         check_limit(
             ProjectedReadResource::PinnedBytes,
             budget.max_pinned_bytes,
             next_pinned,
         )?;
-        let digest = manifest.digest.clone();
-        let (next_references, next_manifest_pinned) = match views.manifests.get(&digest) {
-            Some(entry) => {
-                if !Arc::ptr_eq(&entry.manifest, &manifest) && entry.manifest != manifest {
-                    return Err(Error::PoisonedReadViewRegistry);
-                }
-                (
-                    entry
-                        .references
-                        .checked_add(1)
-                        .ok_or(Error::PoisonedReadViewRegistry)?,
-                    entry
-                        .pinned_bytes
-                        .checked_add(pinned_bytes)
-                        .ok_or(Error::PoisonedReadViewRegistry)?,
-                )
-            }
-            None => (1, pinned_bytes),
-        };
         match views.manifests.get_mut(&digest) {
             Some(entry) => {
                 entry.references = next_references;
-                entry.pinned_bytes = next_manifest_pinned;
+                entry.memtable_bytes = next_memtable_bytes;
             }
             None => {
                 views.manifests.insert(
@@ -428,7 +439,8 @@ impl ActiveReadViews {
                     ActiveManifest {
                         manifest,
                         references: next_references,
-                        pinned_bytes: next_manifest_pinned,
+                        segment_bytes,
+                        memtable_bytes: next_memtable_bytes,
                     },
                 );
             }
@@ -438,7 +450,7 @@ impl ActiveReadViews {
         Ok(ReadViewLease {
             registry: Arc::clone(registry),
             manifest: digest,
-            pinned_bytes,
+            memtable_bytes,
             released: false,
         })
     }
@@ -461,7 +473,7 @@ impl ActiveReadViews {
 pub(crate) struct ReadViewLease {
     registry: Arc<Mutex<ActiveReadViews>>,
     manifest: String,
-    pinned_bytes: u64,
+    memtable_bytes: u64,
     released: bool,
 }
 
@@ -478,10 +490,6 @@ impl ReadViewLease {
             .active
             .checked_sub(1)
             .ok_or(Error::PoisonedReadViewRegistry)?;
-        let next_pinned = views
-            .pinned_bytes
-            .checked_sub(self.pinned_bytes)
-            .ok_or(Error::PoisonedReadViewRegistry)?;
         let entry = views
             .manifests
             .get(&self.manifest)
@@ -490,16 +498,20 @@ impl ReadViewLease {
             .references
             .checked_sub(1)
             .ok_or(Error::PoisonedReadViewRegistry)?;
-        let next_manifest_pinned = entry
-            .pinned_bytes
-            .checked_sub(self.pinned_bytes)
+        let next_memtable_bytes = entry
+            .memtable_bytes
+            .checked_sub(self.memtable_bytes)
             .ok_or(Error::PoisonedReadViewRegistry)?;
         let remove = next_references == 0;
-        // Empty views legitimately hold a reference with zero pinned bytes.
-        // Only the last reference requires all of this manifest's charge gone.
-        if remove && next_manifest_pinned != 0 {
+        if remove && next_memtable_bytes != 0 {
             return Err(Error::PoisonedReadViewRegistry);
         }
+        let segment_charge = if remove { entry.segment_bytes } else { 0 };
+        let next_pinned = views
+            .pinned_bytes
+            .checked_sub(self.memtable_bytes)
+            .and_then(|bytes| bytes.checked_sub(segment_charge))
+            .ok_or(Error::PoisonedReadViewRegistry)?;
         if remove {
             views.manifests.remove(&self.manifest);
         } else {
@@ -508,7 +520,7 @@ impl ReadViewLease {
                 .get_mut(&self.manifest)
                 .expect("active read manifest was validated");
             entry.references = next_references;
-            entry.pinned_bytes = next_manifest_pinned;
+            entry.memtable_bytes = next_memtable_bytes;
         }
         views.active = next_active;
         views.pinned_bytes = next_pinned;
