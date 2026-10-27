@@ -703,8 +703,8 @@ impl Database {
         self.transaction_snapshots.ownership()
     }
 
-    /// Aggregate live stream ownership: segment generations count once and
-    /// captured memtables count per view. Returned batches own separate output reservations.
+    /// Aggregate live stream ownership: each retained segment or mutable
+    /// generation counts once. Returned batches own separate output reservations.
     pub fn read_view_ownership(&self) -> Result<(u64, u64)> {
         ActiveReadViews::ownership(&self.active_read_views)
     }
@@ -778,6 +778,7 @@ impl Database {
         let lease = ActiveReadViews::acquire(
             &self.active_read_views,
             Arc::clone(&self.manifest),
+            Some(&self.memtable),
             memtable_bytes,
             segment_bytes,
             request.budget,
