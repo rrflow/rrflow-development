@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
+retains the indexed source `7c329d49` native failure: all 100000 corpus writes
+were acknowledged but only 44556 were independently verified before the
+unchanged two-hour setup deadline. No measured segment or 24-hour soak ran.
+Sharing immutable manifest ownership removes per-view copies in the candidate;
+its installed effect on this failure remains unmeasured. Full profile and
+exact-candidate qualification remain open.
+
 Current scheduling follows the [parent-authorized dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md)
 and [staged C-07 qualification](../../roadmap/rrflow-1.0/gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
 Final growth/24-hour qualification remains open but does not prohibit D-02's
@@ -1083,6 +1091,13 @@ preparation. It defers periodic synchronization of disposable APFS filler while
 preserving final file/volume settlement, fresh capacity denial and every
 resource bound. The scheduling regression fails before the change and passes
 afterward; actual repeated native APFS acceptance remains required.
+
+The [APFS refill-probe repair](../../evidence/change-journals/gate-c/c-07f-apfs-refill-probe.md)
+records manifest candidate `ab078b83` failing the fresh `current_before_create`
+APFS case during owned pressure preparation at the existing 25-second limit.
+The repair reduces redundant failed refill probes while retaining settlement
+and a fresh native one-byte denial. Local fixture tests pass; native candidate
+acceptance and the full sustained profile remain open.
 
 
 The [indexed native candidate](../../evidence/change-journals/gate-c/c-07g-indexed-native-candidate.md)

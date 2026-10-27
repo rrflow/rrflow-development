@@ -103,7 +103,7 @@ The audited projection contains:
 - only `200` success envelopes plus the default error envelope;
 - `application/json` as the only declared response media type; and
 - OpenAPI SHA-256
-  `b0b7a6248e37ee650f95f968f6b279ebd2b65a1a773f69cee8b1e684502ab3ff`.
+  `eb6e2e724814dc1c8465a650310e7b15c96788835c2357f81331de6a2084ffda`.
 
 The generated `rrd-openapi.ts` is a compile-time projection of roughly 1.6
 MiB. Its `paths`, `components`, and `operations` types are valuable compile-time
