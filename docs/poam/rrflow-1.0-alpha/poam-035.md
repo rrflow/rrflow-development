@@ -1122,3 +1122,10 @@ records complete initial readback and two forced reopens, then failure after
 48604 post-reopen verifications with projected-read pinned-byte admission. The
 actual limit, requested amount and concurrency at denial are not retained; no
 measured segment or soak started. A repair and full qualification remain open.
+
+The [shared-generation candidate's Windows retry](../../evidence/change-journals/gate-c/c-07g-shared-pins-windows-terminal.md)
+acknowledged and initially verified all 100000 records, but failed pinned-byte
+admission after 47016 post-reopen readbacks, with zero measured segments. The
+candidate did not eliminate the observed failure. The numeric denial and root
+cause remain unknown; retain the failed result and diagnose before declaring
+the correction effective or C-07 qualified.
