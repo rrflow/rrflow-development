@@ -1139,6 +1139,29 @@ fn installed_capacity_workload_smoke() {
         let killed = super::kill(child, clock);
         let (reopened, client, identity) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
+        // Exercise the production post-reopen bounded readback before replay.
+        let mut reopened_digest =
+            digest("c07g.reopened-corpus", &(work.seed, work.records)).unwrap();
+        let mut expected_digest = reopened_digest.clone();
+        for first in (0..work.records).step_by(2) {
+            let (next_digest, values) = corpus::verify_reopened_window(
+                &work,
+                first,
+                (first + 2).min(work.records),
+                2,
+                Duration::from_secs(30),
+                reopened_digest,
+            )
+            .await
+            .unwrap();
+            for (ordinal, effect) in values {
+                assert_eq!(effect, work.seed_record(ordinal).unwrap().effect_sha256);
+                expected_digest =
+                    digest("c07g.reopened-corpus", &(expected_digest, ordinal, &effect)).unwrap();
+            }
+            reopened_digest = next_digest;
+        }
+        assert_eq!(reopened_digest, expected_digest);
         // Every old value is read before replay; exact old request identities
         // must return the stored receipt after this real process boundary.
         for ordinal in 0..work.records {
@@ -1336,9 +1359,9 @@ async fn run_estate(
                     &mut child,
                     &mut work,
                     campaign,
-                    clock,
-                    Duration::from_millis(lifetime_ms),
+                    (clock, Duration::from_millis(lifetime_ms)),
                     &ProgressContext { writer, point },
+                    (&mut session_ordinal, &mut session_opened),
                 )
                 .await?,
             );
