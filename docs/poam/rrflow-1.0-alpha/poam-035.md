@@ -1116,3 +1116,9 @@ The [post-reopen progress sample](../../evidence/change-journals/gate-c/c-07g-re
 records complete initial readback, two forced reopens with matching replay
 receipt digests and a consecutive prefix of the new post-reopen readback. The
 second pass, measured workload and terminal outcome remain unproven.
+
+The [post-reopen terminal failure](../../evidence/change-journals/gate-c/c-07g-reopen-window-windows-terminal.md)
+records complete initial readback and two forced reopens, then failure after
+48604 post-reopen verifications with projected-read pinned-byte admission. The
+actual limit, requested amount and concurrency at denial are not retained; no
+measured segment or soak started. A repair and full qualification remain open.
