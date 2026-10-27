@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [shared mutable-generation accounting candidate](../../evidence/change-journals/gate-c/c-07g-shared-memtable-pins.md)
+reproduced an independent admission error: two views of one 4,126-byte mutable
+generation were charged 8,252 bytes and rejected at a 4,126-byte limit. The
+candidate charges a shared live allocation once and distinct copy-on-write
+generations separately; its integrated native effect and exact candidate CI are
+not established. The earlier 100,000-record denial did not retain its numeric
+charge, so this mechanism is not proven to have caused that failure.
+
 The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
 retains the indexed source `7c329d49` native failure: all 100000 corpus writes
 were acknowledged but only 44556 were independently verified before the
