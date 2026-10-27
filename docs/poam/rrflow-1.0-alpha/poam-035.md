@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [shared mutable-generation accounting candidate](../../evidence/change-journals/gate-c/c-07g-shared-memtable-pins.md)
+reproduced an independent admission error: two views of one 4,126-byte mutable
+generation were charged 8,252 bytes and rejected at a 4,126-byte limit. The
+candidate charges a shared live allocation once and distinct copy-on-write
+generations separately; its integrated native effect and exact candidate CI are
+not established. The earlier 100,000-record denial did not retain its numeric
+charge, so this mechanism is not proven to have caused that failure.
+
 The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
 retains the indexed source `7c329d49` native failure: all 100000 corpus writes
 were acknowledged but only 44556 were independently verified before the
@@ -1114,3 +1122,25 @@ fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
 The initial 896 setup acknowledgements are not independent full readback or
 qualification. Preserve this source's terminal evidence; no actual 24-hour
 soak or gap closure is claimed.
+
+The [post-reopen readback package](../../evidence/change-journals/gate-c/c-07g-reopen-window-readback.md)
+replaces an unobserved serial full-corpus verification after the final forced
+reopen with bounded, ordered readback windows, joined-session rotation and
+separate progress bound to the reopen receipt. Local installed smoke passes;
+the failed 100000-record campaign's exact admission cause remains unknown and
+full native capacity and 24-hour qualification remain open.
+
+The [read-admission attribution package](../../evidence/change-journals/gate-c/c-07g-read-admission-labels.md)
+corrects a verified classifier mismatch where read limits wrapped as storage
+admission lost their bounded resource category. It does not infer the original
+redacted cause; fresh full-size characterization and qualification remain open.
+
+The sustained corpus independently retrieves vectors by reference and reads
+records and relations via rrflowQL at the returned cursor, but does not exercise
+nearest-neighbor search, HNSW or TurboQuant quality at the full corpus. The
+installed smoke also lacked a joined search/readback/restart/replay oracle.
+Engine-local tests cover portions of indexed and quantized retrieval, while the
+inspected HTTP server and Rust client do not expose the corresponding index and
+quantization build/activation operations. [C-07's joined evidence sequence](../../roadmap/rrflow-1.0/gate-c-07.md#joined-rrflowdb-evidence-sequence)
+tracks the missing end-to-end and scale evidence; no part of C-07 is closed by
+this observation.
