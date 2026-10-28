@@ -1149,3 +1149,11 @@ admission after 47016 post-reopen readbacks, with zero measured segments. The
 candidate did not eliminate the observed failure. The numeric denial and root
 cause remain unknown; retain the failed result and diagnose before declaring
 the correction effective or C-07 qualified.
+
+
+The [selected-segment Windows outcome](../../evidence/change-journals/gate-c/c-07g-selected-segment-native-outcome.md)
+records candidate c02f33c8 completing 100000 initial and 100000 post-reopen
+verifications after two reopens, then failing segment zero: one resource-sample
+interval was 2252002100 ns against a 2000000000 ns bound, and the segment
+recorded 42 acknowledged and eight rejected attempts. The sample-gap and
+rejection causes remain unproven; no measured segment or qualification passed.
