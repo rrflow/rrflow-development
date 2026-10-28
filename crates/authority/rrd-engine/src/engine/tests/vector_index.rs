@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 
 mod catalogue_reads;
 mod point_reads;
+mod turboquant_overlay;
 
 fn assert_direct_read_evidence(
     selected_versions: u64,

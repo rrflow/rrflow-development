@@ -403,6 +403,21 @@ impl VectorRuntime {
         self.prepare_search_at(request, request.read.commit_cursor, ef_search)
     }
 
+    /// Canonical versions a generation at `generation_cursor` does not
+    /// contain: those committed after it, up to the request's cursor.
+    fn overlay<'a>(
+        &'a self,
+        generation_cursor: u64,
+        required_source_cursor: u64,
+        covers: impl Fn(&VectorCandidate) -> bool + 'a,
+    ) -> impl Iterator<Item = &'a VectorCandidate> + 'a {
+        self.canonical.iter().filter(move |candidate| {
+            candidate.source_cursor > generation_cursor
+                && candidate.source_cursor <= required_source_cursor
+                && covers(candidate)
+        })
+    }
+
     pub fn prepare_search_at(
         &self,
         request: &SearchRequest,
@@ -439,28 +454,36 @@ impl VectorRuntime {
                 }
             };
             let mut path = descriptor.candidate_path(estimated_cost);
-            if let VectorProjectionDescriptor::Hnsw { descriptor } = descriptor {
-                let overlay_candidates = self
-                    .canonical
-                    .iter()
-                    .filter(|candidate| {
-                        candidate.source_cursor > descriptor.stamp.source_cursor
-                            && candidate.source_cursor <= required_source_cursor
-                            && hnsw_covers_candidate(descriptor, candidate)
-                    })
-                    .count();
-                if overlay_candidates != 0 {
-                    path.overlay_source_cursor = Some(required_source_cursor);
-                    path.overlay_candidates =
-                        u64::try_from(overlay_candidates).map_err(|_| Error::InvalidRuntime {
-                            reason: "HNSW overlay candidate count exceeds u64".into(),
-                        })?;
-                    path.estimated_candidates = path
-                        .estimated_candidates
-                        .saturating_add(path.overlay_candidates);
-                    path.estimated_cost =
-                        path.estimated_cost.saturating_add(path.overlay_candidates);
-                }
+            // A generation behind the request serves with an exact overlay of
+            // the canonical versions committed after it.
+            let overlay_candidates = match descriptor {
+                VectorProjectionDescriptor::Hnsw { descriptor } => self
+                    .overlay(
+                        descriptor.stamp.source_cursor,
+                        required_source_cursor,
+                        |c| hnsw_covers_candidate(descriptor, c),
+                    )
+                    .count(),
+                VectorProjectionDescriptor::TurboQuant { descriptor } => self
+                    .overlay(
+                        descriptor.stamp.source_cursor,
+                        required_source_cursor,
+                        |c| turboquant_covers_candidate(descriptor, c),
+                    )
+                    .count(),
+                VectorProjectionDescriptor::ExactSegment { .. }
+                | VectorProjectionDescriptor::Quantized { .. } => 0,
+            };
+            if overlay_candidates != 0 {
+                path.overlay_source_cursor = Some(required_source_cursor);
+                path.overlay_candidates =
+                    u64::try_from(overlay_candidates).map_err(|_| Error::InvalidRuntime {
+                        reason: "vector overlay candidate count exceeds u64".into(),
+                    })?;
+                path.estimated_candidates = path
+                    .estimated_candidates
+                    .saturating_add(path.overlay_candidates);
+                path.estimated_cost = path.estimated_cost.saturating_add(path.overlay_candidates);
             }
             paths.push(path);
         }
@@ -571,11 +594,11 @@ impl VectorRuntime {
                         )?;
                         search_exact_ref(
                             request,
-                            base.iter().chain(self.canonical.iter().filter(|candidate| {
-                                candidate.source_cursor > index.descriptor().stamp.source_cursor
-                                    && candidate.source_cursor <= plan.required_source_cursor
-                                    && hnsw_covers_candidate(index.descriptor(), candidate)
-                            })),
+                            base.iter().chain(self.overlay(
+                                index.descriptor().stamp.source_cursor,
+                                plan.required_source_cursor,
+                                |candidate| hnsw_covers_candidate(index.descriptor(), candidate),
+                            )),
                         )?
                     }
                     (
@@ -602,15 +625,22 @@ impl VectorRuntime {
                         )?
                     }
                     (AccessPathKind::TurboQuant, VectorArtifact::TurboQuant(segment)) => {
-                        let approximate = segment.search_candidates_at(
-                            request,
-                            plan.selected.exact_rerank,
-                            plan.required_source_cursor,
-                        )?;
-                        let references = approximate
+                        // The generation answers at its own cursor; every
+                        // identity changed since it is reranked from its full
+                        // canonical history, so the exact scorer sees the
+                        // version visible at the request's valid time.
+                        let generation = segment.descriptor().stamp.source_cursor;
+                        let mut references = segment
+                            .search_candidates_at(request, plan.selected.exact_rerank, generation)?
                             .into_iter()
                             .map(|hit| hit.reference)
                             .collect::<BTreeSet<_>>();
+                        references.extend(
+                            self.overlay(generation, plan.required_source_cursor, |candidate| {
+                                turboquant_covers_candidate(segment.descriptor(), candidate)
+                            })
+                            .map(|candidate| candidate.vector.reference.clone()),
+                        );
                         search_exact_ref(
                             request,
                             self.canonical.iter().filter(|candidate| {
@@ -632,6 +662,17 @@ impl VectorRuntime {
         let prepared = self.prepare_search(request, ef_search)?;
         self.execute_search(request, &prepared)
     }
+}
+
+fn turboquant_covers_candidate(
+    descriptor: &crate::TurboQuantDescriptor,
+    candidate: &VectorCandidate,
+) -> bool {
+    candidate.scope == descriptor.scope
+        && candidate.vector.field == descriptor.field
+        && candidate.vector.value.dimensions() == descriptor.dimensions
+        && candidate.matches_model(descriptor.embedding_model.as_ref())
+        && matches!(candidate.vector.value, rrd_core::VectorValue::Dense { .. })
 }
 
 fn hnsw_covers_candidate(descriptor: &crate::HnswDescriptor, candidate: &VectorCandidate) -> bool {
