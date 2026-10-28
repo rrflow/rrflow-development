@@ -13,6 +13,8 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod observation_source;
+pub use observation_source::*;
 mod flight;
 mod function;
 #[path = "generated/signal_catalogue.rs"]
