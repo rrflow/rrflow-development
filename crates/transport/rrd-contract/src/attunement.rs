@@ -1030,6 +1030,43 @@ impl AttunementStatus {
     }
 }
 
+/// Read one engine-owned installed job by its durable identity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReadAttunement {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+}
+
+impl ReadAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+/// This operation does not inspect the project's current source tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AttunementSourceVerification {
+    NotChecked,
+}
+
+/// The exact stored plan and job at one authorized engine read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReadResult {
+    pub plan: AttunementPlan,
+    pub status: AttunementStatus,
+    pub source_verification: AttunementSourceVerification,
+}
+
+impl AttunementReadResult {
+    pub fn validate(&self) -> Result<()> {
+        self.plan.validate()?;
+        self.status.validate(&self.plan)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ResumeAttunement {
@@ -1084,6 +1121,31 @@ pub struct CancelAttunement {
     pub last_checkpoint_sha256: Option<String>,
     pub reason: String,
     pub requested_at_unix_ms: u64,
+}
+
+/// The durable cancellation request, not an assertion that a worker has stopped.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementCancelResult {
+    pub status: AttunementStatus,
+    pub idempotent_replay: bool,
+}
+
+impl AttunementCancelResult {
+    pub fn validate_for(&self, request: &CancelAttunement) -> Result<()> {
+        validate_contract_version(self.status.contract_version)?;
+        validate_contract_version(self.status.job.contract_version)?;
+        let job = &self.status.job;
+        if job.id != request.job_id
+            || job.plan_sha256 != request.plan_sha256
+            || Some(job.revision) != request.expected_job_revision.checked_add(1)
+            || job.state != AttunementJobState::CancelRequested
+            || self.status.observed_at_unix_ms < job.updated_at_unix_ms
+        {
+            return invalid("attunement cancellation result does not match the request");
+        }
+        Ok(())
+    }
 }
 
 impl CancelAttunement {

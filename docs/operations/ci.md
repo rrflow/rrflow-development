@@ -21,11 +21,16 @@ The caller accepts ready pull requests, merge-queue candidates, and explicit
 manual dispatches. Draft PRs remain reviewable packages without automatically
 launching the full pipeline. `opened`, `synchronize`, `reopened`,
 `ready_for_review`, and `converted_to_draft` are explicit PR activities.
-Becoming ready starts candidate CI even without a new commit; returning to
-draft cancels obsolete work through the same PR/ref concurrency key and skips
-the reusable caller. Other PRs' runs are unaffected. A skipped draft run is
-not candidate acceptance. Manual dispatch intentionally remains available for
-an explicitly requested full run on a draft branch.
+Becoming ready starts candidate CI even without a new commit. Draft events use
+a separate concurrency group from ready candidates, so a delayed draft event
+cannot cancel a ready run. Returning to draft skips the reusable caller but does
+not cancel a ready run already in progress; a subsequent ready candidate for
+the same PR supersedes that run. Other PRs and non-PR refs remain isolated.
+A skipped draft run is not candidate acceptance. GitHub does not guarantee
+concurrency start order, and a local grouping test cannot prove live delivery
+order. The required gate continues to fail unless every partition succeeds.
+Manual dispatch remains available for an explicitly requested full run on a
+draft branch.
 
 This uses GitHub's documented [pull-request activity types](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request);
 the default activity list does not include readiness transitions. The local
@@ -311,6 +316,14 @@ The five engine suites cover every workspace package exactly once, but package
 names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
 all 20 implementation packages into separate product checks.
+
+The installed-reopen release build is bounded to two Cargo workers on
+`windows-latest` and one on Linux/macOS. In PR150 candidate run 40503118473
+attempt 2, its Windows build took 63m24s and the 100-cycle history step took
+4m06s; this is an observed baseline, not proof of the bottleneck's cause. The
+two-worker candidate must pass the complete native pipeline and be timed before
+any speed or memory-safety claim. Commands, platform matrix and gates are
+unchanged.
 
 ## Presubmit and change-evidence boundary
 

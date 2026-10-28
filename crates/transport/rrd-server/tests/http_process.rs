@@ -611,6 +611,22 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     let (status, unauthenticated) = post(&server, "/v1/backups", &backup, None);
     assert_eq!(status, 401, "{unauthenticated}");
 
+    let attunement = envelope(
+        json!({"contract_version": 1, "job_id": "job-missing"}),
+        None,
+        None,
+    );
+    let (status, denied) = post(
+        &server,
+        "/v1/attunement/read",
+        &attunement,
+        Some((session, token)),
+    );
+    assert_eq!(status, 403, "{denied}");
+    assert_eq!(denied["outcome"]["error"]["code"], "permission_denied");
+    let (status, denied) = post(&server, "/v1/attunement/read", &attunement, None);
+    assert_eq!(status, 401, "{denied}");
+
     let mut invalid_query = query.clone();
     invalid_query["payload"]["query"] = json!("NOT RRFLOWQL");
     let (status, failed) = post(&server, "/v1/query", &invalid_query, Some((session, token)));
@@ -662,6 +678,9 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
             && record["phase"] == "completed"
             && record["decision"] == "failed"
     }));
+    assert!(records
+        .iter()
+        .any(|record| { record["action"] == "estate_read" && record["decision"] == "denied" }));
     assert_eq!(
         records
             .iter()
@@ -685,6 +704,37 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     let encoded = serde_json::to_string(records).unwrap();
     assert!(!encoded.contains("local-api-key"));
     assert!(!encoded.contains("wrong"));
+
+    // Authorization adds later audit events. Compare only the stable prefix
+    // already observed, not the moving end of the journal.
+    for limit in 1..=14 {
+        let request = envelope(json!({"after_sequence": 0, "limit": limit}), None, None);
+        let (status, page) = post(&server, "/v1/audit/read", &request, Some((session, token)));
+        assert_eq!(status, 200, "limit {limit}: {page}");
+        let page = payload(&page);
+        assert_eq!(page["records"].as_array().unwrap(), &records[..limit]);
+        let (status, export) = post(
+            &server,
+            "/v1/audit/export",
+            &request,
+            Some((session, token)),
+        );
+        assert_eq!(status, 200, "limit {limit}: {export}");
+        let export = payload(&export);
+        let lines = export["json_lines"].as_str().unwrap();
+        let exported: Vec<serde_json::Value> = lines
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert_eq!(exported, records[..limit]);
+        assert_eq!(export["through_sequence"], page["through_sequence"]);
+        assert_eq!(export["chain_anchor_sha256"], page["chain_anchor_sha256"]);
+        assert_eq!(export["chain_head_sha256"], page["chain_head_sha256"]);
+        assert_eq!(
+            export["content_sha256"],
+            rrd_core::digest::sha256_hex(lines.as_bytes())
+        );
+    }
 
     let export = envelope(json!({"after_sequence": 0, "limit": 64}), None, None);
     let (status, exported) = post(&server, "/v1/audit/export", &export, Some((session, token)));
