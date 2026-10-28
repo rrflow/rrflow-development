@@ -35,8 +35,9 @@ created and validated a private Windows workspace, but its Windows candidate CI
 rejected the child manifest's ownership or DACL. The
 [staging correction](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 creates an explicitly owned, protected staging file and publishes it after a
-complete write; corrected-hosted-runner validation remains pending. The complete
-Windows six-SDK corpus, separate-principal denial, ARM and macOS qualification
+complete write. Corrected candidate 137b90a1 passed the hosted Windows estate
+job and complete candidate CI; this integration must pass its own exact-head CI.
+The complete Windows six-SDK corpus, separate-principal denial, ARM and macOS qualification
 remain required; local descriptor inspection and a real harness startup do not
 establish them or close POAM-011.
 The same Windows review found that `shutil.which` resolves `pnpm.CMD` while a
