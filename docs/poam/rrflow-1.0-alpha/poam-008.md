@@ -32,6 +32,16 @@ focused tests. The project-command target distinguishes discovered facts, inacti
 candidates, installed bindings, prepared activities, observations, and accepted receipts,
 but no implementation exists.
 
+The requested unified Codex/Claude/Grok observation flow is also unimplemented:
+the inspected source contains no OTLP receiver or admitted host-event adapter,
+and transaction replay bound to a transaction/session does not establish
+provider-event deduplication after reconnect under a different session. Provider
+source availability, historical coverage, content scope, drop/backpressure and
+remote-transfer authorization therefore have no installed end-to-end evidence.
+The [provider-observation sequence](../../roadmap/rrflow-1.0/gate-i.md#provider-observation-for-rroflow)
+owns the proposed I-01/I-04 and H-05/H-07 work; its presence does not close
+this deficiency or establish a deployed rroflow.ai service.
+
 ## Impact
 
 Automation or project commands can still split into parallel authorities, exceed unproven

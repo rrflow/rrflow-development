@@ -51,3 +51,8 @@
 | POAM-035 | Critical | Open | [installed storage failure and growth qualification](rrflow-1.0-alpha/poam-035.md) |
 | POAM-036 | High | Sequenced | [DuckDB analytical interoperability is absent](rrflow-1.0-alpha/poam-036.md) |
 | POAM-037 | High | Open | [external knowledge providers and turnkey cloud synchronization](rrflow-1.0-alpha/poam-037.md) |
+| POAM-038 | High | Open | [attunement acts on an unverified source binding](rrflow-1.0-alpha/poam-038.md) |
+| POAM-039 | High | Open | [no versioned handoff or open-question record](rrflow-1.0-alpha/poam-039.md) |
+| POAM-040 | High | Open | [background jobs and memory receipts are not observable](rrflow-1.0-alpha/poam-040.md) |
+| POAM-041 | High | Open | [plan-conformance and change, interrupt and restart evidence stop at installation](rrflow-1.0-alpha/poam-041.md) |
+| POAM-042 | High | Open | [the estate has no configurable organisation layer](rrflow-1.0-alpha/poam-042.md) |

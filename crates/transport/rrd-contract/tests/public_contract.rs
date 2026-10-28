@@ -323,7 +323,7 @@ fn supported_sdks_share_one_strict_semantic_corpus() {
     .unwrap();
     corpus.validate().unwrap();
     assert_eq!(corpus.required_domains.len(), 13);
-    assert_eq!(corpus.expected.endpoint_count, 55);
+    assert_eq!(corpus.expected.endpoint_count, 57);
     assert_eq!(
         rrd_contract::transaction_operation_sha256(&corpus.transaction.commit.mutations),
         corpus.transaction.commit.operation_sha256
@@ -1355,8 +1355,11 @@ fn diagnostic_storage_observation_matches_its_profile_and_evidence_level() {
 fn endpoint_catalogue_is_complete_sorted_and_transport_neutral() {
     let catalogue = rrd_contract::endpoint_catalogue();
     catalogue.validate().unwrap();
-    assert_eq!(catalogue.endpoints.len(), 55);
-    assert_eq!(catalogue.endpoints[0].operation.as_str(), "audit-export");
+    assert_eq!(catalogue.endpoints.len(), 57);
+    assert_eq!(
+        catalogue.endpoints[0].operation.as_str(),
+        "attunement-cancel"
+    );
     let create = catalogue
         .endpoints
         .iter()
@@ -1447,6 +1450,12 @@ fn openapi_is_derived_from_every_catalogue_operation_and_wire_type() {
         };
         let operation = &document["paths"][&endpoint.path][method];
         assert_eq!(operation["operationId"], endpoint.operation.as_str());
+        assert_eq!(operation["summary"], endpoint.summary.as_str());
+        assert_eq!(operation["description"], endpoint.description.as_str());
+        assert_eq!(
+            operation["tags"],
+            serde_json::json!([endpoint.family.as_str()])
+        );
         assert!(operation["responses"]["200"]["content"]["application/json"]["schema"].is_object());
         if endpoint.method != rrd_contract::HttpMethod::Get {
             assert!(operation["requestBody"]["content"]["application/json"]["schema"].is_object());
@@ -1462,6 +1471,126 @@ fn openapi_is_derived_from_every_catalogue_operation_and_wire_type() {
         rrd_contract::OPENAPI_DOCUMENT_SHA256,
         "OpenAPI drift requires an intentional protocol/schema review"
     );
+}
+
+#[test]
+fn every_catalogue_operation_carries_its_own_reference_text() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    catalogue.validate().unwrap();
+    let mut operations = catalogue
+        .endpoints
+        .iter()
+        .map(|endpoint| endpoint.operation.as_str().to_owned())
+        .chain(
+            catalogue
+                .websocket_endpoints
+                .iter()
+                .map(|endpoint| endpoint.operation.as_str().to_owned()),
+        )
+        .collect::<Vec<_>>();
+    operations.sort();
+    // No operation without text, and no text left behind by a removed one.
+    assert_eq!(
+        operations,
+        rrd_contract::referenced_operations()
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        catalogue
+            .families
+            .iter()
+            .map(|family| family.family)
+            .collect::<Vec<_>>(),
+        rrd_contract::OperationFamily::ALL.to_vec()
+    );
+    for family in rrd_contract::OperationFamily::ALL {
+        assert!(
+            catalogue
+                .endpoints
+                .iter()
+                .map(|endpoint| endpoint.family)
+                .chain(
+                    catalogue
+                        .websocket_endpoints
+                        .iter()
+                        .map(|endpoint| endpoint.family)
+                )
+                .any(|used| used == family),
+            "family {} has no operation",
+            family.as_str()
+        );
+    }
+    let summaries = catalogue
+        .endpoints
+        .iter()
+        .map(|endpoint| endpoint.summary.as_str())
+        .chain(
+            catalogue
+                .websocket_endpoints
+                .iter()
+                .map(|endpoint| endpoint.summary.as_str()),
+        )
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        summaries.len(),
+        operations.len(),
+        "each operation needs its own summary"
+    );
+
+    let document = rrd_contract::openapi_document().unwrap();
+    assert_eq!(
+        document["tags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tag| tag["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        rrd_contract::OperationFamily::ALL
+            .iter()
+            .map(|family| family.as_str())
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn catalogue_validation_refuses_missing_or_malformed_reference_text() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    let reject = |change: &dyn Fn(&mut rrd_contract::EndpointCatalogue)| {
+        let mut changed = catalogue.clone();
+        change(&mut changed);
+        assert!(changed.validate().is_err());
+    };
+    reject(&|catalogue| catalogue.endpoints[0].summary.clear());
+    reject(&|catalogue| catalogue.endpoints[0].summary.push('.'));
+    reject(&|catalogue| catalogue.endpoints[0].summary.push_str(&"x".repeat(80)));
+    reject(&|catalogue| catalogue.endpoints[0].description.clear());
+    reject(&|catalogue| catalogue.endpoints[0].description.push_str(" More"));
+    reject(&|catalogue| catalogue.endpoints[0].description.push('\n'));
+    reject(&|catalogue| catalogue.endpoints[0].description.insert(0, ' '));
+    reject(&|catalogue| catalogue.websocket_endpoints[0].summary.clear());
+    reject(&|catalogue| catalogue.families.clear());
+    reject(&|catalogue| {
+        let family = catalogue.endpoints[0].family;
+        catalogue
+            .families
+            .retain(|described| described.family != family);
+    });
+    reject(&|catalogue| {
+        let duplicate = catalogue.families[0].clone();
+        catalogue.families.push(duplicate);
+    });
+    reject(&|catalogue| catalogue.families[0].title.push('.'));
+    let encoded = serde_json::to_value(&catalogue).unwrap();
+    let mut without_families = encoded.clone();
+    without_families.as_object_mut().unwrap().remove("families");
+    assert!(serde_json::from_value::<rrd_contract::EndpointCatalogue>(without_families).is_err());
+    let mut without_summary = encoded;
+    without_summary["endpoints"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("summary");
+    assert!(serde_json::from_value::<rrd_contract::EndpointCatalogue>(without_summary).is_err());
 }
 
 #[test]

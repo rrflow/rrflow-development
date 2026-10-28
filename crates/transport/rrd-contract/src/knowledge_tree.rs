@@ -1,4 +1,4 @@
-//! Versioned logical knowledge trees and their configured vector-store paths.
+//! Versioned logical knowledge trees and their configured data-source paths.
 //!
 //! The engine owns persistence, authorization, native collection validation and
 //! provider execution. A saved external binding is configuration, not evidence
@@ -23,12 +23,17 @@ pub const MAX_KNOWLEDGE_PROVIDER_IDENTIFIER_BYTES: usize = 256;
 // engine control-record / exact-result receipt metadata.
 pub const MAX_KNOWLEDGE_CATALOGUE_BYTES: usize = 768 * 1024;
 
-/// A logical grouping or an explicit vector-store source. Provider identifiers
+/// A logical grouping or an explicitly configured source. Provider identifiers
 /// are open canonical identities; their presence does not advertise an adapter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum KnowledgePathBinding {
     Group,
+    /// The project root (`None`) or one portable project-relative directory.
+    /// This is configuration, not permission to read or ingest the directory.
+    ProjectDirectory {
+        relative_path: Option<String>,
+    },
     Native {
         collection_id: CanonicalId,
         vector_name: CanonicalId,
@@ -47,6 +52,47 @@ pub enum KnowledgePathBinding {
 
 impl KnowledgePathBinding {
     pub fn validate(&self) -> Result<()> {
+        if let Self::ProjectDirectory { relative_path } = self {
+            if let Some(path) = relative_path {
+                crate::knowledge::validate_source_path(path)?;
+                if path.contains([':', '<', '>', '"', '|', '?', '*']) {
+                    return invalid("project directory must use portable relative path syntax");
+                }
+                for segment in path.split('/') {
+                    let stem = segment
+                        .split('.')
+                        .next()
+                        .unwrap_or_default()
+                        .to_ascii_uppercase();
+                    let reserved = matches!(
+                        stem.as_str(),
+                        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+                    ) || stem
+                        .strip_prefix("COM")
+                        .or_else(|| stem.strip_prefix("LPT"))
+                        .is_some_and(|suffix| {
+                            matches!(
+                                suffix,
+                                "1" | "2"
+                                    | "3"
+                                    | "4"
+                                    | "5"
+                                    | "6"
+                                    | "7"
+                                    | "8"
+                                    | "9"
+                                    | "\u{b9}"
+                                    | "\u{b2}"
+                                    | "\u{b3}"
+                            )
+                        });
+                    if segment.ends_with(['.', ' ']) || reserved {
+                        return invalid("project directory contains a non-portable segment");
+                    }
+                }
+            }
+            return Ok(());
+        }
         let Self::External {
             endpoint,
             namespace,
@@ -422,6 +468,45 @@ mod tests {
             namespace: Some("Public".into()),
             index: None,
             collection: Some("ResearchDocuments".into()),
+        }
+    }
+
+    #[test]
+    fn project_directory_paths_are_portable_and_project_scoped() {
+        for relative_path in [None, Some("docs/research papers"), Some("src/knowledge")] {
+            let binding = KnowledgePathBinding::ProjectDirectory {
+                relative_path: relative_path.map(str::to_owned),
+            };
+            binding.validate().unwrap();
+            let encoded = serde_json::to_string(&binding).unwrap();
+            let decoded: KnowledgePathBinding = serde_json::from_str(&encoded).unwrap();
+            assert_eq!(decoded, binding);
+        }
+        for value in [
+            "",
+            ".",
+            "..",
+            "../private",
+            "/absolute",
+            "C:/outside",
+            "dir:stream",
+            "a\\b",
+            "a//b",
+            "a/../b",
+            "a/b.",
+            "a/b ",
+            "a/NUL.txt",
+            "docs/COM\u{b9}",
+            "com\u{b2}.txt",
+            "Lpt\u{b3}",
+        ] {
+            let binding = KnowledgePathBinding::ProjectDirectory {
+                relative_path: Some(value.into()),
+            };
+            assert!(
+                binding.validate().is_err(),
+                "unsafe project directory accepted: {value:?}"
+            );
         }
     }
 

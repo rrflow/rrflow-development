@@ -82,3 +82,14 @@ Turnkey cloud acceptance also requires authenticated estate identity delivery,
 conflict rules, cursors, tombstones, echo suppression, retries, offline recovery,
 export and process-restart evidence. Configuration persistence alone cannot
 satisfy these conditions. Release and roadmap status remain open.
+
+The [project-directory knowledge path package](../../evidence/change-journals/gate-d/d-05-project-directory-path.md)
+records the prior inability to represent a project-local folder in the existing
+knowledge-tree catalogue. The candidate adds that configuration binding only;
+folder observation, outside-project folders, connector execution and automatic
+source-grounded relationship construction remain open.
+
+The [device-name correction](../../evidence/change-journals/gate-d/d-05-project-directory-device-names.md)
+records and repairs the first candidate's acceptance of Windows superscript
+device aliases. This does not establish filesystem source access or close the
+remaining local and external knowledge-source gaps.

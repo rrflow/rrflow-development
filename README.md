@@ -58,8 +58,12 @@ contracts; these controls and the complete journey still require qualification.
 
 Planned **rrflow.ai** and **rroflow.ai** services are optional. rrflow.ai is
 the hosted reasoning engine, offering remote access, synchronization and
-evidence views. rroflow.ai is the learning service, offering governed
-supervised, unsupervised and recursive learning. Like the engine and
+evidence views. rroflow.ai is the intended AI-observability and learning
+service: it brings authorized activity from supported AI tools together for
+signals, tags, investigation and governed supervised, unsupervised and
+recursive learning. Provider capture and the service are not yet implemented;
+the [provider-observation roadmap](docs/roadmap/rrflow-1.0/gate-i.md#provider-observation-for-rroflow)
+defines the implementation and proof. Like the engine and
 Connectome, their service software is open source and self-hostable. Their
 [service roles and opt-in boundaries](docs/reference/client/devpulse-cloud.md#optional-managed-service-roles)
 are targets, not deployed-service claims. **Nomen** is the planned central
@@ -149,6 +153,7 @@ definition; this portal does not reproduce those bodies.
 | One project ↔ one estate/rrflowDB ↔ one RRD instance; an account may own many estates and a workspace groups estates above the engine; deployment form, storage profile, endpoint presentation, security, and physical placement remain distinct | [Locked alpha topology](docs/architecture/instance-topology.md#locked-alpha-topology) and [deployment profiles](docs/reference/deployment/modes.md#independent-profile-coordinates) |
 | One semantic, security, transaction, mutation, and context authority | [ADR-0001 decision](docs/decisions/0001-single-engine-authority.md#decision) |
 | Adaptive exploration and model reasoning; closed contracts at durable state, external effect, replay, and evidence boundaries | [ADR-0002 decision](docs/decisions/0002-adaptive-reasoning-governed-effects.md#decision) |
+| Configurable domains, categories and tags inside one estate; scopes applied before candidate generation; optional per-domain isolation; per-domain evidence | [ADR-0003 decision](docs/decisions/0003-configurable-estate-organisation.md#decision) and [estate organisation contract](docs/reference/data/estate-organisation.md) |
 | No parallel product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
 | Persistent rrflowDB versus volatile rrflowMX | [Persistence and memory boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary) |
 | Temporal graph, scalar, BM25, and vector data under one transaction model | [Native multi-model boundary](docs/architecture/system-overview.md#native-multi-model-boundary) |
@@ -383,6 +388,8 @@ one repository fallback; the linked record owns the content.
 | Distributed cluster contract | [`rrflow://rrflow-instance/data/reference/distributed/cluster-contract`](rrflow://rrflow-instance/data/reference/distributed/cluster-contract) | [`docs/reference/distributed/cluster-contract.md`](docs/reference/distributed/cluster-contract.md) |
 | Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |
 | Adaptive reasoning and governed effects decision | [`rrflow://rrflow-instance/data/decision/0002-adaptive-reasoning-governed-effects`](rrflow://rrflow-instance/data/decision/0002-adaptive-reasoning-governed-effects) | [`docs/decisions/0002-adaptive-reasoning-governed-effects.md`](docs/decisions/0002-adaptive-reasoning-governed-effects.md) |
+| Configurable estate organisation decision | [`rrflow://rrflow-instance/data/decision/0003-configurable-estate-organisation`](rrflow://rrflow-instance/data/decision/0003-configurable-estate-organisation) | [`docs/decisions/0003-configurable-estate-organisation.md`](docs/decisions/0003-configurable-estate-organisation.md) |
+| Estate organisation contract | [`rrflow://rrflow-instance/data/reference/data/estate-organisation`](rrflow://rrflow-instance/data/reference/data/estate-organisation) | [`docs/reference/data/estate-organisation.md`](docs/reference/data/estate-organisation.md) |
 | Engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`docs/architecture/engine-data-flow.md`](docs/architecture/engine-data-flow.md) |
 | rrflowKV current physical format | [`rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`](rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format) | [`docs/reference/storage/rrflowkv-current-format.md`](docs/reference/storage/rrflowkv-current-format.md) |
 | Seat identity and memory warps | [`rrflow://rrflow-instance/data/reference/seat-identity`](rrflow://rrflow-instance/data/reference/seat-identity) | [`docs/reference/seat-identity.md`](docs/reference/seat-identity.md) |
