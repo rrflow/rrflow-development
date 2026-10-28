@@ -142,6 +142,21 @@ class MountedFixtureCleanup(unittest.TestCase):
         image.write_bytes(b"owned")
         return root, mount, image
 
+    def test_known_native_pending_file_is_cleaned_after_mountpoint(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-pending-") as directory:
+            root, mount, image = self.fixture(directory)
+            pending = root / "project" / "pending"
+            pending.write_bytes(b"owned")
+            original = Path.rmdir
+            def rmdir(path):
+                if path == mount:
+                    self.assertEqual(pending.read_bytes(), b"owned")
+                    self.assertEqual(image.read_bytes(), b"owned")
+                return original(path)
+            with patch.object(Path, "rmdir", rmdir):
+                containment.cleanup_owned_mount_fixture(root)
+            self.assertFalse(root.exists())
+
     def test_busy_mount_settles_without_recursion(self):
         with tempfile.TemporaryDirectory(prefix="rrflow-mount-busy-") as directory:
             root, mount, image = self.fixture(directory)
@@ -163,6 +178,8 @@ class MountedFixtureCleanup(unittest.TestCase):
     def test_permanently_busy_mount_retains_fixture_and_image(self):
         with tempfile.TemporaryDirectory(prefix="rrflow-mount-permanent-") as directory:
             root, mount, image = self.fixture(directory)
+            pending = root / "project" / "pending"
+            pending.write_bytes(b"owned pending")
             attempts = []
             original = Path.rmdir
             def rmdir(path):
@@ -177,6 +194,7 @@ class MountedFixtureCleanup(unittest.TestCase):
             self.assertEqual(len(attempts), 5)
             self.assertTrue(mount.is_dir())
             self.assertEqual(image.read_bytes(), b"owned")
+            self.assertEqual(pending.read_bytes(), b"owned pending")
 
     def test_mount_settlement_deadline_retains_fixture(self):
         with tempfile.TemporaryDirectory(prefix="rrflow-mount-deadline-") as directory:
@@ -205,6 +223,17 @@ class MountedFixtureCleanup(unittest.TestCase):
                     containment.cleanup_owned_mount_fixture(root)
             self.assertEqual(result.exception.errno, errno.ENOTEMPTY)
             self.assertEqual(sentinel.read_bytes(), b"must survive")
+            self.assertEqual(image.read_bytes(), b"owned")
+
+    def test_invalid_pending_entry_is_preserved(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-invalid-pending-") as directory:
+            root, mount, image = self.fixture(directory)
+            pending = root / "project" / "pending"
+            pending.mkdir()
+            with self.assertRaisesRegex(RuntimeError, "invalid pending file"):
+                containment.cleanup_owned_mount_fixture(root)
+            self.assertTrue(mount.is_dir())
+            self.assertTrue(pending.is_dir())
             self.assertEqual(image.read_bytes(), b"owned")
 
     def test_unexpected_entry_is_preserved_before_any_deletion(self):
