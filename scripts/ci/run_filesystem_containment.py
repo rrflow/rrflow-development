@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Require native mount adversaries with bounded, test-owned cleanup."""
+import errno
 import json
 import os
 from pathlib import Path
 import plistlib
 import re
-import shutil
 import sys
 import tempfile
 import time
@@ -62,6 +62,41 @@ def detach_owned_image(image: Path) -> None:
             time.sleep(min(2 ** (attempts - 1), remaining))
 
 
+def cleanup_owned_mount_fixture(fixture: Path) -> None:
+    """Remove only known host paths; never enumerate a mounted volume."""
+    project = fixture / "project"
+    mount = project / "mounted"
+    image = fixture / "fixture.sparseimage"
+    require(fixture.is_dir() and not fixture.is_symlink(), "invalid fixture root")
+    require(project.is_dir() and not project.is_symlink(), "invalid fixture project")
+    require(mount.is_dir() and not mount.is_symlink(), "invalid fixture mountpoint")
+    require({entry.name for entry in fixture.iterdir()} <= {"project", "fixture.sparseimage"},
+            "unexpected fixture entries; retained")
+    require({entry.name for entry in project.iterdir()} == {"mounted"},
+            "unexpected project entries; retained")
+    require(not image.is_symlink() and (not image.exists() or image.is_file()),
+            "invalid fixture image; retained")
+    deadline = time.monotonic() + 30
+    for attempt in range(5):
+        require(time.monotonic() < deadline, "fixture mount cleanup deadline exceeded; retained")
+        require(not mount.is_symlink(), "fixture mountpoint changed; retained")
+        try:
+            # rmdir is non-recursive and must fail on a busy or nonempty mount.
+            mount.rmdir()
+            break
+        except OSError as error:
+            if error.errno not in (errno.EBUSY, errno.ENOTEMPTY) or attempt == 4:
+                raise
+            remaining = deadline - time.monotonic()
+            require(remaining > 0, "fixture mount cleanup deadline exceeded; retained")
+            time.sleep(min(2 ** attempt, remaining))
+    project.rmdir()
+    if image.exists():
+        require(not image.is_symlink() and image.is_file(), "fixture image changed; retained")
+        image.unlink()
+    fixture.rmdir()
+
+
 def main() -> None:
     require(sys.platform in {"linux", "darwin"}, "mount qualification requires native Linux or macOS")
     build = run("cargo", "test", "--locked", "-p", "rrd-lsm", "--test", "filesystem",
@@ -95,12 +130,15 @@ def main() -> None:
                 "-volname", "RRFlowFixture", "-quiet", str(image), timeout=60, process_group=True)
             result = run(*args, timeout=90, process_group=True, check=False,
                          env={**env, "RRFLOW_MAC_MOUNT_FIXTURE": str(fixture)})
+            # Preserve the test result even when later fixture cleanup fails.
+            print(result.stdout, end="", flush=True)
+            print(result.stderr, end="", file=sys.stderr, flush=True)
         finally:
-            # Never recurse into a still-attached volume if cleanup fails.
             detach_owned_image(image)
-            shutil.rmtree(fixture)
-    print(result.stdout, end="")
-    print(result.stderr, end="", file=sys.stderr)
+            cleanup_owned_mount_fixture(fixture)
+    if sys.platform == "linux":
+        print(result.stdout, end="")
+        print(result.stderr, end="", file=sys.stderr)
     require(result.returncode == 0 and f"test {case} ... ok" in result.stdout
             and "1 passed; 0 failed; 0 ignored;" in result.stdout,
             "required native mount adversary did not pass")

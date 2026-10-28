@@ -1119,3 +1119,10 @@ The [Windows reopen CI build experiment](../../evidence/change-journals/gate-c/c
 records a 63m24s Windows build versus a 4m06s history step in one successful
 candidate and tests a two-worker build without reducing native coverage. Its
 candidate timing, memory behavior and complete CI result remain pending.
+
+
+The [macOS containment fixture correction](../../evidence/change-journals/gate-c/c-07f-macos-containment-cleanup.md)
+records PR168 candidate CI failing during busy mounted-fixture cleanup, with
+the underlying adversary result hidden by that cleanup exception. A bounded
+non-recursive fixture cleanup and preserved output pass modeled helper tests;
+native macOS verification and full candidate CI remain required.
