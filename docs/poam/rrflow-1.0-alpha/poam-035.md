@@ -1157,3 +1157,9 @@ verifications after two reopens, then failing segment zero: one resource-sample
 interval was 2252002100 ns against a 2000000000 ns bound, and the segment
 recorded 42 acknowledged and eight rejected attempts. The sample-gap and
 rejection causes remain unproven; no measured segment or qualification passed.
+
+
+The [failed warmup ledger readback](../../evidence/change-journals/gate-c/c-07g-native-rejection-ledger.md)
+identifies six driver-concurrency-limit and two api-conflict-storage-conflict
+rejections in that failed segment. Their underlying causes and the resource
+sample delay remain unproven; no native qualification is implied.
