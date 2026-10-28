@@ -11,6 +11,49 @@ defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
+## C-07 storage-diagnostic attribution
+
+To characterize a slow installed `rrflow` storage-diagnostic request, start the
+primary executable with `RRFLOW_TRACE=rrd_server::diagnostic=debug,rrd_store::diagnostic=debug`
+and `RRFLOW_TRACE_FORMAT=json`; its existing tracing implementation emits JSON
+to stderr. Capture stderr under an explicit size and retention budget; an
+unconsumed pipe or slow sink can itself affect execution. Trace activation
+does not change the resource-sampling requirements or authorize collection of
+other data. Use the same trace settings for the actual process under test, not
+just the harness process.
+
+The server event reports `service_elapsed_ns` around the engine service call
+and a success boolean. For a successful rrflowKV physical snapshot, a store
+event reports `mutex_wait_ns`, `mutex_held_assembly_ns`,
+`memtable_profile_ns`, key/version counts and segment count. The lock-wait
+interval includes scheduling and the lock call; the held-assembly interval ends
+immediately before dropping the guard, and includes profile time. Emission
+happens after unlock. Service time also includes authorization and validation;
+it does not include network, HTTP scheduling before the call, or the full
+response. These observations do not independently isolate scheduler, I/O,
+authorization or underlying causes. An error before the physical snapshot
+has no store event. Clock resolution, trace overhead, filtering, loss and
+preemption affect interpretation.
+
+The trace span contains SHA-256 of the client request ID rather than its raw
+value. The digest can still be sensitive or guessable; treat traces as scoped
+diagnostic data. The C-07 sampler uses a checked process-local request counter
+and prints the matching digest for completed slow samples within its existing
+64-record bound; include the harness process and campaign identity when joining
+across restarts. Failed or canceled calls need not produce a completed-sample
+record, and records beyond that bound are not retained. Other callers need
+their own unique request IDs and matching digest to join records. Missing or
+truncated events are missing evidence, not zero cost. Exact-field or
+source-location subscriber filters can affect the `tracing` enabled check; use
+the stated target filter and validate capture on the installed candidate.
+
+The [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
+records the bounded controlled test and its limits. The original failed run
+used an earlier binary and cannot retroactively acquire these events.
+The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installed-trace-correlation.md)
+records the small installed mixed-family and restart proof; it is not capacity
+or soak qualification.
+
 ## Candidate chain
 
 RRFlow has one candidate CI chain. The thin caller is

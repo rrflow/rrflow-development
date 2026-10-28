@@ -209,6 +209,17 @@ async fn sample(
     clock: Instant,
     allocation: &Option<NativeAllocationReceipt>,
 ) -> DriverResult<ResourceSample> {
+    sample_with_identity(workload, pid, clock, allocation)
+        .await
+        .map(|(sample, _)| sample)
+}
+
+async fn sample_with_identity(
+    workload: &Workload,
+    pid: u32,
+    clock: Instant,
+    allocation: &Option<NativeAllocationReceipt>,
+) -> DriverResult<(ResourceSample, String)> {
     let started = Instant::now();
     let mut system = sysinfo::System::new();
     let process_id = sysinfo::Pid::from_u32(pid);
@@ -295,7 +306,7 @@ async fn sample(
         storage: Some(snapshot),
     };
     sample_trace::record(sample_trace::Observation {
-        request_id,
+        request_id: &request_id,
         pid,
         elapsed_ns,
         total_ns: ns(started),
@@ -304,7 +315,7 @@ async fn sample(
         memory_ns,
         enforcement_ns,
     });
-    Ok(value)
+    Ok((value, request_id))
 }
 
 struct ProgressContext<'a> {
@@ -1180,6 +1191,122 @@ fn smoke_campaign() -> StorageCampaign {
         },
         storage,
     }
+}
+
+#[test]
+#[ignore = "explicit installed trace correlation; not capacity qualification"]
+fn installed_sampler_trace_matches_server_and_store() {
+    let estate = Estate::install("fresh");
+    let clock = Instant::now();
+    let (mut child, client, _) = estate.start_for_with_trace(clock, Duration::from_secs(300), true);
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let (request_id, mut work, before) = runtime.block_on(async {
+        let lease = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 4,
+                    },
+                },
+                RequestOptions::mutation(
+                    "trace-sample-session",
+                    "trace-sample-session",
+                    "trace-sample-session",
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        let work = Workload {
+            client,
+            session: lease,
+            valid_at: estate.at,
+            dimensions: 16,
+            seed: 73,
+            records: 8,
+            read_distribution: ReadKeyDistribution::Uniform {},
+            edges_per_record: 3,
+            vectors_per_record: 2,
+            payload_bytes: 1024,
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
+                .unwrap(),
+        };
+        work.initialize().await.unwrap();
+        for ordinal in 0..work.records {
+            let seed = work.seed_record(ordinal).unwrap();
+            assert!(!work.execute(&seed).await.unwrap().idempotent_replay);
+        }
+        let before = work
+            .verify_joined_search("seed-00000000000000000007", 1, 7, 5.53125)
+            .await
+            .unwrap();
+        let (sample, request_id) = sample_with_identity(&work, child.id(), clock, &None)
+            .await
+            .unwrap();
+        assert!(sample.storage.is_some());
+        (request_id, work, before)
+    });
+    child.terminate();
+    let output = child.finish().expect("reap owned traced server");
+    fn check_trace(bytes: &[u8], request_id: &str, credential: &str) {
+        let raw = std::str::from_utf8(bytes).unwrap();
+        assert!(!raw.contains(request_id));
+        assert!(!raw.contains(credential));
+        let digest = rrd_core::digest::sha256_hex(request_id.as_bytes());
+        let events: Vec<serde_json::Value> = raw
+            .lines()
+            .map(|line| serde_json::from_str(line).expect("trace is complete JSON"))
+            .collect();
+        let find = |target: &str| {
+            events
+                .iter()
+                .find(|event| {
+                    event["target"] == target && event["span"]["request_sha256"] == digest
+                })
+                .unwrap_or_else(|| panic!("missing correlated trace event: {target}"))
+        };
+        let storage = find("rrd_store::diagnostic");
+        let service = find("rrd_server::diagnostic");
+        let wait = storage["fields"]["mutex_wait_ns"].as_u64().unwrap();
+        let assembly = storage["fields"]["mutex_held_assembly_ns"]
+            .as_u64()
+            .unwrap();
+        let profile = storage["fields"]["memtable_profile_ns"].as_u64().unwrap();
+        let elapsed = service["fields"]["service_elapsed_ns"].as_u64().unwrap();
+        assert_eq!(service["fields"]["success"], true);
+        assert!(profile <= assembly);
+        assert!(u128::from(wait) + u128::from(assembly) <= u128::from(elapsed));
+        println!("installed sampler trace matched: request_sha256={digest} wait_ns={wait} assembly_ns={assembly} profile_ns={profile} service_ns={elapsed}");
+    }
+    check_trace(&output.stderr, &request_id, credential.credential());
+    let (mut restarted, client, _) =
+        estate.start_for_with_trace(clock, Duration::from_secs(300), true);
+    work.client = client;
+    let second_id = runtime.block_on(async {
+        let after = work
+            .verify_joined_search("seed-00000000000000000007", 1, 7, 5.53125)
+            .await
+            .unwrap();
+        assert_eq!(after.known_at_cursor, before.known_at_cursor);
+        assert_eq!(after.hits, before.hits);
+        let (sample, id) = sample_with_identity(&work, restarted.id(), clock, &None)
+            .await
+            .unwrap();
+        assert!(sample.storage.is_some());
+        id
+    });
+    assert_ne!(request_id, second_id);
+    restarted.terminate();
+    let output = restarted.finish().expect("reap restarted traced server");
+    check_trace(&output.stderr, &second_id, credential.credential());
 }
 
 #[test]

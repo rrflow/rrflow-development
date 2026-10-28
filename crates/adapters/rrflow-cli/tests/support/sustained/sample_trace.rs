@@ -20,8 +20,8 @@ fn request_id(counter: &AtomicU64) -> Result<String, &'static str> {
     Ok(format!("capacity-resource-{ordinal:016x}"))
 }
 
-pub(super) struct Observation {
-    pub request_id: String,
+pub(super) struct Observation<'a> {
+    pub request_id: &'a str,
     pub pid: u32,
     pub elapsed_ns: u64,
     pub total_ns: u64,
@@ -51,7 +51,7 @@ fn admit(counter: &AtomicUsize, total_ns: u64) -> Admission {
     }
 }
 
-pub(super) fn record(observation: Observation) {
+pub(super) fn record(observation: Observation<'_>) {
     match admit(&ADMITTED, observation.total_ns) {
         Admission::Skip => {}
         Admission::Exhausted => eprintln!("c07_sample_phase_trace_exhausted limit={MAX_RECORDS}"),
@@ -59,7 +59,7 @@ pub(super) fn record(observation: Observation) {
     }
 }
 
-fn format_record(observation: &Observation) -> String {
+fn format_record(observation: &Observation<'_>) -> String {
     let request_sha256 = rrd_core::digest::sha256_hex(observation.request_id.as_bytes());
     format!(
             "c07_sample_phase_trace request_sha256={} pid={} elapsed_ns={} total_ns={} host_ns={} rpc_ns={} memory_ns={} enforcement_ns={}",
@@ -145,7 +145,7 @@ mod tests {
     fn slow_sample_record_contains_only_the_server_compatible_request_digest() {
         let id = request_id(&AtomicU64::new(0)).unwrap();
         let line = format_record(&Observation {
-            request_id: id.clone(),
+            request_id: &id,
             pid: 1,
             elapsed_ns: 2,
             total_ns: 3,

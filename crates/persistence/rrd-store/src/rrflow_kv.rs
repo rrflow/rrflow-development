@@ -861,7 +861,16 @@ impl StorageEngine for RrflowKvStore {
     }
 
     fn physical_store_evidence(&self) -> Result<PhysicalStoreEvidence> {
+        // Clock reads and events are paid only for explicitly enabled developer
+        // traces. These measurements are not storage state or a delivery SLA.
+        let timed = tracing::event_enabled!(
+            target: "rrd_store::diagnostic", tracing::Level::DEBUG,
+            mutex_wait_ns, mutex_held_assembly_ns, memtable_profile_ns,
+            memtable_keys, memtable_versions, segment_count, message
+        );
+        let wait_start = timed.then(Instant::now);
         let database = self.lock()?;
+        let acquired = timed.then(Instant::now);
         let manifest = database.manifest();
         let cache = database.page_cache_stats();
         let source_pages = database.source_page_memory().stats();
@@ -869,11 +878,14 @@ impl StorageEngine for RrflowKvStore {
         let maintenance = database.maintenance_policy();
         let compaction = database.compaction_policy();
         let maintenance_stats = database.maintenance_stats();
+        let profile_start = timed.then(Instant::now);
         let memtable = database.memtable().profile();
+        let profile_end = timed.then(Instant::now);
         let (checkpoint_entries, checkpoint_limit) = database.checkpoint_ownership()?;
         let (native_transactions, native_transaction_bytes) = database.transaction_ownership()?;
         let (active_read_views, pinned_read_bytes) = database.read_view_ownership()?;
-        Ok(PhysicalStoreEvidence {
+        let segment_count = manifest.segments.len() as u64;
+        let evidence = PhysicalStoreEvidence {
             backend: "rrflow_kv".into(),
             evidence_level: RRFLOW_KV_COUNTER_EVIDENCE.into(),
             physical_sequence: Some(database.snapshot().sequence),
@@ -920,7 +932,7 @@ impl StorageEngine for RrflowKvStore {
             l0_compaction_trigger: Some(compaction.l0_compaction_trigger as u64),
             compaction_debt_segments: Some(database.compaction_debt_segments() as u64),
             compaction_target_segment_bytes: Some(compaction.target_segment_bytes as u64),
-            segment_count: Some(manifest.segments.len() as u64),
+            segment_count: Some(segment_count),
             segment_bytes: Some(manifest.segments.iter().map(|segment| segment.bytes).sum()),
             cache_capacity_bytes: Some(cache.capacity_bytes as u64),
             cache_resident_bytes: Some(cache.resident_bytes as u64),
@@ -956,7 +968,39 @@ impl StorageEngine for RrflowKvStore {
             segment_io_handle_evictions: Some(segment_io.handle_evictions),
             segment_io_handle_reopens: Some(segment_io.handle_reopens),
             segment_io_handle_denials: Some(segment_io.handle_denials),
-        })
+        };
+        let released_at = timed.then(Instant::now);
+        // Do not hold the writer's database mutex while formatting or emitting
+        // the trace: subscribers may block or perform arbitrary I/O.
+        drop(database);
+        if let (
+            Some(wait_start),
+            Some(acquired),
+            Some(profile_start),
+            Some(profile_end),
+            Some(released_at),
+        ) = (
+            wait_start,
+            acquired,
+            profile_start,
+            profile_end,
+            released_at,
+        ) {
+            let nanos = |duration: std::time::Duration| {
+                u64::try_from(duration.as_nanos()).unwrap_or(u64::MAX)
+            };
+            tracing::debug!(
+                target: "rrd_store::diagnostic",
+                mutex_wait_ns = nanos(acquired.duration_since(wait_start)),
+                mutex_held_assembly_ns = nanos(released_at.duration_since(acquired)),
+                memtable_profile_ns = nanos(profile_end.duration_since(profile_start)),
+                memtable_keys = memtable.key_count,
+                memtable_versions = memtable.version_count,
+                segment_count,
+                "physical storage diagnostic assembled"
+            );
+        }
+        Ok(evidence)
     }
 }
 
@@ -1454,6 +1498,128 @@ mod tests {
     };
     use rrd_lsm::{FailureMode, WriteBatch, WriteBoundary};
     use std::collections::BTreeMap;
+
+    #[test]
+    fn physical_diagnostic_trace_attributes_real_mutex_contention() {
+        use std::io::Write;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::{mpsc, Arc, Mutex, Weak};
+        use std::time::Duration;
+
+        #[derive(Clone)]
+        struct Capture {
+            bytes: Arc<Mutex<Vec<u8>>>,
+            store: Weak<RrflowKvStore>,
+            lock_available: Arc<AtomicBool>,
+        }
+        impl Write for Capture {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                let store = self.store.upgrade().unwrap();
+                self.lock_available
+                    .store(store.database.try_lock().is_ok(), Ordering::SeqCst);
+                self.bytes.lock().unwrap().extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let directory = tempfile::tempdir().unwrap();
+        let store = Arc::new(RrflowKvStore::open(&directory.path().join("diagnostic")).unwrap());
+        let mut tx = store.begin_transaction().unwrap();
+        for index in 0..256u64 {
+            tx.put(format!("diagnostic-{index}").into_bytes(), vec![42; 32])
+                .unwrap();
+        }
+        tx.commit(Durability::Authoritative).unwrap();
+        let expected = store.physical_store_evidence().unwrap();
+        let captured = Arc::new(Mutex::new(Vec::new()));
+        let lock_available = Arc::new(AtomicBool::new(false));
+        let held = store.lock().unwrap();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
+        std::thread::scope(|scope| {
+            let output = captured.clone();
+            let store = &store;
+            let weak_store = Arc::downgrade(store);
+            let writer_lock_available = lock_available.clone();
+            scope.spawn(move || {
+                let writer = move || Capture {
+                    bytes: output.clone(),
+                    store: weak_store.clone(),
+                    lock_available: writer_lock_available.clone(),
+                };
+                let subscriber = tracing_subscriber::fmt()
+                    .json()
+                    .with_max_level(tracing::Level::DEBUG)
+                    .with_writer(writer)
+                    .finish();
+                tracing::subscriber::with_default(subscriber, || {
+                    started_tx.send(()).unwrap();
+                    let start = Instant::now();
+                    let result = store.physical_store_evidence().unwrap();
+                    done_tx.send((result, start.elapsed())).unwrap();
+                });
+            });
+            started_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            assert!(done_rx.recv_timeout(Duration::from_millis(100)).is_err());
+            drop(held);
+            let (actual, elapsed) = done_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            assert_eq!(actual, expected);
+            assert!(
+                lock_available.load(Ordering::SeqCst),
+                "trace writer must run after releasing the database mutex"
+            );
+            let bytes = captured.lock().unwrap().clone();
+            let event: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            let fields = &event["fields"];
+            let wait = fields["mutex_wait_ns"].as_u64().unwrap();
+            let hold = fields["mutex_held_assembly_ns"].as_u64().unwrap();
+            let profile = fields["memtable_profile_ns"].as_u64().unwrap();
+            assert!(wait >= 1_000_000, "the deliberately blocked call must record at least one millisecond of mutex waiting");
+            assert!(profile <= hold);
+            assert!(u128::from(wait) + u128::from(hold) <= elapsed.as_nanos());
+            assert_eq!(fields["memtable_keys"].as_u64(), expected.memtable_keys);
+            assert_eq!(
+                fields["memtable_versions"].as_u64(),
+                expected.memtable_versions
+            );
+            println!("controlled diagnostic wait_ns={wait} hold_ns={hold} profile_ns={profile} outer_ns={}", elapsed.as_nanos());
+        });
+    }
+
+    #[test]
+    #[ignore = "bounded native diagnostic characterization; not capacity evidence"]
+    fn characterize_diagnostic_profile_at_observed_memtable_size() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = RrflowKvStore::open(&directory.path().join("profile")).unwrap();
+        // Match the approximate key/version count of the retained failed
+        // observation, not its segment count, workload, or resource limits.
+        for round in 0..2 {
+            let mut tx = store.begin_transaction().unwrap();
+            for index in 0..19_440u64 {
+                tx.put(
+                    format!("diagnostic-{index:08}").into_bytes(),
+                    vec![round; 32],
+                )
+                .unwrap();
+            }
+            tx.commit(Durability::Authoritative).unwrap();
+        }
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .with_max_level(tracing::Level::DEBUG)
+            .finish();
+        tracing::subscriber::with_default(subscriber, || {
+            for _ in 0..3 {
+                let evidence = store.physical_store_evidence().unwrap();
+                assert_eq!(evidence.memtable_keys, Some(19_440));
+                assert_eq!(evidence.memtable_versions, Some(38_880));
+                assert_eq!(evidence.segment_count, Some(0));
+            }
+        });
+    }
 
     #[test]
     fn idle_maintenance_does_not_queue_behind_the_database_owner() {
