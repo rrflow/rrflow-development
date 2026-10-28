@@ -40,18 +40,18 @@ mod websocket;
 
 pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
-    installation_plan_sha256, installation_result_sha256, AttunementFailure, AttunementJob,
-    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
-    AttunementPhasePlan, AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
-    AttunementSourceVerification, AttunementStatus, AttunementVerification,
-    AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
-    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
-    InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
-    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
-    InstallationRemovalRule, InstallationResult, InstallationSpecialization,
-    InstallationStorageGeneration, InstallationTargetKind, ReadAttunement, ResumeAttunement,
-    ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
-    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    installation_plan_sha256, installation_result_sha256, AttunementCancelResult,
+    AttunementFailure, AttunementJob, AttunementJobState, AttunementLease, AttunementPhase,
+    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
+    AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
+    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
+    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
+    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
+    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
+    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
+    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
+    ReadAttunement, ResumeAttunement, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION,
+    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
@@ -244,7 +244,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "90d5e7475fa0cd80d36e6724fcfc697c5867a8dd14421c60fef2aab8f37d25e5";
+    "35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3645,6 +3645,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "DiagnosticSnapshot",
         ),
         endpoint(
+            "attunement-cancel",
+            HttpMethod::Post,
+            "/v1/attunement/cancel",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "CancelAttunement",
+            "AttunementCancelResult",
+        ),
+        endpoint(
             "attunement-read",
             HttpMethod::Post,
             "/v1/attunement/read",
@@ -4465,6 +4475,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
         "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
+        "CancelAttunement" => schema_json::<RequestEnvelope<CancelAttunement>>(),
         "ReadEstate" => schema_json::<RequestEnvelope<ReadEstate>>(),
         "RenewSession" => schema_json::<RequestEnvelope<RenewSession>>(),
         "RestoreInstanceBackup" => schema_json::<RequestEnvelope<RestoreInstanceBackup>>(),
@@ -4504,6 +4515,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
         "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
+        "AttunementCancelResult" => schema_json::<ResponseEnvelope<AttunementCancelResult>>(),
         "EndpointCatalogue" => schema_json::<ResponseEnvelope<EndpointCatalogue>>(),
         "EstateSnapshot" => schema_json::<ResponseEnvelope<EstateSnapshot>>(),
         "InstanceBackupCatalogueSnapshot" => {

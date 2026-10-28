@@ -37,6 +37,24 @@ fn attunement_status_is_an_authenticated_read_operation() {
     assert_eq!(endpoint.response_type, "AttunementReadResult");
 }
 
+#[test]
+fn attunement_cancel_is_an_authenticated_mutation_operation() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    let endpoint = catalogue
+        .endpoints
+        .iter()
+        .find(|endpoint| endpoint.operation.as_str() == "attunement-cancel")
+        .expect("cancellation must have a public operation");
+    assert_eq!(endpoint.path, "/v1/attunement/cancel");
+    assert!(endpoint.mutation);
+    assert_eq!(
+        endpoint.action.fixed_action(),
+        Some(SecurityAction::EstateAdmin)
+    );
+    assert_eq!(endpoint.request_type, "CancelAttunement");
+    assert_eq!(endpoint.response_type, "AttunementCancelResult");
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TransitionVector {
