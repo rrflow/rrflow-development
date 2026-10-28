@@ -78,10 +78,10 @@
   "evidence_class": "synthetic",
   "failed": 0,
   "format_version": 1,
-  "manifest_sha256": "2d63649ab881cb6ad67ae9f04609d592815e59066c53e8f2422dcc74e6d4c326",
+  "manifest_sha256": "7e449303f620f56d2ea0bdb1cd8b2d487f14ad05598093c1db90eeba9d09dc77",
   "passed": 1,
   "required": 1,
-  "result_sha256": "508b521993f551516e29e821256598c048728dea1344f2a53fcedbfaf399fe3f",
+  "result_sha256": "b50b73d1d0c30318a8868ee30413814b6089a685e5ee78602986ab05347faf93",
   "skipped": 0,
   "unimplemented": 0
 }

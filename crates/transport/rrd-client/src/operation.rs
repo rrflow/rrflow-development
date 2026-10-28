@@ -97,6 +97,38 @@ impl RrdClient {
         Ok(result)
     }
 
+    /// Read the caller's original committed receipt without replaying its command.
+    pub async fn read_attunement_receipt(
+        &self,
+        session: &Session,
+        request: rrd_contract::ReadAttunementReceipt,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementReceiptReadResult> {
+        request.validate().map_err(contract)?;
+        let catalogue = rrd_contract::endpoint_catalogue();
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == "attunement-receipt-read")
+            .ok_or_else(|| {
+                Error::Contract("attunement receipt read operation is unavailable".into())
+            })?;
+        let result: rrd_contract::AttunementReceiptReadResult = self
+            .session_call(
+                Method::POST,
+                &endpoint.path,
+                session,
+                &request,
+                options,
+                endpoint.mutation,
+            )
+            .await?;
+        result
+            .validate_for(&request, session.principal_id(), &self.instance)
+            .map_err(contract)?;
+        Ok(result)
+    }
+
     /// Read the engine-owned installed job and its exact stored plan.
     pub async fn read_attunement(
         &self,
