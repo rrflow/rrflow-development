@@ -626,6 +626,10 @@ def main() -> None:
         ]:
             require(jobs[job].count(command) == 1, f"{job} must qualify native storage ownership and admission once: {command}")
     reopen = jobs["installed-reopen"]
+    require(
+        "CARGO_BUILD_JOBS: ${{ matrix.os == 'windows-latest' && '2' || '1' }}" in reopen,
+        "ordinary reopen build must use two Windows workers and one elsewhere",
+    )
     for platform in ["ubuntu-latest", "macos-latest", "windows-latest"]:
         require(f"- {platform}" in reopen, f"ordinary reopen corpus must qualify {platform}")
     for command in [
