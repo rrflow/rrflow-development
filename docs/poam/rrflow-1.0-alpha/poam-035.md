@@ -14,6 +14,17 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The retained Windows sampler failure observed a 1.269-second diagnostics RPC
+but did not capture internal lock wait or assembly timing. The
+[diagnostic attribution candidate](../../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
+adds opt-in correlated service/store trace observations and controlled tests.
+A separate 19,440-key / 38,880-version single-process characterization with
+zero segments and no concurrent offered load measured three sub-millisecond
+profile intervals. It is not a reproduction of the failed workload and does
+not identify its cause. The old sampler reuses a request ID; integrate unique
+sample identity and capture the real candidate trace before attributing the
+failure or selecting a performance repair. C-07 and POAM-035 remain open.
+
 The [shared mutable-generation accounting candidate](../../evidence/change-journals/gate-c/c-07g-shared-memtable-pins.md)
 reproduced an independent admission error: two views of one 4,126-byte mutable
 generation were charged 8,252 bytes and rejected at a 4,126-byte limit. The
