@@ -63,18 +63,12 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`eb6e2e724814dc1c8465a650310e7b15c96788835c2357f81331de6a2084ffda`.
+`90d5e7475fa0cd80d36e6724fcfc697c5867a8dd14421c60fef2aab8f37d25e5`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
 the live export. Neither the protocol number nor the product version may be
 changed merely to describe implementation progress.
-
-`POST /v1/attunement/read` requires an authenticated session with EstateRead
-and a known job ID. It returns the stored engine plan and job together. Its
-`source_verification` is `not_checked`: this read does not inspect current
-project files, and the stored installation digest is not a freshness guarantee.
-The operation does not discover jobs or advance, resume, or replan work.
 
 The same document projects the kernel-owned signal catalogue. It loads a
 private generated Rust snapshot, exposes it as `x-rrd-signal-catalogue`, and
@@ -90,8 +84,8 @@ the focused parity test compares OpenAPI back to the live kernel value.
 
 | Contract | Current rule |
 |---|---|
-| `CanonicalId` | 1–128 bytes; lowercase ASCII letters, digits, and bounded `-`, `_`, or `.` placement; human labels remain separate. |
-| `CorrelationId` | 1–128 ASCII letters, digits, `-`, `_`, `.`, or `:` for request, operation, transaction, session, subscription, and idempotency coordinates. |
+| `CanonicalId` | 1â€“128 bytes; lowercase ASCII letters, digits, and bounded `-`, `_`, or `.` placement; human labels remain separate. |
+| `CorrelationId` | 1â€“128 ASCII letters, digits, `-`, `_`, `.`, or `:` for request, operation, transaction, session, subscription, and idempotency coordinates. |
 | `ResourcePath` | One to sixteen explicit typed segments; a resource kind cannot repeat; nothing is inferred from cwd, connection state, or a display label. |
 | `RequestContext` | Carries request ID, operation ID, optional idempotency key, and optional absolute deadline. Contract validation requires an idempotency key when the catalogued operation is a mutation. |
 | `RequestEnvelope<T>` | Binds protocol identity, request context, explicit resource path, and typed payload. |

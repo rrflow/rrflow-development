@@ -14,10 +14,14 @@ graph families and project links. The
 schema generation and validation. D-06 owns activation, D-05 owns ingestion,
 H-09 owns family formation, H-10 owns project links, and H-04 owns client parity.
 
-**Knowledge path** is the user-facing name for a project-scoped binding to an
-external database or knowledge/reasoning service through such an adapter.
-It is a specialization of the existing connector boundary, not another plugin
-registry, database or executable type. Connecting HydraDB, Pinecone Nexus,
+**Knowledge path** is the user-facing name for a project-scoped binding to
+existing data, including project-local directories and configured external
+services. The existing knowledge-tree catalogue can record a project directory
+or an external vector-store endpoint; recording a path does not read the source
+or start relationship construction. Arbitrary directories outside the project
+root, general service adapters and automatic construction remain unimplemented.
+External-service paths specialize the existing connector boundary, not another
+plugin registry, database or executable type. Connecting HydraDB, Pinecone Nexus,
 Qdrant or SurrealDB must preserve that source's actual supported profile and
 provenance. A configured path does not authorize import, cross-project sharing
 or background learning. The engine may propose project profile enrichment
