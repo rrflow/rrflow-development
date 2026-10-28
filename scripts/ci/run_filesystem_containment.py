@@ -67,13 +67,17 @@ def cleanup_owned_mount_fixture(fixture: Path) -> None:
     project = fixture / "project"
     mount = project / "mounted"
     image = fixture / "fixture.sparseimage"
+    pending = project / "pending"
     require(fixture.is_dir() and not fixture.is_symlink(), "invalid fixture root")
     require(project.is_dir() and not project.is_symlink(), "invalid fixture project")
     require(mount.is_dir() and not mount.is_symlink(), "invalid fixture mountpoint")
     require({entry.name for entry in fixture.iterdir()} <= {"project", "fixture.sparseimage"},
             "unexpected fixture entries; retained")
-    require({entry.name for entry in project.iterdir()} == {"mounted"},
+    project_entries = {entry.name for entry in project.iterdir()}
+    require("mounted" in project_entries and project_entries <= {"mounted", "pending"},
             "unexpected project entries; retained")
+    require(not pending.is_symlink() and (not pending.exists() or pending.is_file()),
+            "invalid pending file; retained")
     require(not image.is_symlink() and (not image.exists() or image.is_file()),
             "invalid fixture image; retained")
     deadline = time.monotonic() + 30
@@ -90,6 +94,9 @@ def cleanup_owned_mount_fixture(fixture: Path) -> None:
             remaining = deadline - time.monotonic()
             require(remaining > 0, "fixture mount cleanup deadline exceeded; retained")
             time.sleep(min(2 ** attempt, remaining))
+    if pending.exists():
+        require(not pending.is_symlink() and pending.is_file(), "pending file changed; retained")
+        pending.unlink()
     project.rmdir()
     if image.exists():
         require(not image.is_symlink() and image.is_file(), "fixture image changed; retained")
