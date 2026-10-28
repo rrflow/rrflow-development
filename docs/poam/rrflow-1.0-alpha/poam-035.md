@@ -22,6 +22,13 @@ generations separately; its integrated native effect and exact candidate CI are
 not established. The earlier 100,000-record denial did not retain its numeric
 charge, so this mechanism is not proven to have caused that failure.
 
+The [draft/ready CI isolation candidate](../../evidence/change-journals/gate-c/c-07-ci-draft-ready-isolation.md)
+records PR154 run 40574700979: every partition was cancelled and the required
+gate failed; a skipped draft run followed. The old common concurrency group
+also permits a delayed draft event to cancel a newer ready candidate. The exact
+event-order cause of that run is not established. Candidate CI must verify the
+new scheduling boundary; it does not clear native C-07 qualification.
+
 The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
 retains the indexed source `7c329d49` native failure: all 100000 corpus writes
 were acknowledged but only 44556 were independently verified before the
@@ -1166,3 +1173,14 @@ records PR168 candidate CI failing during busy mounted-fixture cleanup, with
 the underlying adversary result hidden by that cleanup exception. A bounded
 non-recursive fixture cleanup and preserved output pass modeled helper tests;
 native macOS verification and full candidate CI remain required.
+
+The [instrumented sampler characterization](../../evidence/change-journals/gate-c/c-07g-sampler-native-outcome.md)
+records draft c5b58a3c completing all 100000 initial and post-reopen independent
+verifications, then failing the first warmup segment: a 2.133-second sample gap
+exceeded the two-second limit and nine of 50 offers were rejected. The slow
+sample spent 1.269 seconds awaiting the public diagnostics request. The rrflowKV
+projection takes the database lock and traverses every active memtable key
+and version; the cause of the delay
+cause remains unproven. The earlier source's and this run's evidence stay bound
+to their respective identities. Trace the diagnostics path before another
+full-corpus run; native profile and actual 24-hour qualification remain open.
