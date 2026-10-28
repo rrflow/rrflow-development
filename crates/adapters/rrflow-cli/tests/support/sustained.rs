@@ -220,6 +220,7 @@ async fn sample(
     let io = process.disk_usage();
     let host_ns = ns(started);
     let rpc_started = Instant::now();
+    let request_id = sample_trace::next_request_id().map_err(str::to_string)?;
     let snapshot = workload
         .client
         .read_storage_diagnostics(
@@ -227,7 +228,7 @@ async fn sample(
             ReadStorageDiagnostics {
                 scope: format!("instance:{}", workload.client.instance_id()),
             },
-            RequestOptions::read("capacity-resource", "capacity-resource").unwrap(),
+            RequestOptions::read(&request_id, &request_id).map_err(|e| e.to_string())?,
         )
         .await
         .map_err(|e| e.to_string())?;
@@ -294,6 +295,7 @@ async fn sample(
         storage: Some(snapshot),
     };
     sample_trace::record(sample_trace::Observation {
+        request_id,
         pid,
         elapsed_ns,
         total_ns: ns(started),

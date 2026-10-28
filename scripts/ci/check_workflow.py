@@ -90,9 +90,10 @@ def verify_candidate_admission(caller: str) -> None:
     )
     require(
         "concurrency:\n"
-        "  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}\n"
+        "  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-"
+        "${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'candidate' }}\n"
         "  cancel-in-progress: true\n" in caller,
-        "draft transitions must cancel only stale runs for the same PR or ref",
+        "candidate concurrency must isolate draft and ready events for the same PR or ref",
     )
 
 
