@@ -1119,3 +1119,33 @@ The [Windows reopen CI build experiment](../../evidence/change-journals/gate-c/c
 records a 63m24s Windows build versus a 4m06s history step in one successful
 candidate and tests a two-worker build without reducing native coverage. Its
 candidate timing, memory behavior and complete CI result remain pending.
+
+The [terminal Windows characterization](../../evidence/change-journals/gate-c/c-07g-windows-characterization-terminal.md)
+records frozen 8721f17 completing 100000 corpus acknowledgements and independent
+verifications, and two forced reopens with matching replay receipt digests,
+then failing with a redacted storage-admission resource-exhaustion classification
+before any measured segment. The specific denied resource is unknown. This run
+is not the full profile or a 24-hour soak and does not close the gap.
+
+The [post-reopen candidate launch](../../evidence/change-journals/gate-c/c-07g-reopen-window-windows-launch.md)
+records a distinct warm-only 33d26f13 Windows characterization with enforced
+2-GiB/four-CPU allocation and partial acknowledgements. Its terminal outcome,
+full native profile and actual 24-hour soak remain open.
+
+The [post-reopen progress sample](../../evidence/change-journals/gate-c/c-07g-reopen-window-windows-progress.md)
+records complete initial readback, two forced reopens with matching replay
+receipt digests and a consecutive prefix of the new post-reopen readback. The
+second pass, measured workload and terminal outcome remain unproven.
+
+The [post-reopen terminal failure](../../evidence/change-journals/gate-c/c-07g-reopen-window-windows-terminal.md)
+records complete initial readback and two forced reopens, then failure after
+48604 post-reopen verifications with projected-read pinned-byte admission. The
+actual limit, requested amount and concurrency at denial are not retained; no
+measured segment or soak started. A repair and full qualification remain open.
+
+The [shared-generation candidate's Windows retry](../../evidence/change-journals/gate-c/c-07g-shared-pins-windows-terminal.md)
+acknowledged and initially verified all 100000 records, but failed pinned-byte
+admission after 47016 post-reopen readbacks, with zero measured segments. The
+candidate did not eliminate the observed failure. The numeric denial and root
+cause remain unknown; retain the failed result and diagnose before declaring
+the correction effective or C-07 qualified.
