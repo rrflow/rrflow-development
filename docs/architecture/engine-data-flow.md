@@ -1304,6 +1304,7 @@ they share one rrflowDB transaction, graph, query, and evidence model:
 | Function | A bounded deterministic transform or proposed-transaction validator executed by an engine-owned sandbox. | Durable orchestration, post-commit event matching, network access, or lifecycle state. |
 | External activity | One prepared, fenced attempt to invoke an installed model, process, network, or MCP capability and return a bounded observation for engine validation. | Canonical mutation, routine advancement, retries, authorization, verification, or direct storage/query/index access. |
 | Host-event adapter | Explicit translation of one authenticated external occurrence into the public engine-event submission contract. | Automatic installation, canonical state, routine scheduling, or storage access. |
+| Host hook stub | One host-configured invocation of a public RRFlow command or operation, generated from an RRFlow-owned host binding under the [host hook contract](../reference/agent-bootstrap.md#host-hooks). | Rules, instruction text, state, scheduling, authorization, or evidence of its own. |
 | MCP adapter | Projection of public RRD operations/resources/tasks and, when configured, transport for one external capability invocation. | A second context assembler, workflow engine, database trigger system, or presentation authority. |
 
 The [governed function reference](../reference/automation/functions.md) owns

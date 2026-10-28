@@ -412,7 +412,9 @@ project instruction format, while [Claude Code memory](https://code.claude.com/d
 documents scoped instructions; neither defines this complete product profile.
 Generate or reference authorized projections during the existing
 [bootstrap flow](../agent-bootstrap.md#independent-engine-and-project-integration),
-with ownership-safe removal and no provider hooks.
+with ownership-safe removal. A provider hook is only an
+[alias stub](../agent-bootstrap.md#host-hooks) onto those projections, never a
+configuration authority.
 
 Attunement may propose profile updates or learning examples. Acceptance of a
 preference is separate from training consent, model activation and cloud
