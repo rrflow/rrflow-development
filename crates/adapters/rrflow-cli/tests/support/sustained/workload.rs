@@ -81,10 +81,13 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
     if message == "Storage(\"substrate: control state exceeds one MiB\")" {
         return Some("control-state-size");
     }
-    // Read pressure can occur after publication, so the engine intentionally
-    // keeps Storage's Internal classification. This label is diagnostic only;
-    // the existing abort/readback evidence still determines durable outcome.
-    if let Some(detail) = message.strip_prefix("Storage(\"") {
+    // Read pressure may be wrapped as Internal storage or ResourceExhausted
+    // storage admission depending on the engine boundary. Labels never infer
+    // durable effects; abort/readback evidence remains authoritative.
+    if let Some(detail) = message
+        .strip_prefix("Storage(\"")
+        .or_else(|| message.strip_prefix("StorageAdmission(\""))
+    {
         for (prefix, label) in [
             ("projected-read active_views limit ", "read-active-views"),
             ("projected-read ranges limit ", "read-ranges"),
@@ -111,6 +114,15 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
                 "read-retained-output-bytes",
             ),
             ("source page allocation limit ", "read-source-pages"),
+            ("segment open-file limit ", "read-segment-handles"),
+        ] {
+            if detail.starts_with(prefix) {
+                return Some(label);
+            }
+        }
+    }
+    if let Some(detail) = message.strip_prefix("Storage(\"") {
+        for (prefix, label) in [
             ("transaction active owners limit ", "transaction-active"),
             (
                 "transaction owned buffer bytes limit ",
@@ -143,6 +155,7 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
             ),
             ("maintenance elapsed_ms limit ", "maintenance-elapsed"),
             ("maintenance l0_segments limit ", "maintenance-l0-segments"),
+            ("checkpoint entry limit ", "storage-admission-checkpoint"),
             ("transaction admission ", "storage-admission-queue"),
             ("transaction request ", "storage-admission-request"),
             ("transaction ", "storage-admission-transaction"),
@@ -177,6 +190,31 @@ fn engine_error_label(message: &str) -> Option<&'static str> {
     }
 }
 
+// Accept only the exact closed native error grammar. Untrusted text is never
+// echoed; even a valid prefix with an added suffix must not be exported.
+fn pinned_read_denial(message: &str) -> Option<(u64, u64)> {
+    let detail = message
+        .strip_prefix("StorageAdmission(\"")
+        .or_else(|| message.strip_prefix("Storage(\""))?
+        .strip_suffix("\")")?
+        .strip_prefix("projected-read pinned_bytes limit ")?;
+    let (limit, observed) = detail.split_once(" would be exceeded by ")?;
+    if limit.is_empty()
+        || observed.is_empty()
+        || !limit.bytes().all(|byte| byte.is_ascii_digit())
+        || !observed.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return None;
+    }
+    let parsed_limit = limit.parse::<u64>().ok()?;
+    let parsed_observed = observed.parse::<u64>().ok()?;
+    (parsed_limit > 0
+        && parsed_observed > parsed_limit
+        && parsed_limit.to_string() == limit
+        && parsed_observed.to_string() == observed)
+        .then_some((parsed_limit, parsed_observed))
+}
+
 // Preserve only the closed client/API classification and a digest of details.
 // Server messages, transport text and credentials never enter campaign output.
 fn client_error(value: rrd_client::Error) -> String {
@@ -184,6 +222,12 @@ fn client_error(value: rrd_client::Error) -> String {
     let code = match &value {
         Error::Api { error, .. } => {
             let mut code = format!("api-{:?}", error.code).to_ascii_lowercase();
+            if let Some((limit, observed)) = pinned_read_denial(&error.message) {
+                eprintln!(
+                    "native_read_admission={}",
+                    serde_json::json!({"resource":"pinned_bytes","limit":limit,"observed":observed})
+                );
+            }
             if let Some(label) = engine_error_label(&error.message) {
                 code.push('-');
                 code.push_str(label);
@@ -202,6 +246,37 @@ fn client_error(value: rrd_client::Error) -> String {
     };
     let detail = digest("c07g.client-error", &value.to_string()).expect("error digest");
     format!("{code}:{}", detail.as_str())
+}
+
+#[test]
+fn pinned_read_denial_reports_only_exact_numeric_resource_values() {
+    let read = rrd_store::Error::ProjectedReadLimit {
+        resource: rrd_store::ProjectedReadResource::PinnedBytes,
+        limit: 4_294_967_296,
+        observed: 4_294_967_297,
+    };
+    let admission = rrd_engine::ServiceError::StorageAdmission(read.to_string());
+    assert_eq!(
+        pinned_read_denial(&admission.to_string()),
+        Some((4_294_967_296, 4_294_967_297))
+    );
+    let storage = rrd_engine::ServiceError::Storage(read.to_string());
+    assert_eq!(
+        pinned_read_denial(&storage.to_string()),
+        Some((4_294_967_296, 4_294_967_297))
+    );
+    for invalid in [
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by 6 private\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by 5\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 18446744073709551616 would be exceeded by 7\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by -1\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 05 would be exceeded by 6\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 0 would be exceeded by 6\")",
+        "StorageAdmission(\"projected-read runs limit 5 would be exceeded by 6\")",
+        "StorageAdmission(\"projected-read pinned_bytes limit 5 would be exceeded by 6\")suffix",
+    ] {
+        assert_eq!(pinned_read_denial(invalid), None, "accepted malformed denial");
+    }
 }
 
 #[test]
@@ -228,6 +303,17 @@ fn diagnostic_labels_attribute_read_pressure_without_changing_internal_semantics
         });
         assert_eq!(error.kind(), rrd_engine::ServiceErrorKind::Internal);
         assert_eq!(engine_error_label(&error.to_string()), Some(label));
+        let read_error = rrd_store::Error::ProjectedReadLimit {
+            resource,
+            limit: 5,
+            observed: 6,
+        };
+        let admission = rrd_engine::ServiceError::StorageAdmission(read_error.to_string());
+        assert_eq!(
+            admission.kind(),
+            rrd_engine::ServiceErrorKind::ResourceExhausted
+        );
+        assert_eq!(engine_error_label(&admission.to_string()), Some(label));
         assert_eq!(
             engine_error_label(&format!(
                 "Storage(\"projected-read {} limit private secret\")",
@@ -281,6 +367,54 @@ fn diagnostic_labels_attribute_read_pressure_without_changing_internal_semantics
     assert_eq!(
         engine_error_label("Storage(\"private secret\")"),
         Some("storage")
+    );
+}
+
+#[test]
+fn read_admission_uses_real_store_error_labels_without_private_details() {
+    let cases = [
+        (
+            rrd_store::Error::ProjectedReadLimit {
+                resource: rrd_store::ProjectedReadResource::Runs,
+                limit: 5,
+                observed: 6,
+            },
+            "read-runs",
+        ),
+        (
+            rrd_store::Error::SourcePageLimit {
+                limit: 5,
+                observed: 6,
+            },
+            "read-source-pages",
+        ),
+        (
+            rrd_store::Error::SegmentHandleLimit {
+                limit: 5,
+                observed: 6,
+            },
+            "read-segment-handles",
+        ),
+        (
+            rrd_store::Error::CheckpointLimit {
+                limit: 5,
+                observed: 6,
+            },
+            "storage-admission-checkpoint",
+        ),
+    ];
+    for (cause, expected) in cases {
+        let error = rrd_engine::ServiceError::StorageAdmission(cause.to_string());
+        assert_eq!(
+            error.kind(),
+            rrd_engine::ServiceErrorKind::ResourceExhausted
+        );
+        assert_eq!(engine_error_label(&error.to_string()), Some(expected));
+        assert!(format!("api-resourceexhausted-{expected}:{}", "a".repeat(64)).len() <= 128);
+    }
+    assert_eq!(
+        engine_error_label("StorageAdmission(\"projected-read runs_private limit secret\")"),
+        Some("storage-admission")
     );
 }
 
@@ -913,6 +1047,127 @@ impl Workload {
         check(!result.execution.truncated, "capacity read truncated")?;
         Ok(result)
     }
+
+    /// Installed-smoke oracle: join a real exact vector-search hit to the
+    /// record and edges at the search's own read cursor.
+    pub(super) async fn verify_joined_search(
+        &self,
+        expected_key: &str,
+        expected_vector_ordinal: u32,
+        expected_revision: u64,
+        expected_score: f64,
+    ) -> Result<VectorSearchResult> {
+        let result = self
+            .client
+            .search_vectors(
+                &self.session,
+                SearchVectors {
+                    scope: self.scope(),
+                    valid_at: self.valid_at,
+                    collection_id: Some(id("capacity_documents")),
+                    vector_name: Some(id("body")),
+                    field: None,
+                    query: VectorSearchQuery::Dense {
+                        values: vec![1.0; self.dimensions as usize],
+                    },
+                    filter: None,
+                    metric: None,
+                    top_k: 1,
+                    mode: VectorSearchMode::Exact,
+                    max_storage_keys: self
+                        .query_budget
+                        .max_storage_keys
+                        .min(MAX_VECTOR_STORAGE_KEYS),
+                },
+                read_options("capacity-joined-search")?,
+            )
+            .await
+            .map_err(client_error)?;
+        check(
+            result.exact && result.access_path.as_str() == "exact_scan",
+            "search did not use exact production path",
+        )?;
+        check(result.hits.len() == 1, "search did not return one result")?;
+        let hit = &result.hits[0];
+        check(
+            hit.reference
+                == reference(
+                    "capacity_vector",
+                    &format!("vector-{expected_vector_ordinal}-{expected_key}"),
+                )
+                && hit.subject == reference("capacity_document", expected_key),
+            "search winner differs from independent oracle",
+        )?;
+        check(
+            (hit.score - expected_score).abs() < 0.000_001,
+            "search score differs from independent oracle",
+        )?;
+        let filter = format!(
+            "id = {}",
+            serde_json::to_string(expected_key).map_err(error)?
+        );
+        let record = self
+            .query(
+                "record:capacity_document",
+                &filter,
+                "id, body, revision",
+                Some(result.known_at_cursor),
+            )
+            .await?;
+        check(
+            record.known_at_cursor == result.known_at_cursor,
+            "record query did not use search cursor",
+        )?;
+        check(
+            record.rows.len() == 1,
+            "search winner has no unique record at search cursor",
+        )?;
+        check(
+            record.rows[0].values.get("body")
+                == Some(&QueryValue::String(self.body(expected_revision)))
+                && record.rows[0].values.get("revision")
+                    == Some(&QueryValue::Unsigned(expected_revision)),
+            "search winner record differs",
+        )?;
+        let filter = format!(
+            "from_id = {}",
+            serde_json::to_string(expected_key).map_err(error)?
+        );
+        let edges = self
+            .query(
+                "relation:capacity_link",
+                &filter,
+                "id, from_id, to_id, revision",
+                Some(result.known_at_cursor),
+            )
+            .await?;
+        check(
+            edges.known_at_cursor == result.known_at_cursor,
+            "relation query did not use search cursor",
+        )?;
+        check(
+            edges.rows.len() == self.edges_per_record as usize,
+            "search winner relation count differs at search cursor",
+        )?;
+        let mut expected = (0..self.edges_per_record)
+            .map(|n| format!("edge-{n}-{expected_key}"))
+            .collect::<BTreeSet<_>>();
+        for row in edges.rows {
+            let Some(QueryValue::String(edge)) = row.values.get("id") else {
+                return Err("search winner relation identity missing".into());
+            };
+            check(
+                expected.remove(edge)
+                    && row.values.get("from_id") == Some(&QueryValue::String(expected_key.into()))
+                    && row.values.get("to_id") == Some(&QueryValue::String("anchor".into()))
+                    && row.values.get("revision") == Some(&QueryValue::Unsigned(expected_revision)),
+                "search winner relation differs",
+            )?;
+        }
+        check(expected.is_empty(), "search winner relations incomplete")?;
+        Ok(result)
+    }
+
     pub async fn verify(&self, request: &Prepared) -> Result<()> {
         if request.kind == StorageLoadKind::MixedWrite {
             let mut view = self.clone();

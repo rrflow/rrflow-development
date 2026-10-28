@@ -703,7 +703,8 @@ impl Database {
         self.transaction_snapshots.ownership()
     }
 
-    /// Aggregate live stream ownership; returned batches own separate output reservations.
+    /// Aggregate live stream ownership: each retained segment or mutable
+    /// generation counts once. Returned batches own separate output reservations.
     pub fn read_view_ownership(&self) -> Result<(u64, u64)> {
         ActiveReadViews::ownership(&self.active_read_views)
     }
@@ -761,20 +762,21 @@ impl Database {
         let memtable_bytes = u64::try_from(self.memtable.approximate_bytes()).map_err(|_| {
             Error::InvalidProjectedRead("captured memtable bytes exceed u64".into())
         })?;
-        let pinned_bytes =
-            self.manifest
-                .segments
-                .iter()
-                .try_fold(memtable_bytes, |total, segment| {
-                    total.checked_add(segment.bytes).ok_or_else(|| {
-                        Error::InvalidProjectedRead("pinned read-view bytes overflow".into())
-                    })
-                })?;
+        let segment_bytes = segments.iter().try_fold(0_u64, |total, segment| {
+            total.checked_add(segment.descriptor.bytes).ok_or_else(|| {
+                Error::InvalidProjectedRead("pinned read-view bytes overflow".into())
+            })
+        })?;
+        let pinned_bytes = memtable_bytes
+            .checked_add(segment_bytes)
+            .ok_or_else(|| Error::InvalidProjectedRead("pinned read-view bytes overflow".into()))?;
         let cache_access = next_projected_cache_access()?;
         let lease = ActiveReadViews::acquire(
             &self.active_read_views,
             Arc::clone(&self.manifest),
-            pinned_bytes,
+            Some(&self.memtable),
+            memtable_bytes,
+            &segments,
             request.budget,
         )?;
         let view = ReadView {
@@ -2341,14 +2343,18 @@ impl Database {
             &mut retained_wals,
             &mut budget,
         )?;
-        ActiveReadViews::visit_manifests(&self.active_read_views, |manifest| {
-            retain_manifest(
-                manifest,
-                &mut retained_manifests,
-                &mut retained_segments,
-                &mut retained_wals,
-                &mut budget,
-            )
+        // A projected stream owns selected immutable segments directly. An old
+        // manifest is not a durable checkpoint and need not retain unrelated files.
+        ActiveReadViews::visit_segments(&self.active_read_views, |segment| {
+            budget.entry()?;
+            if let Some(previous) = retained_segments.insert(segment.id.clone(), segment.bytes) {
+                if previous != segment.bytes {
+                    return Err(Error::InvalidManifest(
+                        "protected segment pins disagree about length".into(),
+                    ));
+                }
+            }
+            Ok(())
         })?;
         for checkpoint in self.manifests.checkpoints_bounded(&mut budget)? {
             if !retained_manifests.contains(&checkpoint.manifest) {
