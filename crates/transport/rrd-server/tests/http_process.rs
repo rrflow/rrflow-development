@@ -337,6 +337,163 @@ fn start_root() -> (tempfile::TempDir, PathBuf, RunningServer) {
     (temporary, root, server)
 }
 
+#[test]
+fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
+    use std::sync::Arc;
+
+    const CHILD: &str = "RRFLOW_TEST_DIAGNOSTIC_TRACE_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let result = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "isolated diagnostic trace test failed: stdout={} stderr={}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+        return;
+    }
+
+    #[derive(Clone)]
+    struct Capture(Arc<Mutex<Vec<u8>>>);
+    impl Write for Capture {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let writer_output = output.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .json()
+        .with_env_filter(tracing_subscriber::EnvFilter::new(
+            "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug",
+        ))
+        .with_writer(move || Capture(writer_output.clone()))
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().join("instance");
+    let engine = RrflowKvStore::open(&root).unwrap();
+    let instance = CanonicalId::new("socket-test").unwrap();
+    let resource = rrd_contract::ResourcePath {
+        segments: vec![rrd_contract::ResourceId::new(
+            rrd_contract::ResourceKind::Instance,
+            "socket-test",
+        )
+        .unwrap()],
+    };
+    let principal = Principal {
+        id: CanonicalId::new("trace-client").unwrap(),
+        kind: PrincipalKind::User,
+        credential_sha256: rrd_core::digest::sha256_hex(b"trace-test-api-key"),
+        credential_revision: 1,
+        not_before_unix_ms: 1,
+        expires_at_unix_ms: u64::MAX,
+        disabled: false,
+        role_ids: Default::default(),
+        grants: [
+            SecurityAction::SessionCreate,
+            SecurityAction::DiagnosticsRead,
+        ]
+        .into_iter()
+        .map(|action| ResourceGrant {
+            action,
+            resource_prefix: resource.clone(),
+            data_policy: None,
+        })
+        .collect(),
+    };
+    SecurityRepository::new(&engine, instance)
+        .initialize(
+            SecurityState {
+                format_version: SECURITY_FORMAT,
+                revision: 1,
+                principals: BTreeMap::from([(principal.id.clone(), principal)]),
+                roles: BTreeMap::new(),
+                identity_bindings: BTreeMap::new(),
+                jwt_issuers: BTreeMap::new(),
+            },
+            1,
+            "bootstrap",
+            "request-bootstrap",
+            "operation-bootstrap",
+        )
+        .unwrap();
+    drop(engine);
+    let server = start(&root);
+    let create = envelope(
+        json!({"limits": {"idle_timeout_ms": 60000, "absolute_timeout_ms": 300000, "max_open_transactions": 2}}),
+        Some("trace-session"),
+        None,
+    );
+    let (status, created) = post_with_api_key(
+        &server,
+        "/v1/sessions",
+        &create,
+        "trace-client",
+        "trace-test-api-key",
+    );
+    assert_eq!(status, 200, "{created}");
+    let session = payload(&created)["session_id"].as_str().unwrap();
+    let token = payload(&created)["token"].as_str().unwrap();
+    let mut request = envelope(json!({"scope": "instance:socket-test"}), None, None);
+    request["context"]["request_id"] = json!("private-request-sentinel");
+    let (status, response) = post(
+        &server,
+        "/v1/diagnostics/storage/read",
+        &request,
+        Some((session, token)),
+    );
+    assert_eq!(status, 200, "{response}");
+    server.stop();
+
+    let bytes = output.lock().unwrap().clone();
+    let raw = std::str::from_utf8(&bytes).unwrap();
+    assert!(!raw.contains("private-request-sentinel"));
+    assert!(!raw.contains("trace-test-api-key"));
+    assert!(!raw.contains(token));
+    let events: Vec<Value> = raw
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let event = events
+        .iter()
+        .find(|event| event["target"] == "rrd_store::diagnostic")
+        .expect("actual HTTP diagnostic must emit a store timing event");
+    assert_eq!(
+        event["span"]["request_sha256"],
+        rrd_core::digest::sha256_hex(b"private-request-sentinel")
+    );
+    assert!(event["fields"]["mutex_wait_ns"].is_u64());
+    assert!(event["fields"]["mutex_held_assembly_ns"].is_u64());
+    assert!(event["fields"]["memtable_profile_ns"].is_u64());
+    let service = events
+        .iter()
+        .find(|event| event["target"] == "rrd_server::diagnostic")
+        .expect("actual HTTP diagnostic must emit a service timing event");
+    assert_eq!(
+        service["span"]["request_sha256"],
+        rrd_core::digest::sha256_hex(b"private-request-sentinel")
+    );
+    assert_eq!(service["fields"]["success"], true);
+    let elapsed = service["fields"]["service_elapsed_ns"].as_u64().unwrap();
+    let wait = event["fields"]["mutex_wait_ns"].as_u64().unwrap();
+    let hold = event["fields"]["mutex_held_assembly_ns"].as_u64().unwrap();
+    assert!(u128::from(wait) + u128::from(hold) <= u128::from(elapsed));
+}
+
 fn seed_query_fixture(root: &Path) {
     let engine = RrflowKvStore::open(root).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "RRD query fixture");

@@ -27,6 +27,7 @@ semantics, and qualification, and H-08 owns its packages.
 | 2026-10-19 | Knowledge and memory are the same graph family. | [Memory model](#memory-model). |
 | 2026-10-19 | The graphs a prompt forms are configurable so they can be tested and experimented with. | [Prompt graph families](#prompt-graph-families). |
 | 2026-10-19 | Relationships between projects are opt-in links: each project stays its own rrflowDB, a link is explicitly allowed, queries may follow it read-only, and every use is audited. | [Project links](#project-links). |
+| 2026-10-27 | Domains inside a project estate are configurable, with a default each project tunes, kind grouping, categories and tags, optional isolation, and per-domain drill-down. | Owned by the [estate organisation contract](estate-organisation.md) and H-11; prompt graph family definitions and their kinds belong to domains like any other kind. |
 
 ## What "Postgres-like" means, and what it does not
 

@@ -127,7 +127,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
 
     def test_result_requires_each_case_once_without_skips(self):
         lines = [f"test {case} ... ok" for case in sorted(runner.REQUIRED_CASES)]
-        summary = "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s"
+        summary = f"test result: ok. {len(runner.REQUIRED_CASES)} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s"
         output = "\n".join(lines + [summary])
         self.assertEqual(runner.require_lifecycle_results(output), sorted(runner.REQUIRED_CASES))
         for invalid in ["", "\n".join(lines), "\n".join(lines[1:] + [summary]),
@@ -181,6 +181,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             "install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape",
             "fresh_installed_engine_survives_restart_and_restore",
             "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
+            "a_served_estate_is_found_proved_and_not_served_twice",
         }
         runner.require_lifecycle_tests("\n".join(f"{case}: test" for case in sorted(cases)))
         for missing in sorted(cases):

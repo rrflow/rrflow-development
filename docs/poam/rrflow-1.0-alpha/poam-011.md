@@ -27,6 +27,16 @@ catalogue as semantic owner, but the complete one-invocation compiler and
 installed cross-surface corpus have not been implemented. Hand-maintained
 operation/model/reference/conformance copies can therefore still drift.
 
+On a native Windows Python probe, creating a temporary file and applying
+`os.chmod(path, 0o600)` still reports mode `0o666`. The shared SDK harness
+`scripts/ci/run_sdk_conformance.py::wait_for_manifest` unconditionally
+requires Unix mode `0600`, and its Rust manifest writer uses ordinary file
+creation on non-Unix platforms rather than establishing a protected Windows
+DACL. This prevents that readiness check from succeeding on the observed
+Windows host and does not establish Windows-private manifest creation. Fix and
+test the native permission boundary; do not merely skip the check. The probe
+is not a full SDK run or Windows/ARM qualification.
+
 The owner's rrflowDB identity requires PostgreSQL compatibility. The new
 [core-profile contract](../../reference/protocol/postgresql.md) defines the
 first compatibility matrix and [H-08](../../roadmap/rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)

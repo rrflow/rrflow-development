@@ -65,13 +65,21 @@ pub(super) async fn reopens(
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,
-    clock: Instant,
-    lifetime: Duration,
+    timing: (Instant, Duration),
     progress: &ProgressContext<'_>,
+    session_state: (&mut u64, &mut Instant),
 ) -> DriverResult<ReopenEvidence> {
     tokio::time::timeout(
         Duration::from_millis(campaign.schedule.lifecycle_ms.get()),
-        reopen_inner(estate, child, work, campaign, clock, lifetime, progress),
+        reopen_inner(
+            estate,
+            child,
+            work,
+            campaign,
+            timing,
+            progress,
+            session_state,
+        ),
     )
     .await
     .map_err(|_| "installed reopen lane exceeded lifecycle deadline".to_owned())?
@@ -82,10 +90,12 @@ async fn reopen_inner(
     child: &mut Option<super::super::process::Process>,
     work: &mut Workload,
     campaign: &StorageCampaign,
-    clock: Instant,
-    lifetime: Duration,
+    timing: (Instant, Duration),
     progress: &ProgressContext<'_>,
+    session_state: (&mut u64, &mut Instant),
 ) -> DriverResult<ReopenEvidence> {
+    let (clock, lifetime) = timing;
+    let (ordinal, opened) = session_state;
     let started_ns = ns(clock);
     let mut cycles = Vec::new();
     let mut receipts = Vec::new();
@@ -189,14 +199,43 @@ async fn reopen_inner(
     // Verify the entire pre-existing seeded corpus after the last kill. These
     // immutable seed keys were never rewritten by retry or the lifecycle lane.
     let mut readback = digest("c07g.reopened-corpus", &(work.seed, work.records))?;
-    for record in 0..work.records {
-        let operation = work.seed_record(record)?;
-        work.verify(&operation).await?;
-        readback = digest(
-            "c07g.reopened-corpus",
-            &(readback, record, &operation.effect_sha256),
-        )?;
+    let clients = progress
+        .point
+        .clients
+        .get()
+        .min(campaign.storage.budgets.queue_requests.get())
+        .min(64) as usize;
+    let deadline = Duration::from_millis(campaign.schedule.operation_deadline_ms.get());
+    for first in (0..work.records).step_by(clients) {
+        // All prior reads have joined before a session can be closed.
+        rotate_session(
+            estate,
+            work,
+            campaign,
+            progress.point.clients.get(),
+            ordinal,
+            opened,
+        )
+        .await?;
+        let end = first.saturating_add(clients as u64).min(work.records);
+        let (next, verified) =
+            corpus::verify_reopened_window(work, first, end, clients, deadline, readback).await?;
+        for (record, effect_sha256) in verified {
+            progress
+                .writer
+                .record_event(&ProgressEvent::ReopenedCorpusVerified {
+                    point: progress.point.id.clone(),
+                    seed: work.seed,
+                    ordinal: record,
+                    effect_sha256,
+                })?;
+            if record % 64 == 63 {
+                progress.writer.checkpoint_progress()?;
+            }
+        }
+        readback = next;
     }
+    progress.writer.checkpoint_progress()?;
     Ok(ReopenEvidence {
         started_ns,
         finished_ns: ns(clock),
