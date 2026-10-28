@@ -134,6 +134,7 @@ mod retrieval;
 mod retrieval_query;
 mod rollback;
 mod security;
+mod serving;
 mod session;
 mod session_transactions;
 mod subscription;
@@ -167,6 +168,7 @@ pub use invocation::{
 };
 use model::*;
 pub use security::{MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES};
+pub use serving::{ServingPublisher, ServingRecord, ServingRegistration};
 use session::*;
 use token_key::load_or_create_token_key;
 pub use token_key::TOKEN_KEY_BYTES;

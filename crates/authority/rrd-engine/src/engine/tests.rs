@@ -105,6 +105,7 @@ mod query_transaction;
 mod reasoning_budget;
 mod recovery;
 mod security;
+mod serving;
 mod session_transactions;
 mod storage_cursor;
 mod subscription;

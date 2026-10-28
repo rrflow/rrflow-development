@@ -25,6 +25,6 @@
 - [Gate F — connect rrflowKV to Arrow/DataFusion correctly](gate-f.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-f`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-f) — active canonical RRFlow 1.0 roadmap chapter
 - [Gate G — connect LFG without creating another engine](gate-g.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-g`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-g) — active canonical RRFlow 1.0 roadmap chapter
 - [Gate H — prove context flow, feedback, live delivery, and Connectome](gate-h.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-h`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-h) — active canonical RRFlow 1.0 roadmap chapter
-- [Gate I — add explicit automation scaffolding without automatic hooks](gate-i.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-i`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-i) — active canonical RRFlow 1.0 roadmap chapter
+- [Gate I — add explicit automation scaffolding with host hooks as alias stubs](gate-i.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-i`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-i) — active canonical RRFlow 1.0 roadmap chapter
 - [Gate J — RRFlow 1.0 release proof](gate-j.md) — [`rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-j`](rrflow://rrflow-instance/data/roadmap/rrflow-1.0/gate-j) — active canonical RRFlow 1.0 roadmap chapter
 <!-- rrflow:generated-index:end -->

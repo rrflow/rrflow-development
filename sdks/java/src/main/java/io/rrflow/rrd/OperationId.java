@@ -1,8 +1,9 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 74c2c3eb89848d9a9c600e4ae6463ce68919d65d1fb5c79fd7df6956218d2938
+// OpenAPI SHA-256: a154c39e0022435b2b47680f5fd8cb65a176611fe0ab0b390f3e76339eab29bc
 package io.rrflow.rrd;
 
 public enum OperationId {
+    ATTUNEMENT_CANCEL("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SESSION_BEARER, true),
     ATTUNEMENT_READ("attunement-read", "POST", "/v1/attunement/read", Authentication.SESSION_BEARER, false),
     AUDIT_EXPORT("audit-export", "POST", "/v1/audit/export", Authentication.SESSION_BEARER, false),
     AUDIT_READ("audit-read", "POST", "/v1/audit/read", Authentication.SESSION_BEARER, false),
@@ -60,7 +61,7 @@ public enum OperationId {
     VECTOR_POINT_SCROLL("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SESSION_BEARER, false),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "74c2c3eb89848d9a9c600e4ae6463ce68919d65d1fb5c79fd7df6956218d2938";
+    static final String OPENAPI_DOCUMENT_SHA256 = "a154c39e0022435b2b47680f5fd8cb65a176611fe0ab0b390f3e76339eab29bc";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 
