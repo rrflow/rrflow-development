@@ -33,6 +33,48 @@ mod workload;
 use workload::{Prepared, Workload};
 
 type DriverResult<T> = std::result::Result<T, String>;
+
+fn retain_failed_lifecycle<T>(
+    estate: &super::owned_directory::OwnedDirectory,
+    result: DriverResult<T>,
+) -> DriverResult<T> {
+    if result.is_err() {
+        eprintln!(
+            "native_lifecycle_failure_estate={}",
+            serde_json::json!({"path": estate.retain(), "private_state": true})
+        );
+    }
+    result
+}
+
+#[test]
+fn lifecycle_failure_retains_its_owned_estate_but_success_cleans_it() {
+    let parent = tempfile::tempdir().unwrap();
+    let success =
+        super::owned_directory::OwnedDirectory::new(tempfile::tempdir_in(parent.path()).unwrap());
+    let success_path = success.path().to_owned();
+    assert_eq!(
+        retain_failed_lifecycle(&success, Ok::<_, String>(7)).unwrap(),
+        7
+    );
+    drop(success);
+    assert!(!success_path.exists());
+
+    let failed =
+        super::owned_directory::OwnedDirectory::new(tempfile::tempdir_in(parent.path()).unwrap());
+    let failed_path = failed.path().to_owned();
+    std::fs::write(failed_path.join("sentinel"), b"retained").unwrap();
+    assert_eq!(
+        retain_failed_lifecycle::<()>(&failed, Err("fixture-failure".into())).unwrap_err(),
+        "fixture-failure"
+    );
+    drop(failed);
+    assert_eq!(
+        std::fs::read(failed_path.join("sentinel")).unwrap(),
+        b"retained"
+    );
+}
+
 fn evidence_id(value: impl Into<String>) -> Id {
     value.into().try_into().unwrap()
 }
@@ -1061,6 +1103,19 @@ fn installed_capacity_workload_smoke() {
             assert!(!receipt.idempotent_replay);
             receipts.push(receipt.receipt_sha256);
         }
+        // For seed 73 and 16 all-one query dimensions, vector 1 of seed 7
+        // uniquely maximizes dot product: sum(81..=96) / 256 = 5.53125.
+        let winning_key = "seed-00000000000000000007";
+        let before = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
+        super::kill(child, clock);
+        let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+        work.client = client;
+        let after = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
+        assert_eq!(after.known_at_cursor, before.known_at_cursor);
+        assert_eq!(after.hits, before.hits);
+        let replay = work.execute(&work.seed_record(7).unwrap()).await.unwrap();
+        assert!(replay.idempotent_replay);
+        assert_eq!(replay.receipt_sha256, receipts[7]);
         let mut verified = 0;
         for first in (0..work.records).step_by(2) {
             let results = corpus::verify_window(
@@ -1139,6 +1194,29 @@ fn installed_capacity_workload_smoke() {
         let killed = super::kill(child, clock);
         let (reopened, client, identity) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
+        // Exercise the production post-reopen bounded readback before replay.
+        let mut reopened_digest =
+            digest("c07g.reopened-corpus", &(work.seed, work.records)).unwrap();
+        let mut expected_digest = reopened_digest.clone();
+        for first in (0..work.records).step_by(2) {
+            let (next_digest, values) = corpus::verify_reopened_window(
+                &work,
+                first,
+                (first + 2).min(work.records),
+                2,
+                Duration::from_secs(30),
+                reopened_digest,
+            )
+            .await
+            .unwrap();
+            for (ordinal, effect) in values {
+                assert_eq!(effect, work.seed_record(ordinal).unwrap().effect_sha256);
+                expected_digest =
+                    digest("c07g.reopened-corpus", &(expected_digest, ordinal, &effect)).unwrap();
+            }
+            reopened_digest = next_digest;
+        }
+        assert_eq!(reopened_digest, expected_digest);
         // Every old value is read before replay; exact old request identities
         // must return the stored receipt after this real process boundary.
         for ordinal in 0..work.records {
@@ -1330,18 +1408,17 @@ async fn run_estate(
                 &mut session_opened,
             )
             .await?;
-            let mut reopens = Some(
-                lifecycle::reopens(
-                    &estate,
-                    &mut child,
-                    &mut work,
-                    campaign,
-                    clock,
-                    Duration::from_millis(lifetime_ms),
-                    &ProgressContext { writer, point },
-                )
-                .await?,
-            );
+            let reopens_result = lifecycle::reopens(
+                &estate,
+                &mut child,
+                &mut work,
+                campaign,
+                (clock, Duration::from_millis(lifetime_ms)),
+                &ProgressContext { writer, point },
+                (&mut session_ordinal, &mut session_opened),
+            )
+            .await;
+            let mut reopens = Some(retain_failed_lifecycle(&estate.temp, reopens_result)?);
             let mut cold_start = if campaign.required_lanes.contains(&CapacityLane::Cold) {
                 Some(
                     cold::run(

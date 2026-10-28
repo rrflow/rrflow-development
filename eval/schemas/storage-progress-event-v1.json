@@ -1710,6 +1710,39 @@
     {
       "additionalProperties": false,
       "properties": {
+        "effect_sha256": {
+          "$ref": "#/$defs/Digest"
+        },
+        "kind": {
+          "const": "reopened_corpus_verified",
+          "type": "string"
+        },
+        "ordinal": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "point": {
+          "$ref": "#/$defs/Id"
+        },
+        "seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "point",
+        "seed",
+        "ordinal",
+        "effect_sha256"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
         "cycle": {
           "format": "uint64",
           "minimum": 0,

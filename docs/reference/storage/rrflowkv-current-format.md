@@ -267,6 +267,13 @@ pointers that pin a manifest generation; rebinding a name fails, release is
 explicit, and garbage collection uses the checkpoint inventory rather than
 filename inference.
 
+Transient projected streams retain their captured manifest identity as evidence,
+but pin and charge the selected immutable segment identities and mutable
+generation, shared across overlapping views. After publication, a former
+manifest that is neither current nor checkpointed may be reclaimed while its
+selected segments remain protected until those streams finish. This does not
+change durable checkpoint closure or the separate output-buffer reservations.
+
 The manifest-v1 JSON is a negative fixture and returns `UnsupportedVersion`;
 no v1/v2 manifest state reader is present. No superseded
 application-key reader remains after C-01. These removals contribute C-05
