@@ -224,7 +224,7 @@ final class RrdClientTest {
             assertTrue(expired.getMessage().contains("deadline has expired"));
             assertEquals(58, OperationId.values().length);
             assertEquals("/v1/attunement/receipt/read", OperationId.ATTUNEMENT_RECEIPT_READ.path());
-            assertFalse(OperationId.ATTUNEMENT_RECEIPT_READ.mutation());
+            assertEquals(false, OperationId.ATTUNEMENT_RECEIPT_READ.mutation());
             assertTrue(OperationId.BACKUP_CREATE.mutation());
             assertTrue(OperationId.TRANSACTION_PREVIEW.mutation());
             assertEquals(
