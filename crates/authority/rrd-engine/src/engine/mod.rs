@@ -114,6 +114,7 @@ mod flight;
 mod function;
 mod inference;
 mod installation;
+mod observation_source;
 pub use attunement::{AttunementCommand, AttunementControlResult};
 mod invocation;
 mod knowledge;

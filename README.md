@@ -58,8 +58,12 @@ contracts; these controls and the complete journey still require qualification.
 
 Planned **rrflow.ai** and **rroflow.ai** services are optional. rrflow.ai is
 the hosted reasoning engine, offering remote access, synchronization and
-evidence views. rroflow.ai is the learning service, offering governed
-supervised, unsupervised and recursive learning. Like the engine and
+evidence views. rroflow.ai is the intended AI-observability and learning
+service: it brings authorized activity from supported AI tools together for
+signals, tags, investigation and governed supervised, unsupervised and
+recursive learning. Provider capture and the service are not yet implemented;
+the [provider-observation roadmap](docs/roadmap/rrflow-1.0/gate-i.md#provider-observation-for-rroflow)
+defines the implementation and proof. Like the engine and
 Connectome, their service software is open source and self-hostable. Their
 [service roles and opt-in boundaries](docs/reference/client/devpulse-cloud.md#optional-managed-service-roles)
 are targets, not deployed-service claims. **Nomen** is the planned central

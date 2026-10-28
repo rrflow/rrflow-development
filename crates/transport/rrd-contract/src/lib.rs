@@ -13,6 +13,8 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod observation_source;
+pub use observation_source::*;
 mod flight;
 mod function;
 #[path = "generated/signal_catalogue.rs"]
@@ -40,14 +42,15 @@ pub use attunement::{
     attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
     installation_plan_sha256, installation_result_sha256, AttunementFailure, AttunementJob,
     AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
-    AttunementPhasePlan, AttunementPlan, AttunementRuntimeCoordinates, AttunementStatus,
-    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
-    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
-    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
-    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
-    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
-    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
-    ResumeAttunement, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    AttunementPhasePlan, AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
+    AttunementSourceVerification, AttunementStatus, AttunementVerification,
+    AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
+    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
+    InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
+    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
+    InstallationRemovalRule, InstallationResult, InstallationSpecialization,
+    InstallationStorageGeneration, InstallationTargetKind, ReadAttunement, ResumeAttunement,
+    ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
     INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
@@ -241,7 +244,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "c9c377485075c1d7765e7c5b11a48da8554a24916ea7465489890afd286f044a";
+    "74c2c3eb89848d9a9c600e4ae6463ce68919d65d1fb5c79fd7df6956218d2938";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3642,6 +3645,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "DiagnosticSnapshot",
         ),
         endpoint(
+            "attunement-read",
+            HttpMethod::Post,
+            "/v1/attunement/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateRead,
+            "ReadAttunement",
+            "AttunementReadResult",
+        ),
+        endpoint(
             "flight-launch",
             HttpMethod::Post,
             "/v1/flights",
@@ -4451,6 +4464,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "CloseTask" => schema_json::<RequestEnvelope<CloseTask>>(),
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
+        "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
         "ReadEstate" => schema_json::<RequestEnvelope<ReadEstate>>(),
         "RenewSession" => schema_json::<RequestEnvelope<RenewSession>>(),
         "RestoreInstanceBackup" => schema_json::<RequestEnvelope<RestoreInstanceBackup>>(),
@@ -4489,6 +4503,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskResult" => schema_json::<ResponseEnvelope<TaskResult>>(),
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
+        "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
         "EndpointCatalogue" => schema_json::<ResponseEnvelope<EndpointCatalogue>>(),
         "EstateSnapshot" => schema_json::<ResponseEnvelope<EstateSnapshot>>(),
         "InstanceBackupCatalogueSnapshot" => {

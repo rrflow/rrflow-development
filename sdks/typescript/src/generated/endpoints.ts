@@ -1,8 +1,14 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: c9c377485075c1d7765e7c5b11a48da8554a24916ea7465489890afd286f044a
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "c9c377485075c1d7765e7c5b11a48da8554a24916ea7465489890afd286f044a" as const;
+// OpenAPI SHA-256: 74c2c3eb89848d9a9c600e4ae6463ce68919d65d1fb5c79fd7df6956218d2938
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "74c2c3eb89848d9a9c600e4ae6463ce68919d65d1fb5c79fd7df6956218d2938" as const;
 
 export const endpoints = {
+  "attunement-read": {
+    "method": "POST",
+    "path": "/v1/attunement/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
   "audit-export": {
     "method": "POST",
     "path": "/v1/audit/export",

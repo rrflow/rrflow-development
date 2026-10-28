@@ -35,6 +35,72 @@ Installation does not enable a learning loop. I-06 scaffolding and H-06 client
 views consume these existing capabilities after their acceptance; they cannot
 declare a checkpoint active or mark a routine complete themselves.
 
+## Provider observation for RROFLOW
+
+The intended experience is one investigation view for available activity from
+Codex, Claude and Grok: sessions, model/API activity, tool decisions and
+results, errors, timing, usage, and permitted conversation or tool content.
+Operators can organize retained observations into signals and tags, follow
+related activity and inspect evidence. RROFLOW builds on the one RRFlow engine
+and its governed learning boundary; a provider, collector or hosted service
+does not become a second event, audit, project-state or completion authority.
+This is a target, not a claim that any feed or rroflow.ai service is active.
+
+| Source | Documented intake to qualify | Coverage that must not be inferred |
+|---|---|---|
+| Codex | [Official OpenAI configuration](https://learn.chatgpt.com/docs/config-file/config-advanced#observability-and-telemetry) describes opt-in OTLP logs for conversations, API requests, tool decisions and results, with prompt-content controls. | An enabled exporter does not establish historical backfill, all client surfaces, complete delivery or hidden reasoning. Verify the actual installed version, event families and configured destination. |
+| Claude Code | [Official monitoring documentation](https://code.claude.com/docs/en/monitoring-usage) describes configurable OTLP metrics, logs and optional traces, including tool results and separate content settings. | CLI, Desktop Code and Cowork configuration have different reach; one configured source does not establish coverage of every Claude product or conversation. |
+| Grok Build | [Official headless documentation](https://docs.x.ai/build/cli/headless-scripting) describes newline-delimited streaming JSON and ACP for sessions started through those interfaces. | A controlled session stream does not establish a global OTLP feed or access to independent/historical Grok chats. Qualify the actual installed version and supported events. |
+
+Execute bounded packages in dependency order:
+
+1. **I-01 engine admission and identity.** Converge the existing canonical
+   event representation around authenticated estate/principal, configured
+   source binding and revision, provider/session/event identity or an
+   explicitly qualified stable stream checkpoint, event kind/time, provenance,
+   payload digest, authorization and retention policy. The engine owns the
+   event and its receipt. Reconnect and a new transport session must resolve
+   the same source event to the same accepted result; a reused identity with
+   different content must conflict. A claimed provider name or a client-side
+   cache is not authenticated source identity. The current transaction
+   replay is tied to its transaction/session and does not by itself establish
+   this cross-session deduplication.
+2. **I-04 source adapters.** Implement stateless, versioned translators for
+   each qualified documented source. Preview exact supported events, scopes,
+   endpoint, credentials, content classes, limits and configuration; install
+   and activate only the selected binding. Stream or import through the same
+   engine admission, with bounded queues, backpressure, retry, checkpoints,
+   explicit loss/unsupported states and idempotent replay. Do not add
+   provider/editor-owned automatic hooks or read undocumented account stores.
+   Codex/Claude OTLP and Grok controlled streaming are distinct transports;
+   unimplemented transports cannot be labelled connected.
+3. **H-05 signals and H-06 views.** Project retained, authorized observations
+   and the existing signal catalogue into correlated timelines, error groups,
+   usage and latency views, and operator-defined versioned tags. A tag or
+   clustering suggestion is a derived annotation with provenance, not evidence
+   that the source event, task, external effect or underlying claim succeeded.
+   Show source coverage, dropped events, delay, duplicates, truncation and
+   unknown cost/quality explicitly. Bound cardinality and preserve raw-event
+   identity separately from derived groups.
+4. **H-07 transfer and I-03/I-07 learning.** Keep local capture usable without
+   a cloud account. A selected remote destination requires an authenticated
+   binding, exact dataset/purpose preview, authorization, resumable transfer,
+   durable receipts and revocation behavior. Collection, remote transfer,
+   training and promotion are separate decisions; telemetry does not grant
+   training or effect authority. Never represent hidden model reasoning as
+   captured provider content.
+
+Acceptance runs real configured provider versions and an installed engine:
+event emission, receipt and readback; three-source normalization without
+semantic flattening; restart/reconnect and cross-session deduplication; changed
+duplicate rejection; untrusted producer denial; partial, out-of-order and
+missing events; queue exhaustion and recovery; source and destination revocation;
+content-scope and secret handling; audit readback; and local operation while
+remote delivery is unavailable. Retain exact versions, configuration and
+coverage. Use real provider/collector behavior for claims; fixtures prove only
+their declared input cases. None of these steps closes C-07 or the learning,
+observability or service gates without their own acceptance evidence.
+
 ## Exit condition
 
 Gate I exits only when automation is explicit, bounded, replayable, removable,

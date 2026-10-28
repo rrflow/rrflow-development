@@ -1,0 +1,13 @@
+# RROFLOW source binding refreshed after project-directory merge
+
+**Status:** active integrated candidate; exact CI pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-i/observation-source-project-directory-refresh`
+**Owner:** OBJ-08/11 / I-01/I-04 / POAM-008 / [PR163](https://github.com/rrflow/rrflow-development/pull/163)
+
+Driver: this session. PR163 recorded scope and stop conditions before this ordinary integration: source parent `a268b68416f8a687d2dba2881f070488c8366fde` and merged public main `5ca589a62cbbe2a131af31ebb79b06a76129d634` containing PR154. The only conflict was generated execution inventory, reconstructed from the combined source. The existing provider-neutral source binding, HMAC-issued preview, host-clock expiry, authorization, control-CAS, replay, revoke, audit and installed-estate behavior remain at the same RrdEngine boundary. The merged project-directory binding and its contract/client projections remain as accepted main. No provider collector or source activation is added. Stop if either side's behavior or authorization changes.
+
+Read the PR163 brief, user-provided `AGENTS.md`, relevant owner and prior source-binding journal; reviewed incoming source, conflict and complete integration diff. No upstream code adapted and no new runtime trace or resource mechanism added. The parent journal retains installed-estate, replay, authentication, host-clock and audit evidence. The earlier candidate CI applies to its own head and cannot establish this merged candidate.
+
+On Windows with offline locked dependencies, `cargo test --offline --locked -p rrd-engine --lib observation_source` passed both installed-estate tests and `cargo test --offline --locked -p rrd-contract --quiet` passed the contract suite. `cargo fmt --all -- --check`, `python scripts/ci/check_documentation.py`, `python scripts/ci/check_workflow.py`, `python scripts/knowledge/render_navigation.py --check`, staged `git diff --check` and `python scripts/ci/build_execution_inventory.py --check` passed. The existing parent journal records the broader engine suite and repeated CAS test on its earlier source; exact candidate CI is still required.
+
+Exact candidate CI and protected merge-group validation remain pending; no event ingestion, provider integration, C-07 qualification, Gate I or alpha completion is claimed. No objective, roadmap or POAM completion status changes. Checklist: owner and parents bound before effects; conflict confined to generated inventory; both contract sides retained; focused tests and projections checked; full diff reviewed; CI and merge pending.
