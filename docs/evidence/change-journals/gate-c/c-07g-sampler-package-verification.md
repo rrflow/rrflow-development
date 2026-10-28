@@ -1,0 +1,11 @@
+# C-07 sampler owning-package verification
+
+**Status:** active draft verification; full candidate and native qualification pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-sampler-package-verification`
+**Owner:** OBJ-02 / C-07g / POAM-035 / [PR171](https://github.com/rrflow/rrflow-development/pull/171)
+
+Driver: current Codex session. On clean draft head `23c98eb9af23eda6f75824ee0fb87b7f429bd05b`, `cargo test --offline --locked -p rrflow-cli` passed on Windows with `CARGO_TARGET_DIR=D:/localdev/devlabs/rrflow/target/c07-integrated-memtable-release` and `CARGO_BUILD_JOBS=2`. This included the five installed lifecycle tests, default installed-reopen target, and process/relay tests. Explicitly ignored cases, including the full sustained campaign and native 100-cycle histories, were not executed by that command. The separately selected real installed capacity smoke, including its disposable six-offer scheduled segment and exact progress readback, passed as recorded in the [preceding journal](c-07g-sampler-segment-smoke.md).
+
+This evidence-only successor records the owning-package result without changing the earlier immutable records. The PR brief was updated before this record; `README.md`, the C-07 owner, POAM-035, the previous journals, PR brief, affected test and source were reviewed during the package. No source adaptation or new profiling was necessary for this verification. The earlier slow-sample trace and original Windows failure remain retained. There were no new test failures in this command. Native blocking isolation and a direct injected-stall interruption/restart segment remain open; PR168, candidate CI, protected merge-group, fresh native capacity and 24-hour soak remain required. No product, objective, roadmap or POAM completion status changed.
+
+Checklist: exact tested source and command recorded; owning package and ignored cases distinguished; prior failure and immutable journals preserved; scope is evidence, navigation and generated inventory only; full diff, navigation, inventory and documentation checks required before the evidence commit. This journal cannot make the draft ready or qualify a different revision.
