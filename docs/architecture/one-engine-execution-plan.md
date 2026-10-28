@@ -55,6 +55,8 @@ Hash-then-write does not eliminate a concurrent editor race. A project mutation 
 
 ## 5. Executable packages and acceptance
 
+The [SDK and launch-bridge plan](rroflow-sdk-and-bridge-plan.md) expands P7 and H-04 into independently reviewable packages, project and global routing, real provider coverage, and native platform qualification. It is a supporting design, not a new dependency or status owner.
+
 The dependency spine owns ordering. Rows below map it into separately reviewed PRs; split them further at natural boundaries. Each PR brief names exact files/symbols and real commands before editing, begins with a missing-behavior or failure oracle, records a linked journal and has candidate CI. A planned test target must be created before its command can run; never report a proposed test as executed.
 
 P0 is the first proposed repository guard package. It can start from the existing `scripts/ci/check_workflow.py` and `scripts/ci/test_candidate_admission.py`; a proposed new `scripts/ci/validate_change_handoff.py` and `scripts/ci/test_change_handoff.py` are implementation targets, not files claimed to exist. The package must decide and document how a trusted base validator receives PR metadata and a detached exact-head receipt in both pull-request and merge-group contexts, without executing a candidate-supplied command. Bootstrap that one validator change through the existing PR/journal/full-CI gate, then require it for later packages. If trusted execution or required-check configuration cannot be established, report the gap and do not claim enforcement.
