@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-from sdk_private_manifest import private_workspace, verify_manifest
+from sdk_private_manifest import create_manifest_staging, private_workspace, verify_manifest
 
 ROOT = Path(__file__).resolve().parents[2]
 CORPUS = ROOT / "fixtures/rrd-sdk-conformance-v1.json"
@@ -165,18 +165,18 @@ def main() -> None:
     with private_workspace() as temporary_path:
         manifest_path = temporary_path / "manifest.json"
         shutdown_path = temporary_path / "shutdown"
-        process = subprocess.Popen(
-            [
-                str(harness),
-                "--corpus",
-                str(CORPUS),
-                "--manifest",
-                str(manifest_path),
-                "--shutdown",
-                str(shutdown_path),
-            ],
-            cwd=ROOT,
-        )
+        command = [
+            str(harness),
+            "--corpus",
+            str(CORPUS),
+            "--manifest",
+            str(manifest_path),
+            "--shutdown",
+            str(shutdown_path),
+        ]
+        if os.name == "nt":
+            command.extend(["--manifest-staging", str(create_manifest_staging(temporary_path))])
+        process = subprocess.Popen(command, cwd=ROOT)
         try:
             manifest = wait_for_manifest(manifest_path, process)
             digest = hashlib.sha256(corpus_bytes).hexdigest()

@@ -31,8 +31,11 @@ The shared SDK conformance harness formerly applied a Unix `0600` mode check
 on Windows, where Python's native mode projection reports `0666` even after
 `chmod(0600)`. Its manifest writer also relied on inherited Windows security.
 The [native harness repair](../../evidence/change-journals/gate-h/h-04-sdk-native-private-manifest.md)
-creates and validates a private, protected Windows workspace before the Rust
-writer creates the manifest and retains strict Unix checks. The complete
+created and validated a private Windows workspace, but its Windows candidate CI
+rejected the child manifest's ownership or DACL. The
+[staging correction](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+creates an explicitly owned, protected staging file and publishes it after a
+complete write; corrected-hosted-runner validation remains pending. The complete
 Windows six-SDK corpus, separate-principal denial, ARM and macOS qualification
 remain required; local descriptor inspection and a real harness startup do not
 establish them or close POAM-011.

@@ -37,6 +37,7 @@ if os.name == "nt":
     sid_to_string = _api(adv, "ConvertSidToStringSidW", w.BOOL, P, c.POINTER(P))
     string_to_descriptor = _api(adv, "ConvertStringSecurityDescriptorToSecurityDescriptorW", w.BOOL, w.LPCWSTR, U32, c.POINTER(P), c.POINTER(U32))
     create_directory = _api(kernel, "CreateDirectoryW", w.BOOL, w.LPCWSTR, P)
+    create_file = _api(kernel, "CreateFileW", P, w.LPCWSTR, U32, U32, P, U32, U32, P)
     get_security = _api(adv, "GetNamedSecurityInfoW", U32, w.LPWSTR, U32, U32, c.POINTER(P), P, c.POINTER(P), P, c.POINTER(P))
     get_control = _api(adv, "GetSecurityDescriptorControl", w.BOOL, P, c.POINTER(w.WORD), c.POINTER(U32))
     get_ace = _api(adv, "GetAce", w.BOOL, P, U32, c.POINTER(P))
@@ -76,6 +77,18 @@ if os.name == "nt":
         try:
             attributes = SecurityAttributes(c.sizeof(SecurityAttributes), descriptor, False)
             _require(create_directory(str(path), c.byref(attributes)), "create private directory")
+        finally:
+            free(descriptor)
+
+    def _create_windows_file(path, sddl):
+        descriptor = P()
+        _require(string_to_descriptor(sddl, 1, c.byref(descriptor), None), "parse private file DACL")
+        try:
+            attributes = SecurityAttributes(c.sizeof(SecurityAttributes), descriptor, False)
+            handle = create_file(str(path), 0x40000000, 0, c.byref(attributes), 1, 0x80, None)
+            if handle == P(-1).value:
+                raise OSError(c.get_last_error(), "create private staging file")
+            close(handle)
         finally:
             free(descriptor)
 
@@ -157,3 +170,15 @@ def verify_manifest(path):
             raise RuntimeError("harness manifest must be owned by this user with mode 600")
     else:
         raise RuntimeError("private SDK manifest is unsupported on this platform")
+
+
+def create_manifest_staging(root):
+    """Create a private Windows staging file before the Rust writer runs."""
+    if os.name != "nt":
+        raise RuntimeError("private staging is only needed on Windows")
+    _verify_windows(root, directory=True)
+    user = _user_sid()
+    path = root / "manifest.pending"
+    _create_windows_file(path, f"O:{user}D:P(A;;FA;;;{user})(A;;FA;;;SY)")
+    _verify_windows(path, directory=False)
+    return path

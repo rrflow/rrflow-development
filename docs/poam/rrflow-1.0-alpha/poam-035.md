@@ -14,6 +14,13 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+retains a macOS installed-domain-crash failure from run 40730847766: native
+`hdiutil create` returned `Resource busy` while preparing a capacity image.
+The native fixture reported failure; the cause and an applicable repair are
+not established. This observation does not establish an SDK-induced failure or
+clear any C-07 native evidence.
+
 The [shared mutable-generation accounting candidate](../../evidence/change-journals/gate-c/c-07g-shared-memtable-pins.md)
 reproduced an independent admission error: two views of one 4,126-byte mutable
 generation were charged 8,252 bytes and rejected at a 4,126-byte limit. The
