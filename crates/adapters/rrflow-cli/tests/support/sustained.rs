@@ -1110,6 +1110,69 @@ fn installed_sustained_capacity() {
 
 /// Short executable integration of the campaign's actual workload adapter.
 /// It deliberately emits no NativeCapacity/soak qualification claim.
+fn smoke_campaign() -> StorageCampaign {
+    let mut storage: StorageManifest = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../evaluation/rrflow-eval/tests/fixtures/storage/manifest.json"
+    )))
+    .unwrap();
+    storage.evidence_class = EvidenceClass::NativeCapacity;
+    storage.budgets.estates = 1u64.try_into().unwrap();
+    let limit = |value: u64| value.try_into().unwrap();
+    StorageCampaign {
+        format_version: 1,
+        purpose: CampaignPurpose::Characterization,
+        allocation: CapacityAllocation {
+            owner_projection_sha256: digest("sample-smoke", &1).unwrap(),
+            vcpus: limit(1),
+            host_bytes: storage.budgets.host_bytes,
+            engine_bytes: storage.budgets.process_bytes,
+            estates: storage.budgets.estates,
+            records: limit(8),
+            edges: limit(24),
+            vectors: limit(16),
+            vector_dimensions: limit(16),
+            logical_source_bytes: limit(8192),
+        },
+        schedule: SustainedSchedule {
+            setup_ms: limit(1000),
+            lifecycle_ms: limit(1000),
+            warmup_ms: limit(2000),
+            measured_ms: limit(2000),
+            burst_ms: limit(2000),
+            drain_ms: limit(2000),
+            soak_ms: limit(2000),
+            sample_ms: limit(100),
+            operation_deadline_ms: limit(10_000),
+            forced_reopens: limit(1),
+        },
+        read_distribution: ReadKeyDistribution::Uniform {},
+        drain: DrainPolicy {
+            maximum_mutable_growth_bytes: 0,
+            maximum_projected_growth_bytes: 0,
+            maximum_debt_segments: 0,
+            stable_samples: limit(2),
+        },
+        seeds: vec![73],
+        points: vec![OperatingPoint {
+            id: evidence_id("sample-smoke"),
+            clients: limit(4),
+            requests_per_second: limit(5),
+            maximum_error_basis_points: 10_000,
+            maximum_p99_ns: limit(10_000_000_000),
+        }],
+        required_lanes: vec![CapacityLane::Warm],
+        evidence: EvidenceLimits {
+            segment_attempts: limit(6),
+            segment_bytes: limit(MAX_DOCUMENT_BYTES),
+            total_bytes: limit(64 * 1024 * 1024),
+            segments: limit(10),
+            samples_per_segment: limit(64),
+        },
+        storage,
+    }
+}
+
 #[test]
 #[ignore = "explicit native capacity-driver smoke; candidate portability job"]
 fn installed_capacity_workload_smoke() {
@@ -1235,6 +1298,43 @@ fn installed_capacity_workload_smoke() {
         assert!(sampling.is_pending());
         release_sample.send(()).unwrap();
         assert_eq!(sampling.finish().await.unwrap().unwrap().pid, sample_pid);
+        // This disposable contract-fixture campaign exercises the actual
+        // scheduled segment. Its synthetic identity is not qualification.
+        let campaign = smoke_campaign();
+        let evidence_root = tempfile::tempdir().unwrap();
+        let evidence = evidence_root.path().join("segment-evidence");
+        let writer = CampaignWriter::create(&evidence, campaign.clone()).unwrap();
+        writer.admit_next().unwrap();
+        let mut point_run = PointRun {
+            campaign: &campaign,
+            point: &campaign.points[0],
+            workload: work.clone(),
+            pid: child.id(),
+            clock,
+            allocation: None,
+            generations: vec![0; 6],
+            previous_resources: Vec::new(),
+            backup: management::ManagementTask::new(),
+        };
+        let segment = point_run.segment(&writer, LoadPhase::Warmup, ns(clock), 0, 6, true).await.unwrap();
+        assert_eq!(segment.attempts.len(), 6);
+        assert!(segment.resources.len() >= 3);
+        assert!(segment.resources.iter().all(|value| value.pid == child.id()));
+        writer.checkpoint_progress().unwrap();
+        let progress = std::fs::read_to_string(evidence.join("progress.jsonl")).unwrap();
+        let events: Vec<ProgressEvent> = progress.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+        let resources: Vec<_> = events.iter().filter_map(|event| match event {
+            ProgressEvent::Resource { segment: 0, sample } => Some(serde_json::to_value(sample).unwrap()),
+            _ => None,
+        }).collect();
+        let expected_resources: Vec<_> = segment.resources.iter().map(|sample| serde_json::to_value(sample).unwrap()).collect();
+        assert_eq!(resources, expected_resources);
+        let mut outcomes: Vec<_> = events.iter().filter_map(|event| match event {
+            ProgressEvent::LoadOutcome { segment: 0, attempt } => Some(attempt),
+            _ => None,
+        }).collect();
+        outcomes.sort_by_key(|attempt| attempt.sequence);
+        assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&segment.attempts).unwrap());
         let physical = work.client.read_storage_diagnostics(&work.session,
             ReadStorageDiagnostics {scope: format!("instance:{}",work.client.instance_id())},
             RequestOptions::read("smoke-storage", "smoke-storage").unwrap()).await.unwrap();
