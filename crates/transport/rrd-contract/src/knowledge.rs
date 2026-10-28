@@ -528,7 +528,7 @@ fn validate_coordinate(value: &str, field: &str) -> Result<()> {
     Ok(())
 }
 
-fn validate_source_path(value: &str) -> Result<()> {
+pub(crate) fn validate_source_path(value: &str) -> Result<()> {
     if value.is_empty()
         || value.len() > MAX_KNOWLEDGE_SOURCE_PATH_BYTES
         || value.starts_with('/')
