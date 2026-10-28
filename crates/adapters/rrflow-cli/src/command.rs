@@ -58,8 +58,10 @@ pub enum Command {
     Ready {
         #[arg(long, default_value = ".")]
         project: std::path::PathBuf,
-        #[arg(long, default_value = "127.0.0.1:9477")]
-        address: std::net::SocketAddr,
+        /// Address to prove. Without it, the endpoint `rrflow serve` recorded
+        /// for this project is proved.
+        #[arg(long)]
+        address: Option<std::net::SocketAddr>,
     },
     /// Perform bounded, read-only verification of an installed estate.
     Verify {

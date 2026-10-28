@@ -1,12 +1,13 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: eb6e2e724814dc1c8465a650310e7b15c96788835c2357f81331de6a2084ffda
+# OpenAPI SHA-256: 35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "eb6e2e724814dc1c8465a650310e7b15c96788835c2357f81331de6a2084ffda"
+    "35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566"
 )
 
 OperationId = Literal[
+    "attunement-cancel",
     "attunement-read",
     "audit-export",
     "audit-read",
@@ -74,6 +75,12 @@ class Endpoint(TypedDict):
 
 
 ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
+    "attunement-cancel": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/cancel",
+    },
     "attunement-read": {
         "authentication": "session_bearer",
         "method": "POST",

@@ -70,6 +70,33 @@ impl RequestOptions {
 }
 
 impl RrdClient {
+    /// Request cancellation; the returned state does not imply worker termination.
+    pub async fn cancel_attunement(
+        &self,
+        session: &Session,
+        request: rrd_contract::CancelAttunement,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementCancelResult> {
+        let catalogue = rrd_contract::endpoint_catalogue();
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == "attunement-cancel")
+            .ok_or_else(|| Error::Contract("attunement cancel operation is unavailable".into()))?;
+        let result: rrd_contract::AttunementCancelResult = self
+            .session_call(
+                Method::POST,
+                &endpoint.path,
+                session,
+                &request,
+                options,
+                endpoint.mutation,
+            )
+            .await?;
+        result.validate_for(&request).map_err(contract)?;
+        Ok(result)
+    }
+
     /// Read the engine-owned installed job and its exact stored plan.
     pub async fn read_attunement(
         &self,

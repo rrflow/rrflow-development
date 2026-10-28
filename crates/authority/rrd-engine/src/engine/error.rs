@@ -65,6 +65,8 @@ pub enum ServiceError {
     PermissionDenied,
     DeadlineExceeded,
     ProjectBindingMismatch,
+    /// Another process holds the installed estate's single writer lock.
+    EstateInUse(String),
     ClockUnavailable(ClockObservationFailure),
     ClockRollback {
         observed_at_unix_ms: u64,
@@ -126,7 +128,8 @@ impl ServiceError {
             | Self::InferenceCancelled { .. }
             | Self::ReasoningBudgetStopped(_)
             | Self::ReasoningAttemptRecorded { .. }
-            | Self::ProjectBindingMismatch => ServiceErrorKind::FailedPrecondition,
+            | Self::ProjectBindingMismatch
+            | Self::EstateInUse(_) => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::StorageAdmission(_)
             | Self::InferenceBusy
@@ -165,6 +168,9 @@ impl fmt::Display for ServiceError {
                 f,
                 "host clock rollback exceeds policy: observed {observed_at_unix_ms}, installation anchor {anchor_unix_ms}, maximum rollback {maximum_rollback_ms} ms"
             ),
+            Self::EstateInUse(detail) => {
+                write!(f, "the installed estate is already open in another process ({detail})")
+            }
             _ => write!(f, "{self:?}"),
         }
     }
@@ -192,6 +198,7 @@ impl From<rrd_store::Error> for ServiceError {
             | rrd_store::Error::ReclamationLimit { .. } => Self::StorageAdmission(message),
             rrd_store::Error::RuntimeReadBudgetExceeded { .. } => Self::ConfigurationLimit(message),
             rrd_store::Error::IndexConstraint(_) => Self::Query(message),
+            rrd_store::Error::ActiveWriter(_) => Self::EstateInUse(message),
             rrd_store::Error::RuntimeConflict { .. }
             | rrd_store::Error::RuntimeSchemaConflict { .. }
             | rrd_store::Error::IdempotencyConflict(_)
