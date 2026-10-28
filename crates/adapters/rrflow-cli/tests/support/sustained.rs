@@ -28,6 +28,10 @@ mod native;
 mod reader;
 #[path = "sustained/resource_window.rs"]
 mod resource_window;
+#[path = "sustained/sample_task.rs"]
+mod sample_task;
+#[path = "sustained/sample_trace.rs"]
+mod sample_trace;
 #[path = "sustained/workload.rs"]
 mod workload;
 use workload::{Prepared, Workload};
@@ -205,6 +209,7 @@ async fn sample(
     clock: Instant,
     allocation: &Option<NativeAllocationReceipt>,
 ) -> DriverResult<ResourceSample> {
+    let started = Instant::now();
     let mut system = sysinfo::System::new();
     let process_id = sysinfo::Pid::from_u32(pid);
     system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[process_id]), true);
@@ -213,6 +218,8 @@ async fn sample(
         .process(process_id)
         .ok_or("owned engine exited during resource sampling")?;
     let io = process.disk_usage();
+    let host_ns = ns(started);
+    let rpc_started = Instant::now();
     let snapshot = workload
         .client
         .read_storage_diagnostics(
@@ -224,12 +231,18 @@ async fn sample(
         )
         .await
         .map_err(|e| e.to_string())?;
+    let rpc_ns = ns(rpc_started);
     let missing = |reason: &str| NativeMetric::Unavailable {
         reason: evidence_id(reason),
     };
+    let memory_started = Instant::now();
     let (private_bytes, mapped_bytes) = native::memory(pid);
-    Ok(ResourceSample {
-        elapsed_ns: ns(clock),
+    let memory_ns = ns(memory_started);
+    // Preserve the original observation point: before allocation verification.
+    let elapsed_ns = ns(clock);
+    let enforcement_ns;
+    let value = ResourceSample {
+        elapsed_ns,
         pid,
         resident_bytes: NativeMetric::Observed {
             value: process.memory(),
@@ -271,10 +284,25 @@ async fn sample(
             },
             None => missing("public-debt-gauge-unavailable"),
         },
-        allocation_enforcement: native::enforcement(pid, allocation.as_ref())?,
+        allocation_enforcement: {
+            let enforcement_started = Instant::now();
+            let value = native::enforcement(pid, allocation.as_ref())?;
+            enforcement_ns = ns(enforcement_started);
+            value
+        },
         allocation_receipt: allocation.clone(),
         storage: Some(snapshot),
-    })
+    };
+    sample_trace::record(sample_trace::Observation {
+        pid,
+        elapsed_ns,
+        total_ns: ns(started),
+        host_ns,
+        rpc_ns,
+        memory_ns,
+        enforcement_ns,
+    });
+    Ok(value)
 }
 
 struct ProgressContext<'a> {
@@ -297,11 +325,24 @@ struct PointRun<'a> {
 impl PointRun<'_> {
     async fn sample(&self, writer: &CampaignWriter) -> DriverResult<ResourceSample> {
         let value = sample(&self.workload, self.pid, self.clock, &self.allocation).await?;
+        Self::record_sample(writer, value)
+    }
+    fn record_sample(
+        writer: &CampaignWriter,
+        value: ResourceSample,
+    ) -> DriverResult<ResourceSample> {
         writer.record_event(&ProgressEvent::Resource {
             segment: writer.next_index(),
             sample: Box::new(value.clone()),
         })?;
         Ok(value)
+    }
+    fn start_sample(&self, task: &mut sample_task::SampleTask<ResourceSample>) -> DriverResult<()> {
+        let work = self.workload.clone();
+        let pid = self.pid;
+        let clock = self.clock;
+        let allocation = self.allocation.clone();
+        task.start(async move { sample(&work, pid, clock, &allocation).await })
     }
     async fn drain(
         &self,
@@ -551,20 +592,25 @@ impl PointRun<'_> {
             );
         let mut next_sample =
             resource_window::next_sample_deadline(last_observed, period, Instant::now())?;
+        let mut sample_task = sample_task::SampleTask::new();
         for (offset, operation) in prepared.iter().enumerate() {
             let sequence = first + offset as u64;
             let due = self.clock + Duration::from_nanos(scheduled(sequence));
             loop {
+                let sample_pending = sample_task.is_pending();
                 tokio::select! {
                     biased;
                     result=joins.join_next(), if !joins.is_empty() => {
                         collect(result.ok_or("missing scheduled task")?.map_err(|_|"scheduled task panicked")?,started,&mut attempts,&mut ledger,&mut failure,writer)?;
                     }
                     _=tokio::time::sleep_until(due.into()) => break,
-                    _=tokio::time::sleep_until(next_sample.into()) => {
-                        if resources.len() as u64>=campaign.evidence.samples_per_segment.get() {return Err("resource sample cap exhausted".into());}
-                        resources.push(self.sample(writer).await?);
+                    value=sample_task.finish(), if sample_pending => {
+                        resources.push(Self::record_sample(writer, value?.ok_or("missing resource sample")?)?);
                         next_sample=resource_window::next_sample_deadline(next_sample,period,Instant::now())?;
+                    }
+                    _=tokio::time::sleep_until(next_sample.into()), if !sample_pending => {
+                        if resources.len() as u64>=campaign.evidence.samples_per_segment.get() {return Err("resource sample cap exhausted".into());}
+                        self.start_sample(&mut sample_task)?;
                     }
                 }
             }
@@ -646,14 +692,29 @@ impl PointRun<'_> {
             }
         }
         while !joins.is_empty() {
+            let sample_pending = sample_task.is_pending();
             tokio::select! {
                 result=joins.join_next() => collect(result.ok_or("missing scheduled task")?.map_err(|_|"scheduled task panicked")?,started,&mut attempts,&mut ledger,&mut failure,writer)?,
-                _=tokio::time::sleep_until(next_sample.into()) => {
-                    if resources.len() as u64>=campaign.evidence.samples_per_segment.get(){return Err("resource sample cap exhausted".into());}
-                    resources.push(self.sample(writer).await?);
+                value=sample_task.finish(), if sample_pending => {
+                    resources.push(Self::record_sample(writer, value?.ok_or("missing resource sample")?)?);
                     next_sample=resource_window::next_sample_deadline(next_sample,period,Instant::now())?;
                 }
+                _=tokio::time::sleep_until(next_sample.into()), if !sample_pending => {
+                    if resources.len() as u64>=campaign.evidence.samples_per_segment.get(){return Err("resource sample cap exhausted".into());}
+                    self.start_sample(&mut sample_task)?;
+                }
             }
+        }
+        // All offers have been issued and joined. Complete the single owned
+        // sample before the reader, backup or final resource boundary.
+        if sample_task.is_pending() {
+            let value = sample_task
+                .finish()
+                .await?
+                .ok_or("missing resource sample")?;
+            resources.push(Self::record_sample(writer, value)?);
+            next_sample =
+                resource_window::next_sample_deadline(next_sample, period, Instant::now())?;
         }
         let reader_receipt = match held_reader {
             Some(reader) => Some(reader.finish(&self.workload, self.clock).await?),
@@ -1148,6 +1209,32 @@ fn installed_capacity_workload_smoke() {
             work.execute(&operation).await.unwrap();
             work.verify(&operation).await.unwrap();
         }
+        // Exercise the campaign sampler against the owned native process as
+        // well as the independent public diagnostics request below.
+        let sampled = sample(&work, child.id(), clock, &None).await.unwrap();
+        assert_eq!(sampled.pid, child.id());
+        assert!(sampled.elapsed_ns <= ns(clock));
+        assert!(sampled.storage.as_ref().is_some_and(|storage|
+            storage.rrflow_kv.is_some() && storage.admission.is_some()));
+        // Hold an owned asynchronous sample while a real engine request and
+        // its independent readback make progress, then acquire the sample.
+        let (release_sample, held_sample) = tokio::sync::oneshot::channel();
+        let (sample_started, started_sample) = tokio::sync::oneshot::channel();
+        let sample_work = work.clone();
+        let sample_pid = child.id();
+        let mut sampling = sample_task::SampleTask::new();
+        sampling.start(async move {
+            sample_started.send(()).map_err(|_| "smoke sample observer closed".to_owned())?;
+            held_sample.await.map_err(|_| "smoke sample cancelled".to_owned())?;
+            sample(&sample_work, sample_pid, clock, &None).await
+        }).unwrap();
+        started_sample.await.unwrap();
+        let during_sample = work.prepare("smoke-sample-followup".into(), StorageLoadKind::PointRead, 2).unwrap();
+        work.execute(&during_sample).await.unwrap();
+        work.verify(&during_sample).await.unwrap();
+        assert!(sampling.is_pending());
+        release_sample.send(()).unwrap();
+        assert_eq!(sampling.finish().await.unwrap().unwrap().pid, sample_pid);
         let physical = work.client.read_storage_diagnostics(&work.session,
             ReadStorageDiagnostics {scope: format!("instance:{}",work.client.instance_id())},
             RequestOptions::read("smoke-storage", "smoke-storage").unwrap()).await.unwrap();
