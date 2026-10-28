@@ -317,6 +317,14 @@ names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
 all 20 implementation packages into separate product checks.
 
+The installed-reopen release build is bounded to two Cargo workers on
+`windows-latest` and one on Linux/macOS. In PR150 candidate run 40503118473
+attempt 2, its Windows build took 63m24s and the 100-cycle history step took
+4m06s; this is an observed baseline, not proof of the bottleneck's cause. The
+two-worker candidate must pass the complete native pipeline and be timed before
+any speed or memory-safety claim. Commands, platform matrix and gates are
+unchanged.
+
 ## Presubmit and change-evidence boundary
 
 Repository presubmit is not an RRFlow runtime hook. It cannot create an engine
