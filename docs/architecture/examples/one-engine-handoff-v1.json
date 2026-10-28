@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "profile": "engine_work",
+  "state": "accepted",
+  "project_id": "example-project",
+  "task": {"id": "example-task", "request_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "goal": "Demonstrate a source-linked record"},
+  "sender": "example-sender",
+  "receiver": "example-receiver",
+  "plan": {
+    "id": "example-plan",
+    "revision": 1,
+    "record_uri": "rrflow://example/plan/1",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "predecessor_sha256": null
+  },
+  "source": {
+    "scope": "example snapshot only",
+    "git_revision": null,
+    "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "completeness": "complete",
+    "inputs": [
+      {"id": "source-a", "resource": "example/source-a", "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}
+    ]
+  },
+  "configuration_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "authorization": {
+    "state": "authorized",
+    "principal": "example-principal",
+    "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "grant_id": "example-grant",
+    "approved_plan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expires_at": "2030-01-01T00:00:00Z"
+  },
+  "questions": [{"id": "example-question", "revision": 1, "state": "open", "prompt": "Which external source is authorized?"}],
+  "effects": [
+    {
+      "id": "example-index",
+      "kind": "engine_mutation",
+      "intent": "Create source-linked records from the authorized example snapshot",
+      "capability": "example-capability",
+      "scope": "example project estate",
+      "resources": [{"kind": "engine_record", "selector": "exact", "locator": "rrflow://example/records/source-a"}],
+      "source_dependencies": ["source-a"],
+      "question_dependencies": [],
+      "budget": {"max_elapsed_ms": 10000, "max_memory_bytes": 1048576, "max_input_bytes": 4096, "max_output_bytes": 4096, "max_attempts": 2, "spend": {"mode": "none"}},
+      "expected_observation": "Read back the accepted source-linked record",
+      "verification": ["Compare independent expected record and source digest"],
+      "retry_policy": "idempotent_with_receipt"
+    }
+  ],
+  "receipts": []
+}
