@@ -1154,3 +1154,8 @@ previously charged the entire manifest even for a narrower selected read; the te
 repair changes transient view ownership and reclamation to selected segment identities.
 Whether the frozen full workload will pass on the repair remains unproven, and required
 native profile, 24-hour soak, candidate CI and integration remain open.
+
+The [Windows reopen CI build experiment](../../evidence/change-journals/gate-c/c-07-ci-windows-reopen-build-workers.md)
+records a 63m24s Windows build versus a 4m06s history step in one successful
+candidate and tests a two-worker build without reducing native coverage. Its
+candidate timing, memory behavior and complete CI result remain pending.
