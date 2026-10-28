@@ -1,7 +1,34 @@
 //! One owned asynchronous sample. This does not isolate synchronous OS calls.
 use super::DriverResult;
 use std::future::Future;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::task::JoinSet;
+
+/// Explicitly constructed by the installed smoke only; no environment or
+/// engine input can activate this harness-owned asynchronous test gate.
+#[derive(Default)]
+pub(super) struct SampleGate {
+    pub entered: tokio::sync::Notify,
+    pub release: tokio::sync::Notify,
+    pub dropped: AtomicBool,
+}
+
+impl SampleGate {
+    pub(super) async fn wait(self: Arc<Self>) {
+        struct Guard(Arc<SampleGate>);
+        impl Drop for Guard {
+            fn drop(&mut self) {
+                self.0.dropped.store(true, Ordering::SeqCst);
+            }
+        }
+        let _guard = Guard(self.clone());
+        self.entered.notify_one();
+        self.release.notified().await;
+    }
+}
 
 pub(super) struct SampleTask<T> {
     tasks: JoinSet<DriverResult<T>>,

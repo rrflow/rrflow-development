@@ -320,6 +320,7 @@ struct PointRun<'a> {
     generations: Vec<u64>,
     previous_resources: Vec<ResourceSample>,
     backup: management::ManagementTask<BackupEvidence>,
+    sample_gate: Option<std::sync::Arc<sample_task::SampleGate>>,
 }
 
 impl PointRun<'_> {
@@ -342,7 +343,13 @@ impl PointRun<'_> {
         let pid = self.pid;
         let clock = self.clock;
         let allocation = self.allocation.clone();
-        task.start(async move { sample(&work, pid, clock, &allocation).await })
+        let gate = self.sample_gate.clone();
+        task.start(async move {
+            if let Some(gate) = gate {
+                gate.wait().await;
+            }
+            sample(&work, pid, clock, &allocation).await
+        })
     }
     async fn drain(
         &self,
@@ -1232,7 +1239,7 @@ fn installed_capacity_workload_smoke() {
         let winning_key = "seed-00000000000000000007";
         let before = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
         super::kill(child, clock);
-        let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+        let (mut child, client, _) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
         let after = work.verify_joined_search(winning_key, 1, 7, 5.53125).await.unwrap();
         assert_eq!(after.known_at_cursor, before.known_at_cursor);
@@ -1315,6 +1322,7 @@ fn installed_capacity_workload_smoke() {
             generations: vec![0; 6],
             previous_resources: Vec::new(),
             backup: management::ManagementTask::new(),
+            sample_gate: None,
         };
         let segment = point_run.segment(&writer, LoadPhase::Warmup, ns(clock), 0, 6, true).await.unwrap();
         assert_eq!(segment.attempts.len(), 6);
@@ -1335,6 +1343,71 @@ fn installed_capacity_workload_smoke() {
         }).collect();
         outcomes.sort_by_key(|attempt| attempt.sequence);
         assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&segment.attempts).unwrap());
+        // Interrupt a real segment while its harness-only async sample is held.
+        // Only independently verified ACKs are replayed after an owned restart.
+        let mut interrupted_campaign = smoke_campaign();
+        interrupted_campaign.schedule.warmup_ms = 5_000u64.try_into().unwrap();
+        interrupted_campaign.evidence.segment_attempts = 20u64.try_into().unwrap();
+        let interrupted_evidence = evidence_root.path().join("interrupted-evidence");
+        let interrupted_writer = CampaignWriter::create(&interrupted_evidence, interrupted_campaign.clone()).unwrap();
+        interrupted_writer.admit_next().unwrap();
+        let gate = std::sync::Arc::new(sample_task::SampleGate::default());
+        let mut interrupted_run = PointRun {
+            campaign: &interrupted_campaign,
+            point: &interrupted_campaign.points[0],
+            workload: work.clone(),
+            pid: child.id(), clock, allocation: None, generations: vec![0; 20],
+            previous_resources: Vec::new(), backup: management::ManagementTask::new(),
+            sample_gate: Some(gate.clone()),
+        };
+        let mut interrupted = Box::pin(interrupted_run.segment(&interrupted_writer, LoadPhase::Warmup, ns(clock), 0, 20, true));
+        tokio::time::timeout(Duration::from_secs(20), async {
+            tokio::select! {
+                _ = gate.entered.notified() => {}
+                result = &mut interrupted => panic!("segment ended before sample gate: {result:?}"),
+            }
+        }).await.unwrap();
+        tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                tokio::select! {
+                    result = &mut interrupted => panic!("segment ended while sample was held: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(200)) => {
+                        interrupted_writer.checkpoint_progress().unwrap();
+                        let raw = std::fs::read_to_string(interrupted_evidence.join("progress.jsonl")).unwrap();
+                        let seen = raw.lines().map(|line| serde_json::from_str::<ProgressEvent>(line).unwrap()).any(|event|
+                            matches!(event, ProgressEvent::LoadOutcome { attempt, .. }
+                                if attempt.write.is_some() && attempt.outcome == LoadOutcome::Acknowledged));
+                        if seen { break; }
+                    }
+                }
+            }
+        }).await.unwrap();
+        drop(interrupted);
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while !gate.dropped.load(std::sync::atomic::Ordering::SeqCst) { tokio::task::yield_now().await; }
+        }).await.unwrap();
+        interrupted_writer.checkpoint_progress().unwrap();
+        let raw = std::fs::read_to_string(interrupted_evidence.join("progress.jsonl")).unwrap();
+        let interrupted_events: Vec<ProgressEvent> = raw.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+        let acknowledged: Vec<_> = interrupted_events.iter().filter_map(|event| match event {
+            ProgressEvent::LoadOutcome { attempt, .. } if attempt.write.is_some() && attempt.outcome == LoadOutcome::Acknowledged => Some(attempt.clone()),
+            _ => None,
+        }).collect();
+        assert!(!acknowledged.is_empty());
+        assert_eq!(interrupted_events.iter().filter(|event| matches!(event, ProgressEvent::Resource { .. })).count(), 1);
+        super::kill(child, clock);
+        let (restarted, client, _) = estate.start_for(clock, Duration::from_secs(300));
+        child = restarted;
+        work.client = client;
+        assert_eq!(std::fs::read_to_string(interrupted_evidence.join("progress.jsonl")).unwrap(), raw);
+        for attempt in &acknowledged {
+            let operation = work.prepare_load(format!("load-0-{}", attempt.sequence), attempt.write.unwrap()).unwrap();
+            assert_eq!(operation.request_sha256, attempt.request_sha256);
+            work.verify(&operation).await.unwrap();
+            let replay = work.execute(&operation).await.unwrap();
+            assert!(replay.idempotent_replay);
+            assert_eq!(replay.receipt_sha256, attempt.result_sha256);
+        }
         let physical = work.client.read_storage_diagnostics(&work.session,
             ReadStorageDiagnostics {scope: format!("instance:{}",work.client.instance_id())},
             RequestOptions::read("smoke-storage", "smoke-storage").unwrap()).await.unwrap();
@@ -1428,7 +1501,9 @@ fn installed_capacity_workload_smoke() {
             serde_json::json!({
             "build":estate.build,"records":8,"edges":24,"vectors":16,"dimensions":16,
             "replayed_transactions":12,"write_transitions":{"insert":3,"update":4,"retire":3,"recreate":2},"backup_sha256":backup.receipt.backup.backup_sha256,
-            "management_followup_verified":true,"reader_interference":reader_evidence,"termination":killed,"reopened":identity,"capacity_qualification":false})
+            "management_followup_verified":true,"reader_interference":reader_evidence,"termination":killed,"reopened":identity,
+            "interrupted_acknowledged_writes":acknowledged.len(),"interrupted_sample_cancelled":gate.dropped.load(std::sync::atomic::Ordering::SeqCst),
+            "capacity_qualification":false})
         );
         super::kill(reopened, clock);
     });
@@ -1635,6 +1710,7 @@ async fn run_estate(
                 generations: vec![0; campaign.evidence.segment_attempts.get() as usize],
                 previous_resources: Vec::new(),
                 backup: management::ManagementTask::new(),
+                sample_gate: None,
             };
             for phase in [
                 LoadPhase::Warmup,
