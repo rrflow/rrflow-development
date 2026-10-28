@@ -233,6 +233,14 @@ async fn public_knowledge_trees_authenticate_compare_replay_and_survive_restart(
                 binding: KnowledgePathBinding::Group,
             },
             KnowledgePath {
+                id: CanonicalId::new("project-folder").unwrap(),
+                name: "Project documents".into(),
+                parent_id: Some(CanonicalId::new("root").unwrap()),
+                binding: KnowledgePathBinding::ProjectDirectory {
+                    relative_path: Some("docs/research papers".into()),
+                },
+            },
+            KnowledgePath {
                 id: CanonicalId::new("research").unwrap(),
                 name: "Research".into(),
                 parent_id: Some(CanonicalId::new("root").unwrap()),
@@ -246,6 +254,30 @@ async fn public_knowledge_trees_authenticate_compare_replay_and_survive_restart(
         expected_revision: 0,
         trees: vec![tree],
     };
+    let mut escape = replacement.clone();
+    escape.trees[0]
+        .paths
+        .iter_mut()
+        .find(|path| path.id.as_str() == "project-folder")
+        .unwrap()
+        .binding = KnowledgePathBinding::ProjectDirectory {
+        relative_path: Some("../outside".into()),
+    };
+    assert!(matches!(
+        client
+            .replace_knowledge_trees(&owner, escape, write_options("escape", "escape"))
+            .await
+            .unwrap_err(),
+        Error::Contract(_)
+    ));
+    assert_eq!(
+        client
+            .list_knowledge_trees(&owner, list.clone(), read_options("after-escape"))
+            .await
+            .unwrap()
+            .revision,
+        0
+    );
     assert_code(
         client
             .replace_knowledge_trees(
