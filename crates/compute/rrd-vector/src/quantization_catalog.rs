@@ -163,6 +163,25 @@ impl QuantizationArtifactEntry {
     }
 }
 
+/// The caller's replay coordinate for the operation that appended an event:
+/// its idempotency key and the SHA-256 of the request it was applied for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct QuantizationOperationReceipt {
+    pub idempotency_key: String,
+    pub operation_sha256: String,
+}
+
+/// The event a recorded operation appended, found by its idempotency key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuantizationOperationOutcome {
+    pub operation_sha256: String,
+    pub projection_id: ProjectionId,
+    pub generation: u64,
+    pub action: QuantizationLifecycleAction,
+    pub revision: u64,
+}
+
 /// One append-only state transition. The digest chain makes deletion,
 /// reordering, or substitution of lifecycle decisions detectable at reopen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -176,6 +195,8 @@ pub struct QuantizationLifecycleEvent {
     pub at: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub previous_event_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation: Option<QuantizationOperationReceipt>,
     pub event_digest: String,
 }
 
@@ -194,6 +215,7 @@ impl QuantizationLifecycleEvent {
         action: QuantizationLifecycleAction,
         at: u64,
         previous_event_digest: Option<String>,
+        operation: Option<QuantizationOperationReceipt>,
     ) -> Result<Self> {
         let mut event = Self {
             contract_version: QUANTIZATION_CATALOG_VERSION,
@@ -203,6 +225,7 @@ impl QuantizationLifecycleEvent {
             action,
             at,
             previous_event_digest,
+            operation,
             event_digest: String::new(),
         };
         event.validate_components()?;
@@ -227,14 +250,20 @@ impl QuantizationLifecycleEvent {
                 .previous_event_digest
                 .as_ref()
                 .is_some_and(|digest| !valid_digest(digest))
+            || self.operation.as_ref().is_some_and(|operation| {
+                operation.idempotency_key.trim().is_empty()
+                    || !valid_digest(&operation.operation_sha256)
+            })
         {
             return invalid("quantization lifecycle event coordinates are invalid");
         }
         Ok(())
     }
 
+    /// An event without a receipt keeps the identity it had before receipts
+    /// existed, so every recorded digest still verifies.
     fn identity_bytes(&self) -> Result<Vec<u8>> {
-        serde_json::to_vec(&(
+        let fields = (
             self.contract_version,
             self.revision,
             &self.projection_id,
@@ -242,7 +271,15 @@ impl QuantizationLifecycleEvent {
             self.action,
             self.at,
             &self.previous_event_digest,
-        ))
+        );
+        match &self.operation {
+            None => serde_json::to_vec(&fields),
+            Some(operation) => serde_json::to_vec(&(
+                fields,
+                &operation.idempotency_key,
+                &operation.operation_sha256,
+            )),
+        }
         .map_err(|error| rrd_core::Error::InvalidRuntime {
             reason: format!("quantization lifecycle event cannot be encoded: {error}"),
         })
@@ -263,6 +300,7 @@ pub struct QuantizationArtifactCatalogue {
     pub active: BTreeMap<ProjectionId, u64>,
     built: BTreeSet<(ProjectionId, u64)>,
     last_activated: BTreeMap<ProjectionId, u64>,
+    operations: BTreeMap<String, QuantizationOperationOutcome>,
 }
 
 impl QuantizationArtifactCatalogue {
@@ -307,6 +345,7 @@ impl QuantizationArtifactCatalogue {
         generation: u64,
         action: QuantizationLifecycleAction,
         at: u64,
+        operation: Option<QuantizationOperationReceipt>,
     ) -> Result<QuantizationLifecycleEvent> {
         QuantizationLifecycleEvent::new(
             self.revision
@@ -319,7 +358,14 @@ impl QuantizationArtifactCatalogue {
             action,
             at,
             self.last_event_digest.clone(),
+            operation,
         )
+    }
+
+    /// The event the operation with `idempotency_key` appended, if any. The
+    /// caller compares its own request digest to decide replay or conflict.
+    pub fn operation(&self, idempotency_key: &str) -> Option<&QuantizationOperationOutcome> {
+        self.operations.get(idempotency_key)
     }
 
     pub fn apply(&mut self, event: &QuantizationLifecycleEvent) -> Result<()> {
@@ -328,6 +374,13 @@ impl QuantizationArtifactCatalogue {
             || event.previous_event_digest != self.last_event_digest
         {
             return invalid("quantization lifecycle revision or digest chain is discontinuous");
+        }
+        if event
+            .operation
+            .as_ref()
+            .is_some_and(|operation| self.operations.contains_key(&operation.idempotency_key))
+        {
+            return invalid("quantization lifecycle reuses an operation's idempotency key");
         }
         let key = (event.projection_id.clone(), event.generation);
         match event.action {
@@ -409,6 +462,18 @@ impl QuantizationArtifactCatalogue {
                 }
             }
         }
+        if let Some(operation) = &event.operation {
+            self.operations.insert(
+                operation.idempotency_key.clone(),
+                QuantizationOperationOutcome {
+                    operation_sha256: operation.operation_sha256.clone(),
+                    projection_id: event.projection_id.clone(),
+                    generation: event.generation,
+                    action: event.action,
+                    revision: event.revision,
+                },
+            );
+        }
         self.revision = event.revision;
         self.last_event_digest = Some(event.event_digest.clone());
         Ok(())
@@ -437,7 +502,7 @@ mod tests {
         let id = ProjectionId::new("quant:scalar:body").unwrap();
         let mut catalogue = QuantizationArtifactCatalogue::default();
         let build = catalogue
-            .next_event(id.clone(), 1, QuantizationLifecycleAction::Build, 1)
+            .next_event(id.clone(), 1, QuantizationLifecycleAction::Build, 1, None)
             .unwrap();
         assert!(catalogue.apply(&build).is_err());
         let skipped = QuantizationLifecycleEvent::new(
@@ -447,8 +512,94 @@ mod tests {
             QuantizationLifecycleAction::Activate,
             2,
             None,
+            None,
         )
         .unwrap();
         assert!(catalogue.apply(&skipped).is_err());
+    }
+
+    #[test]
+    fn an_event_without_a_receipt_keeps_its_digest() {
+        let event = QuantizationLifecycleEvent::new(
+            1,
+            ProjectionId::new("quant-turboquant-documents-body").unwrap(),
+            1,
+            QuantizationLifecycleAction::Build,
+            1_000,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            event.event_digest,
+            "65cf44c375a1f91f63a72087f5c739a699cea1c736830acb86263b0ee693aa69"
+        );
+    }
+
+    fn receipt(key: &str) -> QuantizationOperationReceipt {
+        QuantizationOperationReceipt {
+            idempotency_key: key.into(),
+            operation_sha256: "ab".repeat(32),
+        }
+    }
+
+    fn event_with(
+        operation: Option<QuantizationOperationReceipt>,
+    ) -> Result<QuantizationLifecycleEvent> {
+        QuantizationLifecycleEvent::new(
+            1,
+            ProjectionId::new("quant-turboquant-documents-body").unwrap(),
+            1,
+            QuantizationLifecycleAction::Build,
+            1_000,
+            None,
+            operation,
+        )
+    }
+
+    #[test]
+    fn a_receipt_is_part_of_the_event_identity() {
+        let plain = event_with(None).unwrap();
+        let recorded = event_with(Some(receipt("build-1"))).unwrap();
+        assert_ne!(recorded.event_digest, plain.event_digest);
+        recorded.validate().unwrap();
+        let mut key = recorded.clone();
+        key.operation.as_mut().unwrap().idempotency_key = "build-2".into();
+        assert!(key.validate().is_err());
+        let mut digest = recorded.clone();
+        digest.operation.as_mut().unwrap().operation_sha256 = "cd".repeat(32);
+        assert!(digest.validate().is_err());
+        let mut dropped = recorded;
+        dropped.operation = None;
+        assert!(dropped.validate().is_err());
+        assert!(event_with(Some(receipt(" "))).is_err());
+        assert!(event_with(Some(QuantizationOperationReceipt {
+            idempotency_key: "build-1".into(),
+            operation_sha256: "not-a-digest".into(),
+        }))
+        .is_err());
+    }
+
+    #[test]
+    fn an_operation_key_cannot_append_a_second_event() {
+        let mut catalogue = QuantizationArtifactCatalogue::default();
+        catalogue.operations.insert(
+            "build-1".into(),
+            QuantizationOperationOutcome {
+                operation_sha256: "ab".repeat(32),
+                projection_id: ProjectionId::new("quant-turboquant-documents-body").unwrap(),
+                generation: 1,
+                action: QuantizationLifecycleAction::Build,
+                revision: 0,
+            },
+        );
+        let error = catalogue
+            .apply(&event_with(Some(receipt("build-1"))).unwrap())
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("reuses an operation's idempotency key"));
+        assert!(catalogue.operation("build-1").is_some());
+        assert!(catalogue.operation("build-2").is_none());
     }
 }

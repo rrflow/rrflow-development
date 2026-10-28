@@ -19,9 +19,10 @@ use rrd_store::{
 };
 use rrd_vector::{
     QuantizationArtifactCatalogue, QuantizationArtifactEntry, QuantizationArtifactState,
-    QuantizationLifecycleAction, QuantizationLifecycleEvent, VectorArtifact,
-    VectorArtifactCatalogEntry, VectorCandidate, VectorRuntime, QUANTIZATION_ARTIFACT_RECORD_TYPE,
-    QUANTIZATION_LIFECYCLE_RECORD_TYPE, VECTOR_ARTIFACT_RECORD_TYPE,
+    QuantizationLifecycleAction, QuantizationLifecycleEvent, QuantizationOperationReceipt,
+    VectorArtifact, VectorArtifactCatalogEntry, VectorCandidate, VectorRuntime,
+    QUANTIZATION_ARTIFACT_RECORD_TYPE, QUANTIZATION_LIFECYCLE_RECORD_TYPE,
+    VECTOR_ARTIFACT_RECORD_TYPE,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -458,6 +459,42 @@ pub(crate) fn vector_runtime_metadata_from_changes(
 
 /// Publishes immutable quantized bytes in `ready` state without changing the
 /// planner. Activation is a separate authenticated lifecycle operation.
+/// The idempotency key of a lifecycle operation is already recorded at the
+/// read its commit would have been conditional on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuantizationOperationRecorded {
+    /// The same request: the caller replays the recorded event.
+    Replay,
+    /// Another request under the same key.
+    Conflict,
+}
+
+impl std::fmt::Display for QuantizationOperationRecorded {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Replay => "quantization operation is already recorded",
+            Self::Conflict => "quantization operation key is recorded for another request",
+        })
+    }
+}
+
+impl std::error::Error for QuantizationOperationRecorded {}
+
+fn check_operation(
+    catalogue: &QuantizationArtifactCatalogue,
+    operation: Option<&QuantizationOperationReceipt>,
+) -> Result<(), QuantizationOperationRecorded> {
+    match operation.and_then(|operation| {
+        catalogue
+            .operation(&operation.idempotency_key)
+            .map(|outcome| outcome.operation_sha256 == operation.operation_sha256)
+    }) {
+        None => Ok(()),
+        Some(true) => Err(QuantizationOperationRecorded::Replay),
+        Some(false) => Err(QuantizationOperationRecorded::Conflict),
+    }
+}
+
 pub fn build_traced_quantization_artifact<D>(
     data: &D,
     collection_id: ProjectionId,
@@ -465,6 +502,7 @@ pub fn build_traced_quantization_artifact<D>(
     artifact: VectorArtifact,
     actor: &str,
     at: Millis,
+    operation: Option<QuantizationOperationReceipt>,
 ) -> Result<QuantizationArtifactPublication, Box<dyn std::error::Error>>
 where
     D: DataRuntimeAccess,
@@ -504,50 +542,61 @@ where
         links,
         quantization_trace_attributes(&stamp, artifact.kind(), "build"),
     )?;
-    let result = (|| {
-        let (read, catalogue) = quantization_artifact_catalogue_at_read(data.engine(), &scope)?;
-        let key = (stamp.id.clone(), stamp.generation);
-        if catalogue.artifacts.contains_key(&key) {
-            return Err("quantization artifact generation is already built".into());
+    let result = (|| -> Result<QuantizationArtifactPublication, Box<dyn std::error::Error>> {
+        let mut staged: Option<(rrd_core::ObjectReference, QuantizationArtifactEntry)> = None;
+        // A commit that loses its cursor to another commit in the scope
+        // retries from a fresh catalogue read, which re-checks the operation
+        // and the generation; the bytes are staged once.
+        for _ in 0..PUBLICATION_RETRIES {
+            let (read, catalogue) = quantization_artifact_catalogue_at_read(data.engine(), &scope)?;
+            check_operation(&catalogue, operation.as_ref())?;
+            let key = (stamp.id.clone(), stamp.generation);
+            if catalogue.artifacts.contains_key(&key) {
+                return Err("quantization artifact generation is already built".into());
+            }
+            let event = catalogue.next_event(
+                stamp.id.clone(),
+                stamp.generation,
+                QuantizationLifecycleAction::Build,
+                at,
+                operation.clone(),
+            )?;
+            let (object, entry) = match &staged {
+                Some(staged) => staged.clone(),
+                None => {
+                    let object = data.stage_object(
+                        format!("{}@{}:quantized-bytes", stamp.id, stamp.generation),
+                        Some(QuantizationArtifactEntry::record_reference(&descriptor)?),
+                        artifact.kind().media_type(),
+                        artifact.as_bytes(),
+                    )?;
+                    let entry = QuantizationArtifactEntry::new(
+                        collection_id.clone(),
+                        vector_name.clone(),
+                        artifact.kind(),
+                        descriptor.clone(),
+                        object.clone(),
+                        at,
+                    )?;
+                    staged.insert((object, entry)).clone()
+                }
+            };
+            let records = vec![
+                quantization_artifact_record(&entry)?,
+                quantization_lifecycle_record(&event)?,
+            ];
+            if let Some(commit) =
+                commit_quantization_records(data, read, &scope, actor, at, records, Some(object))?
+            {
+                return Ok(QuantizationArtifactPublication {
+                    lifecycle_revision: event.revision,
+                    entry,
+                    state: QuantizationArtifactState::Ready,
+                    commit,
+                });
+            }
         }
-        let event = catalogue.next_event(
-            stamp.id.clone(),
-            stamp.generation,
-            QuantizationLifecycleAction::Build,
-            at,
-        )?;
-        let record_reference = QuantizationArtifactEntry::record_reference(&descriptor)?;
-        let object = data.stage_object(
-            format!("{}@{}:quantized-bytes", stamp.id, stamp.generation),
-            Some(record_reference),
-            artifact.kind().media_type(),
-            artifact.as_bytes(),
-        )?;
-        let entry = QuantizationArtifactEntry::new(
-            collection_id,
-            vector_name,
-            artifact.kind(),
-            descriptor,
-            object.clone(),
-            at,
-        )?;
-        let artifact_record = quantization_artifact_record(&entry)?;
-        let event_record = quantization_lifecycle_record(&event)?;
-        let commit = commit_quantization_records(
-            data,
-            read,
-            &scope,
-            actor,
-            at,
-            vec![artifact_record, event_record],
-            Some(object),
-        )?;
-        Ok::<_, Box<dyn std::error::Error>>(QuantizationArtifactPublication {
-            lifecycle_revision: event.revision,
-            entry,
-            state: QuantizationArtifactState::Ready,
-            commit,
-        })
+        Err(publication_conflicts())
     })();
     match result {
         Ok(publication) => {
@@ -571,6 +620,7 @@ where
 /// Activates or retires one built generation through an append-only event.
 /// Activation verifies the immutable object before it can become planner
 /// visible, so corruption fails closed at the control-plane boundary.
+#[allow(clippy::too_many_arguments)]
 pub fn transition_traced_quantization_artifact<D>(
     data: &D,
     scope: &ScopeId,
@@ -579,6 +629,7 @@ pub fn transition_traced_quantization_artifact<D>(
     action: QuantizationLifecycleAction,
     actor: &str,
     at: Millis,
+    operation: Option<QuantizationOperationReceipt>,
 ) -> Result<QuantizationArtifactTransition, Box<dyn std::error::Error>>
 where
     D: DataRuntimeAccess,
@@ -623,42 +674,57 @@ where
             ),
         ]),
     )?;
-    let result = (|| {
-        let (read, catalogue) = quantization_artifact_catalogue_at_read(data.engine(), scope)?;
-        let key = (projection_id.clone(), generation);
-        let entry = catalogue
-            .artifacts
-            .get(&key)
-            .ok_or("quantization lifecycle target is absent")?
-            .entry
-            .clone();
-        if action == QuantizationLifecycleAction::Activate {
-            let bytes = data.objects().get(&entry.object)?;
-            entry.decode_artifact(&bytes)?;
+    let result = (|| -> Result<QuantizationArtifactTransition, Box<dyn std::error::Error>> {
+        let mut verified = false;
+        // As for a build, a commit that loses its cursor retries from a fresh
+        // catalogue read, which re-checks the operation and the transition.
+        for _ in 0..PUBLICATION_RETRIES {
+            let (read, catalogue) = quantization_artifact_catalogue_at_read(data.engine(), scope)?;
+            check_operation(&catalogue, operation.as_ref())?;
+            let key = (projection_id.clone(), generation);
+            let entry = catalogue
+                .artifacts
+                .get(&key)
+                .ok_or("quantization lifecycle target is absent")?
+                .entry
+                .clone();
+            if action == QuantizationLifecycleAction::Activate && !verified {
+                let bytes = data.objects().get(&entry.object)?;
+                entry.decode_artifact(&bytes)?;
+                verified = true;
+            }
+            let event = catalogue.next_event(
+                projection_id.clone(),
+                generation,
+                action,
+                at,
+                operation.clone(),
+            )?;
+            let mut next = catalogue.clone();
+            next.apply(&event)?;
+            let state = next
+                .artifacts
+                .get(&key)
+                .ok_or("quantization transition target disappeared")?
+                .state;
+            if let Some(commit) = commit_quantization_records(
+                data,
+                read,
+                scope,
+                actor,
+                at,
+                vec![quantization_lifecycle_record(&event)?],
+                None,
+            )? {
+                return Ok(QuantizationArtifactTransition {
+                    lifecycle_revision: event.revision,
+                    entry,
+                    state,
+                    commit,
+                });
+            }
         }
-        let event = catalogue.next_event(projection_id.clone(), generation, action, at)?;
-        let mut next = catalogue.clone();
-        next.apply(&event)?;
-        let state = next
-            .artifacts
-            .get(&key)
-            .ok_or("quantization transition target disappeared")?
-            .state;
-        let commit = commit_quantization_records(
-            data,
-            read,
-            scope,
-            actor,
-            at,
-            vec![quantization_lifecycle_record(&event)?],
-            None,
-        )?;
-        Ok::<_, Box<dyn std::error::Error>>(QuantizationArtifactTransition {
-            lifecycle_revision: event.revision,
-            entry,
-            state,
-            commit,
-        })
+        Err(publication_conflicts())
     })();
     match result {
         Ok(transition) => {
@@ -818,6 +884,16 @@ pub(crate) fn quantization_artifact_catalogue_from_changes(
     .map_err(Into::into)
 }
 
+fn publication_conflicts() -> Box<dyn std::error::Error> {
+    format!(
+        "quantization lifecycle publication could not acquire cursor CAS after {PUBLICATION_RETRIES} conflicts"
+    )
+    .into()
+}
+
+/// Commits at `read`'s cursor. `None` means another commit in the scope, or
+/// a schema change, moved the scope after `read`, and the caller retries from
+/// a fresh read.
 fn commit_quantization_records<D>(
     data: &D,
     read: ReadStamp,
@@ -826,13 +902,13 @@ fn commit_quantization_records<D>(
     at: Millis,
     records: Vec<RuntimeRecord>,
     object: Option<rrd_core::ObjectReference>,
-) -> Result<RuntimeCommitOutcome, Box<dyn std::error::Error>>
+) -> Result<Option<RuntimeCommitOutcome>, Box<dyn std::error::Error>>
 where
     D: DataRuntimeAccess,
 {
     let current = data.engine().runtime().schema(scope)?;
     if current.as_ref().map(|schema| schema.revision) != read.schema_revision {
-        return Err("quantization lifecycle schema changed during publication preflight".into());
+        return Ok(None);
     }
     let expected_cursor = read.commit_cursor;
     let mut mutations = Vec::new();
@@ -857,7 +933,11 @@ where
             mutations,
         },
     )?;
-    data.commit(&transaction).map_err(Into::into)
+    match data.commit(&transaction) {
+        Ok(outcome) => Ok(Some(outcome)),
+        Err(StoreError::RuntimeConflict { .. }) => Ok(None),
+        Err(error) => Err(error.into()),
+    }
 }
 
 fn quantization_schema_update(

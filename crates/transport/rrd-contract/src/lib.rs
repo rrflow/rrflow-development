@@ -1495,6 +1495,7 @@ pub struct BuildVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
     pub selected_versions: u64,
     pub read_evidence: ReadEvidence,
+    pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1509,12 +1510,14 @@ pub struct ListVectorQuantizationArtifactsResult {
 #[serde(deny_unknown_fields)]
 pub struct ActivateVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
+    pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RetireVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
+    pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

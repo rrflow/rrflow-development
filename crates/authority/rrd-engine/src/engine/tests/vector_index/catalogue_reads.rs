@@ -217,9 +217,8 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
             &lease.session_id,
             &lease.token,
             &quantization_build(VectorQuantizationMethod::Scalar),
+            &mutation_context(&id("catalogue-build"), "catalogue-build", "catalogue-build"),
             400,
-            "catalogue-build",
-            "catalogue-build",
         )
         .unwrap();
     let scope = rrd_core::ScopeId::new(format!("instance:{}", instance())).unwrap();
@@ -233,9 +232,12 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
                 artifact_id: built.artifact.artifact_id.clone(),
                 generation: built.artifact.generation,
             },
+            &mutation_context(
+                &id("catalogue-activate"),
+                "catalogue-activate",
+                "catalogue-activate",
+            ),
             500,
-            "catalogue-activate",
-            "catalogue-activate",
         )
         .unwrap();
     let active = engine.storage.runtime().read_stamp(&scope).unwrap();
@@ -254,9 +256,12 @@ fn retained_quantization_state_survives_activation_retirement_and_reopen() {
                 artifact_id: built.artifact.artifact_id,
                 generation: built.artifact.generation,
             },
+            &mutation_context(
+                &id("catalogue-retire"),
+                "catalogue-retire",
+                "catalogue-retire",
+            ),
             600,
-            "catalogue-retire",
-            "catalogue-retire",
         )
         .unwrap();
     let retired = engine.storage.runtime().read_stamp(&scope).unwrap();

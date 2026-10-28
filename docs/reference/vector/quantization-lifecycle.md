@@ -28,6 +28,19 @@ chain. Reconstruction rejects missing or duplicate builds, revision gaps,
 digest-chain changes, non-contiguous generations, backward activation, and
 non-atomic record/object publication.
 
+Build, activate and retire are replay-safe (H-04q1). Each one requires the
+request's idempotency key, and its event records that key with the request's
+SHA-256. The event digest covers the receipt only when there is one, so events
+recorded before receipts keep their digests.
+
+- **The same key and request** return the recorded artifact, as it is now, with
+  `idempotent_replay` set. Nothing is read, encoded or appended, and this works
+  after the session's lease has expired.
+- **Another request under that key** conflicts.
+- **A commit that loses its cursor** to another commit in the scope retries
+  from a fresh catalogue read, up to 16 times. Each attempt re-checks the
+  receipt and the transition, so concurrent requests with one key apply once.
+
 `ready` artifacts are not served. Activation verifies object length and digest,
 binary framing, descriptor identity, codec, and internal checksum. Activating
 a later generation retires the prior active generation for the same identity.
