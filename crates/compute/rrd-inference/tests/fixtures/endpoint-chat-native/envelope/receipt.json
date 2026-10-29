@@ -1,0 +1,26 @@
+{
+  "engine_authorized": false,
+  "observation": {
+    "allowance_sha256": "50f390b95bb0e82da3da760cb7ef7e802f6e328097c881af57e852c6cdcd0db9",
+    "choice": {
+      "binding_id": "swag-custom-bf16",
+      "effort": null,
+      "kind": "select"
+    },
+    "configuration_sha256": "4621b748db8fbfa1aee8e49dffafcc635394301a1ed58c796db537cc98ca6063",
+    "content_sha256": "23240d5697c3fb6503df12b7c1ae9f0dfe55b6a6b77893b4dc1ee53854bdf1c0",
+    "elapsed_ms": 2393,
+    "http_status": 200,
+    "request_sha256": "bd3a39adb52887cd185719f38e389c1514fab89d2a9c8830f26d049a9d434005",
+    "response_sha256": "15683a1a120ca67d4ef7eced30660a9fcab323216ae6253c9af58ae2376faad8",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "usage": {
+      "completion_tokens": 26,
+      "prompt_tokens": 1598,
+      "total_tokens": 1624
+    }
+  },
+  "scope": "operator_transport_observation",
+  "training_admitted": false,
+  "worker_dispatched": false
+}
