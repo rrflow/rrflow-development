@@ -67,6 +67,16 @@ class OwnedCommand(unittest.TestCase):
 
 
 class WorkflowPolicy(unittest.TestCase):
+    def test_windows_uses_native_python_command(self):
+        jobs = job_blocks(REUSABLE.read_text(encoding="utf-8"))
+        expected = 'if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi'
+        self.assertIn(expected, jobs["estate-portability"])
+        altered = dict(jobs)
+        altered["estate-portability"] = altered["estate-portability"].replace(
+            "python_command=python; fi", "python_command=python3; fi", 1)
+        with self.assertRaises(PolicyError):
+            verify_standalone_rrflowdb(altered)
+
     def test_both_native_jobs_and_unit_oracle_are_required(self):
         jobs = job_blocks(REUSABLE.read_text(encoding="utf-8"))
         verify_standalone_rrflowdb(jobs)

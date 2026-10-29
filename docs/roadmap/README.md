@@ -18,7 +18,7 @@ dependency spine, gate requirements, and accepted evidence.
 The canonical roadmap is accompanied by a subordinate link-only
 [execution portal](rrflow-1.0-execution-map.md), its generated
 [execution-record index](rrflow-1.0-execution/), the generated
-[whole-repository file plan](rrflow-1.0-file-plan.jsonl), and linked
+[whole-repository file-plan descriptor](rrflow-1.0-file-plan.jsonl), and linked
 [change journals](../evidence/change-journals/). The roadmap owns requirements
 and completion; the active change record owns exact in-progress paths; generated
 views and journals provide discovery and evidence without changing status.

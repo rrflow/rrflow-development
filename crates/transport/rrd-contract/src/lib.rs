@@ -245,7 +245,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f";
+    "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -1496,6 +1496,7 @@ pub struct BuildVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
     pub selected_versions: u64,
     pub read_evidence: ReadEvidence,
+    pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1510,12 +1511,14 @@ pub struct ListVectorQuantizationArtifactsResult {
 #[serde(deny_unknown_fields)]
 pub struct ActivateVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
+    pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RetireVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
+    pub idempotent_replay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -4106,6 +4109,46 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "VectorPointPage",
         ),
         endpoint(
+            "vector-quantization-activate",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/activate",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "ActivateVectorQuantizationArtifact",
+            "ActivateVectorQuantizationArtifactResult",
+        ),
+        endpoint(
+            "vector-quantization-build",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/build",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "BuildVectorQuantizationArtifact",
+            "BuildVectorQuantizationArtifactResult",
+        ),
+        endpoint(
+            "vector-quantization-list",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/list",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::VectorCollectionList,
+            "ListVectorQuantizationArtifacts",
+            "ListVectorQuantizationArtifactsResult",
+        ),
+        endpoint(
+            "vector-quantization-retire",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/retire",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "RetireVectorQuantizationArtifact",
+            "RetireVectorQuantizationArtifactResult",
+        ),
+        endpoint(
             "vector-search",
             HttpMethod::Post,
             "/v1/vector/search",
@@ -4494,6 +4537,18 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
+        "BuildVectorQuantizationArtifact" => {
+            schema_json::<RequestEnvelope<BuildVectorQuantizationArtifact>>()
+        }
+        "ListVectorQuantizationArtifacts" => {
+            schema_json::<RequestEnvelope<ListVectorQuantizationArtifacts>>()
+        }
+        "ActivateVectorQuantizationArtifact" => {
+            schema_json::<RequestEnvelope<ActivateVectorQuantizationArtifact>>()
+        }
+        "RetireVectorQuantizationArtifact" => {
+            schema_json::<RequestEnvelope<RetireVectorQuantizationArtifact>>()
+        }
         "CloseSubscription" => schema_json::<RequestEnvelope<CloseSubscription>>(),
         _ => return invalid(format!("no public request schema for {name}")),
     };
@@ -4570,6 +4625,18 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<VectorCollectionCatalogueSnapshot>>()
         }
         "VectorSearchResult" => schema_json::<ResponseEnvelope<VectorSearchResult>>(),
+        "BuildVectorQuantizationArtifactResult" => {
+            schema_json::<ResponseEnvelope<BuildVectorQuantizationArtifactResult>>()
+        }
+        "ListVectorQuantizationArtifactsResult" => {
+            schema_json::<ResponseEnvelope<ListVectorQuantizationArtifactsResult>>()
+        }
+        "ActivateVectorQuantizationArtifactResult" => {
+            schema_json::<ResponseEnvelope<ActivateVectorQuantizationArtifactResult>>()
+        }
+        "RetireVectorQuantizationArtifactResult" => {
+            schema_json::<ResponseEnvelope<RetireVectorQuantizationArtifactResult>>()
+        }
         _ => return invalid(format!("no public response schema for {name}")),
     };
     Ok(schema)

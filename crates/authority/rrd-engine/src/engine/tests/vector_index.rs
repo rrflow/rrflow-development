@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 
 mod catalogue_reads;
 mod point_reads;
+mod quantization_replay;
 mod turboquant_overlay;
 
 fn assert_direct_read_evidence(
@@ -901,9 +902,12 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
                 &lease.session_id,
                 &lease.token,
                 &quantization_build(method),
+                &mutation_context(
+                    &id(&format!("request-quantization-build-{ordinal}")),
+                    &format!("request-quantization-build-{ordinal}"),
+                    &format!("operation-quantization-build-{ordinal}"),
+                ),
                 400 + ordinal as u64,
-                &format!("request-quantization-build-{ordinal}"),
-                &format!("operation-quantization-build-{ordinal}"),
             )
             .unwrap();
         assert_eq!(
@@ -970,9 +974,12 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
                 artifact_id: built[3].artifact_id.clone(),
                 generation: built[3].generation,
             },
+            &mutation_context(
+                &id("request-quantization-activate-turbo"),
+                "request-quantization-activate-turbo",
+                "operation-quantization-activate-turbo",
+            ),
             452,
-            "request-quantization-activate-turbo",
-            "operation-quantization-activate-turbo",
         )
         .unwrap();
     assert_eq!(
@@ -995,9 +1002,12 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
                     artifact_id: artifact.artifact_id.clone(),
                     generation: artifact.generation,
                 },
+                &mutation_context(
+                    &id(&format!("request-quantization-activate-{ordinal}")),
+                    &format!("request-quantization-activate-{ordinal}"),
+                    &format!("operation-quantization-activate-{ordinal}"),
+                ),
                 500 + ordinal as u64,
-                &format!("request-quantization-activate-{ordinal}"),
-                &format!("operation-quantization-activate-{ordinal}"),
             )
             .unwrap();
     }
@@ -1046,9 +1056,12 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
                     artifact_id: artifact.artifact_id.clone(),
                     generation: artifact.generation,
                 },
+                &mutation_context(
+                    &id(&format!("request-quantization-retire-{ordinal}")),
+                    &format!("request-quantization-retire-{ordinal}"),
+                    &format!("operation-quantization-retire-{ordinal}"),
+                ),
                 650 + ordinal as u64,
-                &format!("request-quantization-retire-{ordinal}"),
-                &format!("operation-quantization-retire-{ordinal}"),
             )
             .unwrap();
     }
@@ -1091,9 +1104,12 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
             &lease.session_id,
             &lease.token,
             &quantization_build(VectorQuantizationMethod::Scalar),
+            &mutation_context(
+                &id("request-quantization-rebuild"),
+                "request-quantization-rebuild",
+                "operation-quantization-rebuild",
+            ),
             720,
-            "request-quantization-rebuild",
-            "operation-quantization-rebuild",
         )
         .unwrap();
     assert_eq!(rebuilt.artifact.generation, 2);
@@ -1106,9 +1122,12 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
                 artifact_id: rebuilt.artifact.artifact_id,
                 generation: rebuilt.artifact.generation,
             },
+            &mutation_context(
+                &id("request-quantization-reactivate"),
+                "request-quantization-reactivate",
+                "operation-quantization-reactivate",
+            ),
             721,
-            "request-quantization-reactivate",
-            "operation-quantization-reactivate",
         )
         .unwrap();
     let updated = reopened
@@ -1355,9 +1374,12 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
                 bits: VectorQuantizationBits::Bits2,
                 seed: 23,
             }),
+            &mutation_context(
+                &id("request-turboquant-build"),
+                "request-turboquant-build",
+                "operation-turboquant-build",
+            ),
             850,
-            "request-turboquant-build",
-            "operation-turboquant-build",
         )
         .unwrap();
     assert_eq!(
@@ -1382,9 +1404,12 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
                 artifact_id: turboquant_build.artifact.artifact_id.clone(),
                 generation: turboquant_build.artifact.generation,
             },
+            &mutation_context(
+                &id("request-turboquant-activate"),
+                "request-turboquant-activate",
+                "operation-turboquant-activate",
+            ),
             851,
-            "request-turboquant-activate",
-            "operation-turboquant-activate",
         )
         .unwrap();
     assert_eq!(
@@ -1618,9 +1643,12 @@ fn application_backup_restores_turboquant_payload_before_instance_activation() {
                 bits: VectorQuantizationBits::Bits2,
                 seed: 23,
             }),
+            &mutation_context(
+                &id("request-backup-turboquant-build"),
+                "request-backup-turboquant-build",
+                "operation-backup-turboquant-build",
+            ),
             400,
-            "request-backup-turboquant-build",
-            "operation-backup-turboquant-build",
         )
         .unwrap();
     let active = engine
@@ -1632,9 +1660,12 @@ fn application_backup_restores_turboquant_payload_before_instance_activation() {
                 artifact_id: built.artifact.artifact_id,
                 generation: built.artifact.generation,
             },
+            &mutation_context(
+                &id("request-backup-turboquant-activate"),
+                "request-backup-turboquant-activate",
+                "operation-backup-turboquant-activate",
+            ),
             401,
-            "request-backup-turboquant-activate",
-            "operation-backup-turboquant-activate",
         )
         .unwrap();
     assert_eq!(
@@ -2524,9 +2555,12 @@ fn vector_administration_uses_distinct_deny_by_default_actions() {
             &limited.session_id,
             &limited.token,
             &quantization_build,
-            201,
-            "request-limited-quantization-build",
-            "operation-limited-quantization-build",
+            &mutation_context(
+                &id("request-limited-quantization-build"),
+                "request-limited-quantization-build",
+                "operation-limited-quantization-build"
+            ),
+            201
         ),
         Err(ServiceError::PermissionDenied)
     ));
@@ -2569,9 +2603,12 @@ fn vector_administration_uses_distinct_deny_by_default_actions() {
                 artifact_id: artifact_id.clone(),
                 generation: 1,
             },
-            204,
-            "request-limited-quantization-activate",
-            "operation-limited-quantization-activate",
+            &mutation_context(
+                &id("request-limited-quantization-activate"),
+                "request-limited-quantization-activate",
+                "operation-limited-quantization-activate"
+            ),
+            204
         ),
         Err(ServiceError::PermissionDenied)
     ));
@@ -2584,9 +2621,12 @@ fn vector_administration_uses_distinct_deny_by_default_actions() {
                 artifact_id,
                 generation: 1,
             },
-            205,
-            "request-limited-quantization-retire",
-            "operation-limited-quantization-retire",
+            &mutation_context(
+                &id("request-limited-quantization-retire"),
+                "request-limited-quantization-retire",
+                "operation-limited-quantization-retire"
+            ),
+            205
         ),
         Err(ServiceError::PermissionDenied)
     ));

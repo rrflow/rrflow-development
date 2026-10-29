@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f
+// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
 
-const EndpointOpenAPIDocumentSHA256 = "fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f"
+const EndpointOpenAPIDocumentSHA256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2"
 
 type OperationID string
 
@@ -66,6 +66,10 @@ const (
 	OperationVectorCollectionList         OperationID = "vector-collection-list"
 	OperationVectorPointRetrieve          OperationID = "vector-point-retrieve"
 	OperationVectorPointScroll            OperationID = "vector-point-scroll"
+	OperationVectorQuantizationActivate   OperationID = "vector-quantization-activate"
+	OperationVectorQuantizationBuild      OperationID = "vector-quantization-build"
+	OperationVectorQuantizationList       OperationID = "vector-quantization-list"
+	OperationVectorQuantizationRetire     OperationID = "vector-quantization-retire"
 	OperationVectorSearch                 OperationID = "vector-search"
 )
 
@@ -127,5 +131,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationVectorCollectionList:         {Method: "POST", Path: "/v1/vector/collections/list", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointRetrieve:          {Method: "POST", Path: "/v1/vector/points/retrieve", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointScroll:            {Method: "POST", Path: "/v1/vector/points/scroll", Authentication: "session_bearer", Mutation: false},
+	OperationVectorQuantizationActivate:   {Method: "POST", Path: "/v1/vector/quantizations/activate", Authentication: "session_bearer", Mutation: true},
+	OperationVectorQuantizationBuild:      {Method: "POST", Path: "/v1/vector/quantizations/build", Authentication: "session_bearer", Mutation: true},
+	OperationVectorQuantizationList:       {Method: "POST", Path: "/v1/vector/quantizations/list", Authentication: "session_bearer", Mutation: false},
+	OperationVectorQuantizationRetire:     {Method: "POST", Path: "/v1/vector/quantizations/retire", Authentication: "session_bearer", Mutation: true},
 	OperationVectorSearch:                 {Method: "POST", Path: "/v1/vector/search", Authentication: "session_bearer", Mutation: false},
 }
