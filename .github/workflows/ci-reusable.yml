@@ -240,6 +240,8 @@ jobs:
         run: python3 scripts/check_version.py
       - name: Test build provenance and diagnostic profile policy
         run: python3 scripts/test_build_rrflow.py
+      - name: Test experimental controller archive rejection
+        run: python3 scripts/test_controller_trial_package.py
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
