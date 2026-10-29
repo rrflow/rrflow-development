@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 CALLER = ROOT / ".github/workflows/ci.yml"
 REUSABLE = ROOT / ".github/workflows/ci-reusable.yml"
+NATIVE_PREFLIGHT = ROOT / ".github/workflows/c07-native-preflight.yml"
 DEVELOPMENT_CONTAINER = ROOT / ".devcontainer"
 DIGEST_PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
 
@@ -135,6 +136,26 @@ def verify_native_capacity_diagnostics(job: str) -> None:
             and "if-no-files-found: ignore" in upload
             and "actions/upload-artifact@" in upload,
             "native failure artifact must retain only controlled diagnostics")
+
+
+def verify_native_capacity_preflight(workflow: str) -> None:
+    """A manual characterization cannot stand in for candidate or merge CI."""
+    events = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(events is not None and events.group(1) == "  workflow_dispatch:\n\n",
+            "native preflight must be manual only")
+    jobs = job_blocks(workflow)
+    require(set(jobs) == {"native-preflight"}, "native preflight must remain isolated")
+    job = jobs["native-preflight"]
+    for required in ["runs-on: macos-latest", 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+                     "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/run_native_capacity.py",
+                     "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics",
+                     "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "if: always()"]:
+        require(required in job, f"native preflight missing: {required}")
+    require(job.count("--mode fresh --mode existing") == 3 and "continue-on-error" not in job,
+            "native preflight must run all repeated cases without ignoring failure")
+    require(not any(re.match(r"(?:ref|repository|path)\s*:", entry)
+                    for _, body in checkout_steps(job) for entry in body),
+            "native preflight must checkout the dispatched revision")
 
 
 def verify_execution_inventory_ci(verify: str) -> None:
@@ -611,6 +632,8 @@ def verify_development_container(reusable: str, pgvector_job: str) -> int:
 
 def main() -> None:
     workflows = workflow_sources()
+    require(NATIVE_PREFLIGHT in workflows, "native macOS preflight workflow missing")
+    verify_native_capacity_preflight(workflows[NATIVE_PREFLIGHT])
     caller = workflows[CALLER]
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)

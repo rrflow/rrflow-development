@@ -823,3 +823,12 @@ product output is uploaded. A lost runner or failed artifact upload can still
 prevent retention. The record does not classify the cause, retry the case, or
 turn a failed native test into acceptance; see the
 [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md).
+
+The separate manual `c07-native-preflight.yml` workflow runs the same three
+fresh/existing APFS pairs and controlled failure diagnostics on one macOS
+runner. Once that workflow exists on default `main`, dispatch an exact branch
+with `gh workflow run c07-native-preflight.yml --ref <branch>` and verify the
+run's recorded head and tree. This is a focused diagnostic, not candidate CI,
+the required merge group, the full capacity matrix, or a soak. A passing run
+does not erase a prior failure or prove its cause. Normal PR and merge-group
+events continue to run the unchanged complete pipeline.

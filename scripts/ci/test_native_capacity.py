@@ -201,6 +201,19 @@ class NativeCapacityCases(unittest.TestCase):
             with self.assertRaises(check_workflow.PolicyError):
                 check_workflow.verify_native_capacity_diagnostics(altered)
 
+    def test_manual_preflight_cannot_replace_candidate_or_hide_failures(self):
+        workflow = check_workflow.NATIVE_PREFLIGHT.read_text(encoding="utf8")
+        check_workflow.verify_native_capacity_preflight(workflow)
+        for altered in [
+            workflow.replace("  workflow_dispatch:\n", "  pull_request:\n", 1),
+            workflow.replace("--mode fresh --mode existing\n", "", 1),
+            workflow.replace("    runs-on: macos-latest", "    runs-on: ubuntu-latest", 1),
+            workflow.replace("      - name: Bind exact revision", "      - continue-on-error: true\n      - name: Bind exact revision", 1),
+            workflow.replace("          submodules: recursive", "          submodules: recursive\n          ref: main", 1),
+        ]:
+            with self.assertRaises(check_workflow.PolicyError):
+                check_workflow.verify_native_capacity_preflight(altered)
+
 
 class MountedFixtureCleanup(unittest.TestCase):
     def test_mounted_fixture_never_uses_recursive_removal(self):
