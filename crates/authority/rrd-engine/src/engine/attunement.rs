@@ -1,6 +1,5 @@
-//! Explicit engine-owned attunement control. Existing transport exposes read
-//! and cancellation; bounded precondition observations do not activate
-//! background execution, source ingestion or external capabilities.
+//! Explicit engine-owned attunement control. Bounded precondition observations
+//! do not activate background execution, source ingestion or external capabilities.
 //! The first worker phase verifies the installed connection; later phases fail
 //! explicitly until their real implementation is present.
 
@@ -16,14 +15,17 @@ use rrd_contract::{
     AttunementSourceVerification, AttunementStatus, CancelAttunement, ReadAttunement,
     ResumeAttunement, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
+pub use rrd_contract::{
+    AttunementReplanPreview, AttunementReplanReceiptView, AttunementReplanResult,
+};
 use std::time::Instant;
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
 const MAX_LEASE_MS: u64 = 60_000;
 
-/// Embedded admission only. This does not change the HTTP operation catalogue.
-/// Callers supply exact revision/plan identity, never a checkpoint or phase output.
+/// Engine admission. Callers supply exact revision/plan identity, never a
+/// checkpoint or phase output; transports expose only catalogued commands.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "command", rename_all = "snake_case")]
 pub enum AttunementCommand {
@@ -91,26 +93,6 @@ pub struct AttunementControlResult {
     pub idempotent_replay: bool,
 }
 
-/// A bounded installation-precondition observation, not a D-03 snapshot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AttunementReplanPreview {
-    pub predecessor_job_id: CanonicalId,
-    pub predecessor_revision: u64,
-    pub generation: u64,
-    pub plan: AttunementPlan,
-    pub proposal_sha256: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AttunementReplanResult {
-    pub predecessor: AttunementStatus,
-    pub successor: AttunementStatus,
-    pub plan: AttunementPlan,
-    pub idempotent_replay: bool,
-}
-
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ReplanReceipt {
@@ -118,16 +100,6 @@ struct ReplanReceipt {
     principal_id: CanonicalId,
     operation_sha256: String,
     result: AttunementReplanResult,
-}
-
-/// Previously accepted replan, read without executing its mutation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AttunementReplanReceiptView {
-    pub principal_id: CanonicalId,
-    pub operation_sha256: String,
-    pub preview: AttunementReplanPreview,
-    pub predecessor_plan: AttunementPlan,
-    pub result: AttunementReplanResult,
 }
 
 /// An existing committed control receipt, read without replaying its command.

@@ -20,6 +20,64 @@ use serde::{Deserialize, Serialize};
 const CREATED_AT: u64 = 1_800_000_000_000;
 
 #[test]
+fn public_replan_operations_have_exact_authentication_and_mutation_boundaries() {
+    let catalogue = rrd_contract::endpoint_catalogue();
+    for (id, path, mutation, action) in [
+        (
+            "attunement-start",
+            "/v1/attunement/start",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-step",
+            "/v1/attunement/step",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-preview",
+            "/v1/attunement/replan/preview",
+            false,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-accept",
+            "/v1/attunement/replan/accept",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-replan-receipt-read",
+            "/v1/attunement/replan/receipt/read",
+            false,
+            SecurityAction::EstateRead,
+        ),
+    ] {
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == id)
+            .unwrap();
+        assert_eq!(endpoint.path, path);
+        assert_eq!(endpoint.mutation, mutation);
+        assert_eq!(endpoint.action.fixed_action(), Some(action));
+        assert_eq!(
+            endpoint.authentication,
+            rrd_contract::EndpointAuthentication::SessionBearer
+        );
+    }
+    assert!(serde_json::from_value::<rrd_contract::StartAttunement>(serde_json::json!({
+        "contract_version": 1, "job_id": "job-a", "plan_sha256": "bad", "expected_revision": 1, "lease_ms": 100,
+        "unknown_effect": true
+    })).is_err());
+    let invalid: rrd_contract::StartAttunement = serde_json::from_value(serde_json::json!({
+        "contract_version": 2, "job_id": "job-a", "plan_sha256": "bad", "expected_revision": 1, "lease_ms": 100
+    })).unwrap();
+    assert!(invalid.validate().is_err());
+}
+
+#[test]
 fn attunement_status_is_an_authenticated_read_operation() {
     let catalogue = rrd_contract::endpoint_catalogue();
     let endpoint = catalogue

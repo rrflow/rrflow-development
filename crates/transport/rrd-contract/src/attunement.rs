@@ -1099,6 +1099,112 @@ pub struct AttunementReceiptReadResult {
     pub receipt: Option<AttunementReceipt>,
 }
 
+/// Start the engine-owned job against its exact immutable plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StartAttunement {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub plan_sha256: String,
+    pub expected_revision: u64,
+    pub lease_ms: u64,
+}
+
+impl StartAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)?;
+        validate_sha256(&self.plan_sha256, "attunement plan digest")
+    }
+}
+
+/// Advance the job whose plan is already bound to this revision and lease.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StepAttunement {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+    pub lease_generation: u64,
+}
+
+impl StepAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementControlResponse {
+    pub status: AttunementStatus,
+    pub idempotent_replay: bool,
+}
+
+/// Preview is a bounded source observation, not an atomic snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanPreview {
+    pub predecessor_job_id: CanonicalId,
+    pub predecessor_revision: u64,
+    pub generation: u64,
+    pub plan: AttunementPlan,
+    pub proposal_sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanResult {
+    pub predecessor: AttunementStatus,
+    pub successor: AttunementStatus,
+    pub plan: AttunementPlan,
+    pub idempotent_replay: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanReceiptView {
+    pub principal_id: CanonicalId,
+    pub operation_sha256: String,
+    pub preview: AttunementReplanPreview,
+    pub predecessor_plan: AttunementPlan,
+    pub result: AttunementReplanResult,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PreviewAttunementReplan {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+}
+
+impl PreviewAttunementReplan {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AcceptAttunementReplan {
+    pub contract_version: u16,
+    pub preview: AttunementReplanPreview,
+    pub proposal_sha256: String,
+}
+
+impl AcceptAttunementReplan {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)?;
+        validate_sha256(&self.proposal_sha256, "attunement proposal digest")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanReceiptReadResult {
+    pub receipt: Option<AttunementReplanReceiptView>,
+}
+
 impl AttunementReceiptReadResult {
     pub fn validate_for(
         &self,

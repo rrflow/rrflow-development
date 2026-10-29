@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
+// OpenAPI SHA-256: 733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -7,6 +7,11 @@ public enum OperationId
     AttunementCancel,
     AttunementRead,
     AttunementReceiptRead,
+    AttunementReplanAccept,
+    AttunementReplanPreview,
+    AttunementReplanReceiptRead,
+    AttunementStart,
+    AttunementStep,
     AuditExport,
     AuditRead,
     BackupCreate,
@@ -84,14 +89,19 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2";
-    public const int Count = 62;
+    public const string OpenApiDocumentSha256 = "733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df";
+    public const int Count = 67;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
         OperationId.AttunementCancel => new("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SessionBearer, true),
         OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
         OperationId.AttunementReceiptRead => new("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementReplanAccept => new("attunement-replan-accept", "POST", "/v1/attunement/replan/accept", Authentication.SessionBearer, true),
+        OperationId.AttunementReplanPreview => new("attunement-replan-preview", "POST", "/v1/attunement/replan/preview", Authentication.SessionBearer, false),
+        OperationId.AttunementReplanReceiptRead => new("attunement-replan-receipt-read", "POST", "/v1/attunement/replan/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementStart => new("attunement-start", "POST", "/v1/attunement/start", Authentication.SessionBearer, true),
+        OperationId.AttunementStep => new("attunement-step", "POST", "/v1/attunement/step", Authentication.SessionBearer, true),
         OperationId.AuditExport => new("audit-export", "POST", "/v1/audit/export", Authentication.SessionBearer, false),
         OperationId.AuditRead => new("audit-read", "POST", "/v1/audit/read", Authentication.SessionBearer, false),
         OperationId.BackupCreate => new("backup-create", "POST", "/v1/backups", Authentication.SessionBearer, true),

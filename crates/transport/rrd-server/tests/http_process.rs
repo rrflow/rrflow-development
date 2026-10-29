@@ -784,6 +784,20 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     let (status, denied) = post(&server, "/v1/attunement/read", &attunement, None);
     assert_eq!(status, 401, "{denied}");
 
+    let replan = envelope(
+        json!({"contract_version": 1, "job_id": "job-missing", "expected_revision": 1}),
+        None,
+        None,
+    );
+    let (status, denied) = post(
+        &server,
+        "/v1/attunement/replan/preview",
+        &replan,
+        Some((session, token)),
+    );
+    assert_eq!(status, 403, "{denied}");
+    assert_eq!(denied["outcome"]["error"]["code"], "permission_denied");
+
     // The quantization lifecycle is authorized under the vector collection
     // action, which this principal does not hold.
     let quantization = envelope(
@@ -3311,6 +3325,224 @@ fn cancelled_data_commit_restarts_and_converges_on_durable_retry() {
     let (_, ready) = http(server.address, "GET", "/v1/health/ready", &[], &[]);
     assert_eq!(payload(&ready)["runtime_cursor"], 3);
     assert_eq!(payload(&ready)["claim_sequence"], 0);
+}
+
+#[test]
+fn installed_attunement_replan_over_http_survives_restart_and_replay() {
+    let temporary = tempfile::tempdir().unwrap();
+    let project = temporary.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("README.md"), "initial source\n").unwrap();
+    let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let installation = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &RrdEngine::generate_installation_identity().unwrap(),
+        "default",
+        None,
+        &executable,
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &installation,
+        &installation.installation.plan_sha256,
+        &executable,
+    )
+    .unwrap();
+    let instance = installation.installation.target.instance_id.clone();
+    let job = format!("job-{}", &installation.attunement.plan_sha256[..24]);
+    let key = RrdEngine::read_installed_api_key(&project).unwrap();
+    let make = |payload, operation: &str, mutation: bool| {
+        let mut value = envelope(payload, mutation.then_some(operation), None);
+        value["resource"]["segments"][0]["id"] = json!(instance.as_str());
+        value["context"]["request_id"] = json!(format!("request-{operation}"));
+        value["context"]["operation_id"] = json!(format!("operation-{operation}"));
+        value
+    };
+    std::fs::write(project.join("README.md"), "ordinary edit\n").unwrap();
+    let mut accepted_request = Value::Null;
+    let mut successor = Value::Null;
+    for pass in 0..2 {
+        let engine = RrdEngine::open_installed(&project, &executable).unwrap();
+        let fixture = acquire_server_fixture();
+        let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
+        let address = server.local_addr();
+        let (shutdown, receiver) = tokio::sync::oneshot::channel();
+        let thread = std::thread::spawn(move || {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(server.serve_until(async move {
+                    let _ = receiver.await;
+                }))
+        });
+        let server = RunningServer {
+            address,
+            shutdown: Some(shutdown),
+            thread: Some(thread),
+            _fixture: fixture,
+        };
+        let create = make(
+            json!({"limits": {"idle_timeout_ms": 60000, "absolute_timeout_ms": 300000, "max_open_transactions": 1}}),
+            &format!("replan-session-{pass}"),
+            true,
+        );
+        let (status, created) = post_with_api_key(
+            &server,
+            "/v1/sessions",
+            &create,
+            key.principal_id.as_str(),
+            key.credential(),
+        );
+        assert_eq!(status, 200, "{created}");
+        let session = (
+            payload(&created)["session_id"].as_str().unwrap(),
+            payload(&created)["token"].as_str().unwrap(),
+        );
+        if pass == 0 {
+            let start = make(
+                json!({"contract_version": 1, "job_id": job, "plan_sha256": installation.attunement.plan_sha256, "expected_revision": 1, "lease_ms": 60000}),
+                "stale-start",
+                true,
+            );
+            let (status, stale) = post(&server, "/v1/attunement/start", &start, Some(session));
+            assert_eq!(status, 412, "{stale}");
+            assert_eq!(stale["outcome"]["error"]["code"], "failed_precondition");
+            assert_eq!(
+                stale["outcome"]["error"]["details"]["reason"],
+                "attunement-source-changed"
+            );
+            assert_eq!(
+                stale["outcome"]["error"]["details"]["next-action"],
+                "preview-attunement-replan"
+            );
+            let read = make(
+                json!({"contract_version": 1, "job_id": job}),
+                "old-read",
+                false,
+            );
+            let (_, old) = post(&server, "/v1/attunement/read", &read, Some(session));
+            assert_eq!(payload(&old)["status"]["job"]["revision"], 1);
+            let preview_request = make(
+                json!({"contract_version": 1, "job_id": job, "expected_revision": 1}),
+                "replan-preview",
+                false,
+            );
+            let (status, denied) = post(
+                &server,
+                "/v1/attunement/replan/preview",
+                &preview_request,
+                None,
+            );
+            assert_eq!(status, 401, "{denied}");
+            let (status, preview) = post(
+                &server,
+                "/v1/attunement/replan/preview",
+                &preview_request,
+                Some(session),
+            );
+            assert_eq!(status, 200, "{preview}");
+            assert_ne!(
+                payload(&preview)["plan"]["source_sha256"],
+                installation.attunement.source_sha256
+            );
+            let obsolete = make(
+                json!({"contract_version": 1, "preview": payload(&preview), "proposal_sha256": payload(&preview)["proposal_sha256"]}),
+                "obsolete-replan",
+                true,
+            );
+            std::fs::write(project.join("README.md"), "another ordinary edit\n").unwrap();
+            let (status, stale_preview) = post(
+                &server,
+                "/v1/attunement/replan/accept",
+                &obsolete,
+                Some(session),
+            );
+            assert_eq!(status, 412, "{stale_preview}");
+            let (status, preview) = post(
+                &server,
+                "/v1/attunement/replan/preview",
+                &preview_request,
+                Some(session),
+            );
+            assert_eq!(status, 200, "{preview}");
+            accepted_request = make(
+                json!({"contract_version": 1, "preview": payload(&preview), "proposal_sha256": payload(&preview)["proposal_sha256"]}),
+                "accept-replan",
+                true,
+            );
+            let (status, accepted) = post(
+                &server,
+                "/v1/attunement/replan/accept",
+                &accepted_request,
+                Some(session),
+            );
+            assert_eq!(status, 200, "{accepted}");
+            assert_eq!(payload(&accepted)["idempotent_replay"], false);
+            successor = payload(&accepted)["successor"]["job"].clone();
+            let mut changed_replay = accepted_request.clone();
+            changed_replay["payload"]["preview"]["generation"] = json!(99);
+            let (status, conflict) = post(
+                &server,
+                "/v1/attunement/replan/accept",
+                &changed_replay,
+                Some(session),
+            );
+            assert_eq!(status, 409, "{conflict}");
+        } else {
+            let (status, replay) = post(
+                &server,
+                "/v1/attunement/replan/accept",
+                &accepted_request,
+                Some(session),
+            );
+            assert_eq!(status, 200, "{replay}");
+            assert_eq!(payload(&replay)["idempotent_replay"], true);
+            assert_eq!(payload(&replay)["successor"]["job"], successor);
+            let receipt_request = make(
+                json!({"contract_version": 1, "job_id": job, "idempotency_key": "accept-replan"}),
+                "receipt-read",
+                false,
+            );
+            let (status, receipt) = post(
+                &server,
+                "/v1/attunement/replan/receipt/read",
+                &receipt_request,
+                Some(session),
+            );
+            assert_eq!(status, 200, "{receipt}");
+            assert_eq!(
+                payload(&receipt)["receipt"]["result"]["successor"]["job"],
+                successor
+            );
+            let start = make(
+                json!({"contract_version": 1, "job_id": successor["id"], "plan_sha256": successor["plan_sha256"], "expected_revision": successor["revision"], "lease_ms": 60000}),
+                "successor-start",
+                true,
+            );
+            let (status, started) = post(&server, "/v1/attunement/start", &start, Some(session));
+            assert_eq!(status, 200, "{started}");
+            let running = &payload(&started)["status"]["job"];
+            let step = make(
+                json!({"contract_version": 1, "job_id": running["id"], "expected_revision": running["revision"], "lease_generation": running["lease"]["generation"]}),
+                "successor-step",
+                true,
+            );
+            let (status, advanced) = post(&server, "/v1/attunement/step", &step, Some(session));
+            assert_eq!(status, 200, "{advanced}");
+            assert_eq!(
+                payload(&advanced)["status"]["job"]["checkpoints"]
+                    .as_array()
+                    .unwrap()
+                    .len(),
+                1
+            );
+        }
+        server.stop();
+    }
 }
 
 #[test]

@@ -1,11 +1,16 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
+// OpenAPI SHA-256: 733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df
 package io.rrflow.rrd;
 
 public enum OperationId {
     ATTUNEMENT_CANCEL("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SESSION_BEARER, true),
     ATTUNEMENT_READ("attunement-read", "POST", "/v1/attunement/read", Authentication.SESSION_BEARER, false),
     ATTUNEMENT_RECEIPT_READ("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SESSION_BEARER, false),
+    ATTUNEMENT_REPLAN_ACCEPT("attunement-replan-accept", "POST", "/v1/attunement/replan/accept", Authentication.SESSION_BEARER, true),
+    ATTUNEMENT_REPLAN_PREVIEW("attunement-replan-preview", "POST", "/v1/attunement/replan/preview", Authentication.SESSION_BEARER, false),
+    ATTUNEMENT_REPLAN_RECEIPT_READ("attunement-replan-receipt-read", "POST", "/v1/attunement/replan/receipt/read", Authentication.SESSION_BEARER, false),
+    ATTUNEMENT_START("attunement-start", "POST", "/v1/attunement/start", Authentication.SESSION_BEARER, true),
+    ATTUNEMENT_STEP("attunement-step", "POST", "/v1/attunement/step", Authentication.SESSION_BEARER, true),
     AUDIT_EXPORT("audit-export", "POST", "/v1/audit/export", Authentication.SESSION_BEARER, false),
     AUDIT_READ("audit-read", "POST", "/v1/audit/read", Authentication.SESSION_BEARER, false),
     BACKUP_CREATE("backup-create", "POST", "/v1/backups", Authentication.SESSION_BEARER, true),
@@ -66,7 +71,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2";
+    static final String OPENAPI_DOCUMENT_SHA256 = "733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 

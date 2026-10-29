@@ -50,6 +50,11 @@ http_dispatch_catalogue! {
     AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
     AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
+    AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
+    AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
+    AttunementReplanPreview => ("attunement-replan-preview", RrdOperation::AttunementReplanPreview),
+    AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::EstateAdmin),
+    AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::EstateRead),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -249,6 +254,17 @@ impl AppState {
                 self.read_attunement_receipt(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementCancel) => self.cancel_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementStart) => self.start_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementStep) => self.step_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementReplanPreview) => {
+                self.preview_attunement_replan(&headers, &body, now)
+            }
+            Some(HttpDispatch::AttunementReplanAccept) => {
+                self.accept_attunement_replan(&headers, &body, now)
+            }
+            Some(HttpDispatch::AttunementReplanReceiptRead) => {
+                self.read_attunement_replan_receipt(&headers, &body, now)
+            }
             Some(HttpDispatch::SessionCreate) => self.create_session(&headers, &body, now),
             Some(HttpDispatch::SessionRenew) => self.renew_session(&headers, &body, &path, now),
             Some(HttpDispatch::SessionClose) => self.close_session(&headers, &body, &path, now),
