@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration and pure endpoint-choice validation exist, LFG and SWAG execution are unimplemented
+**Status:** active target contract; configuration, choice validation and optional chat transport exist; engine-admitted LFG/SWAG execution is unimplemented
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -98,6 +98,35 @@ tests perturb those records in memory only. The
 [validation journal](../../evidence/change-journals/gate-g/controller-endpoint-choice-validation.md)
 records provenance and limits. These observations are not training targets,
 human review, provider-quality evidence or completion of G-01b.
+
+### Native selector transport prerequisite
+
+The optional `rrd-inference/endpoint-chat` feature provides
+`PreparedEndpointChat` for one explicitly prepared chat request. It derives the
+URL, service identity, credential reference and limits from the supplied
+configuration, validates the allowance, and accepts a caller-owned deadline,
+sticky cancellation signal and bounded credential resolver. Prompt construction
+and generation settings remain explicit caller inputs. No provider ranking,
+task routing rule or deployment endpoint is embedded in this adapter.
+
+This transport requires TLS outside literal loopback, disables redirects and
+implicit environment proxies, bounds the request and response body, and rejects
+wrong-model, truncated, tool-requesting or invalid-choice responses. It performs
+no application retry. It reuses existing process-local execution control without
+installing a second task budget or registry. Cancellation is checked around
+blocking I/O and after decoding; it rejects late results but does not prove the
+remote model stopped. Post-dispatch failures retain an unknown remote outcome.
+Missing provider usage remains unknown. A returned alias is not weight attestation.
+
+The `endpoint_chat` example is an operator transport probe, not a public engine
+operation. It takes `CONFIG ALLOWANCE CONTROLLER_ID REQUEST KEY_ENV OUTPUT_DIR
+TIMEOUT_MS [CANCEL_AFTER_MS]`, requires a fresh output directory and retains
+actual request/response bytes and observations. Build with
+`cargo build --locked -p rrd-inference --features endpoint-chat --example endpoint_chat`.
+Its [native transport journal](../../evidence/change-journals/gate-g/controller-native-chat.md)
+records real BF16 calls and limitations. Engine-derived context/candidates,
+authorization, durable reservation/fencing, admitted installation and dispatch
+remain missing; this transport is not automatically active in the installed engine.
 
 ### Inputs and configuration ownership
 
