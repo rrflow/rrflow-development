@@ -814,3 +814,12 @@ The macOS installed-crash lane additionally runs three planned fresh/existing
 WAL capacity pairs, each on a newly owned APFS image. These regress the
 intermittent selected-WAL error gap; the first failure stops the run. They do
 not replace the full native capacity matrix or permit retry-until-green.
+
+An owned APFS image creation failure records bounded `hdiutil create -verbose`
+output, the failing mode and point, harness digest and CI run coordinates in a
+dedicated runner-temp JSON file. The macOS job attempts to upload only those
+diagnostic JSON files, including after a failed capacity step. No disk image or
+product output is uploaded. A lost runner or failed artifact upload can still
+prevent retention. The record does not classify the cause, retry the case, or
+turn a failed native test into acceptance; see the
+[C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md).

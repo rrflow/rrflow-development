@@ -111,6 +111,32 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_native_capacity_diagnostics(job: str) -> None:
+    """Preserve native qualification and retain only bounded create diagnostics."""
+    def step(name: str) -> str:
+        marker = f"      - name: {name}\n"
+        require(job.count(marker) == 1, f"native capacity step missing or duplicated: {name}")
+        return job.split(marker, 1)[1].split("      - name:", 1)[0]
+
+    first = step("Qualify installed native capacity failure and recovery")
+    repeated = step("Require repeated APFS exhaustion and recovery")
+    upload = step("Retain native capacity create diagnostics")
+    destination = "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics"
+    require(destination in first and destination in repeated,
+            "both capacity runs must bind their diagnostic directory")
+    require("run: python3 scripts/ci/run_native_capacity.py" in first,
+            "initial native capacity run must remain required")
+    require("if: matrix.os == 'macos-latest'" in repeated
+            and "python3 scripts/ci/run_native_capacity.py" in repeated
+            and repeated.count("--mode fresh --mode existing") == 3,
+            "macOS repeated native capacity cases must remain required")
+    require("if: always() && matrix.os == 'macos-latest'" in upload
+            and "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json" in upload
+            and "if-no-files-found: ignore" in upload
+            and "actions/upload-artifact@" in upload,
+            "native failure artifact must retain only controlled diagnostics")
+
+
 def verify_execution_inventory_ci(verify: str) -> None:
     """Keep each retained inventory bound to the clean checked-out revision."""
     marker = "      - name: Enforce exhaustive RRFlow 1.0 file planning\n"
@@ -711,6 +737,7 @@ def main() -> None:
     require("--features" not in reopen and "--all-features" not in reopen,
             "ordinary reopen corpus must not activate diagnostic features")
     diagnostic = jobs["installed-crash"]
+    verify_native_capacity_diagnostics(diagnostic)
     for platform in ["ubuntu-latest", "macos-latest", "windows-latest"]:
         require(f"- {platform}" in diagnostic, f"diagnostic primary must qualify {platform}")
     for command in [

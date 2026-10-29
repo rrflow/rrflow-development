@@ -708,14 +708,26 @@ jobs:
           retention-days: 14
       - name: Qualify installed native capacity failure and recovery
         timeout-minutes: 30
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
         run: python3 scripts/ci/run_native_capacity.py
       - name: Require repeated APFS exhaustion and recovery
         if: matrix.os == 'macos-latest'
         timeout-minutes: 15
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
         run: >-
           python3 scripts/ci/run_native_capacity.py
           --mode fresh --mode existing --mode fresh --mode existing
           --mode fresh --mode existing
+      - name: Retain native capacity create diagnostics
+        if: always() && matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-capacity-create-diagnostics-${{ matrix.os }}
+          path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Deny diagnostic-primary and oracle warnings
         run: cargo clippy -p rrflow-cli --bin rrflow --test installed_crash --test lifecycle_process --features crash-test --locked -- -D warnings
 
