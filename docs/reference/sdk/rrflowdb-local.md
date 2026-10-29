@@ -44,27 +44,35 @@ Use the repository's pinned Rust toolchain. From the repository root in PowerShe
 
 ```powershell
 cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+if ($LASTEXITCODE -ne 0) { throw 'RRFlow and example build failed' }
+$binaryDir = Join-Path $env:TEMP ('rrflow-bin-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $binaryDir | Out-Null
+$rrflow = Join-Path $binaryDir 'rrflow.exe'
+Copy-Item -LiteralPath .\target\debug\rrflow.exe -Destination $rrflow
+if ((Get-FileHash -Algorithm SHA256 .\target\debug\rrflow.exe).Hash -ne (Get-FileHash -Algorithm SHA256 $rrflow).Hash) { throw 'Staged binary differs from build' }
+$rrflow
 $project = Join-Path $env:TEMP ('rrflowdb-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $project | Out-Null
 $project
 $planFile = "$project-install-plan.json"
-$identity = & .\target\debug\rrflow.exe install identity --json | ConvertFrom-Json
+$identity = & $rrflow install identity --json | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Installation identity generation failed' }
-$plan = & .\target\debug\rrflow.exe install plan --project $project --identity $identity.installation_identity --mode fresh --json
+$plan = & $rrflow install plan --project $project --identity $identity.installation_identity --mode fresh --json
 if ($LASTEXITCODE -ne 0) { throw 'Installation planning failed' }
 $plan | Set-Content -LiteralPath $planFile -Encoding utf8NoBOM
 $preview = Get-Content -Raw $planFile | ConvertFrom-Json
 $preview.installation
 # Review the exact managed paths, configuration and permissions above.
-& .\target\debug\rrflow.exe install apply --project $project --mode fresh --plan $planFile --expect $preview.installation.plan_sha256
-& .\target\debug\rrflow.exe serve --project $project --bind 127.0.0.1:9477
+& $rrflow install apply --project $project --mode fresh --plan $planFile --expect $preview.installation.plan_sha256
+if ($LASTEXITCODE -ne 0) { throw 'Installation apply failed' }
+& $rrflow serve --project $project --bind 127.0.0.1:9477
 ```
 
-`serve` stays in the foreground. In a second terminal, set `$project` to that
-same printed project path, then run:
+`serve` stays in the foreground. In a second terminal, set `$project` and
+`$rrflow` to the same printed paths, then run:
 
 ```powershell
-.\target\debug\rrflow.exe ready --project $project --address 127.0.0.1:9477
+& $rrflow ready --project $project --address 127.0.0.1:9477
 .\target\debug\examples\rrflowdb.exe $project 127.0.0.1:9477 init
 .\target\debug\examples\rrflowdb.exe $project 127.0.0.1:9477 verify open
 .\target\debug\examples\rrflowdb.exe $project 127.0.0.1:9477 read
@@ -74,10 +82,15 @@ same printed project path, then run:
 .\target\debug\examples\rrflowdb.exe $project 127.0.0.1:9477 schema
 ```
 
-On Linux/macOS use `target/debug/rrflow` and `target/debug/examples/rrflowdb`;
-the commands and JSON contracts are identical. A custom `CARGO_TARGET_DIR`
-changes the binary location. These are source-built development artifacts, not
-a signed official release. Installed estates bind the executable digest:
+Cargo may hard-link its build output to another target path. The installed
+engine rejects multiply linked executables, so stage a separate copy and check
+its digest as above; do not weaken the link check. On Linux/macOS likewise copy
+`target/debug/rrflow` to a new private directory, preserve its executable mode,
+and independently compare the original and copy with `sha256sum` on Linux or
+`shasum -a 256` on macOS. Use the copied binary for each lifecycle command and
+`target/debug/examples/rrflowdb` for the example. A custom `CARGO_TARGET_DIR`
+changes the build output location. These are source-built development artifacts,
+not a signed official release. Installed estates bind the executable digest:
 retain the binary used to install them; replacing it is not an automatic upgrade.
 
 Stop the service, run `rrflow verify --project <path> --level quick`, restart
