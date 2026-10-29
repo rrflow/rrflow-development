@@ -13,6 +13,12 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_selection;
+pub use endpoint_selection::{
+    EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
+    EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
+    ENDPOINT_SELECTION_VERSION,
+};
 mod observation_source;
 pub use observation_source::*;
 mod flight;
