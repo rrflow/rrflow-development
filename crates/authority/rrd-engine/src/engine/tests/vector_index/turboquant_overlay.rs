@@ -153,9 +153,12 @@ fn fixture(unrelated: usize) -> (tempfile::TempDir, RrdEngine, SessionLease) {
                 filter_properties: vec![CanonicalId::new("bucket").unwrap()],
                 max_storage_keys: 100_000,
             },
+            &mutation_context(
+                &id("request-turboquant-overlay-build"),
+                "request-turboquant-overlay-build",
+                "operation-turboquant-overlay-build",
+            ),
             400,
-            "request-turboquant-overlay-build",
-            "operation-turboquant-overlay-build",
         )
         .unwrap();
     engine
@@ -167,9 +170,12 @@ fn fixture(unrelated: usize) -> (tempfile::TempDir, RrdEngine, SessionLease) {
                 artifact_id: built.artifact.artifact_id,
                 generation: built.artifact.generation,
             },
+            &mutation_context(
+                &id("request-turboquant-overlay-activate"),
+                "request-turboquant-overlay-activate",
+                "operation-turboquant-overlay-activate",
+            ),
             410,
-            "request-turboquant-overlay-activate",
-            "operation-turboquant-overlay-activate",
         )
         .unwrap();
     (root, engine, lease)

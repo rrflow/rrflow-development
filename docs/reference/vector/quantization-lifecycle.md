@@ -20,13 +20,38 @@ operations:
 - activate one verified generation for planning; and
 - retire a generation without changing canonical vector history.
 
+They are public operations (H-04q2): `vector-quantization-build`,
+`vector-quantization-list`, `vector-quantization-activate` and
+`vector-quantization-retire`. Each one is in OpenAPI, the Rust client, the five
+generated SDKs and the shared SDK conformance corpus, and each lowers to its
+`RrdEngine` method. The three mutations are authorized as
+`vector_collection_ensure` and list as `vector_collection_list`, the engine's
+existing actions, so no grant changes.
+
 An immutable artifact entry binds collection, named vector, codec kind,
 projection descriptor, generation, source cursor, configuration and artifact
-digests, content-addressed object receipt, and build time. Append-only
+digests, content-addressed object receipt, and build time. Its record identity
+is `{projection}.{generation}` and its object's is
+`{projection}.{generation}.quantized-bytes`. Both are public canonical ids, so
+the public changefeed projects them, and the build refuses any other identity.
+Append-only
 build/activate/retire events use contiguous revisions and a predecessor-digest
 chain. Reconstruction rejects missing or duplicate builds, revision gaps,
 digest-chain changes, non-contiguous generations, backward activation, and
 non-atomic record/object publication.
+
+Build, activate and retire are replay-safe (H-04q1). Each one requires the
+request's idempotency key, and its event records that key with the request's
+SHA-256. The event digest covers the receipt only when there is one, so events
+recorded before receipts keep their digests.
+
+- **The same key and request** return the recorded artifact, as it is now, with
+  `idempotent_replay` set. Nothing is read, encoded or appended, and this works
+  after the session's lease has expired.
+- **Another request under that key** conflicts.
+- **A commit that loses its cursor** to another commit in the scope retries
+  from a fresh catalogue read, up to 16 times. Each attempt re-checks the
+  receipt and the transition, so concurrent requests with one key apply once.
 
 `ready` artifacts are not served. Activation verifies object length and digest,
 binary framing, descriptor identity, codec, and internal checksum. Activating

@@ -59,3 +59,4 @@
 | POAM-043 | High | Open | [transaction previews rebuild the whole scope and skip object checks](rrflow-1.0-alpha/poam-043.md) |
 | POAM-044 | High | Open | [rrflowQL refusals are unstructured, and queries cannot be checked without running](rrflow-1.0-alpha/poam-044.md) |
 | POAM-045 | High | Open | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |
+| POAM-046 | High | Open | [a vector index makes the public changefeed refuse its scope](rrflow-1.0-alpha/poam-046.md) |
