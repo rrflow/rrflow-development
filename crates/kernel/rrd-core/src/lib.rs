@@ -76,9 +76,13 @@ pub use runtime::{
     SnapshotId, DATA_RUNTIME_CONTRACT_VERSION,
 };
 pub use schema::{
-    RuntimeCatalogueIdentity, RuntimeEventSchema, RuntimeLogicalModel, RuntimePropertySchema,
-    RuntimeRecordSchema, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
-    RuntimeTableSchema, RuntimeValueType,
+    RuntimeCategorySchema, RuntimeCategoryTargets, RuntimeDomainSchema, RuntimeEstateOrganisation,
+    RuntimeEventSchema, RuntimeLogicalModel, RuntimePropertySchema, RuntimeRecordSchema,
+    RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry, RuntimeTableSchema,
+    RuntimeTagCardinality, RuntimeTagRef, RuntimeTagSchema, RuntimeValueType, DEFAULT_DOMAIN,
+    ENGINE_DOMAIN, ENGINE_OWNED_PREFIX, MAX_CATEGORIES, MAX_DOMAINS, MAX_DOMAIN_DEPTH,
+    MAX_ORGANISATION_DESCRIPTION_BYTES, MAX_ORGANISATION_TITLE_BYTES, MAX_TAGS_PER_CATEGORY,
+    MAX_TAGS_PER_KIND,
 };
 pub use telemetry::{
     signal_catalogue, signal_catalogue_sha256, DiagnosticLevel, MetricAttribute, MetricDescriptor,

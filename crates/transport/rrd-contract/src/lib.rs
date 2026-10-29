@@ -43,15 +43,16 @@ pub use attunement::{
     installation_plan_sha256, installation_result_sha256, AttunementCancelResult,
     AttunementFailure, AttunementJob, AttunementJobState, AttunementLease, AttunementPhase,
     AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementRuntimeCoordinates, AttunementSourceVerification, AttunementStatus,
-    AttunementVerification, AttunementVerificationCheck, AttunementVerificationStatus,
-    CancelAttunement, InstallationActionDisposition, InstallationActionKind,
-    InstallationActionResult, InstallationBootstrap, InstallationBootstrapPolicy,
-    InstallationManagedPath, InstallationManagedPathKind, InstallationPlan, InstallationPlanAction,
-    InstallationRecordKind, InstallationRemovalRule, InstallationResult,
-    InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
-    ReadAttunement, ResumeAttunement, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION,
-    INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    AttunementReceipt, AttunementReceiptReadResult, AttunementRuntimeCoordinates,
+    AttunementSourceVerification, AttunementStatus, AttunementVerification,
+    AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
+    InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
+    InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
+    InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
+    InstallationRemovalRule, InstallationResult, InstallationSpecialization,
+    InstallationStorageGeneration, InstallationTargetKind, ReadAttunement, ReadAttunementReceipt,
+    ResumeAttunement, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
     MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
@@ -244,7 +245,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264";
+    "fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3655,6 +3656,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "AttunementCancelResult",
         ),
         endpoint(
+            "attunement-receipt-read",
+            HttpMethod::Post,
+            "/v1/attunement/receipt/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateRead,
+            "ReadAttunementReceipt",
+            "AttunementReceiptReadResult",
+        ),
+        endpoint(
             "attunement-read",
             HttpMethod::Post,
             "/v1/attunement/read",
@@ -4475,6 +4486,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
         "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
+        "ReadAttunementReceipt" => schema_json::<RequestEnvelope<ReadAttunementReceipt>>(),
         "CancelAttunement" => schema_json::<RequestEnvelope<CancelAttunement>>(),
         "ReadEstate" => schema_json::<RequestEnvelope<ReadEstate>>(),
         "RenewSession" => schema_json::<RequestEnvelope<RenewSession>>(),
@@ -4515,6 +4527,9 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
         "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
+        "AttunementReceiptReadResult" => {
+            schema_json::<ResponseEnvelope<AttunementReceiptReadResult>>()
+        }
         "AttunementCancelResult" => schema_json::<ResponseEnvelope<AttunementCancelResult>>(),
         "EndpointCatalogue" => schema_json::<ResponseEnvelope<EndpointCatalogue>>(),
         "EstateSnapshot" => schema_json::<ResponseEnvelope<EstateSnapshot>>(),
@@ -5900,25 +5915,128 @@ pub struct DataTableSchema {
     pub allow_additional_properties: bool,
 }
 
+/// Built-in domain holding every kind and collection not placed elsewhere.
+pub const DATA_DEFAULT_DOMAIN: &str = "default";
+/// Built-in domain holding the engine-owned kinds and collections.
+pub const DATA_ENGINE_DOMAIN: &str = "rrflow";
+/// Identity prefix that marks a kind or collection as engine-owned.
+pub const DATA_ENGINE_OWNED_PREFIX: &str = "rrflow-";
+pub const MAX_DATA_DOMAINS: usize = 256;
+pub const MAX_DATA_DOMAIN_DEPTH: usize = 8;
+pub const MAX_DATA_CATEGORIES: usize = 64;
+pub const MAX_DATA_TAGS_PER_CATEGORY: usize = 4_096;
+pub const MAX_DATA_TAGS_PER_KIND: usize = 64;
+pub const MAX_DATA_ORGANISATION_TITLE_BYTES: usize = 128;
+pub const MAX_DATA_ORGANISATION_DESCRIPTION_BYTES: usize = 1_024;
+
+/// One configurable part of an estate's catalogue, such as a service, package
+/// or subject area. The estate organisation contract owns its rules.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct DataCatalogueIdentity {
-    pub namespace: CanonicalId,
-    pub database: CanonicalId,
+pub struct DataDomainSchema {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    /// Omitted, or `default`, for a top-level domain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<CanonicalId>,
 }
 
-impl Default for DataCatalogueIdentity {
-    fn default() -> Self {
-        Self {
-            namespace: CanonicalId::new("default").expect("static namespace is valid"),
-            database: CanonicalId::new("default").expect("static database is valid"),
-        }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DataCategoryTargets {
+    Kinds,
+    Records,
+    KindsAndRecords,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DataTagCardinality {
+    Single,
+    Multiple,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DataTagSchema {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+}
+
+/// A governed vocabulary of tags.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DataCategorySchema {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    pub targets: DataCategoryTargets,
+    pub cardinality: DataTagCardinality,
+    #[serde(default)]
+    pub open: bool,
+    #[serde(default)]
+    pub tags: BTreeMap<CanonicalId, DataTagSchema>,
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(deny_unknown_fields)]
+pub struct DataTagReference {
+    pub category: CanonicalId,
+    pub tag: CanonicalId,
+}
+
+/// Domains, categories and memberships of one estate catalogue. A kind or
+/// collection without an entry belongs to `default`, or to `rrflow` when its
+/// identity starts with `rrflow-`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DataEstateOrganisation {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub domains: BTreeMap<CanonicalId, DataDomainSchema>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub categories: BTreeMap<CanonicalId, DataCategorySchema>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub kind_domains: BTreeMap<CanonicalId, CanonicalId>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub collection_domains: BTreeMap<CanonicalId, CanonicalId>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub kind_tags: BTreeMap<CanonicalId, BTreeSet<DataTagReference>>,
+}
+
+impl DataEstateOrganisation {
+    pub fn is_default(&self) -> bool {
+        self.domains.is_empty()
+            && self.categories.is_empty()
+            && self.kind_domains.is_empty()
+            && self.collection_domains.is_empty()
+            && self.kind_tags.is_empty()
+    }
+
+    /// The one domain a kind belongs to.
+    pub fn domain_of_kind<'a>(&'a self, kind: &'a CanonicalId) -> &'a str {
+        self.kind_domains
+            .get(kind)
+            .map_or_else(|| default_data_domain(kind.as_str()), CanonicalId::as_str)
+    }
+
+    /// The one domain a vector collection belongs to.
+    pub fn domain_of_collection<'a>(&'a self, collection: &'a CanonicalId) -> &'a str {
+        self.collection_domains.get(collection).map_or_else(
+            || default_data_domain(collection.as_str()),
+            CanonicalId::as_str,
+        )
     }
 }
 
-impl DataCatalogueIdentity {
-    fn is_default(&self) -> bool {
-        self == &Self::default()
+fn default_data_domain(identity: &str) -> &'static str {
+    if identity.starts_with(DATA_ENGINE_OWNED_PREFIX) {
+        DATA_ENGINE_DOMAIN
+    } else {
+        DATA_DEFAULT_DOMAIN
     }
 }
 
@@ -5927,8 +6045,8 @@ impl DataCatalogueIdentity {
 pub struct DataSchemaRegistry {
     pub revision: u64,
     pub migration: String,
-    #[serde(default, skip_serializing_if = "DataCatalogueIdentity::is_default")]
-    pub catalogue: DataCatalogueIdentity,
+    #[serde(default, skip_serializing_if = "DataEstateOrganisation::is_default")]
+    pub organisation: DataEstateOrganisation,
     pub tables: BTreeMap<CanonicalId, DataTableSchema>,
     #[serde(default)]
     pub records: BTreeMap<CanonicalId, DataRecordSchema>,
@@ -6441,6 +6559,207 @@ fn validate_data_schema(registry: &DataSchemaRegistry) -> Result<()> {
         {
             return invalid("relation schema requires endpoints and positive cardinality limits");
         }
+    }
+    validate_data_organisation(registry)
+}
+
+/// Public-boundary checks of the estate organisation. `rrd-core` repeats them
+/// as the authority at commit; an engine parity test keeps the two aligned.
+fn validate_data_organisation(registry: &DataSchemaRegistry) -> Result<()> {
+    let organisation = &registry.organisation;
+    let is_builtin = |domain: &str| domain == DATA_DEFAULT_DOMAIN || domain == DATA_ENGINE_DOMAIN;
+    let is_reserved =
+        |id: &str| id == DATA_ENGINE_DOMAIN || id.starts_with(DATA_ENGINE_OWNED_PREFIX);
+    if organisation.domains.len() + 2 > MAX_DATA_DOMAINS {
+        return invalid(format!(
+            "an estate may declare at most {} domains besides default and rrflow",
+            MAX_DATA_DOMAINS - 2
+        ));
+    }
+    for (id, domain) in &organisation.domains {
+        if is_builtin(id.as_str()) || is_reserved(id.as_str()) {
+            return invalid(format!(
+                "domain {} is built in or reserved for the engine and cannot be declared",
+                id.as_str()
+            ));
+        }
+        validate_data_label("domain", id, &domain.title, &domain.description)?;
+        if let Some(parent) = &domain.parent {
+            if parent.as_str() == DATA_ENGINE_DOMAIN {
+                return invalid(format!(
+                    "domain {} cannot be placed inside rrflow",
+                    id.as_str()
+                ));
+            }
+            if parent.as_str() != DATA_DEFAULT_DOMAIN && !organisation.domains.contains_key(parent)
+            {
+                return invalid(format!(
+                    "domain {} names unknown parent {}",
+                    id.as_str(),
+                    parent.as_str()
+                ));
+            }
+        }
+        let mut depth = 1;
+        let mut current = id;
+        while let Some(parent) = organisation.domains[current]
+            .parent
+            .as_ref()
+            .filter(|parent| parent.as_str() != DATA_DEFAULT_DOMAIN)
+        {
+            depth += 1;
+            if parent == id || depth > MAX_DATA_DOMAIN_DEPTH {
+                return invalid(format!(
+                    "domain {} is deeper than {MAX_DATA_DOMAIN_DEPTH} levels or part of a cycle",
+                    id.as_str()
+                ));
+            }
+            current = parent;
+        }
+    }
+    let memberships = organisation
+        .kind_domains
+        .iter()
+        .map(|entry| ("table type", entry))
+        .chain(
+            organisation
+                .collection_domains
+                .iter()
+                .map(|entry| ("vector collection", entry)),
+        );
+    for (subject, (identity, domain)) in memberships {
+        if subject == "table type" && !registry.tables.contains_key(identity) {
+            return invalid(format!(
+                "domain membership names unregistered table type {}",
+                identity.as_str()
+            ));
+        }
+        if identity.as_str().starts_with(DATA_ENGINE_OWNED_PREFIX) {
+            return invalid(format!(
+                "engine-owned {subject} {} always belongs to rrflow",
+                identity.as_str()
+            ));
+        }
+        if domain.as_str() == DATA_ENGINE_DOMAIN {
+            return invalid(format!(
+                "{subject} {} is not engine-owned and cannot be placed in rrflow",
+                identity.as_str()
+            ));
+        }
+        if domain.as_str() == DATA_DEFAULT_DOMAIN {
+            return invalid(format!(
+                "{subject} {} already belongs to default; omit the entry instead",
+                identity.as_str()
+            ));
+        }
+        if !organisation.domains.contains_key(domain) {
+            return invalid(format!(
+                "{subject} {} names unknown domain {}",
+                identity.as_str(),
+                domain.as_str()
+            ));
+        }
+    }
+    if organisation.categories.len() > MAX_DATA_CATEGORIES {
+        return invalid(format!(
+            "an estate may declare at most {MAX_DATA_CATEGORIES} categories"
+        ));
+    }
+    for (id, category) in &organisation.categories {
+        if is_reserved(id.as_str()) {
+            return invalid(format!(
+                "category {} is reserved for the engine",
+                id.as_str()
+            ));
+        }
+        validate_data_label("category", id, &category.title, &category.description)?;
+        if category.tags.len() > MAX_DATA_TAGS_PER_CATEGORY {
+            return invalid(format!(
+                "category {} may declare at most {MAX_DATA_TAGS_PER_CATEGORY} tags",
+                id.as_str()
+            ));
+        }
+        for (tag, schema) in &category.tags {
+            validate_data_label("tag", tag, &schema.title, &schema.description)?;
+        }
+    }
+    for (kind, tags) in &organisation.kind_tags {
+        if !registry.tables.contains_key(kind) {
+            return invalid(format!(
+                "kind tags name unregistered table type {}",
+                kind.as_str()
+            ));
+        }
+        if tags.is_empty() || tags.len() > MAX_DATA_TAGS_PER_KIND {
+            return invalid(format!(
+                "table type {} must carry 1 to {MAX_DATA_TAGS_PER_KIND} tags, or omit the entry",
+                kind.as_str()
+            ));
+        }
+        let mut single = BTreeSet::new();
+        for reference in tags {
+            let Some(category) = organisation.categories.get(&reference.category) else {
+                return invalid(format!(
+                    "table type {} uses unknown category {}",
+                    kind.as_str(),
+                    reference.category.as_str()
+                ));
+            };
+            if category.targets == DataCategoryTargets::Records {
+                return invalid(format!(
+                    "category {} does not tag table types",
+                    reference.category.as_str()
+                ));
+            }
+            if !category.tags.contains_key(&reference.tag) {
+                return invalid(format!(
+                    "table type {} uses unknown tag {}:{}",
+                    kind.as_str(),
+                    reference.category.as_str(),
+                    reference.tag.as_str()
+                ));
+            }
+            if category.cardinality == DataTagCardinality::Single
+                && !single.insert(&reference.category)
+            {
+                return invalid(format!(
+                    "table type {} carries more than one tag of single-tag category {}",
+                    kind.as_str(),
+                    reference.category.as_str()
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_data_label(
+    subject: &str,
+    id: &CanonicalId,
+    title: &str,
+    description: &str,
+) -> Result<()> {
+    if title.trim().is_empty() || title.len() > MAX_DATA_ORGANISATION_TITLE_BYTES {
+        return invalid(format!(
+            "{subject} {} needs a title of 1 to {MAX_DATA_ORGANISATION_TITLE_BYTES} bytes",
+            id.as_str()
+        ));
+    }
+    if description.len() > MAX_DATA_ORGANISATION_DESCRIPTION_BYTES {
+        return invalid(format!(
+            "{subject} {} description exceeds {MAX_DATA_ORGANISATION_DESCRIPTION_BYTES} bytes",
+            id.as_str()
+        ));
+    }
+    if title
+        .chars()
+        .chain(description.chars())
+        .any(char::is_control)
+    {
+        return invalid(format!(
+            "{subject} {} title and description cannot contain control characters",
+            id.as_str()
+        ));
     }
     Ok(())
 }
