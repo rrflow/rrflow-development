@@ -86,6 +86,14 @@ jobs:
         run: python3 scripts/ci/run_filesystem_containment.py
       - name: Test the real install, serve, authenticate, stop, reopen lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+      - name: Build and exercise the standalone rrflowDB example
+        shell: bash
+        run: |
+          cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+          suffix=""
+          python_command=python3
+          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi
+          "$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"
       - name: Test bounded native lifecycle capture
         run: cargo test -p rrflow-cli --test lifecycle_process --locked
       - name: Require native foreign-owner denial
@@ -134,6 +142,8 @@ jobs:
         run: cargo test -p rrd-server --bin rrd-server --locked
       - name: Test native secret file permissions and handle identity
         run: cargo test -p rrd-engine --lib engine::token_key --locked
+      - name: Test SDK harness native manifest privacy
+        run: python -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
       - name: Test native filesystem containment and publication
         run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
@@ -200,6 +210,14 @@ jobs:
           retention-days: 14
       - name: Test native installed primary lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+      - name: Build and exercise the standalone rrflowDB example
+        shell: bash
+        run: |
+          cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+          suffix=""
+          python_command=python3
+          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi
+          "$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"
       - name: Deny installed lifecycle test warnings
         run: cargo clippy -p rrflow-cli --test installed_lifecycle --test lifecycle_process --locked -- -D warnings
       - name: Build cross-package controller fixture
@@ -242,6 +260,7 @@ jobs:
         run: |
           python3 scripts/ci/test_candidate_admission.py
           python3 scripts/ci/test_native_sample_policy.py
+          python3 scripts/ci/test_rrflowdb_standalone.py
           python3 scripts/ci/check_workflow.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
@@ -419,6 +438,8 @@ jobs:
           printf '%s  %s\n' "$MAVEN_SHA512" "$archive" | sha512sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP"
           printf '%s\n' "$maven_root/bin" >> "$GITHUB_PATH"
+      - name: Test SDK harness native manifest privacy
+        run: python3 -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
       - name: Qualify all supported SDKs against one live corpus
         run: python3 scripts/ci/run_sdk_conformance.py
 
