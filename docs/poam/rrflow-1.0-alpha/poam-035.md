@@ -24,6 +24,14 @@ platforms, helper image identity, frozen-profile overhead or the 24-hour soak.
 The original delayed-sample cause remains unproven; this candidate does not
 close C-07 or POAM-035.
 
+The [Windows image-pin candidate](../../evidence/change-journals/gate-c/c-07g-windows-harness-image-pin.md)
+reproduced a running copied harness pathname being renamed and holds its
+qualification image and non-reparse ancestors across the owned Job. On the
+tested host, a hard link could still be added and a same-file rename could
+succeed; replacing the pinned path with different bytes was denied. This does
+not establish binary provenance before the pin, uncontained launch identity,
+bounded native cleanup, hosted CI or the frozen capacity/soak evidence.
+
 The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 retains a macOS installed-domain-crash failure from run 40730847766: native
 `hdiutil create` returned `Resource busy` while preparing a capacity image.

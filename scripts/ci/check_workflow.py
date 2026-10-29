@@ -119,7 +119,11 @@ def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
     required = (
         "        if: runner.os == 'Windows'\n"
         "        timeout-minutes: 5\n"
-        "        run: python scripts/ci/test_native_sample_worker.py --profile release\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          python scripts/ci/test_windows_harness_image.py --profile release\n"
+        "          python scripts/ci/test_native_sample_worker.py --profile release\n"
     )
     require(block == required, "native sampler CI step must retain its exact condition, timeout and command")
     marker = "      - name: Verify Linux native sampler running image\n"

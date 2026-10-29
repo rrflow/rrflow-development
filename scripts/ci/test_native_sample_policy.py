@@ -13,7 +13,11 @@ class NativeSamplePolicyTests(unittest.TestCase):
             "      - name: Verify owned Windows native sampler lifecycle\n"
             "        if: runner.os == 'Windows'\n"
             "        timeout-minutes: 5\n"
-            "        run: python scripts/ci/test_native_sample_worker.py --profile release\n"
+            "        shell: bash\n"
+            "        run: |\n"
+            "          set -euo pipefail\n"
+            "          python scripts/ci/test_windows_harness_image.py --profile release\n"
+            "          python scripts/ci/test_native_sample_worker.py --profile release\n"
         )
         self.assertEqual(self.reopen.count(self.step), 1)
         self.linux_step = (
@@ -38,6 +42,8 @@ class NativeSamplePolicyTests(unittest.TestCase):
             self.step.replace("runner.os == 'Windows'", "false"),
             self.step.replace("--profile release", "--profile debug"),
             self.step.replace("timeout-minutes: 5", "timeout-minutes: 0"),
+            self.step.replace("          set -euo pipefail\n", ""),
+            self.step.replace("          python scripts/ci/test_windows_harness_image.py --profile release\n", ""),
             self.step + "        continue-on-error: true\n",
         ):
             with self.subTest(changed=changed):

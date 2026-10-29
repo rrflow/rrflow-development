@@ -554,7 +554,11 @@ jobs:
       - name: Verify owned Windows native sampler lifecycle
         if: runner.os == 'Windows'
         timeout-minutes: 5
-        run: python scripts/ci/test_native_sample_worker.py --profile release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/test_windows_harness_image.py --profile release
+          python scripts/ci/test_native_sample_worker.py --profile release
       - name: Verify Linux native sampler running image
         if: runner.os == 'Linux'
         timeout-minutes: 5

@@ -20,7 +20,7 @@ import time
 
 from owned_windows_process import run_owned
 from run_offline_lifecycle import require, run
-from run_sustained_capacity import proof
+from run_sustained_capacity import windows_allocation_proof
 from windows_offline import P, U32, api, boolean, close, kernel
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -50,12 +50,11 @@ def artifact(profile: str, offline: bool) -> Path:
     return harness
 
 
-def allocation(harness: Path):
+def allocation():
     cpus = os.cpu_count()
     require(isinstance(cpus, int) and 0 < cpus <= 65536, "host CPU count unavailable")
     limits = {"engine_bytes": ENGINE_BYTES, "host_bytes": HOST_BYTES, "vcpus": cpus}
-    receipt, _ = proof("windows_job", limits, harness)
-    return receipt, "Local\\RRFlowCapacity-" + receipt["nonce"]
+    return limits
 
 
 def launch_args(harness: Path, case: str) -> list[str]:
@@ -67,8 +66,8 @@ def owned(args, env, job_name):
                      process_memory_bytes=ENGINE_BYTES, job_memory_bytes=ENGINE_BYTES)
 
 
-def membership(harness: Path) -> None:
-    receipt, name = allocation(harness)
+def membership(harness: Path, receipt: dict) -> None:
+    name = "Local\\RRFlowCapacity-" + receipt["nonce"]
     env = dict(os.environ)
     env["RRFLOW_SUSTAINED_ALLOCATION_RECEIPT"] = json.dumps(receipt, separators=(",", ":"))
     result = owned(launch_args(harness, MEMBERSHIP), env, name)
@@ -77,12 +76,12 @@ def membership(harness: Path) -> None:
     print("native_sample_job=" + json.dumps({"status": "passed", "receipt": receipt}), flush=True)
 
 
-def abrupt_parent(harness: Path) -> None:
+def abrupt_parent(harness: Path, receipt: dict) -> None:
     base = Path(os.environ.get("RUNNER_TEMP") or tempfile.gettempdir()).resolve(strict=True)
     fixture = Path(tempfile.mkdtemp(prefix="rrflow-native-parent-", dir=base)).resolve(strict=True)
     require(fixture.parent == base and fixture.name.startswith("rrflow-native-parent-"),
             "native interruption fixture escaped its parent")
-    receipt, name = allocation(harness)
+    name = "Local\\RRFlowCapacity-" + receipt["nonce"]
     env = dict(os.environ)
     env["RRFLOW_NATIVE_ABORT_FIXTURE"] = str(fixture)
     state: dict = {}
@@ -176,8 +175,11 @@ def main():
     args = parser.parse_args()
     require(sys.platform == "win32", "Windows Job Object host required")
     harness = artifact(args.profile, args.offline)
-    membership(harness)
-    abrupt_parent(harness)
+    limits = allocation()
+    with windows_allocation_proof(limits, harness) as (receipt, _):
+        membership(harness, receipt)
+    with windows_allocation_proof(limits, harness) as (receipt, _):
+        abrupt_parent(harness, receipt)
 
 
 if __name__ == "__main__":
