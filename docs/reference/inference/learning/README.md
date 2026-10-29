@@ -10,6 +10,7 @@ second engine, roadmap, configuration store, or default runtime dependency.
 The [LFG/SWAG contract](../lfg-swag.md) owns deployed controller behavior.
 
 <!-- rrflow:generated-index:start -->
+- [Bounded local controller observations](capture-observations.md) — [`rrflow://rrflow-instance/data/reference/inference/learning/capture-observations`](rrflow://rrflow-instance/data/reference/inference/learning/capture-observations) — active offline collection contract; no engine or training authority
 - [SWAG training and RROFLOW improvement](controller-training.md) — [`rrflow://rrflow-instance/data/reference/inference/learning/controller-training`](rrflow://rrflow-instance/data/reference/inference/learning/controller-training) — active target contract; training, evaluation harness and governed promotion are unimplemented
 - [Offline paired-outcome review](outcome-review.md) — [`rrflow://rrflow-instance/data/reference/inference/learning/outcome-review`](rrflow://rrflow-instance/data/reference/inference/learning/outcome-review) — active offline preparation tool; independent review and engine admission remain separate
 - [Spark preparation for SWAG experiments](spark.md) — [`rrflow://rrflow-instance/data/reference/inference/learning/spark`](rrflow://rrflow-instance/data/reference/inference/learning/spark) — active preparation guide; hardware unverified and no training run recorded

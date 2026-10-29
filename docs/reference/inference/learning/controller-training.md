@@ -71,6 +71,11 @@ byte-bound review packets from explicit exports. It preserves uncertainty and
 failed outcomes; producing a packet does not approve labels, admit training,
 or implement the engine improvement routine.
 
+The [bounded local observation collector](capture-observations.md) records
+tracked-file and explicit task/override changes with source identities. Its
+unreviewed JSONL output grants no consent or training admission and is not an
+engine routine or an implicit paired-outcome dataset.
+
 ## Experiments and release
 
 An experiment binds dataset/split digests, base model, tokenizer, prompt
