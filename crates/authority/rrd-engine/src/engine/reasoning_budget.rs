@@ -122,12 +122,33 @@ pub(super) struct AttemptAuthorityGuard {
     pub expected: Vec<u8>,
 }
 
+/// Effect-specific admission state committed with the existing attempt ledger.
+/// Only engine composition supplies these keys; callers cannot inject writes.
+pub(super) struct AttemptControlWrite {
+    pub key: String,
+    pub expected: Option<Vec<u8>>,
+    pub replacement: Vec<u8>,
+}
+
+#[derive(Default)]
+pub(super) struct TaskCompletionAdmission {
+    pub guards: Vec<AttemptAuthorityGuard>,
+    pub writes: Vec<AttemptControlWrite>,
+    pub invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
+}
+
 pub(super) struct Reservation {
     budget: TaskReasoningBudget,
     attempt: AttemptRecord,
     read: ReadStamp,
     control: EmbeddingExecutionControl,
     started: Instant,
+}
+
+impl Reservation {
+    pub(super) fn execution_control(&self) -> &EmbeddingExecutionControl {
+        &self.control
+    }
 }
 
 impl RrdEngine {
@@ -268,6 +289,26 @@ impl RrdEngine {
         clock: &dyn ClockSource,
         context: &EngineControlContext<'_>,
     ) -> Result<Reservation> {
+        self.reserve_controlled_task_attempt(
+            input,
+            repetition_identity,
+            &TaskCompletionAdmission::default(),
+            clock,
+            context,
+        )
+    }
+
+    pub(super) fn reserve_controlled_task_attempt(
+        &self,
+        input: &TaskAttemptAdmission<'_>,
+        repetition_identity: impl FnOnce() -> Result<String>,
+        admission: &TaskCompletionAdmission,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<Reservation> {
+        if let Some(reason) = admission.invalidation {
+            return Err(ServiceError::TaskAttemptInvalidated(reason));
+        }
         let started = input.started;
         validate_attempt_digest(input.request_sha256)?;
         let at = observe_required(clock, "reasoning-reserve")?.observed_at_unix_ms;
@@ -378,7 +419,14 @@ impl RrdEngine {
             endpoint_proposal: None,
             invalidation: None,
         };
-        self.commit_budget(&read, expected, &budget, Some((None, &attempt)), context)?;
+        self.commit_budget_controlled(
+            &read,
+            expected,
+            &budget,
+            Some((None, &attempt)),
+            admission,
+            context,
+        )?;
         Ok(Reservation {
             budget,
             attempt,
@@ -412,8 +460,35 @@ impl RrdEngine {
     pub(super) fn finish_admitted_task_attempt(
         &self,
         reservation: Reservation,
-        mut result: Result<TaskAttemptOutput>,
+        result: Result<TaskAttemptOutput>,
         mut admit_completion: impl FnMut(&ReadStamp) -> Result<Vec<AttemptAuthorityGuard>>,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<TaskAttemptOutput> {
+        self.finish_controlled_task_attempt(
+            reservation,
+            result,
+            |read| match admit_completion(read) {
+                Ok(guards) => Ok(TaskCompletionAdmission {
+                    guards,
+                    ..Default::default()
+                }),
+                Err(ServiceError::TaskAttemptInvalidated(reason)) => Ok(TaskCompletionAdmission {
+                    invalidation: Some(reason),
+                    ..Default::default()
+                }),
+                Err(error) => Err(error),
+            },
+            clock,
+            context,
+        )
+    }
+
+    pub(super) fn finish_controlled_task_attempt(
+        &self,
+        reservation: Reservation,
+        mut result: Result<TaskAttemptOutput>,
+        mut admit_completion: impl FnMut(&ReadStamp) -> Result<TaskCompletionAdmission>,
         clock: &dyn ClockSource,
         context: &EngineControlContext<'_>,
     ) -> Result<TaskAttemptOutput> {
@@ -446,17 +521,14 @@ impl RrdEngine {
             }
             let scope = self.query_scope(&budget.scope)?;
             let read = self.storage.runtime().read_stamp(&scope)?;
-            let guards = if result.is_ok() {
-                match admit_completion(&read) {
-                    Ok(guards) => guards,
-                    Err(error) => {
-                        result = Err(error);
-                        Vec::new()
-                    }
+            // Cleanup also runs for known failures. If admission cannot be read,
+            // leave the reservation unresolved rather than releasing capacity.
+            let admission = admit_completion(&read)?;
+            if result.is_ok() {
+                if let Some(reason) = admission.invalidation {
+                    result = Err(ServiceError::TaskAttemptInvalidated(reason));
                 }
-            } else {
-                Vec::new()
-            };
+            }
             // Reobserve after admission and on every conflict retry. A slow
             // freshness check cannot extend the original deadline/effort.
             let at = observe_required(clock, "reasoning-complete")?.observed_at_unix_ms;
@@ -533,12 +605,12 @@ impl RrdEngine {
                 Ok(TaskAttemptOutput::EndpointProposal(output)) => Some((**output).clone()),
                 _ => None,
             };
-            match self.commit_budget_guarded(
+            match self.commit_budget_controlled(
                 &read,
                 expected_budget,
                 &budget,
                 Some((expected_attempt.clone(), &attempt)),
-                &guards,
+                &admission,
                 context,
             ) {
                 Err(ServiceError::StorageConflict(_)) if index < 2 => continue,
@@ -570,10 +642,10 @@ fn validate_attempt_digest(value: &str) -> Result<()> {
     Ok(())
 }
 
-struct ActiveTaskCancellation<'a> {
-    engine: &'a RrdEngine,
-    key: String,
-    attempt_id: CorrelationId,
+pub(super) struct ActiveTaskCancellation<'a> {
+    pub engine: &'a RrdEngine,
+    pub key: String,
+    pub attempt_id: CorrelationId,
 }
 impl Drop for ActiveTaskCancellation<'_> {
     fn drop(&mut self) {

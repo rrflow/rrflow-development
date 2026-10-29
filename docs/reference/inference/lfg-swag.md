@@ -652,6 +652,41 @@ evidence. Secrets and raw prompts are excluded from cache logs and metric
 labels. Provider caches can remain opaque: report unsupported or unknown
 instead of manufacturing cache hits or cross-provider portability.
 
+## Experimental task endpoint proposal
+
+The draft implementation exposes `POST /v1/tasks/endpoint/propose` only through
+the authenticated engine handler. It requires initialized security authority and
+`EndpointPropose`, `TaskRead` and `ReasoningWrite`. Requests carry task/attempt
+identities and expected task/configuration digests. The existing offline
+`endpoint_selection proposal-request TASK CONFIGURATION ATTEMPT_ID` example uses
+the owning Rust contract to derive those digests from actual readback files.
+
+An installed selection policy supplies the prompt, candidates, generation bounds,
+aggregate concurrency and explicit `experimental_proposal`, network and unverified
+identity permissions. Task text is the packet's context; repository dependency
+capture and worker execution are separate capabilities. A reported service alias
+does not attest loaded weights or qualify a candidate's capabilities.
+
+`rrflow serve --endpoint-credentials PATH` accepts a bounded JSON mapping with
+`format_version: 1` and `entries`, each containing a configured `reference`
+(`provider`, `name`) and an `environment_variable`. Supply secrets through those
+explicit process environment names. The mapping contains references, not secret
+values. Startup resolves an immutable private map; the admitted engine call looks
+up only its configured reference. Missing credentials deny before reservation.
+Neither mappings nor secret values enter prompts, public configuration or receipts.
+
+Capacity admission is committed with the task budget and attempt. Known completed
+or denied calls release their entry at completion; uncertain remote work retains
+capacity across reopen. There is no automatic retry or uncertainty reconciliation.
+Read `task-attempt-read` to recover a receipt without calling the provider again.
+Changed authority/configuration/task inputs invalidate accepted-output publication
+while retaining consumed effort. Ordinary repository-edit successor plans are not
+implemented by this task-text operation.
+
+The [admission implementation record](../../evidence/change-journals/gate-g/controller-task-proposal-admission.md)
+separates local checks from required installed BF16 and candidate/merge-group proof.
+This experimental operation closes no Gate G or model-quality requirement.
+
 ## Acceptance and signals
 
 G-01/G-03 must prove analysis-disabled, inconclusive, malformed, oversized,

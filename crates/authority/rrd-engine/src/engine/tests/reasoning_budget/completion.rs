@@ -2,8 +2,10 @@
 //! tuple projects retained provider bytes onto a fresh task solely to test the
 //! ledger; it is not evidence of a provider call for that packet, nor learning data.
 use super::*;
+use crate::engine::endpoint_proposal::capacity::CapacityLease;
 use crate::engine::reasoning_budget::{
     AttemptAuthorityGuard, Reservation, TaskAttemptAdmission, TaskAttemptOutput,
+    TaskCompletionAdmission,
 };
 use crate::engine::{operation_digest, Result};
 use rrd_contract::{ReadTaskAttempt, TaskAttemptInvalidation, TaskAttemptStatus};
@@ -346,5 +348,287 @@ fn uncertain_failure_and_cancellation_never_retain_successful_output() {
                 ReasoningBudgetStop::AttemptFailed
             })
         );
+    }
+}
+
+#[test]
+fn capacity_and_task_reservation_commit_together_and_survive_uncertain_failure() {
+    // Fault classification is injected into the real ledger, never represented
+    // as a newly observed provider failure or exported for learning.
+    for uncertain in [false, true] {
+        let (root, engine, lease, _, request, packet, _) = proposal::tuple_fixture();
+        let capacity = CapacityLease {
+            request: request.clone(),
+            controller_binding_id: packet.controller_binding_id,
+        };
+        let cancellation = EmbeddingCancellation::default();
+        let admission = TaskCompletionAdmission {
+            writes: vec![engine
+                .endpoint_capacity_transition(&capacity, Some((1, 1)))
+                .unwrap()],
+            ..Default::default()
+        };
+        let key = admission.writes[0].key.clone();
+        assert!(engine.storage.control().get(&key).unwrap().is_none());
+        let reservation = engine
+            .reserve_controlled_task_attempt(
+                &TaskAttemptAdmission {
+                    started: Instant::now(),
+                    scope: &request.scope,
+                    task_id: &request.task_id,
+                    attempt_id: &request.attempt_id,
+                    request_sha256: &operation_digest(&request).unwrap(),
+                    cancellation: &cancellation,
+                },
+                || panic!("no adapter resolution"),
+                &admission,
+                &FixedClock::at(1_000),
+                &context(&lease),
+            )
+            .unwrap();
+        assert_eq!(
+            engine.storage.control().get(&key).unwrap(),
+            Some(admission.writes[0].replacement.clone())
+        );
+        let mut other = capacity.clone();
+        other.request.attempt_id = id("capacity-other-attempt");
+        assert!(matches!(
+            engine.endpoint_capacity_transition(&other, Some((1, 1))),
+            Err(ServiceError::InferenceBusy)
+        ));
+        let mut cleanup_calls = 0;
+        assert!(engine
+            .finish_controlled_task_attempt(
+                reservation,
+                Err(ServiceError::EndpointCallFailed {
+                    reason: "controlled completion classification",
+                    execution_may_continue: uncertain
+                }),
+                |_| {
+                    cleanup_calls += 1;
+                    Ok(TaskCompletionAdmission {
+                        writes: if uncertain {
+                            Vec::new()
+                        } else {
+                            vec![engine.endpoint_capacity_transition(&capacity, None)?]
+                        },
+                        // An authority change cannot erase remote uncertainty.
+                        invalidation: Some(TaskAttemptInvalidation::AuthorizationChanged),
+                        ..Default::default()
+                    })
+                },
+                &FixedClock::at(1_100),
+                &context(&lease),
+            )
+            .is_err());
+        assert_eq!(cleanup_calls, 1);
+        assert_eq!(
+            state(&engine, &lease, &request.task_id).execution_may_continue,
+            uncertain
+        );
+        let before = engine.storage.control().get(&key).unwrap();
+        drop(engine);
+        let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
+        configure(&mut engine, 3);
+        assert_eq!(engine.storage.control().get(&key).unwrap(), before);
+        if uncertain {
+            assert!(matches!(
+                engine.endpoint_capacity_transition(&other, Some((1, 1))),
+                Err(ServiceError::InferenceBusy)
+            ));
+        } else {
+            assert!(engine
+                .endpoint_capacity_transition(&other, Some((1, 1)))
+                .is_ok());
+        }
+    }
+}
+
+#[test]
+fn competing_capacity_snapshot_cannot_publish_a_task_reservation() {
+    let (_root, engine, lease, _, request, packet, proposal) = proposal::tuple_fixture();
+    let capacity = CapacityLease {
+        request: request.clone(),
+        controller_binding_id: packet.controller_binding_id,
+    };
+    let stale = TaskCompletionAdmission {
+        writes: vec![engine
+            .endpoint_capacity_transition(&capacity, Some((1, 1)))
+            .unwrap()],
+        ..Default::default()
+    };
+    let cancellation = EmbeddingCancellation::default();
+    let first = engine
+        .reserve_controlled_task_attempt(
+            &TaskAttemptAdmission {
+                started: Instant::now(),
+                scope: &request.scope,
+                task_id: &request.task_id,
+                attempt_id: &request.attempt_id,
+                request_sha256: &operation_digest(&request).unwrap(),
+                cancellation: &cancellation,
+            },
+            || panic!("no adapter resolution"),
+            &stale,
+            &FixedClock::at(1_000),
+            &context(&lease),
+        )
+        .unwrap();
+    engine
+        .finish_controlled_task_attempt(
+            first,
+            Ok(proposal.into()),
+            |_| {
+                Ok(TaskCompletionAdmission {
+                    writes: vec![engine.endpoint_capacity_transition(&capacity, None)?],
+                    ..Default::default()
+                })
+            },
+            &FixedClock::at(1_100),
+            &context(&lease),
+        )
+        .unwrap();
+    let before = state(&engine, &lease, &request.task_id);
+    let second_id = id("stale-capacity-attempt");
+    assert!(matches!(
+        engine.reserve_controlled_task_attempt(
+            &TaskAttemptAdmission {
+                started: Instant::now(),
+                scope: &request.scope,
+                task_id: &request.task_id,
+                attempt_id: &second_id,
+                request_sha256: &operation_digest(&request).unwrap(),
+                cancellation: &cancellation,
+            },
+            || panic!("no adapter resolution"),
+            &stale,
+            &FixedClock::at(1_200),
+            &context(&lease),
+        ),
+        Err(ServiceError::StorageConflict(_))
+    ));
+    assert_eq!(state(&engine, &lease, &request.task_id), before);
+}
+
+#[test]
+fn public_proposal_requires_initialized_authority_before_any_reservation() {
+    let (_root, engine, lease, _, request, packet, _) = proposal::tuple_fixture();
+    assert!(matches!(
+        engine.propose_task_endpoint_with_clock(
+            &lease.session_id,
+            &lease.token,
+            &request,
+            "proposal-denied",
+            "proposal-denied",
+            &FixedClock::at(1_000),
+        ),
+        Err(ServiceError::PermissionDenied)
+    ));
+    assert!(engine
+        .inspect_task_reasoning_budget(
+            &lease.session_id,
+            &lease.token,
+            &request.scope,
+            &request.task_id,
+            1_001,
+            "inspect",
+            "inspect"
+        )
+        .unwrap()
+        .is_none());
+    let capacity = CapacityLease {
+        request,
+        controller_binding_id: packet.controller_binding_id,
+    };
+    assert!(engine
+        .endpoint_capacity_transition(&capacity, Some((1, 1)))
+        .unwrap()
+        .expected
+        .is_none());
+}
+
+#[test]
+fn each_required_proposal_permission_is_enforced_before_configuration_or_capacity() {
+    // These are real authorization denials in isolated estates. No transport or
+    // fabricated model answer is involved. The secret is an engine-issued token.
+    let required = [
+        SecurityAction::EndpointPropose,
+        SecurityAction::TaskRead,
+        SecurityAction::ReasoningWrite,
+    ];
+    for denied in required {
+        let (_root, engine, lease, _, request, packet, _) = proposal::tuple_fixture();
+        let principal_id = engine.instance.clone();
+        let principal = rrd_security::Principal {
+            id: principal_id.clone(),
+            kind: rrd_security::PrincipalKind::Service,
+            credential_sha256: digest::sha256_hex(lease.token.as_str().as_bytes()),
+            credential_revision: 1,
+            not_before_unix_ms: 1,
+            expires_at_unix_ms: u64::MAX,
+            disabled: false,
+            role_ids: Default::default(),
+            grants: std::iter::once(SecurityAction::SessionCreate)
+                .chain(required.into_iter().filter(|action| *action != denied))
+                .map(|action| rrd_security::ResourceGrant {
+                    action,
+                    resource_prefix: engine.instance_resource(),
+                    data_policy: None,
+                })
+                .collect(),
+        };
+        rrd_security::SecurityRepository::new(&engine.storage, engine.instance.clone())
+            .initialize(
+                rrd_security::SecurityState {
+                    format_version: rrd_security::SECURITY_FORMAT,
+                    revision: 1,
+                    principals: [(principal_id.clone(), principal)].into_iter().collect(),
+                    roles: Default::default(),
+                    identity_bindings: Default::default(),
+                    jwt_issuers: Default::default(),
+                },
+                50,
+                "proposal-permission-test",
+                "initialize",
+                "initialize",
+            )
+            .unwrap();
+        let authenticated = engine
+            .create_authenticated_session(
+                &principal_id,
+                lease.token.as_str().as_bytes(),
+                &session_request(9_000, 4),
+                &id("permission-proposal-session"),
+                100,
+                "session",
+                "session",
+            )
+            .unwrap();
+        assert!(matches!(
+            engine.propose_task_endpoint_with_clock(
+                &authenticated.session_id,
+                &authenticated.token,
+                &request,
+                "permission-proposal",
+                "permission-proposal",
+                &FixedClock::at(1_000),
+            ),
+            Err(ServiceError::PermissionDenied)
+        ));
+        assert!(engine
+            .storage
+            .control()
+            .get(&engine.budget_key(&request.scope, &request.task_id))
+            .unwrap()
+            .is_none());
+        let capacity = CapacityLease {
+            request,
+            controller_binding_id: packet.controller_binding_id,
+        };
+        assert!(engine
+            .endpoint_capacity_transition(&capacity, Some((1, 1)))
+            .unwrap()
+            .expected
+            .is_none());
     }
 }

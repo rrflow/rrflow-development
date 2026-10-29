@@ -35,6 +35,10 @@ fn configured() -> EndpointConfiguration {
         .unwrap();
     profile.selection_policy = Some(EndpointSelectionPolicy {
         contract_version: allowance.contract_version,
+        purpose: rrd_contract::EndpointSelectionPurpose::ExperimentalProposal,
+        allow_unverified_identity: true,
+        allow_network: true,
+        maximum_concurrent_proposals: controller.limits.max_concurrency,
         controller_binding_id: controller.id.clone(),
         workload_class: allowance.workload_class,
         limits: allowance.limits,

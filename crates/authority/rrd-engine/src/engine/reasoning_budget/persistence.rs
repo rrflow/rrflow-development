@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 const EVENT_KIND: &str = "rrflow-reasoning-budget-event";
 
 impl RrdEngine {
-    pub(super) fn budget_key(&self, scope: &str, task: &CanonicalId) -> String {
+    pub(in crate::engine) fn budget_key(&self, scope: &str, task: &CanonicalId) -> String {
         // Typed identities are encoded before hashing; no delimiter ambiguity
         // or caller-controlled control-key suffix is accepted.
         let identity = serde_json::to_vec(&(self.instance.as_str(), scope, task.as_str()))
@@ -82,16 +82,23 @@ impl RrdEngine {
         attempt: Option<(Option<Vec<u8>>, &AttemptRecord)>,
         context: &EngineControlContext<'_>,
     ) -> Result<()> {
-        self.commit_budget_guarded(read, expected, state, attempt, &[], context)
+        self.commit_budget_controlled(
+            read,
+            expected,
+            state,
+            attempt,
+            &TaskCompletionAdmission::default(),
+            context,
+        )
     }
 
-    pub(super) fn commit_budget_guarded(
+    pub(super) fn commit_budget_controlled(
         &self,
         read: &ReadStamp,
         expected: Option<Vec<u8>>,
         state: &TaskReasoningBudget,
         attempt: Option<(Option<Vec<u8>>, &AttemptRecord)>,
-        guards: &[AttemptAuthorityGuard],
+        admission: &TaskCompletionAdmission,
         context: &EngineControlContext<'_>,
     ) -> Result<()> {
         let current = self.storage.runtime().schema(&read.scope)?;
@@ -190,11 +197,18 @@ impl RrdEngine {
         // the audit records these guards as part of this completion transaction.
         // The store rejects duplicate keys, so a guard cannot replace the budget
         // or attempt transition with a caller-selected value.
-        for guard in guards {
+        for guard in &admission.guards {
             transitions.push(transition(
                 guard.key.clone(),
                 Some(guard.expected.clone()),
                 guard.expected.clone(),
+            ));
+        }
+        for write in &admission.writes {
+            transitions.push(transition(
+                write.key.clone(),
+                write.expected.clone(),
+                write.replacement.clone(),
             ));
         }
         mutations.push(RuntimeMutation::Event {

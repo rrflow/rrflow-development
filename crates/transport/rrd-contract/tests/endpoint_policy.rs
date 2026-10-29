@@ -31,6 +31,10 @@ fn proposed() -> (EndpointConfiguration, EndpointSelectionPolicy) {
         .unwrap();
     let policy = EndpointSelectionPolicy {
         contract_version: allowance.contract_version,
+        purpose: rrd_contract::EndpointSelectionPurpose::ExperimentalProposal,
+        allow_unverified_identity: true,
+        allow_network: true,
+        maximum_concurrent_proposals: controller.limits.max_concurrency,
         controller_binding_id: controller.id.clone(),
         workload_class: allowance.workload_class,
         limits: allowance.limits,
@@ -109,6 +113,11 @@ fn unknown_bindings_mismatched_facts_and_invalid_bounds_are_rejected() {
     let mut changed = policy.clone();
     changed.maximum_output_tokens = 0;
     assert!(changed.validate_for(bindings).is_err());
+    for limit in [0, u32::MAX] {
+        let mut changed = policy.clone();
+        changed.maximum_concurrent_proposals = limit;
+        assert!(changed.validate_for(bindings).is_err());
+    }
     let mut changed = policy.clone();
     changed.temperature_milli = u16::MAX;
     assert!(changed.validate_for(bindings).is_err());

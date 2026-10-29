@@ -121,7 +121,8 @@ impl EndpointSelectionPacket {
             .selection_policy
             .as_ref()
             .ok_or_else(|| crate::ContractError("endpoint selector policy is absent".into()))?;
-        if self.controller_binding_id != policy.controller_binding_id
+        if self.purpose != policy.purpose
+            || self.controller_binding_id != policy.controller_binding_id
             || self.allowance != policy.allowance(configuration)?
         {
             return invalid("selection packet differs from the configured policy");

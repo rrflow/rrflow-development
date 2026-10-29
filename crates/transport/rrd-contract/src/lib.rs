@@ -255,7 +255,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "af8488aa64d477c1b2d6f7c705c5ce131a7b3b15e3f4d04755621dccc6cd2526";
+    "53e10f4dd635a203e6966ad8bd81be71d6e365277c089126ca67d8f6cc8e4e9f";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3043,6 +3043,7 @@ pub enum SecurityAction {
     MemoryContextRead,
     ReasoningRead,
     ReasoningWrite,
+    EndpointPropose,
     KnowledgeTreeRead,
     KnowledgeTreeWrite,
 }
@@ -3050,7 +3051,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 53] = [
+    pub const ALL: [Self; 54] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3102,6 +3103,7 @@ impl SecurityAction {
         Self::MemoryContextRead,
         Self::ReasoningRead,
         Self::ReasoningWrite,
+        Self::EndpointPropose,
         Self::KnowledgeTreeRead,
         Self::KnowledgeTreeWrite,
     ];
@@ -3999,6 +4001,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskAttemptView",
         ),
         endpoint(
+            "task-endpoint-propose",
+            HttpMethod::Post,
+            "/v1/tasks/endpoint/propose",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "EndpointSelectionRequest",
+            "EndpointSelectionProposal",
+        ),
+        endpoint(
             "task-close",
             HttpMethod::Post,
             "/v1/tasks/close",
@@ -4494,6 +4506,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ActivateBuiltinEmbedding" => schema_json::<RequestEnvelope<ActivateBuiltinEmbedding>>(),
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
+        "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
@@ -4570,6 +4583,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),
