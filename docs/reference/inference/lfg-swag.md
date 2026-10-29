@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration types exist, LFG and SWAG execution are unimplemented
+**Status:** active target contract; configuration, choice validation and optional chat transport exist; engine-admitted LFG/SWAG execution is unimplemented
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -71,6 +71,79 @@ types. A separate admitted external activity executes a selected provider.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
+
+### Executable validation prerequisite
+
+`rrd-contract` now exports `EndpointSelectionAllowance`,
+`EndpointSelectionCandidate`, `EndpointEffortSupport`, explicit
+`EndpointSelectionLimits` and `EndpointSelectionChoice`. The allowance binds
+the complete current `EndpointConfiguration` digest, workload class, configured
+binding/service/manifest identities and declared supported effort values.
+Choices contain only a binding and optional effort, or an explicit abstention.
+Unknown effort support cannot silently become permission to omit effort.
+
+`EndpointSelectionChoice::decode` bounds raw bytes and rejects malformed or
+unknown fields, foreign bindings, changed configuration, unsupported effort and
+contradictory no-candidate abstention. Supplied capability evidence digests are
+identifiers, not verified attestations. These pure types perform no network call
+and grant no authority. Engine-derived eligibility, task/source binding,
+authenticated admission, descriptor verification and dispatch remain missing.
+The existing three reasoning-tree decisions and public catalogue are unchanged.
+
+The offline `endpoint_selection` example provides `schema`,
+`configuration-sha256 CONFIGURATION` and
+`verify CONFIGURATION ALLOWANCE RESPONSE` commands. Retained actual BF16
+responses and installed configuration exercise its wire compatibility; denial
+tests perturb those records in memory only. The
+[validation journal](../../evidence/change-journals/gate-g/controller-endpoint-choice-validation.md)
+records provenance and limits. These observations are not training targets,
+human review, provider-quality evidence or completion of G-01b.
+
+### Governed selector settings prerequisite
+
+`EndpointProfileInput` and `EndpointProfile` carry optional
+`EndpointSelectionPolicy` through the existing endpoint-configuration approval
+and persistence boundary. The policy explicitly supplies controller binding,
+candidate facts, workload, finite limits, system prompt, maximum output tokens
+and temperature in thousandths. Absence configures no selector. Every present
+field is digest-bound; no provider or model ranking is embedded in defaults.
+
+`EndpointSelectionPolicy::allowance` projects declared candidates only from
+the exact matching configuration. It does not establish authorization or verify
+the referenced capability evidence. Future engine admission must filter current
+eligibility, form the task/context packet and reserve budget. The
+[policy journal](../../evidence/change-journals/gate-g/controller-policy-configuration.md)
+records configuration approval, reopen and revocation checks; it makes no
+selector-activation claim.
+
+### Native selector transport prerequisite
+
+The optional `rrd-inference/endpoint-chat` feature provides
+`PreparedEndpointChat` for one explicitly prepared chat request. It derives the
+URL, service identity, credential reference and limits from the supplied
+configuration, validates the allowance, and accepts a caller-owned deadline,
+sticky cancellation signal and bounded credential resolver. Prompt construction
+and generation settings remain explicit caller inputs. No provider ranking,
+task routing rule or deployment endpoint is embedded in this adapter.
+
+This transport requires TLS outside literal loopback, disables redirects and
+implicit environment proxies, bounds the request and response body, and rejects
+wrong-model, truncated, tool-requesting or invalid-choice responses. It performs
+no application retry. It reuses existing process-local execution control without
+installing a second task budget or registry. Cancellation is checked around
+blocking I/O and after decoding; it rejects late results but does not prove the
+remote model stopped. Post-dispatch failures retain an unknown remote outcome.
+Missing provider usage remains unknown. A returned alias is not weight attestation.
+
+The `endpoint_chat` example is an operator transport probe, not a public engine
+operation. It takes `CONFIG ALLOWANCE CONTROLLER_ID REQUEST KEY_ENV OUTPUT_DIR
+TIMEOUT_MS [CANCEL_AFTER_MS]`, requires a fresh output directory and retains
+actual request/response bytes and observations. Build with
+`cargo build --locked -p rrd-inference --features endpoint-chat --example endpoint_chat`.
+Its [native transport journal](../../evidence/change-journals/gate-g/controller-native-chat.md)
+records real BF16 calls and limitations. Engine-derived context/candidates,
+authorization, durable reservation/fencing, admitted installation and dispatch
+remain missing; this transport is not automatically active in the installed engine.
 
 ### Inputs and configuration ownership
 
@@ -325,6 +398,17 @@ It requires both `ReasoningWrite` and `EmbeddingGenerate`; inspection through
 `inspect_task_reasoning_budget` requires `ReasoningRead`. The public task
 effort operations below compose this same owner; Connectome presentation is
 still unimplemented.
+
+Its engine-internal `TaskAttemptAdmission` separates effect identity from the
+shared reservation mechanism. The embedding entry derives its request digest
+and delegates to that same owner; effect-specific repetition identity is deferred
+until replay, prior-stop and allowance checks permit it. Identity preparation
+retains the original monotonic start. Invalid request/equivalence digests fail
+before budget publication. This internal input is neither serializable nor a
+public authorization API. Existing durable keys, records, completion type and
+Stop behavior remain unchanged; typed controller completion and dispatch still
+require implementation. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
+records retained-input reservation/reopen evidence, not a controller call.
 
 The first admitted attempt fixes the configuration digest, original host-clock
 deadline and step cap. Each attempt reserves one step before dispatch. The
