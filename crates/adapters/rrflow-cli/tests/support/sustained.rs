@@ -211,7 +211,16 @@ async fn sample(
 ) -> DriverResult<ResourceSample> {
     sample_with_identity(workload, pid, clock, allocation)
         .await
-        .map(|(sample, _)| sample)
+        .map(|(sample, _, _)| sample)
+}
+
+#[derive(Clone, Copy)]
+struct SampleTiming {
+    total_ns: u64,
+    host_ns: u64,
+    rpc_ns: u64,
+    memory_ns: u64,
+    enforcement_ns: u64,
 }
 
 async fn sample_with_identity(
@@ -219,7 +228,7 @@ async fn sample_with_identity(
     pid: u32,
     clock: Instant,
     allocation: &Option<NativeAllocationReceipt>,
-) -> DriverResult<(ResourceSample, String)> {
+) -> DriverResult<(ResourceSample, String, SampleTiming)> {
     let started = Instant::now();
     let mut system = sysinfo::System::new();
     let process_id = sysinfo::Pid::from_u32(pid);
@@ -305,17 +314,24 @@ async fn sample_with_identity(
         allocation_receipt: allocation.clone(),
         storage: Some(snapshot),
     };
-    sample_trace::record(sample_trace::Observation {
-        request_id: &request_id,
-        pid,
-        elapsed_ns,
+    let timing = SampleTiming {
         total_ns: ns(started),
         host_ns,
         rpc_ns,
         memory_ns,
         enforcement_ns,
+    };
+    sample_trace::record(sample_trace::Observation {
+        request_id: &request_id,
+        pid,
+        elapsed_ns,
+        total_ns: timing.total_ns,
+        host_ns: timing.host_ns,
+        rpc_ns: timing.rpc_ns,
+        memory_ns: timing.memory_ns,
+        enforcement_ns: timing.enforcement_ns,
     });
-    Ok((value, request_id))
+    Ok((value, request_id, timing))
 }
 
 struct ProgressContext<'a> {
@@ -1248,7 +1264,7 @@ fn installed_sampler_trace_matches_server_and_store() {
             .verify_joined_search("seed-00000000000000000007", 1, 7, 5.53125)
             .await
             .unwrap();
-        let (sample, request_id) = sample_with_identity(&work, child.id(), clock, &None)
+        let (sample, request_id, _) = sample_with_identity(&work, child.id(), clock, &None)
             .await
             .unwrap();
         assert!(sample.storage.is_some());
@@ -1256,37 +1272,7 @@ fn installed_sampler_trace_matches_server_and_store() {
     });
     child.terminate();
     let output = child.finish().expect("reap owned traced server");
-    fn check_trace(bytes: &[u8], request_id: &str, credential: &str) {
-        let raw = std::str::from_utf8(bytes).unwrap();
-        assert!(!raw.contains(request_id));
-        assert!(!raw.contains(credential));
-        let digest = rrd_core::digest::sha256_hex(request_id.as_bytes());
-        let events: Vec<serde_json::Value> = raw
-            .lines()
-            .map(|line| serde_json::from_str(line).expect("trace is complete JSON"))
-            .collect();
-        let find = |target: &str| {
-            events
-                .iter()
-                .find(|event| {
-                    event["target"] == target && event["span"]["request_sha256"] == digest
-                })
-                .unwrap_or_else(|| panic!("missing correlated trace event: {target}"))
-        };
-        let storage = find("rrd_store::diagnostic");
-        let service = find("rrd_server::diagnostic");
-        let wait = storage["fields"]["mutex_wait_ns"].as_u64().unwrap();
-        let assembly = storage["fields"]["mutex_held_assembly_ns"]
-            .as_u64()
-            .unwrap();
-        let profile = storage["fields"]["memtable_profile_ns"].as_u64().unwrap();
-        let elapsed = service["fields"]["service_elapsed_ns"].as_u64().unwrap();
-        assert_eq!(service["fields"]["success"], true);
-        assert!(profile <= assembly);
-        assert!(u128::from(wait) + u128::from(assembly) <= u128::from(elapsed));
-        println!("installed sampler trace matched: request_sha256={digest} wait_ns={wait} assembly_ns={assembly} profile_ns={profile} service_ns={elapsed}");
-    }
-    check_trace(&output.stderr, &request_id, credential.credential());
+    check_sample_trace(&output.stderr, &request_id, credential.credential());
     let (mut restarted, client, _) =
         estate.start_for_with_trace(clock, Duration::from_secs(300), true);
     work.client = client;
@@ -1297,7 +1283,7 @@ fn installed_sampler_trace_matches_server_and_store() {
             .unwrap();
         assert_eq!(after.known_at_cursor, before.known_at_cursor);
         assert_eq!(after.hits, before.hits);
-        let (sample, id) = sample_with_identity(&work, restarted.id(), clock, &None)
+        let (sample, id, _) = sample_with_identity(&work, restarted.id(), clock, &None)
             .await
             .unwrap();
         assert!(sample.storage.is_some());
@@ -1306,7 +1292,198 @@ fn installed_sampler_trace_matches_server_and_store() {
     assert_ne!(request_id, second_id);
     restarted.terminate();
     let output = restarted.finish().expect("reap restarted traced server");
-    check_trace(&output.stderr, &second_id, credential.credential());
+    check_sample_trace(&output.stderr, &second_id, credential.credential());
+}
+
+fn check_sample_trace(bytes: &[u8], request_id: &str, credential: &str) -> [u64; 7] {
+    let raw = std::str::from_utf8(bytes).unwrap();
+    assert!(!raw.contains(request_id));
+    assert!(!raw.contains(credential));
+    let digest = rrd_core::digest::sha256_hex(request_id.as_bytes());
+    let events: Vec<serde_json::Value> = raw
+        .lines()
+        .map(|line| serde_json::from_str(line).expect("trace is complete JSON"))
+        .collect();
+    let find = |target: &str| {
+        let matching: Vec<_> = events
+            .iter()
+            .filter(|event| event["target"] == target && event["span"]["request_sha256"] == digest)
+            .collect();
+        assert_eq!(
+            matching.len(),
+            1,
+            "missing or duplicate correlated event: {target}"
+        );
+        matching[0]
+    };
+    let storage = find("rrd_store::diagnostic");
+    let service = find("rrd_server::diagnostic");
+    let field = |name: &str| storage["fields"][name].as_u64().unwrap();
+    let wait = field("mutex_wait_ns");
+    let assembly = field("mutex_held_assembly_ns");
+    let profile = field("memtable_profile_ns");
+    let elapsed = service["fields"]["service_elapsed_ns"].as_u64().unwrap();
+    assert_eq!(service["fields"]["success"], true);
+    assert!(profile <= assembly);
+    assert!(u128::from(wait) + u128::from(assembly) <= u128::from(elapsed));
+    let counts = [
+        field("memtable_keys"),
+        field("memtable_versions"),
+        field("segment_count"),
+    ];
+    println!("installed sampler trace matched: request_sha256={digest} wait_ns={wait} assembly_ns={assembly} profile_ns={profile} service_ns={elapsed} keys={} versions={} segments={}", counts[0], counts[1], counts[2]);
+    [
+        wait, assembly, profile, elapsed, counts[0], counts[1], counts[2],
+    ]
+}
+
+#[test]
+#[ignore = "explicit bounded loaded diagnostic characterization; not capacity qualification"]
+fn installed_sampler_trace_during_write_load() {
+    const RECORDS: u64 = 4_000;
+    const PERIOD: u64 = 125;
+    let estate = Estate::install("fresh");
+    let clock = Instant::now();
+    let (mut child, client, _) = estate.start_for_with_trace(clock, Duration::from_secs(600), true);
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let (mut work, observations, acknowledged, failures) = runtime.block_on(async {
+        let session = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 4,
+                    },
+                },
+                RequestOptions::mutation("loaded-session", "loaded-session", "loaded-session")
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let work = Workload {
+            client,
+            session,
+            valid_at: estate.at,
+            dimensions: 16,
+            seed: 73,
+            records: RECORDS,
+            read_distribution: ReadKeyDistribution::Uniform {},
+            edges_per_record: 3,
+            vectors_per_record: 2,
+            payload_bytes: 1024,
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
+                .unwrap(),
+        };
+        work.initialize().await.unwrap();
+        let mut observations = Vec::new();
+        let mut acknowledged = 0u64;
+        let mut failures = Vec::new();
+        let failed = |stage: &str, ordinal: u64, detail: &str| {
+            format!(
+                "{stage} ordinal={ordinal} error_sha256={}",
+                rrd_core::digest::sha256_hex(detail.as_bytes())
+            )
+        };
+        for ordinal in 0..RECORDS {
+            let seed = work.seed_record(ordinal).unwrap();
+            let written = if ordinal % PERIOD == 0 {
+                let write = async {
+                    let start = ns(clock);
+                    let result = work.execute(&seed).await;
+                    (start, ns(clock), result)
+                };
+                let diagnostic = async {
+                    let start = ns(clock);
+                    let result = sample_with_identity(&work, child.id(), clock, &None).await;
+                    (start, ns(clock), result)
+                };
+                let ((write_start, write_end, written), (sample_start, sample_end, sampled)) =
+                    tokio::join!(write, diagnostic);
+                match sampled {
+                    Ok((sample, id, timing)) if sample.storage.is_some() => {
+                        observations.push((
+                            id,
+                            ordinal,
+                            write_start,
+                            write_end,
+                            sample_start,
+                            sample_end,
+                            timing,
+                        ));
+                    }
+                    Ok(_) => {
+                        failures.push(failed("sample-missing-storage", ordinal, "missing storage"))
+                    }
+                    Err(error) => failures.push(failed("sample", ordinal, &error)),
+                }
+                written
+            } else {
+                work.execute(&seed).await
+            };
+            match written {
+                Ok(result) if !result.idempotent_replay => acknowledged += 1,
+                Ok(_) => failures.push(failed("unexpected-replay", ordinal, "replayed new seed")),
+                Err(error) => failures.push(failed("write", ordinal, &error)),
+            }
+            if !failures.is_empty() {
+                break;
+            }
+            if acknowledged.is_multiple_of(500) {
+                println!(
+                    "loaded_progress acknowledged={acknowledged} samples={}",
+                    observations.len()
+                );
+            }
+        }
+        if failures.is_empty() {
+            for ordinal in [0, 1_333, 2_666, RECORDS - 1] {
+                if let Err(error) = work.verify(&work.seed_record(ordinal).unwrap()).await {
+                    failures.push(failed("readback", ordinal, &error));
+                    break;
+                }
+            }
+        }
+        (work, observations, acknowledged, failures)
+    });
+    let overlapping = observations
+        .iter()
+        .filter(|(_, _, ws, we, ss, se, _)| ws < se && ss < we)
+        .count();
+    child.terminate();
+    let output = child.finish().expect("reap loaded traced server");
+    for (id, ordinal, write_start, write_end, sample_start, sample_end, timing) in &observations {
+        let fields = check_sample_trace(&output.stderr, id, credential.credential());
+        println!("loaded_sample ordinal={ordinal} write_start_ns={write_start} write_end_ns={write_end} sample_start_ns={sample_start} sample_end_ns={sample_end} total_ns={} host_ns={} rpc_ns={} memory_ns={} enforcement_ns={} wait_ns={} assembly_ns={} profile_ns={} service_ns={} keys={} versions={} segments={}", timing.total_ns, timing.host_ns, timing.rpc_ns, timing.memory_ns, timing.enforcement_ns, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6]);
+    }
+    println!("loaded_summary acknowledged={acknowledged} samples={} overlapping_client_intervals={overlapping} failures={failures:?}; unqualified synthetic workload", observations.len());
+    assert!(
+        failures.is_empty(),
+        "loaded characterization failed: {failures:?}"
+    );
+    assert_eq!(acknowledged, RECORDS);
+    assert_eq!(observations.len(), (RECORDS / PERIOD) as usize);
+    assert!(
+        overlapping > 0,
+        "no client-observed diagnostic/write overlap"
+    );
+    let (mut restarted, client, _) = estate.start_for(clock, Duration::from_secs(300));
+    work.client = client;
+    runtime.block_on(async {
+        for ordinal in [0, 1_333, 2_666, RECORDS - 1] {
+            let seed = work.seed_record(ordinal).unwrap();
+            work.verify(&seed).await.unwrap();
+            assert!(work.execute(&seed).await.unwrap().idempotent_replay);
+        }
+    });
+    restarted.terminate();
+    restarted.finish().expect("reap reopened server");
 }
 
 #[test]
