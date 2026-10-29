@@ -24,6 +24,24 @@ fn public_replan_operations_have_exact_authentication_and_mutation_boundaries() 
     let catalogue = rrd_contract::endpoint_catalogue();
     for (id, path, mutation, action) in [
         (
+            "attunement-pause",
+            "/v1/attunement/pause",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-recover-expired",
+            "/v1/attunement/recover-expired",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
+            "attunement-resume",
+            "/v1/attunement/resume",
+            true,
+            SecurityAction::EstateAdmin,
+        ),
+        (
             "attunement-start",
             "/v1/attunement/start",
             true,

@@ -1,18 +1,21 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df
+# OpenAPI SHA-256: 8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df"
+    "8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb"
 )
 
 OperationId = Literal[
     "attunement-cancel",
+    "attunement-pause",
     "attunement-read",
     "attunement-receipt-read",
+    "attunement-recover-expired",
     "attunement-replan-accept",
     "attunement-replan-preview",
     "attunement-replan-receipt-read",
+    "attunement-resume",
     "attunement-start",
     "attunement-step",
     "audit-export",
@@ -91,6 +94,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": True,
         "path": "/v1/attunement/cancel",
     },
+    "attunement-pause": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/pause",
+    },
     "attunement-read": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -102,6 +111,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/attunement/receipt/read",
+    },
+    "attunement-recover-expired": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/recover-expired",
     },
     "attunement-replan-accept": {
         "authentication": "session_bearer",
@@ -120,6 +135,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/attunement/replan/receipt/read",
+    },
+    "attunement-resume": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/resume",
     },
     "attunement-start": {
         "authentication": "session_bearer",

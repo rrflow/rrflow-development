@@ -1,11 +1,17 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df" as const;
+// OpenAPI SHA-256: 8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb" as const;
 
 export const endpoints = {
   "attunement-cancel": {
     "method": "POST",
     "path": "/v1/attunement/cancel",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-pause": {
+    "method": "POST",
+    "path": "/v1/attunement/pause",
     "authentication": "session_bearer",
     "mutation": true
   },
@@ -20,6 +26,12 @@ export const endpoints = {
     "path": "/v1/attunement/receipt/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "attunement-recover-expired": {
+    "method": "POST",
+    "path": "/v1/attunement/recover-expired",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "attunement-replan-accept": {
     "method": "POST",
@@ -38,6 +50,12 @@ export const endpoints = {
     "path": "/v1/attunement/replan/receipt/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "attunement-resume": {
+    "method": "POST",
+    "path": "/v1/attunement/resume",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "attunement-start": {
     "method": "POST",

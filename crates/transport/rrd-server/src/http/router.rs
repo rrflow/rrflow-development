@@ -55,6 +55,9 @@ http_dispatch_catalogue! {
     AttunementReplanPreview => ("attunement-replan-preview", RrdOperation::AttunementReplanPreview),
     AttunementReplanAccept => ("attunement-replan-accept", RrdOperation::EstateAdmin),
     AttunementReplanReceiptRead => ("attunement-replan-receipt-read", RrdOperation::EstateRead),
+    AttunementPause => ("attunement-pause", RrdOperation::EstateAdmin),
+    AttunementRecoverExpired => ("attunement-recover-expired", RrdOperation::EstateAdmin),
+    AttunementResume => ("attunement-resume", RrdOperation::EstateAdmin),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -255,6 +258,11 @@ impl AppState {
             }
             Some(HttpDispatch::AttunementCancel) => self.cancel_attunement(&headers, &body, now),
             Some(HttpDispatch::AttunementStart) => self.start_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementPause) => self.pause_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementRecoverExpired) => {
+                self.recover_expired_attunement(&headers, &body, now)
+            }
+            Some(HttpDispatch::AttunementResume) => self.resume_attunement(&headers, &body, now),
             Some(HttpDispatch::AttunementStep) => self.step_attunement(&headers, &body, now),
             Some(HttpDispatch::AttunementReplanPreview) => {
                 self.preview_attunement_replan(&headers, &body, now)

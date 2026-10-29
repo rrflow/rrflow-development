@@ -3364,7 +3364,8 @@ fn installed_attunement_replan_over_http_survives_restart_and_replay() {
     std::fs::write(project.join("README.md"), "ordinary edit\n").unwrap();
     let mut accepted_request = Value::Null;
     let mut successor = Value::Null;
-    for pass in 0..2 {
+    let mut expired = Value::Null;
+    for pass in 0..3 {
         let engine = RrdEngine::open_installed(&project, &executable).unwrap();
         let fixture = acquire_server_fixture();
         let server = RrdHttpServer::bind(engine, "127.0.0.1:0".parse().unwrap()).unwrap();
@@ -3492,7 +3493,7 @@ fn installed_attunement_replan_over_http_survives_restart_and_replay() {
                 Some(session),
             );
             assert_eq!(status, 409, "{conflict}");
-        } else {
+        } else if pass == 1 {
             let (status, replay) = post(
                 &server,
                 "/v1/attunement/replan/accept",
@@ -3526,6 +3527,46 @@ fn installed_attunement_replan_over_http_survives_restart_and_replay() {
             let (status, started) = post(&server, "/v1/attunement/start", &start, Some(session));
             assert_eq!(status, 200, "{started}");
             let running = &payload(&started)["status"]["job"];
+            let pause = make(
+                json!({"contract_version": 1, "job_id": running["id"], "expected_revision": running["revision"], "lease_generation": running["lease"]["generation"]}),
+                "pause",
+                true,
+            );
+            let (status, paused) = post(&server, "/v1/attunement/pause", &pause, Some(session));
+            assert_eq!(status, 200, "{paused}");
+            let paused_job = &payload(&paused)["status"]["job"];
+            assert_eq!(paused_job["state"], "paused");
+            let resume = make(
+                json!({"request": {"contract_version": 1, "job_id": paused_job["id"], "plan_sha256": paused_job["plan_sha256"], "expected_job_revision": paused_job["revision"], "last_checkpoint_sha256": null, "resume_from_phase": "connect", "requested_at_unix_ms": paused_job["updated_at_unix_ms"]}, "lease_ms": 2000}),
+                "resume-short",
+                true,
+            );
+            let (status, resumed) = post(&server, "/v1/attunement/resume", &resume, Some(session));
+            assert_eq!(status, 200, "{resumed}");
+            expired = payload(&resumed)["status"]["job"].clone();
+        } else {
+            let recover = make(
+                json!({"contract_version": 1, "job_id": expired["id"], "expected_revision": expired["revision"]}),
+                "recover-expired",
+                true,
+            );
+            let (status, recovered) = post(
+                &server,
+                "/v1/attunement/recover-expired",
+                &recover,
+                Some(session),
+            );
+            assert_eq!(status, 200, "{recovered}");
+            let recovered_job = &payload(&recovered)["status"]["job"];
+            assert_eq!(recovered_job["state"], "paused");
+            let resume = make(
+                json!({"request": {"contract_version": 1, "job_id": recovered_job["id"], "plan_sha256": recovered_job["plan_sha256"], "expected_job_revision": recovered_job["revision"], "last_checkpoint_sha256": null, "resume_from_phase": "connect", "requested_at_unix_ms": recovered_job["updated_at_unix_ms"]}, "lease_ms": 60000}),
+                "resume-recovered",
+                true,
+            );
+            let (status, resumed) = post(&server, "/v1/attunement/resume", &resume, Some(session));
+            assert_eq!(status, 200, "{resumed}");
+            let running = &payload(&resumed)["status"]["job"];
             let step = make(
                 json!({"contract_version": 1, "job_id": running["id"], "expected_revision": running["revision"], "lease_generation": running["lease"]["generation"]}),
                 "successor-step",
@@ -3542,6 +3583,9 @@ fn installed_attunement_replan_over_http_survives_restart_and_replay() {
             );
         }
         server.stop();
+        if pass == 1 {
+            std::thread::sleep(Duration::from_millis(2100));
+        }
     }
 }
 

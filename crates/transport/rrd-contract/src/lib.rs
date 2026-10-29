@@ -52,13 +52,14 @@ pub use attunement::{
     InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
     InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
     InstallationRemovalRule, InstallationResult, InstallationSpecialization,
-    InstallationStorageGeneration, InstallationTargetKind, PreviewAttunementReplan, ReadAttunement,
-    ReadAttunementReceipt, ResumeAttunement, StartAttunement, StepAttunement, ATTUNEMENT_PHASES,
-    INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH, INSTALLATION_LEASE_PRECONDITION,
-    INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
-    MAX_ATTUNEMENT_CANCEL_REASON_BYTES, MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES,
-    MAX_ATTUNEMENT_VERIFICATION_CHECKS, MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES,
-    MAX_INSTALLATION_ACTIONS,
+    InstallationStorageGeneration, InstallationTargetKind, PauseAttunement,
+    PreviewAttunementReplan, ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement,
+    ResumeAttunement, ResumeAttunementWithLease, StartAttunement, StepAttunement,
+    ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
+    MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
+    MAX_BOOTSTRAP_RECORD_BYTES, MAX_BOOTSTRAP_TEXT_BYTES, MAX_INSTALLATION_ACTIONS,
 };
 pub use capability_surface::{
     ProductCapability, ProductCapabilityCatalogue, ProductSurface, SurfaceBinding,
@@ -248,7 +249,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df";
+    "8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3652,6 +3653,36 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "DiagnosticSnapshot",
         ),
         endpoint(
+            "attunement-pause",
+            HttpMethod::Post,
+            "/v1/attunement/pause",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "PauseAttunement",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-recover-expired",
+            HttpMethod::Post,
+            "/v1/attunement/recover-expired",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "RecoverExpiredAttunement",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-resume",
+            HttpMethod::Post,
+            "/v1/attunement/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "ResumeAttunementWithLease",
+            "AttunementControlResponse",
+        ),
+        endpoint(
             "attunement-start",
             HttpMethod::Post,
             "/v1/attunement/start",
@@ -4584,6 +4615,9 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
         "StartAttunement" => schema_json::<RequestEnvelope<StartAttunement>>(),
         "StepAttunement" => schema_json::<RequestEnvelope<StepAttunement>>(),
+        "PauseAttunement" => schema_json::<RequestEnvelope<PauseAttunement>>(),
+        "RecoverExpiredAttunement" => schema_json::<RequestEnvelope<RecoverExpiredAttunement>>(),
+        "ResumeAttunementWithLease" => schema_json::<RequestEnvelope<ResumeAttunementWithLease>>(),
         "PreviewAttunementReplan" => schema_json::<RequestEnvelope<PreviewAttunementReplan>>(),
         "AcceptAttunementReplan" => schema_json::<RequestEnvelope<AcceptAttunementReplan>>(),
         "ReadAttunementReceipt" => schema_json::<RequestEnvelope<ReadAttunementReceipt>>(),

@@ -1,15 +1,18 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df
+// OpenAPI SHA-256: 8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb
 namespace Rrflow.Rrd;
 
 public enum OperationId
 {
     AttunementCancel,
+    AttunementPause,
     AttunementRead,
     AttunementReceiptRead,
+    AttunementRecoverExpired,
     AttunementReplanAccept,
     AttunementReplanPreview,
     AttunementReplanReceiptRead,
+    AttunementResume,
     AttunementStart,
     AttunementStep,
     AuditExport,
@@ -89,17 +92,20 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "733e334c80c8491b010a85c8370881d3543df2cde672c11bdb5513958bd360df";
-    public const int Count = 67;
+    public const string OpenApiDocumentSha256 = "8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb";
+    public const int Count = 70;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
         OperationId.AttunementCancel => new("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SessionBearer, true),
+        OperationId.AttunementPause => new("attunement-pause", "POST", "/v1/attunement/pause", Authentication.SessionBearer, true),
         OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
         OperationId.AttunementReceiptRead => new("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementRecoverExpired => new("attunement-recover-expired", "POST", "/v1/attunement/recover-expired", Authentication.SessionBearer, true),
         OperationId.AttunementReplanAccept => new("attunement-replan-accept", "POST", "/v1/attunement/replan/accept", Authentication.SessionBearer, true),
         OperationId.AttunementReplanPreview => new("attunement-replan-preview", "POST", "/v1/attunement/replan/preview", Authentication.SessionBearer, false),
         OperationId.AttunementReplanReceiptRead => new("attunement-replan-receipt-read", "POST", "/v1/attunement/replan/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementResume => new("attunement-resume", "POST", "/v1/attunement/resume", Authentication.SessionBearer, true),
         OperationId.AttunementStart => new("attunement-start", "POST", "/v1/attunement/start", Authentication.SessionBearer, true),
         OperationId.AttunementStep => new("attunement-step", "POST", "/v1/attunement/step", Authentication.SessionBearer, true),
         OperationId.AuditExport => new("audit-export", "POST", "/v1/audit/export", Authentication.SessionBearer, false),

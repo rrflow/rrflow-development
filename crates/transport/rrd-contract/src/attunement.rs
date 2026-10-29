@@ -1135,6 +1135,42 @@ impl StepAttunement {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct PauseAttunement {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+    pub lease_generation: u64,
+}
+
+impl PauseAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RecoverExpiredAttunement {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub expected_revision: u64,
+}
+
+impl RecoverExpiredAttunement {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResumeAttunementWithLease {
+    pub request: ResumeAttunement,
+    pub lease_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AttunementControlResponse {
     pub status: AttunementStatus,
     pub idempotent_replay: bool,
