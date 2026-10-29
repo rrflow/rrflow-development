@@ -4,23 +4,26 @@
 use rrflow_eval::storage::NativeAllocationKind;
 use rrflow_eval::storage::{AllocationEnforcement, NativeAllocationReceipt, StorageCampaign};
 use std::io::Read;
+use std::path::PathBuf;
 
-pub(crate) fn receipt(
-    campaign: &StorageCampaign,
-) -> Result<Option<NativeAllocationReceipt>, String> {
-    let raw = match std::env::var("RRFLOW_SUSTAINED_ALLOCATION_RECEIPT") {
-        Ok(raw) => raw,
-        Err(std::env::VarError::NotPresent) => return Ok(None),
-        Err(_) => return Err("native allocation receipt is not UTF-8".into()),
-    };
-    if raw.len() > 4096 {
-        return Err("native allocation receipt exceeds admission".into());
+/// On Linux the procfs executable link refers to this process's actual image,
+/// including after its original pathname has been renamed or replaced. The
+/// same path resolves in the spawned child before it executes the helper.
+/// Missing procfs is an explicit failure at open/spawn, never a pathname fallback.
+pub(in crate::sustained) fn harness_image() -> Result<PathBuf, String> {
+    #[cfg(target_os = "linux")]
+    {
+        Ok(PathBuf::from("/proc/self/exe"))
     }
-    let receipt: NativeAllocationReceipt = rrflow_eval::storage::decode(raw.as_bytes())?;
-    receipt.validate(campaign)?;
+    #[cfg(not(target_os = "linux"))]
+    {
+        std::env::current_exe().map_err(|e| e.to_string())
+    }
+}
+
+pub(in crate::sustained) fn harness_digest() -> Result<String, String> {
     use sha2::{Digest as _, Sha256};
-    let mut file = std::fs::File::open(std::env::current_exe().map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
+    let mut file = std::fs::File::open(harness_image()?).map_err(|e| e.to_string())?;
     let mut hash = Sha256::new();
     let mut buffer = [0u8; 65536];
     let admitted = file.metadata().map_err(|e| e.to_string())?.len();
@@ -42,11 +45,27 @@ pub(crate) fn receipt(
     if read != admitted || file.metadata().map_err(|e| e.to_string())?.len() != admitted {
         return Err("harness extent changed during identity read".into());
     }
-    let actual = hash
+    Ok(hash
         .finalize()
         .iter()
         .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+        .collect())
+}
+
+pub(crate) fn receipt(
+    campaign: &StorageCampaign,
+) -> Result<Option<NativeAllocationReceipt>, String> {
+    let raw = match std::env::var("RRFLOW_SUSTAINED_ALLOCATION_RECEIPT") {
+        Ok(raw) => raw,
+        Err(std::env::VarError::NotPresent) => return Ok(None),
+        Err(_) => return Err("native allocation receipt is not UTF-8".into()),
+    };
+    if raw.len() > 4096 {
+        return Err("native allocation receipt exceeds admission".into());
+    }
+    let receipt: NativeAllocationReceipt = rrflow_eval::storage::decode(raw.as_bytes())?;
+    receipt.validate(campaign)?;
+    let actual = harness_digest()?;
     if actual != receipt.harness_sha256.as_str() {
         return Err("allocation receipt names another harness".into());
     }

@@ -3,7 +3,9 @@
 use rrflow_eval::storage::NativeMetric;
 #[path = "native_allocation.rs"]
 mod allocation;
-pub(super) use allocation::{enforcement, enforcement_for, receipt};
+#[cfg(target_os = "linux")]
+pub(super) use allocation::harness_digest;
+pub(super) use allocation::{enforcement, enforcement_for, harness_image, receipt};
 
 fn missing(reason: &str) -> NativeMetric {
     NativeMetric::Unavailable {

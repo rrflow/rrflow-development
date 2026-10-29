@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject CI changes that omit the Windows native worker lifecycle oracle."""
+"""Reject CI changes that omit native worker lifecycle or image oracles."""
 import unittest
 from check_workflow import REUSABLE, PolicyError, job_blocks, verify_native_sample_worker_ci
 
@@ -16,6 +16,13 @@ class NativeSamplePolicyTests(unittest.TestCase):
             "        run: python scripts/ci/test_native_sample_worker.py --profile release\n"
         )
         self.assertEqual(self.reopen.count(self.step), 1)
+        self.linux_step = (
+            "      - name: Verify Linux native sampler running image\n"
+            "        if: runner.os == 'Linux'\n"
+            "        timeout-minutes: 5\n"
+            "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest --exact --nocapture\n"
+        )
+        self.assertEqual(self.reopen.count(self.linux_step), 1)
 
     def test_checked_in_lane_and_policy_are_accepted(self):
         verify_native_sample_worker_ci(self.reopen, self.verify)
@@ -48,6 +55,19 @@ class NativeSamplePolicyTests(unittest.TestCase):
             verify_native_sample_worker_ci(
                 self.reopen, self.verify.replace(marker, marker + "        continue-on-error: true\n")
             )
+
+    def test_linux_image_oracle_cannot_be_removed_or_bypassed(self):
+        for changed in (
+            "",
+            self.linux_step + self.linux_step,
+            self.linux_step.replace("runner.os == 'Linux'", "false"),
+            self.linux_step.replace("--release", "--profile debug"),
+            self.linux_step.replace("timeout-minutes: 5", "timeout-minutes: 0"),
+            self.linux_step + "        continue-on-error: true\n",
+        ):
+            with self.subTest(changed=changed):
+                with self.assertRaises(PolicyError):
+                    verify_native_sample_worker_ci(self.reopen.replace(self.linux_step, changed), self.verify)
 
 
 if __name__ == "__main__":

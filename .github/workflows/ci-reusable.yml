@@ -555,6 +555,10 @@ jobs:
         if: runner.os == 'Windows'
         timeout-minutes: 5
         run: python scripts/ci/test_native_sample_worker.py --profile release
+      - name: Verify Linux native sampler running image
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest --exact --nocapture
       - name: Correlate installed sampler and storage traces
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_sampler_trace_matches_server_and_store --exact --ignored --nocapture

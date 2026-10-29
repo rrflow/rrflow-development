@@ -112,7 +112,7 @@ def job_blocks(workflow: str) -> dict[str, str]:
 
 
 def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
-    """Keep the native worker's owned Windows lifecycle oracle required."""
+    """Keep the native worker's Windows lifecycle and Linux image oracles required."""
     marker = "      - name: Verify owned Windows native sampler lifecycle\n"
     require(reopen.count(marker) == 1, "native sampler Windows CI step must occur once")
     block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
@@ -122,6 +122,15 @@ def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
         "        run: python scripts/ci/test_native_sample_worker.py --profile release\n"
     )
     require(block == required, "native sampler CI step must retain its exact condition, timeout and command")
+    marker = "      - name: Verify Linux native sampler running image\n"
+    require(reopen.count(marker) == 1, "native sampler Linux image CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        if: runner.os == 'Linux'\n"
+        "        timeout-minutes: 5\n"
+        "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest --exact --nocapture\n"
+    )
+    require(block == required, "native sampler Linux image step must retain its exact condition, timeout and command")
     policy_marker = "      - name: Enforce repository CI policy\n"
     require(verify.count(policy_marker) == 1, "repository CI policy step must occur once")
     policy = verify.split(policy_marker, 1)[1].split("      - name:", 1)[0]

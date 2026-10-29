@@ -207,7 +207,7 @@ impl Owner {
 }
 
 fn run_helper(input: &str, cancel: Arc<AtomicBool>) -> DriverResult<Observation> {
-    let mut command = Command::new(std::env::current_exe().map_err(|error| error.to_string())?);
+    let mut command = Command::new(native::harness_image()?);
     command
         .args(["--exact", HELPER, "--ignored", "--nocapture", "--quiet"])
         .env(INPUT_ENV, input);
@@ -306,6 +306,144 @@ fn native_sample_helper() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "private copied-executable replacement fixture"]
+    fn linux_replaced_harness_fixture() {
+        let expected = std::env::var("RRFLOW_LINUX_EXPECTED_HARNESS_SHA256").unwrap();
+        let original_path = std::env::current_exe().unwrap();
+        let campaign = super::super::smoke_campaign();
+        if std::env::var_os("RRFLOW_LINUX_EXPECT_RECEIPT_REJECTION").is_some() {
+            let error = super::super::native::receipt(&campaign).unwrap_err();
+            assert_eq!(error, "allocation receipt names another harness");
+            println!("linux_wrong_image_receipt_rejected");
+            return;
+        }
+        assert_eq!(super::super::native::harness_digest().unwrap(), expected);
+        assert_eq!(
+            super::super::native::receipt(&campaign)
+                .unwrap()
+                .unwrap()
+                .harness_sha256
+                .as_str(),
+            expected
+        );
+        let old_path = original_path.with_extension("original");
+        std::fs::rename(&original_path, &old_path).unwrap();
+        std::fs::write(&original_path, b"not the executing harness").unwrap();
+        assert_eq!(super::super::native::harness_digest().unwrap(), expected);
+        assert_eq!(
+            super::super::native::receipt(&campaign)
+                .unwrap()
+                .unwrap()
+                .harness_sha256
+                .as_str(),
+            expected
+        );
+
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let owner = Owner::default();
+                let observation = owner.acquire(std::process::id(), &None).await.unwrap();
+                assert_eq!(observation.harness_pid, std::process::id());
+                assert_ne!(observation.worker_pid, observation.harness_pid);
+                owner.shutdown().await.unwrap();
+            });
+        println!("linux_original_image_sample_verified={expected}");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest() {
+        use sha2::{Digest as _, Sha256};
+        let directory = tempfile::tempdir().unwrap();
+        let copied = directory.path().join("harness");
+        super::super::super::process::stage_executable(&std::env::current_exe().unwrap(), &copied)
+            .unwrap();
+        let digest = Sha256::digest(std::fs::read(&copied).unwrap())
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let campaign = super::super::smoke_campaign();
+        let mut receipt = NativeAllocationReceipt {
+            format_version: 1,
+            kind: rrflow_eval::storage::NativeAllocationKind::CgroupV2,
+            nonce: "11".repeat(32).try_into().unwrap(),
+            engine_bytes: campaign.allocation.engine_bytes,
+            host_bytes: campaign.allocation.host_bytes,
+            harness_sha256: digest.clone().try_into().unwrap(),
+            vcpus: campaign.allocation.vcpus,
+            host_logical_cpus: campaign.allocation.vcpus,
+        };
+        let mut command = Command::new(&copied);
+        command
+            .args([
+                "--exact",
+                "sustained::native_worker::tests::linux_replaced_harness_fixture",
+                "--ignored",
+                "--nocapture",
+                "--quiet",
+            ])
+            .env("RRFLOW_LINUX_EXPECTED_HARNESS_SHA256", &digest)
+            .env(
+                "RRFLOW_SUSTAINED_ALLOCATION_RECEIPT",
+                serde_json::to_string(&receipt).unwrap(),
+            );
+        let mut process = super::super::super::process::Process::start(
+            &mut command,
+            Duration::from_secs(30),
+            OUTPUT_LIMIT,
+            None,
+        )
+        .unwrap();
+        let output = process.finish().unwrap();
+        assert!(
+            output.status.success(),
+            "replacement fixture failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout)
+            .contains(&format!("linux_original_image_sample_verified={digest}")));
+
+        // A different receipt must be denied against the same running image.
+        let wrong_digest = if digest == "00".repeat(32) {
+            "11"
+        } else {
+            "00"
+        };
+        receipt.harness_sha256 = wrong_digest.repeat(32).try_into().unwrap();
+        let mut wrong_receipt = Command::new(copied.with_extension("original"));
+        wrong_receipt
+            .args([
+                "--exact",
+                "sustained::native_worker::tests::linux_replaced_harness_fixture",
+                "--ignored",
+                "--nocapture",
+                "--quiet",
+            ])
+            .env("RRFLOW_LINUX_EXPECTED_HARNESS_SHA256", &digest)
+            .env("RRFLOW_LINUX_EXPECT_RECEIPT_REJECTION", "1")
+            .env(
+                "RRFLOW_SUSTAINED_ALLOCATION_RECEIPT",
+                serde_json::to_string(&receipt).unwrap(),
+            );
+        let mut process = super::super::super::process::Process::start(
+            &mut wrong_receipt,
+            Duration::from_secs(30),
+            OUTPUT_LIMIT,
+            None,
+        )
+        .unwrap();
+        let output = process.finish().unwrap();
+        assert!(output.status.success(), "wrong receipt fixture failed");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("linux_wrong_image_receipt_rejected")
+        );
+    }
 
     #[test]
     #[ignore = "private launcher-owned abrupt-parent fixture"]
