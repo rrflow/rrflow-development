@@ -244,7 +244,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264";
+    "46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -4098,6 +4098,46 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "VectorPointPage",
         ),
         endpoint(
+            "vector-quantization-activate",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/activate",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "ActivateVectorQuantizationArtifact",
+            "ActivateVectorQuantizationArtifactResult",
+        ),
+        endpoint(
+            "vector-quantization-build",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/build",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "BuildVectorQuantizationArtifact",
+            "BuildVectorQuantizationArtifactResult",
+        ),
+        endpoint(
+            "vector-quantization-list",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/list",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::VectorCollectionList,
+            "ListVectorQuantizationArtifacts",
+            "ListVectorQuantizationArtifactsResult",
+        ),
+        endpoint(
+            "vector-quantization-retire",
+            HttpMethod::Post,
+            "/v1/vector/quantizations/retire",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::VectorCollectionEnsure,
+            "RetireVectorQuantizationArtifact",
+            "RetireVectorQuantizationArtifactResult",
+        ),
+        endpoint(
             "vector-search",
             HttpMethod::Post,
             "/v1/vector/search",
@@ -4485,6 +4525,18 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "RetrieveVectorPoints" => schema_json::<RequestEnvelope<RetrieveVectorPoints>>(),
         "ScrollVectorPoints" => schema_json::<RequestEnvelope<ScrollVectorPoints>>(),
         "SearchVectors" => schema_json::<RequestEnvelope<SearchVectors>>(),
+        "BuildVectorQuantizationArtifact" => {
+            schema_json::<RequestEnvelope<BuildVectorQuantizationArtifact>>()
+        }
+        "ListVectorQuantizationArtifacts" => {
+            schema_json::<RequestEnvelope<ListVectorQuantizationArtifacts>>()
+        }
+        "ActivateVectorQuantizationArtifact" => {
+            schema_json::<RequestEnvelope<ActivateVectorQuantizationArtifact>>()
+        }
+        "RetireVectorQuantizationArtifact" => {
+            schema_json::<RequestEnvelope<RetireVectorQuantizationArtifact>>()
+        }
         "CloseSubscription" => schema_json::<RequestEnvelope<CloseSubscription>>(),
         _ => return invalid(format!("no public request schema for {name}")),
     };
@@ -4558,6 +4610,18 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
             schema_json::<ResponseEnvelope<VectorCollectionCatalogueSnapshot>>()
         }
         "VectorSearchResult" => schema_json::<ResponseEnvelope<VectorSearchResult>>(),
+        "BuildVectorQuantizationArtifactResult" => {
+            schema_json::<ResponseEnvelope<BuildVectorQuantizationArtifactResult>>()
+        }
+        "ListVectorQuantizationArtifactsResult" => {
+            schema_json::<ResponseEnvelope<ListVectorQuantizationArtifactsResult>>()
+        }
+        "ActivateVectorQuantizationArtifactResult" => {
+            schema_json::<ResponseEnvelope<ActivateVectorQuantizationArtifactResult>>()
+        }
+        "RetireVectorQuantizationArtifactResult" => {
+            schema_json::<ResponseEnvelope<RetireVectorQuantizationArtifactResult>>()
+        }
         _ => return invalid(format!("no public response schema for {name}")),
     };
     Ok(schema)

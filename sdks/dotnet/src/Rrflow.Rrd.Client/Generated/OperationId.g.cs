@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264
+// OpenAPI SHA-256: 46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -60,6 +60,10 @@ public enum OperationId
     VectorCollectionList,
     VectorPointRetrieve,
     VectorPointScroll,
+    VectorQuantizationActivate,
+    VectorQuantizationBuild,
+    VectorQuantizationList,
+    VectorQuantizationRetire,
     VectorSearch,
 }
 
@@ -79,8 +83,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264";
-    public const int Count = 57;
+    public const string OpenApiDocumentSha256 = "46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6";
+    public const int Count = 61;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -140,6 +144,10 @@ public static class EndpointCatalog
         OperationId.VectorCollectionList => new("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SessionBearer, false),
         OperationId.VectorPointRetrieve => new("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SessionBearer, false),
         OperationId.VectorPointScroll => new("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SessionBearer, false),
+        OperationId.VectorQuantizationActivate => new("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SessionBearer, true),
+        OperationId.VectorQuantizationBuild => new("vector-quantization-build", "POST", "/v1/vector/quantizations/build", Authentication.SessionBearer, true),
+        OperationId.VectorQuantizationList => new("vector-quantization-list", "POST", "/v1/vector/quantizations/list", Authentication.SessionBearer, false),
+        OperationId.VectorQuantizationRetire => new("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SessionBearer, true),
         OperationId.VectorSearch => new("vector-search", "POST", "/v1/vector/search", Authentication.SessionBearer, false),
         _ => throw new System.ArgumentOutOfRangeException(nameof(operation)),
     };

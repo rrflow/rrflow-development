@@ -53,4 +53,5 @@
 - [POAM-041 — plan-conformance and change, interrupt and restart evidence stop at installation](poam-041.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-041`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-041) — active parent-owned POA&M detail
 - [POAM-042 — the estate has no configurable organisation layer](poam-042.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-042`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-042) — active parent-owned POA&M detail
 - [POAM-045 — vector search returns a vector's old version after it moves to another collection](poam-045.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-045`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-045) — active parent-owned POA&M detail
+- [POAM-046 — a vector index makes the public changefeed refuse its scope](poam-046.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-046`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-046) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

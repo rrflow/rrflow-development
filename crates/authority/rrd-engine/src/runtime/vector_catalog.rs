@@ -520,6 +520,15 @@ where
     descriptor.validate()?;
     let scope = descriptor.scope().clone();
     let stamp = descriptor.stamp().clone();
+    // The public changefeed projects every identity this build writes, and it
+    // accepts only canonical ids.
+    let record_reference = QuantizationArtifactEntry::record_reference(&descriptor)?;
+    let object_id = format!("{}.{}.quantized-bytes", stamp.id, stamp.generation);
+    for id in [record_reference.id.as_str(), object_id.as_str()] {
+        rrd_contract::CanonicalId::new(id).map_err(|error| {
+            format!("quantization artifact identity {id} is not public: {error}")
+        })?;
+    }
     let generation_bytes = stamp.generation.to_be_bytes();
     let identity = TraceIdentity::derive(&[
         scope.as_str().as_bytes(),
@@ -565,8 +574,8 @@ where
                 Some(staged) => staged.clone(),
                 None => {
                     let object = data.stage_object(
-                        format!("{}@{}:quantized-bytes", stamp.id, stamp.generation),
-                        Some(QuantizationArtifactEntry::record_reference(&descriptor)?),
+                        object_id.clone(),
+                        Some(record_reference.clone()),
                         artifact.kind().media_type(),
                         artifact.as_bytes(),
                     )?;

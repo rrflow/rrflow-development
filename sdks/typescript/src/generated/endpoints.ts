@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264" as const;
+// OpenAPI SHA-256: 46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6" as const;
 
 export const endpoints = {
   "attunement-cancel": {
@@ -338,6 +338,30 @@ export const endpoints = {
     "path": "/v1/vector/points/scroll",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "vector-quantization-activate": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/activate",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-quantization-build": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/build",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-quantization-list": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/list",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "vector-quantization-retire": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/retire",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "vector-search": {
     "method": "POST",

@@ -435,3 +435,34 @@ fn a_denied_lifecycle_operation_is_audited_and_replays_nothing() {
         revision
     );
 }
+
+/// The public changefeed projects every change in a scope that holds a
+/// quantization artifact, including the artifact's record and object.
+#[test]
+fn a_scope_with_quantization_artifacts_keeps_its_public_changefeed() {
+    let (_root, engine, lease) = fixture();
+    let built = build(&engine, &lease, "build-1", 29, 400).unwrap();
+    activate(&engine, &lease, "activate-1", 1).unwrap();
+    retire(&engine, &lease, "retire-1", 1).unwrap();
+    let page = engine
+        .read_changefeed_page(&rrd_contract::ReadChangefeed {
+            scope: scope(),
+            after_cursor: 0,
+            limit: 1_000,
+        })
+        .unwrap();
+    let identities = page
+        .changes
+        .iter()
+        .filter_map(|change| match &change.mutation {
+            rrd_contract::ChangeMutationSnapshot::Data {
+                mutation: TransactionMutation::PutRecord { reference, .. },
+            } => Some(format!("{}:{}", reference.kind, reference.id)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(identities.contains(&format!(
+        "vector_quantization_artifact:{}.{}",
+        built.artifact.artifact_id, built.artifact.generation
+    )));
+}

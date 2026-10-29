@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264
+# OpenAPI SHA-256: 46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264"
+    "46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6"
 )
 
 OperationId = Literal[
@@ -63,6 +63,10 @@ OperationId = Literal[
     "vector-collection-list",
     "vector-point-retrieve",
     "vector-point-scroll",
+    "vector-quantization-activate",
+    "vector-quantization-build",
+    "vector-quantization-list",
+    "vector-quantization-retire",
     "vector-search",
 ]
 
@@ -410,6 +414,30 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/vector/points/scroll",
+    },
+    "vector-quantization-activate": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/quantizations/activate",
+    },
+    "vector-quantization-build": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/quantizations/build",
+    },
+    "vector-quantization-list": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/vector/quantizations/list",
+    },
+    "vector-quantization-retire": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/quantizations/retire",
     },
     "vector-search": {
         "authentication": "session_bearer",
