@@ -277,7 +277,9 @@ def test_remote_cleartext_expired_deadlines_and_typed_api_errors_are_rejected() 
 
 
 def test_generated_catalogue_covers_the_frozen_contract() -> None:
-    assert len(ENDPOINTS) == 57
+    assert len(ENDPOINTS) == 58
+    assert ENDPOINTS["attunement-receipt-read"]["path"] == "/v1/attunement/receipt/read"
+    assert ENDPOINTS["attunement-receipt-read"]["mutation"] is False
     assert ENDPOINTS["capabilities-read"] == {
         "method": "GET",
         "path": "/v1/capabilities",

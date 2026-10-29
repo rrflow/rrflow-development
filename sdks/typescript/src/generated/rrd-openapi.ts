@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264
+// OpenAPI SHA-256: fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -34,6 +34,26 @@ export interface paths {
          * @description Returns the engine's stored attunement plan and status for a known job, authorized by EstateRead. This read does not inspect the current project source and reports source verification as not checked. It does not start, resume, or replan the job.
          */
         post: operations["attunement-read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/attunement/receipt/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read an installed attunement control receipt
+         * @description Reads the original committed outcome for the authenticated principal, job, and idempotency key under EstateRead. Returns the stored plan and status or an absent receipt without replaying a mutation. This read does not verify the current project source.
+         */
+        post: operations["attunement-receipt-read"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1524,22 +1544,6 @@ export interface components {
                                         /** @constant */
                                         mutation: "put_schema";
                                         registry: {
-                                            catalogue?: {
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                database: string;
-                                                /**
-                                                 * @description A canonical public identifier component.
-                                                 *
-                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                 *     labels are separate data and may use arbitrary Unicode.
-                                                 */
-                                                namespace: string;
-                                            };
                                             /** @default {} */
                                             events: {
                                                 [key: string]: {
@@ -1561,6 +1565,64 @@ export interface components {
                                                 };
                                             };
                                             migration: string;
+                                            /**
+                                             * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                             *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                             *     identity starts with `rrflow-`.
+                                             */
+                                            organisation?: {
+                                                categories?: {
+                                                    [key: string]: {
+                                                        /** @enum {string} */
+                                                        cardinality: "single" | "multiple";
+                                                        description?: string;
+                                                        /** @default false */
+                                                        open: boolean;
+                                                        /** @default {} */
+                                                        tags: {
+                                                            [key: string]: {
+                                                                description?: string;
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        /** @enum {string} */
+                                                        targets: "kinds" | "records" | "kinds_and_records";
+                                                        title: string;
+                                                    };
+                                                };
+                                                collection_domains?: {
+                                                    [key: string]: string;
+                                                };
+                                                domains?: {
+                                                    [key: string]: {
+                                                        description?: string;
+                                                        /** @description Omitted, or `default`, for a top-level domain. */
+                                                        parent?: string | null;
+                                                        title: string;
+                                                    };
+                                                };
+                                                kind_domains?: {
+                                                    [key: string]: string;
+                                                };
+                                                kind_tags?: {
+                                                    [key: string]: {
+                                                        /**
+                                                         * @description A canonical public identifier component.
+                                                         *
+                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                         *     labels are separate data and may use arbitrary Unicode.
+                                                         */
+                                                        category: string;
+                                                        /**
+                                                         * @description A canonical public identifier component.
+                                                         *
+                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                         *     labels are separate data and may use arbitrary Unicode.
+                                                         */
+                                                        tag: string;
+                                                    }[];
+                                                };
+                                            };
                                             /** @default {} */
                                             records: {
                                                 [key: string]: {
@@ -3633,6 +3695,494 @@ export interface operations {
             };
         };
     };
+    "attunement-receipt-read": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    /** @description Read the authenticated principal's receipt without replaying its command. */
+                    payload: {
+                        /** Format: uint16 */
+                        contract_version: number;
+                        idempotency_key: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        job_id: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Original committed outcome and the immutable plan it references. */
+                                receipt?: {
+                                    operation_sha256: string;
+                                    /** @description A bounded, content-addressed plan over one project source snapshot. */
+                                    plan: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        estimated_max_duration_ms: number;
+                                        /** Format: uint64 */
+                                        estimated_min_duration_ms: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        id: string;
+                                        phases: {
+                                            configuration_sha256: string;
+                                            /** Format: uint64 */
+                                            estimated_input_bytes: number;
+                                            /** Format: uint64 */
+                                            estimated_items: number;
+                                            /** @enum {string} */
+                                            phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
+                                            /** Format: uint16 */
+                                            sequence: number;
+                                        }[];
+                                        plan_sha256: string;
+                                        source_sha256: string;
+                                        /**
+                                         * @description Stable project-local identity. Organization is deliberately absent: a
+                                         *     local installation must not fabricate a tenant merely to address itself.
+                                         */
+                                        target: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            estate_id: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            instance_id: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            project_id: string;
+                                        };
+                                    };
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    principal_id: string;
+                                    /**
+                                     * @description This operation does not inspect the project's current source tree.
+                                     * @enum {string}
+                                     */
+                                    source_verification: "not_checked";
+                                    /**
+                                     * @description Read response for an engine-owned job. Events may point at this snapshot;
+                                     *     they never replace it as lifecycle authority.
+                                     */
+                                    status: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
+                                        job: {
+                                            /** @default [] */
+                                            checkpoints: {
+                                                checkpoint_sha256: string;
+                                                /** Format: uint64 */
+                                                committed_at_unix_ms: number;
+                                                configuration_sha256: string;
+                                                /** Format: uint16 */
+                                                contract_version: number;
+                                                coordinates: {
+                                                    /** Format: uint64 */
+                                                    catalogue_revision: number;
+                                                    /** Format: uint64 */
+                                                    runtime_cursor: number;
+                                                    runtime_manifest_sha256: string;
+                                                    /** Format: uint64 */
+                                                    schema_revision?: number | null;
+                                                };
+                                                input_sha256: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                job_id: string;
+                                                output_sha256: string;
+                                                /** @enum {string} */
+                                                phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
+                                                plan_sha256: string;
+                                                /** Format: uint16 */
+                                                sequence: number;
+                                            }[];
+                                            /** Format: uint16 */
+                                            contract_version: number;
+                                            /** Format: uint64 */
+                                            created_at_unix_ms: number;
+                                            /** @enum {string|null} */
+                                            current_phase?: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify" | null;
+                                            failure?: {
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                code: string;
+                                                evidence_sha256: string;
+                                                message: string;
+                                                /** Format: uint64 */
+                                                observed_at_unix_ms: number;
+                                                /** @enum {string} */
+                                                phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
+                                                retryable: boolean;
+                                            } | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            id: string;
+                                            lease?: {
+                                                /** Format: uint64 */
+                                                acquired_at_unix_ms: number;
+                                                /** Format: uint64 */
+                                                expires_at_unix_ms: number;
+                                                /** Format: uint64 */
+                                                generation: number;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                holder: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                id: string;
+                                            } | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            plan_id: string;
+                                            plan_sha256: string;
+                                            /** Format: uint64 */
+                                            revision: number;
+                                            /** @enum {string} */
+                                            state: "pending" | "running" | "paused" | "cancel_requested" | "cancelled" | "failed" | "succeeded";
+                                            /** Format: uint64 */
+                                            updated_at_unix_ms: number;
+                                        };
+                                        /** Format: uint64 */
+                                        observed_at_unix_ms: number;
+                                    };
+                                } | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                /** @description Original committed outcome and the immutable plan it references. */
+                                receipt?: {
+                                    operation_sha256: string;
+                                    /** @description A bounded, content-addressed plan over one project source snapshot. */
+                                    plan: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        estimated_max_duration_ms: number;
+                                        /** Format: uint64 */
+                                        estimated_min_duration_ms: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        id: string;
+                                        phases: {
+                                            configuration_sha256: string;
+                                            /** Format: uint64 */
+                                            estimated_input_bytes: number;
+                                            /** Format: uint64 */
+                                            estimated_items: number;
+                                            /** @enum {string} */
+                                            phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
+                                            /** Format: uint16 */
+                                            sequence: number;
+                                        }[];
+                                        plan_sha256: string;
+                                        source_sha256: string;
+                                        /**
+                                         * @description Stable project-local identity. Organization is deliberately absent: a
+                                         *     local installation must not fabricate a tenant merely to address itself.
+                                         */
+                                        target: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            estate_id: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            instance_id: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            project_id: string;
+                                        };
+                                    };
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    principal_id: string;
+                                    /**
+                                     * @description This operation does not inspect the project's current source tree.
+                                     * @enum {string}
+                                     */
+                                    source_verification: "not_checked";
+                                    /**
+                                     * @description Read response for an engine-owned job. Events may point at this snapshot;
+                                     *     they never replace it as lifecycle authority.
+                                     */
+                                    status: {
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
+                                        job: {
+                                            /** @default [] */
+                                            checkpoints: {
+                                                checkpoint_sha256: string;
+                                                /** Format: uint64 */
+                                                committed_at_unix_ms: number;
+                                                configuration_sha256: string;
+                                                /** Format: uint16 */
+                                                contract_version: number;
+                                                coordinates: {
+                                                    /** Format: uint64 */
+                                                    catalogue_revision: number;
+                                                    /** Format: uint64 */
+                                                    runtime_cursor: number;
+                                                    runtime_manifest_sha256: string;
+                                                    /** Format: uint64 */
+                                                    schema_revision?: number | null;
+                                                };
+                                                input_sha256: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                job_id: string;
+                                                output_sha256: string;
+                                                /** @enum {string} */
+                                                phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
+                                                plan_sha256: string;
+                                                /** Format: uint16 */
+                                                sequence: number;
+                                            }[];
+                                            /** Format: uint16 */
+                                            contract_version: number;
+                                            /** Format: uint64 */
+                                            created_at_unix_ms: number;
+                                            /** @enum {string|null} */
+                                            current_phase?: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify" | null;
+                                            failure?: {
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                code: string;
+                                                evidence_sha256: string;
+                                                message: string;
+                                                /** Format: uint64 */
+                                                observed_at_unix_ms: number;
+                                                /** @enum {string} */
+                                                phase: "connect" | "inventory" | "parse" | "normalize" | "entity_link" | "lexical_index" | "embed" | "vector_index" | "graph" | "ground" | "verify";
+                                                retryable: boolean;
+                                            } | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            id: string;
+                                            lease?: {
+                                                /** Format: uint64 */
+                                                acquired_at_unix_ms: number;
+                                                /** Format: uint64 */
+                                                expires_at_unix_ms: number;
+                                                /** Format: uint64 */
+                                                generation: number;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                holder: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                id: string;
+                                            } | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            plan_id: string;
+                                            plan_sha256: string;
+                                            /** Format: uint64 */
+                                            revision: number;
+                                            /** @enum {string} */
+                                            state: "pending" | "running" | "paused" | "cancel_requested" | "cancelled" | "failed" | "succeeded";
+                                            /** Format: uint64 */
+                                            updated_at_unix_ms: number;
+                                        };
+                                        /** Format: uint64 */
+                                        observed_at_unix_ms: number;
+                                    };
+                                } | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
     "audit-export": {
         parameters: {
             query?: never;
@@ -5215,22 +5765,6 @@ export interface operations {
                                                 /** @constant */
                                                 mutation: "put_schema";
                                                 registry: {
-                                                    catalogue?: {
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        database: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        namespace: string;
-                                                    };
                                                     /** @default {} */
                                                     events: {
                                                         [key: string]: {
@@ -5252,6 +5786,64 @@ export interface operations {
                                                         };
                                                     };
                                                     migration: string;
+                                                    /**
+                                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                     *     identity starts with `rrflow-`.
+                                                     */
+                                                    organisation?: {
+                                                        categories?: {
+                                                            [key: string]: {
+                                                                /** @enum {string} */
+                                                                cardinality: "single" | "multiple";
+                                                                description?: string;
+                                                                /** @default false */
+                                                                open: boolean;
+                                                                /** @default {} */
+                                                                tags: {
+                                                                    [key: string]: {
+                                                                        description?: string;
+                                                                        title: string;
+                                                                    };
+                                                                };
+                                                                /** @enum {string} */
+                                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        collection_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        domains?: {
+                                                            [key: string]: {
+                                                                description?: string;
+                                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                                parent?: string | null;
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        kind_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        kind_tags?: {
+                                                            [key: string]: {
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                category: string;
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                tag: string;
+                                                            }[];
+                                                        };
+                                                    };
                                                     /** @default {} */
                                                     records: {
                                                         [key: string]: {
@@ -6207,22 +6799,6 @@ export interface operations {
                                                 /** @constant */
                                                 mutation: "put_schema";
                                                 registry: {
-                                                    catalogue?: {
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        database: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        namespace: string;
-                                                    };
                                                     /** @default {} */
                                                     events: {
                                                         [key: string]: {
@@ -6244,6 +6820,64 @@ export interface operations {
                                                         };
                                                     };
                                                     migration: string;
+                                                    /**
+                                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                     *     identity starts with `rrflow-`.
+                                                     */
+                                                    organisation?: {
+                                                        categories?: {
+                                                            [key: string]: {
+                                                                /** @enum {string} */
+                                                                cardinality: "single" | "multiple";
+                                                                description?: string;
+                                                                /** @default false */
+                                                                open: boolean;
+                                                                /** @default {} */
+                                                                tags: {
+                                                                    [key: string]: {
+                                                                        description?: string;
+                                                                        title: string;
+                                                                    };
+                                                                };
+                                                                /** @enum {string} */
+                                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        collection_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        domains?: {
+                                                            [key: string]: {
+                                                                description?: string;
+                                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                                parent?: string | null;
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        kind_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        kind_tags?: {
+                                                            [key: string]: {
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                category: string;
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                tag: string;
+                                                            }[];
+                                                        };
+                                                    };
                                                     /** @default {} */
                                                     records: {
                                                         [key: string]: {
@@ -7250,22 +7884,6 @@ export interface operations {
                                             /** @constant */
                                             mutation: "put_schema";
                                             registry: {
-                                                catalogue?: {
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    database: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    namespace: string;
-                                                };
                                                 /** @default {} */
                                                 events: {
                                                     [key: string]: {
@@ -7287,6 +7905,64 @@ export interface operations {
                                                     };
                                                 };
                                                 migration: string;
+                                                /**
+                                                 * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                 *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                 *     identity starts with `rrflow-`.
+                                                 */
+                                                organisation?: {
+                                                    categories?: {
+                                                        [key: string]: {
+                                                            /** @enum {string} */
+                                                            cardinality: "single" | "multiple";
+                                                            description?: string;
+                                                            /** @default false */
+                                                            open: boolean;
+                                                            /** @default {} */
+                                                            tags: {
+                                                                [key: string]: {
+                                                                    description?: string;
+                                                                    title: string;
+                                                                };
+                                                            };
+                                                            /** @enum {string} */
+                                                            targets: "kinds" | "records" | "kinds_and_records";
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    collection_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    domains?: {
+                                                        [key: string]: {
+                                                            description?: string;
+                                                            /** @description Omitted, or `default`, for a top-level domain. */
+                                                            parent?: string | null;
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    kind_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    kind_tags?: {
+                                                        [key: string]: {
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            category: string;
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            tag: string;
+                                                        }[];
+                                                    };
+                                                };
                                                 /** @default {} */
                                                 records: {
                                                     [key: string]: {
@@ -8237,22 +8913,6 @@ export interface operations {
                                             /** @constant */
                                             mutation: "put_schema";
                                             registry: {
-                                                catalogue?: {
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    database: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    namespace: string;
-                                                };
                                                 /** @default {} */
                                                 events: {
                                                     [key: string]: {
@@ -8274,6 +8934,64 @@ export interface operations {
                                                     };
                                                 };
                                                 migration: string;
+                                                /**
+                                                 * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                 *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                 *     identity starts with `rrflow-`.
+                                                 */
+                                                organisation?: {
+                                                    categories?: {
+                                                        [key: string]: {
+                                                            /** @enum {string} */
+                                                            cardinality: "single" | "multiple";
+                                                            description?: string;
+                                                            /** @default false */
+                                                            open: boolean;
+                                                            /** @default {} */
+                                                            tags: {
+                                                                [key: string]: {
+                                                                    description?: string;
+                                                                    title: string;
+                                                                };
+                                                            };
+                                                            /** @enum {string} */
+                                                            targets: "kinds" | "records" | "kinds_and_records";
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    collection_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    domains?: {
+                                                        [key: string]: {
+                                                            description?: string;
+                                                            /** @description Omitted, or `default`, for a top-level domain. */
+                                                            parent?: string | null;
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    kind_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    kind_tags?: {
+                                                        [key: string]: {
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            category: string;
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            tag: string;
+                                                        }[];
+                                                    };
+                                                };
                                                 /** @default {} */
                                                 records: {
                                                     [key: string]: {
@@ -11220,22 +11938,6 @@ export interface operations {
                                 };
                                 read_manifest_sha256: string;
                                 schema?: {
-                                    catalogue?: {
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        database: string;
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        namespace: string;
-                                    };
                                     /** @default {} */
                                     events: {
                                         [key: string]: {
@@ -11257,6 +11959,64 @@ export interface operations {
                                         };
                                     };
                                     migration: string;
+                                    /**
+                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                     *     identity starts with `rrflow-`.
+                                     */
+                                    organisation?: {
+                                        categories?: {
+                                            [key: string]: {
+                                                /** @enum {string} */
+                                                cardinality: "single" | "multiple";
+                                                description?: string;
+                                                /** @default false */
+                                                open: boolean;
+                                                /** @default {} */
+                                                tags: {
+                                                    [key: string]: {
+                                                        description?: string;
+                                                        title: string;
+                                                    };
+                                                };
+                                                /** @enum {string} */
+                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                title: string;
+                                            };
+                                        };
+                                        collection_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        domains?: {
+                                            [key: string]: {
+                                                description?: string;
+                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                parent?: string | null;
+                                                title: string;
+                                            };
+                                        };
+                                        kind_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        kind_tags?: {
+                                            [key: string]: {
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                category: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                tag: string;
+                                            }[];
+                                        };
+                                    };
                                     /** @default {} */
                                     records: {
                                         [key: string]: {
@@ -11410,22 +12170,6 @@ export interface operations {
                                 };
                                 read_manifest_sha256: string;
                                 schema?: {
-                                    catalogue?: {
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        database: string;
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        namespace: string;
-                                    };
                                     /** @default {} */
                                     events: {
                                         [key: string]: {
@@ -11447,6 +12191,64 @@ export interface operations {
                                         };
                                     };
                                     migration: string;
+                                    /**
+                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                     *     identity starts with `rrflow-`.
+                                     */
+                                    organisation?: {
+                                        categories?: {
+                                            [key: string]: {
+                                                /** @enum {string} */
+                                                cardinality: "single" | "multiple";
+                                                description?: string;
+                                                /** @default false */
+                                                open: boolean;
+                                                /** @default {} */
+                                                tags: {
+                                                    [key: string]: {
+                                                        description?: string;
+                                                        title: string;
+                                                    };
+                                                };
+                                                /** @enum {string} */
+                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                title: string;
+                                            };
+                                        };
+                                        collection_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        domains?: {
+                                            [key: string]: {
+                                                description?: string;
+                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                parent?: string | null;
+                                                title: string;
+                                            };
+                                        };
+                                        kind_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        kind_tags?: {
+                                            [key: string]: {
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                category: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                tag: string;
+                                            }[];
+                                        };
+                                    };
                                     /** @default {} */
                                     records: {
                                         [key: string]: {
@@ -11758,22 +12560,6 @@ export interface operations {
                                                 /** @constant */
                                                 mutation: "put_schema";
                                                 registry: {
-                                                    catalogue?: {
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        database: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        namespace: string;
-                                                    };
                                                     /** @default {} */
                                                     events: {
                                                         [key: string]: {
@@ -11795,6 +12581,64 @@ export interface operations {
                                                         };
                                                     };
                                                     migration: string;
+                                                    /**
+                                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                     *     identity starts with `rrflow-`.
+                                                     */
+                                                    organisation?: {
+                                                        categories?: {
+                                                            [key: string]: {
+                                                                /** @enum {string} */
+                                                                cardinality: "single" | "multiple";
+                                                                description?: string;
+                                                                /** @default false */
+                                                                open: boolean;
+                                                                /** @default {} */
+                                                                tags: {
+                                                                    [key: string]: {
+                                                                        description?: string;
+                                                                        title: string;
+                                                                    };
+                                                                };
+                                                                /** @enum {string} */
+                                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        collection_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        domains?: {
+                                                            [key: string]: {
+                                                                description?: string;
+                                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                                parent?: string | null;
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        kind_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        kind_tags?: {
+                                                            [key: string]: {
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                category: string;
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                tag: string;
+                                                            }[];
+                                                        };
+                                                    };
                                                     /** @default {} */
                                                     records: {
                                                         [key: string]: {
@@ -13731,22 +14575,6 @@ export interface operations {
                                     }[];
                                 };
                                 schema?: {
-                                    catalogue?: {
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        database: string;
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        namespace: string;
-                                    };
                                     /** @default {} */
                                     events: {
                                         [key: string]: {
@@ -13768,6 +14596,64 @@ export interface operations {
                                         };
                                     };
                                     migration: string;
+                                    /**
+                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                     *     identity starts with `rrflow-`.
+                                     */
+                                    organisation?: {
+                                        categories?: {
+                                            [key: string]: {
+                                                /** @enum {string} */
+                                                cardinality: "single" | "multiple";
+                                                description?: string;
+                                                /** @default false */
+                                                open: boolean;
+                                                /** @default {} */
+                                                tags: {
+                                                    [key: string]: {
+                                                        description?: string;
+                                                        title: string;
+                                                    };
+                                                };
+                                                /** @enum {string} */
+                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                title: string;
+                                            };
+                                        };
+                                        collection_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        domains?: {
+                                            [key: string]: {
+                                                description?: string;
+                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                parent?: string | null;
+                                                title: string;
+                                            };
+                                        };
+                                        kind_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        kind_tags?: {
+                                            [key: string]: {
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                category: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                tag: string;
+                                            }[];
+                                        };
+                                    };
                                     /** @default {} */
                                     records: {
                                         [key: string]: {
@@ -14362,22 +15248,6 @@ export interface operations {
                                                 /** @constant */
                                                 mutation: "put_schema";
                                                 registry: {
-                                                    catalogue?: {
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        database: string;
-                                                        /**
-                                                         * @description A canonical public identifier component.
-                                                         *
-                                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                         *     labels are separate data and may use arbitrary Unicode.
-                                                         */
-                                                        namespace: string;
-                                                    };
                                                     /** @default {} */
                                                     events: {
                                                         [key: string]: {
@@ -14399,6 +15269,64 @@ export interface operations {
                                                         };
                                                     };
                                                     migration: string;
+                                                    /**
+                                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                     *     identity starts with `rrflow-`.
+                                                     */
+                                                    organisation?: {
+                                                        categories?: {
+                                                            [key: string]: {
+                                                                /** @enum {string} */
+                                                                cardinality: "single" | "multiple";
+                                                                description?: string;
+                                                                /** @default false */
+                                                                open: boolean;
+                                                                /** @default {} */
+                                                                tags: {
+                                                                    [key: string]: {
+                                                                        description?: string;
+                                                                        title: string;
+                                                                    };
+                                                                };
+                                                                /** @enum {string} */
+                                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        collection_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        domains?: {
+                                                            [key: string]: {
+                                                                description?: string;
+                                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                                parent?: string | null;
+                                                                title: string;
+                                                            };
+                                                        };
+                                                        kind_domains?: {
+                                                            [key: string]: string;
+                                                        };
+                                                        kind_tags?: {
+                                                            [key: string]: {
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                category: string;
+                                                                /**
+                                                                 * @description A canonical public identifier component.
+                                                                 *
+                                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                                 */
+                                                                tag: string;
+                                                            }[];
+                                                        };
+                                                    };
                                                     /** @default {} */
                                                     records: {
                                                         [key: string]: {
@@ -16335,22 +17263,6 @@ export interface operations {
                                     }[];
                                 };
                                 schema?: {
-                                    catalogue?: {
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        database: string;
-                                        /**
-                                         * @description A canonical public identifier component.
-                                         *
-                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                         *     labels are separate data and may use arbitrary Unicode.
-                                         */
-                                        namespace: string;
-                                    };
                                     /** @default {} */
                                     events: {
                                         [key: string]: {
@@ -16372,6 +17284,64 @@ export interface operations {
                                         };
                                     };
                                     migration: string;
+                                    /**
+                                     * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                     *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                     *     identity starts with `rrflow-`.
+                                     */
+                                    organisation?: {
+                                        categories?: {
+                                            [key: string]: {
+                                                /** @enum {string} */
+                                                cardinality: "single" | "multiple";
+                                                description?: string;
+                                                /** @default false */
+                                                open: boolean;
+                                                /** @default {} */
+                                                tags: {
+                                                    [key: string]: {
+                                                        description?: string;
+                                                        title: string;
+                                                    };
+                                                };
+                                                /** @enum {string} */
+                                                targets: "kinds" | "records" | "kinds_and_records";
+                                                title: string;
+                                            };
+                                        };
+                                        collection_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        domains?: {
+                                            [key: string]: {
+                                                description?: string;
+                                                /** @description Omitted, or `default`, for a top-level domain. */
+                                                parent?: string | null;
+                                                title: string;
+                                            };
+                                        };
+                                        kind_domains?: {
+                                            [key: string]: string;
+                                        };
+                                        kind_tags?: {
+                                            [key: string]: {
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                category: string;
+                                                /**
+                                                 * @description A canonical public identifier component.
+                                                 *
+                                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                 *     labels are separate data and may use arbitrary Unicode.
+                                                 */
+                                                tag: string;
+                                            }[];
+                                        };
+                                    };
                                     /** @default {} */
                                     records: {
                                         [key: string]: {
@@ -28256,22 +29226,6 @@ export interface operations {
                             /** @constant */
                             mutation: "put_schema";
                             registry: {
-                                catalogue?: {
-                                    /**
-                                     * @description A canonical public identifier component.
-                                     *
-                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                     *     labels are separate data and may use arbitrary Unicode.
-                                     */
-                                    database: string;
-                                    /**
-                                     * @description A canonical public identifier component.
-                                     *
-                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                     *     labels are separate data and may use arbitrary Unicode.
-                                     */
-                                    namespace: string;
-                                };
                                 /** @default {} */
                                 events?: {
                                     [key: string]: {
@@ -28293,6 +29247,64 @@ export interface operations {
                                     };
                                 };
                                 migration: string;
+                                /**
+                                 * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                 *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                 *     identity starts with `rrflow-`.
+                                 */
+                                organisation?: {
+                                    categories?: {
+                                        [key: string]: {
+                                            /** @enum {string} */
+                                            cardinality: "single" | "multiple";
+                                            description?: string;
+                                            /** @default false */
+                                            open?: boolean;
+                                            /** @default {} */
+                                            tags?: {
+                                                [key: string]: {
+                                                    description?: string;
+                                                    title: string;
+                                                };
+                                            };
+                                            /** @enum {string} */
+                                            targets: "kinds" | "records" | "kinds_and_records";
+                                            title: string;
+                                        };
+                                    };
+                                    collection_domains?: {
+                                        [key: string]: string;
+                                    };
+                                    domains?: {
+                                        [key: string]: {
+                                            description?: string;
+                                            /** @description Omitted, or `default`, for a top-level domain. */
+                                            parent?: string | null;
+                                            title: string;
+                                        };
+                                    };
+                                    kind_domains?: {
+                                        [key: string]: string;
+                                    };
+                                    kind_tags?: {
+                                        [key: string]: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            category: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            tag: string;
+                                        }[];
+                                    };
+                                };
                                 /** @default {} */
                                 records?: {
                                     [key: string]: {
@@ -29303,22 +30315,6 @@ export interface operations {
                             /** @constant */
                             mutation: "put_schema";
                             registry: {
-                                catalogue?: {
-                                    /**
-                                     * @description A canonical public identifier component.
-                                     *
-                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                     *     labels are separate data and may use arbitrary Unicode.
-                                     */
-                                    database: string;
-                                    /**
-                                     * @description A canonical public identifier component.
-                                     *
-                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                     *     labels are separate data and may use arbitrary Unicode.
-                                     */
-                                    namespace: string;
-                                };
                                 /** @default {} */
                                 events?: {
                                     [key: string]: {
@@ -29340,6 +30336,64 @@ export interface operations {
                                     };
                                 };
                                 migration: string;
+                                /**
+                                 * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                 *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                 *     identity starts with `rrflow-`.
+                                 */
+                                organisation?: {
+                                    categories?: {
+                                        [key: string]: {
+                                            /** @enum {string} */
+                                            cardinality: "single" | "multiple";
+                                            description?: string;
+                                            /** @default false */
+                                            open?: boolean;
+                                            /** @default {} */
+                                            tags?: {
+                                                [key: string]: {
+                                                    description?: string;
+                                                    title: string;
+                                                };
+                                            };
+                                            /** @enum {string} */
+                                            targets: "kinds" | "records" | "kinds_and_records";
+                                            title: string;
+                                        };
+                                    };
+                                    collection_domains?: {
+                                        [key: string]: string;
+                                    };
+                                    domains?: {
+                                        [key: string]: {
+                                            description?: string;
+                                            /** @description Omitted, or `default`, for a top-level domain. */
+                                            parent?: string | null;
+                                            title: string;
+                                        };
+                                    };
+                                    kind_domains?: {
+                                        [key: string]: string;
+                                    };
+                                    kind_tags?: {
+                                        [key: string]: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            category: string;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            tag: string;
+                                        }[];
+                                    };
+                                };
                                 /** @default {} */
                                 records?: {
                                     [key: string]: {
@@ -30239,22 +31293,6 @@ export interface operations {
                                     /** @constant */
                                     mutation: "put_schema";
                                     registry: {
-                                        catalogue?: {
-                                            /**
-                                             * @description A canonical public identifier component.
-                                             *
-                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                             *     labels are separate data and may use arbitrary Unicode.
-                                             */
-                                            database: string;
-                                            /**
-                                             * @description A canonical public identifier component.
-                                             *
-                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                             *     labels are separate data and may use arbitrary Unicode.
-                                             */
-                                            namespace: string;
-                                        };
                                         /** @default {} */
                                         events: {
                                             [key: string]: {
@@ -30276,6 +31314,64 @@ export interface operations {
                                             };
                                         };
                                         migration: string;
+                                        /**
+                                         * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                         *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                         *     identity starts with `rrflow-`.
+                                         */
+                                        organisation?: {
+                                            categories?: {
+                                                [key: string]: {
+                                                    /** @enum {string} */
+                                                    cardinality: "single" | "multiple";
+                                                    description?: string;
+                                                    /** @default false */
+                                                    open: boolean;
+                                                    /** @default {} */
+                                                    tags: {
+                                                        [key: string]: {
+                                                            description?: string;
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    /** @enum {string} */
+                                                    targets: "kinds" | "records" | "kinds_and_records";
+                                                    title: string;
+                                                };
+                                            };
+                                            collection_domains?: {
+                                                [key: string]: string;
+                                            };
+                                            domains?: {
+                                                [key: string]: {
+                                                    description?: string;
+                                                    /** @description Omitted, or `default`, for a top-level domain. */
+                                                    parent?: string | null;
+                                                    title: string;
+                                                };
+                                            };
+                                            kind_domains?: {
+                                                [key: string]: string;
+                                            };
+                                            kind_tags?: {
+                                                [key: string]: {
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    category: string;
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    tag: string;
+                                                }[];
+                                            };
+                                        };
                                         /** @default {} */
                                         records: {
                                             [key: string]: {
@@ -31179,22 +32275,6 @@ export interface operations {
                                             /** @constant */
                                             mutation: "put_schema";
                                             registry: {
-                                                catalogue?: {
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    database: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    namespace: string;
-                                                };
                                                 /** @default {} */
                                                 events: {
                                                     [key: string]: {
@@ -31216,6 +32296,64 @@ export interface operations {
                                                     };
                                                 };
                                                 migration: string;
+                                                /**
+                                                 * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                 *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                 *     identity starts with `rrflow-`.
+                                                 */
+                                                organisation?: {
+                                                    categories?: {
+                                                        [key: string]: {
+                                                            /** @enum {string} */
+                                                            cardinality: "single" | "multiple";
+                                                            description?: string;
+                                                            /** @default false */
+                                                            open: boolean;
+                                                            /** @default {} */
+                                                            tags: {
+                                                                [key: string]: {
+                                                                    description?: string;
+                                                                    title: string;
+                                                                };
+                                                            };
+                                                            /** @enum {string} */
+                                                            targets: "kinds" | "records" | "kinds_and_records";
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    collection_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    domains?: {
+                                                        [key: string]: {
+                                                            description?: string;
+                                                            /** @description Omitted, or `default`, for a top-level domain. */
+                                                            parent?: string | null;
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    kind_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    kind_tags?: {
+                                                        [key: string]: {
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            category: string;
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            tag: string;
+                                                        }[];
+                                                    };
+                                                };
                                                 /** @default {} */
                                                 records: {
                                                     [key: string]: {
@@ -32171,22 +33309,6 @@ export interface operations {
                                     /** @constant */
                                     mutation: "put_schema";
                                     registry: {
-                                        catalogue?: {
-                                            /**
-                                             * @description A canonical public identifier component.
-                                             *
-                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                             *     labels are separate data and may use arbitrary Unicode.
-                                             */
-                                            database: string;
-                                            /**
-                                             * @description A canonical public identifier component.
-                                             *
-                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                             *     labels are separate data and may use arbitrary Unicode.
-                                             */
-                                            namespace: string;
-                                        };
                                         /** @default {} */
                                         events: {
                                             [key: string]: {
@@ -32208,6 +33330,64 @@ export interface operations {
                                             };
                                         };
                                         migration: string;
+                                        /**
+                                         * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                         *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                         *     identity starts with `rrflow-`.
+                                         */
+                                        organisation?: {
+                                            categories?: {
+                                                [key: string]: {
+                                                    /** @enum {string} */
+                                                    cardinality: "single" | "multiple";
+                                                    description?: string;
+                                                    /** @default false */
+                                                    open: boolean;
+                                                    /** @default {} */
+                                                    tags: {
+                                                        [key: string]: {
+                                                            description?: string;
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    /** @enum {string} */
+                                                    targets: "kinds" | "records" | "kinds_and_records";
+                                                    title: string;
+                                                };
+                                            };
+                                            collection_domains?: {
+                                                [key: string]: string;
+                                            };
+                                            domains?: {
+                                                [key: string]: {
+                                                    description?: string;
+                                                    /** @description Omitted, or `default`, for a top-level domain. */
+                                                    parent?: string | null;
+                                                    title: string;
+                                                };
+                                            };
+                                            kind_domains?: {
+                                                [key: string]: string;
+                                            };
+                                            kind_tags?: {
+                                                [key: string]: {
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    category: string;
+                                                    /**
+                                                     * @description A canonical public identifier component.
+                                                     *
+                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                     *     labels are separate data and may use arbitrary Unicode.
+                                                     */
+                                                    tag: string;
+                                                }[];
+                                            };
+                                        };
                                         /** @default {} */
                                         records: {
                                             [key: string]: {
@@ -33111,22 +34291,6 @@ export interface operations {
                                             /** @constant */
                                             mutation: "put_schema";
                                             registry: {
-                                                catalogue?: {
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    database: string;
-                                                    /**
-                                                     * @description A canonical public identifier component.
-                                                     *
-                                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
-                                                     *     labels are separate data and may use arbitrary Unicode.
-                                                     */
-                                                    namespace: string;
-                                                };
                                                 /** @default {} */
                                                 events: {
                                                     [key: string]: {
@@ -33148,6 +34312,64 @@ export interface operations {
                                                     };
                                                 };
                                                 migration: string;
+                                                /**
+                                                 * @description Domains, categories and memberships of one estate catalogue. A kind or
+                                                 *     collection without an entry belongs to `default`, or to `rrflow` when its
+                                                 *     identity starts with `rrflow-`.
+                                                 */
+                                                organisation?: {
+                                                    categories?: {
+                                                        [key: string]: {
+                                                            /** @enum {string} */
+                                                            cardinality: "single" | "multiple";
+                                                            description?: string;
+                                                            /** @default false */
+                                                            open: boolean;
+                                                            /** @default {} */
+                                                            tags: {
+                                                                [key: string]: {
+                                                                    description?: string;
+                                                                    title: string;
+                                                                };
+                                                            };
+                                                            /** @enum {string} */
+                                                            targets: "kinds" | "records" | "kinds_and_records";
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    collection_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    domains?: {
+                                                        [key: string]: {
+                                                            description?: string;
+                                                            /** @description Omitted, or `default`, for a top-level domain. */
+                                                            parent?: string | null;
+                                                            title: string;
+                                                        };
+                                                    };
+                                                    kind_domains?: {
+                                                        [key: string]: string;
+                                                    };
+                                                    kind_tags?: {
+                                                        [key: string]: {
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            category: string;
+                                                            /**
+                                                             * @description A canonical public identifier component.
+                                                             *
+                                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                                             *     labels are separate data and may use arbitrary Unicode.
+                                                             */
+                                                            tag: string;
+                                                        }[];
+                                                    };
+                                                };
                                                 /** @default {} */
                                                 records: {
                                                     [key: string]: {
