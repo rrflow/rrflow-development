@@ -40,6 +40,20 @@ impl RrflowKvStore {
         self.inspect_storage_projected(rows, bytes, range)
     }
 
+    /// Inspect current records of one semantic kind without exposing the key codec.
+    pub fn inspect_storage_record_kind(
+        &self,
+        rows: usize,
+        bytes: usize,
+        scope: &rrd_core::ScopeId,
+        kind: &rrd_core::RuntimeType,
+    ) -> Result<StorageInspectionCursor> {
+        let prefix = keyspaces::runtime_kind_prefix(keyspaces::RUNTIME_RECORDS, scope, kind);
+        let end = prefix_end(&prefix);
+        let range = ProjectedReadRange::new(prefix, end)?;
+        self.inspect_storage_projected(rows, bytes, range)
+    }
+
     fn inspect_storage_projected(
         &self,
         rows: usize,

@@ -1,5 +1,5 @@
 //! Ephemeral, bounded inspection of an installed physical storage snapshot.
-use crate::{invalid, CorrelationId, ReadStorageDiagnostics, Result};
+use crate::{invalid, CanonicalId, CorrelationId, ReadStorageDiagnostics, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +31,17 @@ pub enum StorageCursorAction {
         #[schemars(length(min = 1, max = 4096))]
         end: Vec<u8>,
     },
+    /// Inspect current records of one kind in the authorized instance scope.
+    /// The store derives the physical range; clients do not encode storage keys.
+    OpenRecordKind {
+        #[schemars(range(min = 1, max = 4096))]
+        batch_rows: u16,
+        #[schemars(range(min = 1, max = 4194304))]
+        batch_bytes: u32,
+        #[schemars(range(min = 1, max = 60000))]
+        lifetime_ms: u32,
+        record_kind: CanonicalId,
+    },
     Observe {},
     Advance {
         expected_ordinal: u64,
@@ -51,6 +62,12 @@ impl InspectStorageCursor {
                 lifetime_ms,
             }
             | StorageCursorAction::OpenRange {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+                ..
+            }
+            | StorageCursorAction::OpenRecordKind {
                 batch_rows,
                 batch_bytes,
                 lifetime_ms,

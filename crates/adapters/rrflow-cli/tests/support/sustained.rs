@@ -605,7 +605,15 @@ impl PointRun<'_> {
                 .contains(&CapacityLane::ReaderPinInterference)
             && prepared.iter().any(|operation| operation.write.is_some())
         {
-            Some(reader::HeldReader::open(&self.workload, writer.next_index(), self.clock).await?)
+            Some(
+                reader::HeldReader::open(
+                    &self.workload,
+                    writer.next_index(),
+                    self.clock,
+                    campaign.reader_selection.as_ref(),
+                )
+                .await?,
+            )
         } else {
             None
         };
@@ -1201,6 +1209,7 @@ fn smoke_campaign() -> StorageCampaign {
             segments: limit(10),
             samples_per_segment: limit(64),
         },
+        reader_selection: None,
         storage,
     }
 }
@@ -1870,7 +1879,7 @@ fn installed_capacity_workload_smoke() {
                 99,
             )
             .unwrap();
-        let retained_reader = reader::HeldReader::open(&work, 0, clock).await.unwrap();
+        let retained_reader = reader::HeldReader::open(&work, 0, clock, None).await.unwrap();
         let mut management = management::ManagementTask::new();
         let (release_receipt, held_receipt) = tokio::sync::oneshot::channel();
         let backup_work = work.clone();
@@ -1891,6 +1900,18 @@ fn installed_capacity_workload_smoke() {
         assert!(!management.is_pending());
         let reader_evidence = retained_reader.finish(&work, clock).await.unwrap();
         work.verify(&write).await.unwrap();
+        let selected = reader::HeldReader::open(
+            &work, 1, clock, Some(&ReaderSelection::WorkloadRecords {}),
+        ).await.unwrap();
+        let selected_write = work.prepare("smoke-selected-write".into(), StorageLoadKind::MixedWrite, 101).unwrap();
+        let selected_receipt = work.execute(&selected_write).await.unwrap();
+        work.verify(&selected_write).await.unwrap();
+        let selected_evidence = selected.finish(&work, clock).await.unwrap();
+        assert!(selected_evidence.opened.rows > 0);
+        println!(
+            "selected_reader_interference={}",
+            serde_json::to_string(&selected_evidence).unwrap()
+        );
         let killed = super::kill(child, clock);
         let (reopened, client, identity) = estate.start_for(clock, Duration::from_secs(300));
         work.client = client;
@@ -1936,6 +1957,10 @@ fn installed_capacity_workload_smoke() {
         let replay = work.execute(&write).await.unwrap();
         assert!(replay.idempotent_replay);
         assert_eq!(replay.receipt_sha256, written.receipt_sha256);
+        work.verify(&selected_write).await.unwrap();
+        let selected_replay = work.execute(&selected_write).await.unwrap();
+        assert!(selected_replay.idempotent_replay);
+        assert_eq!(selected_replay.receipt_sha256, selected_receipt.receipt_sha256);
         println!(
             "installed_capacity_workload_smoke={}",
             serde_json::json!({

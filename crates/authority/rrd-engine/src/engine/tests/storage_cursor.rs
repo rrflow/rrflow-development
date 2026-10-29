@@ -1,6 +1,10 @@
 use super::*;
 use crate::ServiceErrorKind;
 use rrd_contract::{InspectStorageCursor, StorageCursorAction};
+use rrd_core::{
+    RuntimeCommit, RuntimeLogicalModel, RuntimeMutation, RuntimeProperties, RuntimeRecord,
+    RuntimeRecordSchema, RuntimeRef, RuntimeSchemaRegistry, RuntimeType, ScopeId,
+};
 
 #[test]
 fn physical_cursor_denial_is_resource_exhausted_and_retry_releases_owners() {
@@ -262,6 +266,136 @@ fn bounded_physical_cursor_preserves_auth_retry_and_owner_lifetimes() {
     assert!(!cancelled.source_open);
     assert_eq!(cancelled.page_sha256, first.page_sha256);
     assert!(cancelled.allocated_bytes > 0);
+    assert!(call(StorageCursorAction::Release {}).unwrap().released);
+    call(open).unwrap();
+    engine
+        .storage_cursors
+        .lock()
+        .unwrap()
+        .values_mut()
+        .for_each(|entry| entry.deadline = std::time::Instant::now());
+    engine.reap_storage_cursors().unwrap();
+    assert!(call(StorageCursorAction::Observe {}).is_err());
+    let owners = engine.storage.physical_store_evidence().unwrap();
+    assert_eq!(owners.active_read_views, Some(0));
+    assert_eq!(owners.pinned_read_bytes, Some(0));
+    assert_eq!(owners.retained_projected_bytes, Some(0));
+}
+
+#[test]
+fn record_kind_cursor_uses_engine_scope_auth_and_retry_ownership() {
+    let (_root, engine) = isolated_engine();
+    let scope = ScopeId::new("instance:test-instance").unwrap();
+    let mut schema = RuntimeSchemaRegistry::empty(1, "record cursor fixture");
+    schema
+        .define_record_table(
+            RuntimeType::new("entity").unwrap(),
+            RuntimeLogicalModel::Relational,
+            RuntimeRecordSchema::default(),
+        )
+        .unwrap();
+    let record = |name| RuntimeRecord {
+        reference: RuntimeRef::new("entity", name).unwrap(),
+        valid_from: 10,
+        valid_to: None,
+        properties: RuntimeProperties::new(),
+    };
+    engine
+        .storage
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope,
+            at: 10,
+            actor: "test:selector".into(),
+            expected_cursor: 0,
+            mutations: vec![
+                RuntimeMutation::Schema { registry: schema },
+                RuntimeMutation::Record {
+                    record: record("alpha"),
+                },
+                RuntimeMutation::Record {
+                    record: record("beta"),
+                },
+            ],
+        })
+        .unwrap();
+    let owner = engine
+        .create_session(
+            &session_request(9000, 8),
+            &id("selector-owner"),
+            1000,
+            "create",
+            "create",
+        )
+        .unwrap();
+    let other = engine
+        .create_session(
+            &session_request(9000, 8),
+            &id("selector-other"),
+            1000,
+            "other",
+            "other",
+        )
+        .unwrap();
+    let request = |action| InspectStorageCursor {
+        scope: "instance:test-instance".into(),
+        cursor_id: id("selector"),
+        action,
+    };
+    let call = |action| {
+        engine.inspect_storage_cursor(
+            &owner.session_id,
+            &owner.token,
+            &request(action),
+            1100,
+            "selector",
+            "selector",
+        )
+    };
+    let open = StorageCursorAction::OpenRecordKind {
+        batch_rows: 1,
+        batch_bytes: 4096,
+        lifetime_ms: 8000,
+        record_kind: rrd_contract::CanonicalId::new("entity").unwrap(),
+    };
+    let first = call(open.clone()).unwrap();
+    assert!(first.source_open && first.rows == 1);
+    assert_eq!(call(open.clone()).unwrap(), first);
+    assert!(matches!(
+        call(StorageCursorAction::OpenRecordKind {
+            batch_rows: 1,
+            batch_bytes: 4096,
+            lifetime_ms: 8000,
+            record_kind: rrd_contract::CanonicalId::new("other").unwrap()
+        }),
+        Err(ServiceError::IdempotencyConflict)
+    ));
+    assert!(engine
+        .inspect_storage_cursor(
+            &other.session_id,
+            &other.token,
+            &request(StorageCursorAction::Observe {}),
+            1100,
+            "other",
+            "other"
+        )
+        .is_err());
+    let mut foreign_scope = request(open.clone());
+    foreign_scope.scope = "instance:other".into();
+    assert!(engine
+        .inspect_storage_cursor(
+            &owner.session_id,
+            &owner.token,
+            &foreign_scope,
+            1100,
+            "foreign-scope",
+            "foreign-scope",
+        )
+        .is_err());
+    assert!(!serde_json::to_string(&first).unwrap().contains("alpha"));
+    let cancelled = call(StorageCursorAction::CancelSource {}).unwrap();
+    assert!(!cancelled.source_open);
+    assert_eq!(cancelled.page_sha256, first.page_sha256);
     assert!(call(StorageCursorAction::Release {}).unwrap().released);
     call(open).unwrap();
     engine

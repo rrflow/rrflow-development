@@ -198,6 +198,14 @@ pub struct EvidenceLimits {
     pub samples_per_segment: Limit,
 }
 
+/// A reviewed selection of records actually created by the workload adapter.
+/// Omission preserves the historical full-range reader and campaign identity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ReaderSelection {
+    WorkloadRecords {},
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StorageCampaign {
@@ -216,6 +224,8 @@ pub struct StorageCampaign {
     #[schemars(length(min = 1, max = 5))]
     pub required_lanes: Vec<CapacityLane>,
     pub evidence: EvidenceLimits,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reader_selection: Option<ReaderSelection>,
 }
 
 impl StorageCampaign {
@@ -288,6 +298,13 @@ impl StorageCampaign {
                 == self.required_lanes.len()
                 && !self.required_lanes.is_empty(),
             "missing or repeated lane",
+        )?;
+        require(
+            self.reader_selection.is_none()
+                || self
+                    .required_lanes
+                    .contains(&CapacityLane::ReaderPinInterference),
+            "reader selection requires the reader interference lane",
         )?;
         require(
             self.evidence.segment_attempts.get() <= MAX_ATTEMPTS as u64
@@ -1879,6 +1896,33 @@ pub(super) mod tests {
         value.try_into().unwrap()
     }
     #[test]
+    fn reader_selection_is_explicit_and_bound_to_campaign_identity() {
+        let (mut legacy, _) = fixture();
+        legacy
+            .required_lanes
+            .push(CapacityLane::ReaderPinInterference);
+        let original = serde_json::to_value(&legacy).unwrap();
+        assert!(original.get("reader_selection").is_none());
+        let original_digest = legacy.sha256().unwrap();
+        let mut selected = original.clone();
+        selected["reader_selection"] = serde_json::json!({"kind": "workload_records"});
+        let selected: StorageCampaign = serde_json::from_value(selected).unwrap();
+        assert_ne!(selected.sha256().unwrap(), original_digest);
+        let old_roundtrip: StorageCampaign = serde_json::from_value(original.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&old_roundtrip).unwrap(), original);
+        assert_eq!(old_roundtrip.sha256().unwrap(), original_digest);
+        let mut absent_lane = selected.clone();
+        absent_lane
+            .required_lanes
+            .retain(|lane| *lane != CapacityLane::ReaderPinInterference);
+        assert!(absent_lane.validate().is_err());
+        let mut bad = original;
+        bad["reader_selection"] =
+            serde_json::json!({"kind": "workload_records", "record_kind": "other"});
+        assert!(serde_json::from_value::<StorageCampaign>(bad).is_err());
+    }
+
+    #[test]
     fn idle_segments_reserve_probe_time_and_respect_sample_capacity() {
         let (mut campaign, _) = fixture();
         campaign.storage.budgets.run_ms = limit(120_000);
@@ -1958,6 +2002,7 @@ pub(super) mod tests {
                 segments: limit(100),
                 samples_per_segment: limit(100),
             },
+            reader_selection: None,
             storage: manifest.clone(),
         };
         let observed = NativeMetric::Observed { value: 0 };

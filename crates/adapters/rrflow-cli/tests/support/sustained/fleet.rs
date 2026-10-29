@@ -210,7 +210,7 @@ fn installed_two_estate_isolation_under_concurrent_load() {
         assert_ne!(members[0].child.as_ref().unwrap().id(),members[1].child.as_ref().unwrap().id());
         deny_foreign_sessions(&members).await.unwrap();
         let mut readers=Vec::new();
-        for member in &members {readers.push(reader::HeldReader::open(&member.work,0,clock).await.unwrap());}
+        for member in &members {readers.push(reader::HeldReader::open(&member.work,0,clock,None).await.unwrap());}
         // Insert, update, retire and recreate identical identities with different
         // per-estate payloads. The canonical oracle checks all model families.
         for generation in 0..4 {concurrent_frame(&mut members,generation).await.unwrap();}

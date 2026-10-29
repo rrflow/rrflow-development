@@ -606,3 +606,173 @@ fn adjacent_versions_reuse_proof_nodes_without_changing_the_authenticated_result
     let reopened = RrflowKvStore::open(&path).unwrap();
     check(&reopened, &read);
 }
+
+#[test]
+fn typed_record_kind_selects_persisted_mixed_family_segments() {
+    let root = tempfile::tempdir().unwrap();
+    let store = RrflowKvStore::open_with_options(
+        &root.path().join("kv"),
+        rrd_store::DatabaseOptions {
+            compaction: rrd_lsm::CompactionPolicy {
+                target_segment_bytes: 16384,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let scope = scope();
+    let mut cursor = store
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 100,
+            actor: "test:selector".into(),
+            expected_cursor: 0,
+            mutations: initial_mutations(),
+        })
+        .unwrap()
+        .last_cursor;
+    store.flush(1).unwrap();
+    for epoch in 0..4 {
+        let mutations = (0..48)
+            .map(|n| RuntimeMutation::Record {
+                record: record(&format!("fixture-{epoch}-{n:03}")),
+            })
+            .collect();
+        cursor = store
+            .runtime()
+            .commit(&RuntimeCommit {
+                scope: scope.clone(),
+                at: 101 + epoch,
+                actor: "test:selector".into(),
+                expected_cursor: cursor,
+                mutations,
+            })
+            .unwrap()
+            .last_cursor;
+        store.flush(2 + epoch).unwrap();
+    }
+    let mut full = store.inspect_storage(1, 4096).unwrap();
+    let full_bytes = store
+        .physical_store_evidence()
+        .unwrap()
+        .pinned_read_bytes
+        .unwrap();
+    full.cancel_source().unwrap();
+    drop(full);
+    let kind = RuntimeType::new("entity").unwrap();
+    let mut selected = store
+        .inspect_storage_record_kind(1, 4096, &scope, &kind)
+        .unwrap();
+    let page = selected.page().unwrap();
+    let selected_bytes = store
+        .physical_store_evidence()
+        .unwrap()
+        .pinned_read_bytes
+        .unwrap();
+    eprintln!("mixed-family pin charge: selected={selected_bytes}, full={full_bytes}");
+    assert!(page.rows > 0 && page.source_open);
+    assert!(selected_bytes > 0 && selected_bytes < full_bytes, "record-kind selection must exclude at least one persisted segment: selected={selected_bytes}, full={full_bytes}");
+    selected.cancel_source().unwrap();
+    drop(selected);
+    assert_eq!(
+        store.physical_store_evidence().unwrap().pinned_read_bytes,
+        Some(0)
+    );
+    drop(store);
+
+    let reopened = RrflowKvStore::open_with_options(
+        &root.path().join("kv"),
+        rrd_store::DatabaseOptions {
+            pinned_read_bytes: selected_bytes + (full_bytes - selected_bytes) / 2,
+            compaction: rrd_lsm::CompactionPolicy {
+                target_segment_bytes: 16384,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(matches!(
+        reopened.inspect_storage(1, 4096),
+        Err(rrd_store::Error::ProjectedReadLimit {
+            resource: rrd_lsm::ProjectedReadResource::PinnedBytes,
+            ..
+        })
+    ));
+    let mut selected = reopened
+        .inspect_storage_record_kind(1, 4096, &scope, &kind)
+        .unwrap();
+    let retained = selected.page().unwrap();
+    assert_eq!(retained, page);
+    reopened
+        .runtime()
+        .commit(&RuntimeCommit {
+            scope: scope.clone(),
+            at: 110,
+            actor: "test:selector".into(),
+            expected_cursor: cursor,
+            mutations: vec![RuntimeMutation::Record {
+                record: record("after-snapshot"),
+            }],
+        })
+        .unwrap();
+    reopened.flush(8).unwrap();
+    reopened.compact(9, 9).unwrap();
+    reopened.garbage_collect(10, 10).unwrap();
+    assert_eq!(selected.page().unwrap(), retained);
+    selected.cancel_source().unwrap();
+    assert_eq!(selected.page().unwrap().sha256, retained.sha256);
+    assert_eq!(
+        reopened
+            .physical_store_evidence()
+            .unwrap()
+            .pinned_read_bytes,
+        Some(0)
+    );
+    drop(selected);
+    assert_eq!(
+        reopened
+            .physical_store_evidence()
+            .unwrap()
+            .retained_projected_bytes,
+        Some(0)
+    );
+}
+
+#[test]
+fn typed_record_kind_does_not_bypass_overlapping_segment_pin_limit() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("kv");
+    let store = RrflowKvStore::open(&path).unwrap();
+    commit_corpus(&store);
+    store.flush(1).unwrap();
+    let all_bytes = store
+        .physical_store_evidence()
+        .unwrap()
+        .segment_bytes
+        .unwrap();
+    assert!(all_bytes > 1);
+    drop(store);
+    let store = RrflowKvStore::open_with_options(
+        &path,
+        rrd_store::DatabaseOptions {
+            pinned_read_bytes: all_bytes - 1,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let outcome =
+        store.inspect_storage_record_kind(1, 4096, &scope(), &RuntimeType::new("entity").unwrap());
+    assert!(matches!(
+        outcome,
+        Err(rrd_store::Error::ProjectedReadLimit {
+            resource: rrd_lsm::ProjectedReadResource::PinnedBytes,
+            ..
+        })
+    ));
+    let evidence = store.physical_store_evidence().unwrap();
+    assert_eq!(evidence.active_read_views, Some(0));
+    assert_eq!(evidence.pinned_read_bytes, Some(0));
+}

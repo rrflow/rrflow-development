@@ -3008,3 +3008,36 @@ fn bounded_storage_cursor_schema_exposes_the_runtime_limits() {
     }
     assert!(projected(&rrd_contract::openapi_document().unwrap()));
 }
+
+#[test]
+fn storage_cursor_record_kind_is_typed_and_preserves_diagnostic_budgets() {
+    use rrd_contract::{CorrelationId, InspectStorageCursor, StorageCursorAction};
+    let action = |kind: &str, rows: u16| {
+        serde_json::from_value::<StorageCursorAction>(serde_json::json!({
+            "kind": "open_record_kind", "record_kind": kind,
+            "batch_rows": rows, "batch_bytes": 4096, "lifetime_ms": 1000
+        }))
+    };
+    let request = InspectStorageCursor {
+        scope: "instance:test".into(),
+        cursor_id: CorrelationId::new("reader").unwrap(),
+        action: action("capacity_document", 1).unwrap(),
+    };
+    assert!(request.validate().is_ok());
+    assert!(action("", 1).is_err());
+    assert!(action("NOT-A-CANONICAL-ID", 1).is_err());
+    assert!(InspectStorageCursor {
+        action: action("capacity_document", 0).unwrap(),
+        ..request
+    }
+    .validate()
+    .is_err());
+    assert!(
+        serde_json::from_value::<StorageCursorAction>(serde_json::json!({
+            "kind": "open_record_kind", "record_kind": "capacity_document",
+            "batch_rows": 1, "batch_bytes": 4096, "lifetime_ms": 1000,
+            "start": [1]
+        }))
+        .is_err()
+    );
+}

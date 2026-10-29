@@ -63,7 +63,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`e03dddd90ac393e8b2a2d906f440d0f5a596ed96a4fc5d08ae23f1ad8a77737a`.
+`fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -319,6 +319,14 @@ not a semantic query or an automatically chosen subset. It uses the same native
 pin limits, authorization and ownership lifecycle. The original `open` remains
 a full-range snapshot and may be denied when its selected ownership exceeds the
 configured ceiling. Neither action returns physical keys or values.
+
+`open_record_kind` takes the same budgets and a canonical record-kind identifier.
+The engine uses the already authorized instance scope, and rrflowKV derives the
+physical prefix for current records internally. The response remains a physical
+inspection hash and counters, not a semantic record query. A selected range can
+still overlap every immutable segment or exceed the native pin ceiling; callers
+must handle the same bounded admission failure. The action returns no raw keys
+or values and follows the same session, retry and owner-release rules.
 
 `observe` hashes the current retained page without advancing. `advance`
 supplies `expected_ordinal`; replaying the immediately previous advance returns
