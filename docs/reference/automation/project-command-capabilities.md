@@ -17,7 +17,7 @@ owns event, trigger, routine, skill, function, and activity orchestration. The
 [local-process adapter](../deployment/local-process-driver.md) owns host process
 safety. This record owns the narrower boundary that connects those systems for
 project commands. Roadmap [D-03 and D-06](../../roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate)
-own discovery and applied integration; [Gate I](../../roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks)
+own discovery and applied integration; [Gate I](../../roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-with-host-hooks-as-alias-stubs)
 owns durable execution and installation scaffolding.
 
 ## Locked vocabulary
@@ -272,11 +272,14 @@ durable routine support is claimed.
 | MCP adapter | May request or observe the same public operation; it is not the scheduler or command runner. |
 | Trace | Records causal evidence; it cannot advance the activity or routine. |
 
-There is no session-start, pre-tool, post-tool, stop, compact, editor,
-package-manager, provider, or model-owned hook lifecycle. Package-manager
-lifecycle scripts are transitive executable inputs inside an explicitly
-approved package-script binding, not RRFlow lifecycle events. Installation
-ships no automatic host hook.
+No hook owns a lifecycle. An editor or provider hook on a session start,
+prompt, tool call, stop, or compaction is at most an
+[alias stub](../agent-bootstrap.md#host-hooks): it may submit the typed
+occurrence through a host-event adapter or invoke a public RRFlow command,
+and it never invokes a project command itself. Package-manager lifecycle
+scripts are transitive executable inputs inside an explicitly approved
+package-script binding, not RRFlow lifecycle events. Installation writes a
+hook stub only from a previewed, authorized host binding.
 
 ## Current implementation disposition
 
@@ -362,6 +365,7 @@ checkpoint atomically, re-inventories any project output, resumes correctly
 after every crash gap,
 returns identical authorized semantics on rrflowMX and rrflowKV, reopens on
 rrflowKV, and exposes the same result through every public surface. The final
-tree must contain no automatic provider hook, client scheduler, command string
+tree must contain no provider hook other than a generated alias stub, no
+client scheduler, command string
 escape hatch, ambient-secret inheritance, private process/routine state, or
 direct storage/query/index access from the adapter.

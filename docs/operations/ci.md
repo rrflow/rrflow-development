@@ -407,9 +407,8 @@ the pull request and required candidate check non-bypassable.
 A developer may run the
 [repository checklist](../roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist)
 locally before publishing, but the local run is convenience and early feedback,
-not authority. RRFlow deliberately has no installed Git/editor/provider hook:
-client Git hooks are not distributed by clone, can be skipped, and would create
-the exact provider-owned lifecycle behavior prohibited by `AGENTS.md`.
+not authority. The repository installs no Git hook: client hooks are not
+distributed by clone and can be skipped, so no hook can carry this gate.
 
 ## Local development container
 
