@@ -20,6 +20,19 @@ pub struct TaskEmbeddingAttempt<'a> {
     pub cancellation: &'a EmbeddingCancellation,
 }
 
+/// Engine-internal effect identity for the one task budget. Callers must
+/// authorize and derive this identity before reserving; it is not a public
+/// capability or permission to dispatch an effect.
+pub(super) struct TaskAttemptAdmission<'a> {
+    /// Captured before effect-specific identity preparation, never reset by it.
+    pub started: Instant,
+    pub scope: &'a str,
+    pub task_id: &'a CanonicalId,
+    pub attempt_id: &'a CorrelationId,
+    pub request_sha256: &'a str,
+    pub cancellation: &'a EmbeddingCancellation,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AttemptRecord {
@@ -163,15 +176,41 @@ impl RrdEngine {
         context: &EngineControlContext<'_>,
     ) -> Result<Reservation> {
         let started = Instant::now();
+        let request_sha256 = operation_digest(input.request)?;
+        self.reserve_admitted_task_attempt(
+            &TaskAttemptAdmission {
+                started,
+                scope: &input.request.scope,
+                task_id: input.task_id,
+                attempt_id: input.attempt_id,
+                request_sha256: &request_sha256,
+                cancellation: input.cancellation,
+            },
+            || self.embedding_repetition_identity(input.request),
+            clock,
+            context,
+        )
+    }
+
+    /// Shared reservation, with deferred effect-specific equivalence. Replay,
+    /// prior stops and exhausted budgets must not resolve an adapter again.
+    pub(super) fn reserve_admitted_task_attempt(
+        &self,
+        input: &TaskAttemptAdmission<'_>,
+        repetition_identity: impl FnOnce() -> Result<String>,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<Reservation> {
+        let started = input.started;
+        validate_attempt_digest(input.request_sha256)?;
         let at = observe_required(clock, "reasoning-reserve")?.observed_at_unix_ms;
-        let scope = self.query_scope(&input.request.scope)?;
+        let scope = self.query_scope(input.scope)?;
         let read = self.storage.runtime().read_stamp(&scope)?;
         // The following semantic/control commit also checks this runtime cursor:
         // concurrent task closure cannot publish a new reservation.
-        self.open_task_at(&read, &input.request.scope, input.task_id)?;
-        let (expected, existing) = self.load_task_budget(&input.request.scope, input.task_id)?;
-        let request_sha256 = operation_digest(input.request)?;
-        let attempt_key = self.attempt_key(&input.request.scope, input.task_id, input.attempt_id);
+        self.open_task_at(&read, input.scope, input.task_id)?;
+        let (expected, existing) = self.load_task_budget(input.scope, input.task_id)?;
+        let attempt_key = self.attempt_key(input.scope, input.task_id, input.attempt_id);
         if let Some(bytes) = self.storage.control().get(&attempt_key)? {
             let previous: AttemptRecord = serde_json::from_slice(&bytes).map_err(contract_json)?;
             if previous.format_version != 1 || previous.attempt_id != *input.attempt_id {
@@ -179,7 +218,7 @@ impl RrdEngine {
                     "reasoning attempt identity is corrupt".into(),
                 ));
             }
-            if previous.request_sha256 != request_sha256 {
+            if previous.request_sha256 != input.request_sha256 {
                 return Err(ServiceError::IdempotencyConflict);
             }
             return Err(ServiceError::ReasoningAttemptRecorded {
@@ -190,7 +229,7 @@ impl RrdEngine {
         let mut budget = existing.unwrap_or(TaskReasoningBudget {
             format_version: 1,
             instance_id: self.instance.clone(),
-            scope: input.request.scope.clone(),
+            scope: input.scope.into(),
             task_id: input.task_id.clone(),
             configuration_sha256: self.estate_configuration.configuration_sha256.clone(),
             deadline_unix_ms: at
@@ -232,7 +271,9 @@ impl RrdEngine {
             None
         };
         let identity = if stop.is_none() && budget.repetition_policy.is_some() {
-            Some(self.embedding_repetition_identity(input.request)?)
+            let identity = repetition_identity()?;
+            validate_attempt_digest(&identity)?;
+            Some(identity)
         } else {
             None
         };
@@ -260,7 +301,7 @@ impl RrdEngine {
         let attempt = AttemptRecord {
             format_version: 1,
             attempt_id: input.attempt_id.clone(),
-            request_sha256,
+            request_sha256: input.request_sha256.into(),
             ordinal: budget.reserved_steps,
             read_manifest_sha256: read.manifest_id.clone(),
             read_cursor: read.commit_cursor,
@@ -388,6 +429,19 @@ impl RrdEngine {
         }
         result
     }
+}
+
+fn validate_attempt_digest(value: &str) -> Result<()> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(ServiceError::Contract(
+            "task attempt identity must be a lowercase SHA-256 digest".into(),
+        ));
+    }
+    Ok(())
 }
 
 struct ActiveTaskCancellation<'a> {

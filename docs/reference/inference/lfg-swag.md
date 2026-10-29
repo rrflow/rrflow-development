@@ -399,6 +399,17 @@ It requires both `ReasoningWrite` and `EmbeddingGenerate`; inspection through
 effort operations below compose this same owner; Connectome presentation is
 still unimplemented.
 
+Its engine-internal `TaskAttemptAdmission` separates effect identity from the
+shared reservation mechanism. The embedding entry derives its request digest
+and delegates to that same owner; effect-specific repetition identity is deferred
+until replay, prior-stop and allowance checks permit it. Identity preparation
+retains the original monotonic start. Invalid request/equivalence digests fail
+before budget publication. This internal input is neither serializable nor a
+public authorization API. Existing durable keys, records, completion type and
+Stop behavior remain unchanged; typed controller completion and dispatch still
+require implementation. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
+records retained-input reservation/reopen evidence, not a controller call.
+
 The first admitted attempt fixes the configuration digest, original host-clock
 deadline and step cap. Each attempt reserves one step before dispatch. The
 existing control journal owns the budget and attempt state; the existing
