@@ -22,11 +22,11 @@ pub use capabilities::product_capability_catalogue;
 pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQueryResult};
 #[cfg(feature = "full")]
 pub use engine::{
-    load_estate_configuration, AttunementCommand, AttunementControlResult, AuthorizedInvocation,
-    ClockAssessment, ClockAssessmentStatus, ClockObservation, ClockObservationFailure,
-    ClockSourceKind, ClockTrustLevel, DefaultAttunementPhase, DefaultInstallProfile,
-    DistributedAuthorityRead, DistributedReadRoute, EstateAdminAction, EstateAdminResult,
-    EstateBackupReconcileOutcome, EstateReconcileOutcome, InstallationPreview,
+    load_estate_configuration, AttunementCommand, AttunementControlResult, AttunementReceiptView,
+    AuthorizedInvocation, ClockAssessment, ClockAssessmentStatus, ClockObservation,
+    ClockObservationFailure, ClockSourceKind, ClockTrustLevel, DefaultAttunementPhase,
+    DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute, EstateAdminAction,
+    EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome, InstallationPreview,
     InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
     InstalledEstateRecord, InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation,
     InvocationCompletion, InvocationCredential, PreparedDistributedAuthority, ProjectLocator,
