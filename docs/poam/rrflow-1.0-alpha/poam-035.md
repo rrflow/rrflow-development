@@ -1250,3 +1250,6 @@ and version; the cause of the delay
 cause remains unproven. The earlier source's and this run's evidence stay bound
 to their respective identities. Trace the diagnostics path before another
 full-corpus run; native profile and actual 24-hour qualification remain open.
+
+
+The [integrated full-corpus Windows characterization](../../evidence/change-journals/gate-c/c-07-integrated-full-corpus-pinned-read-failure.md) at source `8cd74121` acknowledged and independently read back all 100,000 corpus records before and after two restarts, then failed the first measured segment after six retained warmup segments. The explicit projected-read admission charge was 4,822,111,508 bytes against the configured 4,294,967,296-byte pinned-read limit. A measured operating point, characterization soak and 24-hour qualification did not complete. The measured-phase held inspection cursor requests the full range, but the retained error alone does not prove the exact invocation or ownership composition. Characterize the request and actual pinned owners before a bounded repair; do not raise the limit or weaken the reader-lifetime oracle. Candidate and protected CI and the native matrix remain open.
