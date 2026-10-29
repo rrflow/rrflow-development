@@ -91,6 +91,7 @@ pub struct AttunementControlResult {
 /// An existing committed control receipt, read without replaying its command.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttunementReceiptView {
+    pub plan: AttunementPlan,
     pub principal_id: CanonicalId,
     pub operation_sha256: String,
     pub status: AttunementStatus,
@@ -223,6 +224,7 @@ impl RrdEngine {
         }
         receipt.status.validate(&plan).map_err(contract)?;
         Ok(Some(AttunementReceiptView {
+            plan,
             principal_id: receipt.principal_id,
             operation_sha256: receipt.operation_sha256,
             status: receipt.status,

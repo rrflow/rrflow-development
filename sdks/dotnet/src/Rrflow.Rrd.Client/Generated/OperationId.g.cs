@@ -1,11 +1,12 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566
+// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
 namespace Rrflow.Rrd;
 
 public enum OperationId
 {
     AttunementCancel,
     AttunementRead,
+    AttunementReceiptRead,
     AuditExport,
     AuditRead,
     BackupCreate,
@@ -60,6 +61,10 @@ public enum OperationId
     VectorCollectionList,
     VectorPointRetrieve,
     VectorPointScroll,
+    VectorQuantizationActivate,
+    VectorQuantizationBuild,
+    VectorQuantizationList,
+    VectorQuantizationRetire,
     VectorSearch,
 }
 
@@ -79,13 +84,14 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566";
-    public const int Count = 57;
+    public const string OpenApiDocumentSha256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2";
+    public const int Count = 62;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
         OperationId.AttunementCancel => new("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SessionBearer, true),
         OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
+        OperationId.AttunementReceiptRead => new("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SessionBearer, false),
         OperationId.AuditExport => new("audit-export", "POST", "/v1/audit/export", Authentication.SessionBearer, false),
         OperationId.AuditRead => new("audit-read", "POST", "/v1/audit/read", Authentication.SessionBearer, false),
         OperationId.BackupCreate => new("backup-create", "POST", "/v1/backups", Authentication.SessionBearer, true),
@@ -140,6 +146,10 @@ public static class EndpointCatalog
         OperationId.VectorCollectionList => new("vector-collection-list", "POST", "/v1/vector/collections/list", Authentication.SessionBearer, false),
         OperationId.VectorPointRetrieve => new("vector-point-retrieve", "POST", "/v1/vector/points/retrieve", Authentication.SessionBearer, false),
         OperationId.VectorPointScroll => new("vector-point-scroll", "POST", "/v1/vector/points/scroll", Authentication.SessionBearer, false),
+        OperationId.VectorQuantizationActivate => new("vector-quantization-activate", "POST", "/v1/vector/quantizations/activate", Authentication.SessionBearer, true),
+        OperationId.VectorQuantizationBuild => new("vector-quantization-build", "POST", "/v1/vector/quantizations/build", Authentication.SessionBearer, true),
+        OperationId.VectorQuantizationList => new("vector-quantization-list", "POST", "/v1/vector/quantizations/list", Authentication.SessionBearer, false),
+        OperationId.VectorQuantizationRetire => new("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SessionBearer, true),
         OperationId.VectorSearch => new("vector-search", "POST", "/v1/vector/search", Authentication.SessionBearer, false),
         _ => throw new System.ArgumentOutOfRangeException(nameof(operation)),
     };

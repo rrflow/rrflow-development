@@ -144,6 +144,49 @@ def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
                 "cache warmer must use the triggering main revision")
 
 
+def verify_execution_inventory_ci(verify: str) -> None:
+    """Keep each retained inventory bound to the clean checked-out revision."""
+    marker = "      - name: Enforce exhaustive RRFlow 1.0 file planning\n"
+    upload = "      - name: Retain revision-bound execution inventory\n"
+    require(verify.count(marker) == 1 and verify.count(upload) == 1,
+            "CI must generate and retain the revision-bound inventory")
+    block = verify.split(marker, 1)[1].split("      - name:", 1)[0]
+    for required in (
+        "set -euo pipefail",
+        "git diff --exit-code",
+        "git diff --cached --exit-code",
+        'test -z "$(git ls-files --others --exclude-standard)"',
+        "python3 scripts/ci/build_execution_inventory.py\n",
+        "git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt",
+        'test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"',
+        "python3 scripts/ci/build_execution_inventory.py --check",
+    ):
+        require(block.count(required) == 1, f"CI inventory generation missing: {required.strip()}")
+    order = (
+        "set -euo pipefail",
+        "git diff --exit-code",
+        "git diff --cached --exit-code",
+        'test -z "$(git ls-files --others --exclude-standard)"',
+        "python3 scripts/ci/build_execution_inventory.py\n",
+        "git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt",
+        'test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"',
+        "python3 scripts/ci/build_execution_inventory.py --check",
+    )
+    positions = [block.index(item) for item in order]
+    require(positions == sorted(positions) and verify.index(marker) < verify.index(upload),
+            "CI inventory must validate source, bind revision, check and retain in order")
+    artifact = verify.split(upload, 1)[1].split("      - name:", 1)[0]
+    for required in (
+        "uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "target/rrflow-1.0-file-plan.jsonl",
+        "target/rrflow-inventory-revision.txt",
+        "if-no-files-found: error",
+    ):
+        require(required in artifact, f"CI inventory artifact missing: {required}")
+    require("continue-on-error:" not in artifact and "    if:" not in artifact,
+            "CI inventory retention cannot be bypassed")
+
+
 def workspace_packages() -> set[str]:
     with (ROOT / "Cargo.toml").open("rb") as source:
         workspace = tomllib.load(source)["workspace"]
@@ -563,6 +606,7 @@ def main() -> None:
     warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
     require(warmer is not None, "trusted macOS reopen cache warmer is absent")
     verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
+    verify_execution_inventory_ci(jobs["verify"])
     require(
         reusable.count("python3 scripts/ci/test_candidate_admission.py") == 1,
         "candidate admission regressions must run exactly once",

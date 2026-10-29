@@ -2,32 +2,33 @@ use rrd_contract::{
     transaction_operation_sha256, ActivateVectorQuantizationArtifact, BeginTransaction,
     BuildVectorQuantizationArtifact, CanonicalId, CapabilityDescriptor, CapabilityStatus,
     CloseSession, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
-    DataCatalogueIdentity, DataLogicalModel, DataRecordSchema, DataReference, DataSchemaMode,
-    DataSchemaRegistry, DataSnapshot, DataTableSchema, DataTarget, DeleteVectorCollection,
-    DeleteVectorPayloadIndex, DeploymentForm, DeploymentProfile, EmbedAndSearchVectors,
-    EmbeddingInput, EmbeddingNetworkPolicy, EndpointPresentation, EnsureQueryIndex,
-    EnsureVectorCollection, EnsureVectorIndex, EnsureVectorPayloadIndex, ErrorBody, ErrorCode,
-    EstateActivityPolicySnapshot, EstateAuthoritySnapshot, EstateBackupJobSnapshot,
-    EstateBackupJobState, EstateBackupJobsSnapshot, EstateBackupRecoveryPolicySnapshot,
-    EstateConfiguration, EstateMutationResult, EstateSnapshot, ExecuteQuery,
-    ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed, ForwardRollbackCounts,
-    ForwardRollbackRequest, GenerateEmbeddings, HybridFusion, IdempotencyBinding,
-    InstalledEstateIdentity, ListQueryIndexes, ListVectorCollections, ListVectorPayloadIndexes,
-    ListVectorQuantizationArtifacts, Liveness, NamedVectorDefinition, PollLiveQuery,
-    PreviewTransaction, ProductCapability, ProductCapabilityCatalogue, ProductSurface, QueryBudget,
-    QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot, QueryIndexKind, QueryPlanCandidate,
-    QueryPlanSnapshot, QueryResult, QueryRowSnapshot, QueryValue, ReadAccessPath, ReadAudit,
-    ReadChangefeed, ReadDataSnapshot, ReadEstate, ReadEvidence, ReadPathEvidence,
-    ReadStampValidationEvidence, ReadStampValidationMethod, Readiness, RenewSession,
-    RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
-    ResponseOutcome, RestoreInstanceBackup, RetireVectorQuantizationArtifact, RetrievalFusion,
-    RetrievalPrefetch, RetrievalQuery, RetrievalResultShape, SearchHybrid, SearchVectors,
-    ServiceCapabilities, SessionEndState, SessionLease, SessionLimits, SessionTermination,
-    StorageProfileKind, SurfaceBinding, SurfaceDisposition, TransactionMutation,
-    TransactionPreview, TransactionState, VectorIndexBuildPolicy, VectorIndexConfiguration,
-    VectorMemoryTier, VectorPayloadCondition, VectorPayloadFilter, VectorPayloadIndexKind,
-    VectorPayloadOperator, VectorProductCompression, VectorQuantizationMethod, VectorSearchMetric,
-    VectorSearchMode, VectorSearchQuery, VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
+    DataDomainSchema, DataEstateOrganisation, DataLogicalModel, DataRecordSchema, DataReference,
+    DataSchemaMode, DataSchemaRegistry, DataSnapshot, DataTableSchema, DataTarget,
+    DeleteVectorCollection, DeleteVectorPayloadIndex, DeploymentForm, DeploymentProfile,
+    EmbedAndSearchVectors, EmbeddingInput, EmbeddingNetworkPolicy, EndpointPresentation,
+    EnsureQueryIndex, EnsureVectorCollection, EnsureVectorIndex, EnsureVectorPayloadIndex,
+    ErrorBody, ErrorCode, EstateActivityPolicySnapshot, EstateAuthoritySnapshot,
+    EstateBackupJobSnapshot, EstateBackupJobState, EstateBackupJobsSnapshot,
+    EstateBackupRecoveryPolicySnapshot, EstateConfiguration, EstateMutationResult, EstateSnapshot,
+    ExecuteQuery, ExecuteQueryTransaction, ExecuteRetrievalQuery, FollowChangefeed,
+    ForwardRollbackCounts, ForwardRollbackRequest, GenerateEmbeddings, HybridFusion,
+    IdempotencyBinding, InstalledEstateIdentity, ListQueryIndexes, ListVectorCollections,
+    ListVectorPayloadIndexes, ListVectorQuantizationArtifacts, Liveness, NamedVectorDefinition,
+    PollLiveQuery, PreviewTransaction, ProductCapability, ProductCapabilityCatalogue,
+    ProductSurface, QueryBudget, QueryExecutionAnalysisSnapshot, QueryExecutionSnapshot,
+    QueryIndexKind, QueryPlanCandidate, QueryPlanSnapshot, QueryResult, QueryRowSnapshot,
+    QueryValue, ReadAccessPath, ReadAudit, ReadChangefeed, ReadDataSnapshot, ReadEstate,
+    ReadEvidence, ReadPathEvidence, ReadStampValidationEvidence, ReadStampValidationMethod,
+    Readiness, RenewSession, RequestContext, RequestEnvelope, ResourceId, ResourceKind,
+    ResourcePath, ResponseEnvelope, ResponseOutcome, RestoreInstanceBackup,
+    RetireVectorQuantizationArtifact, RetrievalFusion, RetrievalPrefetch, RetrievalQuery,
+    RetrievalResultShape, SearchHybrid, SearchVectors, ServiceCapabilities, SessionEndState,
+    SessionLease, SessionLimits, SessionTermination, StorageProfileKind, SurfaceBinding,
+    SurfaceDisposition, TransactionMutation, TransactionPreview, TransactionState,
+    VectorIndexBuildPolicy, VectorIndexConfiguration, VectorMemoryTier, VectorPayloadCondition,
+    VectorPayloadFilter, VectorPayloadIndexKind, VectorPayloadOperator, VectorProductCompression,
+    VectorQuantizationMethod, VectorSearchMetric, VectorSearchMode, VectorSearchQuery,
+    VectorValueKind, PROTOCOL, PROTOCOL_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -323,7 +324,7 @@ fn supported_sdks_share_one_strict_semantic_corpus() {
     .unwrap();
     corpus.validate().unwrap();
     assert_eq!(corpus.required_domains.len(), 13);
-    assert_eq!(corpus.expected.endpoint_count, 57);
+    assert_eq!(corpus.expected.endpoint_count, 62);
     assert_eq!(
         rrd_contract::transaction_operation_sha256(&corpus.transaction.commit.mutations),
         corpus.transaction.commit.operation_sha256
@@ -1355,7 +1356,7 @@ fn diagnostic_storage_observation_matches_its_profile_and_evidence_level() {
 fn endpoint_catalogue_is_complete_sorted_and_transport_neutral() {
     let catalogue = rrd_contract::endpoint_catalogue();
     catalogue.validate().unwrap();
-    assert_eq!(catalogue.endpoints.len(), 57);
+    assert_eq!(catalogue.endpoints.len(), 62);
     assert_eq!(
         catalogue.endpoints[0].operation.as_str(),
         "attunement-cancel"
@@ -1927,9 +1928,20 @@ fn unified_catalogue_is_strict_round_trippable_and_rejects_mode_confusion() {
     let mut registry = DataSchemaRegistry {
         revision: 1,
         migration: "freeze public catalogue".into(),
-        catalogue: DataCatalogueIdentity {
-            namespace: CanonicalId::new("project").unwrap(),
-            database: CanonicalId::new("runtime").unwrap(),
+        organisation: DataEstateOrganisation {
+            domains: BTreeMap::from([(
+                CanonicalId::new("knowledge").unwrap(),
+                DataDomainSchema {
+                    title: "Knowledge".into(),
+                    description: String::new(),
+                    parent: None,
+                },
+            )]),
+            kind_domains: BTreeMap::from([(
+                document.clone(),
+                CanonicalId::new("knowledge").unwrap(),
+            )]),
+            ..DataEstateOrganisation::default()
         },
         tables: BTreeMap::from([
             (
@@ -1969,13 +1981,162 @@ fn unified_catalogue_is_strict_round_trippable_and_rejects_mode_confusion() {
         .is_err());
 }
 
+fn organised_schema(organisation: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({
+        "mutation": "put_schema",
+        "registry": {
+            "revision": 1,
+            "migration": "organise the estate",
+            "organisation": organisation,
+            "tables": {
+                "invoice": {"model": "document", "mode": "schemaless"},
+                "rrflow-seat": {"model": "document", "mode": "schemaless"}
+            }
+        }
+    })
+}
+
+fn put_schema_error(organisation: serde_json::Value) -> String {
+    let mutation: TransactionMutation =
+        serde_json::from_value(organised_schema(organisation)).unwrap();
+    mutation.validate().unwrap_err().to_string()
+}
+
+#[test]
+fn estate_organisation_is_validated_at_the_public_boundary() {
+    let billing = serde_json::json!({"billing": {"title": "Billing"}});
+    let accepted: TransactionMutation =
+        serde_json::from_value(organised_schema(serde_json::json!({
+            "domains": {
+                "billing": {"title": "Billing", "description": "Invoices and payments"},
+                "invoices": {"title": "Invoices", "parent": "billing"}
+            },
+            "categories": {
+                "lifecycle": {
+                    "title": "Lifecycle",
+                    "targets": "kinds_and_records",
+                    "cardinality": "single",
+                    "tags": {"active": {"title": "Active"}}
+                }
+            },
+            "kind_domains": {"invoice": "invoices"},
+            "collection_domains": {"invoice-text": "invoices"},
+            "kind_tags": {"invoice": [{"category": "lifecycle", "tag": "active"}]}
+        })))
+        .unwrap();
+    accepted.validate().unwrap();
+    let TransactionMutation::PutSchema { registry } = &accepted else {
+        unreachable!()
+    };
+    let invoice = CanonicalId::new("invoice").unwrap();
+    let seat = CanonicalId::new("rrflow-seat").unwrap();
+    assert_eq!(registry.organisation.domain_of_kind(&invoice), "invoices");
+    assert_eq!(registry.organisation.domain_of_kind(&seat), "rrflow");
+
+    for (organisation, expected) in [
+        (
+            serde_json::json!({"domains": {"default": {"title": "Default"}}}),
+            "built in or reserved",
+        ),
+        (
+            serde_json::json!({"domains": {"rrflow-private": {"title": "Private"}}}),
+            "built in or reserved",
+        ),
+        (
+            serde_json::json!({"domains": {"billing": {"title": "Billing", "parent": "rrflow"}}}),
+            "inside rrflow",
+        ),
+        (
+            serde_json::json!({"domains": {"billing": {"title": "Billing", "parent": "missing"}}}),
+            "unknown parent",
+        ),
+        (
+            serde_json::json!({"domains": {
+                "a": {"title": "A", "parent": "b"},
+                "b": {"title": "B", "parent": "a"}
+            }}),
+            "cycle",
+        ),
+        (
+            serde_json::json!({"domains": {"billing": {"title": " "}}}),
+            "needs a title",
+        ),
+        (
+            serde_json::json!({"domains": billing.clone(), "kind_domains": {"invoice": "shipping"}}),
+            "unknown domain",
+        ),
+        (
+            serde_json::json!({"domains": billing.clone(), "kind_domains": {"invoice": "default"}}),
+            "omit the entry",
+        ),
+        (
+            serde_json::json!({"domains": billing.clone(), "kind_domains": {"customer": "billing"}}),
+            "unregistered table type",
+        ),
+        (
+            serde_json::json!({"domains": billing.clone(), "kind_domains": {"rrflow-seat": "billing"}}),
+            "always belongs to rrflow",
+        ),
+        (
+            serde_json::json!({"kind_domains": {"invoice": "rrflow"}}),
+            "cannot be placed in rrflow",
+        ),
+        (
+            serde_json::json!({"kind_tags": {"invoice": [{"category": "lifecycle", "tag": "active"}]}}),
+            "unknown category",
+        ),
+        (
+            serde_json::json!({
+                "categories": {"lifecycle": {
+                    "title": "Lifecycle", "targets": "records", "cardinality": "single",
+                    "tags": {"active": {"title": "Active"}}
+                }},
+                "kind_tags": {"invoice": [{"category": "lifecycle", "tag": "active"}]}
+            }),
+            "does not tag table types",
+        ),
+        (
+            serde_json::json!({
+                "categories": {"lifecycle": {
+                    "title": "Lifecycle", "targets": "kinds", "cardinality": "single",
+                    "tags": {"active": {"title": "Active"}, "retired": {"title": "Retired"}}
+                }},
+                "kind_tags": {"invoice": [
+                    {"category": "lifecycle", "tag": "active"},
+                    {"category": "lifecycle", "tag": "retired"}
+                ]}
+            }),
+            "single-tag category",
+        ),
+    ] {
+        let error = put_schema_error(organisation.clone());
+        assert!(error.contains(expected), "{organisation}: {error}");
+    }
+
+    // The retired namespace/database label is no longer part of the contract.
+    let mut legacy = organised_schema(serde_json::json!({}));
+    legacy["registry"]["catalogue"] =
+        serde_json::json!({"namespace": "default", "database": "default"});
+    assert!(serde_json::from_value::<TransactionMutation>(legacy).is_err());
+
+    // A default organisation is omitted, so existing registries serialize unchanged.
+    let mut unorganised = organised_schema(serde_json::json!({}));
+    unorganised["registry"]
+        .as_object_mut()
+        .unwrap()
+        .remove("organisation");
+    let decoded: TransactionMutation = serde_json::from_value(unorganised).unwrap();
+    let encoded = serde_json::to_value(&decoded).unwrap();
+    assert!(encoded["registry"].get("organisation").is_none());
+}
+
 #[test]
 fn public_schema_requires_one_explicit_nonempty_table_map() {
     let document = CanonicalId::new("document").unwrap();
     let registry = DataSchemaRegistry {
         revision: 1,
         migration: "reject inferred public table models".into(),
-        catalogue: DataCatalogueIdentity::default(),
+        organisation: DataEstateOrganisation::default(),
         tables: BTreeMap::new(),
         records: BTreeMap::from([(document, DataRecordSchema::default())]),
         relations: BTreeMap::new(),
