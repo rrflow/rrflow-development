@@ -66,6 +66,21 @@ an optional exchange representation under the
 [knowledge connector contract](../../data/knowledge-connectors.md).
 No dataset exists merely because a prompt flight was recorded.
 
+For the owner-directed SWAG delivery profile, use real source-bound tasks,
+observed provider outputs and independently reviewed outcomes. Do not create
+synthetic tasks, fabricate consent/results, or admit assistant-inferred targets
+to compensate for missing labels. Earlier provisional intent experiments remain
+historical evidence, not independently reviewed routing data or unseen acceptance.
+Ask the owner for a real task, success criterion and review when absent; no user
+is required to hand-author JSONL. Keep task execution, review, training consent
+and external sharing as separate permissions. A declared `real` field alone does
+not authenticate an observation, its author or its review.
+
+The [endpoint-selection capability decision](../lfg-swag.md#endpoint-selection-capability-decision)
+defines the distinct learning target's runtime boundary. A real single-worker
+run supplies observed outcome evidence, not knowledge of unchosen alternatives.
+Collect authorized comparisons before claiming a routing preference is optimal.
+
 The [offline paired-outcome review exchange](outcome-review.md) prepares
 byte-bound review packets from explicit exports. It preserves uncertainty and
 failed outcomes; producing a packet does not approve labels, admit training,

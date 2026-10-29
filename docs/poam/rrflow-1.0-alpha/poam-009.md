@@ -10,6 +10,13 @@ independently.
 
 ## Observed deficiency
 
+The [endpoint-selection capability decision](../../reference/inference/lfg-swag.md#endpoint-selection-capability-decision)
+now makes the missing public admission and selected-provider effect explicit.
+Endpoint configuration persistence cannot execute either. Descriptor/credential
+resolution, the separate selection model contract, engine authorization and
+durable activity composition still require implementation and real acceptance;
+this preparation does not close POAM-009 or qualify the provisional SWAG model.
+
 Reasoning-tree and three-proposal router contracts now include a closed provider-neutral
 model manifest, independent runtime handshake, and byte-verified pre-load admission. There
 is still no executable `RouterBackend` dispatch, LFG adapter/conformance, installed model
