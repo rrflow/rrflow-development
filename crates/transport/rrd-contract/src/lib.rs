@@ -14,8 +14,10 @@ pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCurso
 mod endpoint_binding;
 mod endpoint_configuration;
 mod endpoint_policy;
+mod endpoint_proposal;
 mod endpoint_selection;
 pub use endpoint_policy::EndpointSelectionPolicy;
+pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,

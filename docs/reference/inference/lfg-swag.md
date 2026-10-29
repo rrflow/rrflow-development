@@ -66,8 +66,9 @@ The next public capability is **propose endpoint selection**, owned by
 `RrdEngine` and exposed through the executable operation catalogue when its
 handler and authorization are implemented together. Its proposed semantic
 types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
-`EndpointSelectionProposal`; these names are design targets, not available SDK
-types. A separate admitted external activity executes a selected provider.
+`EndpointSelectionProposal`. Their Rust validators are implemented; no public
+operation or generated SDK entry exposes them yet. A separate admitted external
+activity executes a selected provider.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -98,6 +99,32 @@ tests perturb those records in memory only. The
 [validation journal](../../evidence/change-journals/gate-g/controller-endpoint-choice-validation.md)
 records provenance and limits. These observations are not training targets,
 human review, provider-quality evidence or completion of G-01b.
+
+### Task-bound proposal semantics in progress
+
+`EndpointSelectionRequest` names an existing task and stable attempt, expected
+task/configuration digests and a bounded task-read allowance. It accepts no URL,
+credential, prompt or caller-authored candidate catalogue. The task-text packet
+omits the task creation replay key, binds an open task version/read coordinate
+and requires the exact configured selector and allowance. Task projection checks
+do not authorize repository context or establish source-edit freshness.
+
+`EndpointSelectionProposal` binds request, task, attempt, packet, configuration,
+allowance, service alias and observed request/response/content identities. Its
+only purpose is an experimental proposal. That purpose is not runtime permission,
+capability verification, loaded-weight attestation or worker-effect authority.
+`EndpointTokenUsage` retains missing counts as unknown and rejects overflow or
+contradictory partial totals; the native adapter uses this same validator while
+tolerating unrelated provider envelope metadata.
+
+These types are consistency checks, not an engine dispatcher or a receipt ledger.
+Constructing a valid tuple does not prove that a model produced it for that packet.
+Authenticated packet construction, explicit experimental policy admission,
+credential setup, guarded completion and actual durable readback still require
+implementation in the same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
+records actual-task projection and retained-provider validation checks. No new
+provider execution or model-quality claim follows from those checks.
 
 ### Governed selector settings prerequisite
 
