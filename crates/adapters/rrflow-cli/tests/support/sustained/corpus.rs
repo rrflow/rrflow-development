@@ -32,6 +32,22 @@ pub(super) async fn verify_window(
     .await
 }
 
+/// Verify an admitted window and fold only a completely verified ordered window.
+pub(super) async fn verify_reopened_window(
+    work: &Workload,
+    first: u64,
+    end: u64,
+    clients: usize,
+    operation_deadline: Duration,
+    mut readback: Digest,
+) -> DriverResult<(Digest, Vec<(u64, Digest)>)> {
+    let verified = verify_window(work, first, end, clients, operation_deadline).await?;
+    for (record, effect) in &verified {
+        readback = digest("c07g.reopened-corpus", &(readback, record, effect))?;
+    }
+    Ok((readback, verified))
+}
+
 pub(super) async fn seed(
     estate: &Estate,
     work: &mut Workload,

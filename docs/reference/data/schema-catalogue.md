@@ -13,9 +13,11 @@ table's logical identity or independently publish canonical data.
 
 ## Logical models and table identity
 
-Each registry names one namespace and database; both default to `default`, and
-the [instance-topology record](../../architecture/instance-topology.md#canonical-identities-and-cardinality)
-reserves any other value for a later schema contract. A table kind maps to one
+Each registry names one namespace and database; both default to `default` and
+scope nothing. The [estate organisation contract](estate-organisation.md)
+replaces that label with domains: every kind and vector collection belongs to
+exactly one domain, and categories and tags label kinds and records. Its
+H-11a package removes the label from this registry. A table kind maps to one
 tagged `RuntimeLogicalModel`: document, relational, graph node, graph
 relation, key-value, vector, event, time-series, geo, object, reasoning claim,
 reasoning record, reasoning event, lifecycle record, or lifecycle event.

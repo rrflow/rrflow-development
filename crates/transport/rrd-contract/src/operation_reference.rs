@@ -189,6 +189,12 @@ use OperationFamily as F;
 
 /// Sorted by operation identifier, the order of the endpoint catalogue.
 const OPERATION_REFERENCES: &[(&str, OperationReference)] = &[
+    ("attunement-cancel", reference(F::IdentityAndControl,
+        "Request cancellation of an installed attunement job",
+        "Requires EstateAdmin, the exact job revision and plan digest, and an idempotency key. Returns the durable cancel_requested transition or its original receipt on replay. Cancellation is not proof that a worker or external resource has terminated.")),
+    ("attunement-read", reference(F::IdentityAndControl,
+        "Read an installed attunement job and its plan",
+        "Returns the engine's stored attunement plan and status for a known job, authorized by EstateRead. This read does not inspect the current project source and reports source verification as not checked. It does not start, resume, or replan the job.")),
     ("audit-export", reference(F::IdentityAndControl,
         "Export a range of the audit journal as JSON Lines",
         "Exports up to limit (1..=1024) audit records after after_sequence as canonical JSON Lines (application/x-ndjson; profile=rrd-audit-v1) with record_count, content_sha256, through_sequence, and chain anchor and head digests. Range semantics match audit-read, and the chain and content digest are validated before return.")),

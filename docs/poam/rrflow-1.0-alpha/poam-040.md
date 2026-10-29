@@ -10,6 +10,12 @@ it cannot close a roadmap gate independently.
 
 ## Observed deficiency
 
+The [embedded attunement receipt readback candidate](../../evidence/change-journals/gate-d/d-02-attunement-receipt-readback.md)
+adds an authenticated, principal-scoped read of existing control receipts
+without replaying a mutation. This is not a public HTTP/SDK operation, source
+freshness check, memory receipt, or completion of this gap; exact candidate CI
+and the public readback and installed-process requirements remain open.
+
 Verified at development `main` `04fae276`:
 
 - The operation catalogue (`endpoint_catalogue` in

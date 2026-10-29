@@ -170,6 +170,363 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
 }
 
 #[test]
+fn attunement_receipt_readback_preserves_original_result_after_reopen() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    assert!(engine
+        .read_attunement_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("connect"),
+            BASE + 500,
+            "receipt-missing",
+            "receipt-missing",
+        )
+        .unwrap()
+        .is_none());
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let command = step(&started.status.job);
+    let connected = call(&engine, &session, &command, "connect", BASE + 2_000).unwrap();
+    let failed = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory",
+        BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(failed.status.job.state, State::Failed);
+    let before = engine.storage.control().journal_since(0, 1024).unwrap();
+    let count_receipts = |entries: &[rrd_store::ControlJournalEntry]| {
+        entries
+            .iter()
+            .filter(|entry| entry.action == "attunement.receipted")
+            .count()
+    };
+    let receipt = engine
+        .read_attunement_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("connect"),
+            BASE + 3_100,
+            "receipt-read",
+            "receipt-read",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(receipt.status, connected.status);
+    assert_eq!(
+        receipt.operation_sha256,
+        digest::sha256_hex(&serde_json::to_vec(&command).unwrap())
+    );
+    // Independently reconstruct the pre-existing on-disk key from the
+    // canonical principal and key text, rather than calling the new helper.
+    let key_input = format!("[\"{}\",\"connect\"]", receipt.principal_id.as_str());
+    let expected_key = format!(
+        "server/state/{}/attunement/job/{}/receipt/{}",
+        engine.instance_id(),
+        installed.job,
+        digest::sha256_hex(key_input.as_bytes())
+    );
+    assert!(before
+        .iter()
+        .any(|entry| { entry.action == "attunement.receipted" && entry.key == expected_key }));
+    assert!(engine
+        .read_attunement_receipt(
+            &session.session_id,
+            &id("invalid-token"),
+            &installed.job,
+            &id("connect"),
+            BASE + 3_200,
+            "receipt-invalid",
+            "receipt-invalid",
+        )
+        .is_err());
+    assert!(engine
+        .read_attunement_receipt(
+            &session.session_id,
+            &session.token,
+            &CanonicalId::new("other-job").unwrap(),
+            &id("connect"),
+            BASE + 3_300,
+            "receipt-foreign",
+            "receipt-foreign",
+        )
+        .unwrap()
+        .is_none());
+    let after = engine.storage.control().journal_since(0, 1024).unwrap();
+    assert_eq!(count_receipts(&before), count_receipts(&after));
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 3_500).job,
+        failed.status.job
+    );
+    drop(engine);
+    let engine = installed.reopen(BASE + 4_000);
+    let renewed = installed.session(&engine, "receipt-renewed", BASE + 4_100);
+    let reopened = engine
+        .read_attunement_receipt(
+            &renewed.session_id,
+            &renewed.token,
+            &installed.job,
+            &id("connect"),
+            BASE + 5_000,
+            "receipt-reopened",
+            "receipt-reopened",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(reopened, receipt);
+    assert_eq!(
+        installed.read(&engine, &renewed, BASE + 5_500).job,
+        failed.status.job
+    );
+}
+
+#[test]
+fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
+    let (installed, engine, _) = Installed::new(InstallationTargetKind::FreshProject);
+    let repository = SecurityRepository::new(&engine.storage, engine.instance_id().clone());
+    let mut authority = repository.load().unwrap().unwrap();
+    let revision = authority.revision;
+    authority.revision += 1;
+    let resource = ResourcePath {
+        segments: vec![
+            ResourceId::new(ResourceKind::Instance, engine.instance_id().as_str()).unwrap(),
+        ],
+    };
+    for (name, read) in [("other-reader", true), ("without-read", false)] {
+        let principal_id = CanonicalId::new(name).unwrap();
+        let mut grants = vec![ResourceGrant {
+            action: SecurityAction::SessionCreate,
+            resource_prefix: resource.clone(),
+            data_policy: None,
+        }];
+        if read {
+            grants.push(ResourceGrant {
+                action: SecurityAction::EstateRead,
+                resource_prefix: resource.clone(),
+                data_policy: None,
+            });
+        }
+        authority.principals.insert(
+            principal_id.clone(),
+            Principal {
+                id: principal_id,
+                kind: PrincipalKind::Service,
+                credential_sha256: digest::sha256_hex(name.as_bytes()),
+                credential_revision: 1,
+                not_before_unix_ms: 1,
+                expires_at_unix_ms: u64::MAX,
+                disabled: false,
+                role_ids: Default::default(),
+                grants,
+            },
+        );
+    }
+    repository
+        .replace(
+            revision,
+            authority,
+            BASE + 300,
+            "test",
+            "security-update",
+            "security-update",
+        )
+        .unwrap();
+    let owner = installed.session(&engine, "receipt-owner", BASE + 500);
+    call(
+        &engine,
+        &owner,
+        &installed.start(30_000),
+        "owner-receipt",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let make_session = |name: &str| {
+        engine
+            .create_authenticated_session(
+                &CanonicalId::new(name).unwrap(),
+                name.as_bytes(),
+                &CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 120_000,
+                        absolute_timeout_ms: 120_000,
+                        max_open_transactions: 2,
+                    },
+                },
+                &id(name),
+                BASE + 1_500,
+                &format!("request-{name}"),
+                &format!("operation-{name}"),
+            )
+            .unwrap()
+    };
+    let other = make_session("other-reader");
+    let denied = make_session("without-read");
+    assert!(engine
+        .read_attunement_receipt(
+            &other.session_id,
+            &other.token,
+            &installed.job,
+            &id("owner-receipt"),
+            BASE + 2_000,
+            "other-read",
+            "other-read"
+        )
+        .unwrap()
+        .is_none());
+    assert!(matches!(
+        engine.read_attunement_receipt(
+            &denied.session_id,
+            &denied.token,
+            &installed.job,
+            &id("owner-receipt"),
+            BASE + 2_100,
+            "denied-read",
+            "denied-read"
+        ),
+        Err(ServiceError::PermissionDenied)
+    ));
+    assert!(engine
+        .read_attunement_receipt(
+            &owner.session_id,
+            &owner.token,
+            &installed.job,
+            &id("owner-receipt"),
+            BASE + 2_200,
+            "owner-read",
+            "owner-read"
+        )
+        .unwrap()
+        .is_some());
+}
+
+#[test]
+fn attunement_receipt_readback_rejects_corrupt_identity() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::FreshProject);
+    call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "receipt-corrupt",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let key = engine
+        .storage
+        .control()
+        .journal_since(0, 1024)
+        .unwrap()
+        .into_iter()
+        .find(|entry| entry.action == "attunement.receipted")
+        .unwrap()
+        .key;
+    let original = engine.storage.control().get(&key).unwrap().unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&original).unwrap();
+    value["operation_sha256"] = serde_json::json!("not-a-digest");
+    engine
+        .storage
+        .control()
+        .commit(&ControlTransition {
+            key,
+            expected: Some(original),
+            replacement: Some(serde_json::to_vec(&value).unwrap()),
+            at: BASE + 1_500,
+            actor: "test".into(),
+            action: "test.receipt-corruption".into(),
+            request_id: "corrupt-request".into(),
+            operation_id: "corrupt-operation".into(),
+        })
+        .unwrap();
+    assert!(matches!(
+        engine.read_attunement_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("receipt-corrupt"),
+            BASE + 2_000,
+            "corrupt-read",
+            "corrupt-read"
+        ),
+        Err(ServiceError::Storage(_))
+    ));
+}
+
+#[test]
+fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let request = rrd_contract::ReadAttunement {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: installed.job.clone(),
+    };
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "detail-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "detail-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let failed = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "detail-inventory",
+        BASE + 3_000,
+    )
+    .unwrap();
+    std::fs::write(installed.root.path().join("README.md"), "changed source\n").unwrap();
+    let read = engine
+        .read_attunement_detail(
+            &session.session_id,
+            &session.token,
+            &request,
+            BASE + 4_000,
+            "request-detail",
+            "operation-detail",
+        )
+        .unwrap();
+    assert_eq!(read.plan, installed.preview.attunement);
+    assert_eq!(read.status.job, failed.status.job);
+    assert_eq!(read.status.job.state, State::Failed);
+    assert_eq!(
+        read.status.job.failure.as_ref().unwrap().code.as_str(),
+        "phase-unavailable"
+    );
+    assert_eq!(
+        read.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    let invalid_token = id("invalid-token");
+    assert!(engine
+        .read_attunement_detail(
+            &session.session_id,
+            &invalid_token,
+            &request,
+            BASE + 4_001,
+            "request-denied",
+            "operation-denied"
+        )
+        .is_err());
+}
+
+#[test]
 fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
     for mode in [
         InstallationTargetKind::FreshProject,

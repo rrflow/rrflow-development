@@ -99,7 +99,7 @@ required decisions cannot be treated as permission or silently guessed.
 [H-08 PostgreSQL compatibility packages](rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)
 define the native rrflowDB SQL/client and data-portability work.
 
-### Gate I — add explicit automation scaffolding without automatic hooks
+### Gate I — add explicit automation scaffolding with host hooks as alias stubs
 
 [Open Gate I](rrflow-1.0/gate-i.md)
 
