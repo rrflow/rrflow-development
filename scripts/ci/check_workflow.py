@@ -430,6 +430,25 @@ def verify_sdk_conformance(block: str) -> None:
     )
 
 
+def verify_standalone_rrflowdb(jobs: dict[str, str]) -> None:
+    build = "cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb"
+    run = '"$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"'
+    step = ("      - name: Build and exercise the standalone rrflowDB example\n"
+            "        shell: bash\n"
+            "        run: |\n"
+            f"          {build}\n"
+            '          suffix=""\n'
+            '          python_command=python3\n'
+            '          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi\n'
+            f"          {run}\n")
+    for name in ("topology-smoke", "estate-portability"):
+        block = jobs[name]
+        require(block.count(step) == 1 and block.count(run) == 1,
+                f"{name} must unconditionally build and run the native standalone rrflowDB example")
+    require(jobs["verify"].count("python3 scripts/ci/test_rrflowdb_standalone.py") == 1,
+            "verify must run standalone rrflowDB oracle and process tests")
+
+
 def single_ci_value(reusable: str, pattern: str, label: str) -> str:
     values = set(re.findall(pattern, reusable))
     require(
@@ -810,6 +829,7 @@ def main() -> None:
 
     suite_count, package_count = verify_engine_suites(jobs["engine-suites"])
     verify_sdk_conformance(jobs["sdk-conformance"])
+    verify_standalone_rrflowdb(jobs)
     feature_count = verify_optional_features(
         jobs["optional-features"], jobs["pgvector-feature"]
     )

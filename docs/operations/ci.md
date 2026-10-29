@@ -96,6 +96,15 @@ check for branch protection:
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
 
+The Linux lifecycle and Windows/macOS portability lanes also build the native
+`rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
+copies, and run the installed example over authenticated loopback HTTP. The
+runner checks the exact synthetic task and owning relationship at one read
+stamp, changes the task, rejects the old expectation, verifies the stopped
+estate and reads the same state after reopening. It bounds child output and
+execution, and terminates only its own processes. This is a small fresh-project
+integration corpus, not the complete H-04 SDK matrix or C-07 qualification.
+
 The Linux topology and Windows/macOS estate partitions also require
 `projected_lifetime` and `reader::lifetime_tests`: overlapping empty-reader
 admission, mixed generations and terminal source-owner release, with copied
