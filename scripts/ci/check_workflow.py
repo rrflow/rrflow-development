@@ -163,7 +163,7 @@ def verify_native_capacity_preflight(workflow: str) -> None:
         marker = f"      - name: {name}\n"
         require(job.count(marker) == 1, f"native preflight artifact missing or duplicated: {name}")
         step = job.split(marker, 1)[1].split("      - name:", 1)[0]
-        require("if: always()" in step and "actions/upload-artifact@" in step
+        require("        if: always()\n" in step and "actions/upload-artifact@" in step
                 and f"path: {artifact_path}" in step and f"if-no-files-found: {missing}" in step,
                 f"native preflight artifact is not isolated and failure-preserving: {name}")
     require(not any(re.match(r"(?:ref|repository|path)\s*:", entry)
