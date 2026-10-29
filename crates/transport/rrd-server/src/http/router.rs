@@ -49,6 +49,7 @@ macro_rules! http_dispatch_catalogue {
 http_dispatch_catalogue! {
     AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
+    AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
     BackupCreate => ("backup-create", RrdOperation::BackupCreate),
@@ -106,6 +107,22 @@ http_dispatch_catalogue! {
     VectorCollectionList => ("vector-collection-list", RrdOperation::VectorCollectionList),
     VectorPointRetrieve => ("vector-point-retrieve", RrdOperation::VectorPointRetrieve),
     VectorPointScroll => ("vector-point-scroll", RrdOperation::VectorPointScroll),
+    VectorQuantizationActivate => (
+        "vector-quantization-activate",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorQuantizationBuild => (
+        "vector-quantization-build",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorQuantizationList => (
+        "vector-quantization-list",
+        RrdOperation::VectorCollectionList
+    ),
+    VectorQuantizationRetire => (
+        "vector-quantization-retire",
+        RrdOperation::VectorCollectionEnsure
+    ),
     VectorSearch => ("vector-search", RrdOperation::VectorSearch),
 }
 
@@ -228,6 +245,9 @@ impl AppState {
                 self.replace_knowledge_trees(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementRead) => self.read_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementReceiptRead) => {
+                self.read_attunement_receipt(&headers, &body, now)
+            }
             Some(HttpDispatch::AttunementCancel) => self.cancel_attunement(&headers, &body, now),
             Some(HttpDispatch::SessionCreate) => self.create_session(&headers, &body, now),
             Some(HttpDispatch::SessionRenew) => self.renew_session(&headers, &body, &path, now),
@@ -297,6 +317,18 @@ impl AppState {
             }
             Some(HttpDispatch::VectorPointRetrieve) => {
                 self.retrieve_vector_points(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationBuild) => {
+                self.build_vector_quantization(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationList) => {
+                self.list_vector_quantizations(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationActivate) => {
+                self.activate_vector_quantization(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationRetire) => {
+                self.retire_vector_quantization(&headers, &body, now)
             }
             Some(HttpDispatch::VectorSearch) => self.search_vectors(&headers, &body, now),
             Some(HttpDispatch::EstateRead) => self.read_estate(&headers, &body, &path, now),

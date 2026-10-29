@@ -18,9 +18,13 @@ This proposal cannot relax them or change their status.
 At development main `86adada6dab6411cc58cb9aaa931e35472c0f452`, installation
 sets `AttunementPlan.source_sha256` from an installation precondition inventory.
 That inventory is bounded and rejects some observed races, but its own source
-states that it is not an atomic snapshot or D-03 inventory. Installed
-`RrdEngine` does not retain the project-root anchor as part of its ordinary
-state. `Start` checks the plan digest but not the current source. Connect puts
+states that it is not an atomic snapshot or D-03 inventory. At that historical
+baseline the installed engine did not retain the project-root anchor. Current
+development main `e73ba9287dafba5d8fb8fb6a990fd145ffd01ab3` does retain the
+admitted `installed_project_root` when opening an installed estate
+([root-capability journal](../evidence/change-journals/gate-d/d-02-retained-project-root.md));
+that capability alone neither authorizes source reads nor establishes a snapshot.
+`Start` still checks the plan digest but not the current source. Connect puts
 the stored source digest into its first checkpoint without re-reading the
 project. The next Inventory step reports `phase-unavailable`. No general
 engine-owned per-prompt handoff, effect-scoped question records, or supported
@@ -202,8 +206,10 @@ maintains lease fencing. These are target requirements, not current evidence.
   Require a qualified conditional effect, or refuse the stronger mutation.
 
 No particular portable filesystem primitive or new dependency is selected by
-this design. Root-capability retention and re-admission after restart, the
-conditional project mutation adapter, proof of complete scoped dependencies,
+this design. Although the installed engine now retains an admitted root, its
+use for authorized source capture and the required snapshot and freshness
+evidence remain open. The conditional project mutation adapter, proof of
+complete scoped dependencies,
 and safe reuse of prior outputs require implementation packages and native
 evidence. SWAG may suggest plans, choose available capabilities, or adjust
 effort under approved budgets; it does not become the plan or lifecycle owner.

@@ -176,6 +176,32 @@ with RrdClient(str(manifest["base_url"]), str(identity["instance"])) as client:
         == expected["vector_reference"]
         for hit in cast(list[object], vectors["hits"])
     )
+    # The runners share one estate, so activate the generation this build
+    # returned.
+    quantization = obj(vector["quantization"])
+    built = client.call(
+        "vector-quantization-build",
+        obj(quantization["build"]),
+        options("quantization-build", session=session, mutation=True),
+    )
+    artifact = obj(built["artifact"])
+    assert artifact["artifact_id"] == obj(quantization["activate"])["artifact_id"]
+    client.call(
+        "vector-quantization-activate",
+        {**obj(quantization["activate"]), "generation": artifact["generation"]},
+        options("quantization-activate", session=session, mutation=True),
+    )
+    quantized = client.call(
+        "vector-search",
+        obj(quantization["search"]),
+        options("quantized-search", session=session),
+    )
+    assert quantized["access_path"] == expected["quantized_access_path"]
+    assert any(
+        f"{obj(obj(hit)['reference'])['kind']}:{obj(obj(hit)['reference'])['id']}"
+        == expected["vector_reference"]
+        for hit in cast(list[object], quantized["hits"])
+    )
     changes = client.call(
         "changefeed-read", obj(changefeed["read"]), options("changefeed-read", session=session)
     )

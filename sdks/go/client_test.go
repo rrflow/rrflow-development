@@ -224,7 +224,8 @@ func TestSecurityDeadlinesErrorsAndGeneratedCoverage(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "deadline has expired") {
 		t.Fatalf("unexpected deadline result: %v", err)
 	}
-	if len(endpoints) != 57 || !endpoints[OperationBackupCreate].Mutation ||
+	if len(endpoints) != 62 || endpoints[OperationAttunementReceiptRead].Path != "/v1/attunement/receipt/read" ||
+		endpoints[OperationAttunementReceiptRead].Mutation || !endpoints[OperationBackupCreate].Mutation ||
 		endpoints[OperationDiagnosticsStorageCursor].Authentication != "session_bearer" ||
 		!endpoints[OperationTransactionPreview].Mutation ||
 		endpoints[OperationCapabilitiesRead].Authentication != "public" {

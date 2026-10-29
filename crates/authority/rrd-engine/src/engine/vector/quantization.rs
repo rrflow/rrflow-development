@@ -1,37 +1,132 @@
 use super::*;
 use std::collections::BTreeSet;
 
+/// How one lifecycle mutation proceeds once its key and digest are known.
+enum QuantizationAdmission {
+    /// The same request was already applied under this key.
+    Replay { scope: ScopeId },
+    /// A new operation, authorized with an active session.
+    Apply {
+        scope: ScopeId,
+        receipt: rrd_vector::QuantizationOperationReceipt,
+        lifecycle: rrd_vector::QuantizationArtifactCatalogue,
+    },
+}
+
 impl RrdEngine {
-    pub fn build_vector_quantization_artifact(
+    /// Admits one build, activate or retire. Like collection operations, a
+    /// recorded operation replays after its session's lease has expired;
+    /// a new one needs an active session and is authorized and audited.
+    #[allow(clippy::too_many_arguments)]
+    fn admit_quantization_operation(
         &self,
         session_id: &CorrelationId,
         token: &CorrelationId,
-        request: &BuildVectorQuantizationArtifact,
+        request: &impl serde::Serialize,
+        scope: &str,
+        context: &RequestContext,
+        action: rrd_vector::QuantizationLifecycleAction,
         now: u64,
-        request_id: &str,
-        operation_id: &str,
-    ) -> Result<BuildVectorQuantizationArtifactResult> {
-        request
-            .validate()
+    ) -> Result<QuantizationAdmission> {
+        context
+            .validate(true)
+            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+        let idempotency_key = context.idempotency_key.as_ref().ok_or_else(|| {
+            ServiceError::Contract("a quantization lifecycle operation requires idempotency".into())
+        })?;
+        // The session and its policy are checked before the receipt, and a
+        // refusal is audited as `authorize` audits it.
+        let mut principal_id = None;
+        let admitted = (|| {
+            let (_, session) = self.load_authenticated(session_id, token)?;
+            principal_id.clone_from(&session.principal_id);
+            self.authorize_session_policy(&session, SecurityAction::VectorCollectionEnsure, now)
+        })();
+        if let Err(error) = admitted {
+            self.record_direct_authorization(
+                principal_id,
+                SecurityAction::VectorCollectionEnsure,
+                &self.instance_resource(),
+                now,
+                context.request_id.as_str(),
+                context.operation_id.as_str(),
+                Some(&error),
+            )?;
+            return Err(error);
+        }
+        let scope = self.query_scope(scope)?;
+        let operation_sha256 = operation_digest(request)?;
+        let lifecycle = crate::quantization_artifact_catalogue(&self.storage, &scope)
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        if let Some(outcome) = lifecycle.operation(idempotency_key.as_str()) {
+            if outcome.operation_sha256 != operation_sha256 || outcome.action != action {
+                return Err(ServiceError::IdempotencyConflict);
+            }
+            return Ok(QuantizationAdmission::Replay { scope });
+        }
         self.authorize(
             session_id,
             token,
             SecurityAction::VectorCollectionEnsure,
             now,
-            request_id,
-            operation_id,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
         )?;
-        self.build_vector_quantization_artifact_authorized(session_id, request, now)
+        Ok(QuantizationAdmission::Apply {
+            scope,
+            receipt: rrd_vector::QuantizationOperationReceipt {
+                idempotency_key: idempotency_key.as_str().into(),
+                operation_sha256,
+            },
+            lifecycle,
+        })
     }
 
+    pub fn build_vector_quantization_artifact(
+        &self,
+        session_id: &CorrelationId,
+        token: &CorrelationId,
+        request: &BuildVectorQuantizationArtifact,
+        context: &RequestContext,
+        now: u64,
+    ) -> Result<BuildVectorQuantizationArtifactResult> {
+        request
+            .validate()
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        match self.admit_quantization_operation(
+            session_id,
+            token,
+            request,
+            &request.scope,
+            context,
+            rrd_vector::QuantizationLifecycleAction::Build,
+            now,
+        )? {
+            QuantizationAdmission::Replay { scope } => {
+                self.replay_quantization_build(request, &scope, context)
+            }
+            QuantizationAdmission::Apply {
+                scope,
+                receipt,
+                lifecycle,
+            } => self.build_vector_quantization_artifact_authorized(
+                session_id, request, &scope, lifecycle, receipt, context, now,
+            ),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn build_vector_quantization_artifact_authorized(
         &self,
         session_id: &CorrelationId,
         request: &BuildVectorQuantizationArtifact,
+        scope: &ScopeId,
+        lifecycle: rrd_vector::QuantizationArtifactCatalogue,
+        receipt: rrd_vector::QuantizationOperationReceipt,
+        context: &RequestContext,
         now: u64,
     ) -> Result<BuildVectorQuantizationArtifactResult> {
-        let scope = self.query_scope(&request.scope)?;
+        let scope = scope.clone();
         let catalogue = rrd_vector::VectorCollectionRepository::new(&self.storage, scope.clone())
             .load()
             .map_err(vector_collection_error)?;
@@ -94,8 +189,6 @@ impl RrdEngine {
         };
         let artifact_id =
             quantization_artifact_id(method_name, &request.collection_id, &request.vector_name)?;
-        let lifecycle = crate::quantization_artifact_catalogue(&self.storage, &scope)
-            .map_err(|error| ServiceError::Vector(error.to_string()))?;
         let generation = lifecycle
             .artifacts
             .keys()
@@ -154,15 +247,27 @@ impl RrdEngine {
             }
         };
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
-        let publication = crate::build_traced_quantization_artifact(
+        let publication = match crate::build_traced_quantization_artifact(
             &data,
             ProjectionId::new(request.collection_id.as_str()).map_err(core_vector)?,
             ProjectionId::new(request.vector_name.as_str()).map_err(core_vector)?,
             artifact,
             &format!("session:{}", session_id.as_str()),
             now,
-        )
-        .map_err(|error| ServiceError::Vector(error.to_string()))?;
+            Some(receipt.clone()),
+        ) {
+            Ok(publication) => publication,
+            Err(error) => {
+                return match self.settle_failed_publication(&scope, &receipt, error)? {
+                    crate::QuantizationOperationRecorded::Replay => {
+                        self.replay_quantization_build(request, &scope, context)
+                    }
+                    crate::QuantizationOperationRecorded::Conflict => {
+                        Err(ServiceError::IdempotencyConflict)
+                    }
+                }
+            }
+        };
         Ok(BuildVectorQuantizationArtifactResult {
             artifact: public_quantization_artifact(
                 &publication.entry,
@@ -171,6 +276,7 @@ impl RrdEngine {
             )?,
             selected_versions: direct.selected_versions,
             read_evidence: direct.read_evidence,
+            idempotent_replay: false,
         })
     }
 
@@ -227,40 +333,27 @@ impl RrdEngine {
         session_id: &CorrelationId,
         token: &CorrelationId,
         request: &ActivateVectorQuantizationArtifact,
+        context: &RequestContext,
         now: u64,
-        request_id: &str,
-        operation_id: &str,
     ) -> Result<ActivateVectorQuantizationArtifactResult> {
         request
             .validate()
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        self.authorize(
+        self.transition_quantization_artifact(
             session_id,
             token,
-            SecurityAction::VectorCollectionEnsure,
-            now,
-            request_id,
-            operation_id,
-        )?;
-        let scope = self.query_scope(&request.scope)?;
-        let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
-        let transition = crate::transition_traced_quantization_artifact(
-            &data,
-            &scope,
-            &ProjectionId::new(request.artifact_id.as_str()).map_err(core_vector)?,
-            request.generation,
+            request,
+            (&request.scope, &request.artifact_id, request.generation),
+            context,
             rrd_vector::QuantizationLifecycleAction::Activate,
-            &format!("session:{}", session_id.as_str()),
             now,
         )
-        .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        Ok(ActivateVectorQuantizationArtifactResult {
-            artifact: public_quantization_artifact(
-                &transition.entry,
-                transition.state,
-                transition.lifecycle_revision,
-            )?,
-        })
+        .map(
+            |(artifact, idempotent_replay)| ActivateVectorQuantizationArtifactResult {
+                artifact,
+                idempotent_replay,
+            },
+        )
     }
 
     pub fn retire_vector_quantization_artifact(
@@ -268,41 +361,174 @@ impl RrdEngine {
         session_id: &CorrelationId,
         token: &CorrelationId,
         request: &RetireVectorQuantizationArtifact,
+        context: &RequestContext,
         now: u64,
-        request_id: &str,
-        operation_id: &str,
     ) -> Result<RetireVectorQuantizationArtifactResult> {
         request
             .validate()
             .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        self.authorize(
+        self.transition_quantization_artifact(
             session_id,
             token,
-            SecurityAction::VectorCollectionEnsure,
-            now,
-            request_id,
-            operation_id,
-        )?;
-        let scope = self.query_scope(&request.scope)?;
-        let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
-        let transition = crate::transition_traced_quantization_artifact(
-            &data,
-            &scope,
-            &ProjectionId::new(request.artifact_id.as_str()).map_err(core_vector)?,
-            request.generation,
+            request,
+            (&request.scope, &request.artifact_id, request.generation),
+            context,
             rrd_vector::QuantizationLifecycleAction::Retire,
-            &format!("session:{}", session_id.as_str()),
             now,
         )
-        .map_err(|error| ServiceError::Vector(error.to_string()))?;
-        Ok(RetireVectorQuantizationArtifactResult {
-            artifact: public_quantization_artifact(
-                &transition.entry,
-                transition.state,
-                transition.lifecycle_revision,
-            )?,
+        .map(
+            |(artifact, idempotent_replay)| RetireVectorQuantizationArtifactResult {
+                artifact,
+                idempotent_replay,
+            },
+        )
+    }
+
+    /// Activates or retires one generation, or replays the recorded
+    /// operation, and returns the artifact with whether it was a replay.
+    #[allow(clippy::too_many_arguments)]
+    fn transition_quantization_artifact(
+        &self,
+        session_id: &CorrelationId,
+        token: &CorrelationId,
+        request: &impl serde::Serialize,
+        (scope, artifact_id, generation): (&str, &CanonicalId, u64),
+        context: &RequestContext,
+        action: rrd_vector::QuantizationLifecycleAction,
+        now: u64,
+    ) -> Result<(VectorQuantizationArtifactSnapshot, bool)> {
+        let (scope, receipt) = match self
+            .admit_quantization_operation(session_id, token, request, scope, context, action, now)?
+        {
+            QuantizationAdmission::Replay { scope } => {
+                return self
+                    .replay_quantization_transition(&scope, context)
+                    .map(|artifact| (artifact, true));
+            }
+            QuantizationAdmission::Apply { scope, receipt, .. } => (scope, receipt),
+        };
+        let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
+        match crate::transition_traced_quantization_artifact(
+            &data,
+            &scope,
+            &ProjectionId::new(artifact_id.as_str()).map_err(core_vector)?,
+            generation,
+            action,
+            &format!("session:{}", session_id.as_str()),
+            now,
+            Some(receipt.clone()),
+        ) {
+            Ok(transition) => Ok((
+                public_quantization_artifact(
+                    &transition.entry,
+                    transition.state,
+                    transition.lifecycle_revision,
+                )?,
+                false,
+            )),
+            Err(error) => match self.settle_failed_publication(&scope, &receipt, error)? {
+                crate::QuantizationOperationRecorded::Replay => self
+                    .replay_quantization_transition(&scope, context)
+                    .map(|artifact| (artifact, true)),
+                crate::QuantizationOperationRecorded::Conflict => {
+                    Err(ServiceError::IdempotencyConflict)
+                }
+            },
+        }
+    }
+
+    /// A publication that failed because its key was already recorded at
+    /// its commit's read, or because its conditional commit lost to a
+    /// concurrent request with the same key, replays or conflicts. Every
+    /// other failure is returned as it is.
+    fn settle_failed_publication(
+        &self,
+        scope: &ScopeId,
+        receipt: &rrd_vector::QuantizationOperationReceipt,
+        error: Box<dyn std::error::Error>,
+    ) -> Result<crate::QuantizationOperationRecorded> {
+        if let Some(recorded) = error
+            .downcast_ref::<crate::QuantizationOperationRecorded>()
+            .copied()
+        {
+            return Ok(recorded);
+        }
+        let lifecycle = crate::quantization_artifact_catalogue(&self.storage, scope)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        match lifecycle.operation(&receipt.idempotency_key) {
+            Some(outcome) if outcome.operation_sha256 == receipt.operation_sha256 => {
+                Ok(crate::QuantizationOperationRecorded::Replay)
+            }
+            Some(_) => Ok(crate::QuantizationOperationRecorded::Conflict),
+            None => Err(ServiceError::Vector(error.to_string())),
+        }
+    }
+
+    /// The artifact a recorded build published, as it is now, with the
+    /// evidence of the catalogue read the replay made under the request's
+    /// key budget; no vector is read and nothing is encoded.
+    fn replay_quantization_build(
+        &self,
+        request: &BuildVectorQuantizationArtifact,
+        scope: &ScopeId,
+        context: &RequestContext,
+    ) -> Result<BuildVectorQuantizationArtifactResult> {
+        let read = self.storage.runtime().read_stamp(scope)?;
+        let direct = crate::runtime::vector_catalog::read_vector_catalogue_versions(
+            &self.storage,
+            &read,
+            &[],
+            rrd_store::RuntimeReadBudget::new(request.max_storage_keys)?,
+        )
+        .map_err(crate::engine::error::storage_read_error)?;
+        let catalogue =
+            crate::runtime::vector_catalog::quantization_artifact_catalogue_from_changes(
+                &direct.changes,
+                scope,
+            )
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        Ok(BuildVectorQuantizationArtifactResult {
+            artifact: recorded_artifact(&catalogue, context)?,
+            selected_versions: u64::try_from(direct.changes.len())
+                .map_err(|_| ServiceError::Vector("selected versions exceed u64".into()))?,
+            read_evidence: crate::runtime::public_read_evidence(direct.evidence)?,
+            idempotent_replay: true,
         })
     }
+
+    /// The artifact a recorded activation or retirement transitioned, as it
+    /// is now.
+    fn replay_quantization_transition(
+        &self,
+        scope: &ScopeId,
+        context: &RequestContext,
+    ) -> Result<VectorQuantizationArtifactSnapshot> {
+        let catalogue = crate::quantization_artifact_catalogue(&self.storage, scope)
+            .map_err(|error| ServiceError::Vector(error.to_string()))?;
+        recorded_artifact(&catalogue, context)
+    }
+}
+
+/// The current snapshot of the artifact the operation under the context's
+/// idempotency key acted on.
+fn recorded_artifact(
+    catalogue: &rrd_vector::QuantizationArtifactCatalogue,
+    context: &RequestContext,
+) -> Result<VectorQuantizationArtifactSnapshot> {
+    let outcome = context
+        .idempotency_key
+        .as_ref()
+        .and_then(|key| catalogue.operation(key.as_str()))
+        .ok_or_else(|| {
+            ServiceError::Vector("the recorded quantization operation is absent".into())
+        })?;
+    let artifact = catalogue
+        .artifacts
+        .get(&(outcome.projection_id.clone(), outcome.generation))
+        .ok_or_else(|| {
+            ServiceError::Vector("the recorded quantization artifact is absent".into())
+        })?;
+    public_quantization_artifact(&artifact.entry, artifact.state, catalogue.revision)
 }
 
 pub(super) fn quantization_artifact_id(
