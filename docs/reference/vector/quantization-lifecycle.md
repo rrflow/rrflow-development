@@ -72,8 +72,26 @@ and reactivation. However, each build currently reads every vector version in
 the scope at one read stamp (`read_vector_versions`) and reconstructs all
 collection candidates before encoding a new full artifact, and the quantization
 catalogue it publishes into is rebuilt by replaying retained changes from
-cursor zero ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). There is no
-native changed-vector input or incremental quantized-segment maintenance yet.
+cursor zero ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). The commit
+path writes each collection, named vector and field's vector deltas
+atomically, and storage reads one source's deltas at a request's stamp under
+its key budget, checking every pointer against the authenticated version it
+names (E-04a).
+
+An active TurboQuant generation keeps serving after writes (E-04b). It answers
+at its own source cursor, and every identity whose version changed since then
+is reranked exactly, from its full history, as an overlay, as HNSW already
+does. When a request requires an approximate path on a named dense vector and
+that generation is its only eligible one, search reads only:
+
+- the catalogue;
+- that source's deltas since the generation;
+- the histories of the generation's unchanged candidates.
+
+Its work then stays the same as unrelated vectors grow. A request that only
+allows approximation still reads every version in the scope, because its plan
+compares the full exact-scan cost. Builds still re-encode every version, and
+there is no incremental quantized-segment maintenance.
 
 The generic vector-index request now configures HNSW only. Scalar, product,
 binary, and TurboQuant artifacts can be constructed only through the explicit

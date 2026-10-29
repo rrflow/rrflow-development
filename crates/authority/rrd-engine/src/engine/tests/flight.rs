@@ -44,7 +44,7 @@ pub(super) fn seed_notes(
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install flight fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([(
                     note.clone(),
                     DataTableSchema {

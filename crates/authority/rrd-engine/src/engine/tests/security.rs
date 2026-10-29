@@ -1171,7 +1171,7 @@ fn compiled_role_policy_injects_tenant_rows_and_fields_before_query_planning() {
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install tenant policy fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([(
                     CanonicalId::new("document").unwrap(),
                     DataTableSchema {
@@ -1371,7 +1371,7 @@ fn context_records_authorization_and_denies_unenforced_data_policy_before_snapsh
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install context authorization fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([(
                     CanonicalId::new("document").unwrap(),
                     DataTableSchema {

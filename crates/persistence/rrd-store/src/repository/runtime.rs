@@ -4,15 +4,15 @@ use crate::access::runtime_state::{
     validate_read_stamp as validate_runtime_read_stamp,
 };
 use crate::access::{
-    index_source_deltas, prepare_semantic_commit, read_versioned as read_versioned_access,
+    index_source_deltas, prepare_semantic_commit, read_vector_deltas as read_vector_deltas_access,
+    read_versioned as read_versioned_access,
     read_versioned_expanding as read_versioned_expanding_access, schema_at_read,
-    vector_source_deltas,
 };
 use crate::keyspaces::{self, Durability};
 use crate::{
     ControlJournalEntry, ControlTransition, Error, FunctionInvocationReceiptRecord,
-    IndexSourceDelta, Result, RuntimeReadBudget, RuntimeReadEvidence, RuntimeVersionedRead,
-    RuntimeVersionedSource, StorageEngine, VectorSourceAddress, VectorSourceDelta,
+    IndexSourceDelta, Result, RuntimeReadBudget, RuntimeReadEvidence, RuntimeVectorDeltaRead,
+    RuntimeVersionedRead, RuntimeVersionedSource, StorageEngine, VectorSourceAddress,
 };
 use rrd_core::{
     AuditEnvelope, DataTransaction, DataTransactionView, Millis, ProjectionWork, ReadStamp,
@@ -430,18 +430,20 @@ impl<'a> RuntimeRepository<'a> {
         index_source_deltas(&*transaction, scope, index, after, limit)
     }
 
-    /// Exact vector-version pointer changes for one collection/name/field
-    /// source. Accelerator builders consume this stream outside the commit
-    /// path and publish only through their own verified gate.
-    pub fn vector_source_deltas_since(
+    /// One collection/name/field source's exact vector-version pointer
+    /// changes in (`after`, read cursor], with the authenticated history of
+    /// every identity they name, under one read stamp and key budget.
+    /// Accelerator builders and the vector planner consume this outside the
+    /// commit path; every pointer is checked against the version it names.
+    pub fn read_vector_deltas(
         &self,
-        scope: &ScopeId,
+        read: &ReadStamp,
         source: &VectorSourceAddress,
         after: u64,
-        limit: usize,
-    ) -> Result<Vec<VectorSourceDelta>> {
+        budget: RuntimeReadBudget,
+    ) -> Result<RuntimeVectorDeltaRead> {
         let transaction = self.storage.begin_transaction()?;
-        vector_source_deltas(&*transaction, scope, source, after, limit)
+        read_vector_deltas_access(&*transaction, read, source, after, budget)
     }
 
     pub fn audit(&self, commit_id: &str) -> Result<Option<AuditEnvelope>> {

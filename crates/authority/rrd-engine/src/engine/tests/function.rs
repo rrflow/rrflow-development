@@ -761,7 +761,7 @@ fn transaction_binding_effects_commit_atomically_and_failures_leave_data_unchang
     let registry = DataSchemaRegistry {
         revision: 1,
         migration: "install transaction function binding fixture".into(),
-        catalogue: DataCatalogueIdentity::default(),
+        organisation: DataEstateOrganisation::default(),
         tables: BTreeMap::from([
             (
                 person.clone(),

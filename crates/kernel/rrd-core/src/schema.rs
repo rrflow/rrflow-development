@@ -171,33 +171,327 @@ impl RuntimeTableSchema {
     }
 }
 
+/// Built-in domain holding every kind and collection not placed elsewhere.
+pub const DEFAULT_DOMAIN: &str = "default";
+/// Built-in domain holding the engine-owned kinds and collections.
+pub const ENGINE_DOMAIN: &str = "rrflow";
+/// Identity prefix that marks a kind or collection as engine-owned.
+pub const ENGINE_OWNED_PREFIX: &str = "rrflow-";
+pub const MAX_DOMAINS: usize = 256;
+pub const MAX_DOMAIN_DEPTH: usize = 8;
+pub const MAX_CATEGORIES: usize = 64;
+pub const MAX_TAGS_PER_CATEGORY: usize = 4_096;
+pub const MAX_TAGS_PER_KIND: usize = 64;
+pub const MAX_ORGANISATION_TITLE_BYTES: usize = 128;
+pub const MAX_ORGANISATION_DESCRIPTION_BYTES: usize = 1_024;
+
+/// One configurable part of an estate's catalogue, such as a service, package
+/// or subject area. Isolation arrives with its enforcement in H-11d.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RuntimeCatalogueIdentity {
-    pub namespace: RuntimeType,
-    pub database: RuntimeType,
+pub struct RuntimeDomainSchema {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    /// `None` and `default` both place the domain at the top level.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<RuntimeType>,
 }
 
-impl Default for RuntimeCatalogueIdentity {
-    fn default() -> Self {
-        Self {
-            namespace: RuntimeType::new("default").expect("static namespace is valid"),
-            database: RuntimeType::new("default").expect("static database is valid"),
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RuntimeCategoryTargets {
+    Kinds,
+    Records,
+    KindsAndRecords,
+}
+
+impl RuntimeCategoryTargets {
+    pub fn includes_kinds(self) -> bool {
+        matches!(self, Self::Kinds | Self::KindsAndRecords)
+    }
+
+    pub fn includes_records(self) -> bool {
+        matches!(self, Self::Records | Self::KindsAndRecords)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RuntimeTagCardinality {
+    Single,
+    Multiple,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeTagSchema {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+}
+
+/// A governed vocabulary of tags. A closed category gains tags only through a
+/// schema revision; an open one also admits tags written under its grant.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeCategorySchema {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    pub targets: RuntimeCategoryTargets,
+    pub cardinality: RuntimeTagCardinality,
+    #[serde(default)]
+    pub open: bool,
+    #[serde(default)]
+    pub tags: BTreeMap<RuntimeType, RuntimeTagSchema>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct RuntimeTagRef {
+    pub category: RuntimeType,
+    pub tag: RuntimeType,
+}
+
+/// Domains, categories and memberships of one estate catalogue. A kind or
+/// collection without an entry belongs to its default domain, so a registry
+/// written before organisation existed keeps its meaning and its digest.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeEstateOrganisation {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub domains: BTreeMap<RuntimeType, RuntimeDomainSchema>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub categories: BTreeMap<RuntimeType, RuntimeCategorySchema>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub kind_domains: BTreeMap<RuntimeType, RuntimeType>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub collection_domains: BTreeMap<RuntimeType, RuntimeType>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub kind_tags: BTreeMap<RuntimeType, BTreeSet<RuntimeTagRef>>,
+}
+
+impl RuntimeEstateOrganisation {
+    pub fn is_default(&self) -> bool {
+        self.domains.is_empty()
+            && self.categories.is_empty()
+            && self.kind_domains.is_empty()
+            && self.collection_domains.is_empty()
+            && self.kind_tags.is_empty()
+    }
+
+    /// The one domain a kind belongs to.
+    pub fn domain_of_kind<'a>(&'a self, kind: &'a RuntimeType) -> &'a str {
+        self.kind_domains
+            .get(kind)
+            .map_or_else(|| default_domain(kind.as_str()), RuntimeType::as_str)
+    }
+
+    /// The one domain a vector collection belongs to.
+    pub fn domain_of_collection<'a>(&'a self, collection: &'a str) -> &'a str {
+        self.collection_domains
+            .iter()
+            .find(|(id, _)| id.as_str() == collection)
+            .map_or_else(|| default_domain(collection), |(_, domain)| domain.as_str())
+    }
+
+    pub fn has_domain(&self, domain: &str) -> bool {
+        is_builtin_domain(domain) || self.domains.keys().any(|id| id.as_str() == domain)
+    }
+
+    fn validate(&self, tables: &BTreeMap<RuntimeType, RuntimeTableSchema>) -> Result<()> {
+        if self.domains.len() + 2 > MAX_DOMAINS {
+            return invalid(format!(
+                "an estate may declare at most {} domains besides default and rrflow",
+                MAX_DOMAINS - 2
+            ));
         }
+        for (id, domain) in &self.domains {
+            if is_builtin_domain(id.as_str()) || id.as_str().starts_with(ENGINE_OWNED_PREFIX) {
+                return invalid(format!(
+                    "domain {id} is built in or reserved for the engine and cannot be declared"
+                ));
+            }
+            validate_label("domain", id, &domain.title, &domain.description)?;
+            if let Some(parent) = &domain.parent {
+                if parent.as_str() == ENGINE_DOMAIN {
+                    return invalid(format!("domain {id} cannot be placed inside rrflow"));
+                }
+                if parent.as_str() != DEFAULT_DOMAIN && !self.domains.contains_key(parent) {
+                    return invalid(format!("domain {id} names unknown parent {parent}"));
+                }
+            }
+            self.domain_depth(id)?;
+        }
+        for (kind, domain) in &self.kind_domains {
+            if !tables.contains_key(kind) {
+                return invalid(format!(
+                    "domain membership names unregistered table type {kind}"
+                ));
+            }
+            self.validate_membership("table type", kind, domain)?;
+        }
+        for (collection, domain) in &self.collection_domains {
+            self.validate_membership("vector collection", collection, domain)?;
+        }
+        if self.categories.len() > MAX_CATEGORIES {
+            return invalid(format!(
+                "an estate may declare at most {MAX_CATEGORIES} categories"
+            ));
+        }
+        for (id, category) in &self.categories {
+            if id.as_str() == ENGINE_DOMAIN || id.as_str().starts_with(ENGINE_OWNED_PREFIX) {
+                return invalid(format!("category {id} is reserved for the engine"));
+            }
+            validate_label("category", id, &category.title, &category.description)?;
+            if category.tags.len() > MAX_TAGS_PER_CATEGORY {
+                return invalid(format!(
+                    "category {id} may declare at most {MAX_TAGS_PER_CATEGORY} tags"
+                ));
+            }
+            for (tag, schema) in &category.tags {
+                validate_label("tag", tag, &schema.title, &schema.description)?;
+            }
+        }
+        for (kind, tags) in &self.kind_tags {
+            if !tables.contains_key(kind) {
+                return invalid(format!("kind tags name unregistered table type {kind}"));
+            }
+            if tags.is_empty() {
+                return invalid(format!(
+                    "table type {kind} lists an empty tag set; omit the entry instead"
+                ));
+            }
+            if tags.len() > MAX_TAGS_PER_KIND {
+                return invalid(format!(
+                    "table type {kind} may carry at most {MAX_TAGS_PER_KIND} tags"
+                ));
+            }
+            let mut single = BTreeSet::new();
+            for reference in tags {
+                let category = self.categories.get(&reference.category).ok_or_else(|| {
+                    Error::InvalidRuntime {
+                        reason: format!(
+                            "table type {kind} uses unknown category {}",
+                            reference.category
+                        ),
+                    }
+                })?;
+                if !category.targets.includes_kinds() {
+                    return invalid(format!(
+                        "category {} does not tag table types",
+                        reference.category
+                    ));
+                }
+                if !category.tags.contains_key(&reference.tag) {
+                    return invalid(format!(
+                        "table type {kind} uses unknown tag {}:{}",
+                        reference.category, reference.tag
+                    ));
+                }
+                if category.cardinality == RuntimeTagCardinality::Single
+                    && !single.insert(&reference.category)
+                {
+                    return invalid(format!(
+                        "table type {kind} carries more than one tag of single-tag category {}",
+                        reference.category
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_membership(
+        &self,
+        subject: &str,
+        identity: &RuntimeType,
+        domain: &RuntimeType,
+    ) -> Result<()> {
+        if identity.as_str().starts_with(ENGINE_OWNED_PREFIX) {
+            return invalid(format!(
+                "engine-owned {subject} {identity} always belongs to rrflow"
+            ));
+        }
+        if domain.as_str() == ENGINE_DOMAIN {
+            return invalid(format!(
+                "{subject} {identity} is not engine-owned and cannot be placed in rrflow"
+            ));
+        }
+        if domain.as_str() == DEFAULT_DOMAIN {
+            return invalid(format!(
+                "{subject} {identity} already belongs to default; omit the entry instead"
+            ));
+        }
+        if !self.domains.contains_key(domain) {
+            return invalid(format!(
+                "{subject} {identity} names unknown domain {domain}"
+            ));
+        }
+        Ok(())
+    }
+
+    /// Levels below `default`, refusing cycles and excess depth.
+    fn domain_depth(&self, id: &RuntimeType) -> Result<usize> {
+        let mut depth = 1;
+        let mut current = id;
+        while let Some(parent) = self.domains[current]
+            .parent
+            .as_ref()
+            .filter(|parent| parent.as_str() != DEFAULT_DOMAIN)
+        {
+            if parent == id {
+                return invalid(format!("domain {id} is its own ancestor"));
+            }
+            depth += 1;
+            if depth > MAX_DOMAIN_DEPTH {
+                return invalid(format!(
+                    "domain {id} is deeper than {MAX_DOMAIN_DEPTH} levels or part of a cycle"
+                ));
+            }
+            current = parent;
+        }
+        Ok(depth)
     }
 }
 
-impl RuntimeCatalogueIdentity {
-    fn is_default(&self) -> bool {
-        self == &Self::default()
+fn is_builtin_domain(domain: &str) -> bool {
+    domain == DEFAULT_DOMAIN || domain == ENGINE_DOMAIN
+}
+
+fn default_domain(identity: &str) -> &'static str {
+    if identity.starts_with(ENGINE_OWNED_PREFIX) {
+        ENGINE_DOMAIN
+    } else {
+        DEFAULT_DOMAIN
     }
+}
+
+fn validate_label(subject: &str, id: &RuntimeType, title: &str, description: &str) -> Result<()> {
+    if title.trim().is_empty() || title.len() > MAX_ORGANISATION_TITLE_BYTES {
+        return invalid(format!(
+            "{subject} {id} needs a title of 1 to {MAX_ORGANISATION_TITLE_BYTES} bytes"
+        ));
+    }
+    if description.len() > MAX_ORGANISATION_DESCRIPTION_BYTES {
+        return invalid(format!(
+            "{subject} {id} description exceeds {MAX_ORGANISATION_DESCRIPTION_BYTES} bytes"
+        ));
+    }
+    if title
+        .chars()
+        .chain(description.chars())
+        .any(char::is_control)
+    {
+        return invalid(format!(
+            "{subject} {id} title and description cannot contain control characters"
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RuntimeSchemaRegistry {
     pub revision: u64,
     pub migration: String,
-    #[serde(default, skip_serializing_if = "RuntimeCatalogueIdentity::is_default")]
-    pub catalogue: RuntimeCatalogueIdentity,
+    #[serde(default, skip_serializing_if = "RuntimeEstateOrganisation::is_default")]
+    pub organisation: RuntimeEstateOrganisation,
     /// Sole logical-model authority for every schema-bound table. Specialized
     /// maps below add family-specific constraints; they never create a table
     /// or infer its model.
@@ -215,7 +509,7 @@ impl RuntimeSchemaRegistry {
         Self {
             revision,
             migration: migration.into(),
-            catalogue: RuntimeCatalogueIdentity::default(),
+            organisation: RuntimeEstateOrganisation::default(),
             tables: BTreeMap::new(),
             records: BTreeMap::new(),
             relations: BTreeMap::new(),
@@ -316,6 +610,7 @@ impl RuntimeSchemaRegistry {
             return invalid("runtime schema must declare an explicit canonical table map");
         }
         self.catalogue_tables()?;
+        self.organisation.validate(&self.tables)?;
         for (kind, schema) in &self.records {
             validate_property_schema(kind, &schema.properties, schema.allow_additional_properties)?;
             for property in &schema.unique_properties {
@@ -953,10 +1248,6 @@ mod tests {
         let serialized = serde_json::json!({
             "revision": 1,
             "migration": "reject omitted table authority",
-            "catalogue": {
-                "namespace": "default",
-                "database": "default"
-            },
             "records": {
                 "prompt": {}
             },
@@ -1095,10 +1386,6 @@ mod tests {
     #[test]
     fn one_catalogue_names_every_logical_model_and_schema_mode() {
         let mut registry = RuntimeSchemaRegistry::empty(1, "freeze unified catalogue");
-        registry.catalogue = RuntimeCatalogueIdentity {
-            namespace: RuntimeType::new("project").unwrap(),
-            database: RuntimeType::new("runtime").unwrap(),
-        };
         let models = [
             ("documents", RuntimeLogicalModel::Document),
             ("rows", RuntimeLogicalModel::Relational),
@@ -1156,5 +1443,313 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("not Record"));
+    }
+
+    fn kind(value: &str) -> RuntimeType {
+        RuntimeType::new(value).unwrap()
+    }
+
+    fn domain(title: &str, parent: Option<&str>) -> RuntimeDomainSchema {
+        RuntimeDomainSchema {
+            title: title.into(),
+            description: String::new(),
+            parent: parent.map(kind),
+        }
+    }
+
+    fn component_category(cardinality: RuntimeTagCardinality) -> RuntimeCategorySchema {
+        RuntimeCategorySchema {
+            title: "Component".into(),
+            description: String::new(),
+            targets: RuntimeCategoryTargets::KindsAndRecords,
+            cardinality,
+            open: false,
+            tags: BTreeMap::from([
+                (
+                    kind("storage"),
+                    RuntimeTagSchema {
+                        title: "Storage".into(),
+                        description: String::new(),
+                    },
+                ),
+                (
+                    kind("query"),
+                    RuntimeTagSchema {
+                        title: "Query".into(),
+                        description: String::new(),
+                    },
+                ),
+            ]),
+        }
+    }
+
+    fn tag(category: &str, value: &str) -> RuntimeTagRef {
+        RuntimeTagRef {
+            category: kind(category),
+            tag: kind(value),
+        }
+    }
+
+    /// Two project kinds and one engine-owned kind, organised into a small tree.
+    fn organised() -> RuntimeSchemaRegistry {
+        let mut registry = RuntimeSchemaRegistry::empty(1, "organise the estate");
+        for name in ["invoice", "customer", "rrflow-seat"] {
+            registry.tables.insert(
+                kind(name),
+                RuntimeTableSchema::schemaless(RuntimeLogicalModel::Document),
+            );
+        }
+        registry.organisation.domains = BTreeMap::from([
+            (kind("billing"), domain("Billing", None)),
+            (kind("invoices"), domain("Invoices", Some("billing"))),
+        ]);
+        registry.organisation.kind_domains = BTreeMap::from([(kind("invoice"), kind("invoices"))]);
+        registry.organisation.categories = BTreeMap::from([(
+            kind("component"),
+            component_category(RuntimeTagCardinality::Single),
+        )]);
+        registry.organisation.kind_tags = BTreeMap::from([(
+            kind("invoice"),
+            BTreeSet::from([tag("component", "storage")]),
+        )]);
+        registry
+    }
+
+    fn rejection(registry: &RuntimeSchemaRegistry) -> String {
+        registry.validate().unwrap_err().to_string()
+    }
+
+    #[test]
+    fn every_kind_and_collection_belongs_to_exactly_one_domain() {
+        let registry = organised();
+        registry.validate().unwrap();
+        let organisation = &registry.organisation;
+        assert_eq!(organisation.domain_of_kind(&kind("invoice")), "invoices");
+        assert_eq!(
+            organisation.domain_of_kind(&kind("customer")),
+            DEFAULT_DOMAIN
+        );
+        assert_eq!(
+            organisation.domain_of_kind(&kind("rrflow-seat")),
+            ENGINE_DOMAIN
+        );
+        assert_eq!(
+            organisation.domain_of_collection("documents"),
+            DEFAULT_DOMAIN
+        );
+        assert_eq!(
+            organisation.domain_of_collection("rrflow-public-embedding"),
+            ENGINE_DOMAIN
+        );
+        assert!(organisation.has_domain("billing"));
+        assert!(organisation.has_domain(DEFAULT_DOMAIN));
+        assert!(!organisation.has_domain("shipping"));
+    }
+
+    #[test]
+    fn domains_reject_unknown_parents_cycles_and_excess_depth() {
+        let mut registry = organised();
+        registry
+            .organisation
+            .domains
+            .insert(kind("orphan"), domain("Orphan", Some("missing")));
+        assert!(rejection(&registry).contains("unknown parent"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .domains
+            .insert(kind("billing"), domain("Billing", Some("invoices")));
+        assert!(
+            rejection(&registry).contains("cycle") || rejection(&registry).contains("ancestor")
+        );
+
+        let mut registry = organised();
+        let mut parent = None;
+        for level in 0..=MAX_DOMAIN_DEPTH {
+            let id = format!("level-{level}");
+            registry
+                .organisation
+                .domains
+                .insert(kind(&id), domain("Level", parent.as_deref()));
+            parent = Some(id);
+        }
+        assert!(rejection(&registry).contains("deeper than"));
+
+        let mut registry = organised();
+        for index in 0..MAX_DOMAINS {
+            registry
+                .organisation
+                .domains
+                .insert(kind(&format!("domain-{index}")), domain("Many", None));
+        }
+        assert!(rejection(&registry).contains("at most"));
+    }
+
+    #[test]
+    fn built_in_and_engine_domains_cannot_be_redefined_or_borrowed() {
+        for reserved in [DEFAULT_DOMAIN, ENGINE_DOMAIN, "rrflow-private"] {
+            let mut registry = organised();
+            registry
+                .organisation
+                .domains
+                .insert(kind(reserved), domain("Reserved", None));
+            assert!(rejection(&registry).contains("reserved"), "{reserved}");
+        }
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .domains
+            .insert(kind("inside-engine"), domain("Inside", Some(ENGINE_DOMAIN)));
+        assert!(rejection(&registry).contains("inside rrflow"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .kind_domains
+            .insert(kind("rrflow-seat"), kind("billing"));
+        assert!(rejection(&registry).contains("always belongs to rrflow"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .kind_domains
+            .insert(kind("customer"), kind(ENGINE_DOMAIN));
+        assert!(rejection(&registry).contains("cannot be placed in rrflow"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .collection_domains
+            .insert(kind("rrflow-public-embedding"), kind("billing"));
+        assert!(rejection(&registry).contains("always belongs to rrflow"));
+    }
+
+    #[test]
+    fn memberships_name_registered_kinds_known_domains_and_no_redundant_default() {
+        let mut registry = organised();
+        registry
+            .organisation
+            .kind_domains
+            .insert(kind("unregistered"), kind("billing"));
+        assert!(rejection(&registry).contains("unregistered table type"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .kind_domains
+            .insert(kind("customer"), kind("shipping"));
+        assert!(rejection(&registry).contains("unknown domain"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .kind_domains
+            .insert(kind("customer"), kind(DEFAULT_DOMAIN));
+        assert!(rejection(&registry).contains("omit the entry"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .collection_domains
+            .insert(kind("documents"), kind("billing"));
+        registry.validate().unwrap();
+        assert_eq!(
+            registry.organisation.domain_of_collection("documents"),
+            "billing"
+        );
+    }
+
+    #[test]
+    fn kind_tags_follow_their_category_vocabulary_targets_and_cardinality() {
+        let mut registry = organised();
+        registry.organisation.kind_tags.insert(
+            kind("customer"),
+            BTreeSet::from([tag("component", "storage"), tag("component", "query")]),
+        );
+        assert!(rejection(&registry).contains("single-tag category"));
+
+        registry.organisation.categories.insert(
+            kind("component"),
+            component_category(RuntimeTagCardinality::Multiple),
+        );
+        registry.validate().unwrap();
+
+        let mut registry = organised();
+        registry.organisation.kind_tags.insert(
+            kind("customer"),
+            BTreeSet::from([tag("component", "billing")]),
+        );
+        assert!(rejection(&registry).contains("unknown tag"));
+
+        let mut registry = organised();
+        registry.organisation.kind_tags.insert(
+            kind("customer"),
+            BTreeSet::from([tag("lifecycle", "draft")]),
+        );
+        assert!(rejection(&registry).contains("unknown category"));
+
+        let mut registry = organised();
+        let mut records_only = component_category(RuntimeTagCardinality::Single);
+        records_only.targets = RuntimeCategoryTargets::Records;
+        registry
+            .organisation
+            .categories
+            .insert(kind("component"), records_only);
+        assert!(rejection(&registry).contains("does not tag table types"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .kind_tags
+            .insert(kind("customer"), BTreeSet::new());
+        assert!(rejection(&registry).contains("empty tag set"));
+    }
+
+    #[test]
+    fn organisation_labels_are_bounded_titled_text() {
+        let mut registry = organised();
+        registry
+            .organisation
+            .domains
+            .insert(kind("untitled"), domain(" ", None));
+        assert!(rejection(&registry).contains("needs a title"));
+
+        let mut registry = organised();
+        registry.organisation.domains.insert(
+            kind("long"),
+            domain(&"x".repeat(MAX_ORGANISATION_TITLE_BYTES + 1), None),
+        );
+        assert!(rejection(&registry).contains("needs a title"));
+
+        let mut registry = organised();
+        let mut described = domain("Described", None);
+        described.description = "x".repeat(MAX_ORGANISATION_DESCRIPTION_BYTES + 1);
+        registry
+            .organisation
+            .domains
+            .insert(kind("described"), described);
+        assert!(rejection(&registry).contains("description exceeds"));
+
+        let mut registry = organised();
+        registry
+            .organisation
+            .domains
+            .insert(kind("control"), domain("Line\nbreak", None));
+        assert!(rejection(&registry).contains("control characters"));
+    }
+
+    #[test]
+    fn default_organisation_is_omitted_from_the_persisted_registry() {
+        let mut registry = organised();
+        registry.organisation = RuntimeEstateOrganisation::default();
+        let json = serde_json::to_value(&registry).unwrap();
+        assert!(json.get("organisation").is_none());
+        let organised = serde_json::to_value(organised()).unwrap();
+        assert_eq!(
+            organised["organisation"]["kind_domains"]["invoice"],
+            serde_json::json!("invoices")
+        );
     }
 }
