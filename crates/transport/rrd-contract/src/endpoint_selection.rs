@@ -89,52 +89,15 @@ impl EndpointSelectionAllowance {
         if self.configuration_sha256 != configuration.sha256()? {
             return invalid("endpoint selection configuration changed");
         }
-        if self.candidates.len() > self.limits.maximum_candidates as usize {
-            return invalid("endpoint selection candidate limit exceeded");
-        }
-        let mut previous: Option<&CanonicalId> = None;
-        for candidate in &self.candidates {
-            if previous.is_some_and(|id| id >= &candidate.binding_id) {
-                return invalid("endpoint selection candidates must be sorted and unique");
-            }
-            previous = Some(&candidate.binding_id);
-            let binding = configuration.profile.as_ref().and_then(|profile| {
-                profile
-                    .bindings
-                    .iter()
-                    .find(|binding| binding.id == candidate.binding_id)
-            });
-            let Some(binding) = binding else {
-                return invalid("endpoint selection candidate is not configured");
-            };
-            if binding.class != self.workload_class
-                || binding.service_id != candidate.service_id
-                || binding.manifest_sha256 != candidate.manifest_sha256
-            {
-                return invalid("endpoint selection candidate differs from configured binding");
-            }
-            if let EndpointEffortSupport::Observed {
-                evidence_sha256,
-                allow_default,
-                values,
-            } = &candidate.effort
-            {
-                validate_sha256(evidence_sha256, "effort evidence digest")?;
-                if values.len() > self.limits.maximum_effort_values as usize
-                    || (!allow_default && values.is_empty())
-                    || values.windows(2).any(|pair| pair[0] >= pair[1])
-                    || values.iter().any(|value| {
-                        value.is_empty()
-                            || value.len() > self.limits.maximum_effort_bytes as usize
-                            || value.trim() != value
-                            || value.chars().any(char::is_control)
-                    })
-                {
-                    return invalid("invalid observed endpoint effort support");
-                }
-            }
-        }
-        Ok(())
+        validate_selection_candidates(
+            &self.candidates,
+            &self.limits,
+            self.workload_class,
+            configuration
+                .profile
+                .as_ref()
+                .map_or(&[], |profile| profile.bindings.as_slice()),
+        )
     }
 
     pub fn sha256(&self, configuration: &EndpointConfiguration) -> Result<String> {
@@ -143,6 +106,57 @@ impl EndpointSelectionAllowance {
             crate::ContractError("cannot encode endpoint selection allowance".into())
         })?))
     }
+}
+
+pub(crate) fn validate_selection_candidates(
+    candidates: &[EndpointSelectionCandidate],
+    limits: &EndpointSelectionLimits,
+    workload_class: WorkloadClass,
+    bindings: &[crate::EndpointBinding],
+) -> Result<()> {
+    if candidates.len() > limits.maximum_candidates as usize {
+        return invalid("endpoint selection candidate limit exceeded");
+    }
+    let mut previous: Option<&CanonicalId> = None;
+    for candidate in candidates {
+        if previous.is_some_and(|id| id >= &candidate.binding_id) {
+            return invalid("endpoint selection candidates must be sorted and unique");
+        }
+        previous = Some(&candidate.binding_id);
+        let binding = bindings
+            .iter()
+            .find(|binding| binding.id == candidate.binding_id);
+        let Some(binding) = binding else {
+            return invalid("endpoint selection candidate is not configured");
+        };
+        if binding.class != workload_class
+            || binding.service_id != candidate.service_id
+            || binding.manifest_sha256 != candidate.manifest_sha256
+        {
+            return invalid("endpoint selection candidate differs from configured binding");
+        }
+        if let EndpointEffortSupport::Observed {
+            evidence_sha256,
+            allow_default,
+            values,
+        } = &candidate.effort
+        {
+            validate_sha256(evidence_sha256, "effort evidence digest")?;
+            if values.len() > limits.maximum_effort_values as usize
+                || (!allow_default && values.is_empty())
+                || values.windows(2).any(|pair| pair[0] >= pair[1])
+                || values.iter().any(|value| {
+                    value.is_empty()
+                        || value.len() > limits.maximum_effort_bytes as usize
+                        || value.trim() != value
+                        || value.chars().any(char::is_control)
+                })
+            {
+                return invalid("invalid observed endpoint effort support");
+            }
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -229,7 +243,7 @@ impl EndpointSelectionChoice {
 }
 
 /// Bound encoding without allocating a second unbounded serialized copy.
-fn bounded(value: &impl Serialize, limit: u64) -> Result<()> {
+pub(crate) fn bounded(value: &impl Serialize, limit: u64) -> Result<()> {
     struct Counter(u64);
     impl Write for Counter {
         fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {

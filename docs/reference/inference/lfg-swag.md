@@ -99,6 +99,23 @@ tests perturb those records in memory only. The
 records provenance and limits. These observations are not training targets,
 human review, provider-quality evidence or completion of G-01b.
 
+### Governed selector settings prerequisite
+
+`EndpointProfileInput` and `EndpointProfile` carry optional
+`EndpointSelectionPolicy` through the existing endpoint-configuration approval
+and persistence boundary. The policy explicitly supplies controller binding,
+candidate facts, workload, finite limits, system prompt, maximum output tokens
+and temperature in thousandths. Absence configures no selector. Every present
+field is digest-bound; no provider or model ranking is embedded in defaults.
+
+`EndpointSelectionPolicy::allowance` projects declared candidates only from
+the exact matching configuration. It does not establish authorization or verify
+the referenced capability evidence. Future engine admission must filter current
+eligibility, form the task/context packet and reserve budget. The
+[policy journal](../../evidence/change-journals/gate-g/controller-policy-configuration.md)
+records configuration approval, reopen and revocation checks; it makes no
+selector-activation claim.
+
 ### Native selector transport prerequisite
 
 The optional `rrd-inference/endpoint-chat` feature provides

@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
+// OpenAPI SHA-256: c1c8c59f888c3c1425789feec81c008d3aa0cd0676f6155a526ccd96aca2c606
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -84,7 +84,7 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2";
+    public const string OpenApiDocumentSha256 = "c1c8c59f888c3c1425789feec81c008d3aa0cd0676f6155a526ccd96aca2c606";
     public const int Count = 62;
 
     public static Endpoint Get(OperationId operation) => operation switch
