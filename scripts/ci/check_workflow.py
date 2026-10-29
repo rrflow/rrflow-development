@@ -147,12 +147,25 @@ def verify_native_capacity_preflight(workflow: str) -> None:
     require(set(jobs) == {"native-preflight"}, "native preflight must remain isolated")
     job = jobs["native-preflight"]
     for required in ["runs-on: macos-latest", 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
-                     "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/run_native_capacity.py",
+                     "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/test_macos_native_failure_preflight.py",
+                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_native_capacity.py",
                      "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics",
                      "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "if: always()"]:
         require(required in job, f"native preflight missing: {required}")
     require(job.count("--mode fresh --mode existing") == 3 and "continue-on-error" not in job,
             "native preflight must run all repeated cases without ignoring failure")
+    for name, artifact_path, missing in [
+        ("Retain injected native failure receipt",
+         "${{ runner.temp }}/rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "error"),
+        ("Retain native capacity create diagnostics",
+         "${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "ignore"),
+    ]:
+        marker = f"      - name: {name}\n"
+        require(job.count(marker) == 1, f"native preflight artifact missing or duplicated: {name}")
+        step = job.split(marker, 1)[1].split("      - name:", 1)[0]
+        require("if: always()" in step and "actions/upload-artifact@" in step
+                and f"path: {artifact_path}" in step and f"if-no-files-found: {missing}" in step,
+                f"native preflight artifact is not isolated and failure-preserving: {name}")
     require(not any(re.match(r"(?:ref|repository|path)\s*:", entry)
                     for _, body in checkout_steps(job) for entry in body),
             "native preflight must checkout the dispatched revision")

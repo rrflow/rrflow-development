@@ -210,6 +210,10 @@ class NativeCapacityCases(unittest.TestCase):
             workflow.replace("    runs-on: macos-latest", "    runs-on: ubuntu-latest", 1),
             workflow.replace("      - name: Bind exact revision", "      - continue-on-error: true\n      - name: Bind exact revision", 1),
             workflow.replace("          submodules: recursive", "          submodules: recursive\n          ref: main", 1),
+            workflow.replace("python3 scripts/ci/macos_native_failure_preflight.py", "python3 omitted.py", 1),
+            workflow.replace("rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "**/*", 1),
+            workflow.replace("if-no-files-found: error", "if-no-files-found: ignore", 1),
+            workflow.replace("      - name: Retain native capacity create diagnostics\n        if: always()", "      - name: Retain native capacity create diagnostics\n        if: success()", 1),
         ]:
             with self.assertRaises(check_workflow.PolicyError):
                 check_workflow.verify_native_capacity_preflight(altered)

@@ -826,7 +826,11 @@ turn a failed native test into acceptance; see the
 
 The separate manual `c07-native-preflight.yml` workflow runs the same three
 fresh/existing APFS pairs and controlled failure diagnostics on one macOS
-runner. Once that workflow exists on default `main`, dispatch an exact branch
+runner. First it deliberately supplies an invalid filesystem to the native
+image-create command and verifies that the runner retains the resulting error;
+that injected receipt is uploaded separately from any real capacity failure.
+The injected failure is a diagnostic test, never a capacity pass. Once that
+workflow exists on default `main`, dispatch an exact branch
 with `gh workflow run c07-native-preflight.yml --ref <branch>` and verify the
 run's recorded head and tree. This is a focused diagnostic, not candidate CI,
 the required merge group, the full capacity matrix, or a soak. A passing run
