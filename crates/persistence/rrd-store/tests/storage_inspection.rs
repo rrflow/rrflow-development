@@ -110,3 +110,49 @@ fn inspection_admission_and_drop_release_native_owners() {
         Some(0)
     );
 }
+
+#[test]
+fn full_range_inspection_denies_excess_pins_without_leaking_owners() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("kv");
+    let store = RrflowKvStore::open(&path).unwrap();
+    let mut seed = store.begin_transaction().unwrap();
+    seed.put(b"retained".to_vec(), b"acknowledged".to_vec())
+        .unwrap();
+    seed.commit(Durability::Authoritative).unwrap();
+    store.flush(1).unwrap();
+    drop(store);
+
+    let store = RrflowKvStore::open_with_options(
+        &path,
+        DatabaseOptions {
+            pinned_read_bytes: 1,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    match store.inspect_storage(1, 4096) {
+        Err(rrd_store::Error::ProjectedReadLimit {
+            resource: rrd_lsm::ProjectedReadResource::PinnedBytes,
+            limit,
+            observed,
+        }) => {
+            assert_eq!(limit, 1);
+            assert!(observed > limit);
+        }
+        Err(other) => panic!("unexpected inspection error: {other}"),
+        Ok(_) => panic!("full-range inspection exceeded the pin limit without denial"),
+    }
+    let owners = store.physical_store_evidence().unwrap();
+    assert_eq!(owners.active_read_views, Some(0));
+    assert_eq!(owners.pinned_read_bytes, Some(0));
+    assert_eq!(owners.retained_projected_bytes, Some(0));
+    drop(store);
+
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    let read = reopened.begin_transaction().unwrap();
+    assert_eq!(
+        read.get(b"retained").unwrap(),
+        Some(b"acknowledged".to_vec())
+    );
+}
