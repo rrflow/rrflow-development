@@ -168,7 +168,11 @@ For project work:
    paths directly. Do not create a parallel fallback, migration, or
    historical-code lane to avoid completing that convergence.
 
-RRFlow has no editor- or provider-owned automatic hooks. Durable recall,
-routine state, external effects, and mutation authorization are explicit
-capabilities composed through `rrd-engine`; clients must not create a parallel
-lifecycle authority. Exploratory reasoning remains adaptive under ADR-0002.
+Editor- and provider-owned hooks are permitted as alias stubs onto one RRFlow
+owner: each invokes a public RRFlow command or operation, or imports an owning
+record, and holds no rules, state, or authority of its own. The
+[host hook contract](docs/reference/agent-bootstrap.md#host-hooks) and ADR-0004
+own the details. Durable recall, routine state, external effects, and mutation
+authorization are explicit capabilities composed through `rrd-engine`; hooks
+and clients must not create a parallel lifecycle authority. Exploratory
+reasoning remains adaptive under ADR-0002.
