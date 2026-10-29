@@ -1,0 +1,8 @@
+{
+  "sha256": {
+    "crates/compute/rrd-inference/src/endpoint_chat.rs": "0374f359931fa840d81b0dc9bdcf993bc213afa8be6dcd786d5306d349aa1414",
+    "crates/compute/rrd-inference/examples/endpoint_chat.rs": "f4bde663f73088f0acb4ee52e8255f40cc743575e16569359c766f6c3908c51e",
+    "Cargo.lock": "2e8fb6850eeddb068bbcd4c3bbec2c7d35b5f9cfeef73da3a1d887761ef0c8c9"
+  },
+  "binary": "60e6c827cfe032f38fcc9e1a18c6ecad77fadff3e086a5ae0a8c5e0f8c544d57"
+}
