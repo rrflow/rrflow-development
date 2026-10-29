@@ -59,7 +59,8 @@ impl TurboQuantSegmentConfig {
         Ok(())
     }
 
-    fn digest(&self) -> Result<String> {
+    /// The digest a generation's stamp carries as its configuration digest.
+    pub fn digest(&self) -> Result<String> {
         self.validate()?;
         serde_json::to_vec(self)
             .map(|bytes| digest::sha256_hex(&bytes))
@@ -209,47 +210,101 @@ impl TurboQuantSegment {
             return invalid("TurboQuant segment candidate count is outside bounds");
         }
         validate_candidate_versions(&candidates)?;
-        candidates.sort_by(|left, right| {
-            left.vector
-                .reference
-                .cmp(&right.vector.reference)
-                .then_with(|| left.source_cursor.cmp(&right.source_cursor))
-        });
-        let mut stored = Vec::with_capacity(candidates.len());
-        let mut payload = Vec::new();
-        let mut packed_bytes_per_vector = None;
+        sort_candidates(&mut candidates);
+        let mut versions = Vec::with_capacity(candidates.len());
         for candidate in candidates {
-            if candidate.scope != config.scope
-                || candidate.source_cursor > source_cursor
-                || candidate.vector.field != config.field
-                || candidate.vector.value.dimensions() != config.dimensions
-                || !candidate.matches_model(config.embedding_model.as_ref())
-            {
+            if candidate.source_cursor > source_cursor {
                 return invalid("TurboQuant candidate violates configuration or coverage");
             }
-            let VectorValue::Dense { values } = &candidate.vector.value else {
-                return invalid("TurboQuant artifacts currently require dense vectors");
-            };
-            let encoded = TurboQuantVector::encode(values, config.bits, config.seed)?;
+            versions.push(encode_candidate(&config, candidate)?);
+        }
+        Self::assemble(config, generation, source_cursor, versions)
+    }
+
+    /// The next generation of `previous`, from the identities that changed
+    /// since it.
+    ///
+    /// `replaced` names every identity whose history in this source changed
+    /// after `previous`. `candidates` holds each such identity's complete
+    /// history at the new read, limited to this source. Every other identity
+    /// keeps its stored versions and their codes. The codec encodes each
+    /// vector on its own, with the configuration's seed and fixed codebook, so
+    /// re-encoding a kept version would give the same bytes. The source cursor
+    /// is the newest version the generation holds, as for a full build, and
+    /// the result is byte for byte the segment `build` makes from the same
+    /// versions.
+    pub fn extend(
+        previous: &Self,
+        config: TurboQuantSegmentConfig,
+        generation: u64,
+        replaced: &BTreeSet<RuntimeRef>,
+        candidates: impl IntoIterator<Item = VectorCandidate>,
+    ) -> Result<Self> {
+        config.validate()?;
+        if config.digest()? != previous.descriptor.stamp.config_digest {
+            return invalid("a TurboQuant generation extends only one with its configuration");
+        }
+        if generation <= previous.descriptor.stamp.generation {
+            return invalid("a TurboQuant generation extends only an earlier generation");
+        }
+        let mut candidates = candidates.into_iter().collect::<Vec<_>>();
+        validate_candidate_versions(&candidates)?;
+        if candidates
+            .iter()
+            .any(|candidate| !replaced.contains(&candidate.vector.reference))
+        {
+            return invalid("an unchanged identity keeps its stored TurboQuant versions");
+        }
+        sort_candidates(&mut candidates);
+        let payload = previous.payload();
+        let width = previous.packed_bytes_per_vector;
+        let mut versions = previous
+            .candidates
+            .iter()
+            .zip(payload.chunks_exact(width))
+            .filter(|(stored, _)| !replaced.contains(&stored.reference))
+            .map(|(stored, packed)| (stored.clone(), packed.to_vec()))
+            .collect::<Vec<_>>();
+        for candidate in candidates {
+            versions.push(encode_candidate(&config, candidate)?);
+        }
+        versions.sort_by(|(left, _), (right, _)| {
+            left.reference
+                .cmp(&right.reference)
+                .then_with(|| left.source_cursor.cmp(&right.source_cursor))
+        });
+        if versions.is_empty() || versions.len() > MAX_TURBOQUANT_CANDIDATES {
+            return invalid("TurboQuant segment candidate count is outside bounds");
+        }
+        let source_cursor = versions
+            .iter()
+            .map(|(stored, _)| stored.source_cursor)
+            .max()
+            .unwrap_or_default();
+        Self::assemble(config, generation, source_cursor, versions)
+    }
+
+    /// The artifact for `versions`, already in reference and cursor order,
+    /// each with its packed codes.
+    fn assemble(
+        config: TurboQuantSegmentConfig,
+        generation: u64,
+        source_cursor: u64,
+        versions: Vec<(StoredCandidate, Vec<u8>)>,
+    ) -> Result<Self> {
+        let mut stored = Vec::with_capacity(versions.len());
+        let mut payload = Vec::new();
+        let mut packed_bytes_per_vector = None;
+        for (candidate, packed) in versions {
             match packed_bytes_per_vector {
-                Some(expected) if expected != encoded.packed_vector_bytes() => {
+                Some(expected) if expected != packed.len() => {
                     return invalid("TurboQuant vectors produced inconsistent packed lengths");
                 }
-                None => packed_bytes_per_vector = Some(encoded.packed_vector_bytes()),
+                None => packed_bytes_per_vector = Some(packed.len()),
                 _ => {}
             }
-            payload.extend_from_slice(&encoded.packed);
-            stored.push(StoredCandidate {
-                reference: candidate.vector.reference,
-                subject: candidate.vector.subject,
-                collection: candidate.vector.collection,
-                source_cursor: candidate.source_cursor,
-                valid_from: candidate.vector.valid_from,
-                valid_to: candidate.vector.valid_to,
-                properties: candidate.vector.properties,
-                original_norm: encoded.original_norm,
-                centroid_norm: encoded.centroid_norm,
-            });
+            payload.extend_from_slice(&packed);
+            stored.push(candidate);
         }
         let header = SegmentHeader {
             config,
@@ -263,6 +318,10 @@ impl TurboQuantSegment {
         let artifact_digest = artifact_digest(&header_bytes, &payload);
         let bytes = encode_artifact(&header_bytes, &payload, &artifact_digest)?;
         Self::decode(TurboQuantStorage::Owned(Arc::from(bytes)))
+    }
+
+    fn payload(&self) -> &[u8] {
+        &self.as_bytes()[self.payload_offset..self.payload_offset + self.payload_len]
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -526,6 +585,47 @@ impl TurboQuantSegment {
     }
 }
 
+fn sort_candidates(candidates: &mut [VectorCandidate]) {
+    candidates.sort_by(|left, right| {
+        left.vector
+            .reference
+            .cmp(&right.vector.reference)
+            .then_with(|| left.source_cursor.cmp(&right.source_cursor))
+    });
+}
+
+/// One version as a generation stores it, with its packed codes.
+fn encode_candidate(
+    config: &TurboQuantSegmentConfig,
+    candidate: VectorCandidate,
+) -> Result<(StoredCandidate, Vec<u8>)> {
+    if candidate.scope != config.scope
+        || candidate.vector.field != config.field
+        || candidate.vector.value.dimensions() != config.dimensions
+        || !candidate.matches_model(config.embedding_model.as_ref())
+    {
+        return invalid("TurboQuant candidate violates configuration or coverage");
+    }
+    let VectorValue::Dense { values } = &candidate.vector.value else {
+        return invalid("TurboQuant artifacts currently require dense vectors");
+    };
+    let encoded = TurboQuantVector::encode(values, config.bits, config.seed)?;
+    Ok((
+        StoredCandidate {
+            reference: candidate.vector.reference,
+            subject: candidate.vector.subject,
+            collection: candidate.vector.collection,
+            source_cursor: candidate.source_cursor,
+            valid_from: candidate.vector.valid_from,
+            valid_to: candidate.vector.valid_to,
+            properties: candidate.vector.properties,
+            original_norm: encoded.original_norm,
+            centroid_norm: encoded.centroid_norm,
+        },
+        encoded.packed,
+    ))
+}
+
 fn runtime_error(reason: impl Into<String>) -> rrd_core::Error {
     rrd_core::Error::InvalidRuntime {
         reason: reason.into(),
@@ -611,6 +711,120 @@ mod tests {
                 )]),
             },
         }
+    }
+
+    /// `id`'s version at `cursor`, ending at `valid_to` when it was superseded
+    /// or retired.
+    fn version(scope: &ScopeId, cursor: u64, id: &str, valid_to: Option<u64>) -> VectorCandidate {
+        let mut candidate = candidate(scope, cursor, id, "a");
+        candidate.vector.valid_to = valid_to;
+        candidate
+    }
+
+    fn refs(ids: &[&str]) -> BTreeSet<RuntimeRef> {
+        ids.iter()
+            .map(|id| RuntimeRef::new("embedding", *id).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn extending_a_generation_equals_a_full_build() {
+        let scope = ScopeId::new("instance:turbo-extend").unwrap();
+        let first = (1..=6)
+            .map(|cursor| version(&scope, cursor, &format!("point-{cursor}"), None))
+            .collect::<Vec<_>>();
+        let base = TurboQuantSegment::build(config(&scope), 1, 6, first.clone()).unwrap();
+
+        // Since the base: point-2 is updated, point-3 is retired, point-4
+        // leaves this source (its history here is unchanged), and point-7 is
+        // new. Each changed identity arrives with its complete history.
+        let histories = vec![
+            version(&scope, 2, "point-2", Some(7)),
+            version(&scope, 7, "point-2", None),
+            version(&scope, 3, "point-3", Some(8)),
+            version(&scope, 4, "point-4", None),
+            version(&scope, 9, "point-7", None),
+        ];
+        let replaced = refs(&["point-2", "point-3", "point-4", "point-7"]);
+        let extended =
+            TurboQuantSegment::extend(&base, config(&scope), 2, &replaced, histories.clone())
+                .unwrap();
+
+        let unchanged = first
+            .into_iter()
+            .filter(|candidate| !replaced.contains(&candidate.vector.reference));
+        let full =
+            TurboQuantSegment::build(config(&scope), 2, 9, unchanged.chain(histories)).unwrap();
+        assert_eq!(extended.descriptor(), full.descriptor());
+        assert_eq!(extended.as_bytes(), full.as_bytes());
+        assert_eq!(extended.descriptor().candidate_versions, 8);
+        assert_eq!(extended.descriptor().stamp.source_cursor, 9);
+
+        // Extending again from the extended generation stays exact.
+        let again = TurboQuantSegment::extend(
+            &extended,
+            config(&scope),
+            3,
+            &refs(&["point-1"]),
+            [
+                version(&scope, 10, "point-1", None),
+                version(&scope, 1, "point-1", Some(10)),
+            ],
+        )
+        .unwrap();
+        let reopened = TurboQuantSegment::from_bytes(again.as_bytes()).unwrap();
+        assert_eq!(reopened.descriptor(), again.descriptor());
+        assert_eq!(again.descriptor().candidate_versions, 9);
+    }
+
+    #[test]
+    fn extending_refuses_what_a_full_build_would_not_make() {
+        let scope = ScopeId::new("instance:turbo-extend-refusals").unwrap();
+        let base = TurboQuantSegment::build(
+            config(&scope),
+            2,
+            2,
+            [version(&scope, 1, "a", None), version(&scope, 2, "b", None)],
+        )
+        .unwrap();
+        let changed = refs(&["b"]);
+        let fresh = || [version(&scope, 3, "b", None)];
+
+        let mut seeded = config(&scope);
+        seeded.seed += 1;
+        assert!(TurboQuantSegment::extend(&base, seeded, 3, &changed, fresh()).is_err());
+        let mut narrower = config(&scope);
+        narrower.bits = TurboQuantBits::Bits2;
+        assert!(TurboQuantSegment::extend(&base, narrower, 3, &changed, fresh()).is_err());
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 2, &changed, fresh()).is_err(),
+            "the next generation is later than its base"
+        );
+        assert!(
+            TurboQuantSegment::extend(
+                &base,
+                config(&scope),
+                3,
+                &changed,
+                [version(&scope, 3, "a", None)]
+            )
+            .is_err(),
+            "an unchanged identity keeps its stored versions"
+        );
+        assert!(
+            TurboQuantSegment::extend(&base, config(&scope), 3, &refs(&["a", "b"]), []).is_err(),
+            "a generation holds at least one version"
+        );
+        let other = ScopeId::new("instance:turbo-extend-other").unwrap();
+        assert!(TurboQuantSegment::extend(
+            &base,
+            config(&scope),
+            3,
+            &changed,
+            [version(&other, 3, "b", None)]
+        )
+        .is_err());
+        assert!(TurboQuantSegment::extend(&base, config(&scope), 3, &changed, fresh()).is_ok());
     }
 
     #[test]

@@ -244,7 +244,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6";
+    "017da40106debd79f4d4558134df6642b8afa243f7596bb3e4d82fd5e7ad507a";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -1495,6 +1495,13 @@ pub struct BuildVectorQuantizationArtifactResult {
     pub artifact: VectorQuantizationArtifactSnapshot,
     pub selected_versions: u64,
     pub read_evidence: ReadEvidence,
+    /// The generation this build extended with the vectors changed since it;
+    /// absent when the build encoded every version.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_generation: Option<u64>,
+    /// Vector versions this build encoded. An extended generation carries the
+    /// rest from its base; a replay encodes none.
+    pub encoded_versions: u64,
     pub idempotent_replay: bool,
 }
 

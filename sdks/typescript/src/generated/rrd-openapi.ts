@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 46e45f6d3f2c8ac4945b453d100ca20527ed755240c44225b9176d499dfdd1c6
+// OpenAPI SHA-256: 017da40106debd79f4d4558134df6642b8afa243f7596bb3e4d82fd5e7ad507a
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -36639,6 +36639,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -36791,6 +36803,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {

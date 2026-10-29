@@ -93,11 +93,11 @@ reranking produces final results.
 Artifact records, object references, and lifecycle events persist through the
 same `RrdEngine`/rrflowKV authority, and the engine integration test proves
 ready isolation, activation, search, close/reopen, retirement, update, rebuild,
-and reactivation. However, each build currently reads every vector version in
-the scope at one read stamp (`read_vector_versions`) and reconstructs all
-collection candidates before encoding a new full artifact, and the quantization
-catalogue it publishes into is rebuilt by replaying retained changes from
-cursor zero ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). The commit
+and reactivation. A full build reads every vector version in the scope at one
+read stamp (`read_vector_versions`) and encodes every version of the named
+vector, and the quantization catalogue a build publishes into is rebuilt by
+replaying retained changes from cursor zero
+([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)). The commit
 path writes each collection, named vector and field's vector deltas
 atomically, and storage reads one source's deltas at a request's stamp under
 its key budget, checking every pointer against the authenticated version it
@@ -115,8 +115,32 @@ that generation is its only eligible one, search reads only:
 
 Its work then stays the same as unrelated vectors grow. A request that only
 allows approximation still reads every version in the scope, because its plan
-compares the full exact-scan cost. Builds still re-encode every version, and
-there is no incremental quantized-segment maintenance.
+compares the full exact-scan cost.
+
+A TurboQuant build extends a base when it has one (E-04c). The base is the
+newest published generation of the same artifact whose configuration digest
+equals the request's and whose object verifies through the binding serving
+uses. The build then:
+
+- reads only that source's deltas since the base's source cursor;
+- keeps every untouched identity's stored versions and their codes;
+- encodes the complete history of each changed identity.
+
+The codec encodes each vector on its own with the configuration's seed and
+fixed codebook, so the generation is byte for byte the one a full build makes
+from the same versions. What it reads and encodes follows the change, not the
+estate's size; only the stamp's accumulator proof grows, with the logarithm of
+the estate's leaves. The result reports the base generation and the versions the build
+encoded.
+
+- **Without a base,** or when the base's object does not verify, the build
+  encodes every version.
+- **An interrupted build** staged no published entry, so it is never a base.
+- **Racing builds:** a build that loses the race for its generation number is
+  refused.
+- **Other codecs:** scalar, product and binary builds always encode every
+  version, because scalar and product quantization take artifact-wide
+  parameters from the data.
 
 The generic vector-index request now configures HNSW only. Scalar, product,
 binary, and TurboQuant artifacts can be constructed only through the explicit
@@ -136,7 +160,7 @@ canonical full-precision vectors and the exact scorer remain authoritative.
 
 | Part | Current state | Owning gate and required behavior |
 |---|---|---|
-| Persistent vector search | The MSE codec and lifecycle above serve after explicit activation; builds read every vector version and the catalogue replays from cursor zero. | E-04 maintains TurboQuant generations incrementally and atomically with point commits. F-03 runs candidate generation and exact reranking in the stamped Arrow pipeline. Closing [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) removes the per-search catalogue rebuild. |
+| Persistent vector search | The MSE codec and lifecycle above serve after explicit activation, through the generation plus the stamped delta (E-04b). A TurboQuant build extends its base with the change (E-04c); the catalogue still replays from cursor zero. | E-04 maintains TurboQuant generations incrementally and atomically with point commits. F-03 runs candidate generation and exact reranking in the stamped Arrow pipeline. Closing [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) removes the per-search catalogue rebuild. |
 | Inner-product variant | Absent: `rrd-vector`'s `turboquant` module implements the MSE path only. | E-04 adds the [paper's](https://arxiv.org/abs/2504.19874) product estimator, an MSE stage plus a one-bit Quantized Johnson-Lindenstrauss residual, as an explicit lifecycle codec choice. Recall and score error are measured against the MSE variant and exact search on the same corpus. |
 | Model KV cache | Absent: RRFlow runs embedding models only, and attention caches belong to admitted model runtimes. | In Gate G, SWAG selects a TurboQuant KV-cache format only when an admitted runtime advertises it and qualification passes. The format joins the [cache identity](../inference/lfg-swag.md#cache-identity-and-sharing). This is inference acceleration, not rrflowKV compression. |
 | Sync transfer | Absent. | H-07 may offer a selected-data profile in which a device receives verified quantized artifacts instead of a family's full-precision vectors, which reduces transfer bytes. That device only proposes candidates: its returned hits are exact-reranked by a peer that holds the canonical vectors, or they are labelled approximate. Full synchronization still transfers canonical vectors. |
