@@ -23,7 +23,7 @@ reading, context selection, or private reasoning as a workflow.
 | Codex | Discovers `AGENTS.md` hierarchically. | Consume `AGENTS.md` directly. |
 | Claude Code | Loads `CLAUDE.md` and supports file imports. | Root `CLAUDE.md` imports `AGENTS.md` and contains no copied policy. |
 | Gemini CLI | Loads `GEMINI.md` hierarchically and supports `@` imports. | Root `GEMINI.md` imports `AGENTS.md` and contains no copied policy. |
-| Grok | Current tooling discovers the `AGENTS.md` file family. | Consume `AGENTS.md` directly; do not add hooks or a second instruction body. |
+| Grok | Current tooling discovers the `AGENTS.md` file family. | Consume `AGENTS.md` directly; do not add a second instruction body. |
 | LFG or another host | No behavior is assumed. | An explicit adapter must prove how it supplies the same digest-bound specialization and public RRFlow operations. |
 
 The upstream behavior references are [Codex `AGENTS.md`](https://learn.chatgpt.com/docs/agent-configuration/agents-md),
@@ -32,6 +32,29 @@ The upstream behavior references are [Codex `AGENTS.md`](https://learn.chatgpt.c
 [Grok instruction compatibility](https://docs.x.ai/build/features/skills-plugins-marketplaces).
 These links justify only bootstrap-file behavior. They do not give a provider
 authority over RRFlow lifecycle or state.
+
+## Host hooks
+
+A host hook is a command that an editor's or AI provider's configuration binds
+to a host event such as a session start, a prompt, a tool call or a stop.
+RRFlow permits a host hook only as an alias stub onto one RRFlow owner, the
+same way the root `CLAUDE.md` imports `AGENTS.md`
+([ADR-0004](../decisions/0004-host-hooks-as-alias-stubs.md)). The rule covers
+the hooks RRFlow installs into a project and any a developer adds by hand.
+
+| Aspect | Rule for a hook stub |
+|---|---|
+| Content | One invocation of a public `rrflow` command or RRD operation, or one import of an owning record. No copied rule or instruction text, decision logic, state, schedule, retry loop or credential. |
+| Owner | An RRFlow-owned host binding names the host, the host event, the target command or operation, the binding revision and the stub's digest. The stub is generated from that binding. |
+| Change | Changing the binding regenerates or retires its stubs. Verification compares each installed stub with its binding and reports drift; a drifted stub is not trusted as current. |
+| Installation | The install plan previews the stub and its exact host file. RRFlow writes it only after authorization and removes it on uninstall, leaving project-owned host configuration as it was. |
+| Effect | The stub reports a host occurrence as a typed engine event or asks RRFlow what applies now. It authorizes nothing: indexing, project mutation and external effects still need explicit authorization through `RrdEngine`, such as the AI asking before attunement starts. |
+| Evidence | A hook that ran proves only that the host invoked it. Readiness, progress and completion come from the engine. |
+
+A host whose hook would need logic of its own is supported only after an
+RRFlow adapter carries that logic behind a public operation. Gate I's I-04
+implements host bindings and I-06 their scaffolding; until then RRFlow installs
+no hook.
 
 ## Installed specialization
 

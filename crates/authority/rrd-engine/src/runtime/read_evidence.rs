@@ -57,6 +57,7 @@ pub(crate) fn public_read_evidence(evidence: RuntimeReadEvidence) -> Result<Read
                     RuntimeReadAccessPath::AdjacencyVersions => ReadAccessPath::AdjacencyVersions,
                     RuntimeReadAccessPath::EventVersions => ReadAccessPath::EventVersions,
                     RuntimeReadAccessPath::VectorVersions => ReadAccessPath::VectorVersions,
+                    RuntimeReadAccessPath::VectorSourceDeltas => ReadAccessPath::VectorSourceDeltas,
                     RuntimeReadAccessPath::SeriesVersions => ReadAccessPath::SeriesVersions,
                     RuntimeReadAccessPath::GeoVersions => ReadAccessPath::GeoVersions,
                     RuntimeReadAccessPath::ObjectVersions => ReadAccessPath::ObjectVersions,

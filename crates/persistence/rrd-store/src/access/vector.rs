@@ -4,7 +4,7 @@
 //! Exact scan, TurboQuant, and HNSW consumers are downstream projections; no
 //! accelerator is constructed or allowed to publish from this commit path.
 
-use super::runtime_state::{get_json, scan_space_bounded_from};
+use super::runtime_state::get_json;
 use super::semantic_commit::SemanticCommitPlan;
 use crate::keyspaces;
 use crate::{Error, Result};
@@ -261,54 +261,6 @@ pub(crate) fn encode_vector_source_effects(
         }
     }
     Ok(())
-}
-
-pub(crate) fn vector_source_deltas(
-    reader: &(impl super::runtime_state::AccessRead + ?Sized),
-    scope: &ScopeId,
-    source: &VectorSourceAddress,
-    after: u64,
-    limit: usize,
-) -> Result<Vec<VectorSourceDelta>> {
-    source.validate()?;
-    if limit == 0 {
-        return Err(Error::Substrate(
-            "vector source-delta page limit must be greater than zero".into(),
-        ));
-    }
-    let start = keyspaces::runtime_vector_source_delta_start(
-        scope,
-        &source.collection.collection_id,
-        &source.collection.vector_name,
-        &source.field,
-        after.checked_add(1).ok_or(Error::SequenceOverflow)?,
-    )?;
-    let prefix = keyspaces::runtime_vector_source_delta_prefix(
-        scope,
-        &source.collection.collection_id,
-        &source.collection.vector_name,
-        &source.field,
-    )?;
-    let mut deltas = scan_space_bounded_from(
-        reader,
-        keyspaces::RUNTIME_VECTOR_SOURCE_DELTAS,
-        &prefix,
-        &start,
-        limit,
-    )?
-    .into_iter()
-    .map(|(_, bytes)| serde_json::from_slice::<VectorSourceDelta>(&bytes).map_err(Error::from))
-    .collect::<Result<Vec<_>>>()?;
-    for delta in &deltas {
-        delta.validate()?;
-        if delta.scope != *scope || delta.source != *source {
-            return Err(Error::IndexConstraint(
-                "vector source-delta key escaped its requested identity".into(),
-            ));
-        }
-    }
-    deltas.sort_by_key(|delta| (delta.source_cursor, delta.commit_ordinal));
-    Ok(deltas)
 }
 
 fn vector_transitions(

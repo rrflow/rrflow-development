@@ -19,6 +19,7 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+tracing-subscriber = { workspace = true }
 
 # Child process for tests/durability.rs. Declared as a bin so integration tests
 # receive its path through CARGO_BIN_EXE_durability-child.

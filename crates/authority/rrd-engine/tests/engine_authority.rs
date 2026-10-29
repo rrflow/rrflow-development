@@ -1,6 +1,6 @@
 use rrd_contract::{
     transaction_operation_sha256, AuditDecision, AuditPhase, BeginTransaction, CanonicalId,
-    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataCatalogueIdentity,
+    CloseSession, CommitTransaction, CorrelationId, CreateSession, DataEstateOrganisation,
     DataLogicalModel, DataProperties, DataPropertySchema, DataRecordSchema, DataReference,
     DataSchemaMode, DataSchemaRegistry, DataTableSchema, DataValueType, DataVectorValue,
     DiagnosticAuthority, DiagnosticStorageEvidenceLevel, EnsureQueryIndex, EnsureVectorCollection,
@@ -226,7 +226,7 @@ fn one_authority_coordinates_security_data_catalogues_audit_and_reopen() {
             registry: DataSchemaRegistry {
                 revision: 2,
                 migration: "install authority fixture schema".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([
                     (
                         canonical("document"),

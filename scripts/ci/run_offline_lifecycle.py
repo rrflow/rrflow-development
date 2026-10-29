@@ -119,12 +119,13 @@ REQUIRED_CASES = frozenset({
     "install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape",
     "fresh_installed_engine_survives_restart_and_restore",
     "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
+    "a_served_estate_is_found_proved_and_not_served_twice",
 })
 
 
 def require_lifecycle_tests(output: str) -> None:
     cases = [line.removesuffix(": test") for line in output.splitlines() if line.endswith(": test")]
-    require(len(cases) == len(REQUIRED_CASES) and set(cases) == REQUIRED_CASES, "harness must contain exactly the five required lifecycle cases")
+    require(len(cases) == len(REQUIRED_CASES) and set(cases) == REQUIRED_CASES, "harness must contain exactly the required lifecycle cases")
 
 
 def require_lifecycle_results(output: str) -> list[str]:
@@ -133,7 +134,7 @@ def require_lifecycle_results(output: str) -> list[str]:
     require(len(cases) == len(REQUIRED_CASES) and set(cases) == REQUIRED_CASES,
             "every required lifecycle case must execute exactly once and pass")
     require(len(summaries) == 1 and re.fullmatch(
-        r"ok\. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in [0-9.]+s",
+        rf"ok\. {len(REQUIRED_CASES)} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in [0-9.]+s",
         summaries[0]) is not None, "lifecycle summary must have no failures, omissions or skips")
     return sorted(cases)
 

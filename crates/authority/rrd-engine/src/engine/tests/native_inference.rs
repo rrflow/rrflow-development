@@ -1,6 +1,6 @@
 use super::*;
 use rrd_contract::{
-    transaction_operation_sha256, BeginTransaction, CommitTransaction, DataCatalogueIdentity,
+    transaction_operation_sha256, BeginTransaction, CommitTransaction, DataEstateOrganisation,
     DataLogicalModel, DataRecordSchema, DataReference, DataSchemaMode, DataSchemaRegistry,
     DataTableSchema, EmbedAndSearchVectors, EmbeddingInput, EmbeddingNetworkPolicy,
     GenerateEmbeddings, ListEmbeddingModels, VectorEmbeddingModel, VectorSearchMode,
@@ -116,7 +116,7 @@ fn native_inference_batches_with_provenance_and_searches_at_one_read_stamp() {
         registry: DataSchemaRegistry {
             revision: 1,
             migration: "install native inference fixture".into(),
-            catalogue: DataCatalogueIdentity::default(),
+            organisation: DataEstateOrganisation::default(),
             tables: BTreeMap::from([
                 (
                     CanonicalId::new("document").unwrap(),

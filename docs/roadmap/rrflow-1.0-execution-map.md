@@ -53,7 +53,8 @@ and [single-engine authority decision](../decisions/0001-single-engine-authority
 ## Current implementation inventory and exact disposition
 
 [Open current implementation discovery](rrflow-1.0-execution/implementation-navigation.md#current-implementation-discovery)
-and the generated [whole-repository file plan](rrflow-1.0-file-plan.jsonl).
+and the [file-inventory descriptor](rrflow-1.0-file-plan.jsonl) for the current
+on-demand whole-repository projection.
 
 ## Implementation-requirements traceability
 
@@ -88,7 +89,7 @@ journals and gate evidence.
 
 [Open Gate F requirements](rrflow-1.0/gate-f.md).
 
-## Deferred D-05 work package after Gates E and F
+## D-05 work package and canonical E/F prerequisites
 
 [Open the roadmap-owned D-05 requirement and ordering](rrflow-1.0/gate-d.md).
 

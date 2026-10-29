@@ -198,3 +198,121 @@ fn check_batch_locality(disjoint: bool) {
     assert!(after.loads - before.loads <= if disjoint { 24 } else { 15 });
     assert!(after.resident_bytes <= options.page_cache_bytes);
 }
+
+#[test]
+fn point_candidates_follow_flush_compaction_reopen_and_snapshot_replacement() {
+    use std::collections::BTreeMap;
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("source");
+    let options = DatabaseOptions {
+        page_cache_bytes: 0,
+        compaction: rrd_lsm::CompactionPolicy {
+            target_segment_bytes: 128,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut database = Database::create_with_options(&root, options).unwrap();
+    let mut expected = BTreeMap::new();
+    let mut history = vec![(database.snapshot(), expected.clone())];
+    let keys = (0..32)
+        .map(|i| format!("key-{i:03}").into_bytes())
+        .collect::<Vec<_>>();
+    for generation in 0..4 {
+        let mut operations = Vec::new();
+        for key in &keys[generation * 8..generation * 8 + 8] {
+            let value = vec![generation as u8; 64];
+            expected.insert(key.clone(), value.clone());
+            operations.push(Mutation::Put {
+                key: key.clone(),
+                value,
+            });
+        }
+        // Repeated keys produce overlapping ranges and deletion/resurrection.
+        for key in keys.iter().take(2) {
+            if generation % 2 == 1 {
+                expected.remove(key);
+                operations.push(Mutation::Delete { key: key.clone() });
+            } else {
+                let value = vec![generation as u8; 3];
+                expected.insert(key.clone(), value.clone());
+                operations.push(Mutation::Put {
+                    key: key.clone(),
+                    value,
+                });
+            }
+        }
+        database
+            .write_owned(
+                WriteBatch::new(operations).unwrap(),
+                Durability::Authoritative,
+            )
+            .unwrap();
+        let snapshot = database.snapshot();
+        history.push((snapshot, expected.clone()));
+        database.flush_memtable(snapshot.sequence).unwrap();
+        check_history(&database, &keys, &history);
+        // Include consecutive publications without reopen normalizing order.
+        if generation % 2 == 1 {
+            drop(database);
+            database = Database::open_with_options(&root, options).unwrap();
+            check_history(&database, &keys, &history);
+        }
+    }
+    let protected = history
+        .iter()
+        .map(|(snapshot, _)| *snapshot)
+        .collect::<Vec<_>>();
+    assert!(database
+        .compact(&protected, database.snapshot().sequence)
+        .unwrap()
+        .is_some());
+    check_history(&database, &keys, &history);
+    let bundle = database.export_snapshot_bundle(100).unwrap();
+    let spool = temp.path().join("snapshot.spool");
+    let file = database.export_snapshot_file(100, &spool).unwrap();
+    for from_file in [false, true] {
+        let target = temp.path().join(format!("target-{from_file}"));
+        let mut imported = Database::create_with_options(&target, options).unwrap();
+        // Replacement must remove the previous range index, not append to it.
+        write(&mut imported, Some(b"old-target".to_vec()));
+        imported.flush_memtable(1).unwrap();
+        if from_file {
+            imported.install_snapshot_file(&file, 101).unwrap();
+        } else {
+            imported.install_snapshot_bundle(&bundle, 101).unwrap();
+        }
+        check_history(&imported, &keys, &history);
+        assert_eq!(imported.get(b"shared", imported.snapshot()).unwrap(), None);
+        drop(imported);
+        let imported = Database::open_with_options(&target, options).unwrap();
+        check_history(&imported, &keys, &history);
+        assert_eq!(imported.get(b"shared", imported.snapshot()).unwrap(), None);
+    }
+}
+
+type ExpectedHistory = Vec<(Snapshot, std::collections::BTreeMap<Vec<u8>, Vec<u8>>)>;
+
+fn check_history(database: &Database, keys: &[Vec<u8>], history: &ExpectedHistory) {
+    for (snapshot, expected) in history {
+        for key in keys
+            .iter()
+            .chain([vec![], b"key-000x".to_vec(), vec![255]].iter())
+        {
+            assert_eq!(
+                database.get(key, *snapshot).unwrap().as_ref(),
+                expected.get(key),
+                "key={key:?} snapshot={} manifest={}",
+                snapshot.sequence,
+                database.manifest().generation
+            );
+        }
+        assert_eq!(
+            database.get_many(keys, *snapshot).unwrap(),
+            keys.iter()
+                .map(|k| expected.get(k).cloned())
+                .collect::<Vec<_>>()
+        );
+    }
+    assert_eq!(database.source_page_memory().stats().reserved_bytes, 0);
+}

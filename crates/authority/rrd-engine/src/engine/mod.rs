@@ -9,19 +9,20 @@ use rrd_contract::{
     ChangefeedFollowResult, ChangefeedPage, ChangefeedValidation, ClaimChangeSnapshot,
     ClaimPromotionSnapshot, ClaimTierSnapshot, CloseSession, CloseSubscription,
     CloseSubscriptionResult, CommitReceipt, CommitTransaction, CorrelationId, CreateInstanceBackup,
-    CreateInstanceBackupResult, CreateSession, DataCatalogueIdentity, DataEmbeddingProvenance,
-    DataEventSchema, DataGeoPoint, DataGeoValue, DataLogicalModel, DataObjectReceipt,
-    DataProperties, DataPropertySchema, DataRecordSchema, DataReference, DataRelationSchema,
-    DataSchemaMode, DataSchemaRegistry, DataSeriesValue, DataSnapshot, DataSnapshotEntry,
-    DataTableSchema, DataTarget, DataValueType, DataVectorNormalization, DataVectorValue,
-    DeleteVectorCollection, DeleteVectorCollectionResult, DeleteVectorPayloadIndex,
-    DeleteVectorPayloadIndexResult, DeploymentProfile, DiagnosticAuthority, DiagnosticCoverage,
-    DiagnosticGraphDifference, DiagnosticGraphRecordChange, DiagnosticGraphRecordSnapshot,
-    DiagnosticGraphRelationChange, DiagnosticGraphRelationSnapshot, DiagnosticGraphSnapshot,
-    DiagnosticModelCatalogueSnapshot, DiagnosticModelKind, DiagnosticModelSnapshot,
-    DiagnosticReadStamp, DiagnosticRetentionPin, DiagnosticRetentionSnapshot,
-    DiagnosticRuntimeReference, DiagnosticSectionSnapshot, DiagnosticSnapshot,
-    DiagnosticSnapshotLease, DiagnosticVectorArtifactCatalogueSnapshot,
+    CreateInstanceBackupResult, CreateSession, DataCategorySchema, DataCategoryTargets,
+    DataDomainSchema, DataEmbeddingProvenance, DataEstateOrganisation, DataEventSchema,
+    DataGeoPoint, DataGeoValue, DataLogicalModel, DataObjectReceipt, DataProperties,
+    DataPropertySchema, DataRecordSchema, DataReference, DataRelationSchema, DataSchemaMode,
+    DataSchemaRegistry, DataSeriesValue, DataSnapshot, DataSnapshotEntry, DataTableSchema,
+    DataTagCardinality, DataTagReference, DataTagSchema, DataTarget, DataValueType,
+    DataVectorNormalization, DataVectorValue, DeleteVectorCollection, DeleteVectorCollectionResult,
+    DeleteVectorPayloadIndex, DeleteVectorPayloadIndexResult, DeploymentProfile,
+    DiagnosticAuthority, DiagnosticCoverage, DiagnosticGraphDifference,
+    DiagnosticGraphRecordChange, DiagnosticGraphRecordSnapshot, DiagnosticGraphRelationChange,
+    DiagnosticGraphRelationSnapshot, DiagnosticGraphSnapshot, DiagnosticModelCatalogueSnapshot,
+    DiagnosticModelKind, DiagnosticModelSnapshot, DiagnosticReadStamp, DiagnosticRetentionPin,
+    DiagnosticRetentionSnapshot, DiagnosticRuntimeReference, DiagnosticSectionSnapshot,
+    DiagnosticSnapshot, DiagnosticSnapshotLease, DiagnosticVectorArtifactCatalogueSnapshot,
     DiagnosticVectorArtifactKind, DiagnosticVectorArtifactSnapshot, EnsureQueryIndex,
     EnsureQueryIndexResult, EnsureVectorCollection, EnsureVectorCollectionResult,
     EnsureVectorIndex, EnsureVectorIndexResult, EnsureVectorPayloadIndex,
@@ -74,10 +75,10 @@ use rrd_contract::{
 use rrd_core::{
     digest, Claim, DataTransaction, EmbeddingProvenance, GeoPoint, GeoValue, ObjectReceipt,
     ObjectReference, Predicate, Producer, ProjectionId, ProjectionState, PromotionState, ReadStamp,
-    RetentionPin, RuntimeCatalogueIdentity, RuntimeChange, RuntimeCommit, RuntimeDataSnapshot,
-    RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel,
-    RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
-    RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
+    RetentionPin, RuntimeChange, RuntimeCommit, RuntimeDataSnapshot, RuntimeEvent,
+    RuntimeEventSchema, RuntimeGeo, RuntimeGraphSnapshot, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeRelation, RuntimeRelationSchema, RuntimeSchemaMode, RuntimeSchemaRegistry,
     RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue, RuntimeValueType,
     RuntimeVector, ScopeId, SeriesValue, Subject, Tier, VectorNormalization, VectorValue,
 };
@@ -94,6 +95,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+mod attunement;
 mod backup;
 mod changefeed;
 mod clock;
@@ -112,6 +114,8 @@ mod flight;
 mod function;
 mod inference;
 mod installation;
+mod observation_source;
+pub use attunement::{AttunementCommand, AttunementControlResult, AttunementReceiptView};
 mod invocation;
 mod knowledge;
 mod maintenance;
@@ -130,6 +134,7 @@ mod retrieval;
 mod retrieval_query;
 mod rollback;
 mod security;
+mod serving;
 mod session;
 mod session_transactions;
 mod subscription;
@@ -163,6 +168,7 @@ pub use invocation::{
 };
 use model::*;
 pub use security::{MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES};
+pub use serving::{ServingPublisher, ServingRecord, ServingRegistration};
 use session::*;
 use token_key::load_or_create_token_key;
 pub use token_key::TOKEN_KEY_BYTES;

@@ -12,6 +12,10 @@ pub enum Error {
         limit: u64,
         observed: u64,
     },
+    SegmentHandleLimit {
+        limit: usize,
+        observed: usize,
+    },
     SourcePageLimit {
         limit: usize,
         observed: usize,
@@ -33,6 +37,9 @@ pub enum Error {
     },
     /// Propagated from the substrate.
     Substrate(String),
+    /// Another handle already holds the database's single writer lock, so
+    /// the estate is open in another process. Carries the lock's display path.
+    ActiveWriter(String),
     /// Known admission rejection before this batch's domain publication.
     WriteBatchLimit {
         resource: rrd_lsm::WriteBatchResource,
@@ -151,7 +158,9 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Substrate(m) => write!(f, "substrate: {m}"),
+            Error::ActiveWriter(path) => write!(f, "the database already has an active writer: {path}"),
             Error::ProjectedReadLimit { resource, limit, observed } => write!(f, "projected-read {} limit {limit} would be exceeded by {observed}", resource.as_str()),
+            Error::SegmentHandleLimit { limit, observed } => write!(f, "segment open-file limit {limit} would be exceeded by {observed}"),
             Error::SourcePageLimit { limit, observed } => write!(f, "source page allocation limit {limit} would be exceeded by {observed}"),
             Error::CheckpointLimit { limit, observed } => write!(f, "checkpoint entry limit {limit} would be exceeded by {observed}"),
             Error::TransactionLimit { resource, limit, observed } => write!(f, "transaction {} limit {limit} would be exceeded by {observed}", resource.as_str()),
@@ -259,6 +268,9 @@ impl From<rrd_lsm::Error> for Error {
                 limit,
                 observed,
             },
+            rrd_lsm::Error::SegmentHandleLimit { limit, observed } => {
+                Self::SegmentHandleLimit { limit, observed }
+            }
             rrd_lsm::Error::SourcePageLimit { limit, observed } => {
                 Self::SourcePageLimit { limit, observed }
             }
@@ -336,6 +348,9 @@ impl From<rrd_lsm::Error> for Error {
                 snapshot_sequence,
                 conflicting_sequence,
             },
+            rrd_lsm::Error::DatabaseWriterLock { path } => {
+                Error::ActiveWriter(path.display().to_string())
+            }
             other => Error::Substrate(other.to_string()),
         }
     }

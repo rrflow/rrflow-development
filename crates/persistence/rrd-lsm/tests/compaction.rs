@@ -502,7 +502,10 @@ fn pinned_projected_stream_survives_flush_compaction_and_gc_until_drop() {
     database.compact(&[], 40).unwrap().unwrap();
 
     let while_pinned = database.garbage_collect().unwrap();
-    assert!(while_pinned.retained_manifests.contains(&pinned_manifest));
+    assert!(!root
+        .join("manifests")
+        .join(format!("{pinned_manifest}.json"))
+        .exists());
     for segment in &pinned_segments {
         assert!(while_pinned.retained_segments.contains(segment));
         assert!(root
@@ -530,9 +533,6 @@ fn pinned_projected_stream_survives_flush_compaction_and_gc_until_drop() {
     drop(stream);
 
     let after_drop = database.garbage_collect().unwrap();
-    assert!(after_drop
-        .removed_manifests
-        .contains(&format!("{pinned_manifest}.json")));
     assert!(pinned_segments.iter().any(|segment| {
         after_drop
             .removed_segments
@@ -825,4 +825,61 @@ fn automatic_leveled_maintenance_preserves_untracked_snapshot_history() {
             .as_deref(),
         Some(b"v2".as_slice())
     );
+}
+
+#[test]
+fn narrow_projected_view_retains_only_selected_old_segment_across_compaction() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("narrow-gc");
+    let mut database = Database::create(&root).unwrap();
+    database
+        .write(&batch(vec![put("a", "old-a")]), Durability::Authoritative)
+        .unwrap();
+    database.flush_memtable(1).unwrap();
+    database
+        .write(&batch(vec![put("z", "old-z")]), Durability::Authoritative)
+        .unwrap();
+    database.flush_memtable(2).unwrap();
+    let selected = database
+        .manifest()
+        .segments
+        .iter()
+        .find(|s| s.first_key == b"a")
+        .unwrap()
+        .id
+        .clone();
+    let unrelated = database
+        .manifest()
+        .segments
+        .iter()
+        .find(|s| s.first_key == b"z")
+        .unwrap()
+        .id
+        .clone();
+    let mut old = database
+        .begin_projected_read(ProjectedReadRequest {
+            ranges: vec![ProjectedReadRange::new(b"a".to_vec(), Some(b"b".to_vec())).unwrap()],
+            projection: ProjectedReadProjection::KeyValue,
+            snapshot: database.snapshot(),
+            budget: ProjectedReadBudget::default(),
+        })
+        .unwrap();
+    database
+        .write(
+            &batch(vec![put("a", "new-a"), put("z", "new-z")]),
+            Durability::Authoritative,
+        )
+        .unwrap();
+    database.flush_memtable(3).unwrap();
+    database.compact(&[], 4).unwrap().unwrap();
+    database.garbage_collect().unwrap();
+    let path = |id: &str| root.join("segments").join(format!("{id}.seg"));
+    assert!(path(&selected).exists());
+    assert!(!path(&unrelated).exists());
+    let rows = old.next_batch().unwrap().unwrap();
+    assert_eq!(rows.key(0), Some(b"a".as_slice()));
+    assert_eq!(rows.value(0), Some(b"old-a".as_slice()));
+    old.cancel().unwrap();
+    database.garbage_collect().unwrap();
+    assert!(!path(&selected).exists());
 }

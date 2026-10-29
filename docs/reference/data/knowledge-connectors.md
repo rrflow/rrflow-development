@@ -14,10 +14,14 @@ graph families and project links. The
 schema generation and validation. D-06 owns activation, D-05 owns ingestion,
 H-09 owns family formation, H-10 owns project links, and H-04 owns client parity.
 
-**Knowledge path** is the user-facing name for a project-scoped binding to an
-external database or knowledge/reasoning service through such an adapter.
-It is a specialization of the existing connector boundary, not another plugin
-registry, database or executable type. Connecting HydraDB, Pinecone Nexus,
+**Knowledge path** is the user-facing name for a project-scoped binding to
+existing data, including project-local directories and configured external
+services. The existing knowledge-tree catalogue can record a project directory
+or an external vector-store endpoint; recording a path does not read the source
+or start relationship construction. Arbitrary directories outside the project
+root, general service adapters and automatic construction remain unimplemented.
+External-service paths specialize the existing connector boundary, not another
+plugin registry, database or executable type. Connecting HydraDB, Pinecone Nexus,
 Qdrant or SurrealDB must preserve that source's actual supported profile and
 provenance. A configured path does not authorize import, cross-project sharing
 or background learning. The engine may propose project profile enrichment
@@ -338,6 +342,30 @@ upstream code, schema authority or runtime is copied.
 | [Qdrant multitenancy](https://qdrant.tech/documentation/manage-data/multitenancy/) | Payload scoping and tiered shard placement illustrate independent logical filtering and physical optimization. The adapter must enforce caller scope; sharding is not project VM isolation or a replacement for RRFlow policy. |
 | [Microsoft GraphRAG dataflow](https://microsoft.github.io/graphrag/index/default_dataflow/) | Chunk-to-document and extracted-knowledge references inform provenance. Adapt those relationships into existing RRFlow families, not a second GraphRAG store. |
 | [HiChunk / HiCBench](https://arxiv.org/abs/2509.11552), [2026 code chunking study](https://arxiv.org/abs/2605.04763), [2026 academic-text study](https://arxiv.org/abs/2607.01852) | Hierarchical evaluation and differing corpus results argue for task-specific measured choice. Treat these as research candidates; no global best chunk size or algorithm is established. |
+
+## Native capability versus knowledge path
+
+A native RRFlow feature and a connection to an external product are different
+claims. Native graph/vector/lexical behavior must execute through `RrdEngine`,
+rrflowQL and rrflowKV. A Pinecone, SurrealDB, Qdrant or HydraDB knowledge path
+requires an admitted source adapter with explicit product/API revision,
+authentication, namespace/collection scope, provenance, pagination, freshness,
+delete/revoke behavior and resource limits. Registering a URL or recognizing a
+product name qualifies neither ingestion nor query equivalence.
+
+A project can be created without any knowledge path. Adding one later feeds
+versioned source records and derivations through the same D-02/D-05 publication
+and invalidation flow. It does not silently replace rrflowKV or grant another
+project access. External graph facts, vector matches and generated summaries
+retain different provenance and confidence/verification meanings.
+
+Parquet is a columnar interchange format, not the engine or a separate service.
+The bundled bounded export above exists. Full source import, large streaming
+exchange, automatic schema mapping and the dedicated Connectome export control
+remain separate D/F/H requirements. Their tests must include type preservation,
+source identity, authorization, malformed metadata, decompression expansion,
+cancellation, partial output and restart. A valid small exported file cannot
+be reported as a completed import/analytics pipeline.
 
 ## Implementation and qualification
 

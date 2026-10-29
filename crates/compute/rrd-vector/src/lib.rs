@@ -63,8 +63,8 @@ pub use quantization::ScalarQuantizedVector;
 pub use quantization_catalog::{
     QuantizationArtifactCatalogue, QuantizationArtifactEntry, QuantizationArtifactSnapshot,
     QuantizationArtifactState, QuantizationLifecycleAction, QuantizationLifecycleEvent,
-    QUANTIZATION_ARTIFACT_RECORD_TYPE, QUANTIZATION_CATALOG_VERSION,
-    QUANTIZATION_LIFECYCLE_RECORD_TYPE,
+    QuantizationOperationOutcome, QuantizationOperationReceipt, QUANTIZATION_ARTIFACT_RECORD_TYPE,
+    QUANTIZATION_CATALOG_VERSION, QUANTIZATION_LIFECYCLE_RECORD_TYPE,
 };
 pub use quantized_segment::{
     ProductCompression, QuantizationMethod, QuantizedDescriptor, QuantizedKernel,

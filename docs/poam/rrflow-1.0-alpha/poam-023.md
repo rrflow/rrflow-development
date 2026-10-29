@@ -21,6 +21,13 @@ defaulted/pre-1.0 snapshot state is not the sole current format. At clean baseli
 `unsupported rrflowKV application format None`; the other isolated consensus test did not
 terminate within 120 seconds.
 
+On candidate `73e7b72a98e0484fd30975cfd6676a118945cd45`, the optional-feature
+[`rrd-cluster` CI job](https://github.com/rrflow/rrflow-development/actions/runs/40637793176/job/122648671762)
+failed `independent_processes_recover_fail_over_snapshot_and_reject_corruption`:
+the surviving processes did not agree on an eligible leader within the test's
+10-second deadline. The cause and reproducibility are not established; the
+failure is neither a proven consensus defect nor an accepted candidate result.
+
 ## Impact
 
 Cluster code can bypass installed identity, effect-complete authorization, the semantic

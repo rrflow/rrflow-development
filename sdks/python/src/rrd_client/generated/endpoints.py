@@ -1,12 +1,15 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: a36ace4e6572c85913cee78d147555688ba2d87684cc45cf7d19f08de536fa07
+# OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "a36ace4e6572c85913cee78d147555688ba2d87684cc45cf7d19f08de536fa07"
+    "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2"
 )
 
 OperationId = Literal[
+    "attunement-cancel",
+    "attunement-read",
+    "attunement-receipt-read",
     "audit-export",
     "audit-read",
     "backup-create",
@@ -61,6 +64,10 @@ OperationId = Literal[
     "vector-collection-list",
     "vector-point-retrieve",
     "vector-point-scroll",
+    "vector-quantization-activate",
+    "vector-quantization-build",
+    "vector-quantization-list",
+    "vector-quantization-retire",
     "vector-search",
 ]
 
@@ -73,6 +80,24 @@ class Endpoint(TypedDict):
 
 
 ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
+    "attunement-cancel": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/cancel",
+    },
+    "attunement-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/read",
+    },
+    "attunement-receipt-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/receipt/read",
+    },
     "audit-export": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -396,6 +421,30 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/vector/points/scroll",
+    },
+    "vector-quantization-activate": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/quantizations/activate",
+    },
+    "vector-quantization-build": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/quantizations/build",
+    },
+    "vector-quantization-list": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/vector/quantizations/list",
+    },
+    "vector-quantization-retire": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/vector/quantizations/retire",
     },
     "vector-search": {
         "authentication": "session_bearer",

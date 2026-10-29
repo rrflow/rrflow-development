@@ -1,3 +1,6 @@
+mod point_index;
+use point_index::PointIndex;
+
 use crate::filesystem::{AnchoredPath, OpenOptions};
 use crate::io::{IoContext, SharedIoContext};
 use crate::mutable::MutableCharge;
@@ -360,11 +363,13 @@ impl CompactionBoundary {
 pub struct Database {
     root: AnchoredPath,
     manifests: ManifestStore,
-    manifest: Manifest,
+    // Shared immutable generation: reads retain it without copying every descriptor.
+    manifest: Arc<Manifest>,
     wal: WalWriter,
     memtable: Arc<crate::mutable_memory::MutableGeneration>,
     mutable_memory: crate::MutableMemory,
     segments: Vec<Arc<Segment>>,
+    point_index: PointIndex,
     page_cache: SharedPageCache,
     segment_io: SharedIoContext,
     segment_open_evidence: SegmentOpenEvidence,
@@ -471,7 +476,8 @@ impl Database {
         Ok(Self {
             root: root.to_owned(),
             manifests,
-            manifest,
+            point_index: PointIndex::new(&manifest.segments),
+            manifest: Arc::new(manifest),
             wal,
             memtable: mutable_memory.empty(0),
             mutable_memory,
@@ -579,6 +585,8 @@ impl Database {
             segment_open_evidence.merge(segment.open_evidence())?;
             segments.push(segment);
         }
+        let point_index = PointIndex::new(&manifest.segments);
+        recovery_budget.tick()?;
         let segments_ms = segments_started.elapsed().as_millis() as u64;
         let path = wal_path(&root, manifest.wal_start_sequence);
         require_existing_regular_file(&path, "active WAL")?;
@@ -637,7 +645,8 @@ impl Database {
         Ok(Self {
             root: root.to_owned(),
             manifests,
-            manifest,
+            point_index,
+            manifest: Arc::new(manifest),
             wal,
             memtable: Arc::new(mutable_memory.wrap(memtable)?),
             mutable_memory,
@@ -694,7 +703,8 @@ impl Database {
         self.transaction_snapshots.ownership()
     }
 
-    /// Aggregate live stream ownership; returned batches own separate output reservations.
+    /// Aggregate live stream ownership: each retained segment or mutable
+    /// generation counts once. Returned batches own separate output reservations.
     pub fn read_view_ownership(&self) -> Result<(u64, u64)> {
         ActiveReadViews::ownership(&self.active_read_views)
     }
@@ -752,20 +762,21 @@ impl Database {
         let memtable_bytes = u64::try_from(self.memtable.approximate_bytes()).map_err(|_| {
             Error::InvalidProjectedRead("captured memtable bytes exceed u64".into())
         })?;
-        let pinned_bytes =
-            self.manifest
-                .segments
-                .iter()
-                .try_fold(memtable_bytes, |total, segment| {
-                    total.checked_add(segment.bytes).ok_or_else(|| {
-                        Error::InvalidProjectedRead("pinned read-view bytes overflow".into())
-                    })
-                })?;
+        let segment_bytes = segments.iter().try_fold(0_u64, |total, segment| {
+            total.checked_add(segment.descriptor.bytes).ok_or_else(|| {
+                Error::InvalidProjectedRead("pinned read-view bytes overflow".into())
+            })
+        })?;
+        let pinned_bytes = memtable_bytes
+            .checked_add(segment_bytes)
+            .ok_or_else(|| Error::InvalidProjectedRead("pinned read-view bytes overflow".into()))?;
         let cache_access = next_projected_cache_access()?;
         let lease = ActiveReadViews::acquire(
             &self.active_read_views,
-            self.manifest.clone(),
-            pinned_bytes,
+            Arc::clone(&self.manifest),
+            Some(&self.memtable),
+            memtable_bytes,
+            &segments,
             request.budget,
         )?;
         let view = ReadView {
@@ -1456,8 +1467,15 @@ impl Database {
             WalWriter::create_at_anchored(&next_path, next_sequence)?
         };
         inject_failure(failure, FlushBoundary::SuccessorWalSynced)?;
-        let mut descriptors = self.manifest.segments.clone();
+        // The live vector may differ from the sorted manifest after compaction.
+        // Build point-index ordinals in exactly the order retained below.
+        let mut descriptors = self
+            .segments
+            .iter()
+            .map(|segment| segment.descriptor.clone())
+            .collect::<Vec<_>>();
         descriptors.extend(flushed.iter().map(|segment| segment.descriptor.clone()));
+        let point_index = PointIndex::new(&descriptors);
         let next = new_manifest(
             self.manifest
                 .generation
@@ -1476,7 +1494,8 @@ impl Database {
         self.memtable = self.mutable_memory.empty(sequence);
         self.wal_payload_bytes = 0;
         self.segments.extend(flushed.into_iter().map(Arc::new));
-        self.manifest = next.clone();
+        self.point_index = point_index;
+        self.manifest = Arc::new(next.clone());
         self.reclamation_pending = true;
         inject_failure(failure, FlushBoundary::ManifestPublished)?;
         Ok(Some(next))
@@ -1520,7 +1539,7 @@ impl Database {
                 })
             })
             .collect::<Result<Vec<_>>>()?;
-        SnapshotBundle::new(self.manifest.clone(), segments)
+        SnapshotBundle::new(self.manifest.as_ref().clone(), segments)
     }
 
     /// Flushes and writes the authenticated snapshot bundle directly to a new
@@ -1533,7 +1552,7 @@ impl Database {
     ) -> Result<SnapshotBundleFile> {
         self.flush_memtable(at)?;
         SnapshotBundleFile::create(
-            self.manifest.clone(),
+            self.manifest.as_ref().clone(),
             &self.root.join(SEGMENT_DIRECTORY),
             destination,
         )
@@ -1548,7 +1567,7 @@ impl Database {
     ) -> Result<SnapshotBundleFile> {
         self.flush_memtable(at)?;
         SnapshotBundleFile::create_with_hook(
-            self.manifest.clone(),
+            self.manifest.as_ref().clone(),
             &self.root.join(SEGMENT_DIRECTORY),
             destination,
             |reached| {
@@ -1614,7 +1633,7 @@ impl Database {
         if source_sequence == current_sequence
             && self.manifest.segments == bundle.source_manifest.segments
         {
-            return Ok(self.manifest.clone());
+            return Ok(self.manifest.as_ref().clone());
         }
         if source_sequence <= current_sequence {
             return Err(Error::InvalidManifest(format!(
@@ -1661,12 +1680,14 @@ impl Database {
             bundle.source_manifest.segments.clone(),
             self.manifest.application_format,
         )?;
+        let point_index = PointIndex::new(&manifest.segments);
         self.manifests.publish(&manifest, Some(&previous))?;
         self.wal = successor;
         self.memtable = self.mutable_memory.empty(source_sequence);
         self.wal_payload_bytes = 0;
         self.segments = imported;
-        self.manifest = manifest.clone();
+        self.point_index = point_index;
+        self.manifest = Arc::new(manifest.clone());
         self.reclamation_pending = true;
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::ManifestPublished)?;
         Ok(manifest)
@@ -1701,7 +1722,7 @@ impl Database {
         if source_sequence == current_sequence
             && self.manifest.segments == bundle.source_manifest.segments
         {
-            return Ok(self.manifest.clone());
+            return Ok(self.manifest.as_ref().clone());
         }
         if source_sequence <= current_sequence {
             return Err(Error::InvalidManifest(format!(
@@ -1747,12 +1768,14 @@ impl Database {
             bundle.source_manifest.segments.clone(),
             self.manifest.application_format,
         )?;
+        let point_index = PointIndex::new(&manifest.segments);
         self.manifests.publish(&manifest, Some(&previous))?;
         self.wal = successor;
         self.memtable = self.mutable_memory.empty(source_sequence);
         self.wal_payload_bytes = 0;
         self.segments = imported;
-        self.manifest = manifest.clone();
+        self.point_index = point_index;
+        self.manifest = Arc::new(manifest.clone());
         self.reclamation_pending = true;
         inject_snapshot_install_failure(failure, SnapshotInstallBoundary::ManifestPublished)?;
         Ok(manifest)
@@ -1940,6 +1963,7 @@ impl Database {
                 .iter()
                 .map(|segment| segment.descriptor.clone()),
         );
+        let point_index = PointIndex::new(&descriptors);
         let next = new_manifest(
             self.manifest
                 .generation
@@ -1962,7 +1986,8 @@ impl Database {
             .collect::<Vec<_>>();
         retained_segments.extend(compacted_segments.into_iter().map(Arc::new));
         self.segments = retained_segments;
-        self.manifest = next.clone();
+        self.point_index = point_index;
+        self.manifest = Arc::new(next.clone());
         inject_compaction_failure(failure, CompactionBoundary::ManifestPublished)?;
         Ok(Some(CompactionOutcome {
             previous_manifest,
@@ -2318,14 +2343,18 @@ impl Database {
             &mut retained_wals,
             &mut budget,
         )?;
-        ActiveReadViews::visit_manifests(&self.active_read_views, |manifest| {
-            retain_manifest(
-                manifest,
-                &mut retained_manifests,
-                &mut retained_segments,
-                &mut retained_wals,
-                &mut budget,
-            )
+        // A projected stream owns selected immutable segments directly. An old
+        // manifest is not a durable checkpoint and need not retain unrelated files.
+        ActiveReadViews::visit_segments(&self.active_read_views, |segment| {
+            budget.entry()?;
+            if let Some(previous) = retained_segments.insert(segment.id.clone(), segment.bytes) {
+                if previous != segment.bytes {
+                    return Err(Error::InvalidManifest(
+                        "protected segment pins disagree about length".into(),
+                    ));
+                }
+            }
+            Ok(())
         })?;
         for checkpoint in self.manifests.checkpoints_bounded(&mut budget)? {
             if !retained_manifests.contains(&checkpoint.manifest) {
@@ -2416,15 +2445,28 @@ impl Database {
             return Ok(version.value.as_deref().map(<[u8]>::to_vec));
         }
         let mut best_sequence = 0;
+        let mut best_ordinal = usize::MAX;
         let mut selected = None;
-        for segment in &self.segments {
-            if let Some(version) = segment.select_version(key, snapshot.sequence)? {
-                if version.sequence() > best_sequence {
-                    best_sequence = version.sequence();
-                    selected = Some(version);
+        self.point_index.visit(
+            |i| &self.segments[i].descriptor,
+            key,
+            |ordinal| {
+                if let Some(version) =
+                    self.segments[ordinal].select_version(key, snapshot.sequence)?
+                {
+                    // Tree traversal is key-ordered, not manifest-ordered. Preserve
+                    // the original first-segment winner for equal sequences.
+                    if version.sequence() > best_sequence
+                        || (version.sequence() == best_sequence && ordinal < best_ordinal)
+                    {
+                        best_sequence = version.sequence();
+                        best_ordinal = ordinal;
+                        selected = Some(version);
+                    }
                 }
-            }
-        }
+                Ok(())
+            },
+        )?;
         // Selection loads authenticated key/sequence spines, not value pages.
         // Materialize only the winner, including a winning tombstone.
         match selected {

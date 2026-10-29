@@ -6,8 +6,8 @@ use rrd_core::{
 };
 use rrd_store::{
     ControlTransition, Error, IndexCommitBindingDefinition, IndexCommitBindingKind,
-    IndexSourceDelta, RrflowKvStore, RrflowMxStore, StorageEngine, VectorSourceAddress,
-    VectorSourceDelta,
+    IndexSourceDelta, RrflowKvStore, RrflowMxStore, RuntimeReadBudget, StorageEngine,
+    VectorSourceAddress, VectorSourceDelta,
 };
 use std::collections::BTreeMap;
 
@@ -298,6 +298,14 @@ fn exercise(engine: &dyn StorageEngine) -> ExerciseResult {
         },
         field: "title".into(),
     };
+    let read = engine.runtime().read_stamp(&scope()).unwrap();
+    let vector_deltas = |source: &VectorSourceAddress| {
+        engine
+            .runtime()
+            .read_vector_deltas(&read, source, 0, RuntimeReadBudget::new(10_000).unwrap())
+            .unwrap()
+            .deltas
+    };
     ExerciseResult {
         scalar: engine
             .runtime()
@@ -326,14 +334,8 @@ fn exercise(engine: &dyn StorageEngine) -> ExerciseResult {
                 16,
             )
             .unwrap(),
-        original_vector: engine
-            .runtime()
-            .vector_source_deltas_since(&scope(), &original_source, 0, 16)
-            .unwrap(),
-        moved_vector: engine
-            .runtime()
-            .vector_source_deltas_since(&scope(), &moved_source, 0, 16)
-            .unwrap(),
+        original_vector: vector_deltas(&original_source),
+        moved_vector: vector_deltas(&moved_source),
         final_cursor: engine.runtime().cursor().unwrap(),
     }
 }

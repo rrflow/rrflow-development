@@ -1,9 +1,10 @@
 use crate::{
-    endpoint_catalogue, transaction_operation_sha256, AbortTransaction, BeginTransaction,
+    endpoint_catalogue, transaction_operation_sha256, AbortTransaction,
+    ActivateVectorQuantizationArtifact, BeginTransaction, BuildVectorQuantizationArtifact,
     CanonicalId, CloseSession, CommitTransaction, ContractError, CreateInstanceBackup,
     CreateSession, EnsureVectorCollection, ErrorCode, ExecuteQuery, ListInstanceBackups,
-    PreviewTransaction, ReadChangefeed, ReadEstate, RenewSession, Result, SearchVectors, PROTOCOL,
-    PROTOCOL_VERSION,
+    PreviewTransaction, ReadChangefeed, ReadEstate, RenewSession, Result, SearchVectors,
+    VectorQuantizationMethod, VectorSearchMode, PROTOCOL, PROTOCOL_VERSION,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -85,6 +86,19 @@ pub struct SdkConformanceTransaction {
 pub struct SdkConformanceVector {
     pub ensure: EnsureVectorCollection,
     pub search: SearchVectors,
+    pub quantization: SdkConformanceQuantization,
+}
+
+/// The quantization lifecycle on the corpus's vector: build a TurboQuant
+/// generation, activate it, and require it. `activate` names the artifact the
+/// build must return; the runners share one estate, so each one activates
+/// the generation its own build returned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SdkConformanceQuantization {
+    pub build: BuildVectorQuantizationArtifact,
+    pub activate: ActivateVectorQuantizationArtifact,
+    pub search: SearchVectors,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -109,6 +123,7 @@ pub struct SdkConformanceExpected {
     pub endpoint_count: u16,
     pub query_identity: String,
     pub vector_reference: String,
+    pub quantized_access_path: CanonicalId,
     pub estate_revision: u64,
     pub typed_error: ErrorCode,
     pub retry_attempts: u8,
@@ -158,12 +173,18 @@ impl SdkConformanceCorpus {
         self.query.validate()?;
         self.vector.ensure.validate()?;
         self.vector.search.validate()?;
+        self.vector.quantization.build.validate()?;
+        self.vector.quantization.activate.validate()?;
+        self.vector.quantization.search.validate()?;
         self.changefeed.read.validate()?;
         self.backup.create.validate()?;
         let scope = format!("instance:{}", self.identity.instance);
         if self.query.scope != scope
             || self.vector.ensure.scope != scope
             || self.vector.search.scope != scope
+            || self.vector.quantization.build.scope != scope
+            || self.vector.quantization.activate.scope != scope
+            || self.vector.quantization.search.scope != scope
             || self.changefeed.read.scope != scope
         {
             return invalid("SDK conformance requests must target the fixture instance scope");
@@ -178,6 +199,25 @@ impl SdkConformanceCorpus {
                     .map(|vector| &vector.name)
         {
             return invalid("SDK conformance vector ensure/search addresses differ");
+        }
+        let quantization = &self.vector.quantization;
+        if quantization.build.collection_id != self.vector.ensure.collection_id
+            || Some(&quantization.build.vector_name) != self.vector.search.vector_name.as_ref()
+            || quantization.search.collection_id != self.vector.search.collection_id
+            || quantization.search.vector_name != self.vector.search.vector_name
+            || !matches!(
+                quantization.build.method,
+                VectorQuantizationMethod::TurboQuant { .. }
+            )
+            || !matches!(
+                quantization.search.mode,
+                VectorSearchMode::RequireApproximate { .. }
+            )
+            || self.expected.quantized_access_path.as_str() != "turboquant"
+        {
+            return invalid(
+                "SDK conformance quantization must build, activate and require TurboQuant on the corpus vector",
+            );
         }
         if self.changefeed.follow_wait_timeout_ms == 0
             || self.changefeed.follow_wait_timeout_ms > 5_000

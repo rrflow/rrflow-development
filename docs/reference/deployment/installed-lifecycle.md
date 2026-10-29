@@ -636,6 +636,37 @@ the readiness proof includes a bounded engine operation and persistence health.
 A PID, port, TCP handshake, marker, JSON file, source path, or compile result is
 not readiness.
 
+### Served endpoint record
+
+A served estate records where it listens, so that another local process can
+find an instance started from the project folder. Connectome and
+`rrflow ready` use it. The record is an endpoint candidate under
+[H-07](../../roadmap/rrflow-1.0/gate-h.md#h-07-devpulse-managed-cloud-and-homelab-packages),
+never readiness.
+
+- **Publication.** After the server binds, `RrdEngine` writes
+  `.rrflow/serving.json` in the private estate directory. It holds the record
+  format, instance ID, loopback URL, serving process ID and product version,
+  and no credential. The engine writes it beside its final name and moves it
+  into place without replacing an object it did not remove.
+- **A record found at start is stale.** The serving process holds the estate's
+  single writer lock, so a record that exists when it publishes was left by a
+  process that no longer runs. The engine removes it first.
+- **Removal.** A clean shutdown removes the record if it is still the one this
+  process wrote. A killed process leaves it in place until the next serve.
+- **Resolution.** `rrflow ready --project <root>` without `--address` reads the
+  record and runs the same authenticated challenge against its URL. A missing
+  record, an unreachable URL, or a server that cannot prove the installed
+  instance and credential is not ready. The record is never trusted on its own.
+  The challenge sends the installed credential, so a record that names a
+  non-loopback address, another instance, an unknown field or a non-regular
+  object is refused before any connection.
+- **A second serve.** While another process holds the estate open,
+  `rrflow serve` fails before binding. It says the estate is already open and
+  names the recorded URL when one exists.
+- **The locator is unchanged.** `.rrflow/config.toml` still contains no
+  endpoint.
+
 ## Verification levels
 
 Verification has a dedicated read-only inspection API and never calls a path

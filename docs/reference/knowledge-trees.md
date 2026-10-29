@@ -5,10 +5,15 @@
 **Owner:** persisted knowledge-tree configuration; advanced construction remains at the connector contract
 
 A knowledge tree is a named hierarchy of grouping nodes and knowledge paths.
-Each source path binds either an existing native RRFlow vector collection and
-named vector, or an explicitly configured external knowledge service. The
-public definitions in `rrd-contract/src/knowledge_tree.rs` own their exact
-serialized shape and limits. They do not replace bootstrap KnowledgePackageV1,
+Each source path binds a project-local directory, an existing native RRFlow
+vector collection and named vector, or an explicitly configured external
+knowledge service. `project_directory` uses `null` for the project root or a
+normalized portable path relative to that root. Saving it only records the
+binding: it does not read the directory, start ingestion or authorize source
+effects. Directories outside the project root and automatic relationship
+construction remain unimplemented. The public definitions in
+`rrd-contract/src/knowledge_tree.rs` own their exact serialized shape and limits.
+They do not replace bootstrap KnowledgePackageV1,
 reasoning trees, filesystem attunement or the endpoint-binding contract.
 
 The [advanced connector contract](data/knowledge-connectors.md) owns execution,

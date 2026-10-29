@@ -1,3 +1,4 @@
+mod attunement;
 mod audit;
 mod backup;
 mod changefeed;

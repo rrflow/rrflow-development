@@ -6,6 +6,7 @@
 
 mod function;
 mod index;
+mod proof_nodes;
 pub(crate) mod runtime_state;
 mod semantic_commit;
 mod vector;
@@ -31,15 +32,16 @@ pub(crate) use semantic_commit::prepare_semantic_commit;
 pub use semantic_commit::SemanticCommitPlan;
 pub(crate) use vector::{
     encode_vector_retirement, encode_vector_source_effects, encode_vector_version,
-    vector_source_deltas,
 };
 pub use vector::{
     VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
     VECTOR_SOURCE_DELTA_CONTRACT_VERSION,
 };
-pub(crate) use versioned_read::{read_versioned, read_versioned_expanding, schema_at_read};
+pub(crate) use versioned_read::{
+    read_vector_deltas, read_versioned, read_versioned_expanding, schema_at_read,
+};
 pub use versioned_read::{
     RuntimeAdjacencyDirection, RuntimeReadAccessPath, RuntimeReadBudget, RuntimeReadEvidence,
-    RuntimeReadPathEvidence, RuntimeVersionedRead, RuntimeVersionedSource,
+    RuntimeReadPathEvidence, RuntimeVectorDeltaRead, RuntimeVersionedRead, RuntimeVersionedSource,
     RUNTIME_VERSIONED_READ_CONTRACT_VERSION,
 };

@@ -13,6 +13,15 @@ records code inspection and executed component tests at `b6052fee`.
 
 ## Result required
 
+The [authenticated read-cost repair](../../evidence/change-journals/gate-c/c-07g-proof-node-reuse.md)
+records the next full Desktop failure: candidate `8a6752b2` acknowledged all
+100000 corpus operations but verified only 34191 before its original two-hour
+setup deadline. Segment handles stayed bounded with zero denials. Scoped proof
+node reuse addresses measured repeated backing reads without skipping change
+verification. Component tests are not full-profile or actual soak acceptance;
+C-07 and the repository-wide review remain open.
+
+
 The [retained descriptor-exhaustion result](../../evidence/change-journals/gate-c/c-07g-native-descriptor-failure.md)
 shows that encoder candidate `9957ed39` reached 77,945 acknowledged records,
 then exhausted native file handles. The installed verifier passes on the
@@ -84,8 +93,58 @@ packages as if their implementation were absent.
 | d | `TransactionGate` count/byte/deadline admission; installed storage configuration; native mutable/retention, maintenance, reclamation, recovery and disk-reserve limits. | Demonstrate aggregate process limits and sustained progress under the declared profiles. Logical reservations alone are not RSS or proof that a large estate progresses. |
 | e | Native source-page and retained-output pools, read-view lifetime registry, projected/interleaved lifetime and native memory fixtures. | Complete the required physical/lifetime/native matrix and retained-owner drain evidence on the final candidate. |
 | f | Owned ext4/APFS/NTFS runner, selected native-error/recovery ledger and damaged-state tests. | PR115 candidate `3c13f455` passed all 24 selected native capacity cases across Linux, macOS and Windows. Bind these exact results to the accepted candidate; full profile/soak qualification remains separate. |
-| g | `installed_reopen.rs::sustained` driver, bounded corpus generator/independent readback, `run_sustained_capacity.py`, frozen profiles and progress/result receipts. | Desktop corpus ingestion failed at 50,685 acknowledgements. The subsequent 1,000-record characterization completed but failed the 25-RPS operating point. No 24-hour soak has started; measure scheduling/readback and repair growth before full qualification. |
+| g | `installed_reopen.rs::sustained` driver, bounded corpus generator/independent readback, `run_sustained_capacity.py`, frozen profiles and progress/result receipts. | Frozen Desktop candidate `7c329d49` acknowledged all 100000 corpus operations, then hit the unchanged two-hour setup limit at 44556 independent verifications. The [retained outcome](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md#preserved-native-failure) and earlier [terminal outcome](../../evidence/change-journals/gate-c/c-07g-window-native-outcome.md) remain distinct. Final complete readback, profile/repetition and actual 24-hour qualification remain open. |
 | h | `collect_storage_acceptance.py` and canonical Rust receipt validation. | No complete joined accepted candidate/profile/native/soak evidence. Collection tooling is implemented; accepted evidence is missing. |
+
+### Immediate engine diagnostic and growth package
+
+The 2026-10-25 [engine review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+keeps C-07 active. The handle and native-fill repairs retain their exact
+candidate evidence. The following diagnostic requirements remain open;
+they do not replace the dependency spine's real-project implementation order.
+Source progress is not acceptance and no short preflight is a 24-hour soak.
+Use existing counters and bounded profiling for measured repairs; implement
+missing public diagnostic capture at its existing owner and do not claim that
+operator-only profiling has delivered that public capability.
+
+1. Characterize the present gap: `WritePathCollector` and
+   `RrflowKvStore::enable_native_write_path_diagnostics` already measure
+   validation, encoding, maintenance, WAL write/sync, memtable work and lock
+   wait for accepted native batches, but `DiagnosticStorageSnapshot` does not expose those samples through
+   installed public diagnostics. `sustained/corpus.rs` records individual
+   intents/ACKs/readbacks without timed setup windows. Reuse these owners;
+   do not create an unrelated profiler or another metrics registry.
+2. Bind an opt-in finite capture to the installed engine's existing
+   configuration/admission and diagnostic authorization. Declare maximum
+   samples, bytes, duration and output size before collection; one capture
+   must not reset or steal another observer's results. The native collector
+   currently keeps the first N samples and counts drops, so report that
+   selection explicitly and make later-growth windows deliberately selectable.
+   Failed/unobserved operations remain distinct from accepted samples; missing
+   phase measurements are never reported as zero cost. An empty/disabled/unsupported
+   capture is not zero latency. Public operation
+   and SDK projections come from their existing catalogue.
+3. Publish stable phase names/units, observed and dropped counts, process/reset
+   identity and independently measured resource limits. Keep queue/lock wait,
+   WAL sync, encoding, maintenance and total elapsed separate. Attribute a
+   measured window without claiming independently read counters are one atomic
+   transaction stamp. Never retain keys, values, prompts or credentials.
+4. Extend the existing progress stream with bounded ingestion and readback
+   windows: intended/acknowledged/verified counts, elapsed time and real samples
+   from the same public engine diagnostics. Preserve original deadlines and
+   independent expected-value generation. Do not repeatedly rescan or retain
+   the entire event log to render progress; no synthetic samples fill gaps.
+5. Prove disabled/enabled parity, concurrent readers, capture exhaustion,
+   unauthorized access, restart/reset and no secret leakage. Run the existing
+   write-diagnostics/store/engine tests first, then an actual installed
+   capture/ingest/readback flow. Measure overhead and sample/export memory;
+   do not label a copied struct or a mock endpoint usable debug mode.
+6. Diagnose the largest observed cost with those results and repair that one
+   owner. Preserve independent correctness and compare the same corpus at
+   1k/10k characterization points before the declared full profile. Fixing
+   storage alone does not remove context.rs's snapshot/BM25 rebuild or the
+   vector candidate hydration path; their E/F/G/H work is explicit in the
+   [engine-first sequence](executable-dependency-spine.md#engine-first-alpha-execution-focus).
 
 ### Execution reset after the failed Desktop corpus
 
@@ -96,33 +155,114 @@ reported 1,981,981,149,033 cumulative segment bytes read for 1,414,786,770 bytes
 of segments, one failed compaction and a corpus-operation deadline. Those are
 attribution leads, not a diagnosed root cause, an OOM result or a completed soak.
 
-1. **Preserve the native result and finish engine growth:** PR115 merged PR112
-   and passed candidate CI, including all three native capacity platforms. Its
-   conflict-probe optimization is implemented; sustained growth is still open. Use current public
-   main as the source baseline and preserve each failed campaign. Do not start
-   new UI/provider/configuration packages while these storage blockers remain.
-2. **Attribute and remove growth costs at their owner.** First measure native
-   conflict validation's unnecessary value-page reads using the existing page
-   and I/O counters. Preserve conflict/tombstone/reopen behavior while selecting
-   only authenticated key/sequence pages and honoring the active-memory version.
-   Then use existing write-phase/maintenance diagnostics on bounded growth
-   characterizations (1,000 and 10,000 records before the full profile)
-   to distinguish validation, read amplification, compaction and publication.
-   This first optimization is not assumed to explain all Desktop read traffic.
-3. **Freeze one integrated candidate and run preflight.** Keep the Desktop
-   corpus, allocation, 30-second operation deadline and acceptance limits.
-   Require complete ingestion and independent readback, restart, backup under
-   writes, pin interference and burst/drain. A failed stage stops its dependent
-   soak, not independent native failure qualification. Never relabel setup as
-   soak, shrink the qualification corpus or extend a timeout to conceal failure.
-4. **Run the required profile/repetition matrix and actual soak.** Follow J-04's
-   allocations and the existing C-07g seeds, durations and 24-hour requirement.
-   Use the existing bounded launcher, exact artifact identities and independent
-   ledgers. A short characterization diagnoses; it cannot close this step.
-5. **Close against evidence, then hand off.** The existing acceptance collector
-   must bind all required native and sustained cases to the candidate. Merge
-   only passing candidate PRs and update Gate C/POAM035 only when their named
-   exits pass. Then resume dependent indexing/retrieval, knowledge paths and UI.
+#### Joined rrflowDB evidence sequence
+
+The system under test is one installed `RrdEngine` with rrflowKV persistence,
+rrflowQL and vector retrieval, not three independently passing component suites.
+The following sequence makes progress and its limits visible without replacing
+the C-07a-h exits or the D-02/D-03/D-05 project workflow:
+
+1. **One small complete transaction-to-search flow.** Commit independently
+   generated records, relationships and vectors through the installed public
+   API; use vector search to select a known result and read its record and exact
+   relation set through rrflowQL at the search's returned cursor. Require an
+   independent expected identity and score. Force process termination, reopen,
+   repeat the joined read and resolve the original request as the same durable
+   receipt. Include negative-oracle proof that an incorrect expected result
+   fails. Record exact revision, binary, source/configuration and outcomes.
+2. **Extend history and failure coverage.** At the same public boundary,
+   check insert/update/delete, retained reads, cancellation, denied admission,
+   response loss and interruption around publication against an independent
+   operation history. Verify all acknowledged writes and resolve uncertain
+   outcomes before retry. Retain exact seeds and failing histories. Keep the
+   existing native crash, corruption, resource and reclamation oracles.
+3. **Test retrieval quality as a separate claimed capability.** The existing
+   100k workload retrieves vectors by exact reference; it does not prove
+   nearest-neighbor search, HNSW, TurboQuant or recall at that scale. Establish
+   the authorized public lifecycle for building/activating those artifacts,
+   then compare exact and approximate results against an independent exhaustive
+   baseline, including filters, update/delete, staleness and reopen. Report
+   recall, latency, storage, memory, build/update work and missing coverage;
+   do not turn exact-point retrieval or a component test into a quality claim.
+4. **Grow in measured stages.** Freeze each candidate and exercise matched
+   small, 1k and 10k characterization fixtures before the existing 100k profile.
+   Record completion and per-stage progress, read/write latency, pressure,
+   maintenance, cursor/receipt identity and observed resource ownership.
+   Retain each failure and diagnose its actual boundary before another repair;
+   smaller fixtures characterize behavior and do not relax 100k requirements.
+5. **Qualify the final integrated candidate.** After prerequisite PRs and their
+   CI pass, freeze the exact source/tree, executable, harness, configuration,
+   corpus, hardware, limits and quality oracle. Run the required native
+   Linux/macOS/Windows capacity cases, profile/repetition matrix, pre-soak
+   admission and actual 24-hour soak. Bind all results through the existing
+   acceptance collector; a prior or unmerged candidate cannot supply its pass.
+   The [J-04 ladder](gate-j.md#initial-workload-ladder) defines the proposed
+   Desktop 4-vCPU/8-GiB host, 2-GiB engine, 100000-record/500000-edge/100000-
+   vector corpus and 1/4/8-client, 5/25/50-request-per-second sweep. Its
+   [proposed thresholds](gate-j.md#proposed-passfail-thresholds) include zero
+   exact-oracle mismatches, recall@20 of at least 0.95 for the stated filtered
+   approximate workload, three seeded repetitions and an actual 24-hour soak.
+   These are proposed targets, not measured results or an SLA; freeze the
+   approved manifest before a qualification run.
+6. **Prove the user project journey.** Once D-02/D-03/D-05 exist, attach an
+   authorized local source, build source-linked records/relations and indexes,
+   query the resulting knowledge, edit/delete a source, replan the affected
+   work, interrupt/restart and audit the real effects. A seeded synthetic corpus
+   or unactivated connector does not establish automatic project knowledge.
+
+For method provenance, [FoundationDB's published design](https://www.foundationdb.org/files/fdb-paper.pdf)
+describes reproducible workload/fault testing with multiple independent oracles;
+[Jepsen's project documentation](https://github.com/jepsen-io/jepsen/blob/main/doc/whats-here.md)
+describes histories and checkers. Apply those principles to RRFlow's real
+boundaries; this sequence does not claim a FoundationDB simulator or Jepsen
+certification. [Qdrant's recall guidance](https://qdrant.tech/documentation/tutorials-search-engineering/ann-recall/)
+compares approximate results with exact neighbors, and its
+[quantization reference](https://qdrant.tech/documentation/quantization/)
+describes rescoring against original vectors and its cost. The
+[TurboQuant paper](https://arxiv.org/abs/2504.19874) distinguishes reconstruction
+distortion from inner-product estimation; a test of one does not establish the
+other. These are behavior and evaluation references, not permission to import
+another system's authority or assume its benchmark numbers apply to RRFlow.
+Each stage is evidence only for what actually ran.
+
+The previous storage-first sequence postponed missing project functionality.
+The parent roadmap now prioritizes the real-project workflow. Qualification is
+staged by the behavior it can actually prove:
+
+1. **Implement and prove the source-to-retrieval capability.** D-02 through
+   D-05 and their consumed E/F prerequisites must execute against a real project
+   using the installed engine. Retain source spans, real embedding identity,
+   query results, edit/delete invalidation, effective configuration and restart.
+   A pending job or synthetic seeded storage corpus cannot prove this stage.
+   If the executor is absent, implement it; another synthetic soak cannot do so.
+2. **Prove bounded installed correctness for each implemented slice.** Run its
+   owning failure/retry, acknowledgement, transaction, resource, isolation and
+   reopen oracles. A reproduced correctness failure affecting the slice stops
+   that slice and is repaired at its canonical owner. Retain C-07's native
+   crash/disk-exhaustion tests and all earlier failures. An unrelated incomplete
+   long capacity campaign does not prohibit implementing missing behavior.
+3. **Characterize matched real-project growth.** Freeze source revisions,
+   workload/query set, quality oracle, configuration and hardware. Measure source
+   ingestion, index construction/update, retrieval quality/latency, maintenance
+   and independent readback separately. Attribute a failing operating point
+   before optimization. Synthetic storage profiles still isolate storage costs;
+   they are supporting evidence, not a replacement for this joined flow.
+4. **Qualify the integrated candidate.** Freeze revision/tree, binaries, harness,
+   configuration, corpus and limits. Run the existing C-07g/J-04 profile and
+   repetition matrix, pre-soak admission and actual 24-hour requirement. Keep
+   warmup, measured, burst, drain, backup interference and settled ownership
+   requirements. New source cannot inherit an earlier candidate's acceptance.
+5. **Close only the named exit.** The existing acceptance collector must bind
+   every required native and sustained case to its candidate. Its success
+   semantics do not change. Full C-07g/h and release requirements remain open
+   until their exact evidence passes; short characterizations do not close them.
+
+Do not change deadlines, corpus or success thresholds within a frozen run,
+relabel setup as soak, erase a failed operating point, or waive acknowledged-write
+readback. Historical receipts retain their original meaning. Already running
+campaigns keep their original identity; they do not control all feature work.
+The existing API and single pre-release implementation remain unchanged.
+
 
 The [pre-soak admission and readback record](../../evidence/change-journals/gate-c/c-07g-soak-admission.md)
 binds the merged native result, retained failed characterization and the next
@@ -639,7 +779,7 @@ measurement receipts and serve them after restart; its own claims cannot be
 the sole acceptance oracle. The current Markdown/Git owners remain the
 authoritative development records until KB-06/07 and KB-08 qualify durable
 knowledge import/resolution. Do not move planning authority into an unqualified
-database or create automatic editor hooks.
+database or an editor hook; a hook stays an alias stub onto those owners.
 
 After D-02 through D-04 and E/F pass, add a bounded repository corpus with
 source edits, renamed/deleted files, contradictory notes and revoked access.

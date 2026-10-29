@@ -12,7 +12,9 @@ use rrd_contract::{
     CanonicalId, CloseSession, CreateSession, InstallationTargetKind, RestorePublicationPlan,
     SessionLimits, PROTOCOL, PROTOCOL_VERSION,
 };
-use rrd_engine::{digest, InstallationPreview, InstallationVerificationStatus, RrdEngine};
+use rrd_engine::{
+    digest, InstallationPreview, InstallationVerificationStatus, RrdEngine, ServiceError,
+};
 use rrd_server::RrdHttpServer;
 use serde::Serialize;
 use std::error::Error;
@@ -333,9 +335,14 @@ fn serve(
     let project_root = std::fs::canonicalize(project)?.display().to_string();
     #[cfg(feature = "crash-test")]
     rrd_engine::crash_test::configure_from_stdin(&project.join(&locator.storage_root))?;
-    let engine = RrdEngine::open_installed(project, &executable)?;
+    let engine = RrdEngine::open_installed(project, &executable)
+        .map_err(|error| estate_open_elsewhere(project, error))?;
+    // Issued while this engine holds the estate's writer lock, so a record
+    // found at publication belongs to a process that no longer runs.
+    let publisher = engine.serving_publisher()?;
     let server = RrdHttpServer::bind(engine, bind)?;
     let address = server.local_addr();
+    let registration = publisher.publish(address)?;
     let announcement = ServeAnnouncement {
         status: "listening",
         url: format!("http://{address}"),
@@ -365,32 +372,69 @@ fn serve(
         operation = "serve.listening",
         instance_id = %announcement.instance_id,
         address = %address,
+        serving_record = %registration.record().url,
         elapsed_ms = started.elapsed().as_millis() as u64,
         "installed lifecycle operation completed"
     );
 
-    runtime()?.block_on(server.serve_until(async {
-        let _ = tokio::signal::ctrl_c().await;
-    }))?;
+    let served = (|| -> Result<(), BoxError> {
+        runtime()?.block_on(server.serve_until(async {
+            let _ = tokio::signal::ctrl_c().await;
+        }))?;
+        Ok(())
+    })();
+    let withdrawn = registration.withdraw();
     tracing::info!(
         target: "rrflow::installed",
         operation = "serve.closed",
         instance_id = %announcement.instance_id,
         address = %address,
+        serving_record_withdrawn = withdrawn.is_ok(),
         elapsed_ms = started.elapsed().as_millis() as u64,
         "installed lifecycle operation completed"
     );
+    served?;
+    withdrawn?;
     Ok(Execution {
         text: String::new(),
         success: true,
     })
 }
 
-fn ready(project: &Path, address: std::net::SocketAddr, json: bool) -> Result<Execution, BoxError> {
+/// Another process holds the estate, so this one fails before binding. Name
+/// the endpoint it recorded, if any; only `rrflow ready` can prove it.
+fn estate_open_elsewhere(project: &Path, error: ServiceError) -> BoxError {
+    if !matches!(error, ServiceError::EstateInUse(_)) {
+        return error.into();
+    }
+    match RrdEngine::read_serving_record(project) {
+        Ok(Some(record)) => format!(
+            "this project's RRFlow estate is already open in another process; its served endpoint is recorded at {}. Run `rrflow ready --project` to prove it.",
+            record.url
+        )
+        .into(),
+        _ => "this project's RRFlow estate is already open in another process".into(),
+    }
+}
+
+fn ready(
+    project: &Path,
+    address: Option<std::net::SocketAddr>,
+    json: bool,
+) -> Result<Execution, BoxError> {
     let started = Instant::now();
     let now = wall_clock_millis()?;
     let invocation = format!("{now}-{}", std::process::id());
     let locator = RrdEngine::read_project_locator(project)?;
+    let (address, recorded) = match address {
+        Some(address) => (address, false),
+        None => {
+            let record = RrdEngine::read_serving_record(project)?.ok_or(
+                "no served endpoint is recorded for this project; start it with `rrflow serve`",
+            )?;
+            (record.address()?, true)
+        }
+    };
     let project_root = std::fs::canonicalize(project)?.display().to_string();
     let credential = RrdEngine::read_installed_api_key(project)?;
     let client = RrdClient::connect_local(
@@ -398,7 +442,7 @@ fn ready(project: &Path, address: std::net::SocketAddr, json: bool) -> Result<Ex
         locator.identity.instance_id,
         ClientConfig::default(),
     )?;
-    let (readiness, capabilities, endpoint_catalogue, openapi) = runtime()?.block_on(async {
+    let proof = runtime()?.block_on(async {
         let session = client
             .create_session(
                 credential.principal_id.clone(),
@@ -440,7 +484,16 @@ fn ready(project: &Path, address: std::net::SocketAddr, json: bool) -> Result<Ex
         let discovery = discovery?;
         closed?;
         Ok::<_, rrd_client::Error>(discovery)
-    })?;
+    });
+    let (readiness, capabilities, endpoint_catalogue, openapi) =
+        proof.map_err(|error| -> BoxError {
+            if recorded {
+                format!("the served endpoint recorded at http://{address} is not ready: {error}")
+                    .into()
+            } else {
+                error.into()
+            }
+        })?;
     let openapi_sha256 = digest::sha256_hex(&serde_json::to_vec(&openapi)?);
     let report = UiDiscoveryReport {
         status: "ready",

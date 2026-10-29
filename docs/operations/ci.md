@@ -11,6 +11,49 @@ defines risk-based package widening, and the [POA&M](../poam/rrflow-1.0-alpha.md
 owns deficiencies. A green workflow proves only the commands and assertions it
 actually executes.
 
+## C-07 storage-diagnostic attribution
+
+To characterize a slow installed `rrflow` storage-diagnostic request, start the
+primary executable with `RRFLOW_TRACE=rrd_server::diagnostic=debug,rrd_store::diagnostic=debug`
+and `RRFLOW_TRACE_FORMAT=json`; its existing tracing implementation emits JSON
+to stderr. Capture stderr under an explicit size and retention budget; an
+unconsumed pipe or slow sink can itself affect execution. Trace activation
+does not change the resource-sampling requirements or authorize collection of
+other data. Use the same trace settings for the actual process under test, not
+just the harness process.
+
+The server event reports `service_elapsed_ns` around the engine service call
+and a success boolean. For a successful rrflowKV physical snapshot, a store
+event reports `mutex_wait_ns`, `mutex_held_assembly_ns`,
+`memtable_profile_ns`, key/version counts and segment count. The lock-wait
+interval includes scheduling and the lock call; the held-assembly interval ends
+immediately before dropping the guard, and includes profile time. Emission
+happens after unlock. Service time also includes authorization and validation;
+it does not include network, HTTP scheduling before the call, or the full
+response. These observations do not independently isolate scheduler, I/O,
+authorization or underlying causes. An error before the physical snapshot
+has no store event. Clock resolution, trace overhead, filtering, loss and
+preemption affect interpretation.
+
+The trace span contains SHA-256 of the client request ID rather than its raw
+value. The digest can still be sensitive or guessable; treat traces as scoped
+diagnostic data. The C-07 sampler uses a checked process-local request counter
+and prints the matching digest for completed slow samples within its existing
+64-record bound; include the harness process and campaign identity when joining
+across restarts. Failed or canceled calls need not produce a completed-sample
+record, and records beyond that bound are not retained. Other callers need
+their own unique request IDs and matching digest to join records. Missing or
+truncated events are missing evidence, not zero cost. Exact-field or
+source-location subscriber filters can affect the `tracing` enabled check; use
+the stated target filter and validate capture on the installed candidate.
+
+The [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
+records the bounded controlled test and its limits. The original failed run
+used an earlier binary and cannot retroactively acquire these events.
+The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installed-trace-correlation.md)
+records the small installed mixed-family and restart proof; it is not capacity
+or soak qualification.
+
 ## Candidate chain
 
 RRFlow has one candidate CI chain. The thin caller is
@@ -21,11 +64,16 @@ The caller accepts ready pull requests, merge-queue candidates, and explicit
 manual dispatches. Draft PRs remain reviewable packages without automatically
 launching the full pipeline. `opened`, `synchronize`, `reopened`,
 `ready_for_review`, and `converted_to_draft` are explicit PR activities.
-Becoming ready starts candidate CI even without a new commit; returning to
-draft cancels obsolete work through the same PR/ref concurrency key and skips
-the reusable caller. Other PRs' runs are unaffected. A skipped draft run is
-not candidate acceptance. Manual dispatch intentionally remains available for
-an explicitly requested full run on a draft branch.
+Becoming ready starts candidate CI even without a new commit. Draft events use
+a separate concurrency group from ready candidates, so a delayed draft event
+cannot cancel a ready run. Returning to draft skips the reusable caller but does
+not cancel a ready run already in progress; a subsequent ready candidate for
+the same PR supersedes that run. Other PRs and non-PR refs remain isolated.
+A skipped draft run is not candidate acceptance. GitHub does not guarantee
+concurrency start order, and a local grouping test cannot prove live delivery
+order. The required gate continues to fail unless every partition succeeds.
+Manual dispatch remains available for an explicitly requested full run on a
+draft branch.
 
 This uses GitHub's documented [pull-request activity types](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request);
 the default activity list does not include readiness transitions. The local
@@ -51,6 +99,15 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
+
+The Linux lifecycle and Windows/macOS portability lanes also build the native
+`rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
+copies, and run the installed example over authenticated loopback HTTP. The
+runner checks the exact synthetic task and owning relationship at one read
+stamp, changes the task, rejects the old expectation, verifies the stopped
+estate and reads the same state after reopening. It bounds child output and
+execution, and terminates only its own processes. This is a small fresh-project
+integration corpus, not the complete H-04 SDK matrix or C-07 qualification.
 
 The Linux topology and Windows/macOS estate partitions also require
 `projected_lifetime` and `reader::lifetime_tests`: overlapping empty-reader
@@ -273,13 +330,18 @@ candidate. The ordinary suite's ignored privileged case is not acceptance;
 the explicit isolated invocation must pass. This bounded fixture does not
 replace D-01.5's wider native filesystem and offline qualification.
 
-The repository-policy partition also verifies the generated
-`docs/roadmap/rrflow-1.0-file-plan.jsonl`. That inventory must match every
-tracked or non-ignored path and every long-lived future path registered by its
-generator. Newly created paths become current inventory records; the pull
-request description binds their intended scope. Regenerate the inventory with
-`python3 scripts/ci/build_execution_inventory.py` after an accepted path or
-content change.
+The repository-policy partition generates and checks the complete Git-backed
+inventory in ignored `target/rrflow-1.0-file-plan.jsonl`, then retains it and
+the exact checked-out Git revision as a CI artifact. The generator must cover
+every tracked or non-ignored path and every long-lived future path registered by
+its generator; a missing or stale local output fails `--check`. CI rejects dirty
+or untracked non-ignored source before generating the artifact. The stable
+`docs/roadmap/rrflow-1.0-file-plan.jsonl` link is a retirement descriptor, not
+current inventory. Generate a current local view using
+`python3 scripts/ci/build_execution_inventory.py` and check it with the same
+command plus `--check`. Newly created paths become current inventory records;
+the pull request description still binds their intended scope. This removes a
+shared generated merge-conflict point without removing any candidate CI test.
 
 The Connectome UI is optional for engine operation, while candidate CI follows
 repository policy and recursively materializes every declared submodule. The
@@ -311,6 +373,14 @@ The five engine suites cover every workspace package exactly once, but package
 names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
 all 20 implementation packages into separate product checks.
+
+The installed-reopen release build is bounded to two Cargo workers on
+`windows-latest` and one on Linux/macOS. In PR150 candidate run 40503118473
+attempt 2, its Windows build took 63m24s and the 100-cycle history step took
+4m06s; this is an observed baseline, not proof of the bottleneck's cause. The
+two-worker candidate must pass the complete native pipeline and be timed before
+any speed or memory-safety claim. Commands, platform matrix and gates are
+unchanged.
 
 ## Presubmit and change-evidence boundary
 
@@ -351,9 +421,8 @@ the pull request and required candidate check non-bypassable.
 A developer may run the
 [repository checklist](../roadmap/rrflow-1.0-execution-map.md#repository-wide-run-checklist)
 locally before publishing, but the local run is convenience and early feedback,
-not authority. RRFlow deliberately has no installed Git/editor/provider hook:
-client Git hooks are not distributed by clone, can be skipped, and would create
-the exact provider-owned lifecycle behavior prohibited by `AGENTS.md`.
+not authority. The repository installs no Git hook: client hooks are not
+distributed by clone and can be skipped, so no hook can carry this gate.
 
 ## Local development container
 

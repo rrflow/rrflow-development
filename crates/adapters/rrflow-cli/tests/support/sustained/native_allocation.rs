@@ -4,23 +4,26 @@
 use rrflow_eval::storage::NativeAllocationKind;
 use rrflow_eval::storage::{AllocationEnforcement, NativeAllocationReceipt, StorageCampaign};
 use std::io::Read;
+use std::path::PathBuf;
 
-pub(crate) fn receipt(
-    campaign: &StorageCampaign,
-) -> Result<Option<NativeAllocationReceipt>, String> {
-    let raw = match std::env::var("RRFLOW_SUSTAINED_ALLOCATION_RECEIPT") {
-        Ok(raw) => raw,
-        Err(std::env::VarError::NotPresent) => return Ok(None),
-        Err(_) => return Err("native allocation receipt is not UTF-8".into()),
-    };
-    if raw.len() > 4096 {
-        return Err("native allocation receipt exceeds admission".into());
+/// On Linux the procfs executable link refers to this process's actual image,
+/// including after its original pathname has been renamed or replaced. The
+/// same path resolves in the spawned child before it executes the helper.
+/// Missing procfs is an explicit failure at open/spawn, never a pathname fallback.
+pub(in crate::sustained) fn harness_image() -> Result<PathBuf, String> {
+    #[cfg(target_os = "linux")]
+    {
+        Ok(PathBuf::from("/proc/self/exe"))
     }
-    let receipt: NativeAllocationReceipt = rrflow_eval::storage::decode(raw.as_bytes())?;
-    receipt.validate(campaign)?;
+    #[cfg(not(target_os = "linux"))]
+    {
+        std::env::current_exe().map_err(|e| e.to_string())
+    }
+}
+
+pub(in crate::sustained) fn harness_digest() -> Result<String, String> {
     use sha2::{Digest as _, Sha256};
-    let mut file = std::fs::File::open(std::env::current_exe().map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
+    let mut file = std::fs::File::open(harness_image()?).map_err(|e| e.to_string())?;
     let mut hash = Sha256::new();
     let mut buffer = [0u8; 65536];
     let admitted = file.metadata().map_err(|e| e.to_string())?.len();
@@ -42,11 +45,27 @@ pub(crate) fn receipt(
     if read != admitted || file.metadata().map_err(|e| e.to_string())?.len() != admitted {
         return Err("harness extent changed during identity read".into());
     }
-    let actual = hash
+    Ok(hash
         .finalize()
         .iter()
         .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+        .collect())
+}
+
+pub(crate) fn receipt(
+    campaign: &StorageCampaign,
+) -> Result<Option<NativeAllocationReceipt>, String> {
+    let raw = match std::env::var("RRFLOW_SUSTAINED_ALLOCATION_RECEIPT") {
+        Ok(raw) => raw,
+        Err(std::env::VarError::NotPresent) => return Ok(None),
+        Err(_) => return Err("native allocation receipt is not UTF-8".into()),
+    };
+    if raw.len() > 4096 {
+        return Err("native allocation receipt exceeds admission".into());
+    }
+    let receipt: NativeAllocationReceipt = rrflow_eval::storage::decode(raw.as_bytes())?;
+    receipt.validate(campaign)?;
+    let actual = harness_digest()?;
     if actual != receipt.harness_sha256.as_str() {
         return Err("allocation receipt names another harness".into());
     }
@@ -60,14 +79,30 @@ pub(crate) fn enforcement(
     let Some(receipt) = receipt else {
         return Ok(AllocationEnforcement::ObservedOnly);
     };
-    if !verify(pid, receipt) {
-        return Err("owned engine native allocation membership or limits changed".into());
+    enforcement_for(pid, std::process::id(), Some(receipt))
+}
+
+/// The helper must prove membership of the original harness as well as its
+/// own process and the sampled engine. A helper PID cannot replace the
+/// harness identity in qualification evidence.
+pub(crate) fn enforcement_for(
+    pid: u32,
+    harness_pid: u32,
+    receipt: Option<&NativeAllocationReceipt>,
+) -> Result<AllocationEnforcement, String> {
+    let Some(receipt) = receipt else {
+        return Ok(AllocationEnforcement::ObservedOnly);
+    };
+    if !verify(pid, harness_pid, receipt) {
+        return Err(
+            "owned engine, harness or native worker allocation membership or limits changed".into(),
+        );
     }
     receipt.enforcement()
 }
 
 #[cfg(target_os = "linux")]
-fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
+fn verify(pid: u32, harness_pid: u32, receipt: &NativeAllocationReceipt) -> bool {
     use std::path::{Path, PathBuf};
     fn read(path: impl AsRef<Path>) -> Option<String> {
         let mut raw = String::new();
@@ -93,7 +128,7 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
             return None;
         }
         let membership = format!("0::/{relative}");
-        for process in [pid, std::process::id()] {
+        for process in [pid, harness_pid, std::process::id()] {
             if !read(format!("/proc/{process}/cgroup"))?
                 .lines()
                 .any(|line| line == membership)
@@ -116,7 +151,7 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
 }
 
 #[cfg(windows)]
-fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
+fn verify(pid: u32, harness_pid: u32, receipt: &NativeAllocationReceipt) -> bool {
     use std::{
         ffi::c_void,
         mem::{size_of, zeroed},
@@ -180,7 +215,7 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
         if job.0.is_null() {
             return false;
         }
-        for id in [pid, std::process::id()] {
+        for id in [pid, harness_pid, std::process::id()] {
             let process = Handle(OpenProcess(0x0400, 0, id));
             let mut member = 0;
             if process.0.is_null()
@@ -223,6 +258,6 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
 }
 
 #[cfg(not(any(windows, target_os = "linux")))]
-fn verify(_pid: u32, _receipt: &NativeAllocationReceipt) -> bool {
+fn verify(_pid: u32, _harness_pid: u32, _receipt: &NativeAllocationReceipt) -> bool {
     false
 }

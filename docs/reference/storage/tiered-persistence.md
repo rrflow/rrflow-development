@@ -94,9 +94,9 @@ RRFlow currently has no component that:
   bytes as independent quantities across a full estate lifecycle.
 
 DataFusion must not fill that gap by opening arbitrary files or object URLs.
-Gate C-06 first establishes manifest-pinned Arrow-compatible pages and safe
-buffer lifetimes. Gate C-07 proves compaction and recovery cannot invalidate a
-reader. Only then may Gate D-10 move an authenticated snapshot closure through
+Gate C-06 first establishes selected-segment-pinned Arrow-compatible pages and
+safe buffer lifetimes. Durable checkpoints separately pin full manifest
+closures. Gate C-07 proves compaction and recovery cannot invalidate a reader. Only then may Gate D-10 move an authenticated snapshot closure through
 a configured cold-tier adapter while `RrdEngine` owns quiesce and resume.
 
 The DevForge CoW lower/upper filesystem contract is separately owned by Gates

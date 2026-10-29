@@ -66,6 +66,11 @@ an optional exchange representation under the
 [knowledge connector contract](../../data/knowledge-connectors.md).
 No dataset exists merely because a prompt flight was recorded.
 
+The [offline paired-outcome review exchange](outcome-review.md) prepares
+byte-bound review packets from explicit exports. It preserves uncertainty and
+failed outcomes; producing a packet does not approve labels, admit training,
+or implement the engine improvement routine.
+
 ## Experiments and release
 
 An experiment binds dataset/split digests, base model, tokenizer, prompt

@@ -1,8 +1,26 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: a36ace4e6572c85913cee78d147555688ba2d87684cc45cf7d19f08de536fa07
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "a36ace4e6572c85913cee78d147555688ba2d87684cc45cf7d19f08de536fa07" as const;
+// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2" as const;
 
 export const endpoints = {
+  "attunement-cancel": {
+    "method": "POST",
+    "path": "/v1/attunement/cancel",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-read": {
+    "method": "POST",
+    "path": "/v1/attunement/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-receipt-read": {
+    "method": "POST",
+    "path": "/v1/attunement/receipt/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
   "audit-export": {
     "method": "POST",
     "path": "/v1/audit/export",
@@ -326,6 +344,30 @@ export const endpoints = {
     "path": "/v1/vector/points/scroll",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "vector-quantization-activate": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/activate",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-quantization-build": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/build",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "vector-quantization-list": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/list",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "vector-quantization-retire": {
+    "method": "POST",
+    "path": "/v1/vector/quantizations/retire",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "vector-search": {
     "method": "POST",

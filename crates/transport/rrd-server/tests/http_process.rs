@@ -337,6 +337,163 @@ fn start_root() -> (tempfile::TempDir, PathBuf, RunningServer) {
     (temporary, root, server)
 }
 
+#[test]
+fn authenticated_storage_diagnostic_trace_correlates_store_without_secrets() {
+    use std::sync::Arc;
+
+    const CHILD: &str = "RRFLOW_TEST_DIAGNOSTIC_TRACE_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let result = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "authenticated_storage_diagnostic_trace_correlates_store_without_secrets",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "isolated diagnostic trace test failed: stdout={} stderr={}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+        return;
+    }
+
+    #[derive(Clone)]
+    struct Capture(Arc<Mutex<Vec<u8>>>);
+    impl Write for Capture {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let writer_output = output.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .json()
+        .with_env_filter(tracing_subscriber::EnvFilter::new(
+            "rrd_store::diagnostic=debug,rrd_server::diagnostic=debug",
+        ))
+        .with_writer(move || Capture(writer_output.clone()))
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().join("instance");
+    let engine = RrflowKvStore::open(&root).unwrap();
+    let instance = CanonicalId::new("socket-test").unwrap();
+    let resource = rrd_contract::ResourcePath {
+        segments: vec![rrd_contract::ResourceId::new(
+            rrd_contract::ResourceKind::Instance,
+            "socket-test",
+        )
+        .unwrap()],
+    };
+    let principal = Principal {
+        id: CanonicalId::new("trace-client").unwrap(),
+        kind: PrincipalKind::User,
+        credential_sha256: rrd_core::digest::sha256_hex(b"trace-test-api-key"),
+        credential_revision: 1,
+        not_before_unix_ms: 1,
+        expires_at_unix_ms: u64::MAX,
+        disabled: false,
+        role_ids: Default::default(),
+        grants: [
+            SecurityAction::SessionCreate,
+            SecurityAction::DiagnosticsRead,
+        ]
+        .into_iter()
+        .map(|action| ResourceGrant {
+            action,
+            resource_prefix: resource.clone(),
+            data_policy: None,
+        })
+        .collect(),
+    };
+    SecurityRepository::new(&engine, instance)
+        .initialize(
+            SecurityState {
+                format_version: SECURITY_FORMAT,
+                revision: 1,
+                principals: BTreeMap::from([(principal.id.clone(), principal)]),
+                roles: BTreeMap::new(),
+                identity_bindings: BTreeMap::new(),
+                jwt_issuers: BTreeMap::new(),
+            },
+            1,
+            "bootstrap",
+            "request-bootstrap",
+            "operation-bootstrap",
+        )
+        .unwrap();
+    drop(engine);
+    let server = start(&root);
+    let create = envelope(
+        json!({"limits": {"idle_timeout_ms": 60000, "absolute_timeout_ms": 300000, "max_open_transactions": 2}}),
+        Some("trace-session"),
+        None,
+    );
+    let (status, created) = post_with_api_key(
+        &server,
+        "/v1/sessions",
+        &create,
+        "trace-client",
+        "trace-test-api-key",
+    );
+    assert_eq!(status, 200, "{created}");
+    let session = payload(&created)["session_id"].as_str().unwrap();
+    let token = payload(&created)["token"].as_str().unwrap();
+    let mut request = envelope(json!({"scope": "instance:socket-test"}), None, None);
+    request["context"]["request_id"] = json!("private-request-sentinel");
+    let (status, response) = post(
+        &server,
+        "/v1/diagnostics/storage/read",
+        &request,
+        Some((session, token)),
+    );
+    assert_eq!(status, 200, "{response}");
+    server.stop();
+
+    let bytes = output.lock().unwrap().clone();
+    let raw = std::str::from_utf8(&bytes).unwrap();
+    assert!(!raw.contains("private-request-sentinel"));
+    assert!(!raw.contains("trace-test-api-key"));
+    assert!(!raw.contains(token));
+    let events: Vec<Value> = raw
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let event = events
+        .iter()
+        .find(|event| event["target"] == "rrd_store::diagnostic")
+        .expect("actual HTTP diagnostic must emit a store timing event");
+    assert_eq!(
+        event["span"]["request_sha256"],
+        rrd_core::digest::sha256_hex(b"private-request-sentinel")
+    );
+    assert!(event["fields"]["mutex_wait_ns"].is_u64());
+    assert!(event["fields"]["mutex_held_assembly_ns"].is_u64());
+    assert!(event["fields"]["memtable_profile_ns"].is_u64());
+    let service = events
+        .iter()
+        .find(|event| event["target"] == "rrd_server::diagnostic")
+        .expect("actual HTTP diagnostic must emit a service timing event");
+    assert_eq!(
+        service["span"]["request_sha256"],
+        rrd_core::digest::sha256_hex(b"private-request-sentinel")
+    );
+    assert_eq!(service["fields"]["success"], true);
+    let elapsed = service["fields"]["service_elapsed_ns"].as_u64().unwrap();
+    let wait = event["fields"]["mutex_wait_ns"].as_u64().unwrap();
+    let hold = event["fields"]["mutex_held_assembly_ns"].as_u64().unwrap();
+    assert!(u128::from(wait) + u128::from(hold) <= u128::from(elapsed));
+}
+
 fn seed_query_fixture(root: &Path) {
     let engine = RrflowKvStore::open(root).unwrap();
     let mut registry = RuntimeSchemaRegistry::empty(1, "RRD query fixture");
@@ -611,6 +768,44 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     let (status, unauthenticated) = post(&server, "/v1/backups", &backup, None);
     assert_eq!(status, 401, "{unauthenticated}");
 
+    let attunement = envelope(
+        json!({"contract_version": 1, "job_id": "job-missing"}),
+        None,
+        None,
+    );
+    let (status, denied) = post(
+        &server,
+        "/v1/attunement/read",
+        &attunement,
+        Some((session, token)),
+    );
+    assert_eq!(status, 403, "{denied}");
+    assert_eq!(denied["outcome"]["error"]["code"], "permission_denied");
+    let (status, denied) = post(&server, "/v1/attunement/read", &attunement, None);
+    assert_eq!(status, 401, "{denied}");
+
+    // The quantization lifecycle is authorized under the vector collection
+    // action, which this principal does not hold.
+    let quantization = envelope(
+        json!({
+            "scope": "instance:socket-test",
+            "collection_id": "documents",
+            "vector_name": "title",
+            "method": {"method": "turbo_quant", "bits": "bits4", "seed": 7},
+            "max_storage_keys": 100
+        }),
+        Some("denied-quantization-build"),
+        None,
+    );
+    let (status, denied) = post(
+        &server,
+        "/v1/vector/quantizations/build",
+        &quantization,
+        Some((session, token)),
+    );
+    assert_eq!(status, 403, "{denied}");
+    assert_eq!(denied["outcome"]["error"]["code"], "permission_denied");
+
     let mut invalid_query = query.clone();
     invalid_query["payload"]["query"] = json!("NOT RRFLOWQL");
     let (status, failed) = post(&server, "/v1/query", &invalid_query, Some((session, token)));
@@ -661,6 +856,12 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
         record["action"] == "query_execute"
             && record["phase"] == "completed"
             && record["decision"] == "failed"
+    }));
+    assert!(records
+        .iter()
+        .any(|record| { record["action"] == "estate_read" && record["decision"] == "denied" }));
+    assert!(records.iter().any(|record| {
+        record["action"] == "vector_collection_ensure" && record["decision"] == "denied"
     }));
     assert_eq!(
         records
@@ -3271,5 +3472,212 @@ fn installed_endpoint_configuration_http_flow_survives_restart_and_revocation() 
     assert_eq!(
         reopened.installed_estate_identity(),
         Some(&installation.installation.target)
+    );
+}
+
+#[test]
+fn quantization_lifecycle_serves_turboquant_and_replays_over_http() {
+    let (_temporary, _root, server) = start_root();
+    let create = envelope(
+        json!({
+            "limits": {
+                "idle_timeout_ms": 60_000,
+                "absolute_timeout_ms": 300_000,
+                "max_open_transactions": 2
+            }
+        }),
+        Some("quantization-session"),
+        None,
+    );
+    let (status, created) = post(&server, "/v1/sessions", &create, None);
+    assert_eq!(status, 200, "{created}");
+    let session_id = payload(&created)["session_id"].as_str().unwrap().to_owned();
+    let token = payload(&created)["token"].as_str().unwrap().to_owned();
+    let auth = Some((session_id.as_str(), token.as_str()));
+    let ensure = envelope(
+        json!({
+            "scope": "instance:socket-test",
+            "collection_id": "documents",
+            "vectors": [{
+                "name": "title",
+                "field": "title_embedding",
+                "kind": "dense",
+                "dimensions": 2,
+                "metric": "cosine",
+                "memory_tier": "cached"
+            }]
+        }),
+        Some("quantization-collection"),
+        None,
+    );
+    let (status, ensured) = post(&server, "/v1/vector/collections/ensure", &ensure, auth);
+    assert_eq!(status, 200, "{ensured}");
+    let begin = envelope(
+        json!({"scope": "data", "timeout_ms": 60_000}),
+        Some("quantization-begin"),
+        None,
+    );
+    let (status, began) = post(&server, "/v1/transactions", &begin, auth);
+    assert_eq!(status, 200, "{began}");
+    let transaction_id = payload(&began)["transaction_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let mut mutations = vec![json!({
+        "mutation": "put_schema",
+        "registry": {
+            "revision": 1,
+            "migration": "quantization fixture",
+            "tables": {
+                "document": {"model": "relational", "mode": "strict"},
+                "embedding": {"model": "vector", "mode": "schemaless"}
+            },
+            "records": {
+                "document": {
+                    "properties": {},
+                    "allow_additional_properties": true,
+                    "unique_properties": []
+                }
+            },
+            "relations": {},
+            "events": {}
+        }
+    })];
+    for (id, values) in [
+        ("alpha", [0.6, 0.8]),
+        ("beta", [1.0, 0.0]),
+        ("gamma", [0.0, 1.0]),
+    ] {
+        mutations.push(json!({
+            "mutation": "put_record",
+            "reference": {"kind": "document", "id": id},
+            "valid_from": 100,
+            "properties": {}
+        }));
+        mutations.push(json!({
+            "mutation": "put_vector",
+            "reference": {"kind": "embedding", "id": format!("{id}-title")},
+            "subject": {"kind": "document", "id": id},
+            "collection_id": "documents",
+            "vector_name": "title",
+            "field": "title_embedding",
+            "valid_from": 100,
+            "value": {"kind": "dense", "values": values},
+            "properties": {}
+        }));
+    }
+    let typed: Vec<TransactionMutation> =
+        serde_json::from_value(Value::Array(mutations.clone())).unwrap();
+    let commit = envelope(
+        json!({
+            "operation_sha256": transaction_operation_sha256(&typed),
+            "mutations": mutations
+        }),
+        Some("quantization-commit"),
+        Some(u64::MAX),
+    );
+    let (status, committed) = post(
+        &server,
+        &format!("/v1/transactions/{transaction_id}/commit"),
+        &commit,
+        auth,
+    );
+    assert_eq!(status, 200, "{committed}");
+
+    let build_request = json!({
+        "scope": "instance:socket-test",
+        "collection_id": "documents",
+        "vector_name": "title",
+        "method": {"method": "turbo_quant", "bits": "bits4", "seed": 7},
+        "max_storage_keys": 1_000
+    });
+    let (status, unkeyed) = post(
+        &server,
+        "/v1/vector/quantizations/build",
+        &envelope(build_request.clone(), None, None),
+        auth,
+    );
+    assert_eq!(status, 400, "{unkeyed}");
+    let build = envelope(build_request.clone(), Some("build-title"), None);
+    let (status, built) = post(&server, "/v1/vector/quantizations/build", &build, auth);
+    assert_eq!(status, 200, "{built}");
+    let artifact = payload(&built)["artifact"].clone();
+    assert_eq!(payload(&built)["idempotent_replay"], false);
+    assert_eq!(artifact["artifact_id"], "quant-turboquant-documents-title");
+    assert_eq!(artifact["generation"], 1);
+    assert_eq!(artifact["state"], "ready");
+    let (status, replayed) = post(&server, "/v1/vector/quantizations/build", &build, auth);
+    assert_eq!(status, 200, "{replayed}");
+    assert_eq!(payload(&replayed)["idempotent_replay"], true);
+    assert_eq!(payload(&replayed)["artifact"], artifact);
+    let mut changed = build_request.clone();
+    changed["method"]["seed"] = json!(8);
+    let (status, conflict) = post(
+        &server,
+        "/v1/vector/quantizations/build",
+        &envelope(changed, Some("build-title"), None),
+        auth,
+    );
+    assert_eq!(status, 409, "{conflict}");
+
+    let list = envelope(
+        json!({"scope": "instance:socket-test", "max_artifacts": 10}),
+        None,
+        None,
+    );
+    let (status, listed) = post(&server, "/v1/vector/quantizations/list", &list, auth);
+    assert_eq!(status, 200, "{listed}");
+    assert_eq!(payload(&listed)["artifacts"].as_array().unwrap().len(), 1);
+    assert_eq!(payload(&listed)["artifacts"][0]["state"], "ready");
+
+    let search = envelope(
+        json!({
+            "scope": "instance:socket-test",
+            "valid_at": 200,
+            "collection_id": "documents",
+            "vector_name": "title",
+            "query": {"kind": "dense", "values": [0.6, 0.8]},
+            "top_k": 1,
+            "mode": {"mode": "require_approximate", "exact_rerank": 3, "ef_search": 3},
+            "max_storage_keys": 1_000
+        }),
+        None,
+        None,
+    );
+    let (status, refused) = post(&server, "/v1/vector/search", &search, auth);
+    assert_eq!(status, 400, "a ready generation does not serve: {refused}");
+    let generation = json!({
+        "scope": "instance:socket-test",
+        "artifact_id": "quant-turboquant-documents-title",
+        "generation": 1
+    });
+    let (status, activated) = post(
+        &server,
+        "/v1/vector/quantizations/activate",
+        &envelope(generation.clone(), Some("activate-title"), None),
+        auth,
+    );
+    assert_eq!(status, 200, "{activated}");
+    assert_eq!(payload(&activated)["artifact"]["state"], "active");
+    let (status, searched) = post(&server, "/v1/vector/search", &search, auth);
+    assert_eq!(status, 200, "{searched}");
+    assert_eq!(payload(&searched)["access_path"], "turboquant");
+    assert_eq!(payload(&searched)["exact"], false);
+    assert_eq!(
+        payload(&searched)["hits"][0]["reference"]["id"],
+        "alpha-title"
+    );
+    let (status, retired) = post(
+        &server,
+        "/v1/vector/quantizations/retire",
+        &envelope(generation, Some("retire-title"), None),
+        auth,
+    );
+    assert_eq!(status, 200, "{retired}");
+    assert_eq!(payload(&retired)["artifact"]["state"], "retired");
+    let (status, refused) = post(&server, "/v1/vector/search", &search, auth);
+    assert_eq!(
+        status, 400,
+        "a retired generation does not serve: {refused}"
     );
 }

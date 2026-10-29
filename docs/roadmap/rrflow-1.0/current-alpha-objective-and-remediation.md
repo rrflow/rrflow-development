@@ -26,9 +26,9 @@ only dependency order, checkboxes, and accepted completion evidence.
 
 The supporting [RRFlow 1.0 code execution map](../rrflow-1.0-execution-map.md)
 binds the unchecked gates to current files, symbols, planned paths, commands,
-and stop conditions. Its generated
-[file plan](../rrflow-1.0-file-plan.jsonl) covers the complete repository
-baseline. Neither supporting record may change the completion ledger here.
+and stop conditions. Its on-demand generated
+[file plan](../rrflow-1.0-file-plan.jsonl) covers the current repository
+baseline; the tracked link is a descriptor, not the current generated output. Neither supporting record may change the completion ledger here.
 
 Completion is recorded in the parent's
 [canonical checklist](../rrflow-1.0.md#checklist-item-warps) and its owning gate

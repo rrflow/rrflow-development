@@ -35,6 +35,9 @@ pub(super) fn installed_storage_options(
         native("projected_output_bytes", policy.projected_output_bytes)?;
     options.source_page_bytes = native("source_page_bytes", policy.source_page_bytes)?;
     options.page_cache_bytes = native("page_cache_bytes", policy.page_cache_bytes)?;
+    if let Some(limit) = policy.segment_open_files {
+        options.segment_io.max_open_files = native("segment_open_files", limit)?;
+    }
     options.maintenance.wal_payload_max_bytes =
         native("wal_flush_target_bytes", policy.wal_flush_target_bytes)?;
     options.maintenance.memtable_max_versions = native(
@@ -77,6 +80,9 @@ pub struct RrdEngine {
     pub(crate) estate_configuration: EstateConfiguration,
     pub(crate) installed_estate: Option<InstalledEstateIdentity>,
     pub(crate) installed_deployment: Option<DeploymentProfile>,
+    /// The admitted project root of an installed estate. Retaining this
+    /// capability does not authorize reads or establish a source snapshot.
+    pub(crate) installed_project_root: Option<AnchoredPath>,
     /// The managed persistent container `.rrflow/rrd` of an installed estate.
     /// Backups and restore staging roots live beside its storage roots; it is
     /// `None` for component and test roots opened outside an installation.
@@ -256,6 +262,7 @@ impl RrdEngine {
             estate_configuration: EstateConfiguration::default(),
             installed_estate: None,
             installed_deployment: None,
+            installed_project_root: None,
             installed_storage_container: None,
             objects: ObjectStoreBox::new(objects),
             storage_root: Some(root),
@@ -299,6 +306,7 @@ impl RrdEngine {
             estate_configuration: EstateConfiguration::default(),
             installed_estate: None,
             installed_deployment: None,
+            installed_project_root: None,
             installed_storage_container: None,
             objects: ObjectStoreBox::new(MemoryObjectStore::new()),
             storage_root: None,

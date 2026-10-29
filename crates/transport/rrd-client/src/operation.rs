@@ -4,21 +4,24 @@ use crate::error::{contract, decode};
 use crate::{Error, Result, RrdClient, Session};
 use hyper::{Method, StatusCode};
 use rrd_contract::{
-    AbortTransaction, AssembleContext, AuditExport, AuditPage, BeginTransaction, CanonicalId,
-    ChangefeedFollowResult, ChangefeedPage, CloseTask, CommitReceipt, CommitTransaction,
-    ContextPacket, CorrelationId, CreateInstanceBackup, CreateInstanceBackupResult,
-    DiagnosticSnapshot, EnsureVectorCollection, EnsureVectorCollectionResult, EstateSnapshot,
-    ExecuteQuery, ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot,
-    KnowledgeTreeCatalogue, LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups,
-    ListKnowledgeTrees, ListPromptFlights, ListTasks, ListVectorCollections, OpenTask,
-    PreviewTransaction, PromptFlightPage, PromptFlightReadResult, QueryResult, ReadAudit,
-    ReadChangefeed, ReadDiagnosticSnapshot, ReadEstate, ReadPromptFlight, ReadTask,
-    ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult, RequestContext, RequestEnvelope,
-    ResourceId, ResourceKind, ResourcePath, ResponseEnvelope, ResponseOutcome,
-    RestoreInstanceBackup, RestoreInstanceBackupResult, RetrieveVectorPoints, ScrollVectorPoints,
-    SearchVectors, TaskPage, TaskReadResult, TaskResult, TransactionLease, TransactionPreview,
-    VectorCollectionCatalogueSnapshot, VectorPointBatch, VectorPointPage, VectorSearchResult,
-    PROTOCOL, PROTOCOL_VERSION,
+    AbortTransaction, ActivateVectorQuantizationArtifact, ActivateVectorQuantizationArtifactResult,
+    AssembleContext, AuditExport, AuditPage, BeginTransaction, BuildVectorQuantizationArtifact,
+    BuildVectorQuantizationArtifactResult, CanonicalId, ChangefeedFollowResult, ChangefeedPage,
+    CloseTask, CommitReceipt, CommitTransaction, ContextPacket, CorrelationId,
+    CreateInstanceBackup, CreateInstanceBackupResult, DiagnosticSnapshot, EnsureVectorCollection,
+    EnsureVectorCollectionResult, EstateSnapshot, ExecuteQuery, ExportAudit, FollowChangefeed,
+    InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue, LaunchPromptFlight,
+    LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees, ListPromptFlights,
+    ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
+    ListVectorQuantizationArtifactsResult, OpenTask, PreviewTransaction, PromptFlightPage,
+    PromptFlightReadResult, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
+    ReadEstate, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
+    RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
+    ResponseOutcome, RestoreInstanceBackup, RestoreInstanceBackupResult,
+    RetireVectorQuantizationArtifact, RetireVectorQuantizationArtifactResult, RetrieveVectorPoints,
+    ScrollVectorPoints, SearchVectors, TaskPage, TaskReadResult, TaskResult, TransactionLease,
+    TransactionPreview, VectorCollectionCatalogueSnapshot, VectorPointBatch, VectorPointPage,
+    VectorSearchResult, PROTOCOL, PROTOCOL_VERSION,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -70,6 +73,97 @@ impl RequestOptions {
 }
 
 impl RrdClient {
+    /// Request cancellation; the returned state does not imply worker termination.
+    pub async fn cancel_attunement(
+        &self,
+        session: &Session,
+        request: rrd_contract::CancelAttunement,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementCancelResult> {
+        let catalogue = rrd_contract::endpoint_catalogue();
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == "attunement-cancel")
+            .ok_or_else(|| Error::Contract("attunement cancel operation is unavailable".into()))?;
+        let result: rrd_contract::AttunementCancelResult = self
+            .session_call(
+                Method::POST,
+                &endpoint.path,
+                session,
+                &request,
+                options,
+                endpoint.mutation,
+            )
+            .await?;
+        result.validate_for(&request).map_err(contract)?;
+        Ok(result)
+    }
+
+    /// Read the caller's original committed receipt without replaying its command.
+    pub async fn read_attunement_receipt(
+        &self,
+        session: &Session,
+        request: rrd_contract::ReadAttunementReceipt,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementReceiptReadResult> {
+        request.validate().map_err(contract)?;
+        let catalogue = rrd_contract::endpoint_catalogue();
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == "attunement-receipt-read")
+            .ok_or_else(|| {
+                Error::Contract("attunement receipt read operation is unavailable".into())
+            })?;
+        let result: rrd_contract::AttunementReceiptReadResult = self
+            .session_call(
+                Method::POST,
+                &endpoint.path,
+                session,
+                &request,
+                options,
+                endpoint.mutation,
+            )
+            .await?;
+        result
+            .validate_for(&request, session.principal_id(), &self.instance)
+            .map_err(contract)?;
+        Ok(result)
+    }
+
+    /// Read the engine-owned installed job and its exact stored plan.
+    pub async fn read_attunement(
+        &self,
+        session: &Session,
+        request: rrd_contract::ReadAttunement,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementReadResult> {
+        request.validate().map_err(contract)?;
+        let job_id = request.job_id.clone();
+        let catalogue = rrd_contract::endpoint_catalogue();
+        let endpoint = catalogue
+            .endpoints
+            .iter()
+            .find(|endpoint| endpoint.operation.as_str() == "attunement-read")
+            .ok_or_else(|| Error::Contract("attunement read operation is unavailable".into()))?;
+        let result: rrd_contract::AttunementReadResult = self
+            .session_call(
+                Method::POST,
+                &endpoint.path,
+                session,
+                request,
+                options,
+                endpoint.mutation,
+            )
+            .await?;
+        result.validate().map_err(contract)?;
+        if result.plan.target.instance_id != self.instance || result.status.job.id != job_id {
+            return Err(Error::ResponseIdentityMismatch);
+        }
+        Ok(result)
+    }
+
     /// Discover the native catalogue through the authenticated operation
     /// descriptor. Requires the instance-wide diagnostics-read grant.
     pub async fn read_data_schema(
@@ -386,6 +480,79 @@ impl RrdClient {
             request,
             options,
             false,
+        )
+        .await
+    }
+
+    /// Builds the next generation of one quantization artifact. The request
+    /// needs an idempotency key: the same key and request replay the
+    /// recorded generation.
+    pub async fn build_vector_quantization(
+        &self,
+        session: &Session,
+        request: BuildVectorQuantizationArtifact,
+        options: RequestOptions,
+    ) -> Result<BuildVectorQuantizationArtifactResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/build",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    pub async fn list_vector_quantizations(
+        &self,
+        session: &Session,
+        request: ListVectorQuantizationArtifacts,
+        options: RequestOptions,
+    ) -> Result<ListVectorQuantizationArtifactsResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/list",
+            session,
+            request,
+            options,
+            false,
+        )
+        .await
+    }
+
+    /// Activates one built generation for approximate search.
+    pub async fn activate_vector_quantization(
+        &self,
+        session: &Session,
+        request: ActivateVectorQuantizationArtifact,
+        options: RequestOptions,
+    ) -> Result<ActivateVectorQuantizationArtifactResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/activate",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    /// Retires one generation from approximate search.
+    pub async fn retire_vector_quantization(
+        &self,
+        session: &Session,
+        request: RetireVectorQuantizationArtifact,
+        options: RequestOptions,
+    ) -> Result<RetireVectorQuantizationArtifactResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/retire",
+            session,
+            request,
+            options,
+            true,
         )
         .await
     }

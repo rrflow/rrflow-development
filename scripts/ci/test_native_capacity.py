@@ -1,5 +1,6 @@
 """Capacity orchestration/cleanup checks; no native disk is created or filled."""
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager, redirect_stdout, redirect_stderr
+import errno
 import io
 import json
 import plistlib
@@ -101,6 +102,182 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(self.generation, 1)
         self.assertTrue((self.root / "capacity.img").is_file())
         self.assertNotIn("native_capacity_suite=", output.getvalue())
+
+
+class MountedFixtureCleanup(unittest.TestCase):
+    def test_mounted_fixture_never_uses_recursive_removal(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-oracle-") as directory:
+            base = Path(directory).resolve()
+            fixture = base / "fixture"
+            fixture.mkdir()
+            executable = base / "filesystem-test"
+            executable.write_text("stub", encoding="utf8")
+            case = "mounted_volume_crossing_is_denied_before_any_effect"
+            def fake_run(*args, **kwargs):
+                if args[0] == "cargo":
+                    artifact = {"reason": "compiler-artifact", "executable": str(executable),
+                                "target": {"name": "filesystem"}, "profile": {"test": True}}
+                    return subprocess.CompletedProcess(args, 0, json.dumps(artifact), "")
+                if args[0] == str(executable) and "--list" in args:
+                    return subprocess.CompletedProcess(args, 0, f"{case}: test\n", "")
+                if args[0] == "/usr/bin/hdiutil":
+                    (fixture / "fixture.sparseimage").write_bytes(b"owned")
+                    return subprocess.CompletedProcess(args, 0, "", "")
+                return subprocess.CompletedProcess(args, 0, f"test {case} ... ok\n1 passed; 0 failed; 0 ignored;\n", "")
+            with patch.object(containment.sys, "platform", "darwin"), \
+                 patch.object(containment.tempfile, "mkdtemp", return_value=str(fixture)), \
+                 patch.object(containment, "run", side_effect=fake_run), \
+                 patch.object(containment, "detach_owned_image"), \
+                 patch("shutil.rmtree", side_effect=AssertionError("recursive removal called")), \
+                 redirect_stdout(io.StringIO()):
+                containment.main()
+            self.assertFalse(fixture.exists())
+
+
+    def fixture(self, directory):
+        root = Path(directory).resolve() / "fixture"
+        mount = root / "project" / "mounted"
+        mount.mkdir(parents=True)
+        image = root / "fixture.sparseimage"
+        image.write_bytes(b"owned")
+        return root, mount, image
+
+    def test_known_native_pending_file_is_cleaned_after_mountpoint(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-pending-") as directory:
+            root, mount, image = self.fixture(directory)
+            pending = root / "project" / "pending"
+            pending.write_bytes(b"owned")
+            original = Path.rmdir
+            def rmdir(path):
+                if path == mount:
+                    self.assertEqual(pending.read_bytes(), b"owned")
+                    self.assertEqual(image.read_bytes(), b"owned")
+                return original(path)
+            with patch.object(Path, "rmdir", rmdir):
+                containment.cleanup_owned_mount_fixture(root)
+            self.assertFalse(root.exists())
+
+    def test_busy_mount_settles_without_recursion(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-busy-") as directory:
+            root, mount, image = self.fixture(directory)
+            original = Path.rmdir
+            attempts = []
+            def rmdir(path):
+                if path == mount:
+                    attempts.append(path)
+                    if len(attempts) <= 2:
+                        raise OSError(errno.EBUSY, "still mounted")
+                return original(path)
+            with patch.object(Path, "rmdir", rmdir), patch.object(containment.time, "sleep") as sleep:
+                containment.cleanup_owned_mount_fixture(root)
+            self.assertEqual(len(attempts), 3)
+            self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+            self.assertFalse(root.exists())
+            self.assertFalse(image.exists())
+
+    def test_permanently_busy_mount_retains_fixture_and_image(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-permanent-") as directory:
+            root, mount, image = self.fixture(directory)
+            pending = root / "project" / "pending"
+            pending.write_bytes(b"owned pending")
+            attempts = []
+            original = Path.rmdir
+            def rmdir(path):
+                if path == mount:
+                    attempts.append(path)
+                    raise OSError(errno.EBUSY, "still mounted")
+                return original(path)
+            with patch.object(Path, "rmdir", rmdir), patch.object(containment.time, "sleep"):
+                with self.assertRaises(OSError) as result:
+                    containment.cleanup_owned_mount_fixture(root)
+            self.assertEqual(result.exception.errno, errno.EBUSY)
+            self.assertEqual(len(attempts), 5)
+            self.assertTrue(mount.is_dir())
+            self.assertEqual(image.read_bytes(), b"owned")
+            self.assertEqual(pending.read_bytes(), b"owned pending")
+
+    def test_mount_settlement_deadline_retains_fixture(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-deadline-") as directory:
+            root, mount, image = self.fixture(directory)
+            original = Path.rmdir
+            def rmdir(path):
+                if path == mount:
+                    raise OSError(errno.EBUSY, "still mounted")
+                return original(path)
+            with patch.object(Path, "rmdir", rmdir), \
+                 patch.object(containment.time, "monotonic", side_effect=[0.0, 0.0, 31.0]), \
+                 patch.object(containment.time, "sleep") as sleep:
+                with self.assertRaisesRegex(RuntimeError, "cleanup deadline exceeded"):
+                    containment.cleanup_owned_mount_fixture(root)
+            sleep.assert_not_called()
+            self.assertTrue(mount.is_dir())
+            self.assertEqual(image.read_bytes(), b"owned")
+
+    def test_nonempty_mount_never_loses_its_contents_or_image(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-nonempty-") as directory:
+            root, mount, image = self.fixture(directory)
+            sentinel = mount / "sentinel"
+            sentinel.write_bytes(b"must survive")
+            with patch.object(containment.time, "sleep"):
+                with self.assertRaises(OSError) as result:
+                    containment.cleanup_owned_mount_fixture(root)
+            self.assertEqual(result.exception.errno, errno.ENOTEMPTY)
+            self.assertEqual(sentinel.read_bytes(), b"must survive")
+            self.assertEqual(image.read_bytes(), b"owned")
+
+    def test_invalid_pending_entry_is_preserved(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-invalid-pending-") as directory:
+            root, mount, image = self.fixture(directory)
+            pending = root / "project" / "pending"
+            pending.mkdir()
+            with self.assertRaisesRegex(RuntimeError, "invalid pending file"):
+                containment.cleanup_owned_mount_fixture(root)
+            self.assertTrue(mount.is_dir())
+            self.assertTrue(pending.is_dir())
+            self.assertEqual(image.read_bytes(), b"owned")
+
+    def test_unexpected_entry_is_preserved_before_any_deletion(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-unexpected-") as directory:
+            root, mount, image = self.fixture(directory)
+            unexpected = root / "unknown"
+            unexpected.write_bytes(b"preserve")
+            with self.assertRaisesRegex(RuntimeError, "unexpected fixture entries"):
+                containment.cleanup_owned_mount_fixture(root)
+            self.assertTrue(mount.is_dir())
+            self.assertEqual(image.read_bytes(), b"owned")
+            self.assertEqual(unexpected.read_bytes(), b"preserve")
+
+    def test_captured_test_output_precedes_cleanup_failure(self):
+        with tempfile.TemporaryDirectory(prefix="rrflow-mount-output-") as directory:
+            base = Path(directory).resolve()
+            fixture = base / "fixture"
+            fixture.mkdir()
+            executable = base / "filesystem-test"
+            executable.write_text("stub", encoding="utf8")
+            case = "mounted_volume_crossing_is_denied_before_any_effect"
+            def fake_run(*args, **kwargs):
+                if args[0] == "cargo":
+                    artifact = {"reason": "compiler-artifact", "executable": str(executable),
+                                "target": {"name": "filesystem"}, "profile": {"test": True}}
+                    return subprocess.CompletedProcess(args, 0, json.dumps(artifact), "")
+                if args[0] == str(executable) and "--list" in args:
+                    return subprocess.CompletedProcess(args, 0, f"{case}: test\n", "")
+                if args[0] == "/usr/bin/hdiutil":
+                    (fixture / "fixture.sparseimage").write_bytes(b"owned")
+                    return subprocess.CompletedProcess(args, 0, "", "")
+                return subprocess.CompletedProcess(args, 1, "native test stdout\n", "native test stderr\n")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with patch.object(containment.sys, "platform", "darwin"), \
+                 patch.object(containment.tempfile, "mkdtemp", return_value=str(fixture)), \
+                 patch.object(containment, "run", side_effect=fake_run), \
+                 patch.object(containment, "detach_owned_image"), \
+                 patch.object(containment, "cleanup_owned_mount_fixture", side_effect=RuntimeError("cleanup failed")), \
+                 redirect_stdout(stdout), redirect_stderr(stderr):
+                with self.assertRaisesRegex(RuntimeError, "cleanup failed"):
+                    containment.main()
+            self.assertIn("native test stdout", stdout.getvalue())
+            self.assertIn("native test stderr", stderr.getvalue())
+            self.assertTrue((fixture / "fixture.sparseimage").exists())
 
 
 class OwnedImageDetachment(unittest.TestCase):

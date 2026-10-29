@@ -19,7 +19,9 @@ across direct-convergence and parallel authorities.
 
 The A-07 record is a frozen discovery baseline, not a global prose audit for
 every later package to rewrite. Current path/digest discovery belongs to the
-[generated repository inventory](../../roadmap/rrflow-1.0-file-plan.jsonl),
+[generated repository inventory](../../roadmap/rrflow-1.0-file-plan.jsonl)
+(regenerated from Git into ignored `target/rrflow-1.0-file-plan.jsonl`; the
+tracked link is a descriptor),
 while the [implementation-navigation owner](../../roadmap/rrflow-1.0-execution/implementation-navigation.md)
 and [change-authoring procedure](../../roadmap/rrflow-1.0-execution/change-authoring.md)
 define the package-local trace boundary.

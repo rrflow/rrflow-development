@@ -2,8 +2,8 @@ use super::*;
 use crate::ServiceErrorKind;
 use rrd_contract::{
     AssembleContext, ContextAccessPath, ContextEvidenceKind, ContextPlanStageKind,
-    ContextPlanStageStatus, DataCatalogueIdentity, DataLogicalModel, DataReference, DataSchemaMode,
-    DataSchemaRegistry, DataTableSchema, EmbeddingInput, EmbeddingNetworkPolicy,
+    ContextPlanStageStatus, DataEstateOrganisation, DataLogicalModel, DataReference,
+    DataSchemaMode, DataSchemaRegistry, DataTableSchema, EmbeddingInput, EmbeddingNetworkPolicy,
     EnsureVectorCollection, GenerateEmbeddings, ListEmbeddingModels, NamedVectorDefinition,
     QueryValue, ReadAccessPath, VectorEmbeddingModel, VectorMemoryTier, VectorSearchMetric,
     VectorValueKind,
@@ -38,7 +38,7 @@ fn context_flows_through_one_engine_stamp_and_survives_reopen() {
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install context graph fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([
                     (
                         alpha.kind.clone(),
@@ -375,7 +375,7 @@ fn context_discovers_matching_local_vector_retrieval_without_caller_wiring() {
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install semantic context fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([
                     (
                         note.kind.clone(),
@@ -582,7 +582,7 @@ fn context_reads_active_claims_from_the_same_runtime_snapshot() {
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "install claim context fixture".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: BTreeMap::from([(
                     CanonicalId::new("claim").unwrap(),
                     DataTableSchema {
@@ -816,7 +816,7 @@ fn context_graph_anchors_require_visible_records_in_memory_and_after_reopen() {
             registry: DataSchemaRegistry {
                 revision: 1,
                 migration: "temporal context anchors".into(),
-                catalogue: DataCatalogueIdentity::default(),
+                organisation: DataEstateOrganisation::default(),
                 tables: [
                     ("note", DataLogicalModel::GraphNode),
                     ("supports", DataLogicalModel::GraphRelation),

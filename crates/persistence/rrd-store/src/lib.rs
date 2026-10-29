@@ -40,7 +40,7 @@ pub use access::{
     FunctionDefinitionRecord, FunctionInvocationReceiptRecord, IndexCommitBindingDefinition,
     IndexCommitBindingKind, IndexSourceDelta, IndexSourceRow, RuntimeAdjacencyDirection,
     RuntimeReadAccessPath, RuntimeReadBudget, RuntimeReadEvidence, RuntimeReadPathEvidence,
-    RuntimeVersionedRead, RuntimeVersionedSource, SemanticCommitPlan,
+    RuntimeVectorDeltaRead, RuntimeVersionedRead, RuntimeVersionedSource, SemanticCommitPlan,
     TransactionFunctionBindingRecord, VectorSourceAddress, VectorSourceDelta, VectorSourceVersion,
     FUNCTION_CATALOGUE_STATE_FORMAT_VERSION, FUNCTION_INVOCATION_RECEIPT_FORMAT_VERSION,
     INDEX_COMMIT_BINDING_CONTRACT_VERSION, INDEX_SOURCE_DELTA_CONTRACT_VERSION,

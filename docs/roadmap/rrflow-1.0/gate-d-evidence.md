@@ -68,7 +68,8 @@ owner reconciliation. The [receipt-retention journal](../../evidence/change-jour
 and [reconciliation journal](../../evidence/change-journals/gate-d/d-01-acceptance-reconciliation.md)
 record review commands, surfaced failures, mechanical checks and limits.
 D-01.1 through .5 implementation remains linked from the [package table](gate-d.md#d-01-remaining-closure-packages).
-C-07 is next. OBJ-07 remains partial, POAM-006 remains open, and RRFlow remains
+The [current dependency spine](executable-dependency-spine.md) owns subsequent
+work. OBJ-07 remains partial, POAM-006 remains open, and RRFlow remains
 pre-alpha. Wider storage recovery/lifetime, native graph/vector access, streamed
 analytics, durable reasoning, PostgreSQL compatibility and release qualification
 are not implied by this acceptance.

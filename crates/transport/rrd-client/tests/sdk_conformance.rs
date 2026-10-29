@@ -231,6 +231,46 @@ async fn rust_sdk_passes_shared_real_daemon_conformance() {
         format!("{}:{}", hit.reference.kind, hit.reference.id) == corpus.expected.vector_reference
     }));
 
+    // The quantization lifecycle: build a TurboQuant generation, activate the
+    // generation this build returned (the runners share one estate), and
+    // require it.
+    let quantization = &corpus.vector.quantization;
+    let built = client
+        .build_vector_quantization(
+            &session,
+            quantization.build.clone(),
+            mutation("quantization-build"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        built.artifact.artifact_id,
+        quantization.activate.artifact_id
+    );
+    client
+        .activate_vector_quantization(
+            &session,
+            rrd_contract::ActivateVectorQuantizationArtifact {
+                generation: built.artifact.generation,
+                ..quantization.activate.clone()
+            },
+            mutation("quantization-activate"),
+        )
+        .await
+        .unwrap();
+    let quantized = client
+        .search_vectors(
+            &session,
+            quantization.search.clone(),
+            read("quantized-search"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(quantized.access_path, corpus.expected.quantized_access_path);
+    assert!(quantized.hits.iter().any(|hit| {
+        format!("{}:{}", hit.reference.kind, hit.reference.id) == corpus.expected.vector_reference
+    }));
+
     let changes = client
         .read_changefeed(
             &session,

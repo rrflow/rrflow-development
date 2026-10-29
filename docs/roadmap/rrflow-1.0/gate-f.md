@@ -16,6 +16,16 @@ either independently.
 | [ ] | F-04 | Enforce query memory, spill, elapsed-time, scanned-key, graph-step, candidate, and result-byte budgets across native and DataFusion operators. | `rrd-query`, `rrd-engine` | Each limit has a deterministic truncation or denial fixture with measured resource evidence. |
 | [ ] | F-05 | Add read-stamp/query/projection caches with byte accounting and cursor/schema invalidation. | `rrd-engine`, `rrd-query` | Repeated-query benchmark shows bounded reuse; mutation and schema tests prove stale batches are never returned. |
 
+## Consumption by the real-project build
+
+D-05 uses F-01/F-02/F-04 when a phase actually consumes analytical streaming;
+F-03 owns mixed graph/lexical/vector analytical operators and F-05 cache reuse.
+Native source commits and exact native queries retain their existing engine
+path. Do not postpone all source ingestion behind unrelated analytical cache
+optimization, or call eager whole-estate materialization the finished streaming
+implementation. Each consuming package names its missing provider/operator
+prerequisite and measured allocation/batch-lifetime oracle.
+
 ## Exit condition
 
 Gate F exits only when DataFusion consumes streamed authoritative access paths

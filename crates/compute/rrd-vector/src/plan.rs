@@ -229,9 +229,13 @@ fn reject_reasons(
     let effective_source_cursor = candidate
         .overlay_source_cursor
         .unwrap_or(candidate.stamp.source_cursor);
+    // HNSW and TurboQuant generations serve with an exact overlay of newer
+    // canonical versions; other paths must cover the request themselves.
     if candidate.overlay_source_cursor.is_some_and(|cursor| {
-        candidate.kind != AccessPathKind::Hnsw
-            || cursor <= candidate.stamp.source_cursor
+        !matches!(
+            candidate.kind,
+            AccessPathKind::Hnsw | AccessPathKind::TurboQuant
+        ) || cursor <= candidate.stamp.source_cursor
             || cursor > request.read.commit_cursor
             || candidate.overlay_candidates == 0
     }) || (candidate.overlay_source_cursor.is_none() && candidate.overlay_candidates != 0)

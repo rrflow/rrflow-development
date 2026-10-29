@@ -121,7 +121,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         incompatible_version_url: loopback_url(version_address),
         shutdown_path: arguments.shutdown.to_string_lossy().into_owned(),
     };
-    write_owner_only_json(&arguments.manifest, &manifest)?;
+    write_owner_only_json(
+        &arguments.manifest,
+        arguments.manifest_staging.as_deref(),
+        &manifest,
+    )?;
 
     while !arguments.shutdown.is_file() {
         tokio::time::sleep(Duration::from_millis(25)).await;
@@ -140,6 +144,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 struct Arguments {
     corpus: PathBuf,
     manifest: PathBuf,
+    manifest_staging: Option<PathBuf>,
     shutdown: PathBuf,
 }
 
@@ -147,6 +152,7 @@ impl Arguments {
     fn parse() -> Result<Self, String> {
         let mut corpus = None;
         let mut manifest = None;
+        let mut manifest_staging = None;
         let mut shutdown = None;
         let mut arguments = std::env::args().skip(1);
         while let Some(argument) = arguments.next() {
@@ -156,6 +162,7 @@ impl Arguments {
             match argument.as_str() {
                 "--corpus" => corpus = Some(PathBuf::from(value)),
                 "--manifest" => manifest = Some(PathBuf::from(value)),
+                "--manifest-staging" => manifest_staging = Some(PathBuf::from(value)),
                 "--shutdown" => shutdown = Some(PathBuf::from(value)),
                 _ => return Err(format!("unknown argument {argument}")),
             }
@@ -163,6 +170,7 @@ impl Arguments {
         Ok(Self {
             corpus: corpus.ok_or("--corpus is required")?,
             manifest: manifest.ok_or("--manifest is required")?,
+            manifest_staging,
             shutdown: shutdown.ok_or("--shutdown is required")?,
         })
     }
@@ -360,9 +368,49 @@ fn loopback_url(address: SocketAddr) -> String {
 
 fn write_owner_only_json(
     path: &Path,
+    staging: Option<&Path>,
     value: &impl Serialize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let encoded = serde_json::to_vec_pretty(value)?;
+    #[cfg(windows)]
+    if staging.is_none() {
+        return Err("Windows SDK manifest requires a private staging file".into());
+    }
+    if let Some(staging) = staging {
+        #[cfg(not(windows))]
+        {
+            let _ = staging;
+            return Err("precreated SDK manifest staging is only supported on Windows".into());
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+            if staging == path || staging.parent() != path.parent() {
+                return Err(
+                    "SDK manifest staging must be a distinct file in the same directory".into(),
+                );
+            }
+            let metadata = std::fs::symlink_metadata(staging)?;
+            if !metadata.is_file() || metadata.len() != 0 || metadata.file_attributes() & 0x400 != 0
+            {
+                return Err("SDK manifest staging must be an empty non-reparse file".into());
+            }
+            // The Python harness created the staging file with a protected
+            // current-user DACL and owner. Do not follow a reparse point.
+            let mut file = OpenOptions::new()
+                .write(true)
+                .custom_flags(0x00200000)
+                .open(staging)?;
+            file.write_all(&encoded)?;
+            file.write_all(b"\n")?;
+            file.sync_all()?;
+            drop(file);
+            // Hard-link creation is atomic and fails if the final name exists.
+            std::fs::hard_link(staging, path)?;
+            std::fs::remove_file(staging)?;
+            return Ok(());
+        }
+    }
     #[cfg(unix)]
     let mut file = {
         use std::os::unix::fs::OpenOptionsExt;
@@ -378,4 +426,26 @@ fn write_owner_only_json(
     file.write_all(b"\n")?;
     file.sync_all()?;
     Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod manifest_tests {
+    use super::*;
+
+    #[test]
+    fn staged_publication_rejects_existing_target_and_nonempty_or_foreign_staging() {
+        let directory = tempfile::tempdir().unwrap();
+        let staging = directory.path().join("pending");
+        let target = directory.path().join("manifest.json");
+        assert!(write_owner_only_json(&target, None, &"value").is_err());
+        std::fs::write(&staging, b"").unwrap();
+        std::fs::write(&target, b"preserve").unwrap();
+        assert!(write_owner_only_json(&target, Some(&staging), &"value").is_err());
+        assert_eq!(std::fs::read(&target).unwrap(), b"preserve");
+        assert!(write_owner_only_json(&target, Some(&staging), &"value").is_err());
+        let other = tempfile::tempdir().unwrap();
+        let foreign = other.path().join("pending");
+        std::fs::write(&foreign, b"").unwrap();
+        assert!(write_owner_only_json(&target, Some(&foreign), &"value").is_err());
+    }
 }

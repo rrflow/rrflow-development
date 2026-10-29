@@ -19,6 +19,7 @@ either independently.
 | [ ] | H-07 | Resolve loopback or explicitly configured network endpoint candidates, including shippin.cloud devspaces and optional Zuul Zero/shippin.ai mesh resolution, through an outward transport adapter, carrying the expected RRD instance and transport-security identities independently of reachability. Re-negotiate liveness, readiness, protocol, instance, catalogue digest, and authentication after rotation; no resolver initializes RRFlow or selects storage. | `rrd-client`, mesh adapter | Laptop/phone/devspace fixture proves bounded resolution, TLS identity, exact instance/capability negotiation, endpoint rotation, stale/foreign/offline denial, and no mesh-owned database, authorization, installation, or lifecycle state. |
 | [ ] | H-09 | Implement the configurable [prompt graph families](../../reference/data/rrflowdb-capability.md#prompt-graph-families): family definitions in the schema registry, activation and experiment arms in the estate configuration revision, the bundled default set (lexicon, classification, reasoning, plan/task, evidence, source, knowledge including memory, governance), and atomic formation of every active family in the prompt's own commit with per-edge provenance. Close the public claim gap so `AssertClaim` states `valid_to`, tier, promotion, and supersession. | `rrd-contract`, `rrd-core`, `rrd-engine` | Golden registry and activation fixtures; one commit per flight with skipped families recorded by reason; rrflowQL traverses each family; a seeded two-arm experiment promotes only when grade and sample both pass; corrections supersede without loss and old stamps read unchanged after reopen on rrflowMX and rrflowKV. |
 | [ ] | H-10 | Implement opt-in read-only [project links](../../reference/data/rrflowdb-capability.md#project-links): offer and acceptance records in both estates, revocation, foreign references, and federated reads at the workspace layer that carry both read stamps and are audited in both estates. | `rrd-contract`, `rrd-engine`, `rrd-client`, workspace layer | Two-party opt-in; revocation stops resolution at the next read; a linked read never writes the target and returns both stamps and both evidence sets; an unlinked or denied reference resolves to unavailable; links work across separate instances through H-07 resolution. |
+| [ ] | H-11 | Implement configurable [estate organisation](../../reference/data/estate-organisation.md) (packages H-11a to H-11g). The schema registry gains domain and category definitions and the membership of every kind and vector collection, and the inert `namespace`/`database` label is retired. Record tags are kept in the reserved bi-temporal tag family. rrflowQL, context assembly, vector search, catalogue, diagnostics and changefeed reads accept a domain and tag scope applied before candidate generation. Isolated domains are enforced through domain grants, with their own lexical statistics. Diagnostics and retrieval evidence report per domain, including returned, delivered and used context. Attunement may propose an organisation from the project tree, and organisation experiments are promoted only by measurement. | `rrd-contract`, `rrd-core`, `rrd-query`, `rrd-security`, `rrd-engine`, `rrd-server`, generated SDKs | Golden registry and query vectors pass. Unknown domains, cycles, unassigned kinds and vocabulary violations fail before the cursor advances. Moving a kind keeps record identity, and old stamps read the old organisation. Scoped results equal an independent full-replay oracle with no post-filtered truncation, and every result names its scope and revision. Every read surface denies an isolated domain without its grant. Per-domain evidence reconciles with an independent recount. All of it is identical on rrflowMX and rrflowKV after close and reopen. |
 
 H-07 also owns the explicit [DevPulse/shippin.cloud account and sync integration](../../reference/client/devpulse-cloud.md),
 after D-06 authorized adapter bindings and H-04 public-operation prerequisites.
@@ -27,6 +28,36 @@ selection/consent, durable transfer checkpoints, duplicate/replay handling,
 conflict and revocation behavior require the real-service acceptance in that
 contract; endpoint reachability alone cannot qualify synchronization.
 
+## Turnkey client and service proof
+
+H-06 consumes the [minimum-input project flow](../../reference/client/connectome.md#turnkey-project-entry-and-progressive-detail)
+and existing D-02/D-05 phase evidence. Its next client prerequisite is one
+qualified current engine/SDK/install-adapter pair; the pinned older workbench
+cannot establish current installation, effort or indexing behavior. Wire the
+existing task-effort controls at their current operations before claiming a
+complete effort UI; AI-inherited preference resolution remains the separately
+specified G/D configuration work. No new top-level feature area substitutes for
+clear nested project data and evidence views. The
+[workspace learning and controller contract](../../reference/client/connectome.md#learning-in-the-workspace-and-controller-configuration)
+requires contextual tooltips, evidence-based suggestions, novice-to-advanced
+drill-down and global/project LFG and SWAG System One controls. Prove actual
+configuration readback and observed behavior with the G-owned execution path;
+labels, local UI preferences and tooltips alone do not qualify those controls.
+
+H-05 requires causal signals for setup/admission, source inventory, parsing,
+embedding/index publication, retrieval, model dispatch, commit, Stop and retained
+readback. Each carries the available authoritative project/run/configuration/
+source identity, outcome and bounded resource evidence. A missing stage is
+unavailable, not a zero-duration success. UI progress reports admitted/completed
+units separately; an unknown total cannot produce a fabricated percentage.
+Distinguish installed, indexed, retrieval-ready and learning-enabled behavior
+using current engine evidence rather than a single connected/green badge.
+
+H-07's [rroflow.ai handoff](../../reference/client/devpulse-cloud.md#turnkey-rroflowai-handoff)
+adds real account/transfer proof to G/I learning proof. Login alone closes no
+learning/synchronization requirement. Keep the all-local project proof independent
+of cloud availability and retain no-sharing defaults during parallel projects.
+
 ## H-07 DevPulse, managed cloud and homelab packages
 
 The [existing integration contract](../../reference/client/devpulse-cloud.md)
@@ -34,6 +65,29 @@ owns the required local VM/container experience and bidirectional transfer to
 managed or operator-controlled destinations. All packages below remain open.
 They are dependencies to implement, not completed work or new engine APIs.
 The native engine must remain independently installable and operable.
+
+The [Nomen identity and delivery priority](../../reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
+binds the first managed profile: local RRFlow synchronizes both ways with
+shippin.cloud using Nomen's central login. Resolve the actual Nomen contract in
+H-07a; qualify account/service/project binding, expiry and revocation alongside
+H-07b/c/d. First demonstrate that engine-only sync flow without waiting for
+DevPulse VM/container provisioning, then complete the H-07e/f/g product flow.
+Additional custom/homelab profiles use the same configurable contracts and
+retain their own acceptance; this priority closes none of them. H-07g must
+prove shared login does not confer cross-project/service access, local work
+survives identity/cloud outages, and reconnect resumes authorized durable
+changes without loss or duplication. An authenticated page alone is no sync
+proof. No Nomen protocol or production endpoint is assumed by this plan.
+
+H-06/H-07 must also prove the [guided sharing and resumption flow](../../reference/client/devpulse-cloud.md#required-user-behavior):
+automatic local attachment; one clear service-sharing/sync choice; reuse of
+valid Nomen and provider sessions; expired-session reconnect returning to the
+pending action; automatic restart/offline recovery under saved authorization;
+and a changed-scope prompt without restarting setup. Test a selected supported
+AI client consuming actual project context, identify subscription versus API
+billing, and retain a declined-sharing case. A novice must not configure
+individual grants. Provider/client support can be delivered incrementally;
+unsupported adapters stay explicit, not a reason to block the usable local flow.
 
 | Package | Prerequisites and canonical boundary | Smallest oracle and required exit |
 |---|---|---|
@@ -44,6 +98,7 @@ The native engine must remain independently installable and operable.
 | H-07e: DevPulse project-runtime integration | Authoritative DevPulse checkout identified; H-07d and existing authorized VM/container providers; consume RRFlow public SDKs without a sibling build dependency. | A packaged DevPulse build provisions a supported project runtime, builds/runs Rust/Python/Go fixtures, opens their private UIs and reopens local RRFlow data without a hosted account. Failed/cancelled provisioning cleans only owned resources. |
 | H-07f: selected project files and environment transfer | D-03/D-06 inventory/effect contracts, H-07e; existing project inventory and provider adapters. | File/content digests and environment revisions are independently verified; collisions, excludes, secrets, deletes and interrupted transfers are explicit. No implicit raw database or live-VM-memory copying. Database convergence cannot hide failed file/environment transfer. |
 | H-07g: real managed/homelab end-to-end qualification | H-07c through H-07f; actual managed identity/control service and separately administered homelab. | One DevPulse project exercises both directions, offline concurrent changes, lost ACK, delete/schema conflict, credentials/revocation, restore and interrupted upgrade. Repeat with shippin.cloud unavailable on the homelab path. Correlated source/destination receipts, pending/conflict state and all required failures are retained. |
+| H-07h: local served-endpoint record | Accepted D-01 `serve`/`ready` and private estate directories; `rrflow-cli` serve/ready, `rrd-engine` estate layout and open. It serves the automatic local attachment step of the guided flow and depends on none of H-07a–g. | Per the [served endpoint record](../../reference/deployment/installed-lifecycle.md#served-endpoint-record): a served estate publishes `.rrflow/serving.json` with no credential; `rrflow ready --project` without an address proves it; a killed server's record is not ready and the next serve replaces it; a clean shutdown removes it; a second serve fails before binding, names the recorded URL and leaves the running server and its record untouched; the locator still contains no endpoint. |
 
 Each runtime package first resolves exact symbols and tests from its current
 checkout and lands through its own PR/CI. Do not jump from an HTTP connection,
@@ -83,7 +138,9 @@ reported as existing or passed. Completion is per oracle, never a fixed date.
 H-09 uses the [knowledge connector provenance contract](../../reference/data/knowledge-connectors.md)
 for source/chunk/transformation breadcrumbs and ACL/delete invalidation.
 H-10 link consent is independent of copying, synchronization, model cache
-sharing and physical placement. H-07e implements the
+sharing and physical placement. H-11 domain isolation is different: it divides
+one estate, so an isolated domain stays in its estate's transactions, cursor
+and backup, while a project link connects two estates. H-07e implements the
 [project sharing and isolation UI contract](../../reference/client/devpulse-cloud.md#project-preferences-sharing-and-isolation):
 private by default, exact peer selection, separate VM/container constraints,
 cost preview and observed enforcement. Test shared/private context crossed

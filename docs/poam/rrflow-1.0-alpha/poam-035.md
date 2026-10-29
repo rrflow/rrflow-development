@@ -4,7 +4,112 @@
 **Coordinate:** `rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-035`
 **Owner:** [RRFlow 1.0 alpha POA&M](../rrflow-1.0-alpha.md)
 
+The [authenticated read-cost repair](../../evidence/change-journals/gate-c/c-07g-proof-node-reuse.md)
+records the next full Desktop failure: candidate `8a6752b2` acknowledged all
+100000 corpus operations but verified only 34191 before its original two-hour
+setup deadline. Segment handles stayed bounded with zero denials. Scoped proof
+node reuse addresses measured repeated backing reads without skipping change
+verification. Component tests are not full-profile or actual soak acceptance;
+C-07 and the repository-wide review remain open.
+
 ## Observed deficiency
+
+The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
+locally exercised held and interrupted resource acquisition and Windows Job
+membership for the engine, harness and helper. A [subsequent Windows Job test](../../evidence/change-journals/gate-c/c-07g-native-worker-windows-ci.md)
+observed the held helper terminate after its test parent was killed and the
+launcher quiesced the Job. It has not established bounded cleanup when native
+termination or reaping fails, abrupt parent death outside that Job or on other
+platforms, helper image identity, frozen-profile overhead or the 24-hour soak.
+The original delayed-sample cause remains unproven; this candidate does not
+close C-07 or POAM-035.
+
+The [Windows image-pin candidate](../../evidence/change-journals/gate-c/c-07g-windows-harness-image-pin.md)
+reproduced a running copied harness pathname being renamed and holds its
+qualification image and non-reparse ancestors across the owned Job. On the
+tested host, a hard link could still be added and a same-file rename could
+succeed; replacing the pinned path with different bytes was denied. This does
+not establish binary provenance before the pin, uncontained launch identity,
+bounded native cleanup, hosted CI or the frozen capacity/soak evidence.
+
+The [bounded acquisition candidate](../../evidence/change-journals/gate-c/c-07g-bounded-native-acquisition.md)
+addresses a separate wait: the sampler previously awaited its worker response
+without a deadline if the monitor could not finish. On expiry it now reports an
+error and, while the owner remains alive, denies admission until its monitor
+finishes. A deliberately delayed monitor test covers that state; it does not
+prove an operating-system-stuck process can be terminated or reaped, and C-07
+remains open.
+
+The [Windows supervisor cleanup test](../../evidence/change-journals/gate-c/c-07g-windows-timeout-supervisor.md)
+deliberately leaves a real held helper alive after an acquisition timeout and
+incomplete cleanup report, then observes the owned Job terminate it after the
+test harness exits. The monitor's refusal to forward cancellation is injected;
+this does not by itself establish termination of an OS-stuck process or Linux cleanup.
+
+The [Linux cgroup supervisor test](../../evidence/change-journals/gate-c/c-07g-linux-cgroup-supervisor.md)
+separately verified engine, harness and helper containment, then observed a
+killable helper exit after its timed-out test harness and the launcher's owned
+cgroup cleanup in one delegated WSL2 scope. It retained pidfds to identify the
+actual processes. Monitor unresponsiveness was injected; native Linux hardware,
+OS-stuck termination, full-profile and soak evidence remain open.
+
+The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+retains a macOS installed-domain-crash failure from run 40730847766: native
+`hdiutil create` returned `Resource busy` while preparing a capacity image.
+The native fixture reported failure; the cause and an applicable repair are
+not established. This observation does not establish an SDK-induced failure or
+clear any C-07 native evidence.
+
+The retained Windows sampler failure observed a 1.269-second diagnostics RPC
+but did not capture internal lock wait or assembly timing. The
+[diagnostic attribution candidate](../../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
+adds opt-in correlated service/store trace observations and controlled tests.
+A separate 19,440-key / 38,880-version single-process characterization with
+zero segments and no concurrent offered load measured three sub-millisecond
+profile intervals. It is not a reproduction of the failed workload and does
+not identify its cause. The old sampler reuses a request ID; integrate unique
+sample identity and capture the real candidate trace before attributing the
+failure or selecting a performance repair. C-07 and POAM-035 remain open.
+
+The [shared mutable-generation accounting candidate](../../evidence/change-journals/gate-c/c-07g-shared-memtable-pins.md)
+reproduced an independent admission error: two views of one 4,126-byte mutable
+generation were charged 8,252 bytes and rejected at a 4,126-byte limit. The
+candidate charges a shared live allocation once and distinct copy-on-write
+generations separately; its integrated native effect and exact candidate CI are
+not established. The earlier 100,000-record denial did not retain its numeric
+charge, so this mechanism is not proven to have caused that failure.
+
+The [draft/ready CI isolation candidate](../../evidence/change-journals/gate-c/c-07-ci-draft-ready-isolation.md)
+records PR154 run 40574700979: every partition was cancelled and the required
+gate failed; a skipped draft run followed. The old common concurrency group
+also permits a delayed draft event to cancel a newer ready candidate. The exact
+event-order cause of that run is not established. Candidate CI must verify the
+new scheduling boundary; it does not clear native C-07 qualification.
+
+The [shared read-view generation candidate](../../evidence/change-journals/gate-c/c-07g-shared-manifest-generation.md)
+retains the indexed source `7c329d49` native failure: all 100000 corpus writes
+were acknowledged but only 44556 were independently verified before the
+unchanged two-hour setup deadline. No measured segment or 24-hour soak ran.
+Sharing immutable manifest ownership removes per-view copies in the candidate;
+its installed effect on this failure remains unmeasured. Full profile and
+exact-candidate qualification remain open.
+
+Current scheduling follows the [parent-authorized dependency spine](../../roadmap/rrflow-1.0/executable-dependency-spine.md)
+and [staged C-07 qualification](../../roadmap/rrflow-1.0/gate-c-07.md#execution-reset-after-the-failed-desktop-corpus).
+Final growth/24-hour qualification remains open but does not prohibit D-02's
+missing real-project executor or its dependent ingestion/retrieval packages.
+Correctness defects affecting those slices remain blockers. Preserve every
+failed candidate and all transaction, readback, resource and isolation oracles.
+Synthetic storage receipts establish only their exercised storage behavior.
+
+The source review also identifies growth work at existing owners:
+`engine/context.rs::assemble_context_at` uses a full snapshot and builds lexical
+state per request; `engine/vector.rs::read_vector_versions` and
+`read_vector_search_versions` read vectors before collection filtering. Carry
+selective/indexed access into E-01/E-03/H-01 and the owning vector/retrieval
+packages when consumed by the project workflow, rather than creating a second
+retrieval path. These observations are implementation inventory, not measured
+causes of every native timeout or evidence of C-07 completion.
 
 The [fill-write recovery correction](../../evidence/change-journals/gate-c/c-07f-fill-write-recovery.md)
 retains PR114 run 40167630906: after 24 successful native macOS cases, disposable
@@ -55,6 +160,11 @@ reached 77,945 acknowledged records before EMFILE at the actual 1,024-descriptor
 soft limit. Read-only installed verification passes, but full corpus readback
 and soak qualification did not complete. Bounded segment-handle ownership is
 required; the retained failed estate and its original identities remain evidence.
+The [bounded segment-handle repair](../../evidence/change-journals/gate-c/c-07g-bounded-segment-handles.md)
+implements per-database admission, idle eviction and identity-checked reopen.
+The native low-descriptor regression fails on main and passes on the working
+repair. Exact-candidate CI, full Desktop capacity and the 24-hour soak remain
+required; this prerequisite does not close C-07.
 
 The [integrated native WAL candidate](../../evidence/change-journals/gate-c/c-07-native-wal-candidate.md)
 preserves PR127/128 and records a further macOS failure: the selected WAL
@@ -970,3 +1080,164 @@ point-read, backup scheduling, startup diagnostic and metadata-pressure repairs
 in one current-main landing PR. Its own complete candidate pipeline must pass;
 predecessor checks and short native characterizations cannot substitute.
 Full profile and actual 24-hour acceptance remain open.
+
+
+The [bounded allocation settlement package](../../evidence/change-journals/gate-c/c-07f-batched-allocation-settlement.md)
+records PR130's macOS candidate timeout before existing-project manifest
+creation: 693 metadata files, 260046848 data bytes and the shared 25-second
+limit. It batches disposable metadata settlement and separates periodic file
+barriers from final waited volume settlement, preserving all caps and the
+selected native-error/readback oracle. Local deterministic and installed crash
+checks pass; native APFS repetitions remain required. This fixture gap and the
+independent full-profile/actual 24-hour qualification remain open.
+
+
+PR136 candidate `337d136210ff59b2359f898e717166c087dd5bfc`, run
+[40218400444](https://github.com/rrflow/rrflow-development/actions/runs/40218400444),
+macOS job `121244432897`, still uses the pre-PR131 filler and fails `bounded
+joint pressure` before fresh manifest creation resumes. The [dependency
+refresh record](../../evidence/change-journals/gate-d/d-02-capacity-dependency-refresh.md)
+preserves the failure and integrates the existing PR131 repair. PR131's exact
+head passed full candidate CI, but normal queue admission reports the required
+check as expected; a fresh readiness-triggered run is in progress. No rule is
+bypassed. Both candidate landing and final profile/24-hour qualification remain
+open; this fixture failure is not proof of acknowledged-data loss.
+
+
+The [engine-first code review](../../evidence/change-journals/gate-c/c-07-engine-alpha-review.md)
+verified that native write-phase capture is not projected by installed public
+storage diagnostics, while corpus setup progress lacks timed diagnostic
+windows. C-07g owns the bounded authorized capture/progress repair before
+further growth-cost attribution. Existing E-01/E-03/E-04 and D-02/D-03 own the
+separate context/indexing and committed-inventory gaps; this observation closes
+none of them and does not replace the running native qualification.
+
+
+The [frozen proof-read outcome](../../evidence/change-journals/gate-c/c-07g-proof-read-native-outcome.md)
+records candidate 05817485 acknowledging all 100000 corpus operations, then
+failing the original two-hour setup deadline after 38960 independent
+verifications. No measured load segment or actual soak started. The final
+handle sample remained bounded at 128 with zero denials. Complete independent
+readback and the full profile/24-hour matrix remain open; neither ACK counts
+nor the component proof-read improvement qualifies this native operating point.
+
+
+The [bounded corpus readback package](../../evidence/change-journals/gate-c/c-07g-bounded-corpus-readback.md)
+replaces sequential setup verification with owned windows bounded by the
+already-declared client/queue allowance. All independent record/edge/vector
+checks, canonical digest ordering, original deadlines and resource limits
+remain. Component overlap/cancellation and real installed mixed-family smoke
+pass. This is a driver scheduling remedy, not a measured engine speedup or
+complete native setup; fresh frozen full-corpus/profile/24-hour evidence remains
+required and earlier failed estates stay retained.
+
+The [proof-read trace correction](../../evidence/change-journals/gate-c/c-07g-proof-read-trace-conformance.md)
+records candidate 40265699310 failing an obsolete 16-value trace expectation
+when proof-node reuse correctly reports 14. The local failure was reproduced;
+the corrected fixture checks exact execution work and storage/query trace
+agreement on MX and KV. Corrected candidate CI and full native qualification
+remain required; this trace-test repair does not close capacity acceptance.
+
+
+The [bounded-window terminal outcome](../../evidence/change-journals/gate-c/c-07g-window-native-outcome.md)
+records frozen 04559542 failing the unchanged two-hour setup deadline after
+100000 acknowledgements and 64724 independent verifications. Complete corpus
+readback and measured/24-hour acceptance remain open. Partial verification
+counts are not a passing capacity result; original failed estates remain retained.
+
+
+The [point-range indexing package](../../evidence/change-journals/gate-c/c-07g-point-range-index.md)
+records a bounded diagnostic of the failed 100k estate and replaces linear
+immutable point-candidate enumeration with a derived range index at the
+existing database boundary. Independent lifecycle and MVCC oracles exposed
+and corrected live-vector versus manifest-order mismatches. Component work
+reduction does not qualify full installed throughput: the frozen full-size
+setup failed after 64724 independent verifications, and actual soak remains
+not started. Candidate integration and unchanged full-profile acceptance are
+still required; no closure is recorded.
+
+
+The [APFS capacity-settlement correction](../../evidence/change-journals/gate-c/c-07f-apfs-capacity-settlement.md)
+records PR134 candidate40266752462 timing out during fresh WAL pressure
+preparation. It defers periodic synchronization of disposable APFS filler while
+preserving final file/volume settlement, fresh capacity denial and every
+resource bound. The scheduling regression fails before the change and passes
+afterward; actual repeated native APFS acceptance remains required.
+
+The [APFS refill-probe repair](../../evidence/change-journals/gate-c/c-07f-apfs-refill-probe.md)
+records manifest candidate `ab078b83` failing the fresh `current_before_create`
+APFS case during owned pressure preparation at the existing 25-second limit.
+The repair reduces redundant failed refill probes while retaining settlement
+and a fresh native one-byte denial. Local fixture tests pass; native candidate
+acceptance and the full sustained profile remain open.
+
+
+The [indexed native candidate](../../evidence/change-journals/gate-c/c-07g-indexed-native-candidate.md)
+integrates PR141 point-range indexing and PR140 APFS settlement with PR139's
+bounded readback and PR134's proof reuse. Exact source provenance was checked;
+normal candidate CI, fresh frozen full-corpus completion and actual 24-hour
+qualification remain required. Preparation or partial setup does not close
+this gap.
+
+
+The [indexed candidate launch](../../evidence/change-journals/gate-c/c-07g-indexed-native-launch.md)
+records integrated source 7c329d49 passing real installed smoke and starting
+fresh full-corpus characterization with verified 2-GiB/four-CPU enforcement.
+The initial 896 setup acknowledgements are not independent full readback or
+qualification. Preserve this source's terminal evidence; no actual 24-hour
+soak or gap closure is claimed.
+
+The [post-reopen readback package](../../evidence/change-journals/gate-c/c-07g-reopen-window-readback.md)
+replaces an unobserved serial full-corpus verification after the final forced
+reopen with bounded, ordered readback windows, joined-session rotation and
+separate progress bound to the reopen receipt. Local installed smoke passes;
+the failed 100000-record campaign's exact admission cause remains unknown and
+full native capacity and 24-hour qualification remain open.
+
+The [read-admission attribution package](../../evidence/change-journals/gate-c/c-07g-read-admission-labels.md)
+corrects a verified classifier mismatch where read limits wrapped as storage
+admission lost their bounded resource category. It does not infer the original
+redacted cause; fresh full-size characterization and qualification remain open.
+
+The sustained corpus independently retrieves vectors by reference and reads
+records and relations via rrflowQL at the returned cursor, but does not exercise
+nearest-neighbor search, HNSW or TurboQuant quality at the full corpus. The
+installed smoke also lacked a joined search/readback/restart/replay oracle.
+Engine-local tests cover portions of indexed and quantized retrieval, while the
+inspected HTTP server and Rust client do not expose the corresponding index and
+quantization build/activation operations. [C-07's joined evidence sequence](../../roadmap/rrflow-1.0/gate-c-07.md#joined-rrflowdb-evidence-sequence)
+tracks the missing end-to-end and scale evidence; no part of C-07 is closed by
+this observation.
+
+The [selected-segment pin repair](../../evidence/change-journals/gate-c/c-07g-selected-segment-read-pins.md)
+records integrated Windows candidate 5d554483 independently verifying all 100000 initial
+records and completing two reopens, then failing after 47240 post-reopen verifications.
+Its exact pinned-byte denial was 4295000211 against 4294967296; the retained current
+manifest contains 1793 segment descriptors totaling 4227071050 bytes. Read admission
+previously charged the entire manifest even for a narrower selected read; the test-first
+repair changes transient view ownership and reclamation to selected segment identities.
+Whether the frozen full workload will pass on the repair remains unproven, and required
+native profile, 24-hour soak, candidate CI and integration remain open.
+
+The [Windows reopen CI build experiment](../../evidence/change-journals/gate-c/c-07-ci-windows-reopen-build-workers.md)
+records a 63m24s Windows build versus a 4m06s history step in one successful
+candidate and tests a two-worker build without reducing native coverage. Its
+candidate timing, memory behavior and complete CI result remain pending.
+
+
+The [macOS containment fixture correction](../../evidence/change-journals/gate-c/c-07f-macos-containment-cleanup.md)
+records PR168 candidate CI failing during busy mounted-fixture cleanup, with
+the underlying adversary result hidden by that cleanup exception. A bounded
+non-recursive fixture cleanup and preserved output pass modeled helper tests;
+native macOS verification and full candidate CI remain required.
+
+The [instrumented sampler characterization](../../evidence/change-journals/gate-c/c-07g-sampler-native-outcome.md)
+records draft c5b58a3c completing all 100000 initial and post-reopen independent
+verifications, then failing the first warmup segment: a 2.133-second sample gap
+exceeded the two-second limit and nine of 50 offers were rejected. The slow
+sample spent 1.269 seconds awaiting the public diagnostics request. The rrflowKV
+projection takes the database lock and traverses every active memtable key
+and version; the cause of the delay
+cause remains unproven. The earlier source's and this run's evidence stay bound
+to their respective identities. Trace the diagnostics path before another
+full-corpus run; native profile and actual 24-hour qualification remain open.

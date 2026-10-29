@@ -61,6 +61,66 @@ fn inspect_at(
 }
 
 #[test]
+fn installed_engine_retains_only_its_admitted_project_root_across_reopen() {
+    use std::io::Read;
+    let first = tempfile::tempdir().unwrap();
+    let second = tempfile::tempdir().unwrap();
+    let executable = test_executable();
+    for (project, content) in [(first.path(), "first"), (second.path(), "second")] {
+        std::fs::write(project.join("source.txt"), content).unwrap();
+        let preview = RrdEngine::plan_installation(
+            project,
+            InstallationTargetKind::ExistingProject,
+            &RrdEngine::generate_installation_identity().unwrap(),
+            "default",
+            None,
+            &executable,
+        )
+        .unwrap();
+        RrdEngine::apply_installation_at(
+            project,
+            InstallationTargetKind::ExistingProject,
+            &preview,
+            &preview.installation.plan_sha256,
+            1_800_000_000_000,
+            &executable,
+        )
+        .unwrap();
+    }
+    let first_engine = open_at(first.path(), &executable, 1_800_000_001_000).unwrap();
+    let second_engine = open_at(second.path(), &executable, 1_800_000_001_000).unwrap();
+    let read = |engine: &RrdEngine| {
+        let root = engine
+            .installed_project_root
+            .as_ref()
+            .expect("installed root is retained");
+        assert!(root.join("../outside.txt").open_read().is_err());
+        let mut content = String::new();
+        root.join("source.txt")
+            .open_read()
+            .unwrap()
+            .read_to_string(&mut content)
+            .unwrap();
+        content
+    };
+    assert_eq!(read(&first_engine), "first");
+    assert_eq!(read(&second_engine), "second");
+    std::fs::write(first.path().join("source.txt"), "first edited").unwrap();
+    assert_eq!(read(&first_engine), "first edited");
+    assert_eq!(read(&second_engine), "second");
+    drop(first_engine);
+    let reopened = open_at(first.path(), &executable, 1_800_000_002_000).unwrap();
+    assert_eq!(read(&reopened), "first edited");
+    assert!(
+        RrdEngine::rrflow_mx(CanonicalId::new("volatile").unwrap(), [0; 32])
+            .installed_project_root
+            .is_none()
+    );
+    let (_component_root, component) = isolated_engine();
+    assert!(component.installed_project_root.is_none());
+}
+
+#[test]
 fn independent_installations_do_not_reuse_content_identity() {
     for mode in [
         InstallationTargetKind::FreshProject,

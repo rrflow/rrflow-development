@@ -27,6 +27,23 @@ catalogue as semantic owner, but the complete one-invocation compiler and
 installed cross-surface corpus have not been implemented. Hand-maintained
 operation/model/reference/conformance copies can therefore still drift.
 
+The shared SDK conformance harness formerly applied a Unix `0600` mode check
+on Windows, where Python's native mode projection reports `0666` even after
+`chmod(0600)`. Its manifest writer also relied on inherited Windows security.
+The [native harness repair](../../evidence/change-journals/gate-h/h-04-sdk-native-private-manifest.md)
+created and validated a private Windows workspace, but its Windows candidate CI
+rejected the child manifest's ownership or DACL. The
+[staging correction](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+creates an explicitly owned, protected staging file and publishes it after a
+complete write. Corrected candidate 137b90a1 passed the hosted Windows estate
+job and complete candidate CI; this integration must pass its own exact-head CI.
+The complete Windows six-SDK corpus, separate-principal denial, ARM and macOS qualification
+remain required; local descriptor inspection and a real harness startup do not
+establish them or close POAM-011.
+The same Windows review found that `shutil.which` resolves `pnpm.CMD` while a
+bare-name `subprocess.run` fails; the harness now launches the resolved fixed
+toolchain path. This is a test-runner correction, not SDK conformance proof.
+
 The owner's rrflowDB identity requires PostgreSQL compatibility. The new
 [core-profile contract](../../reference/protocol/postgresql.md) defines the
 first compatibility matrix and [H-08](../../roadmap/rrflow-1.0/gate-h.md#h-08-postgresql-compatibility-packages)

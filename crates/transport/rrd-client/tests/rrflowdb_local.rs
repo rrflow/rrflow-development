@@ -81,6 +81,308 @@ async fn schema(client: &RrdClient, session: &Session, key: &str) -> DataSchemaS
 }
 
 #[tokio::test]
+async fn installed_attunement_read_reports_stored_plan_and_unchecked_source_after_reopen() {
+    let temporary = tempfile::tempdir().unwrap();
+    let project = temporary.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &RrdEngine::generate_installation_identity().unwrap(),
+        "default",
+        None,
+        &executable(),
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        &executable(),
+    )
+    .unwrap();
+    let request = rrd_contract::ReadAttunement {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: rrd_contract::CanonicalId::new(format!(
+            "job-{}",
+            &preview.attunement.plan_sha256[..24]
+        ))
+        .unwrap(),
+    };
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "attunement-session").await;
+    let first = client
+        .read_attunement(
+            &session,
+            request.clone(),
+            read_options("attunement-read").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(first.plan, preview.attunement);
+    assert_eq!(
+        first.status.job.state,
+        rrd_contract::AttunementJobState::Pending
+    );
+    assert_eq!(
+        first.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    std::fs::write(project.join("new-source.txt"), "source changed").unwrap();
+    let changed = client
+        .read_attunement(
+            &session,
+            request.clone(),
+            read_options("attunement-changed").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(changed.plan, first.plan);
+    assert_eq!(changed.status.job, first.status.job);
+    assert_eq!(
+        changed.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    let missing = rrd_contract::ReadAttunement {
+        job_id: rrd_contract::CanonicalId::new("job-missing").unwrap(),
+        ..request.clone()
+    };
+    assert!(client
+        .read_attunement(
+            &session,
+            missing,
+            read_options("attunement-missing").unwrap()
+        )
+        .await
+        .is_err());
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    let (reopened, shutdown, server) = start(&project).await;
+    let session = login(&reopened, &project, "attunement-reopened-session").await;
+    let after = reopened
+        .read_attunement(
+            &session,
+            request,
+            read_options("attunement-reopened").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(after.plan, first.plan);
+    assert_eq!(after.status.job, first.status.job);
+    assert_eq!(
+        after.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+}
+
+#[tokio::test]
+async fn installed_attunement_cancel_survives_restart_and_replays() {
+    let temporary = tempfile::tempdir().unwrap();
+    let project = temporary.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &RrdEngine::generate_installation_identity().unwrap(),
+        "default",
+        None,
+        &executable(),
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::FreshProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        &executable(),
+    )
+    .unwrap();
+    let read = rrd_contract::ReadAttunement {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: rrd_contract::CanonicalId::new(format!(
+            "job-{}",
+            &preview.attunement.plan_sha256[..24]
+        ))
+        .unwrap(),
+    };
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "cancel-session").await;
+    let before = client
+        .read_attunement(
+            &session,
+            read.clone(),
+            read_options("cancel-before").unwrap(),
+        )
+        .await
+        .unwrap();
+    let receipt_request = rrd_contract::ReadAttunementReceipt {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: read.job_id.clone(),
+        idempotency_key: rrd_contract::CorrelationId::new("cancel-once").unwrap(),
+    };
+    assert!(client
+        .read_attunement_receipt(
+            &session,
+            receipt_request.clone(),
+            read_options("receipt-before").unwrap()
+        )
+        .await
+        .unwrap()
+        .receipt
+        .is_none());
+    let cancel = rrd_contract::CancelAttunement {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: read.job_id.clone(),
+        plan_sha256: before.plan.plan_sha256.clone(),
+        expected_job_revision: before.status.job.revision,
+        last_checkpoint_sha256: None,
+        reason: "operator requested cancellation".into(),
+        requested_at_unix_ms: now(),
+    };
+    let closed = login(&client, &project, "cancel-closed-session").await;
+    client
+        .close_session(&closed, CloseSession {}, options("cancel-close").unwrap())
+        .await
+        .unwrap();
+    assert!(client
+        .cancel_attunement(&closed, cancel.clone(), options("cancel-denied").unwrap())
+        .await
+        .is_err());
+    let after_denial = client
+        .read_attunement(
+            &session,
+            read.clone(),
+            read_options("cancel-after-denial").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(after_denial.status.job, before.status.job);
+    let mut wrong = cancel.clone();
+    wrong.plan_sha256 = "0".repeat(64);
+    assert!(client
+        .cancel_attunement(&session, wrong, options("wrong-plan").unwrap())
+        .await
+        .is_err());
+    let accepted = client
+        .cancel_attunement(&session, cancel.clone(), options("cancel-once").unwrap())
+        .await
+        .unwrap();
+    assert!(!accepted.idempotent_replay);
+    assert_eq!(
+        accepted.status.job.state,
+        rrd_contract::AttunementJobState::CancelRequested
+    );
+    assert_eq!(accepted.status.job.revision, before.status.job.revision + 1);
+    let receipt = client
+        .read_attunement_receipt(
+            &session,
+            receipt_request.clone(),
+            read_options("receipt-after").unwrap(),
+        )
+        .await
+        .unwrap()
+        .receipt
+        .unwrap();
+    assert_eq!(receipt.status, accepted.status);
+    assert_eq!(receipt.plan, before.plan);
+    assert_eq!(receipt.principal_id, *session.principal_id());
+    assert_eq!(receipt.operation_sha256.len(), 64);
+    assert_eq!(
+        receipt.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    let result = rrd_contract::AttunementReceiptReadResult {
+        receipt: Some(receipt.clone()),
+    };
+    result
+        .validate_for(
+            &receipt_request,
+            session.principal_id(),
+            client.instance_id(),
+        )
+        .unwrap();
+    let mut forged = result.clone();
+    forged.receipt.as_mut().unwrap().operation_sha256 = "not-a-digest".into();
+    assert!(forged
+        .validate_for(
+            &receipt_request,
+            session.principal_id(),
+            client.instance_id()
+        )
+        .is_err());
+    let mut wrong_job = receipt_request.clone();
+    wrong_job.job_id = rrd_contract::CanonicalId::new("job-other").unwrap();
+    assert!(result
+        .validate_for(&wrong_job, session.principal_id(), client.instance_id())
+        .is_err());
+    let other = rrd_contract::CanonicalId::new("other-principal").unwrap();
+    assert!(result
+        .validate_for(&receipt_request, &other, client.instance_id())
+        .is_err());
+    let other_instance = rrd_contract::CanonicalId::new("other-instance").unwrap();
+    assert!(result
+        .validate_for(&receipt_request, session.principal_id(), &other_instance)
+        .is_err());
+    let mut missing = receipt_request.clone();
+    missing.idempotency_key = rrd_contract::CorrelationId::new("different-key").unwrap();
+    assert!(client
+        .read_attunement_receipt(&session, missing, read_options("receipt-missing").unwrap())
+        .await
+        .unwrap()
+        .receipt
+        .is_none());
+    assert!(client
+        .read_attunement_receipt(
+            &closed,
+            receipt_request.clone(),
+            read_options("receipt-denied").unwrap()
+        )
+        .await
+        .is_err());
+    let mut changed = cancel.clone();
+    changed.reason = "different intent".into();
+    assert!(client
+        .cancel_attunement(&session, changed, options("cancel-once").unwrap())
+        .await
+        .is_err());
+    assert!(client
+        .cancel_attunement(&session, cancel.clone(), options("stale-revision").unwrap())
+        .await
+        .is_err());
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "cancel-reopened-session").await;
+    let after_receipt = client
+        .read_attunement_receipt(
+            &session,
+            receipt_request,
+            read_options("receipt-reopened").unwrap(),
+        )
+        .await
+        .unwrap()
+        .receipt
+        .unwrap();
+    assert_eq!(after_receipt, receipt);
+    let after = client
+        .read_attunement(&session, read, read_options("cancel-after").unwrap())
+        .await
+        .unwrap();
+    assert_eq!(after.status.job, accepted.status.job);
+    let replay = client
+        .cancel_attunement(&session, cancel, options("cancel-once").unwrap())
+        .await
+        .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.status, accepted.status);
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+}
+
+#[tokio::test]
 async fn parquet_export_rejects_truncation_and_foreign_engine_sessions() {
     let temporary = tempfile::tempdir().unwrap();
     let first = temporary.path().join("first");

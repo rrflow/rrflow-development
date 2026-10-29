@@ -33,23 +33,51 @@ may explain or prove an owner, but cannot override it.
 The target release-train version is `1.0.0`. It is frozen while the alpha
 baseline is established. Current maturity is **pre-alpha**. The version is a
 contract line, not a claim that the complete system is stable, optimized, or
-release-ready.
+release-ready. There is one current pre-release implementation. This alignment
+preserves the existing public API, operation identities and wire contracts; it
+does not introduce a deprecation, migration or alternate implementation lane.
+
+The [observable engine objective](docs/objectives/rrflow-1.0-alpha.md#observable-engine-objective)
+defines the user journey and proof. The [build-plan admission rules](docs/roadmap/rrflow-1.0/executable-dependency-spine.md#package-readiness-and-evidence)
+and [next build packages](docs/roadmap/rrflow-1.0/gate-d.md#project-workflow-build-packages)
+separate planned behavior from executable work. Known admission/configuration
+blockers are [explicitly recorded](docs/poam/rrflow-1.0-alpha/poam-006.md#build-plan-admission-gaps);
+a roadmap is not evidence that those capabilities already work.
 
 ## Engine, UI, cloud, and desktop
 
 RRFlow is the reasoning engine. **Connectome** is its operator and developer
 UI, maintained in its own repository and pinned here as the optional
 `connectome/` Git submodule. The [Connectome client contract](docs/reference/client/connectome.md#repository-checkout)
-owns checkout instructions and the UI's public-engine boundary.
+owns checkout instructions and the UI's public-engine boundary. Connectome is
+the UI package for the complete guided experience: nontechnical users can start
+with plain-language controls, learn through contextual tooltips and suggestions,
+and drill into advanced technical evidence in the same workspace. It exposes
+configurable LFG analysis and SWAG, the System One controller, through engine
+contracts; these controls and the complete journey still require qualification.
 
 Planned **rrflow.ai** and **rroflow.ai** services are optional. rrflow.ai is
 the hosted reasoning engine, offering remote access, synchronization and
-evidence views. rroflow.ai is the learning service, offering governed
-supervised, unsupervised and recursive learning. Like the engine and
+evidence views. rroflow.ai is the intended AI-observability and learning
+service: it brings authorized activity from supported AI tools together for
+signals, tags, investigation and governed supervised, unsupervised and
+recursive learning. Provider capture and the service are not yet implemented;
+the [provider-observation roadmap](docs/roadmap/rrflow-1.0/gate-i.md#provider-observation-for-rroflow)
+defines the implementation and proof. Like the engine and
 Connectome, their service software is open source and self-hostable. Their
 [service roles and opt-in boundaries](docs/reference/client/devpulse-cloud.md#optional-managed-service-roles)
-are targets, not deployed-service claims. **shippin.cloud** extends this
-experience with a private devspace. The initial friends-and-family experience will
+are targets, not deployed-service claims. **Nomen** is the planned central
+identity manager and login across these products. The first hosted integration
+is local RRFlow with explicitly selected bidirectional synchronization to
+**shippin.cloud**, targeting hosted project engines/data and a private devspace.
+Local-only operation and configurable custom/self-hosted destinations remain
+supported targets. The [identity and delivery contract](docs/reference/client/devpulse-cloud.md#nomen-identity-and-delivery-priority)
+defines automatic local connection, a simple offer to share project data/access
+with selected services and AI tools, and automatic session/sync resumption after
+setup. Nomen restores shared product login; supported provider adapters make
+existing Claude, Codex and other AI subscriptions usable without manual grant
+configuration. These integrations remain implementation targets.
+The initial friends-and-family experience will
 demonstrate current AI-assisted development: create projects, run Rust,
 Python, and Go code, load the running project's UI inside the private cloud
 devspace, and launch projects on the web.
@@ -125,6 +153,8 @@ definition; this portal does not reproduce those bodies.
 | One project ↔ one estate/rrflowDB ↔ one RRD instance; an account may own many estates and a workspace groups estates above the engine; deployment form, storage profile, endpoint presentation, security, and physical placement remain distinct | [Locked alpha topology](docs/architecture/instance-topology.md#locked-alpha-topology) and [deployment profiles](docs/reference/deployment/modes.md#independent-profile-coordinates) |
 | One semantic, security, transaction, mutation, and context authority | [ADR-0001 decision](docs/decisions/0001-single-engine-authority.md#decision) |
 | Adaptive exploration and model reasoning; closed contracts at durable state, external effect, replay, and evidence boundaries | [ADR-0002 decision](docs/decisions/0002-adaptive-reasoning-governed-effects.md#decision) |
+| Configurable domains, categories and tags inside one estate; scopes applied before candidate generation; optional per-domain isolation; per-domain evidence | [ADR-0003 decision](docs/decisions/0003-configurable-estate-organisation.md#decision) and [estate organisation contract](docs/reference/data/estate-organisation.md) |
+| Editor and provider hooks only as alias stubs generated from one RRFlow owner; a hook firing authorizes nothing and proves nothing | [ADR-0004 decision](docs/decisions/0004-host-hooks-as-alias-stubs.md#decision) and [host hook contract](docs/reference/agent-bootstrap.md#host-hooks) |
 | No parallel product line: one current pre-release implementation with requirement-to-code/test traceability before direct convergence | [Pre-release convergence boundary](docs/architecture/system-overview.md#pre-release-convergence-boundary) and [implementation-requirements traceability](docs/roadmap/rrflow-1.0-execution-map.md#implementation-requirements-traceability) |
 | Persistent rrflowDB versus volatile rrflowMX | [Persistence and memory boundary](docs/architecture/system-overview.md#persistence-and-memory-boundary) |
 | Temporal graph, scalar, BM25, and vector data under one transaction model | [Native multi-model boundary](docs/architecture/system-overview.md#native-multi-model-boundary) |
@@ -146,7 +176,7 @@ definition; this portal does not reproduce those bodies.
 | Binary acquisition, install plan/apply, serve/readiness, verify, repair, backup/restore, salvage, and uninstall | [RRFlow installed lifecycle](docs/reference/deployment/installed-lifecycle.md) and [roadmap D-01/D-11](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
 | Deterministic project-tree snapshot and incremental refresh | [Project-tree inventory flow](docs/architecture/engine-data-flow.md#project-tree-inventory-and-incremental-attunement) and [roadmap D-03/D-04](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate) |
 | Governed in-engine functions and proposed-transaction bindings | [RRFlow governed functions](docs/reference/automation/functions.md) and [roadmap A-07/C/I](docs/roadmap/rrflow-1.0.md#executable-dependency-spine) |
-| Discovered project commands, installed capability bindings, and external activities | [Project command capability contract](docs/reference/automation/project-command-capabilities.md), [roadmap D-06](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate), and [roadmap I-03](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
+| Discovered project commands, installed capability bindings, and external activities | [Project command capability contract](docs/reference/automation/project-command-capabilities.md), [roadmap D-06](docs/roadmap/rrflow-1.0.md#gate-d--install-configure-and-attune-one-real-estate), and [roadmap I-03](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-with-host-hooks-as-alias-stubs) |
 | Durable provider-neutral self and `rrflow://` record resolution | [Seat identity and memory warps](docs/reference/seat-identity.md) |
 | Estate desired/observed state and fenced external effects | [RRFlow estate control](docs/reference/operations/estate-control.md) |
 | Embedded, single-node, cluster, rrflowMX, rrflowKV, loopback, and network combinations | [RRFlow deployment profiles](docs/reference/deployment/modes.md) |
@@ -155,7 +185,7 @@ definition; this portal does not reproduce those bodies.
 | Local RRD launch, authenticated readiness, and bounded shutdown | [RRFlow local process adapter](docs/reference/deployment/local-process-driver.md) |
 | Rust and generated language clients over the one public operation authority | [RRFlow SDK reference](docs/reference/sdk/README.md) and [roadmap H-04](docs/roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome) |
 | Connectome connection, projections, interactions, and conformance | [RRFlow Connectome client contract](docs/reference/client/connectome.md), [client bootstrap boundary](docs/architecture/system-overview.md#client-bootstrap-boundary), and [roadmap H-06/H-07](docs/roadmap/rrflow-1.0.md#gate-h--prove-context-flow-feedback-live-delivery-and-connectome) |
-| Engine events, triggers, routines, skills, and host-event adapters | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-without-automatic-hooks) |
+| Engine events, triggers, routines, skills, host-event adapters, and host hook stubs | [Automation, routine, and skill flow](docs/architecture/engine-data-flow.md#automation-routine-and-skill-flow), [generic routine packages](docs/reference/agent-bootstrap.md#generic-routine-package), [host hook contract](docs/reference/agent-bootstrap.md#host-hooks), and [roadmap Gate I](docs/roadmap/rrflow-1.0.md#gate-i--add-explicit-automation-scaffolding-with-host-hooks-as-alias-stubs) |
 | Current rrflowKV bytes and removable format readers | [rrflowKV current physical format](docs/reference/storage/rrflowkv-current-format.md) |
 | Canonical source placement and generated implementation discovery | [Implementation navigation](docs/roadmap/rrflow-1.0-execution-map.md#frozen-target-source-tree) |
 | Plan, author, instrument, verify, and journal one bounded code change | [Codebase-grounded change-authoring routine](docs/roadmap/rrflow-1.0-execution-map.md#codebase-grounded-change-authoring-routine) |
@@ -271,7 +301,12 @@ D-01 is complete for the bounded installed-engine foundation. Its
 [acceptance matrix and native receipts](docs/roadmap/rrflow-1.0/gate-d-evidence.md#d-01-accepted-installed-foundation-2026-10-21)
 bind one candidate to successful Linux, macOS and Windows isolation, native
 filesystem/ownership denial, recovery and actual primary-binary lifecycle
-checks. C-07 is the active executable item. The original walking prerequisite
+checks. The active implementation is the [real-project workflow](docs/roadmap/rrflow-1.0/executable-dependency-spine.md):
+durable attunement, committed source inventory, incremental parsing and
+source-grounded retrieval through the existing engine. Installation and data
+lenses do not yet prove automatic project indexing. C-07 remains required
+reliability qualification; its full growth/soak matrix does not postpone this
+missing workflow. The original walking prerequisite
 remains: a source-built primary `rrflow` 1.0.0 executable can
 deterministically preview and apply a fresh or existing local-project
 installation, serve the generated public contract, complete an authenticated
@@ -354,6 +389,9 @@ one repository fallback; the linked record owns the content.
 | Distributed cluster contract | [`rrflow://rrflow-instance/data/reference/distributed/cluster-contract`](rrflow://rrflow-instance/data/reference/distributed/cluster-contract) | [`docs/reference/distributed/cluster-contract.md`](docs/reference/distributed/cluster-contract.md) |
 | Single-engine authority decision | [`rrflow://rrflow-instance/data/decision/0001-single-engine-authority`](rrflow://rrflow-instance/data/decision/0001-single-engine-authority) | [`docs/decisions/0001-single-engine-authority.md`](docs/decisions/0001-single-engine-authority.md) |
 | Adaptive reasoning and governed effects decision | [`rrflow://rrflow-instance/data/decision/0002-adaptive-reasoning-governed-effects`](rrflow://rrflow-instance/data/decision/0002-adaptive-reasoning-governed-effects) | [`docs/decisions/0002-adaptive-reasoning-governed-effects.md`](docs/decisions/0002-adaptive-reasoning-governed-effects.md) |
+| Configurable estate organisation decision | [`rrflow://rrflow-instance/data/decision/0003-configurable-estate-organisation`](rrflow://rrflow-instance/data/decision/0003-configurable-estate-organisation) | [`docs/decisions/0003-configurable-estate-organisation.md`](docs/decisions/0003-configurable-estate-organisation.md) |
+| Estate organisation contract | [`rrflow://rrflow-instance/data/reference/data/estate-organisation`](rrflow://rrflow-instance/data/reference/data/estate-organisation) | [`docs/reference/data/estate-organisation.md`](docs/reference/data/estate-organisation.md) |
+| Host hooks as alias stubs decision | [`rrflow://rrflow-instance/data/decision/0004-host-hooks-as-alias-stubs`](rrflow://rrflow-instance/data/decision/0004-host-hooks-as-alias-stubs) | [`docs/decisions/0004-host-hooks-as-alias-stubs.md`](docs/decisions/0004-host-hooks-as-alias-stubs.md) |
 | Engine data flow | [`rrflow://rrflow-instance/data/architecture/engine-data-flow`](rrflow://rrflow-instance/data/architecture/engine-data-flow) | [`docs/architecture/engine-data-flow.md`](docs/architecture/engine-data-flow.md) |
 | rrflowKV current physical format | [`rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format`](rrflow://rrflow-instance/data/reference/storage/rrflowkv-current-format) | [`docs/reference/storage/rrflowkv-current-format.md`](docs/reference/storage/rrflowkv-current-format.md) |
 | Seat identity and memory warps | [`rrflow://rrflow-instance/data/reference/seat-identity`](rrflow://rrflow-instance/data/reference/seat-identity) | [`docs/reference/seat-identity.md`](docs/reference/seat-identity.md) |

@@ -1,0 +1,197 @@
+{
+  "comment": "default-organisation registries; written before estate organisation and never regenerated",
+  "engine_owned": {
+    "commit_digest": "d1e93bc7f85240878211c2ea2480db6124e2e537b82e96a6a92fccf7846f1bf2",
+    "registry": {
+      "events": {},
+      "migration": "memory estate bootstrap",
+      "records": {
+        "rrflow-provider-identity": {
+          "allow_additional_properties": false,
+          "properties": {},
+          "unique_properties": []
+        },
+        "rrflow-seat": {
+          "allow_additional_properties": false,
+          "properties": {},
+          "unique_properties": []
+        }
+      },
+      "relations": {
+        "rrflow-represents": {
+          "allow_additional_properties": false,
+          "from": [
+            "rrflow-provider-identity"
+          ],
+          "properties": {},
+          "to": [
+            "rrflow-seat"
+          ],
+          "unique_pair": false
+        }
+      },
+      "revision": 1,
+      "tables": {
+        "rrflow-provider-identity": {
+          "allow_additional_properties": false,
+          "mode": "strict",
+          "model": "graph_node",
+          "properties": {}
+        },
+        "rrflow-represents": {
+          "allow_additional_properties": false,
+          "mode": "strict",
+          "model": "graph_relation",
+          "properties": {}
+        },
+        "rrflow-seat": {
+          "allow_additional_properties": false,
+          "mode": "strict",
+          "model": "graph_node",
+          "properties": {}
+        }
+      }
+    }
+  },
+  "every_model": {
+    "commit_digest": "49b0008e714ed6cb5db971aabe2aa7bb32e1c67da6fbd51a88899f378d8a6648",
+    "registry": {
+      "events": {
+        "visit": {
+          "allow_additional_properties": false,
+          "properties": {},
+          "subject_required": true,
+          "subject_types": [
+            "person"
+          ]
+        }
+      },
+      "migration": "every logical model",
+      "records": {
+        "person": {
+          "allow_additional_properties": false,
+          "properties": {
+            "age": {
+              "required": false,
+              "value_type": "unsigned"
+            },
+            "email": {
+              "required": true,
+              "value_type": "string"
+            }
+          },
+          "unique_properties": [
+            "email"
+          ]
+        }
+      },
+      "relations": {
+        "knows": {
+          "allow_additional_properties": true,
+          "from": [
+            "person"
+          ],
+          "max_outgoing": 64,
+          "properties": {},
+          "to": [
+            "person"
+          ],
+          "unique_pair": true
+        }
+      },
+      "revision": 3,
+      "tables": {
+        "claims": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "reasoning_claim",
+          "properties": {}
+        },
+        "documents": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "document",
+          "properties": {}
+        },
+        "entries": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "key_value",
+          "properties": {}
+        },
+        "knows": {
+          "allow_additional_properties": false,
+          "mode": "strict",
+          "model": "graph_relation",
+          "properties": {}
+        },
+        "lifecycle_events": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "lifecycle_event",
+          "properties": {}
+        },
+        "lifecycles": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "lifecycle_record",
+          "properties": {}
+        },
+        "objects": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "object",
+          "properties": {}
+        },
+        "person": {
+          "allow_additional_properties": false,
+          "mode": "strict",
+          "model": "graph_node",
+          "properties": {}
+        },
+        "places": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "geo",
+          "properties": {}
+        },
+        "reasoning": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "reasoning_record",
+          "properties": {}
+        },
+        "reasoning_events": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "reasoning_event",
+          "properties": {}
+        },
+        "rows": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "relational",
+          "properties": {}
+        },
+        "samples": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "time_series",
+          "properties": {}
+        },
+        "vectors": {
+          "allow_additional_properties": false,
+          "mode": "schemaless",
+          "model": "vector",
+          "properties": {}
+        },
+        "visit": {
+          "allow_additional_properties": false,
+          "mode": "strict",
+          "model": "event",
+          "properties": {}
+        }
+      }
+    }
+  }
+}
