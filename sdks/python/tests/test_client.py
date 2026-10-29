@@ -277,7 +277,10 @@ def test_remote_cleartext_expired_deadlines_and_typed_api_errors_are_rejected() 
 
 
 def test_generated_catalogue_covers_the_frozen_contract() -> None:
-    assert len(ENDPOINTS) == 62
+    assert ENDPOINTS["attunement-replan-preview"]["path"] == "/v1/attunement/replan/preview"
+    assert ENDPOINTS["attunement-replan-preview"]["mutation"] is False
+    assert ENDPOINTS["attunement-replan-preview"]["authentication"] == "session_bearer"
+    assert ENDPOINTS["attunement-replan-accept"]["mutation"] is True
     assert ENDPOINTS["attunement-receipt-read"]["path"] == "/v1/attunement/receipt/read"
     assert ENDPOINTS["attunement-receipt-read"]["mutation"] is False
     assert ENDPOINTS["capabilities-read"] == {

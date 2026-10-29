@@ -2,16 +2,24 @@
 
 package rrd
 
-// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
+// OpenAPI SHA-256: 8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb
 
-const EndpointOpenAPIDocumentSHA256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2"
+const EndpointOpenAPIDocumentSHA256 = "8cb2486a1af4822218905f98becb72388ed832fa1361d32b2bb6e5bf496083cb"
 
 type OperationID string
 
 const (
 	OperationAttunementCancel             OperationID = "attunement-cancel"
+	OperationAttunementPause              OperationID = "attunement-pause"
 	OperationAttunementRead               OperationID = "attunement-read"
 	OperationAttunementReceiptRead        OperationID = "attunement-receipt-read"
+	OperationAttunementRecoverExpired     OperationID = "attunement-recover-expired"
+	OperationAttunementReplanAccept       OperationID = "attunement-replan-accept"
+	OperationAttunementReplanPreview      OperationID = "attunement-replan-preview"
+	OperationAttunementReplanReceiptRead  OperationID = "attunement-replan-receipt-read"
+	OperationAttunementResume             OperationID = "attunement-resume"
+	OperationAttunementStart              OperationID = "attunement-start"
+	OperationAttunementStep               OperationID = "attunement-step"
 	OperationAuditExport                  OperationID = "audit-export"
 	OperationAuditRead                    OperationID = "audit-read"
 	OperationBackupCreate                 OperationID = "backup-create"
@@ -75,8 +83,16 @@ const (
 
 var endpoints = map[OperationID]Endpoint{
 	OperationAttunementCancel:             {Method: "POST", Path: "/v1/attunement/cancel", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementPause:              {Method: "POST", Path: "/v1/attunement/pause", Authentication: "session_bearer", Mutation: true},
 	OperationAttunementRead:               {Method: "POST", Path: "/v1/attunement/read", Authentication: "session_bearer", Mutation: false},
 	OperationAttunementReceiptRead:        {Method: "POST", Path: "/v1/attunement/receipt/read", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementRecoverExpired:     {Method: "POST", Path: "/v1/attunement/recover-expired", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementReplanAccept:       {Method: "POST", Path: "/v1/attunement/replan/accept", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementReplanPreview:      {Method: "POST", Path: "/v1/attunement/replan/preview", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementReplanReceiptRead:  {Method: "POST", Path: "/v1/attunement/replan/receipt/read", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementResume:             {Method: "POST", Path: "/v1/attunement/resume", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementStart:              {Method: "POST", Path: "/v1/attunement/start", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementStep:               {Method: "POST", Path: "/v1/attunement/step", Authentication: "session_bearer", Mutation: true},
 	OperationAuditExport:                  {Method: "POST", Path: "/v1/audit/export", Authentication: "session_bearer", Mutation: false},
 	OperationAuditRead:                    {Method: "POST", Path: "/v1/audit/read", Authentication: "session_bearer", Mutation: false},
 	OperationBackupCreate:                 {Method: "POST", Path: "/v1/backups", Authentication: "session_bearer", Mutation: true},
