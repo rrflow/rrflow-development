@@ -25,9 +25,13 @@ def main():
         parser.add_argument('--' + name)
     parser.add_argument('--output', required=True)
     parser.add_argument('--recover-proof', help='Read an existing attempt and budget; never dispatch or replay.')
+    parser.add_argument('--admission-only', action='store_true', help='Exercise installed denials without provider credentials or dispatch.')
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
-    if recovery is None and any(getattr(args, name.replace('-', '_')) is None for name in inputs):
+    required_inputs = inputs[:4] if args.admission_only else inputs
+    if args.admission_only and (recovery or any(getattr(args, name.replace('-', '_')) is not None for name in inputs[4:])):
+        parser.error('Admission-only mode excludes recovery and provider credential inputs.')
+    if recovery is None and any(getattr(args, name.replace('-', '_')) is None for name in required_inputs):
         parser.error('A new proof requires all build, profile, task and credential inputs.')
     if recovery is not None and any(getattr(args, name.replace('-', '_')) is not None for name in inputs):
         parser.error('Recovery accepts only --recover-proof and --output.')
@@ -71,11 +75,13 @@ def main():
         save('task-source.json', task_source)
         policy = profile['selection_policy']
         binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
-        mapping = {'format_version': 1, 'entries': [{
-            'reference': binding['credential'], 'environment_variable': args.environment_name}]}
-        save('credential-mapping.json', mapping)
-        secret = next(line.split('=', 1)[1] for line in Path(args.secret_file).read_text(encoding='utf-8').splitlines()
-                      if line.startswith(args.secret_name + '='))
+        assert binding.get('credential'), 'Proof requires an explicitly credentialed binding'
+        if not args.admission_only:
+            mapping = {'format_version': 1, 'entries': [{
+                'reference': binding['credential'], 'environment_variable': args.environment_name}]}
+            save('credential-mapping.json', mapping)
+            secret = next(line.split('=', 1)[1] for line in Path(args.secret_file).read_text(encoding='utf-8').splitlines()
+                          if line.startswith(args.secret_name + '='))
         project = out / 'project'
         project.mkdir()
         identity = cli('install', 'identity')['installation_identity']
@@ -91,7 +97,8 @@ def main():
     attempt_before_restart = None
     budget_before_restart = None
 
-    for phase in (['recovered'] if recovery else ['missing-credential', 'authorized', 'reopened']):
+    phases = ['recovered'] if recovery else (['missing-credential', 'denial-reopened'] if args.admission_only else ['missing-credential', 'authorized', 'reopened'])
+    for phase in phases:
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
         command = [str(binary), '--json', 'serve', '--project', str(project), '--bind', '127.0.0.1:0']
@@ -136,7 +143,8 @@ def main():
                 def http(operation, payload, headers=None):
                     descriptor = endpoints[operation]
                     body = envelope(payload, descriptor['mutation'])
-                    req = Request(base + descriptor['path'], method=descriptor['method'].upper(),
+                    path = descriptor['path'].replace('{session}', (headers or {}).get('X-RRD-Session', ''))
+                    req = Request(base + path, method=descriptor['method'].upper(),
                                   data=json.dumps(body).encode('utf-8'),
                                   headers={'Content-Type': 'application/json', **(headers or {})})
                     try:
@@ -152,13 +160,15 @@ def main():
                 session = response['outcome']['payload']
                 headers = {'Authorization': 'Bearer ' + session['token'], 'X-RRD-Session': session['session_id']}
 
-                def call(name, operation, payload, expected=200, authenticate=True):
+                def call(name, operation, payload, expected=200, authenticate=True, error_contains=None):
                     descriptor = endpoints[operation]
                     save(phase + '-' + name + '-intent.json', {'operation': operation, 'path': descriptor['path'], 'payload': payload,
                          'mutation': descriptor['mutation'], 'responseObserved': False})
                     status, response, request = http(operation, payload, headers if authenticate else {})
                     save(phase + '-' + name + '.json', {'status': status, 'request': request, 'response': response})
                     assert status == expected, f'{name} returned {status}, expected {expected}; inspect retained response'
+                    if error_contains is not None:
+                        assert error_contains in response['outcome']['error']['message'], 'Unexpected denial reason'
                     return response['outcome'].get('payload')
 
                 if phase == 'recovered':
@@ -168,6 +178,15 @@ def main():
                     assert endpoints['task-budget-read']['mutation'] is False
                     attempt = call('attempt', 'task-attempt-read', selection)
                     budget = call('budget', 'task-budget-read', {key: selection[key] for key in ['scope', 'task_id']})
+                elif phase == 'denial-reopened':
+                    budget = call('budget', 'task-budget-read', {key: request_payload[key] for key in ['scope', 'task_id']})
+                    assert budget['budget'] is None
+                    readback = call('configuration', 'endpoint-configuration-read', {})
+                    assert readback == configuration
+                    call('current-request', 'task-endpoint-propose', request_payload, 412,
+                         error_contains='configured endpoint credential is unavailable')
+                    assert call('after-denial-budget', 'task-budget-read',
+                                {key: request_payload[key] for key in ['scope', 'task_id']})['budget'] is None
                 elif phase == 'missing-credential':
                     preview = call('preview', 'endpoint-configuration-preview', {'expected_revision': 0, 'profile': profile})
                     configuration = call('apply', 'endpoint-configuration-apply',
@@ -192,6 +211,47 @@ def main():
                     call('missing-credential', 'task-endpoint-propose', request_payload, 412)
                     budget = call('budget', 'task-budget-read', {'scope': task['scope'], 'task_id': task['task_id']})
                     assert budget['budget'] is None
+                    if args.admission_only:
+                        def replace_profile(name, replacement):
+                            nonlocal configuration
+                            plan = call(name + '-preview', 'endpoint-configuration-preview',
+                                        {'expected_revision': configuration['revision'], 'profile': replacement})
+                            configuration = call(name + '-apply', 'endpoint-configuration-apply',
+                                                 {'plan': plan, 'approved_plan_sha256': plan['plan_sha256']})
+                            return configuration
+
+                        def refresh_request(name):
+                            save(name + '-configuration.json', configuration)
+                            result = subprocess.run([args.contract_example, 'proposal-request',
+                                str(out / 'task-record.json'), str(out / (name + '-configuration.json')),
+                                request_payload['attempt_id']], capture_output=True, text=True,
+                                encoding='utf-8', timeout=30, check=True)
+                            return json.loads(result.stdout)
+
+                        # These are actual operator policy changes on this isolated estate,
+                        # not altered provider observations or invented training labels.
+                        restricted = json.loads(json.dumps(profile))
+                        restricted['selection_policy']['allow_network'] = False
+                        replace_profile('network-denied', restricted)
+                        call('network-denied', 'task-endpoint-propose', refresh_request('network-denied'),
+                             403, error_contains='PermissionDenied')
+                        replace_profile('restored', profile)
+                        call('stale-configuration', 'task-endpoint-propose', request_payload,
+                             412, error_contains='InputsChanged')
+                        request_payload = refresh_request('restored')
+                        call('restored-configuration', 'task-endpoint-propose', request_payload,
+                             412, error_contains='configured endpoint credential is unavailable')
+                        replace_profile('revoked', None)
+                        call('revoked-configuration', 'task-endpoint-propose', request_payload,
+                             400, error_contains='endpoint profile is absent')
+                        replace_profile('reactivated', profile)
+                        request_payload = refresh_request('reactivated')
+                        save('current-proposal-request.json', request_payload)
+                        assert call('denials-budget', 'task-budget-read',
+                                    {key: request_payload[key] for key in ['scope', 'task_id']})['budget'] is None
+                        call('close-session', 'session-close', {})
+                        call('closed-session', 'task-endpoint-propose', request_payload,
+                             412, error_contains='SessionExpired')
                 else:
                     assert request_payload is not None
                     selection = {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}
@@ -216,6 +276,18 @@ def main():
                     process.terminate()
                     process.wait(timeout=30)
                 save(phase + '-owned-process-stopped.json', {'pid': process.pid, 'exitCode': process.returncode})
+    if args.admission_only:
+        save('result.json', {'sourceCommit': build['provenance']['source_commit'],
+             'binarySha256': build['executable_sha256'],
+             'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'checks': ['unauthenticated', 'missing-credential', 'network-denied',
+                        'stale-configuration', 'restored-configuration', 'revoked-configuration',
+                        'closed-session', 'configuration-reopen', 'denials-reserve-no-budget'],
+             'providerCredentialsSupplied': False, 'ownedServersStopped': True,
+             'modelQualityQualified': False, 'trainingDataCreated': False,
+             'scope': 'predispatch installed admission only; no in-flight cancellation or completion claim'})
+        print(json.dumps({'output': str(out), 'status': 'installed admission denials and reopen passed'}))
+        return
     if recovery:
         save('result.json', {'sourceCommit': build['provenance']['source_commit'],
              'binarySha256': build['executable_sha256'], 'proof': str(recovery),
