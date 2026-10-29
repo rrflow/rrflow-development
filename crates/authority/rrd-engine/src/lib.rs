@@ -23,17 +23,18 @@ pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQuer
 #[cfg(feature = "full")]
 pub use engine::{
     load_estate_configuration, AttunementCommand, AttunementControlResult, AttunementReceiptView,
-    AuthorizedInvocation, ClockAssessment, ClockAssessmentStatus, ClockObservation,
-    ClockObservationFailure, ClockSourceKind, ClockTrustLevel, DefaultAttunementPhase,
-    DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute, EstateAdminAction,
-    EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome, InstallationPreview,
-    InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
-    InstalledEstateRecord, InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation,
-    InvocationCompletion, InvocationCredential, PreparedDistributedAuthority, ProjectLocator,
-    ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,
-    ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
-    TaskReasoningBudget, TransactionAdmissionSnapshot, CLOCK_OBSERVATION_FORMAT_VERSION,
-    MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
+    AttunementReplanPreview, AttunementReplanResult, AuthorizedInvocation, ClockAssessment,
+    ClockAssessmentStatus, ClockObservation, ClockObservationFailure, ClockSourceKind,
+    ClockTrustLevel, DefaultAttunementPhase, DefaultInstallProfile, DistributedAuthorityRead,
+    DistributedReadRoute, EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome,
+    EstateReconcileOutcome, InstallationPreview, InstallationVerificationCheck,
+    InstallationVerificationReport, InstallationVerificationStatus, InstalledEstateRecord,
+    InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation, InvocationCompletion,
+    InvocationCredential, PreparedDistributedAuthority, ProjectLocator, ReasoningBudgetStop,
+    Result, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind, ServingPublisher,
+    ServingRecord, ServingRegistration, TaskEmbeddingAttempt, TaskReasoningBudget,
+    TransactionAdmissionSnapshot, CLOCK_OBSERVATION_FORMAT_VERSION, MAX_AUDIT_PAGE_RECORDS,
+    MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{

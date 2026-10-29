@@ -115,7 +115,10 @@ mod function;
 mod inference;
 mod installation;
 mod observation_source;
-pub use attunement::{AttunementCommand, AttunementControlResult, AttunementReceiptView};
+pub use attunement::{
+    AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,
+    AttunementReplanResult,
+};
 mod invocation;
 mod knowledge;
 mod maintenance;

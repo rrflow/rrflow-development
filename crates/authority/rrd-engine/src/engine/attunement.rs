@@ -1,17 +1,20 @@
 //! Explicit engine-owned attunement control. Existing transport exposes read
-//! and cancellation; this module does not activate background execution,
-//! source scanning or external capabilities.
+//! and cancellation; bounded precondition observations do not activate
+//! background execution, source ingestion or external capabilities.
 //! The first worker phase verifies the installed connection; later phases fail
 //! explicitly until their real implementation is present.
 
-use super::installation::{attunement_job_key, attunement_plan_key, estate_configuration_key};
+use super::installation::{
+    attunement_job_key, attunement_plan_key, canonical_prefixed, estate_configuration_key,
+    project_inventory_sha256, DefaultInstallProfile, InstalledEstateRecord, INSTALLED_RECORD_KEY,
+};
 use super::*;
 use rrd_contract::{
-    attunement_checkpoint_sha256, AttunementFailure, AttunementJob, AttunementJobState,
-    AttunementLease, AttunementPhase, AttunementPhaseCheckpoint, AttunementPlan,
-    AttunementReadResult, AttunementRuntimeCoordinates, AttunementSourceVerification,
-    AttunementStatus, CancelAttunement, ReadAttunement, ResumeAttunement,
-    INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    attunement_checkpoint_sha256, attunement_plan_sha256, AttunementFailure, AttunementJob,
+    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
+    AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
+    AttunementSourceVerification, AttunementStatus, CancelAttunement, ReadAttunement,
+    ResumeAttunement, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use std::time::Instant;
 
@@ -88,6 +91,34 @@ pub struct AttunementControlResult {
     pub idempotent_replay: bool,
 }
 
+/// A bounded installation-precondition observation, not a D-03 snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanPreview {
+    pub predecessor_job_id: CanonicalId,
+    pub predecessor_revision: u64,
+    pub generation: u64,
+    pub plan: AttunementPlan,
+    pub proposal_sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReplanResult {
+    pub predecessor: AttunementStatus,
+    pub successor: AttunementStatus,
+    pub plan: AttunementPlan,
+    pub idempotent_replay: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReplanReceipt {
+    principal_id: CanonicalId,
+    operation_sha256: String,
+    result: AttunementReplanResult,
+}
+
 /// An existing committed control receipt, read without replaying its command.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttunementReceiptView {
@@ -107,6 +138,371 @@ struct Receipt {
 }
 
 impl RrdEngine {
+    fn attunement_installed_record(&self) -> Result<InstalledEstateRecord> {
+        let record: InstalledEstateRecord = decode(
+            &self
+                .storage
+                .control()
+                .get(INSTALLED_RECORD_KEY)?
+                .ok_or_else(|| ServiceError::Storage("installed estate record missing".into()))?,
+        )?;
+        record.validate()?;
+        if self.installed_estate_identity() != Some(&record.installation.target) {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        Ok(record)
+    }
+
+    fn attunement_source_observation(&self) -> Result<String> {
+        let record = self.attunement_installed_record()?;
+        let (profile, digest) =
+            DefaultInstallProfile::load(record.installation.profile_id.as_str())?;
+        if digest != record.installation.profile_sha256 {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        let root = self
+            .installed_project_root
+            .as_ref()
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        project_inventory_sha256(root, &profile)
+    }
+
+    fn attunement_replan_generation(&self, job: &AttunementJob) -> Result<u64> {
+        let key = format!(
+            "{}/replan-generation",
+            attunement_job_key(&self.instance, &job.id)
+        );
+        match self.storage.control().get(&key)? {
+            Some(value) => {
+                let generation: u64 = decode(&value)?;
+                if generation == 0 {
+                    return Err(ServiceError::Storage(
+                        "invalid attunement replan generation".into(),
+                    ));
+                }
+                Ok(generation)
+            }
+            None => {
+                let record = self.attunement_installed_record()?;
+                let initial = canonical_prefixed("job", &record.attunement_plan_sha256)?;
+                if job.id != initial || job.plan_sha256 != record.attunement_plan_sha256 {
+                    return Err(ServiceError::Storage(
+                        "attunement replan generation missing".into(),
+                    ));
+                }
+                Ok(0)
+            }
+        }
+    }
+
+    fn make_attunement_replan(
+        &self,
+        job: &AttunementJob,
+        old: &AttunementPlan,
+    ) -> Result<AttunementReplanPreview> {
+        if job.checkpoints.len() > 1
+            || !matches!(
+                job.state,
+                AttunementJobState::Pending
+                    | AttunementJobState::Running
+                    | AttunementJobState::Paused
+                    | AttunementJobState::Failed
+            )
+        {
+            return Err(ServiceError::StorageConflict(
+                "attunement replan requires an unresolved, locally fenced job".into(),
+            ));
+        }
+        if job.state == AttunementJobState::Failed
+            && !job.failure.as_ref().is_some_and(|failure| {
+                failure.phase == AttunementPhase::Inventory
+                    && failure.code.as_str() == "phase-unavailable"
+                    && failure.retryable
+            })
+        {
+            return Err(ServiceError::StorageConflict(
+                "attunement failure requires explicit reconciliation before replan".into(),
+            ));
+        }
+        let generation = self
+            .attunement_replan_generation(job)?
+            .checked_add(1)
+            .ok_or_else(|| {
+                ServiceError::ConfigurationLimit("attunement replan generation overflow".into())
+            })?;
+        let source = self.attunement_source_observation()?;
+        let seed = operation_digest(&(
+            "attunement-replan-v1",
+            &job.id,
+            job.revision,
+            &old.plan_sha256,
+            generation,
+            &source,
+        ))?;
+        let mut plan = old.clone();
+        plan.id = canonical_prefixed("attune", &seed)?;
+        plan.source_sha256 = source;
+        plan.plan_sha256 = attunement_plan_sha256(&plan).map_err(contract)?;
+        plan.validate().map_err(contract)?;
+        let proposal_sha256 = operation_digest(&(
+            "attunement-replan-preview-v1",
+            &job.id,
+            job.revision,
+            generation,
+            &plan,
+        ))?;
+        Ok(AttunementReplanPreview {
+            predecessor_job_id: job.id.clone(),
+            predecessor_revision: job.revision,
+            generation,
+            plan,
+            proposal_sha256,
+        })
+    }
+
+    /// A proposal does not accept a plan or authorize any source mutation.
+    #[allow(clippy::too_many_arguments)]
+    pub fn preview_attunement_replan(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        job_id: &CanonicalId,
+        expected_revision: u64,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<AttunementReplanPreview> {
+        let started = Instant::now();
+        self.authorize(
+            session,
+            token,
+            SecurityAction::EstateAdmin,
+            now,
+            request_id,
+            operation_id,
+        )?;
+        let (_, job, plan) = self.load_attunement(job_id)?;
+        if job.revision != expected_revision {
+            return Err(ServiceError::StorageConflict(
+                "attunement job revision changed".into(),
+            ));
+        }
+        let preview = self.make_attunement_replan(&job, &plan)?;
+        self.authorize(
+            session,
+            token,
+            SecurityAction::EstateAdmin,
+            elapsed_time(now, started)?,
+            request_id,
+            operation_id,
+        )?;
+        Ok(preview)
+    }
+
+    /// Atomically fence the prior job and publish the accepted successor.
+    #[allow(clippy::too_many_arguments)]
+    pub fn accept_attunement_replan(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        preview: &AttunementReplanPreview,
+        expected_sha256: &str,
+        context: &RequestContext,
+        now: u64,
+    ) -> Result<AttunementReplanResult> {
+        let started = Instant::now();
+        context.validate(true).map_err(contract)?;
+        check_deadline(context, now)?;
+        let (_, auth) = self.authorize(
+            session,
+            token,
+            SecurityAction::EstateAdmin,
+            now,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
+        )?;
+        let principal = auth.principal_id.ok_or(ServiceError::Unauthenticated)?;
+        let _ = encode(preview)?;
+        if expected_sha256 != preview.proposal_sha256 {
+            return Err(ServiceError::OperationDigestMismatch);
+        }
+        let operation_sha256 =
+            operation_digest(&("attunement-accept-replan-v1", preview, expected_sha256))?;
+        let receipt_key = format!(
+            "{}/replan-receipt/{}",
+            attunement_job_key(&self.instance, &preview.predecessor_job_id),
+            operation_digest(&(
+                &principal,
+                context
+                    .idempotency_key
+                    .as_ref()
+                    .ok_or_else(|| ServiceError::Contract(
+                        "attunement replan requires idempotency".into()
+                    ))?
+            ))?
+        );
+        let _gate = self.admit_transaction(
+            preview,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
+        )?;
+        let at = elapsed_time(now, started)?;
+        check_deadline(context, at)?;
+        self.authorize(
+            session,
+            token,
+            SecurityAction::EstateAdmin,
+            at,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
+        )?;
+        let (old_bytes, old, old_plan) = self.load_attunement(&preview.predecessor_job_id)?;
+        if let Some(bytes) = self.storage.control().get(&receipt_key)? {
+            let receipt: ReplanReceipt = decode(&bytes)?;
+            if receipt.principal_id != principal || receipt.operation_sha256 != operation_sha256 {
+                return Err(ServiceError::IdempotencyConflict);
+            }
+            receipt
+                .result
+                .predecessor
+                .validate(&old_plan)
+                .map_err(contract)?;
+            receipt
+                .result
+                .successor
+                .validate(&receipt.result.plan)
+                .map_err(contract)?;
+            if receipt.result.plan != preview.plan
+                || receipt.result.predecessor.job.id != old.id
+                || receipt.result.idempotent_replay
+            {
+                return Err(ServiceError::Storage(
+                    "invalid attunement replan receipt".into(),
+                ));
+            }
+            return Ok(AttunementReplanResult {
+                idempotent_replay: true,
+                ..receipt.result
+            });
+        }
+        if old.revision != preview.predecessor_revision {
+            return Err(ServiceError::StorageConflict(
+                "attunement job revision changed".into(),
+            ));
+        }
+        let refreshed = self.make_attunement_replan(&old, &old_plan)?;
+        if refreshed.plan.source_sha256 != preview.plan.source_sha256 {
+            return Err(ServiceError::AttunementSourceChanged);
+        }
+        if refreshed != *preview {
+            return Err(ServiceError::OperationDigestMismatch);
+        }
+        let at = elapsed_time(now, started)?;
+        check_deadline(context, at)?;
+        self.authorize(
+            session,
+            token,
+            SecurityAction::EstateAdmin,
+            at,
+            context.request_id.as_str(),
+            context.operation_id.as_str(),
+        )?;
+        let finished = elapsed_time(now, started)?;
+        check_deadline(context, finished)?;
+        if finished <= old.updated_at_unix_ms {
+            return Err(ServiceError::Contract(
+                "attunement transition time must advance".into(),
+            ));
+        }
+        let mut predecessor = old.clone();
+        predecessor.revision = old
+            .revision
+            .checked_add(1)
+            .ok_or_else(|| ServiceError::Contract("attunement revision overflow".into()))?;
+        predecessor.updated_at_unix_ms = finished;
+        predecessor.state = AttunementJobState::CancelRequested;
+        predecessor.current_phase = predecessor.next_phase();
+        predecessor.failure = None;
+        old.validate_transition(&predecessor, &old_plan)
+            .map_err(contract)?;
+        let successor = AttunementJob {
+            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            id: canonical_prefixed("job", &preview.plan.plan_sha256)?,
+            plan_id: preview.plan.id.clone(),
+            plan_sha256: preview.plan.plan_sha256.clone(),
+            revision: 1,
+            state: AttunementJobState::Pending,
+            current_phase: None,
+            checkpoints: Vec::new(),
+            lease: None,
+            failure: None,
+            created_at_unix_ms: finished,
+            updated_at_unix_ms: finished,
+        };
+        let result = AttunementReplanResult {
+            predecessor: status(predecessor, &old_plan, finished)?,
+            successor: status(successor, &preview.plan, finished)?,
+            plan: preview.plan.clone(),
+            idempotent_replay: false,
+        };
+        let receipt = ReplanReceipt {
+            principal_id: principal,
+            operation_sha256,
+            result: result.clone(),
+        };
+        let transition = |key, expected, replacement, action: &str| ControlTransition {
+            key,
+            expected,
+            replacement: Some(replacement),
+            at: finished,
+            actor: format!("session:{}", session.as_str()),
+            action: action.into(),
+            request_id: context.request_id.as_str().into(),
+            operation_id: context.operation_id.as_str().into(),
+        };
+        let old_key = attunement_job_key(&self.instance, &old.id);
+        let new_key = attunement_job_key(&self.instance, &result.successor.job.id);
+        self.storage.control().commit_batch(&[
+            transition(
+                old_key.clone(),
+                Some(old_bytes),
+                encode(&result.predecessor.job)?,
+                "attunement.replan_fenced",
+            ),
+            transition(
+                attunement_plan_key(&self.instance, &preview.plan.id),
+                None,
+                encode(&preview.plan)?,
+                "attunement.replan_plan_created",
+            ),
+            transition(
+                new_key.clone(),
+                None,
+                encode(&result.successor.job)?,
+                "attunement.replan_job_created",
+            ),
+            transition(
+                format!("{new_key}/replan-generation"),
+                None,
+                encode(&preview.generation)?,
+                "attunement.replan_generation",
+            ),
+            transition(
+                format!("{old_key}/successor"),
+                None,
+                encode(preview)?,
+                "attunement.replan_linked",
+            ),
+            transition(
+                receipt_key,
+                None,
+                encode(&receipt)?,
+                "attunement.replan_receipted",
+            ),
+        ])?;
+        Ok(result)
+    }
+
     /// Read the installed job through current estate authorization.
     #[allow(clippy::too_many_arguments)]
     pub fn read_attunement(
@@ -315,6 +711,16 @@ impl RrdEngine {
             return Err(ServiceError::ConfigurationLimit(
                 "attunement transition/receipt limit reached".into(),
             ));
+        }
+        // This observes the installed precondition only. It is not an atomic
+        // source snapshot and cannot authorize a project-owned file mutation.
+        let requires_source = matches!(
+            command,
+            AttunementCommand::Start { .. } | AttunementCommand::Resume { .. }
+        ) || (matches!(command, AttunementCommand::Step { .. })
+            && !cancelling);
+        if requires_source && self.attunement_source_observation()? != plan.source_sha256 {
+            return Err(ServiceError::AttunementSourceChanged);
         }
         let at = elapsed_time(now, started)?;
         check_deadline(context, at)?;

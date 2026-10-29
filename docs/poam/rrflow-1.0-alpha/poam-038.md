@@ -33,6 +33,14 @@ record covers only the boundaries above.
 
 ## Impact
 
+The [embedded replan candidate](../../evidence/change-journals/gate-d/d-02-observed-source-replan.md)
+adds a bounded installation-precondition observation before attunement work
+and an explicit successor job with atomic control receipts. Local ordinary-edit,
+fencing and restart tests passed. That observation is not a D-03 snapshot and
+does not close the race with an uncoordinated editor after the scan; public
+operations, source revision, complete interruption and exact-candidate CI
+remain outstanding. This POA&M remains open.
+
 [ADR-0002](../../decisions/0002-adaptive-reasoning-governed-effects.md) requires
 the engine to capture or refresh the affected source boundary and reject stale
 or conflicting effects before commit. Once the Inventory and later phases act on
