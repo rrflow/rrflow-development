@@ -14,10 +14,21 @@ pub(super) struct SampleGate {
     pub entered: tokio::sync::Notify,
     pub release: tokio::sync::Notify,
     pub dropped: AtomicBool,
+    open: AtomicBool,
 }
 
 impl SampleGate {
+    pub(super) fn open(&self) {
+        self.open.store(true, Ordering::Release);
+        // Only one sample can own this gate at a time. notify_one retains a
+        // permit if opening races with registration of that one waiter.
+        self.release.notify_one();
+    }
+
     pub(super) async fn wait(self: Arc<Self>) {
+        if self.open.load(Ordering::Acquire) {
+            return;
+        }
         struct Guard(Arc<SampleGate>);
         impl Drop for Guard {
             fn drop(&mut self) {
@@ -26,7 +37,9 @@ impl SampleGate {
         }
         let _guard = Guard(self.clone());
         self.entered.notify_one();
-        self.release.notified().await;
+        if !self.open.load(Ordering::Acquire) {
+            self.release.notified().await;
+        }
     }
 }
 
@@ -73,6 +86,25 @@ mod tests {
         Arc,
     };
     use std::time::Duration;
+
+    #[tokio::test]
+    async fn opening_gate_releases_current_and_future_samples() {
+        let gate = Arc::new(SampleGate::default());
+        let first_gate = gate.clone();
+        let first = tokio::spawn(async move { first_gate.wait().await });
+        tokio::time::timeout(Duration::from_secs(1), gate.entered.notified())
+            .await
+            .unwrap();
+        assert!(!first.is_finished());
+        gate.open();
+        tokio::time::timeout(Duration::from_secs(1), first)
+            .await
+            .unwrap()
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(1), gate.clone().wait())
+            .await
+            .unwrap();
+    }
 
     #[tokio::test]
     async fn held_sample_allows_offer_and_denies_overlap() {

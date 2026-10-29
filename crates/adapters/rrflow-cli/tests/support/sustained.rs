@@ -1649,6 +1649,73 @@ fn installed_capacity_workload_smoke() {
         }).collect();
         outcomes.sort_by_key(|attempt| attempt.sequence);
         assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&segment.attempts).unwrap());
+        // Hold a harness-only asynchronous sample in the actual scheduled
+        // segment. A later real ACK must be journaled before the gate opens;
+        // the completed segment must contain that exact acknowledged attempt.
+        let held_campaign = smoke_campaign();
+        let held_evidence = evidence_root.path().join("held-segment-evidence");
+        let held_writer = CampaignWriter::create(&held_evidence, held_campaign.clone()).unwrap();
+        held_writer.admit_next().unwrap();
+        let held_gate = std::sync::Arc::new(sample_task::SampleGate::default());
+        let mut held_run = PointRun {
+            campaign: &held_campaign,
+            point: &held_campaign.points[0],
+            workload: work.clone(),
+            pid: child.id(), clock, allocation: None, generations: vec![0; 6],
+            previous_resources: Vec::new(), backup: management::ManagementTask::new(),
+            sample_gate: Some(held_gate.clone()),
+        };
+        let mut held_segment = Box::pin(held_run.segment(&held_writer, LoadPhase::Warmup, ns(clock), 0, 6, true));
+        tokio::time::timeout(Duration::from_secs(20), async {
+            tokio::select! {
+                _ = held_gate.entered.notified() => {}
+                result = &mut held_segment => panic!("segment ended before held sample: {result:?}"),
+            }
+        }).await.unwrap();
+        let held_ack = tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                tokio::select! {
+                    result = &mut held_segment => panic!("segment ended while sample was held: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                        held_writer.checkpoint_progress().unwrap();
+                        let raw = std::fs::read_to_string(held_evidence.join("progress.jsonl")).unwrap();
+                        let acknowledged = raw.lines().map(|line| serde_json::from_str::<ProgressEvent>(line).unwrap()).find_map(|event|
+                            match event {
+                                ProgressEvent::LoadOutcome { attempt, .. }
+                                    if attempt.sequence >= 2 && attempt.outcome == LoadOutcome::Acknowledged => Some(attempt),
+                                _ => None,
+                            });
+                        if let Some(attempt) = acknowledged { break attempt; }
+                    }
+                }
+            }
+        }).await.unwrap();
+        assert!(!held_gate.dropped.load(std::sync::atomic::Ordering::SeqCst));
+        held_gate.open();
+        let held_result = tokio::time::timeout(Duration::from_secs(20), &mut held_segment).await.unwrap().unwrap();
+        drop(held_segment);
+        assert_eq!(held_result.attempts.len(), 6);
+        assert!(held_result.resources.len() >= 3);
+        assert!(held_result.resources.iter().all(|sample| sample.pid == child.id()));
+        assert!(held_result.attempts.iter().any(|attempt|
+            attempt.sequence == held_ack.sequence && attempt.request_sha256 == held_ack.request_sha256
+                && attempt.result_sha256 == held_ack.result_sha256 && attempt.outcome == LoadOutcome::Acknowledged));
+        held_writer.checkpoint_progress().unwrap();
+        let raw = std::fs::read_to_string(held_evidence.join("progress.jsonl")).unwrap();
+        let events: Vec<ProgressEvent> = raw.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+        let resources: Vec<_> = events.iter().filter_map(|event| match event {
+            ProgressEvent::Resource { segment: 0, sample } => Some(serde_json::to_value(sample).unwrap()),
+            _ => None,
+        }).collect();
+        let expected_resources: Vec<_> = held_result.resources.iter().map(|sample| serde_json::to_value(sample).unwrap()).collect();
+        assert_eq!(resources, expected_resources);
+        let mut outcomes: Vec<_> = events.iter().filter_map(|event| match event {
+            ProgressEvent::LoadOutcome { segment: 0, attempt } => Some(attempt),
+            _ => None,
+        }).collect();
+        outcomes.sort_by_key(|attempt| attempt.sequence);
+        assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&held_result.attempts).unwrap());
+        println!("held_segment_summary acknowledged_sequence={} attempts={} resources={} checkpoint_matches=true", held_ack.sequence, held_result.attempts.len(), held_result.resources.len());
         // Interrupt a real segment while its harness-only async sample is held.
         // Only independently verified ACKs are replayed after an owned restart.
         let mut interrupted_campaign = smoke_campaign();

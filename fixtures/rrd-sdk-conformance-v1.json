@@ -151,6 +151,44 @@
         "mode": "exact"
       },
       "max_storage_keys": 1000
+    },
+    "quantization": {
+      "build": {
+        "scope": "instance:instance-73d0af55a12ccf5d12167911",
+        "collection_id": "documents",
+        "vector_name": "title",
+        "method": {
+          "method": "turbo_quant",
+          "bits": "bits4",
+          "seed": 7
+        },
+        "max_storage_keys": 1000
+      },
+      "activate": {
+        "scope": "instance:instance-73d0af55a12ccf5d12167911",
+        "artifact_id": "quant-turboquant-documents-title",
+        "generation": 1
+      },
+      "search": {
+        "scope": "instance:instance-73d0af55a12ccf5d12167911",
+        "valid_at": 100,
+        "collection_id": "documents",
+        "vector_name": "title",
+        "query": {
+          "kind": "dense",
+          "values": [
+            1.0,
+            0.0
+          ]
+        },
+        "top_k": 1,
+        "mode": {
+          "mode": "require_approximate",
+          "exact_rerank": 1,
+          "ef_search": 1
+        },
+        "max_storage_keys": 1000
+      }
     }
   },
   "changefeed": {
@@ -174,9 +212,10 @@
   },
   "estate": {},
   "expected": {
-    "endpoint_count": 57,
+    "endpoint_count": 62,
     "query_identity": "record:document:sdk-conformance",
     "vector_reference": "embedding:sdk-conformance-title",
+    "quantized_access_path": "turboquant",
     "estate_revision": 1,
     "typed_error": "unauthenticated",
     "retry_attempts": 2

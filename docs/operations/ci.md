@@ -321,13 +321,18 @@ candidate. The ordinary suite's ignored privileged case is not acceptance;
 the explicit isolated invocation must pass. This bounded fixture does not
 replace D-01.5's wider native filesystem and offline qualification.
 
-The repository-policy partition also verifies the generated
-`docs/roadmap/rrflow-1.0-file-plan.jsonl`. That inventory must match every
-tracked or non-ignored path and every long-lived future path registered by its
-generator. Newly created paths become current inventory records; the pull
-request description binds their intended scope. Regenerate the inventory with
-`python3 scripts/ci/build_execution_inventory.py` after an accepted path or
-content change.
+The repository-policy partition generates and checks the complete Git-backed
+inventory in ignored `target/rrflow-1.0-file-plan.jsonl`, then retains it and
+the exact checked-out Git revision as a CI artifact. The generator must cover
+every tracked or non-ignored path and every long-lived future path registered by
+its generator; a missing or stale local output fails `--check`. CI rejects dirty
+or untracked non-ignored source before generating the artifact. The stable
+`docs/roadmap/rrflow-1.0-file-plan.jsonl` link is a retirement descriptor, not
+current inventory. Generate a current local view using
+`python3 scripts/ci/build_execution_inventory.py` and check it with the same
+command plus `--check`. Newly created paths become current inventory records;
+the pull request description still binds their intended scope. This removes a
+shared generated merge-conflict point without removing any candidate CI test.
 
 The Connectome UI is optional for engine operation, while candidate CI follows
 repository policy and recursively materializes every declared submodule. The
