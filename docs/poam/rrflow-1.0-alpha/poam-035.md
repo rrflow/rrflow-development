@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
+locally exercised held and interrupted resource acquisition and Windows Job
+membership for the engine, harness and helper. It has not established bounded
+cleanup when native termination or reaping fails, abrupt harness death, helper
+image identity, other native platforms, frozen-profile overhead or the 24-hour
+soak. The original delayed-sample cause remains unproven; this candidate does
+not close C-07 or POAM-035.
+
 The retained Windows sampler failure observed a 1.269-second diagnostics RPC
 but did not capture internal lock wait or assembly timing. The
 [diagnostic attribution candidate](../../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)

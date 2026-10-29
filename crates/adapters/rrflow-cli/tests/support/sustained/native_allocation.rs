@@ -60,14 +60,30 @@ pub(crate) fn enforcement(
     let Some(receipt) = receipt else {
         return Ok(AllocationEnforcement::ObservedOnly);
     };
-    if !verify(pid, receipt) {
-        return Err("owned engine native allocation membership or limits changed".into());
+    enforcement_for(pid, std::process::id(), Some(receipt))
+}
+
+/// The helper must prove membership of the original harness as well as its
+/// own process and the sampled engine. A helper PID cannot replace the
+/// harness identity in qualification evidence.
+pub(crate) fn enforcement_for(
+    pid: u32,
+    harness_pid: u32,
+    receipt: Option<&NativeAllocationReceipt>,
+) -> Result<AllocationEnforcement, String> {
+    let Some(receipt) = receipt else {
+        return Ok(AllocationEnforcement::ObservedOnly);
+    };
+    if !verify(pid, harness_pid, receipt) {
+        return Err(
+            "owned engine, harness or native worker allocation membership or limits changed".into(),
+        );
     }
     receipt.enforcement()
 }
 
 #[cfg(target_os = "linux")]
-fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
+fn verify(pid: u32, harness_pid: u32, receipt: &NativeAllocationReceipt) -> bool {
     use std::path::{Path, PathBuf};
     fn read(path: impl AsRef<Path>) -> Option<String> {
         let mut raw = String::new();
@@ -93,7 +109,7 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
             return None;
         }
         let membership = format!("0::/{relative}");
-        for process in [pid, std::process::id()] {
+        for process in [pid, harness_pid, std::process::id()] {
             if !read(format!("/proc/{process}/cgroup"))?
                 .lines()
                 .any(|line| line == membership)
@@ -116,7 +132,7 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
 }
 
 #[cfg(windows)]
-fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
+fn verify(pid: u32, harness_pid: u32, receipt: &NativeAllocationReceipt) -> bool {
     use std::{
         ffi::c_void,
         mem::{size_of, zeroed},
@@ -180,7 +196,7 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
         if job.0.is_null() {
             return false;
         }
-        for id in [pid, std::process::id()] {
+        for id in [pid, harness_pid, std::process::id()] {
             let process = Handle(OpenProcess(0x0400, 0, id));
             let mut member = 0;
             if process.0.is_null()
@@ -223,6 +239,6 @@ fn verify(pid: u32, receipt: &NativeAllocationReceipt) -> bool {
 }
 
 #[cfg(not(any(windows, target_os = "linux")))]
-fn verify(_pid: u32, _receipt: &NativeAllocationReceipt) -> bool {
+fn verify(_pid: u32, _harness_pid: u32, _receipt: &NativeAllocationReceipt) -> bool {
     false
 }

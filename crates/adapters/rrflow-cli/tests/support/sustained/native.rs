@@ -3,7 +3,7 @@
 use rrflow_eval::storage::NativeMetric;
 #[path = "native_allocation.rs"]
 mod allocation;
-pub(super) use allocation::{enforcement, receipt};
+pub(super) use allocation::{enforcement, enforcement_for, receipt};
 
 fn missing(reason: &str) -> NativeMetric {
     NativeMetric::Unavailable {

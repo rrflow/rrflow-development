@@ -36,6 +36,7 @@ impl Member {
             .await
             .map_err(|e| e.to_string())?;
         let work = Workload {
+            native_worker: Default::default(),
             client,
             session,
             valid_at: estate.at,

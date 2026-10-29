@@ -24,6 +24,8 @@ mod lifecycle;
 mod management;
 #[path = "sustained/native.rs"]
 mod native;
+#[path = "sustained/native_worker.rs"]
+mod native_worker;
 #[path = "sustained/reader.rs"]
 mod reader;
 #[path = "sustained/resource_window.rs"]
@@ -128,6 +130,7 @@ async fn session(
         .await
         .map_err(|e| e.to_string())?;
     Ok(Workload {
+        native_worker: Default::default(),
         client,
         session,
         valid_at: estate.at,
@@ -230,15 +233,6 @@ async fn sample_with_identity(
     allocation: &Option<NativeAllocationReceipt>,
 ) -> DriverResult<(ResourceSample, String, SampleTiming)> {
     let started = Instant::now();
-    let mut system = sysinfo::System::new();
-    let process_id = sysinfo::Pid::from_u32(pid);
-    system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[process_id]), true);
-    system.refresh_memory();
-    let process = system
-        .process(process_id)
-        .ok_or("owned engine exited during resource sampling")?;
-    let io = process.disk_usage();
-    let host_ns = ns(started);
     let rpc_started = Instant::now();
     let request_id = sample_trace::next_request_id().map_err(str::to_string)?;
     let snapshot = workload
@@ -256,31 +250,31 @@ async fn sample_with_identity(
     let missing = |reason: &str| NativeMetric::Unavailable {
         reason: evidence_id(reason),
     };
-    let memory_started = Instant::now();
-    let (private_bytes, mapped_bytes) = native::memory(pid);
-    let memory_ns = ns(memory_started);
-    // Preserve the original observation point: before allocation verification.
+    let native = workload.native_worker.acquire(pid, allocation).await?;
+    // This is the parent-side completion time of the real native observation.
     let elapsed_ns = ns(clock);
-    let enforcement_ns;
+    let host_ns = native.host_ns;
+    let memory_ns = native.memory_ns;
+    let enforcement_ns = native.enforcement_ns;
     let value = ResourceSample {
         elapsed_ns,
         pid,
         resident_bytes: NativeMetric::Observed {
-            value: process.memory(),
+            value: native.resident_bytes,
         },
-        private_bytes,
-        mapped_bytes,
+        private_bytes: native.private_bytes,
+        mapped_bytes: native.mapped_bytes,
         host_resident_bytes: NativeMetric::Observed {
-            value: system.used_memory(),
+            value: native.host_resident_bytes,
         },
         read_bytes: NativeMetric::Observed {
-            value: io.total_read_bytes,
+            value: native.read_bytes,
         },
         written_bytes: NativeMetric::Observed {
-            value: io.total_written_bytes,
+            value: native.written_bytes,
         },
         cpu_time_ns: NativeMetric::Observed {
-            value: process.accumulated_cpu_time() * 1_000_000,
+            value: native.cpu_time_ns,
         },
         retained_bytes: match &snapshot.admission {
             Some(value) => NativeMetric::Observed {
@@ -305,12 +299,7 @@ async fn sample_with_identity(
             },
             None => missing("public-debt-gauge-unavailable"),
         },
-        allocation_enforcement: {
-            let enforcement_started = Instant::now();
-            let value = native::enforcement(pid, allocation.as_ref())?;
-            enforcement_ns = ns(enforcement_started);
-            value
-        },
+        allocation_enforcement: native.enforcement,
         allocation_receipt: allocation.clone(),
         storage: Some(snapshot),
     };
@@ -388,12 +377,19 @@ impl PointRun<'_> {
         if self.campaign.idle_segment_ms(duration_ms)? != duration_ms {
             return Err("idle duration exceeds its frozen segment admission".into());
         }
-        tokio::time::timeout(
+        let result = tokio::time::timeout(
             Duration::from_millis(self.campaign.storage.budgets.run_ms.get().min(180_000)),
             self.drain_inner(writer, duration_ms),
         )
         .await
-        .map_err(|_| "idle segment exceeded its frozen deadline")?
+        .map_err(|_| "idle segment exceeded its frozen deadline".to_owned())
+        .and_then(std::convert::identity);
+        let cleanup = self.workload.native_worker.shutdown().await;
+        match (result, cleanup) {
+            (Ok(value), Ok(())) => Ok(value),
+            (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+            (Err(error), Err(cleanup)) => Err(format!("{error}; native worker cleanup: {cleanup}")),
+        }
     }
 
     async fn drain_inner(
@@ -1242,6 +1238,7 @@ fn installed_sampler_trace_matches_server_and_store() {
             .await
             .unwrap();
         let work = Workload {
+            native_worker: Default::default(),
             client,
             session: lease,
             valid_at: estate.at,
@@ -1368,6 +1365,7 @@ fn installed_sampler_trace_during_write_load() {
             .await
             .unwrap();
         let work = Workload {
+            native_worker: Default::default(),
             client,
             session,
             valid_at: estate.at,
@@ -1519,6 +1517,7 @@ fn installed_capacity_workload_smoke() {
             .await
             .unwrap();
         let mut work = Workload {
+            native_worker: Default::default(),
             client,
             session: lease,
             valid_at: estate.at,
@@ -1652,7 +1651,9 @@ fn installed_capacity_workload_smoke() {
         // Hold a harness-only asynchronous sample in the actual scheduled
         // segment. A later real ACK must be journaled before the gate opens;
         // the completed segment must contain that exact acknowledged attempt.
-        let held_campaign = smoke_campaign();
+        let mut held_campaign = smoke_campaign();
+        held_campaign.schedule.warmup_ms = 5_000u64.try_into().unwrap();
+        held_campaign.evidence.segment_attempts = 20u64.try_into().unwrap();
         let held_evidence = evidence_root.path().join("held-segment-evidence");
         let held_writer = CampaignWriter::create(&held_evidence, held_campaign.clone()).unwrap();
         held_writer.admit_next().unwrap();
@@ -1661,11 +1662,11 @@ fn installed_capacity_workload_smoke() {
             campaign: &held_campaign,
             point: &held_campaign.points[0],
             workload: work.clone(),
-            pid: child.id(), clock, allocation: None, generations: vec![0; 6],
+            pid: child.id(), clock, allocation: None, generations: vec![0; 20],
             previous_resources: Vec::new(), backup: management::ManagementTask::new(),
             sample_gate: Some(held_gate.clone()),
         };
-        let mut held_segment = Box::pin(held_run.segment(&held_writer, LoadPhase::Warmup, ns(clock), 0, 6, true));
+        let mut held_segment = Box::pin(held_run.segment(&held_writer, LoadPhase::Warmup, ns(clock), 0, 20, true));
         tokio::time::timeout(Duration::from_secs(20), async {
             tokio::select! {
                 _ = held_gate.entered.notified() => {}
@@ -1691,10 +1692,54 @@ fn installed_capacity_workload_smoke() {
             }
         }).await.unwrap();
         assert!(!held_gate.dropped.load(std::sync::atomic::Ordering::SeqCst));
+        // Move the hold into the real native helper after the async gate.
+        // Record a new ACK after observing that helper's entry, rather than
+        // counting an earlier event as proof of concurrent scheduling.
+        let native_marker = evidence_root.path().join("held-native-worker");
+        work.native_worker.hold_after(0, native_marker.clone());
         held_gate.open();
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                tokio::select! {
+                    result = &mut held_segment => panic!("segment ended before native hold: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(5)) => {
+                        if native_marker.exists() { break; }
+                    }
+                }
+            }
+        }).await.unwrap();
+        held_writer.checkpoint_progress().unwrap();
+        let before_native = std::fs::read_to_string(held_evidence.join("progress.jsonl")).unwrap();
+        let max_before = before_native.lines().map(|line| serde_json::from_str::<ProgressEvent>(line).unwrap())
+            .filter_map(|event| match event {
+                ProgressEvent::LoadOutcome { attempt, .. }
+                    if attempt.outcome == LoadOutcome::Acknowledged => Some(attempt.sequence),
+                _ => None,
+            }).max().unwrap_or(0);
+        let native_ack = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                tokio::select! {
+                    result = &mut held_segment => panic!("segment ended while native helper was held: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(25)) => {
+                        held_writer.checkpoint_progress().unwrap();
+                        let raw = std::fs::read_to_string(held_evidence.join("progress.jsonl")).unwrap();
+                        if let Some(attempt) = raw.lines().map(|line| serde_json::from_str::<ProgressEvent>(line).unwrap())
+                            .find_map(|event| match event {
+                                ProgressEvent::LoadOutcome { attempt, .. }
+                                    if attempt.sequence > max_before && attempt.outcome == LoadOutcome::Acknowledged => Some(attempt),
+                                _ => None,
+                            }) { break attempt; }
+                    }
+                }
+            }
+        }).await.unwrap();
+        std::fs::write(native_marker.with_extension("release"), b"release").unwrap();
         let held_result = tokio::time::timeout(Duration::from_secs(20), &mut held_segment).await.unwrap().unwrap();
         drop(held_segment);
-        assert_eq!(held_result.attempts.len(), 6);
+        assert_eq!(held_result.attempts.len(), 20);
+        assert!(held_result.attempts.iter().any(|attempt|
+            attempt.sequence == native_ack.sequence && attempt.request_sha256 == native_ack.request_sha256
+                && attempt.result_sha256 == native_ack.result_sha256 && attempt.outcome == LoadOutcome::Acknowledged));
         assert!(held_result.resources.len() >= 3);
         assert!(held_result.resources.iter().all(|sample| sample.pid == child.id()));
         assert!(held_result.attempts.iter().any(|attempt|
@@ -1715,7 +1760,7 @@ fn installed_capacity_workload_smoke() {
         }).collect();
         outcomes.sort_by_key(|attempt| attempt.sequence);
         assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&held_result.attempts).unwrap());
-        println!("held_segment_summary acknowledged_sequence={} attempts={} resources={} checkpoint_matches=true", held_ack.sequence, held_result.attempts.len(), held_result.resources.len());
+        println!("held_segment_summary async_ack_sequence={} native_ack_sequence={} attempts={} resources={} checkpoint_matches=true", held_ack.sequence, native_ack.sequence, held_result.attempts.len(), held_result.resources.len());
         // Interrupt a real segment while its harness-only async sample is held.
         // Only independently verified ACKs are replayed after an owned restart.
         let mut interrupted_campaign = smoke_campaign();
@@ -1755,7 +1800,29 @@ fn installed_capacity_workload_smoke() {
                 }
             }
         }).await.unwrap();
+        // Keep the original async interruption oracle, then move the held
+        // acquisition into the native helper and interrupt that real segment.
+        let cancel_marker = evidence_root.path().join("cancelled-native-worker");
+        work.native_worker.hold_after(0, cancel_marker.clone());
+        gate.open();
+        let helper_pid = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                tokio::select! {
+                    result = &mut interrupted => panic!("segment ended before native interruption: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(5)) => {
+                        if let Ok(raw) = std::fs::read_to_string(&cancel_marker) {
+                            if let Ok(pid) = raw.parse::<u32>() { break pid; }
+                        }
+                    }
+                }
+            }
+        }).await.unwrap();
         drop(interrupted);
+        work.native_worker.shutdown().await.unwrap();
+        let mut processes = sysinfo::System::new();
+        let helper = sysinfo::Pid::from_u32(helper_pid);
+        processes.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[helper]), true);
+        assert!(processes.process(helper).is_none(), "interrupted native helper survived");
         tokio::time::timeout(Duration::from_secs(2), async {
             while !gate.dropped.load(std::sync::atomic::Ordering::SeqCst) { tokio::task::yield_now().await; }
         }).await.unwrap();
@@ -2224,12 +2291,21 @@ async fn run_estate(
                     if take == 0 {
                         return Err("prepared corpus exceeds retained driver admission".into());
                     }
-                    let mut segment = tokio::time::timeout(
+                    let result = tokio::time::timeout(
                         Duration::from_millis(campaign.storage.budgets.run_ms.get().min(180_000)),
                         driver.segment(writer, phase, origin, next, take, next + take == count),
                     )
                     .await
-                    .map_err(|_| "installed segment exceeded its frozen deadline")??;
+                    .map_err(|_| "installed segment exceeded its frozen deadline".to_owned())
+                    .and_then(std::convert::identity);
+                    let cleanup = driver.workload.native_worker.shutdown().await;
+                    let mut segment = match (result, cleanup) {
+                        (Ok(value), Ok(())) => value,
+                        (Err(error), Ok(())) | (Ok(_), Err(error)) => return Err(error),
+                        (Err(error), Err(cleanup)) => {
+                            return Err(format!("{error}; native worker cleanup: {cleanup}"))
+                        }
+                    };
                     if phase == LoadPhase::Warmup && next == 0 {
                         segment.corpus = corpus.take();
                         segment.cold_start = cold_start.take();
