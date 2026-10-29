@@ -44,8 +44,8 @@ off; workflow pinning is enforced in the checkout by
 ## Impact
 
 Before 2026-10-19 a direct push could bypass candidate CI and land a failing
-revision on `main`; the active ruleset now rejects that path. Installing a client Git, editor, or provider hook would remain
-unportable and would create a forbidden parallel lifecycle mechanism.
+revision on `main`; the active ruleset now rejects that path. A client Git, editor, or provider hook would remain
+unportable and skippable, so it cannot replace that server-side rule.
 
 ## Owning gates
 
