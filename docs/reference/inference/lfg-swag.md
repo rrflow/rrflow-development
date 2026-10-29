@@ -66,9 +66,10 @@ The next public capability is **propose endpoint selection**, owned by
 `RrdEngine` and exposed through the executable operation catalogue when its
 handler and authorization are implemented together. Its proposed semantic
 types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
-`EndpointSelectionProposal`. Their Rust validators are implemented; no public
-operation or generated SDK entry exposes them yet. A separate admitted external
-activity executes a selected provider.
+`EndpointSelectionProposal`. Their Rust validators are implemented; the proposal
+schema is now exposed by existing task-attempt readback. No public operation
+creates a controller proposal yet. A separate admitted external activity executes
+a selected provider.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -117,14 +118,41 @@ capability verification, loaded-weight attestation or worker-effect authority.
 contradictory partial totals; the native adapter uses this same validator while
 tolerating unrelated provider envelope metadata.
 
-These types are consistency checks, not an engine dispatcher or a receipt ledger.
+These types alone are consistency checks, not an engine dispatcher.
 Constructing a valid tuple does not prove that a model produced it for that packet.
 Authenticated packet construction, explicit experimental policy admission,
-credential setup, guarded completion and actual durable readback still require
-implementation in the same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
+credential setup and installed execution still require implementation in the
+same [draft package](https://github.com/rrflow/rrflow-development/pull/206).
 The [semantics-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-semantics.md)
 records actual-task projection and retained-provider validation checks. No new
 provider execution or model-quality claim follows from those checks.
+
+### Durable proposal completion in progress
+
+The existing task-attempt ledger can now retain a bounded typed proposal or
+embedding output, with an exclusive kind and exact outcome digest. Its public
+readback validates scope/task/attempt identity. Reopening the estate preserves
+the output and original consumed budget; replay cannot reserve the same attempt
+again. This is internal completion support, not a public proposal dispatcher.
+
+Completion rechecks its supplied authority at the current runtime read stamp.
+Engine-owned control guards compare exact authority bytes atomically with the
+budget, attempt and runtime event. A conflict repeats admission, not the model
+call. Equal-byte guard replacements preserve authority values and participate
+in existing transaction accounting/audit. Callers must supply the relevant
+authorized dependencies; this mechanism alone does not discover them.
+
+`TaskAttemptStatus::Invalidated` records changed inputs or authorization without
+resetting charged effort or the original deadline. An otherwise eligible next
+attempt may use the remaining budget after fresh admission. Stop/deadline still
+take precedence. Uncertain endpoint failures retain `execution_may_continue` and
+do not authorize another call. Generic failed-attempt stop behavior is otherwise
+unchanged; provider fallback/reconciliation still needs its owning policy.
+
+The [completion-stage journal](../../evidence/change-journals/gate-g/controller-task-proposal-completion.md)
+records isolated-engine persistence, session/task interleavings and invalidation
+checks. It does not prove a source-edit successor plan, actual controller
+authorization, provider cancellation or installed-process crash recovery.
 
 ### Governed selector settings prerequisite
 

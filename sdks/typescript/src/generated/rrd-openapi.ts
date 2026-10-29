@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: c1c8c59f888c3c1425789feec81c008d3aa0cd0676f6155a526ccd96aca2c606
+// OpenAPI SHA-256: af8488aa64d477c1b2d6f7c705c5ce131a7b3b15e3f4d04755621dccc6cd2526
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -27152,6 +27152,85 @@ export interface operations {
                             payload: {
                                 attempt?: {
                                     attempt_id: string;
+                                    /**
+                                     * @description A typed proposal receipt, not a selected-worker admission or artifact attestation.
+                                     *     Construction alone is not evidence that an engine admitted or observed it.
+                                     */
+                                    endpoint_proposal?: {
+                                        allowance_sha256: string;
+                                        attempt_id: string;
+                                        /**
+                                         * @description Only the model's observable choice. The engine owns request/source identity,
+                                         *     authorization, timestamps, raw-output digest, usage and any accepted receipt.
+                                         */
+                                        choice: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            effort?: string | null;
+                                            /** @constant */
+                                            kind: "select";
+                                        } | {
+                                            /** @constant */
+                                            kind: "abstain";
+                                            /** @enum {string} */
+                                            reason: "no_eligible_candidate" | "insufficient_evidence" | "cannot_decide";
+                                        };
+                                        configuration_sha256: string;
+                                        content_sha256: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms?: number | null;
+                                        /** Format: uint16 */
+                                        http_status?: number | null;
+                                        packet_sha256: string;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        scope: string;
+                                        /** @description Observed service alias; it does not prove the bytes loaded by that service. */
+                                        service_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                        task_sha256: string;
+                                        /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                        usage?: {
+                                            /** Format: uint64 */
+                                            completion_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            prompt_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            total_tokens?: number | null;
+                                        } | null;
+                                    } | null;
+                                    /**
+                                     * @description An affected attempt is no longer admissible. This does not reset spent
+                                     *     effort or permanently stop otherwise eligible work under the same budget.
+                                     * @enum {string|null}
+                                     */
+                                    invalidation?: "inputs_changed" | "authorization_changed" | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -27289,7 +27368,7 @@ export interface operations {
                                         scope: string;
                                     } | null;
                                     /** @enum {string} */
-                                    status: "reserved" | "accepted" | "stopped";
+                                    status: "reserved" | "accepted" | "stopped" | "invalidated";
                                 } | null;
                             };
                             /** @constant */
@@ -27326,6 +27405,85 @@ export interface operations {
                             payload: {
                                 attempt?: {
                                     attempt_id: string;
+                                    /**
+                                     * @description A typed proposal receipt, not a selected-worker admission or artifact attestation.
+                                     *     Construction alone is not evidence that an engine admitted or observed it.
+                                     */
+                                    endpoint_proposal?: {
+                                        allowance_sha256: string;
+                                        attempt_id: string;
+                                        /**
+                                         * @description Only the model's observable choice. The engine owns request/source identity,
+                                         *     authorization, timestamps, raw-output digest, usage and any accepted receipt.
+                                         */
+                                        choice: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            effort?: string | null;
+                                            /** @constant */
+                                            kind: "select";
+                                        } | {
+                                            /** @constant */
+                                            kind: "abstain";
+                                            /** @enum {string} */
+                                            reason: "no_eligible_candidate" | "insufficient_evidence" | "cannot_decide";
+                                        };
+                                        configuration_sha256: string;
+                                        content_sha256: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms?: number | null;
+                                        /** Format: uint16 */
+                                        http_status?: number | null;
+                                        packet_sha256: string;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        scope: string;
+                                        /** @description Observed service alias; it does not prove the bytes loaded by that service. */
+                                        service_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                        task_sha256: string;
+                                        /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                        usage?: {
+                                            /** Format: uint64 */
+                                            completion_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            prompt_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            total_tokens?: number | null;
+                                        } | null;
+                                    } | null;
+                                    /**
+                                     * @description An affected attempt is no longer admissible. This does not reset spent
+                                     *     effort or permanently stop otherwise eligible work under the same budget.
+                                     * @enum {string|null}
+                                     */
+                                    invalidation?: "inputs_changed" | "authorization_changed" | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -27463,7 +27621,7 @@ export interface operations {
                                         scope: string;
                                     } | null;
                                     /** @enum {string} */
-                                    status: "reserved" | "accepted" | "stopped";
+                                    status: "reserved" | "accepted" | "stopped" | "invalidated";
                                 } | null;
                             };
                             /** @constant */

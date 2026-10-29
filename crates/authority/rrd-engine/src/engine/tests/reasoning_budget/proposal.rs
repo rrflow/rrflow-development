@@ -133,9 +133,16 @@ fn proposal_packet_binds_actual_task_and_rejects_changed_projection() {
     assert!(EndpointSelectionTask::from_task(&closed.task).is_err());
 }
 
-#[test]
-fn proposal_tuple_rejects_cross_attempt_config_and_usage_substitution() {
-    let (_root, engine, lease, task_id, _) = actual_request_fixture();
+pub(super) fn tuple_fixture() -> (
+    tempfile::TempDir,
+    RrdEngine,
+    SessionLease,
+    EndpointConfiguration,
+    EndpointSelectionRequest,
+    EndpointSelectionPacket,
+    EndpointSelectionProposal,
+) {
+    let (root, engine, lease, task_id, _) = actual_request_fixture();
     let task = engine
         .read_task(
             &lease.session_id,
@@ -211,6 +218,20 @@ fn proposal_tuple_rejects_cross_attempt_config_and_usage_substitution() {
     proposal
         .validate_for(&request, &packet, &configuration)
         .unwrap();
+    (
+        root,
+        engine,
+        lease,
+        configuration,
+        request,
+        packet,
+        proposal,
+    )
+}
+
+#[test]
+fn proposal_tuple_rejects_cross_attempt_config_and_usage_substitution() {
+    let (_root, _engine, lease, configuration, request, packet, proposal) = tuple_fixture();
     let roundtrip: EndpointSelectionProposal =
         serde_json::from_slice(&serde_json::to_vec(&proposal).unwrap()).unwrap();
     assert_eq!(roundtrip, proposal);

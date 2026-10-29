@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 
 const SCOPE: &str = "instance:test-instance";
 
+mod completion;
 mod proposal;
 
 // Retained real task/request inputs in a fresh test estate. These are admission

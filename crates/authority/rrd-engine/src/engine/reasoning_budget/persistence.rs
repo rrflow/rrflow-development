@@ -82,6 +82,18 @@ impl RrdEngine {
         attempt: Option<(Option<Vec<u8>>, &AttemptRecord)>,
         context: &EngineControlContext<'_>,
     ) -> Result<()> {
+        self.commit_budget_guarded(read, expected, state, attempt, &[], context)
+    }
+
+    pub(super) fn commit_budget_guarded(
+        &self,
+        read: &ReadStamp,
+        expected: Option<Vec<u8>>,
+        state: &TaskReasoningBudget,
+        attempt: Option<(Option<Vec<u8>>, &AttemptRecord)>,
+        guards: &[AttemptAuthorityGuard],
+        context: &EngineControlContext<'_>,
+    ) -> Result<()> {
         let current = self.storage.runtime().schema(&read.scope)?;
         if current.as_ref().map(|s| s.revision) != read.schema_revision {
             return Err(ServiceError::StorageConflict(
@@ -169,6 +181,20 @@ impl RrdEngine {
                 self.attempt_key(&state.scope, &state.task_id, &attempt.attempt_id),
                 expected,
                 replacement,
+            ));
+        }
+        // The existing store transaction checks every expected value atomically
+        // with the runtime cursor and budget/attempt changes. A standalone read
+        // before this commit would leave a revocation/configuration race.
+        // Equal-byte replacements preserve the guarded authority's exact value;
+        // the audit records these guards as part of this completion transaction.
+        // The store rejects duplicate keys, so a guard cannot replace the budget
+        // or attempt transition with a caller-selected value.
+        for guard in guards {
+            transitions.push(transition(
+                guard.key.clone(),
+                Some(guard.expected.clone()),
+                guard.expected.clone(),
             ));
         }
         mutations.push(RuntimeMutation::Event {
