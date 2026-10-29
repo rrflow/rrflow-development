@@ -2,15 +2,16 @@
 
 package rrd
 
-// OpenAPI SHA-256: 35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566
+// OpenAPI SHA-256: 893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2
 
-const EndpointOpenAPIDocumentSHA256 = "35716b8b26b83a92673ea7a0682bd986f31ed58d3fd193abadab8917ae01e566"
+const EndpointOpenAPIDocumentSHA256 = "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2"
 
 type OperationID string
 
 const (
 	OperationAttunementCancel             OperationID = "attunement-cancel"
 	OperationAttunementRead               OperationID = "attunement-read"
+	OperationAttunementReceiptRead        OperationID = "attunement-receipt-read"
 	OperationAuditExport                  OperationID = "audit-export"
 	OperationAuditRead                    OperationID = "audit-read"
 	OperationBackupCreate                 OperationID = "backup-create"
@@ -65,12 +66,17 @@ const (
 	OperationVectorCollectionList         OperationID = "vector-collection-list"
 	OperationVectorPointRetrieve          OperationID = "vector-point-retrieve"
 	OperationVectorPointScroll            OperationID = "vector-point-scroll"
+	OperationVectorQuantizationActivate   OperationID = "vector-quantization-activate"
+	OperationVectorQuantizationBuild      OperationID = "vector-quantization-build"
+	OperationVectorQuantizationList       OperationID = "vector-quantization-list"
+	OperationVectorQuantizationRetire     OperationID = "vector-quantization-retire"
 	OperationVectorSearch                 OperationID = "vector-search"
 )
 
 var endpoints = map[OperationID]Endpoint{
 	OperationAttunementCancel:             {Method: "POST", Path: "/v1/attunement/cancel", Authentication: "session_bearer", Mutation: true},
 	OperationAttunementRead:               {Method: "POST", Path: "/v1/attunement/read", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementReceiptRead:        {Method: "POST", Path: "/v1/attunement/receipt/read", Authentication: "session_bearer", Mutation: false},
 	OperationAuditExport:                  {Method: "POST", Path: "/v1/audit/export", Authentication: "session_bearer", Mutation: false},
 	OperationAuditRead:                    {Method: "POST", Path: "/v1/audit/read", Authentication: "session_bearer", Mutation: false},
 	OperationBackupCreate:                 {Method: "POST", Path: "/v1/backups", Authentication: "session_bearer", Mutation: true},
@@ -125,5 +131,9 @@ var endpoints = map[OperationID]Endpoint{
 	OperationVectorCollectionList:         {Method: "POST", Path: "/v1/vector/collections/list", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointRetrieve:          {Method: "POST", Path: "/v1/vector/points/retrieve", Authentication: "session_bearer", Mutation: false},
 	OperationVectorPointScroll:            {Method: "POST", Path: "/v1/vector/points/scroll", Authentication: "session_bearer", Mutation: false},
+	OperationVectorQuantizationActivate:   {Method: "POST", Path: "/v1/vector/quantizations/activate", Authentication: "session_bearer", Mutation: true},
+	OperationVectorQuantizationBuild:      {Method: "POST", Path: "/v1/vector/quantizations/build", Authentication: "session_bearer", Mutation: true},
+	OperationVectorQuantizationList:       {Method: "POST", Path: "/v1/vector/quantizations/list", Authentication: "session_bearer", Mutation: false},
+	OperationVectorQuantizationRetire:     {Method: "POST", Path: "/v1/vector/quantizations/retire", Authentication: "session_bearer", Mutation: true},
 	OperationVectorSearch:                 {Method: "POST", Path: "/v1/vector/search", Authentication: "session_bearer", Mutation: false},
 }
