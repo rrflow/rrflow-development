@@ -155,6 +155,76 @@ reported 1,981,981,149,033 cumulative segment bytes read for 1,414,786,770 bytes
 of segments, one failed compaction and a corpus-operation deadline. Those are
 attribution leads, not a diagnosed root cause, an OOM result or a completed soak.
 
+#### Joined rrflowDB evidence sequence
+
+The system under test is one installed `RrdEngine` with rrflowKV persistence,
+rrflowQL and vector retrieval, not three independently passing component suites.
+The following sequence makes progress and its limits visible without replacing
+the C-07a-h exits or the D-02/D-03/D-05 project workflow:
+
+1. **One small complete transaction-to-search flow.** Commit independently
+   generated records, relationships and vectors through the installed public
+   API; use vector search to select a known result and read its record and exact
+   relation set through rrflowQL at the search's returned cursor. Require an
+   independent expected identity and score. Force process termination, reopen,
+   repeat the joined read and resolve the original request as the same durable
+   receipt. Include negative-oracle proof that an incorrect expected result
+   fails. Record exact revision, binary, source/configuration and outcomes.
+2. **Extend history and failure coverage.** At the same public boundary,
+   check insert/update/delete, retained reads, cancellation, denied admission,
+   response loss and interruption around publication against an independent
+   operation history. Verify all acknowledged writes and resolve uncertain
+   outcomes before retry. Retain exact seeds and failing histories. Keep the
+   existing native crash, corruption, resource and reclamation oracles.
+3. **Test retrieval quality as a separate claimed capability.** The existing
+   100k workload retrieves vectors by exact reference; it does not prove
+   nearest-neighbor search, HNSW, TurboQuant or recall at that scale. Establish
+   the authorized public lifecycle for building/activating those artifacts,
+   then compare exact and approximate results against an independent exhaustive
+   baseline, including filters, update/delete, staleness and reopen. Report
+   recall, latency, storage, memory, build/update work and missing coverage;
+   do not turn exact-point retrieval or a component test into a quality claim.
+4. **Grow in measured stages.** Freeze each candidate and exercise matched
+   small, 1k and 10k characterization fixtures before the existing 100k profile.
+   Record completion and per-stage progress, read/write latency, pressure,
+   maintenance, cursor/receipt identity and observed resource ownership.
+   Retain each failure and diagnose its actual boundary before another repair;
+   smaller fixtures characterize behavior and do not relax 100k requirements.
+5. **Qualify the final integrated candidate.** After prerequisite PRs and their
+   CI pass, freeze the exact source/tree, executable, harness, configuration,
+   corpus, hardware, limits and quality oracle. Run the required native
+   Linux/macOS/Windows capacity cases, profile/repetition matrix, pre-soak
+   admission and actual 24-hour soak. Bind all results through the existing
+   acceptance collector; a prior or unmerged candidate cannot supply its pass.
+   The [J-04 ladder](gate-j.md#initial-workload-ladder) defines the proposed
+   Desktop 4-vCPU/8-GiB host, 2-GiB engine, 100000-record/500000-edge/100000-
+   vector corpus and 1/4/8-client, 5/25/50-request-per-second sweep. Its
+   [proposed thresholds](gate-j.md#proposed-passfail-thresholds) include zero
+   exact-oracle mismatches, recall@20 of at least 0.95 for the stated filtered
+   approximate workload, three seeded repetitions and an actual 24-hour soak.
+   These are proposed targets, not measured results or an SLA; freeze the
+   approved manifest before a qualification run.
+6. **Prove the user project journey.** Once D-02/D-03/D-05 exist, attach an
+   authorized local source, build source-linked records/relations and indexes,
+   query the resulting knowledge, edit/delete a source, replan the affected
+   work, interrupt/restart and audit the real effects. A seeded synthetic corpus
+   or unactivated connector does not establish automatic project knowledge.
+
+For method provenance, [FoundationDB's published design](https://www.foundationdb.org/files/fdb-paper.pdf)
+describes reproducible workload/fault testing with multiple independent oracles;
+[Jepsen's project documentation](https://github.com/jepsen-io/jepsen/blob/main/doc/whats-here.md)
+describes histories and checkers. Apply those principles to RRFlow's real
+boundaries; this sequence does not claim a FoundationDB simulator or Jepsen
+certification. [Qdrant's recall guidance](https://qdrant.tech/documentation/tutorials-search-engineering/ann-recall/)
+compares approximate results with exact neighbors, and its
+[quantization reference](https://qdrant.tech/documentation/quantization/)
+describes rescoring against original vectors and its cost. The
+[TurboQuant paper](https://arxiv.org/abs/2504.19874) distinguishes reconstruction
+distortion from inner-product estimation; a test of one does not establish the
+other. These are behavior and evaluation references, not permission to import
+another system's authority or assume its benchmark numbers apply to RRFlow.
+Each stage is evidence only for what actually ran.
+
 The previous storage-first sequence postponed missing project functionality.
 The parent roadmap now prioritizes the real-project workflow. Qualification is
 staged by the behavior it can actually prove:
@@ -709,7 +779,7 @@ measurement receipts and serve them after restart; its own claims cannot be
 the sole acceptance oracle. The current Markdown/Git owners remain the
 authoritative development records until KB-06/07 and KB-08 qualify durable
 knowledge import/resolution. Do not move planning authority into an unqualified
-database or create automatic editor hooks.
+database or an editor hook; a hook stays an alias stub onto those owners.
 
 After D-02 through D-04 and E/F pass, add a bounded repository corpus with
 source edits, renamed/deleted files, contradictory notes and revoked access.

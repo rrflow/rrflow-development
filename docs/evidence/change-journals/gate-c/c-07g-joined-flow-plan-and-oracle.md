@@ -1,0 +1,25 @@
+# C-07g: joined database flow plan and installed search oracle
+
+**Status:** active implementation evidence; dependency integration and candidate CI pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-joined-flow-plan-and-oracle`
+**Owner:** OBJ-02 / C-07g,h / POAM-035 / [PR160](https://github.com/rrflow/rrflow-development/pull/160)
+
+## Baseline and scope
+
+Development main `393e6b86ee58bb4ea4b77d14a871af339404ebb4` and opening commit `e28ef6389504a18cd24f369025e43247bc9ece3f` precede the PR brief and implementation. The candidate ordinary-merges unmerged [PR158](https://github.com/rrflow/rrflow-development/pull/158) head `90bb821ee360b4979f61f1e8203efff8569594ad`, which depends on PR153, PR152 and PR142. Those packages and fresh candidate CI must land through their own controls. The separately running PR158 characterization is unchanged and cannot qualify this new revision.
+
+The existing sustained adapter checks exact vector references and uses their read cursor to query the corresponding record and edges. The existing installed smoke also exercises mutations, restart and replay, but did not join a nearest-vector search to the other two paths. The HTTP server and Rust client were inspected and do not expose the engine-local HNSW and quantization artifact build/activate operations. These observations do not mean an index search is impossible under every pre-existing estate; they mean a public lifecycle has not been demonstrated by this harness.
+
+## Implemented oracle and result
+
+The installed smoke now searches the eight-record corpus through the real public vector operation using a 16-dimensional all-one query. From the fixture input, seed 73 and revision 8 give the uniquely maximal vector `vector-1-seed-00000000000000000007` with dot product `sum(81..=96)/256 = 5.53125`. The oracle checks the exact access path, reference, subject and score; reads and checks its source record and complete edge set through rrflowQL at the search's returned cursor; forces the installed process to terminate and reopen; repeats the joined search/readback; and verifies original transaction replay returns the original receipt without a second effect. The existing later mixed-history, held-reader, backup and restart checks remain.
+
+As a negative oracle, substituting seed 6 as the expected winner made `cargo test --offline --locked -p rrflow-cli --test installed_reopen sustained::installed_capacity_workload_smoke -- --exact --ignored` fail with `search winner differs from independent oracle`. Restoring seed 7 made the same real installed-process test pass. With `CARGO_TARGET_DIR=D:/localdev/devlabs/rrflow/target/c07-joined-flow-build`, `CARGO_BUILD_JOBS=4` and `CARGO_PROFILE_TEST_DEBUG=0`, `cargo test --offline --locked -p rrflow-cli --test installed_reopen` passed 15 tests and ignored seven explicit long/native tests. `cargo clippy --offline --locked -p rrflow-cli --test installed_reopen -- -D warnings` and `cargo fmt --all -- --check` passed. This small exact search is not HNSW, TurboQuant, the 100000-record workload, full source ingestion or a capacity/soak result.
+
+## Plan, decisions and remaining work
+
+The existing C-07 owner now specifies ordered joined correctness, history/fault/replay, approximate quality, matched growth, final native capacity/soak and real-project/source-change evidence. It explicitly distinguishes proposals from observed results and binds J-04's existing profile and thresholds without relaxing them. POAM-035 records the missing search/quality/public-lifecycle coverage. FoundationDB's published testing approach, Jepsen's history/checker documentation, Qdrant's exact-versus-ANN and rescoring guidance, and the TurboQuant paper informed the plan; no external source code, public model or runtime was adapted. No simulation or external certification is claimed.
+
+Reviewed README, C-07, J-04, POAM-035, the complete changed diff, affected workload/search functions and installed smoke, public vector contract/client/server surfaces, engine vector tests, CI policy and relevant prior journals. Longer implementation files were inspected at affected symbols and are not represented as fully read. Changed paths are the two existing test support files, C-07 owner, POAM-035, this journal and regenerated index/inventory; no implementation was removed or moved. Existing public API, durable state, budgets and the frozen running campaign remain unchanged. The new test compilation overlapped the running Windows characterization on the same host; its separate observation in [PR151](https://github.com/rrflow/rrflow-development/pull/151) records that the characterization's timing is not isolated.
+
+Navigation and inventory regeneration and checks, documentation/workflow policy and `git diff --check` passed; regenerate after this final wording and verify the generated inventory again after commit. The integrated candidate CI, cross-platform installed smoke, scale search/recall, source-to-knowledge flow, native capacity profile and actual 24-hour soak remain outstanding. No objective, roadmap or POA&M status is closed.

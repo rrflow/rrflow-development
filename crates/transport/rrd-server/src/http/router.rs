@@ -47,6 +47,7 @@ macro_rules! http_dispatch_catalogue {
 }
 
 http_dispatch_catalogue! {
+    AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
     AuditExport => ("audit-export", RrdOperation::AuditExport),
     AuditRead => ("audit-read", RrdOperation::AuditRead),
@@ -227,6 +228,7 @@ impl AppState {
                 self.replace_knowledge_trees(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementRead) => self.read_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementCancel) => self.cancel_attunement(&headers, &body, now),
             Some(HttpDispatch::SessionCreate) => self.create_session(&headers, &body, now),
             Some(HttpDispatch::SessionRenew) => self.renew_session(&headers, &body, &path, now),
             Some(HttpDispatch::SessionClose) => self.close_session(&headers, &body, &path, now),

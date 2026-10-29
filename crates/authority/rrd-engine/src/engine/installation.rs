@@ -1694,7 +1694,7 @@ pub(super) fn read_locator(project: &Path) -> Result<(EstateFilesystem, ProjectL
     read_locator_anchored(&project)
 }
 
-fn read_locator_anchored(
+pub(super) fn read_locator_anchored(
     project: &EstateFilesystem,
 ) -> Result<(EstateFilesystem, ProjectLocator, Vec<u8>)> {
     validate_estate_directories(project, false)?;
@@ -1708,7 +1708,11 @@ fn read_locator_anchored(
     Ok((project.clone(), locator, bytes))
 }
 
-fn publish_new_file(path: &AnchoredPath, temporary: &AnchoredPath, bytes: &[u8]) -> Result<()> {
+pub(super) fn publish_new_file(
+    path: &AnchoredPath,
+    temporary: &AnchoredPath,
+    bytes: &[u8],
+) -> Result<()> {
     publish_new_file_with_stage(path, temporary, bytes, &mut || Ok(()))
 }
 
