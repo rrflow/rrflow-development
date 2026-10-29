@@ -593,6 +593,88 @@ mod tests {
         panic!("abrupt-parent fixture ended before its owner killed it");
     }
 
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "private launcher-owned unresponsive-monitor fixture"]
+    fn native_job_timeout_cleanup_fixture() {
+        use std::io::Write;
+        let directory = PathBuf::from(std::env::var_os("RRFLOW_NATIVE_TIMEOUT_FIXTURE").unwrap());
+        assert!(directory.is_absolute() && directory.is_dir());
+        let supplied: NativeAllocationReceipt =
+            serde_json::from_str(&std::env::var("RRFLOW_SUSTAINED_ALLOCATION_RECEIPT").unwrap())
+                .unwrap();
+        let mut campaign = super::super::smoke_campaign();
+        campaign.allocation.engine_bytes = supplied.engine_bytes;
+        campaign.allocation.host_bytes = supplied.host_bytes;
+        campaign.allocation.vcpus = supplied.vcpus;
+        let receipt = native::receipt(&campaign).unwrap().unwrap();
+        let parent_pid = std::process::id();
+        let expected = receipt.enforcement().unwrap();
+        assert_eq!(
+            native::enforcement_for(parent_pid, parent_pid, Some(&receipt)).unwrap(),
+            expected
+        );
+        let mut parent = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(directory.join("parent.pid"))
+            .unwrap();
+        writeln!(parent, "{parent_pid}").unwrap();
+        parent.sync_all().unwrap();
+        let marker = directory.join("worker.pid");
+        let owner = Owner::default();
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let result = owner
+                    .acquire_request_with(
+                        Request {
+                            pid: parent_pid,
+                            harness_pid: parent_pid,
+                            allocation: Some(receipt.clone()),
+                            hold_marker: Some(marker.clone()),
+                        },
+                        Duration::from_secs(4),
+                        |input, _cancel| {
+                            // Model a monitor that does not act on cancellation;
+                            // the real held child remains killable by the Job.
+                            run_helper(input, Arc::new(AtomicBool::new(false)))
+                        },
+                    )
+                    .await;
+                assert_eq!(
+                    result.err().as_deref(),
+                    Some("native worker acquisition exceeded its deadline")
+                );
+                assert_eq!(
+                    owner
+                        .join_finished_with_timeout(None, Duration::from_millis(100))
+                        .await
+                        .unwrap_err(),
+                    "native worker cleanup exceeded its deadline"
+                );
+                let worker_pid: u32 = std::fs::read_to_string(&marker).unwrap().parse().unwrap();
+                assert_eq!(
+                    native::enforcement_for(worker_pid, parent_pid, Some(&receipt)).unwrap(),
+                    expected
+                );
+                let mut processes = sysinfo::System::new();
+                let worker = sysinfo::Pid::from_u32(worker_pid);
+                processes.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[worker]), true);
+                assert!(
+                    processes.process(worker).is_some(),
+                    "held helper already exited"
+                );
+                println!("native_timeout_cleanup_unconfirmed_worker={worker_pid}");
+                std::io::stdout().flush().unwrap();
+            });
+        // Only this explicitly Job-verified fixture exits. The external Job
+        // owner must quiesce the still-live child and prove its termination.
+        std::process::exit(73);
+    }
+
     #[test]
     #[ignore = "requires an explicitly launcher-owned native allocation"]
     fn native_job_contains_engine_harness_and_worker() {

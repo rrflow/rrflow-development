@@ -26,6 +26,7 @@ from windows_offline import P, U32, api, boolean, close, kernel
 ROOT = Path(__file__).resolve().parents[2]
 MEMBERSHIP = "sustained::native_worker::tests::native_job_contains_engine_harness_and_worker"
 ABRUPT = "sustained::native_worker::tests::native_job_abrupt_parent_fixture"
+TIMEOUT = "sustained::native_worker::tests::native_job_timeout_cleanup_fixture"
 ENGINE_BYTES = 2 * 1024**3
 HOST_BYTES = 4 * 1024**3
 
@@ -45,7 +46,7 @@ def artifact(profile: str, offline: bool) -> Path:
     require(len(paths) == 1, "Cargo did not identify one installed-reopen harness")
     harness = paths.pop()
     tests = run(str(harness), "--list", timeout=60).stdout.splitlines()
-    require(tests.count(f"{MEMBERSHIP}: test") == 1 and tests.count(f"{ABRUPT}: test") == 1,
+    require(all(tests.count(f"{case}: test") == 1 for case in (MEMBERSHIP, ABRUPT, TIMEOUT)),
             "native worker test entries are missing")
     return harness
 
@@ -76,19 +77,22 @@ def membership(harness: Path, receipt: dict) -> None:
     print("native_sample_job=" + json.dumps({"status": "passed", "receipt": receipt}), flush=True)
 
 
-def abrupt_parent(harness: Path, receipt: dict) -> None:
+def parent_cleanup(harness: Path, receipt: dict, *, timed_out: bool) -> None:
     base = Path(os.environ.get("RUNNER_TEMP") or tempfile.gettempdir()).resolve(strict=True)
     fixture = Path(tempfile.mkdtemp(prefix="rrflow-native-parent-", dir=base)).resolve(strict=True)
     require(fixture.parent == base and fixture.name.startswith("rrflow-native-parent-"),
             "native interruption fixture escaped its parent")
     name = "Local\\RRFlowCapacity-" + receipt["nonce"]
     env = dict(os.environ)
-    env["RRFLOW_NATIVE_ABORT_FIXTURE"] = str(fixture)
+    case = TIMEOUT if timed_out else ABRUPT
+    env["RRFLOW_NATIVE_TIMEOUT_FIXTURE" if timed_out else "RRFLOW_NATIVE_ABORT_FIXTURE"] = str(fixture)
+    if timed_out:
+        env["RRFLOW_SUSTAINED_ALLOCATION_RECEIPT"] = json.dumps(receipt, separators=(",", ":"))
     state: dict = {}
 
     def launch():
         try:
-            state["result"] = owned(launch_args(harness, ABRUPT), env, name)
+            state["result"] = owned(launch_args(harness, case), env, name)
         except BaseException as error:
             state["error"] = str(error)[:2048]
 
@@ -126,12 +130,19 @@ def abrupt_parent(harness: Path, receipt: dict) -> None:
             member = w.BOOL()
             boolean(is_member(handle, job, c.byref(member)), "query owned job membership")
             require(bool(member.value), "refuse to terminate a process outside the owned job")
-        boolean(api(kernel, "TerminateProcess", w.BOOL, P, U32)(parent, 73), "terminate owned parent")
         wait = api(kernel, "WaitForSingleObject", U32, P, U32)
+        if timed_out:
+            require(wait(worker, 0) == 258 and wait(parent, 0) == 258,
+                    "timeout fixture parent and helper must both still be live")
+        else:
+            boolean(api(kernel, "TerminateProcess", w.BOOL, P, U32)(parent, 73), "terminate owned parent")
         require(wait(parent, 15000) == 0, "owned parent did not terminate")
         thread.join(timeout=30)
         require(not thread.is_alive() and "error" not in state, "owned launcher did not finish cleanly")
         require(state["result"].returncode == 73, "unexpected owned parent exit")
+        if timed_out:
+            require(f"native_timeout_cleanup_unconfirmed_worker={worker_pid}" in state["result"].stdout,
+                    "timeout fixture did not report the live unconfirmed worker")
         require(wait(worker, 15000) == 0, "held worker survived parent interruption and job cleanup")
         success = True
     finally:
@@ -164,7 +175,8 @@ def abrupt_parent(harness: Path, receipt: dict) -> None:
             fixture.rmdir()
         else:
             print("native_sample_fixture_retained=" + str(fixture), file=sys.stderr, flush=True)
-    print("native_sample_parent_death=" + json.dumps({"status": "passed", "parent_pid": parent_pid,
+    label = "native_sample_timeout_cleanup=" if timed_out else "native_sample_parent_death="
+    print(label + json.dumps({"status": "passed", "parent_pid": parent_pid,
           "worker_pid": worker_pid, "receipt": receipt}), flush=True)
 
 
@@ -179,7 +191,9 @@ def main():
     with windows_allocation_proof(limits, harness) as (receipt, _):
         membership(harness, receipt)
     with windows_allocation_proof(limits, harness) as (receipt, _):
-        abrupt_parent(harness, receipt)
+        parent_cleanup(harness, receipt, timed_out=False)
+    with windows_allocation_proof(limits, harness) as (receipt, _):
+        parent_cleanup(harness, receipt, timed_out=True)
 
 
 if __name__ == "__main__":

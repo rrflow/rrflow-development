@@ -40,6 +40,12 @@ finishes. A deliberately delayed monitor test covers that state; it does not
 prove an operating-system-stuck process can be terminated or reaped, and C-07
 remains open.
 
+The [Windows supervisor cleanup test](../../evidence/change-journals/gate-c/c-07g-windows-timeout-supervisor.md)
+deliberately leaves a real held helper alive after an acquisition timeout and
+incomplete cleanup report, then observes the owned Job terminate it after the
+test harness exits. The monitor's refusal to forward cancellation is injected;
+this does not establish termination of an OS-stuck process or Linux cleanup.
+
 The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 retains a macOS installed-domain-crash failure from run 40730847766: native
 `hdiutil create` returned `Resource busy` while preparing a capacity image.
