@@ -122,3 +122,7 @@ failure. Gate F-03 must execute quantized candidate generation and exact
 reranking inside the stamped Arrow operator pipeline. H-04 must prove every
 public adapter lowers to the same engine operations. Until then, the lifecycle
 and codecs are real, but the optimized persistent recall path is incomplete.
+
+The [E-04 TurboQuant persistent serving plan](../../roadmap/e04-turboquant-persistent-serving-engineering-plan.md)
+orders the packages for that path and for the public lifecycle operations a
+client needs; it owns no contract or status.

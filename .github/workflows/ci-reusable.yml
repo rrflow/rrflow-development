@@ -244,6 +244,8 @@ jobs:
           python3 scripts/ci/check_workflow.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
+      - name: Test offline controller outcome review exchange
+        run: python3 scripts/inference/test_review_outcomes.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
       - name: Enforce knowledge-package drift and reproducibility
@@ -489,7 +491,7 @@ jobs:
           - macos-latest
           - windows-latest
     env:
-      CARGO_BUILD_JOBS: "1"
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows-latest' && '2' || '1' }}
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
     steps:

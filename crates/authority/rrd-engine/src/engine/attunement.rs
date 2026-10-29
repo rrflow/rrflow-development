@@ -1,5 +1,6 @@
-//! Explicit embedded-engine attunement control. No public transport operation,
-//! background activation, source scanning or external capability is added here.
+//! Explicit engine-owned attunement control. Existing transport exposes read
+//! and cancellation; this module does not activate background execution,
+//! source scanning or external capabilities.
 //! The first worker phase verifies the installed connection; later phases fail
 //! explicitly until their real implementation is present.
 
@@ -8,7 +9,8 @@ use super::*;
 use rrd_contract::{
     attunement_checkpoint_sha256, AttunementFailure, AttunementJob, AttunementJobState,
     AttunementLease, AttunementPhase, AttunementPhaseCheckpoint, AttunementPlan,
-    AttunementRuntimeCoordinates, AttunementStatus, CancelAttunement, ResumeAttunement,
+    AttunementReadResult, AttunementRuntimeCoordinates, AttunementSourceVerification,
+    AttunementStatus, CancelAttunement, ReadAttunement, ResumeAttunement,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use std::time::Instant;
@@ -86,6 +88,14 @@ pub struct AttunementControlResult {
     pub idempotent_replay: bool,
 }
 
+/// An existing committed control receipt, read without replaying its command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttunementReceiptView {
+    pub principal_id: CanonicalId,
+    pub operation_sha256: String,
+    pub status: AttunementStatus,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Receipt {
@@ -107,6 +117,32 @@ impl RrdEngine {
         request_id: &str,
         operation_id: &str,
     ) -> Result<AttunementStatus> {
+        self.read_attunement_detail(
+            session,
+            token,
+            &ReadAttunement {
+                contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+                job_id: job.clone(),
+            },
+            now,
+            request_id,
+            operation_id,
+        )
+        .map(|result| result.status)
+    }
+
+    /// Return the stored plan with its job. Source freshness is not checked.
+    #[allow(clippy::too_many_arguments)]
+    pub fn read_attunement_detail(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        request: &ReadAttunement,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<AttunementReadResult> {
+        request.validate().map_err(contract)?;
         self.authorize(
             session,
             token,
@@ -115,8 +151,82 @@ impl RrdEngine {
             request_id,
             operation_id,
         )?;
-        let (_, job, plan) = self.load_attunement(job)?;
-        status(job, &plan, now)
+        let (_, job, plan) = self.load_attunement(&request.job_id)?;
+        let result = AttunementReadResult {
+            status: status(job, &plan, now)?,
+            plan,
+            source_verification: AttunementSourceVerification::NotChecked,
+        };
+        result.validate().map_err(contract)?;
+        Ok(result)
+    }
+
+    /// Read the caller's previously committed receipt by its original key.
+    /// This does not execute a command or verify the project's current sources.
+    #[allow(clippy::too_many_arguments)]
+    pub fn read_attunement_receipt(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        job_id: &CanonicalId,
+        idempotency_key: &CorrelationId,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<Option<AttunementReceiptView>> {
+        let (_, authorization) = self.authorize(
+            session,
+            token,
+            SecurityAction::EstateRead,
+            now,
+            request_id,
+            operation_id,
+        )?;
+        let principal = authorization
+            .principal_id
+            .ok_or(ServiceError::Unauthenticated)?;
+        let identity = self
+            .installed_estate_identity()
+            .ok_or(ServiceError::ProjectBindingMismatch)?;
+        let key = attunement_receipt_key(&self.instance, job_id, &principal, idempotency_key)?;
+        let Some(bytes) = self.storage.control().get(&key)? else {
+            return Ok(None);
+        };
+        let receipt: Receipt = decode(&bytes)?;
+        if receipt.format_version != 1
+            || receipt.principal_id != principal
+            || receipt.status.job.id != *job_id
+            || receipt.operation_sha256.len() != 64
+            || !receipt
+                .operation_sha256
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err(ServiceError::Storage(
+                "invalid attunement receipt identity".into(),
+            ));
+        }
+        // Resolve the receipt's plan, not the current job's plan: a later
+        // successor must not make a valid historical receipt disappear.
+        let plan: AttunementPlan = decode(
+            &self
+                .storage
+                .control()
+                .get(&attunement_plan_key(
+                    &self.instance,
+                    &receipt.status.job.plan_id,
+                ))?
+                .ok_or_else(|| ServiceError::Storage("attunement receipt plan missing".into()))?,
+        )?;
+        if plan.target != *identity {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+        receipt.status.validate(&plan).map_err(contract)?;
+        Ok(Some(AttunementReceiptView {
+            principal_id: receipt.principal_id,
+            operation_sha256: receipt.operation_sha256,
+            status: receipt.status,
+        }))
     }
 
     /// One finite, explicitly authorized transition. The job and its immutable
@@ -147,18 +257,14 @@ impl RrdEngine {
         let operation_sha256 = digest::sha256_hex(&encode(command)?);
         let (job_id, expected_revision) = command.binding();
         let key = attunement_job_key(&self.instance, job_id);
-        let receipt_key = format!(
-            "{key}/receipt/{}",
-            operation_digest(&(
-                &principal,
-                context
-                    .idempotency_key
-                    .as_ref()
-                    .ok_or_else(|| ServiceError::Contract(
-                        "attunement mutation requires idempotency".into()
-                    ))?,
-            ))?
-        );
+        let receipt_key = attunement_receipt_key(
+            &self.instance,
+            job_id,
+            &principal,
+            context.idempotency_key.as_ref().ok_or_else(|| {
+                ServiceError::Contract("attunement mutation requires idempotency".into())
+            })?,
+        )?;
         let _gate = self.admit_transaction(
             command,
             context.request_id.as_str(),
@@ -454,6 +560,19 @@ impl RrdEngine {
         next.current_phase = next.next_phase();
         Ok(())
     }
+}
+
+fn attunement_receipt_key(
+    instance: &CanonicalId,
+    job_id: &CanonicalId,
+    principal: &CanonicalId,
+    idempotency_key: &CorrelationId,
+) -> Result<String> {
+    Ok(format!(
+        "{}/receipt/{}",
+        attunement_job_key(instance, job_id),
+        operation_digest(&(principal, idempotency_key))?
+    ))
 }
 
 fn claim(job: &mut AttunementJob, holder: &CanonicalId, lease_ms: u64, at: u64) -> Result<()> {

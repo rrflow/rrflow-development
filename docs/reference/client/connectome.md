@@ -309,6 +309,17 @@ workspaces; a new adapter or view mode does not warrant another top-level
 feature area. Nested routes and breadcrumbs retain exact instance, resource
 and permitted read coordinates. A deep link never implies authorization.
 
+Inside one project, the breadcrumb is Project ▸ Estate ▸ Domain, taken from
+the engine's [estate organisation](../data/estate-organisation.md). "All
+domains" is the unscoped default. Choosing a domain or tag sends that scope to
+the engine, so every view reads only that part of the estate; the client never
+filters an estate-wide result. An isolated domain appears only when the
+session holds its grant, and otherwise shows as unavailable. Per-domain
+evidence (size, work, latency, used context, denials and truncations) is the
+drill-down for finding bottlenecks and what is working. Before H-11 serves
+organisation, the breadcrumb shows the estate alone and marks domains
+unavailable; Connectome keeps no grouping of its own.
+
 Choosing a new or existing project previews the engine's exact installation
 plan. Once authorized, the installed lifecycle provisions one estate/rrflowDB
 and its rrflowKV storage automatically; users do not install three databases

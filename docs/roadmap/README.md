@@ -22,6 +22,9 @@ The canonical roadmap is accompanied by a subordinate link-only
 [change journals](../evidence/change-journals/). The roadmap owns requirements
 and completion; the active change record owns exact in-progress paths; generated
 views and journals provide discovery and evidence without changing status.
+The active [E-04 TurboQuant persistent serving plan](e04-turboquant-persistent-serving-engineering-plan.md)
+orders the packages that make OBJ-13's persistent-search part executable and
+give clients a public TurboQuant path; it changes no gate status.
 The completed C-06j work is recorded by the
 [scan-resistant cache integration plan](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md).
 It specifies a configurable exact-byte production cache and a real persisted
@@ -54,6 +57,7 @@ status.
 | Supporting record | Durable warp | Checkout record | Authority |
 |---|---|---|---|
 | RRFlow 1.0 execution navigation | [`rrflow://rrflow-instance/data/execution-map/rrflow-1.0`](rrflow://rrflow-instance/data/execution-map/rrflow-1.0) | [`rrflow-1.0-execution-map.md`](rrflow-1.0-execution-map.md) | stable links to canonical requirements, active scope, generated inventory, procedure, and evidence; roadmap checkboxes remain canonical |
+| E-04 TurboQuant persistent serving plan | [`rrflow://rrflow-instance/data/work-package/e-04-turboquant-persistent-serving`](rrflow://rrflow-instance/data/work-package/e-04-turboquant-persistent-serving) | [`e04-turboquant-persistent-serving-engineering-plan.md`](e04-turboquant-persistent-serving-engineering-plan.md) | active package order and proof for OBJ-13 persistent search and the public TurboQuant path; E-04 and OBJ-13 remain open |
 | C-06j rrflowKV scan-resistant cache plan | [`rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache`](rrflow://rrflow-instance/data/work-package/c-06j-rrflowkv-scan-resistant-cache) | [`c06j-rrflowkv-scan-resistant-cache-engineering-plan.md`](c06j-rrflowkv-scan-resistant-cache-engineering-plan.md) | completed exact-byte scope-aware cache integration and real mixed-family proof; canonical C-06 accepted |
 | C-06i rrflowKV adaptive page-compression plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-adaptive-page-compression) | [`c06i-rrflowkv-adaptive-page-compression-engineering-plan.md`](c06i-rrflowkv-adaptive-page-compression-engineering-plan.md) | completed segment-v6 adaptive-LZ4 production slice and fixed-machine integration evidence contributing to accepted C-06 |
 | C-06i rrflowKV persisted-filter integration plan | [`rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration`](rrflow://rrflow-instance/data/work-package/c-06i-rrflowkv-persisted-filter-integration) | [`c06i-rrflowkv-persisted-filter-integration-engineering-plan.md`](c06i-rrflowkv-persisted-filter-integration-engineering-plan.md) | completed segment-v5 persisted-filter production slice and evidence |
