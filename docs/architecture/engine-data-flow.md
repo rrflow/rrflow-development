@@ -1125,6 +1125,11 @@ reduction percentage is policy input, never a hardcoded deletion target.
 
 ## Project-tree inventory and incremental attunement
 
+The [source-bound plan and explicit replan proposal](source-bound-plan-design.md)
+explains the prospective handoff, changed-input response, worker fencing and
+filesystem publication limits. It does not establish implemented behavior or
+change the requirements below.
+
 Durable attunement begins with a deterministic project-tree snapshot. The
 snapshot is the input boundary for claims that RRFlow persists about a project
 and for reproducible parse, embedding, index, graph, routine, or evidence work.
