@@ -142,6 +142,8 @@ jobs:
         run: cargo test -p rrd-server --bin rrd-server --locked
       - name: Test native secret file permissions and handle identity
         run: cargo test -p rrd-engine --lib engine::token_key --locked
+      - name: Test SDK harness native manifest privacy
+        run: python -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
       - name: Test native filesystem containment and publication
         run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
@@ -435,6 +437,8 @@ jobs:
           printf '%s  %s\n' "$MAVEN_SHA512" "$archive" | sha512sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP"
           printf '%s\n' "$maven_root/bin" >> "$GITHUB_PATH"
+      - name: Test SDK harness native manifest privacy
+        run: python3 -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
       - name: Qualify all supported SDKs against one live corpus
         run: python3 scripts/ci/run_sdk_conformance.py
 
