@@ -275,6 +275,9 @@ pub struct EndpointProfileInput {
     /// Bindings in declaration order. Within one class, the order is the
     /// fallback order: the first binding is primary.
     pub bindings: Vec<EndpointBinding>,
+    /// Absent means no configured selector; never synthesize routing defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_policy: Option<crate::EndpointSelectionPolicy>,
 }
 
 impl EndpointProfileInput {
@@ -307,6 +310,9 @@ impl EndpointProfileInput {
                 ));
             }
         }
+        if let Some(policy) = &self.selection_policy {
+            policy.validate_for(&self.bindings)?;
+        }
         Ok(())
     }
 }
@@ -320,6 +326,8 @@ pub struct EndpointProfile {
     pub name: CanonicalId,
     pub revision: u64,
     pub bindings: Vec<EndpointBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_policy: Option<crate::EndpointSelectionPolicy>,
     pub profile_sha256: String,
 }
 
@@ -334,6 +342,7 @@ impl EndpointProfile {
             name: input.name,
             revision,
             bindings: input.bindings,
+            selection_policy: input.selection_policy,
             profile_sha256: String::new(),
         };
         profile.profile_sha256 = endpoint_profile_sha256(&profile)?;
@@ -345,6 +354,7 @@ impl EndpointProfile {
             contract_version: self.contract_version,
             name: self.name.clone(),
             bindings: self.bindings.clone(),
+            selection_policy: self.selection_policy.clone(),
         }
         .validate()?;
         if self.revision == 0 {
@@ -448,6 +458,15 @@ pub fn endpoint_profile_sha256(profile: &EndpointProfile) -> Result<String> {
     let mut bytes = Vec::with_capacity(32 + encoded.len());
     bytes.extend_from_slice(b"rrflow-endpoint-profile-v1\0");
     bytes.extend_from_slice(&encoded);
+    // Absence preserves existing profile identity. A present policy adds a
+    // distinct frame, so changing any policy field changes every approval.
+    if let Some(policy) = &profile.selection_policy {
+        bytes.extend_from_slice(b"\0endpoint-selection-policy\0");
+        bytes
+            .extend_from_slice(&serde_json::to_vec(policy).map_err(|_| {
+                crate::ContractError("cannot encode selector policy digest".into())
+            })?);
+    }
     Ok(sha256_bytes(&bytes))
 }
 

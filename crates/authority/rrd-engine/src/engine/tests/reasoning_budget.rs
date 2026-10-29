@@ -14,9 +14,229 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
     mpsc, Arc, Barrier,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const SCOPE: &str = "instance:test-instance";
+
+// Retained real task/request inputs in a fresh test estate. These are admission
+// and persistence probes: no provider is installed or called, no model output
+// is manufactured, and no record is admitted as training or evaluation data.
+fn actual_request_fixture() -> (
+    tempfile::TempDir,
+    RrdEngine,
+    SessionLease,
+    CanonicalId,
+    Vec<u8>,
+) {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../transport/rrd-contract/tests/fixtures/endpoint-selection-observed/available");
+    let task_bytes = std::fs::read(path.join("task.json")).unwrap();
+    let task: serde_json::Value = serde_json::from_slice(&task_bytes).unwrap();
+    let request = std::fs::read(path.join("choice-request.json")).unwrap();
+    let hashes: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(path.join("files.json")).unwrap()).unwrap();
+    assert_eq!(digest::sha256_hex(&request), hashes["choice-request.json"]);
+    assert_eq!(digest::sha256_hex(&task_bytes), hashes["task.json"]);
+    let (root, mut engine) = isolated_engine();
+    configure(&mut engine, 3);
+    let lease = engine
+        .create_session(
+            &session_request(9_000, 4),
+            &id("actual-input-session"),
+            10,
+            "session",
+            "session",
+        )
+        .unwrap();
+    let task_id = engine
+        .open_task(
+            &lease.session_id,
+            &lease.token,
+            &id("actual-input-task"),
+            &OpenTask {
+                scope: SCOPE.into(),
+                title: task["title"].as_str().unwrap().into(),
+                goal: task["body"].as_str().unwrap().into(),
+            },
+            20,
+            "open",
+            "open",
+        )
+        .unwrap()
+        .task
+        .task_id;
+    (root, engine, lease, task_id, request)
+}
+
+#[test]
+fn common_admission_of_actual_request_shares_budget_and_survives_reopen() {
+    use crate::engine::reasoning_budget::TaskAttemptAdmission;
+    let (root, engine, lease, task, bytes) = actual_request_fixture();
+    let request_sha256 = digest::sha256_hex(&bytes);
+    let attempt_id = id("actual-wire-reservation");
+    let cancellation = EmbeddingCancellation::default();
+    let input = TaskAttemptAdmission {
+        started: Instant::now(),
+        scope: SCOPE,
+        task_id: &task,
+        attempt_id: &attempt_id,
+        request_sha256: &request_sha256,
+        cancellation: &cancellation,
+    };
+    let context = EngineControlContext {
+        now: 50,
+        session_id: &lease.session_id,
+        action: "test-reservation",
+        request_id: "reserve",
+        operation_id: "reserve",
+    };
+    let reserved = engine
+        .reserve_admitted_task_attempt(
+            &input,
+            || panic!("no repetition policy: do not resolve an adapter"),
+            &FixedClock::at(1_000),
+            &context,
+        )
+        .unwrap();
+    drop(reserved);
+    let original = state(&engine, &lease, &task);
+    assert_eq!(original.reserved_steps, 1);
+    assert_eq!(original.active_attempt, Some(attempt_id.clone()));
+    drop(engine);
+    let mut engine = RrdEngine::open_existing(root.path(), instance(), TOKEN_KEY).unwrap();
+    configure(&mut engine, 3);
+    assert_eq!(state(&engine, &lease, &task), original);
+    assert!(matches!(
+        engine.reserve_admitted_task_attempt(
+            &input,
+            || panic!("replay must not resolve an adapter"),
+            &FixedClock::at(1_100),
+            &context
+        ),
+        Err(ServiceError::ReasoningAttemptRecorded {
+            outcome_sha256: None
+        })
+    ));
+    let mut changed = bytes.clone();
+    changed.push(b' '); // Explicit in-memory identity perturbation, not a captured request.
+    let changed_sha256 = digest::sha256_hex(&changed);
+    let changed_input = TaskAttemptAdmission {
+        request_sha256: &changed_sha256,
+        ..input
+    };
+    assert!(matches!(
+        engine.reserve_admitted_task_attempt(
+            &changed_input,
+            || panic!("conflicting replay must not resolve an adapter"),
+            &FixedClock::at(1_100),
+            &context
+        ),
+        Err(ServiceError::IdempotencyConflict)
+    ));
+    let wire: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    let embedding = GenerateEmbeddings {
+        scope: SCOPE.into(),
+        backend_id: wire["model"].as_str().unwrap().into(),
+        network_policy: EmbeddingNetworkPolicy::Deny,
+        inputs: vec![EmbeddingInput {
+            id: CanonicalId::new("retained-request").unwrap(),
+            media_type: "application/json".into(),
+            bytes,
+        }],
+    };
+    assert!(matches!(
+        call(
+            &engine,
+            &lease,
+            &task,
+            &embedding,
+            "embedding-after-reservation",
+            &FixedClock::at(1_100)
+        ),
+        Err(ServiceError::ReasoningBudgetStopped(
+            ReasoningBudgetStop::UnresolvedAttempt
+        ))
+    ));
+    assert_eq!(state(&engine, &lease, &task), original);
+}
+
+#[test]
+fn common_admission_rejects_invalid_identities_without_budget_mutation() {
+    use crate::engine::reasoning_budget::TaskAttemptAdmission;
+    let (_root, engine, lease, task, bytes) = actual_request_fixture();
+    let request_sha256 = digest::sha256_hex(&bytes);
+    let attempt_id = id("identity-validation");
+    let cancellation = EmbeddingCancellation::default();
+    let context = EngineControlContext {
+        now: 50,
+        session_id: &lease.session_id,
+        action: "test-reservation",
+        request_id: "reserve",
+        operation_id: "reserve",
+    };
+    let input = TaskAttemptAdmission {
+        started: Instant::now(),
+        scope: SCOPE,
+        task_id: &task,
+        attempt_id: &attempt_id,
+        request_sha256: &request_sha256,
+        cancellation: &cancellation,
+    };
+    let invalid = TaskAttemptAdmission {
+        request_sha256: &request_sha256[..63],
+        ..input
+    };
+    assert!(matches!(
+        engine.reserve_admitted_task_attempt(
+            &invalid,
+            || panic!("malformed identity must not resolve an adapter"),
+            &FixedClock::at(1_000),
+            &context
+        ),
+        Err(ServiceError::Contract(_))
+    ));
+    assert!(engine
+        .inspect_task_reasoning_budget(
+            &lease.session_id,
+            &lease.token,
+            SCOPE,
+            &task,
+            60,
+            "read",
+            "read"
+        )
+        .unwrap()
+        .is_none());
+    let configured = repetition_budget(&engine, &lease, &task, 1);
+    let clock = FixedClock::at(configured.started_at_unix_ms + 1);
+    assert!(matches!(
+        engine.reserve_admitted_task_attempt(
+            &input,
+            || Ok(request_sha256[..63].into()),
+            &clock,
+            &context
+        ),
+        Err(ServiceError::Contract(_))
+    ));
+    assert_eq!(state(&engine, &lease, &task), configured);
+    assert!(matches!(
+        engine.reserve_admitted_task_attempt(
+            &input,
+            || Err(ServiceError::Inference("capability unavailable".into())),
+            &clock,
+            &context
+        ),
+        Err(ServiceError::Inference(_))
+    ));
+    assert_eq!(state(&engine, &lease, &task), configured);
+    engine
+        .reserve_admitted_task_attempt(&input, || Ok(request_sha256.clone()), &clock, &context)
+        .unwrap();
+    let reserved = state(&engine, &lease, &task);
+    assert_eq!(reserved.reserved_steps, 1);
+    assert_eq!(reserved.equivalent_attempts.get(&request_sha256), Some(&1));
+    assert_eq!(reserved.deadline_unix_ms, configured.deadline_unix_ms);
+}
 
 fn repetition_budget(
     engine: &RrdEngine,
