@@ -21,6 +21,9 @@ pub use registry::{EmbeddingBackendRegistry, EmbeddingDispatchError, EmbeddingEx
 mod execution_control;
 pub use execution_control::{EmbeddingCancellation, EmbeddingExecutionControl};
 
+#[cfg(feature = "endpoint-chat")]
+pub mod endpoint_chat;
+
 #[cfg(feature = "fastembed-local")]
 mod fastembed_local;
 

@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: d05f33ca1532bd33c4186b6111a2ee6a99f38a5ac87984a9e729426e6da56edd
+// OpenAPI SHA-256: e03dddd90ac393e8b2a2d906f440d0f5a596ed96a4fc5d08ae23f1ad8a77737a
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -10104,6 +10104,82 @@ export interface operations {
                                 profile_sha256: string;
                                 /** Format: uint64 */
                                 revision: number;
+                                /**
+                                 * @description Operator-declared settings and evidence references, bound by the same
+                                 *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                 *     capability evidence, intersect permission and reserve the task's budget.
+                                 */
+                                selection_policy?: {
+                                    candidates: {
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /**
+                                         * @description Unknown is distinct from observed support for omission of an effort field.
+                                         *     Evidence digests identify declared supporting records, not trusted attestations.
+                                         */
+                                        effort: {
+                                            /** @constant */
+                                            kind: "unknown";
+                                        } | {
+                                            allow_default: boolean;
+                                            evidence_sha256: string;
+                                            /** @constant */
+                                            kind: "observed";
+                                            values: string[];
+                                        };
+                                        manifest_sha256?: string | null;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        service_id: string;
+                                    }[];
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    controller_binding_id: string;
+                                    /**
+                                     * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                     *     provider rankings or implicit defaults for a configured installation.
+                                     */
+                                    limits: {
+                                        /** Format: uint64 */
+                                        maximum_allowance_bytes: number;
+                                        /** Format: uint32 */
+                                        maximum_candidates: number;
+                                        /** Format: uint32 */
+                                        maximum_effort_bytes: number;
+                                        /** Format: uint32 */
+                                        maximum_effort_values: number;
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                    };
+                                    /** Format: uint32 */
+                                    maximum_output_tokens: number;
+                                    system_prompt: string;
+                                    /**
+                                     * Format: uint16
+                                     * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                     */
+                                    temperature_milli: number;
+                                    /**
+                                     * @description The eight workload classes. Code depends on a class contract; a profile
+                                     *     decides which endpoint serves it.
+                                     */
+                                    workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                } | null;
                             } | null;
                         };
                     };
@@ -10279,6 +10355,82 @@ export interface operations {
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
+                                    /**
+                                     * @description Operator-declared settings and evidence references, bound by the same
+                                     *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                     *     capability evidence, intersect permission and reserve the task's budget.
+                                     */
+                                    selection_policy?: {
+                                        candidates: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Unknown is distinct from observed support for omission of an effort field.
+                                             *     Evidence digests identify declared supporting records, not trusted attestations.
+                                             */
+                                            effort: {
+                                                /** @constant */
+                                                kind: "unknown";
+                                            } | {
+                                                allow_default: boolean;
+                                                evidence_sha256: string;
+                                                /** @constant */
+                                                kind: "observed";
+                                                values: string[];
+                                            };
+                                            manifest_sha256?: string | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            service_id: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /**
+                                         * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                         *     provider rankings or implicit defaults for a configured installation.
+                                         */
+                                        limits: {
+                                            /** Format: uint64 */
+                                            maximum_allowance_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_candidates: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_values: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                        };
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        system_prompt: string;
+                                        /**
+                                         * Format: uint16
+                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                         */
+                                        temperature_milli: number;
+                                        /**
+                                         * @description The eight workload classes. Code depends on a class contract; a profile
+                                         *     decides which endpoint serves it.
+                                         */
+                                        workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -10456,6 +10608,82 @@ export interface operations {
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
+                                    /**
+                                     * @description Operator-declared settings and evidence references, bound by the same
+                                     *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                     *     capability evidence, intersect permission and reserve the task's budget.
+                                     */
+                                    selection_policy?: {
+                                        candidates: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Unknown is distinct from observed support for omission of an effort field.
+                                             *     Evidence digests identify declared supporting records, not trusted attestations.
+                                             */
+                                            effort: {
+                                                /** @constant */
+                                                kind: "unknown";
+                                            } | {
+                                                allow_default: boolean;
+                                                evidence_sha256: string;
+                                                /** @constant */
+                                                kind: "observed";
+                                                values: string[];
+                                            };
+                                            manifest_sha256?: string | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            service_id: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /**
+                                         * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                         *     provider rankings or implicit defaults for a configured installation.
+                                         */
+                                        limits: {
+                                            /** Format: uint64 */
+                                            maximum_allowance_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_candidates: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_values: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                        };
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        system_prompt: string;
+                                        /**
+                                         * Format: uint16
+                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                         */
+                                        temperature_milli: number;
+                                        /**
+                                         * @description The eight workload classes. Code depends on a class contract; a profile
+                                         *     decides which endpoint serves it.
+                                         */
+                                        workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -10615,6 +10843,78 @@ export interface operations {
                              *     labels are separate data and may use arbitrary Unicode.
                              */
                             name: string;
+                            /** @description Absent means no configured selector; never synthesize routing defaults. */
+                            selection_policy?: {
+                                candidates: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    binding_id: string;
+                                    /**
+                                     * @description Unknown is distinct from observed support for omission of an effort field.
+                                     *     Evidence digests identify declared supporting records, not trusted attestations.
+                                     */
+                                    effort: {
+                                        /** @constant */
+                                        kind: "unknown";
+                                    } | {
+                                        allow_default: boolean;
+                                        evidence_sha256: string;
+                                        /** @constant */
+                                        kind: "observed";
+                                        values: string[];
+                                    };
+                                    manifest_sha256?: string | null;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    service_id: string;
+                                }[];
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                controller_binding_id: string;
+                                /**
+                                 * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                 *     provider rankings or implicit defaults for a configured installation.
+                                 */
+                                limits: {
+                                    /** Format: uint64 */
+                                    maximum_allowance_bytes: number;
+                                    /** Format: uint32 */
+                                    maximum_candidates: number;
+                                    /** Format: uint32 */
+                                    maximum_effort_bytes: number;
+                                    /** Format: uint32 */
+                                    maximum_effort_values: number;
+                                    /** Format: uint64 */
+                                    maximum_response_bytes: number;
+                                };
+                                /** Format: uint32 */
+                                maximum_output_tokens: number;
+                                system_prompt: string;
+                                /**
+                                 * Format: uint16
+                                 * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                 */
+                                temperature_milli: number;
+                                /**
+                                 * @description The eight workload classes. Code depends on a class contract; a profile
+                                 *     decides which endpoint serves it.
+                                 */
+                                workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                            } | null;
                         } | null;
                     };
                     protocol: string;
@@ -10796,6 +11096,82 @@ export interface operations {
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
+                                    /**
+                                     * @description Operator-declared settings and evidence references, bound by the same
+                                     *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                     *     capability evidence, intersect permission and reserve the task's budget.
+                                     */
+                                    selection_policy?: {
+                                        candidates: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Unknown is distinct from observed support for omission of an effort field.
+                                             *     Evidence digests identify declared supporting records, not trusted attestations.
+                                             */
+                                            effort: {
+                                                /** @constant */
+                                                kind: "unknown";
+                                            } | {
+                                                allow_default: boolean;
+                                                evidence_sha256: string;
+                                                /** @constant */
+                                                kind: "observed";
+                                                values: string[];
+                                            };
+                                            manifest_sha256?: string | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            service_id: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /**
+                                         * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                         *     provider rankings or implicit defaults for a configured installation.
+                                         */
+                                        limits: {
+                                            /** Format: uint64 */
+                                            maximum_allowance_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_candidates: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_values: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                        };
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        system_prompt: string;
+                                        /**
+                                         * Format: uint16
+                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                         */
+                                        temperature_milli: number;
+                                        /**
+                                         * @description The eight workload classes. Code depends on a class contract; a profile
+                                         *     decides which endpoint serves it.
+                                         */
+                                        workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
                                 } | null;
                             };
                             /** @constant */
@@ -10975,6 +11351,82 @@ export interface operations {
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
+                                    /**
+                                     * @description Operator-declared settings and evidence references, bound by the same
+                                     *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                     *     capability evidence, intersect permission and reserve the task's budget.
+                                     */
+                                    selection_policy?: {
+                                        candidates: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Unknown is distinct from observed support for omission of an effort field.
+                                             *     Evidence digests identify declared supporting records, not trusted attestations.
+                                             */
+                                            effort: {
+                                                /** @constant */
+                                                kind: "unknown";
+                                            } | {
+                                                allow_default: boolean;
+                                                evidence_sha256: string;
+                                                /** @constant */
+                                                kind: "observed";
+                                                values: string[];
+                                            };
+                                            manifest_sha256?: string | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            service_id: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /**
+                                         * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                         *     provider rankings or implicit defaults for a configured installation.
+                                         */
+                                        limits: {
+                                            /** Format: uint64 */
+                                            maximum_allowance_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_candidates: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_values: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                        };
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        system_prompt: string;
+                                        /**
+                                         * Format: uint16
+                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                         */
+                                        temperature_milli: number;
+                                        /**
+                                         * @description The eight workload classes. Code depends on a class contract; a profile
+                                         *     decides which endpoint serves it.
+                                         */
+                                        workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
                                 } | null;
                             };
                             /** @constant */
@@ -11193,6 +11645,82 @@ export interface operations {
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
+                                    /**
+                                     * @description Operator-declared settings and evidence references, bound by the same
+                                     *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                     *     capability evidence, intersect permission and reserve the task's budget.
+                                     */
+                                    selection_policy?: {
+                                        candidates: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Unknown is distinct from observed support for omission of an effort field.
+                                             *     Evidence digests identify declared supporting records, not trusted attestations.
+                                             */
+                                            effort: {
+                                                /** @constant */
+                                                kind: "unknown";
+                                            } | {
+                                                allow_default: boolean;
+                                                evidence_sha256: string;
+                                                /** @constant */
+                                                kind: "observed";
+                                                values: string[];
+                                            };
+                                            manifest_sha256?: string | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            service_id: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /**
+                                         * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                         *     provider rankings or implicit defaults for a configured installation.
+                                         */
+                                        limits: {
+                                            /** Format: uint64 */
+                                            maximum_allowance_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_candidates: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_values: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                        };
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        system_prompt: string;
+                                        /**
+                                         * Format: uint16
+                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                         */
+                                        temperature_milli: number;
+                                        /**
+                                         * @description The eight workload classes. Code depends on a class contract; a profile
+                                         *     decides which endpoint serves it.
+                                         */
+                                        workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -11370,6 +11898,82 @@ export interface operations {
                                     profile_sha256: string;
                                     /** Format: uint64 */
                                     revision: number;
+                                    /**
+                                     * @description Operator-declared settings and evidence references, bound by the same
+                                     *     endpoint-profile preview/apply digest. Dispatch must still verify required
+                                     *     capability evidence, intersect permission and reserve the task's budget.
+                                     */
+                                    selection_policy?: {
+                                        candidates: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Unknown is distinct from observed support for omission of an effort field.
+                                             *     Evidence digests identify declared supporting records, not trusted attestations.
+                                             */
+                                            effort: {
+                                                /** @constant */
+                                                kind: "unknown";
+                                            } | {
+                                                allow_default: boolean;
+                                                evidence_sha256: string;
+                                                /** @constant */
+                                                kind: "observed";
+                                                values: string[];
+                                            };
+                                            manifest_sha256?: string | null;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            service_id: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /**
+                                         * @description Explicit per-adapter limits. Protocol ceilings are resource bounds, not
+                                         *     provider rankings or implicit defaults for a configured installation.
+                                         */
+                                        limits: {
+                                            /** Format: uint64 */
+                                            maximum_allowance_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_candidates: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_bytes: number;
+                                            /** Format: uint32 */
+                                            maximum_effort_values: number;
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                        };
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        system_prompt: string;
+                                        /**
+                                         * Format: uint16
+                                         * @description Exact thousandths avoid floating-point configuration digest ambiguity.
+                                         */
+                                        temperature_milli: number;
+                                        /**
+                                         * @description The eight workload classes. Code depends on a class contract; a profile
+                                         *     decides which endpoint serves it.
+                                         */
+                                        workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64

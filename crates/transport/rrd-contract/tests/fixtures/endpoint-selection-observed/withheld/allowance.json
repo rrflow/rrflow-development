@@ -1,0 +1,1 @@
+{"contract_version": 1, "configuration_sha256": "4621b748db8fbfa1aee8e49dffafcc635394301a1ed58c796db537cc98ca6063", "workload_class": "large_model_serving", "limits": {"maximum_allowance_bytes": 16384, "maximum_response_bytes": 65536, "maximum_candidates": 1, "maximum_effort_values": 1, "maximum_effort_bytes": 65536}, "candidates": []}
