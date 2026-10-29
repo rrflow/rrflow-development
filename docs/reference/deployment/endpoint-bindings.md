@@ -17,8 +17,9 @@ machine identities exist.
 
 ## Contract
 
-All types live in `crates/transport/rrd-contract/src/endpoint_binding.rs`,
-derive `JsonSchema`, and reject unknown fields.
+Binding types live in `crates/transport/rrd-contract/src/endpoint_binding.rs`;
+the optional selector policy lives in `endpoint_policy.rs`. Both derive
+`JsonSchema` and reject unknown fields.
 
 | Type | Meaning | Rules |
 |---|---|---|
@@ -29,8 +30,9 @@ derive `JsonSchema`, and reject unknown fields.
 | `DeclaredFootprint` | Memory a binding declares on its placement machine, and a GPU requirement with its memory. | Nonzero; replaced by measured values once observation exists. |
 | `BindingLimits` | `max_concurrency`, `timeout_ms`, `max_input_bytes`. | Nonzero within the contract ceilings. Class-specific limits stay with their class contracts. |
 | `EndpointBinding` | One configured endpoint serving one class: `id`, `class`, `kind`, `endpoint`, `service_id`, optional `manifest_sha256`, optional `credential`, optional `placement`, `footprint`, `limits`. | Local and self-hosted bindings name a placement machine; subscription and API bindings carry a credential reference, use a URL, and have no placement. `manifest_sha256`, when present, pins the manifest or artifact the service must present. |
-| `EndpointProfileInput` | Operator-authored: `contract_version`, `name`, `bindings` in declaration order. | Within one class, declaration order is fallback order; the first binding is primary. Ids are unique; a class has at most sixteen bindings. |
-| `EndpointProfile` | The effective profile: the input plus an engine-assigned `revision` and `profile_sha256`. | The digest binds version, name, revision, and bindings; drift fails validation. `fallbacks(class)` and `primary(class)` read the order. |
+| `EndpointProfileInput` | Operator-authored: `contract_version`, `name`, `bindings` in declaration order, and optional `selection_policy`. | Within one class, declaration order is fallback order; the first binding is primary. Ids are unique; a class has at most sixteen bindings. No policy means no configured selector. |
+| `EndpointProfile` | The effective profile: the input plus an engine-assigned `revision` and `profile_sha256`. | The digest binds version, name, revision, bindings and every present policy field; drift fails validation. `fallbacks(class)` and `primary(class)` read the order. |
+| `EndpointSelectionPolicy` | Explicit controller binding, workload, candidates and declared effort evidence, selection limits, system prompt, output-token ceiling and temperature in thousandths. | Bounded and closed; candidate identities must match the profile. No provider, model, prompt or ranking defaults. Configuration grants no permission to invoke it. |
 | `HardwareInventory` and `MachineCapacity` | Declared `memory_bytes`, optional GPU `memory_bytes`, and `disk_bytes` per machine. | Unique machine ids; nonzero values. On unified-memory hardware the GPU pool and machine memory are the same bytes, declared in both places. |
 | `MachineLoad` | Declared load per machine under a profile. | Returned by `validate_placement` for display beside observed state. |
 
@@ -39,6 +41,22 @@ placed binding names a declared machine, that the declared memory of all
 bindings placed on one machine fits its capacity, and that a binding requiring
 a GPU finds one with enough declared memory. It returns the declared load per
 machine.
+
+## Governed selector configuration
+
+The optional policy participates in the existing endpoint-configuration
+preview/apply/read operations and their approval digest, revision CAS, replay
+and revocation behavior. Every present field changes profile identity; absent
+policies retain existing profile hashes and omit the wire field. A policy can
+project an allowance only from a configuration containing that exact policy.
+This verifies declared consistency, not capability evidence or current caller
+eligibility. The engine must still verify evidence, intersect authorization,
+bind the task/source and reserve budget before any external call.
+
+The [policy journal](../../evidence/change-journals/gate-g/controller-policy-configuration.md)
+records approval and embedded persistence/reopen tests using proposals derived
+from retained actual settings. It does not establish installed-binary execution,
+provider qualification or engine-admitted selector calls.
 
 ## Fixture
 
@@ -57,13 +75,12 @@ no value in it is a secret.
 
 ## What this record does not cover
 
-- Runtime resolution. Nothing reads a profile yet: the embedding registry is
-  process-local, and `rrflow install` seals only
+- Runtime resolution. The engine reads and persists profiles through governed
+  endpoint-configuration operations, but it does not activate selector execution.
+  The embedding registry remains process-local, and `rrflow install` seals
   [`EstateConfiguration`](../../../crates/transport/rrd-contract/src/deployment.rs)
-  limits. Resolving the active profile at request time or on change
-  notification, so that an activation takes effect without a rebuild, is the
-  governed configuration work that extends `EstateConfiguration` revisions
-  after install.
+  limits. Admitted runtime resolution on configuration changes remains separate
+  from storing a profile.
 - Activation. A binding is configuration. Discovery creates an inactive typed
   candidate, and only an exact previewed immutable binding plus explicit
   configuration, policy, and authorization may activate it (D-06).

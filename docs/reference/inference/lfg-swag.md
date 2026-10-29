@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration types exist, LFG and SWAG execution are unimplemented
+**Status:** active target contract; configuration, choice validation and optional chat transport exist; engine-admitted LFG/SWAG execution is unimplemented
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -53,6 +53,207 @@ before G-01b implementation, consistent with the
 The existing router manifest is for an actual model-backed adapter, not proof
 that LFG contains a model. Preserve its admission tests when assigning the
 router execution port to the SWAG path.
+
+## Endpoint-selection capability decision
+
+This is G-01b contract preparation, not a registered public operation or an
+implemented adapter. The current public endpoint operations read, preview and
+apply configuration. They do not invoke a selector or its selected provider.
+Embedding execution and `RouteStepDecision` cannot be overloaded to fill that
+gap. Keep the three recipe/branch/context decisions unchanged.
+
+The next public capability is **propose endpoint selection**, owned by
+`RrdEngine` and exposed through the executable operation catalogue when its
+handler and authorization are implemented together. Its proposed semantic
+types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
+`EndpointSelectionProposal`; these names are design targets, not available SDK
+types. A separate admitted external activity executes a selected provider.
+Generating the proposal itself may invoke the configured controller, so it
+requires model-call authorization, egress admission and budget reservation;
+it must never masquerade as a free configuration read.
+
+### Executable validation prerequisite
+
+`rrd-contract` now exports `EndpointSelectionAllowance`,
+`EndpointSelectionCandidate`, `EndpointEffortSupport`, explicit
+`EndpointSelectionLimits` and `EndpointSelectionChoice`. The allowance binds
+the complete current `EndpointConfiguration` digest, workload class, configured
+binding/service/manifest identities and declared supported effort values.
+Choices contain only a binding and optional effort, or an explicit abstention.
+Unknown effort support cannot silently become permission to omit effort.
+
+`EndpointSelectionChoice::decode` bounds raw bytes and rejects malformed or
+unknown fields, foreign bindings, changed configuration, unsupported effort and
+contradictory no-candidate abstention. Supplied capability evidence digests are
+identifiers, not verified attestations. These pure types perform no network call
+and grant no authority. Engine-derived eligibility, task/source binding,
+authenticated admission, descriptor verification and dispatch remain missing.
+The existing three reasoning-tree decisions and public catalogue are unchanged.
+
+The offline `endpoint_selection` example provides `schema`,
+`configuration-sha256 CONFIGURATION` and
+`verify CONFIGURATION ALLOWANCE RESPONSE` commands. Retained actual BF16
+responses and installed configuration exercise its wire compatibility; denial
+tests perturb those records in memory only. The
+[validation journal](../../evidence/change-journals/gate-g/controller-endpoint-choice-validation.md)
+records provenance and limits. These observations are not training targets,
+human review, provider-quality evidence or completion of G-01b.
+
+### Governed selector settings prerequisite
+
+`EndpointProfileInput` and `EndpointProfile` carry optional
+`EndpointSelectionPolicy` through the existing endpoint-configuration approval
+and persistence boundary. The policy explicitly supplies controller binding,
+candidate facts, workload, finite limits, system prompt, maximum output tokens
+and temperature in thousandths. Absence configures no selector. Every present
+field is digest-bound; no provider or model ranking is embedded in defaults.
+
+`EndpointSelectionPolicy::allowance` projects declared candidates only from
+the exact matching configuration. It does not establish authorization or verify
+the referenced capability evidence. Future engine admission must filter current
+eligibility, form the task/context packet and reserve budget. The
+[policy journal](../../evidence/change-journals/gate-g/controller-policy-configuration.md)
+records configuration approval, reopen and revocation checks; it makes no
+selector-activation claim.
+
+### Native selector transport prerequisite
+
+The optional `rrd-inference/endpoint-chat` feature provides
+`PreparedEndpointChat` for one explicitly prepared chat request. It derives the
+URL, service identity, credential reference and limits from the supplied
+configuration, validates the allowance, and accepts a caller-owned deadline,
+sticky cancellation signal and bounded credential resolver. Prompt construction
+and generation settings remain explicit caller inputs. No provider ranking,
+task routing rule or deployment endpoint is embedded in this adapter.
+
+This transport requires TLS outside literal loopback, disables redirects and
+implicit environment proxies, bounds the request and response body, and rejects
+wrong-model, truncated, tool-requesting or invalid-choice responses. It performs
+no application retry. It reuses existing process-local execution control without
+installing a second task budget or registry. Cancellation is checked around
+blocking I/O and after decoding; it rejects late results but does not prove the
+remote model stopped. Post-dispatch failures retain an unknown remote outcome.
+Missing provider usage remains unknown. A returned alias is not weight attestation.
+
+The `endpoint_chat` example is an operator transport probe, not a public engine
+operation. It takes `CONFIG ALLOWANCE CONTROLLER_ID REQUEST KEY_ENV OUTPUT_DIR
+TIMEOUT_MS [CANCEL_AFTER_MS]`, requires a fresh output directory and retains
+actual request/response bytes and observations. Build with
+`cargo build --locked -p rrd-inference --features endpoint-chat --example endpoint_chat`.
+Its [native transport journal](../../evidence/change-journals/gate-g/controller-native-chat.md)
+records real BF16 calls and limitations. Engine-derived context/candidates,
+authorization, durable reservation/fencing, admitted installation and dispatch
+remain missing; this transport is not automatically active in the installed engine.
+
+### Inputs and configuration ownership
+
+| Input | Authority and required meaning |
+|---|---|
+| Task and context | The authenticated request names an existing task/run and the relevant expected source/read identity. Persistent project intent and the current task objective remain distinct. The engine resolves authorized context references and finite input/output limits; arbitrary client context is not presumed authorized. |
+| Controller binding | Effective configuration names the selector adapter, its binding and independently verified artifact/runtime/template/schema identities. The controller cannot choose its own replacement, mutate its configuration or promote its weights. |
+| Worker candidates | The engine derives eligible bindings from the effective endpoint profile, current authorization and admitted adapter descriptors. The client and model cannot nominate an arbitrary URL, credential, capability snapshot or provider ranking as authoritative. |
+| Effort and modality | Each adapter declares the supported effort values, modalities and parameter semantics for its exact service revision. Effort is selected from that candidate's supported values; no universal translation between provider effort scales is assumed. Missing support is explicit. |
+| Resource and access facts | Profile limits intersect the task's remaining aggregate allowance, locality/sharing policy and observed capacity/health/quota/cost facts. Bind facts to their producer, observation revision/time and freshness rule. A stale or unknown fact cannot satisfy a requirement that depends on it. A subscription label never supplies an API credential or proves an entitlement. |
+| Selection policy | Versioned configuration defines the objective, required constraints, permitted fallback behavior and experimental/shadow scope. No task-keyword branch, fixed provider ranking, model alias or deployment host is embedded in selection code. Quality claims require the associated evaluation evidence. |
+
+An endpoint declaration alone is insufficient: current `EndpointBinding`
+contains a locator, service identity, credential reference and operating limits,
+but no verified provider effort catalogue or usage/cancellation guarantees.
+Extend the existing descriptor/configuration owner with those qualified facts;
+do not create a UI-authored provider registry. Resolve secrets through the
+configured credential provider into adapter-owned process memory. Values never
+enter the packet, model prompt, public response or durable record.
+
+### Bounded packet and observable proposal
+
+The engine builds the packet at the effect boundary from the admitted task and
+authorized reads. Bind task/run identity, relevant input/context digests, read
+coordinate, endpoint/profile and policy revisions, effective limits, candidate
+snapshot digest, and selector model/runtime/template/schema identity. Principal
+identity comes from the authenticated request and existing representation/seat
+resolution, not a caller's actor string. A digest proves identity, not permission.
+
+Give the controller only the bounded task/context, eligible candidate identifiers
+and necessary supported choices/observations. Do not disclose raw secrets, storage
+keys, unrelated source content or private model reasoning. Candidate metadata and
+retrieved text remain data; they cannot alter instructions or authorize effects.
+The packet's serialized size and candidate count are checked before dispatch.
+
+The model may propose one binding and its supported effort, or abstain. Its
+decoding contract must distinguish selection from abstention and reject unknown
+fields, invented candidates, unsupported effort and oversized output. The engine
+wraps the decoded proposal with the exact packet/output identities and observed
+usage/latency or explicit unavailable values. Do not invent confidence, token
+counts, cost estimates or a successful outcome. An explicit operator choice is
+attributed to the operator, never represented as a learned model decision.
+
+This proposal grants no execution permission and is not a `RouteStepDecision`.
+Its manifest/schema/grammar identity must be separate from the existing router
+manifest for recipe/branch/context output. A name or remote model alias does not
+prove loaded weights. Remote identity needs the chosen adapter's independently
+verifiable serving evidence; where unavailable, disclose the limitation and deny
+any profile that requires stronger identity.
+
+### Admission, edits and external effects
+
+Before a selected-provider effect, the engine rechecks current permission,
+revocation, relevant source and effective configuration, candidate capabilities,
+credential availability, egress and remaining budget. Bind the accepted proposal
+to the existing task/activity reservation and durable receipt, with persisted
+worker fencing. Preserve uncertainty after dispatch if the result is lost; do
+not resubmit merely because a timeout or missing ACK looks like no work occurred.
+Late responses cannot advance a stale or cancelled run. Inspection of retained
+evidence cannot invoke the controller or selected provider again.
+
+Changed inputs invalidate only work whose declared dependency identity changed.
+An ordinary source edit leaves exploration and unrelated valid work available.
+Prepare a successor proposal/plan against the new relevant inputs, link it to
+the superseded evidence, and re-admit affected effects. Never relabel the old
+proposal with a new source digest, silently refresh its approval or reset its
+consumed budget. An unrelated edit is not a reason to lock the whole repository.
+Configuration/authorization changes require their own admission checks even if
+source bytes are identical. Exact dependency discovery, successor publication
+and crash recovery remain with the existing D/G/I owners.
+
+Fallback and retry each consume the same remaining run budget. They require
+current eligibility and classification of the preceding attempt; they do not
+turn a profile's ordered list into permission to call every provider. Supported
+cancellation and hard termination are distinct capabilities and need actual
+adapter evidence. The first explicitly authorized experimental profile may
+collect proposals and reviewed outcomes without claiming autonomous routing
+qualification. Missing training labels do not authorize fabricated examples.
+
+### Implementation handoff and real acceptance
+
+1. At `rrd-contract`, add the separate selection semantics and bounded validators,
+   reusing endpoint identities and existing task/configuration types. Resolve the
+   operation's authorization action and activity semantics before publishing it
+   in the catalogue; generate outward schemas and SDKs from that owner.
+2. At `rrd-inference`, implement the configured selector adapter and bounded
+   execution using G-01a's admission/accounting owner. Qualify an actual selected
+   endpoint's identity, response bounds, timeout and cancellation behavior.
+3. At `rrd-engine`, compose current task/source admission, eligible packet,
+   controller reservation and proposal receipt; then compose the selected-worker
+   activity through the generic external-effect owner. Missing durable/public
+   prerequisites hold dependent execution, not independent source inspection.
+4. Project those actual records through H-04/H-05 and Connectome. Emit correlated
+   RROFLOW outcomes only within granted sharing scope. Missing records remain
+   unavailable; no sample data fills an unfinished control.
+
+The acceptance history starts with an owner-supplied real repository task and
+success criterion, the actual configured controller and at least one authorized
+worker. Retain the request/packet/proposal, actual worker artifact, verification,
+cost/usage availability and review attribution. A single eligible worker proves
+dispatch integration only; comparative routing requires actual alternatives and
+reviewed outcomes. Exercise ordinary edits, revoke, unavailable credentials,
+Stop, lost ACK and process restart against those real services and records.
+Failure perturbations are traceable to the real history and excluded from
+learning data. No fabricated response or hand-authored metric qualifies the path.
+
+G-06 freezes held-out quality and operational limits before qualification; one
+successful task does not establish model superiority. I-03 owns later learning
+triggers and promotion, and Gate J owns distribution. This decision changes no
+gate status and does not make a development endpoint a turnkey controller.
 
 ## Configuration revisions and failure behavior
 
