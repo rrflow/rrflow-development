@@ -2,15 +2,16 @@
 
 package rrd
 
-// OpenAPI SHA-256: d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264
+// OpenAPI SHA-256: fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f
 
-const EndpointOpenAPIDocumentSHA256 = "d901b243ec7be36c0b2f1d501d514cf23e69274f6c27a1a728cb3e51b1b09264"
+const EndpointOpenAPIDocumentSHA256 = "fc6f521872d4054071cb51579374264bdb20670f2911225a86dca12c6f03173f"
 
 type OperationID string
 
 const (
 	OperationAttunementCancel             OperationID = "attunement-cancel"
 	OperationAttunementRead               OperationID = "attunement-read"
+	OperationAttunementReceiptRead        OperationID = "attunement-receipt-read"
 	OperationAuditExport                  OperationID = "audit-export"
 	OperationAuditRead                    OperationID = "audit-read"
 	OperationBackupCreate                 OperationID = "backup-create"
@@ -71,6 +72,7 @@ const (
 var endpoints = map[OperationID]Endpoint{
 	OperationAttunementCancel:             {Method: "POST", Path: "/v1/attunement/cancel", Authentication: "session_bearer", Mutation: true},
 	OperationAttunementRead:               {Method: "POST", Path: "/v1/attunement/read", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementReceiptRead:        {Method: "POST", Path: "/v1/attunement/receipt/read", Authentication: "session_bearer", Mutation: false},
 	OperationAuditExport:                  {Method: "POST", Path: "/v1/audit/export", Authentication: "session_bearer", Mutation: false},
 	OperationAuditRead:                    {Method: "POST", Path: "/v1/audit/read", Authentication: "session_bearer", Mutation: false},
 	OperationBackupCreate:                 {Method: "POST", Path: "/v1/backups", Authentication: "session_bearer", Mutation: true},
