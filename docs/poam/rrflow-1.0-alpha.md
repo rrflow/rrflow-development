@@ -58,3 +58,4 @@
 | POAM-042 | High | Open | [the estate has no configurable organisation layer](rrflow-1.0-alpha/poam-042.md) |
 | POAM-043 | High | Open | [transaction previews rebuild the whole scope and skip object checks](rrflow-1.0-alpha/poam-043.md) |
 | POAM-044 | High | Open | [rrflowQL refusals are unstructured, and queries cannot be checked without running](rrflow-1.0-alpha/poam-044.md) |
+| POAM-045 | High | Open | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |

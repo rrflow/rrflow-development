@@ -939,24 +939,6 @@ pub(crate) fn runtime_vector_source_delta_start(
     runtime_vector_source_delta_key(scope, collection_id, vector_name, field, cursor, 0)
 }
 
-pub(crate) fn runtime_vector_source_delta_prefix(
-    scope: &ScopeId,
-    collection_id: &str,
-    vector_name: &str,
-    field: &str,
-) -> Result<Vec<u8>> {
-    validate_vector_source_key_parts(collection_id, vector_name, field)?;
-    Ok(encode(
-        RUNTIME_VECTOR_SOURCE_DELTAS,
-        &[
-            KeyPart::Text(scope.as_str()),
-            KeyPart::Text(collection_id),
-            KeyPart::Text(vector_name),
-            KeyPart::Text(field),
-        ],
-    ))
-}
-
 fn validate_vector_source_key_parts(
     collection_id: &str,
     vector_name: &str,
@@ -1553,17 +1535,24 @@ mod tests {
             runtime_vector_version_key(&scope, &reference, 20, 9)
                 < runtime_vector_version_key(&scope, &reference, 10, 8)
         );
-        let documents =
-            runtime_vector_source_delta_prefix(&scope, "documents", "semantic", "title").unwrap();
-        assert_ne!(
-            documents,
-            runtime_vector_source_delta_prefix(&scope, "archive", "semantic", "title").unwrap()
+        let start = |collection: &str, name: &str, cursor: u64| {
+            runtime_vector_source_delta_start(&scope, collection, name, "title", cursor).unwrap()
+        };
+        let documents = start("documents", "semantic", 1);
+        assert_ne!(documents, start("archive", "semantic", 1));
+        assert_ne!(documents, start("documents", "summary", 1));
+        // A cursor interval of one source orders every ordinal of its cursors
+        // inside it and no other source between its ends.
+        let key = runtime_vector_source_delta_key(&scope, "documents", "semantic", "title", 7, 3)
+            .unwrap();
+        assert!(
+            start("documents", "semantic", 7) <= key && key < start("documents", "semantic", 8)
         );
-        assert_ne!(
-            documents,
-            runtime_vector_source_delta_prefix(&scope, "documents", "summary", "title").unwrap()
+        assert!(
+            !(start("documents", "semantic", 1)..start("documents", "semantic", u64::MAX))
+                .contains(&start("documents-archive", "semantic", 7))
         );
-        assert!(runtime_vector_source_delta_prefix(&scope, "", "semantic", "title").is_err());
-        assert!(runtime_vector_source_delta_prefix(&scope, "documents", "", "title").is_err());
+        assert!(runtime_vector_source_delta_start(&scope, "", "semantic", "title", 1).is_err());
+        assert!(runtime_vector_source_delta_start(&scope, "documents", "", "title", 1).is_err());
     }
 }
