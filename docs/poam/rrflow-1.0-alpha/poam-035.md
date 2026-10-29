@@ -14,6 +14,13 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+retains a macOS installed-domain-crash failure from run 40730847766: native
+`hdiutil create` returned `Resource busy` while preparing a capacity image.
+The native fixture reported failure; the cause and an applicable repair are
+not established. This observation does not establish an SDK-induced failure or
+clear any C-07 native evidence.
+
 The retained Windows sampler failure observed a 1.269-second diagnostics RPC
 but did not capture internal lock wait or assembly timing. The
 [diagnostic attribution candidate](../../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
