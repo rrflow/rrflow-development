@@ -26,7 +26,7 @@ from windows_offline import P, U32, api, boolean, close, kernel
 ROOT = Path(__file__).resolve().parents[2]
 MEMBERSHIP = "sustained::native_worker::tests::native_job_contains_engine_harness_and_worker"
 ABRUPT = "sustained::native_worker::tests::native_job_abrupt_parent_fixture"
-TIMEOUT = "sustained::native_worker::tests::native_job_timeout_cleanup_fixture"
+TIMEOUT = "sustained::native_worker::tests::native_allocation_timeout_cleanup_fixture"
 ENGINE_BYTES = 2 * 1024**3
 HOST_BYTES = 4 * 1024**3
 

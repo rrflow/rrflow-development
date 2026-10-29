@@ -593,10 +593,10 @@ mod tests {
         panic!("abrupt-parent fixture ended before its owner killed it");
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "linux"))]
     #[test]
     #[ignore = "private launcher-owned unresponsive-monitor fixture"]
-    fn native_job_timeout_cleanup_fixture() {
+    fn native_allocation_timeout_cleanup_fixture() {
         use std::io::Write;
         let directory = PathBuf::from(std::env::var_os("RRFLOW_NATIVE_TIMEOUT_FIXTURE").unwrap());
         assert!(directory.is_absolute() && directory.is_dir());
@@ -639,7 +639,7 @@ mod tests {
                         Duration::from_secs(4),
                         |input, _cancel| {
                             // Model a monitor that does not act on cancellation;
-                            // the real held child remains killable by the Job.
+                            // the real held child remains killable by the launcher.
                             run_helper(input, Arc::new(AtomicBool::new(false)))
                         },
                     )
@@ -670,7 +670,7 @@ mod tests {
                 println!("native_timeout_cleanup_unconfirmed_worker={worker_pid}");
                 std::io::stdout().flush().unwrap();
             });
-        // Only this explicitly Job-verified fixture exits. The external Job
+        // Only this explicitly allocation-verified fixture exits. Its external
         // owner must quiesce the still-live child and prove its termination.
         std::process::exit(73);
     }

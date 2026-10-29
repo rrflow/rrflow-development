@@ -44,7 +44,14 @@ The [Windows supervisor cleanup test](../../evidence/change-journals/gate-c/c-07
 deliberately leaves a real held helper alive after an acquisition timeout and
 incomplete cleanup report, then observes the owned Job terminate it after the
 test harness exits. The monitor's refusal to forward cancellation is injected;
-this does not establish termination of an OS-stuck process or Linux cleanup.
+this does not by itself establish termination of an OS-stuck process or Linux cleanup.
+
+The [Linux cgroup supervisor test](../../evidence/change-journals/gate-c/c-07g-linux-cgroup-supervisor.md)
+separately verified engine, harness and helper containment, then observed a
+killable helper exit after its timed-out test harness and the launcher's owned
+cgroup cleanup in one delegated WSL2 scope. It retained pidfds to identify the
+actual processes. Monitor unresponsiveness was injected; native Linux hardware,
+OS-stuck termination, full-profile and soak evidence remain open.
 
 The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 retains a macOS installed-domain-crash failure from run 40730847766: native
