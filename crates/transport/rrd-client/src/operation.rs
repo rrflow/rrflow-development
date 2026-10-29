@@ -4,21 +4,24 @@ use crate::error::{contract, decode};
 use crate::{Error, Result, RrdClient, Session};
 use hyper::{Method, StatusCode};
 use rrd_contract::{
-    AbortTransaction, AssembleContext, AuditExport, AuditPage, BeginTransaction, CanonicalId,
-    ChangefeedFollowResult, ChangefeedPage, CloseTask, CommitReceipt, CommitTransaction,
-    ContextPacket, CorrelationId, CreateInstanceBackup, CreateInstanceBackupResult,
-    DiagnosticSnapshot, EnsureVectorCollection, EnsureVectorCollectionResult, EstateSnapshot,
-    ExecuteQuery, ExportAudit, FollowChangefeed, InstanceBackupCatalogueSnapshot,
-    KnowledgeTreeCatalogue, LaunchPromptFlight, LaunchPromptFlightResult, ListInstanceBackups,
-    ListKnowledgeTrees, ListPromptFlights, ListTasks, ListVectorCollections, OpenTask,
-    PreviewTransaction, PromptFlightPage, PromptFlightReadResult, QueryResult, ReadAudit,
-    ReadChangefeed, ReadDiagnosticSnapshot, ReadEstate, ReadPromptFlight, ReadTask,
-    ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult, RequestContext, RequestEnvelope,
-    ResourceId, ResourceKind, ResourcePath, ResponseEnvelope, ResponseOutcome,
-    RestoreInstanceBackup, RestoreInstanceBackupResult, RetrieveVectorPoints, ScrollVectorPoints,
-    SearchVectors, TaskPage, TaskReadResult, TaskResult, TransactionLease, TransactionPreview,
-    VectorCollectionCatalogueSnapshot, VectorPointBatch, VectorPointPage, VectorSearchResult,
-    PROTOCOL, PROTOCOL_VERSION,
+    AbortTransaction, ActivateVectorQuantizationArtifact, ActivateVectorQuantizationArtifactResult,
+    AssembleContext, AuditExport, AuditPage, BeginTransaction, BuildVectorQuantizationArtifact,
+    BuildVectorQuantizationArtifactResult, CanonicalId, ChangefeedFollowResult, ChangefeedPage,
+    CloseTask, CommitReceipt, CommitTransaction, ContextPacket, CorrelationId,
+    CreateInstanceBackup, CreateInstanceBackupResult, DiagnosticSnapshot, EnsureVectorCollection,
+    EnsureVectorCollectionResult, EstateSnapshot, ExecuteQuery, ExportAudit, FollowChangefeed,
+    InstanceBackupCatalogueSnapshot, KnowledgeTreeCatalogue, LaunchPromptFlight,
+    LaunchPromptFlightResult, ListInstanceBackups, ListKnowledgeTrees, ListPromptFlights,
+    ListTasks, ListVectorCollections, ListVectorQuantizationArtifacts,
+    ListVectorQuantizationArtifactsResult, OpenTask, PreviewTransaction, PromptFlightPage,
+    PromptFlightReadResult, QueryResult, ReadAudit, ReadChangefeed, ReadDiagnosticSnapshot,
+    ReadEstate, ReadPromptFlight, ReadTask, ReplaceKnowledgeTrees, ReplaceKnowledgeTreesResult,
+    RequestContext, RequestEnvelope, ResourceId, ResourceKind, ResourcePath, ResponseEnvelope,
+    ResponseOutcome, RestoreInstanceBackup, RestoreInstanceBackupResult,
+    RetireVectorQuantizationArtifact, RetireVectorQuantizationArtifactResult, RetrieveVectorPoints,
+    ScrollVectorPoints, SearchVectors, TaskPage, TaskReadResult, TaskResult, TransactionLease,
+    TransactionPreview, VectorCollectionCatalogueSnapshot, VectorPointBatch, VectorPointPage,
+    VectorSearchResult, PROTOCOL, PROTOCOL_VERSION,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -477,6 +480,79 @@ impl RrdClient {
             request,
             options,
             false,
+        )
+        .await
+    }
+
+    /// Builds the next generation of one quantization artifact. The request
+    /// needs an idempotency key: the same key and request replay the
+    /// recorded generation.
+    pub async fn build_vector_quantization(
+        &self,
+        session: &Session,
+        request: BuildVectorQuantizationArtifact,
+        options: RequestOptions,
+    ) -> Result<BuildVectorQuantizationArtifactResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/build",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    pub async fn list_vector_quantizations(
+        &self,
+        session: &Session,
+        request: ListVectorQuantizationArtifacts,
+        options: RequestOptions,
+    ) -> Result<ListVectorQuantizationArtifactsResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/list",
+            session,
+            request,
+            options,
+            false,
+        )
+        .await
+    }
+
+    /// Activates one built generation for approximate search.
+    pub async fn activate_vector_quantization(
+        &self,
+        session: &Session,
+        request: ActivateVectorQuantizationArtifact,
+        options: RequestOptions,
+    ) -> Result<ActivateVectorQuantizationArtifactResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/activate",
+            session,
+            request,
+            options,
+            true,
+        )
+        .await
+    }
+
+    /// Retires one generation from approximate search.
+    pub async fn retire_vector_quantization(
+        &self,
+        session: &Session,
+        request: RetireVectorQuantizationArtifact,
+        options: RequestOptions,
+    ) -> Result<RetireVectorQuantizationArtifactResult> {
+        self.session_call(
+            Method::POST,
+            "/v1/vector/quantizations/retire",
+            session,
+            request,
+            options,
+            true,
         )
         .await
     }
