@@ -1,0 +1,21 @@
+# C-07 integrated candidate CI failure and evidence-index correction
+
+**Status:** active candidate CI failure evidence; qualification remains open
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-integrated-candidate-ci-failure`
+**Owner:** OBJ-02 / C-07g,h / POAM-035 / [PR167](https://github.com/rrflow/rrflow-development/pull/167)
+
+## Scope and observed failure
+
+Starting PR head `8216c6d480a069b097f2bc90ab69f7ecf1eaf160`; integrated public main `57b9a35583b2d5b6d2d34281904646a509cb32f8` with ordinary merge `4f8bb978aad6c4942ffb076506bb5f3df6fb0818`. The PR brief was updated before this correction. This evidence-only continuation preserves the [original launch journal](c-07g-integrated-shared-pin-native-launch.md), adds this separate record, and regenerates the Gate C index and execution inventory. No runtime, capacity threshold, prior evidence, objective, roadmap or POA&M status is changed.
+
+The [candidate CI run 40779017975](https://github.com/rrflow/rrflow-development/actions/runs/40779017975) failed on two independent lanes. [Verify job 123135654093](https://github.com/rrflow/rrflow-development/actions/runs/40779017975/job/123135654093) reported that the original launch journal was absent from its parent index and that the index was stale. Before correction, `python scripts/ci/check_documentation.py` at the exact failed head reproduced those errors on Windows. The index is a generated projection; regenerate rather than hand-edit it.
+
+[macOS installed-crash job 123135654311](https://github.com/rrflow/rrflow-development/actions/runs/40779017975/job/123135654311) failed `capacity::installed_native_capacity_recovers_acknowledged_history` at the `current_before_create` phase. The filler reported `bytes=0 writes=1 request_bytes=1 elapsed_ms=25005` at the 25-second bound after an earlier fill reported 260112384 bytes. The client then reported `client-failure` with no message. The log does not establish why the one-byte refill did not return within the bound, or prove engine corruption, recovery, or a capacity pass. The final fixture reported failed. Logs were retained locally at `target/c07-failed-job-123135654093.log` and `target/c07-failed-job-123135654311.log`; the linked GitHub run is the public CI record.
+
+A separate [candidate run 40778825772](https://github.com/rrflow/rrflow-development/actions/runs/40778825772) at head `869629436ac50002895b2448a515a959a4417e9e` had a successful macOS installed-crash job. Both candidate revisions use the same `capacity.rs` Git blob `a92d4d0deb9c699d069907955742a1dfb804e58a`, and no differences in its capacity support directory, CI scripts or reusable workflow were observed between those revisions. The different outcomes show the failure is not reliably reproduced by those two runs; they do not establish a root cause or turn the failed run into a pass. Fresh exact-head candidate and native qualification evidence remain required.
+
+## Change checklist and evidence
+
+Reviewed README, C-07 roadmap/POAM ownership, change-authoring procedure, PR167 brief, original launch journal, failing CI jobs and native capacity filler around the bounded assertion, and Git identities/diffs. Research/source adaptation: not applicable to this generated-link correction; no upstream algorithm was imported. Trace/resource decision: retain native and CI logs and report exact refill observation; do not change the clock, capacity limit or retry policy. The separate owning native diagnosis must establish cause before changing test or runtime behavior.
+
+`python scripts/knowledge/render_navigation.py` regenerates the index; `python scripts/ci/build_execution_inventory.py` regenerates the inventory. Their check modes, `python scripts/ci/check_documentation.py`, `python scripts/ci/check_workflow.py`, and `git diff --cached --check` passed on Windows after regeneration. The complete change diff was reviewed against the integrated main and preserves the original immutable journal and main-side records. Native macOS reproduction cannot be run on this Windows host; exact candidate CI, merged-candidate capacity matrix and 24-hour soak are pending. A successful documentation check is not a successful installed-crash test or C-07 qualification.
