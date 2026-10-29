@@ -49,6 +49,14 @@ but cannot substitute for a persisted fence. Generic routine/tool execution
 still belongs to Gate I; route execution may not create an alternate external
 activity implementation.
 
+G-01b's [endpoint-selection capability decision](../../reference/inference/lfg-swag.md#endpoint-selection-capability-decision)
+specifies the missing public admission boundary, bounded packet/proposal,
+configuration-owned candidates and distinct selected-provider effect. It is
+contract preparation only: no operation or executable adapter is registered.
+Its implementation handoff requires the actual task/source/configuration and
+external-activity prerequisites above, real endpoint evidence and owner-reviewed
+task outcomes. The three existing route decisions and gate status are unchanged.
+
 Run the existing characterization commands before the first relevant edit:
 
 ```text
