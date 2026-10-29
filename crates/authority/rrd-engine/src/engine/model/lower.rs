@@ -264,18 +264,105 @@ pub(in crate::engine) fn runtime_properties(
         .collect()
 }
 
+fn runtime_id(id: &CanonicalId) -> Result<RuntimeType> {
+    RuntimeType::new(id.as_str()).map_err(core_contract)
+}
+
+fn runtime_organisation(
+    organisation: &DataEstateOrganisation,
+) -> Result<rrd_core::RuntimeEstateOrganisation> {
+    let memberships = |entries: &BTreeMap<CanonicalId, CanonicalId>| {
+        entries
+            .iter()
+            .map(|(identity, domain)| Ok((runtime_id(identity)?, runtime_id(domain)?)))
+            .collect::<Result<BTreeMap<_, _>>>()
+    };
+    Ok(rrd_core::RuntimeEstateOrganisation {
+        domains: organisation
+            .domains
+            .iter()
+            .map(|(id, domain)| {
+                Ok((
+                    runtime_id(id)?,
+                    rrd_core::RuntimeDomainSchema {
+                        title: domain.title.clone(),
+                        description: domain.description.clone(),
+                        parent: domain.parent.as_ref().map(runtime_id).transpose()?,
+                    },
+                ))
+            })
+            .collect::<Result<_>>()?,
+        categories: organisation
+            .categories
+            .iter()
+            .map(|(id, category)| {
+                Ok((
+                    runtime_id(id)?,
+                    rrd_core::RuntimeCategorySchema {
+                        title: category.title.clone(),
+                        description: category.description.clone(),
+                        targets: match category.targets {
+                            DataCategoryTargets::Kinds => rrd_core::RuntimeCategoryTargets::Kinds,
+                            DataCategoryTargets::Records => {
+                                rrd_core::RuntimeCategoryTargets::Records
+                            }
+                            DataCategoryTargets::KindsAndRecords => {
+                                rrd_core::RuntimeCategoryTargets::KindsAndRecords
+                            }
+                        },
+                        cardinality: match category.cardinality {
+                            DataTagCardinality::Single => rrd_core::RuntimeTagCardinality::Single,
+                            DataTagCardinality::Multiple => {
+                                rrd_core::RuntimeTagCardinality::Multiple
+                            }
+                        },
+                        open: category.open,
+                        tags: category
+                            .tags
+                            .iter()
+                            .map(|(tag, schema)| {
+                                Ok((
+                                    runtime_id(tag)?,
+                                    rrd_core::RuntimeTagSchema {
+                                        title: schema.title.clone(),
+                                        description: schema.description.clone(),
+                                    },
+                                ))
+                            })
+                            .collect::<Result<_>>()?,
+                    },
+                ))
+            })
+            .collect::<Result<_>>()?,
+        kind_domains: memberships(&organisation.kind_domains)?,
+        collection_domains: memberships(&organisation.collection_domains)?,
+        kind_tags: organisation
+            .kind_tags
+            .iter()
+            .map(|(kind, tags)| {
+                Ok((
+                    runtime_id(kind)?,
+                    tags.iter()
+                        .map(|reference| {
+                            Ok(rrd_core::RuntimeTagRef {
+                                category: runtime_id(&reference.category)?,
+                                tag: runtime_id(&reference.tag)?,
+                            })
+                        })
+                        .collect::<Result<_>>()?,
+                ))
+            })
+            .collect::<Result<_>>()?,
+    })
+}
+
 pub(in crate::engine) fn runtime_schema(
     registry: &DataSchemaRegistry,
 ) -> Result<RuntimeSchemaRegistry> {
     Ok(RuntimeSchemaRegistry {
         revision: registry.revision,
         migration: registry.migration.clone(),
-        catalogue: RuntimeCatalogueIdentity {
-            namespace: RuntimeType::new(registry.catalogue.namespace.as_str())
-                .map_err(core_contract)?,
-            database: RuntimeType::new(registry.catalogue.database.as_str())
-                .map_err(core_contract)?,
-        },
+        organisation: runtime_organisation(&registry.organisation)?,
         tables: registry
             .tables
             .iter()

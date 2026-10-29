@@ -292,7 +292,7 @@ fn memory_estate_schema(current: Option<DataSchemaRegistry>) -> Result<(DataSche
     let mut registry = current.unwrap_or_else(|| DataSchemaRegistry {
         revision: 0,
         migration: "memory estate bootstrap".into(),
-        catalogue: DataCatalogueIdentity::default(),
+        organisation: DataEstateOrganisation::default(),
         tables: BTreeMap::new(),
         records: BTreeMap::new(),
         relations: BTreeMap::new(),

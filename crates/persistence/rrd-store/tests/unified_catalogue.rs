@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use rrd_core::{
-    digest, GeoPoint, GeoValue, ObjectReceipt, ObjectReference, RuntimeCatalogueIdentity,
-    RuntimeCommit, RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel,
-    RuntimeMutation, RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema,
-    RuntimeRef, RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaMode,
+    digest, GeoPoint, GeoValue, ObjectReceipt, ObjectReference, RuntimeCommit, RuntimeDomainSchema,
+    RuntimeEvent, RuntimeEventSchema, RuntimeGeo, RuntimeLogicalModel, RuntimeMutation,
+    RuntimeProperties, RuntimePropertySchema, RuntimeRecord, RuntimeRecordSchema, RuntimeRef,
+    RuntimeRelation, RuntimeRelationSchema, RuntimeRetirement, RuntimeSchemaMode,
     RuntimeSchemaRegistry, RuntimeSeriesSample, RuntimeTableSchema, RuntimeType, RuntimeValue,
     RuntimeValueType, RuntimeVector, ScopeId, SeriesValue, VectorCollectionAddress, VectorValue,
 };
@@ -43,10 +43,33 @@ fn catalogue(revision: u64, vector_quality_required: bool) -> RuntimeSchemaRegis
             "require vector quality across the catalogue"
         },
     );
-    registry.catalogue = RuntimeCatalogueIdentity {
-        namespace: kind("project"),
-        database: kind("runtime"),
-    };
+    registry.organisation.domains = BTreeMap::from([
+        (
+            kind("knowledge"),
+            RuntimeDomainSchema {
+                title: "Knowledge".into(),
+                description: String::new(),
+                parent: None,
+            },
+        ),
+        (
+            kind("archive"),
+            RuntimeDomainSchema {
+                title: "Archive".into(),
+                description: String::new(),
+                parent: Some(kind("knowledge")),
+            },
+        ),
+    ]);
+    // Revision 2 moves the document kind; no record is rewritten.
+    registry.organisation.kind_domains = BTreeMap::from([(
+        kind("document"),
+        kind(if revision == 1 {
+            "knowledge"
+        } else {
+            "archive"
+        }),
+    )]);
     registry.tables = BTreeMap::from([
         (
             kind("entity"),
@@ -346,8 +369,14 @@ fn exercise(engine: &dyn StorageEngine) -> (ScopeId, u64) {
     let outcome = engine.runtime().commit(&initial).unwrap();
     let cursor = outcome.last_cursor;
     let installed = engine.runtime().schema(&scope).unwrap().unwrap();
-    assert_eq!(installed.catalogue.namespace, kind("project"));
-    assert_eq!(installed.catalogue.database, kind("runtime"));
+    assert_eq!(
+        installed.organisation.domain_of_kind(&kind("document")),
+        "knowledge"
+    );
+    assert_eq!(
+        installed.organisation.domain_of_kind(&kind("kv")),
+        "default"
+    );
     assert_eq!(installed.catalogue_tables().unwrap().len(), 12);
     assert_eq!(
         installed.tables[&kind("document")].mode,
@@ -390,9 +419,11 @@ fn exercise(engine: &dyn StorageEngine) -> (ScopeId, u64) {
         ],
     };
     let migrated = engine.runtime().commit(&accepted).unwrap();
+    let moved = engine.runtime().schema(&scope).unwrap().unwrap();
+    assert_eq!(moved.revision, 2);
     assert_eq!(
-        engine.runtime().schema(&scope).unwrap().unwrap().revision,
-        2
+        moved.organisation.domain_of_kind(&kind("document")),
+        "archive"
     );
     (scope, migrated.last_cursor)
 }
