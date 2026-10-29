@@ -10,6 +10,17 @@ independently.
 
 ## Observed deficiency
 
+PR206's installed development trial at
+`d365d02891350590aa4495b46fc665ef313aec24` reached the new authenticated endpoint
+proposal operation but returned uncertain transport failure. Reopening the same
+estate retained charged effort and `execution_may_continue: true`; it did not
+produce a successful proposal. The
+[installed recovery journal](../../evidence/change-journals/gate-g/controller-task-proposal-installed-recovery.md)
+records actual readback. Durable uncertain capacity has no public reconciliation
+operation yet; restoring connectivity is not permission to clear it or repeat the
+unknown effect. Successful execution, remaining fault cases and explicit
+reconciliation semantics remain acceptance gaps. This does not close POAM-009.
+
 The [endpoint-selection capability decision](../../reference/inference/lfg-swag.md#endpoint-selection-capability-decision)
 now makes the missing public admission and selected-provider effect explicit.
 Endpoint configuration persistence cannot execute either. Descriptor/credential

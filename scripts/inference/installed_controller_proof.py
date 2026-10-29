@@ -19,10 +19,18 @@ from uuid import uuid4
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ['build-receipt', 'contract-example', 'profile', 'task-source',
-                 'secret-file', 'secret-name', 'environment-name', 'output']:
-        parser.add_argument('--' + name, required=True)
+    inputs = ['build-receipt', 'contract-example', 'profile', 'task-source',
+              'secret-file', 'secret-name', 'environment-name']
+    for name in inputs:
+        parser.add_argument('--' + name)
+    parser.add_argument('--output', required=True)
+    parser.add_argument('--recover-proof', help='Read an existing attempt and budget; never dispatch or replay.')
     args = parser.parse_args()
+    recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
+    if recovery is None and any(getattr(args, name.replace('-', '_')) is None for name in inputs):
+        parser.error('A new proof requires all build, profile, task and credential inputs.')
+    if recovery is not None and any(getattr(args, name.replace('-', '_')) is not None for name in inputs):
+        parser.error('Recovery accepts only --recover-proof and --output.')
     out = Path(args.output).resolve()
     out.mkdir(parents=True, exist_ok=False)
 
@@ -38,47 +46,56 @@ def main():
             raise RuntimeError('CLI failed: ' + str(parts[0]) + ': ' + r.stderr[:1000])
         return json.loads(r.stdout)
 
-    receipt = json.loads(Path(args.build_receipt).read_text(encoding='utf-8'))
+    receipt_path = recovery / 'build-receipt.json' if recovery else Path(args.build_receipt)
+    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
     build = receipt['report']['build']
     assert build['provenance']['dirty'] is False
-    source_binary = Path(receipt['binary'])
-    assert hashlib.sha256(source_binary.read_bytes()).hexdigest() == build['executable_sha256']
-    binary = out / source_binary.name
-    shutil.copyfile(source_binary, binary)
-    assert binary.stat().st_nlink == 1
-    save('build-receipt.json', receipt)
-    assert cli('version')['build'] == build
-    profile = json.loads(Path(args.profile).read_text(encoding='utf-8'))
-    task_source = json.loads(Path(args.task_source).read_text(encoding='utf-8'))
-    save('profile-input.json', profile)
-    save('task-source.json', task_source)
-    policy = profile['selection_policy']
-    binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
-    mapping = {'format_version': 1, 'entries': [{
-        'reference': binding['credential'], 'environment_variable': args.environment_name}]}
-    save('credential-mapping.json', mapping)
-    secret = next(line.split('=', 1)[1] for line in Path(args.secret_file).read_text(encoding='utf-8').splitlines()
-                  if line.startswith(args.secret_name + '='))
-    project = out / 'project'
-    project.mkdir()
-    identity = cli('install', 'identity')['installation_identity']
-    plan = cli('install', 'plan', '--project', project, '--mode', 'existing', '--identity', identity)
-    save('installation-plan.json', plan)
-    save('installation-result.json', cli('install', 'apply', '--project', project, '--mode', 'existing',
-         '--plan', out / 'installation-plan.json', '--expect', plan['installation']['plan_sha256']))
+    if recovery:
+        binary = recovery / Path(receipt['binary']).name
+        assert hashlib.sha256(binary.read_bytes()).hexdigest() == build['executable_sha256']
+        assert cli('version')['build'] == build
+        project = recovery / 'project'
+        save('recovery-source.json', {'proof': str(recovery), 'binarySha256': build['executable_sha256'],
+             'sourceCommit': build['provenance']['source_commit'], 'providerDispatchAllowed': False})
+    else:
+        source_binary = Path(receipt['binary'])
+        assert hashlib.sha256(source_binary.read_bytes()).hexdigest() == build['executable_sha256']
+        binary = out / source_binary.name
+        shutil.copyfile(source_binary, binary)
+        assert binary.stat().st_nlink == 1
+        save('build-receipt.json', receipt)
+        assert cli('version')['build'] == build
+        profile = json.loads(Path(args.profile).read_text(encoding='utf-8'))
+        task_source = json.loads(Path(args.task_source).read_text(encoding='utf-8'))
+        save('profile-input.json', profile)
+        save('task-source.json', task_source)
+        policy = profile['selection_policy']
+        binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
+        mapping = {'format_version': 1, 'entries': [{
+            'reference': binding['credential'], 'environment_variable': args.environment_name}]}
+        save('credential-mapping.json', mapping)
+        secret = next(line.split('=', 1)[1] for line in Path(args.secret_file).read_text(encoding='utf-8').splitlines()
+                      if line.startswith(args.secret_name + '='))
+        project = out / 'project'
+        project.mkdir()
+        identity = cli('install', 'identity')['installation_identity']
+        plan = cli('install', 'plan', '--project', project, '--mode', 'existing', '--identity', identity)
+        save('installation-plan.json', plan)
+        save('installation-result.json', cli('install', 'apply', '--project', project, '--mode', 'existing',
+             '--plan', out / 'installation-plan.json', '--expect', plan['installation']['plan_sha256']))
     locator = tomllib.loads((project / '.rrflow/config.toml').read_text(encoding='utf-8'))
     credential = json.loads((project / locator['operator_credential']).read_text(encoding='utf-8'))
     instance = locator['identity']['instance_id']
-    request_payload = None
+    request_payload = json.loads((recovery / 'proposal-request.json').read_text(encoding='utf-8')) if recovery else None
     accepted = None
     attempt_before_restart = None
     budget_before_restart = None
 
-    for phase in ['missing-credential', 'authorized', 'reopened']:
+    for phase in (['recovered'] if recovery else ['missing-credential', 'authorized', 'reopened']):
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
         command = [str(binary), '--json', 'serve', '--project', str(project), '--bind', '127.0.0.1:0']
-        if phase != 'missing-credential':
+        if phase in ['authorized', 'reopened']:
             env[args.environment_name] = secret
             command += ['--endpoint-credentials', str(out / 'credential-mapping.json')]
         with log_path.open('xb') as log:
@@ -89,6 +106,7 @@ def main():
             try:
                 deadline = time.monotonic() + 60
                 base = None
+                catalogue_path = None
                 while base is None:
                     assert process.poll() is None, 'Owned server exited; inspect its log.'
                     for line in log_path.read_text(encoding='utf-8', errors='replace').splitlines():
@@ -96,11 +114,17 @@ def main():
                             announcement = json.loads(line)
                             if announcement.get('status') == 'listening':
                                 base = announcement['url']
+                                catalogue_path = announcement['endpoint_catalogue_path']
                         except json.JSONDecodeError:
                             pass
                     assert time.monotonic() < deadline, 'Server startup timed out'
                     if base is None:
                         time.sleep(0.2)
+
+                with urlopen(base + catalogue_path, timeout=15) as response:
+                    catalogue = json.load(response)
+                save(phase + '-catalogue.json', catalogue)
+                endpoints = {entry['operation']: entry for entry in catalogue['outcome']['payload']['endpoints']}
 
                 def envelope(payload, mutation):
                     operation = 'controller-proof-' + uuid4().hex
@@ -109,9 +133,11 @@ def main():
                                         'idempotency_key': operation if mutation else None, 'deadline_unix_ms': None},
                             'resource': {'segments': [{'kind': 'instance', 'id': instance}]}, 'payload': payload}
 
-                def http(path, payload, mutation=False, headers=None):
-                    body = envelope(payload, mutation)
-                    req = Request(base + path, data=json.dumps(body).encode('utf-8'),
+                def http(operation, payload, headers=None):
+                    descriptor = endpoints[operation]
+                    body = envelope(payload, descriptor['mutation'])
+                    req = Request(base + descriptor['path'], method=descriptor['method'].upper(),
+                                  data=json.dumps(body).encode('utf-8'),
                                   headers={'Content-Type': 'application/json', **(headers or {})})
                     try:
                         with urlopen(req, timeout=90) as response:
@@ -119,30 +145,38 @@ def main():
                     except HTTPError as error:
                         return error.code, json.load(error), body
 
-                status, response, _ = http('/v1/sessions', {'limits': {
-                    'idle_timeout_ms': 120000, 'absolute_timeout_ms': 300000, 'max_open_transactions': 1}}, True,
+                status, response, _ = http('session-create', {'limits': {
+                    'idle_timeout_ms': 120000, 'absolute_timeout_ms': 300000, 'max_open_transactions': 1}},
                     {'Authorization': 'ApiKey ' + credential['credential'], 'X-RRD-Principal': credential['principal_id']})
                 assert status == 200, 'Session admission failed'
                 session = response['outcome']['payload']
                 headers = {'Authorization': 'Bearer ' + session['token'], 'X-RRD-Session': session['session_id']}
 
-                def call(name, path, payload, mutation=False, expected=200, authenticate=True):
-                    save(phase + '-' + name + '-intent.json', {'path': path, 'payload': payload,
-                         'mutation': mutation, 'responseObserved': False})
-                    status, response, request = http(path, payload, mutation, headers if authenticate else {})
+                def call(name, operation, payload, expected=200, authenticate=True):
+                    descriptor = endpoints[operation]
+                    save(phase + '-' + name + '-intent.json', {'operation': operation, 'path': descriptor['path'], 'payload': payload,
+                         'mutation': descriptor['mutation'], 'responseObserved': False})
+                    status, response, request = http(operation, payload, headers if authenticate else {})
                     save(phase + '-' + name + '.json', {'status': status, 'request': request, 'response': response})
                     assert status == expected, f'{name} returned {status}, expected {expected}; inspect retained response'
                     return response['outcome'].get('payload')
 
-                if phase == 'missing-credential':
-                    preview = call('preview', '/v1/configuration/endpoints/preview', {'expected_revision': 0, 'profile': profile})
-                    configuration = call('apply', '/v1/configuration/endpoints/apply',
-                                         {'plan': preview, 'approved_plan_sha256': preview['plan_sha256']}, True)
+                if phase == 'recovered':
+                    selection = {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}
+                    # No proposal/replay operation and no provider credentials in this phase.
+                    assert endpoints['task-attempt-read']['mutation'] is False
+                    assert endpoints['task-budget-read']['mutation'] is False
+                    attempt = call('attempt', 'task-attempt-read', selection)
+                    budget = call('budget', 'task-budget-read', {key: selection[key] for key in ['scope', 'task_id']})
+                elif phase == 'missing-credential':
+                    preview = call('preview', 'endpoint-configuration-preview', {'expected_revision': 0, 'profile': profile})
+                    configuration = call('apply', 'endpoint-configuration-apply',
+                                         {'plan': preview, 'approved_plan_sha256': preview['plan_sha256']})
                     # Exact bounded prefix of the actual PR body, with truncation
                     # explicitly recorded; no invented task or correctness label.
                     goal = task_source['body'].encode('utf-8')[:4096].decode('utf-8', errors='ignore')
-                    task = call('open-task', '/v1/tasks/open', {'scope': 'instance:' + instance,
-                                'title': task_source['title'], 'goal': goal}, True)['task']
+                    task = call('open-task', 'task-open', {'scope': 'instance:' + instance,
+                                'title': task_source['title'], 'goal': goal})['task']
                     save('task-context-projection.json', {'sourceUrl': task_source['url'],
                          'originalBodySha256': hashlib.sha256(task_source['body'].encode('utf-8')).hexdigest(),
                          'projectedBodyBytes': len(goal.encode('utf-8')), 'truncated': goal != task_source['body'],
@@ -154,19 +188,19 @@ def main():
                          text=True, encoding='utf-8', timeout=30, check=True)
                     request_payload = json.loads(result.stdout)
                     save('proposal-request.json', request_payload)
-                    call('unauthenticated', '/v1/tasks/endpoint/propose', request_payload, True, 401, False)
-                    call('missing-credential', '/v1/tasks/endpoint/propose', request_payload, True, 412)
-                    budget = call('budget', '/v1/tasks/budget/read', {'scope': task['scope'], 'task_id': task['task_id']})
+                    call('unauthenticated', 'task-endpoint-propose', request_payload, 401, False)
+                    call('missing-credential', 'task-endpoint-propose', request_payload, 412)
+                    budget = call('budget', 'task-budget-read', {'scope': task['scope'], 'task_id': task['task_id']})
                     assert budget['budget'] is None
                 else:
                     assert request_payload is not None
                     selection = {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}
                     if phase == 'authorized':
-                        accepted = call('proposal', '/v1/tasks/endpoint/propose', request_payload, True)
+                        accepted = call('proposal', 'task-endpoint-propose', request_payload)
                     else:
-                        call('replay', '/v1/tasks/endpoint/propose', request_payload, True, 412)
-                    attempt = call('attempt', '/v1/tasks/attempt/read', selection)
-                    budget = call('budget', '/v1/tasks/budget/read', {key: selection[key] for key in ['scope', 'task_id']})
+                        call('replay', 'task-endpoint-propose', request_payload, 412)
+                    attempt = call('attempt', 'task-attempt-read', selection)
+                    budget = call('budget', 'task-budget-read', {key: selection[key] for key in ['scope', 'task_id']})
                     assert attempt['attempt']['status'] == 'accepted'
                     assert attempt['attempt']['endpoint_proposal'] == accepted
                     assert budget['budget']['reserved_steps'] == 1
@@ -182,6 +216,14 @@ def main():
                     process.terminate()
                     process.wait(timeout=30)
                 save(phase + '-owned-process-stopped.json', {'pid': process.pid, 'exitCode': process.returncode})
+    if recovery:
+        save('result.json', {'sourceCommit': build['provenance']['source_commit'],
+             'binarySha256': build['executable_sha256'], 'proof': str(recovery),
+             'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'attempt': attempt, 'budget': budget, 'providerCallRequested': False,
+             'ownedServersStopped': True, 'modelQualityQualified': False, 'trainingDataCreated': False})
+        print(json.dumps({'output': str(out), 'status': 'existing attempt and budget read; no provider call'}))
+        return
     save('result.json', {'sourceCommit': build['provenance']['source_commit'],
          'binarySha256': build['executable_sha256'], 'acceptedProposal': accepted,
          'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
