@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 CALLER = ROOT / ".github/workflows/ci.yml"
 REUSABLE = ROOT / ".github/workflows/ci-reusable.yml"
+NATIVE_PREFLIGHT = ROOT / ".github/workflows/c07-native-preflight.yml"
 DEVELOPMENT_CONTAINER = ROOT / ".devcontainer"
 DIGEST_PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
 
@@ -149,6 +150,65 @@ def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
     require(policy.count("          python3 scripts/ci/test_native_sample_policy.py\n") == 1
             and "continue-on-error:" not in policy,
             "native sampler policy regressions must run without a bypass")
+
+
+def verify_native_capacity_diagnostics(job: str) -> None:
+    """Preserve native qualification and retain only bounded create diagnostics."""
+    def step(name: str) -> str:
+        marker = f"      - name: {name}\n"
+        require(job.count(marker) == 1, f"native capacity step missing or duplicated: {name}")
+        return job.split(marker, 1)[1].split("      - name:", 1)[0]
+
+    first = step("Qualify installed native capacity failure and recovery")
+    repeated = step("Require repeated APFS exhaustion and recovery")
+    upload = step("Retain native capacity create diagnostics")
+    destination = "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics"
+    require(destination in first and destination in repeated,
+            "both capacity runs must bind their diagnostic directory")
+    require("run: python3 scripts/ci/run_native_capacity.py" in first,
+            "initial native capacity run must remain required")
+    require("if: matrix.os == 'macos-latest'" in repeated
+            and "python3 scripts/ci/run_native_capacity.py" in repeated
+            and repeated.count("--mode fresh --mode existing") == 3,
+            "macOS repeated native capacity cases must remain required")
+    require("if: always() && matrix.os == 'macos-latest'" in upload
+            and "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json" in upload
+            and "if-no-files-found: ignore" in upload
+            and "actions/upload-artifact@" in upload,
+            "native failure artifact must retain only controlled diagnostics")
+
+
+def verify_native_capacity_preflight(workflow: str) -> None:
+    """A manual characterization cannot stand in for candidate or merge CI."""
+    events = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(events is not None and events.group(1) == "  workflow_dispatch:\n\n",
+            "native preflight must be manual only")
+    jobs = job_blocks(workflow)
+    require(set(jobs) == {"native-preflight"}, "native preflight must remain isolated")
+    job = jobs["native-preflight"]
+    for required in ["runs-on: macos-latest", 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+                     "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/test_macos_native_failure_preflight.py",
+                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_native_capacity.py",
+                     "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics",
+                     "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "if: always()"]:
+        require(required in job, f"native preflight missing: {required}")
+    require(job.count("--mode fresh --mode existing") == 3 and "continue-on-error" not in job,
+            "native preflight must run all repeated cases without ignoring failure")
+    for name, artifact_path, missing in [
+        ("Retain injected native failure receipt",
+         "${{ runner.temp }}/rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "error"),
+        ("Retain native capacity create diagnostics",
+         "${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "ignore"),
+    ]:
+        marker = f"      - name: {name}\n"
+        require(job.count(marker) == 1, f"native preflight artifact missing or duplicated: {name}")
+        step = job.split(marker, 1)[1].split("      - name:", 1)[0]
+        require("        if: always()\n" in step and "actions/upload-artifact@" in step
+                and f"path: {artifact_path}" in step and f"if-no-files-found: {missing}" in step,
+                f"native preflight artifact is not isolated and failure-preserving: {name}")
+    require(not any(re.match(r"(?:ref|repository|path)\s*:", entry)
+                    for _, body in checkout_steps(job) for entry in body),
+            "native preflight must checkout the dispatched revision")
 
 
 def verify_execution_inventory_ci(verify: str) -> None:
@@ -625,6 +685,8 @@ def verify_development_container(reusable: str, pgvector_job: str) -> int:
 
 def main() -> None:
     workflows = workflow_sources()
+    require(NATIVE_PREFLIGHT in workflows, "native macOS preflight workflow missing")
+    verify_native_capacity_preflight(workflows[NATIVE_PREFLIGHT])
     caller = workflows[CALLER]
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
@@ -752,6 +814,7 @@ def main() -> None:
     require("--features" not in reopen and "--all-features" not in reopen,
             "ordinary reopen corpus must not activate diagnostic features")
     diagnostic = jobs["installed-crash"]
+    verify_native_capacity_diagnostics(diagnostic)
     for platform in ["ubuntu-latest", "macos-latest", "windows-latest"]:
         require(f"- {platform}" in diagnostic, f"diagnostic primary must qualify {platform}")
     for command in [

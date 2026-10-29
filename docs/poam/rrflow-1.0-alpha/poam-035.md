@@ -1209,6 +1209,15 @@ quantization build/activation operations. [C-07's joined evidence sequence](../.
 tracks the missing end-to-end and scale evidence; no part of C-07 is closed by
 this observation.
 
+PR194 candidate [40920440107](https://github.com/rrflow/rrflow-development/actions/runs/40920440107)
+failed on macOS `hdiutil create` with `Resource busy` after earlier cases
+reported detachment. The cause is unknown. The fixture's temporary directory
+is not retained after a GitHub-hosted runner is decommissioned, and the prior
+log kept only a short native-output tail. The
+[diagnostic candidate](../../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md)
+adds bounded native-only case diagnostics and an artifact path; it does not
+repair the underlying failure or establish native matrix or soak acceptance.
+
 The [selected-segment pin repair](../../evidence/change-journals/gate-c/c-07g-selected-segment-read-pins.md)
 records integrated Windows candidate 5d554483 independently verifying all 100000 initial
 records and completing two reopens, then failing after 47240 post-reopen verifications.
