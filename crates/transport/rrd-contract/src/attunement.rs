@@ -1176,6 +1176,25 @@ pub struct AttunementControlResponse {
     pub idempotent_replay: bool,
 }
 
+impl AttunementControlResponse {
+    pub fn validate_for(
+        &self,
+        job_id: &CanonicalId,
+        previous_revision: u64,
+        plan: &AttunementPlan,
+    ) -> Result<()> {
+        self.status.validate(plan)?;
+        if self.status.job.id != *job_id
+            || previous_revision.checked_add(1) != Some(self.status.job.revision)
+        {
+            return invalid(
+                "attunement control response does not bind the requested job and revision",
+            );
+        }
+        Ok(())
+    }
+}
+
 /// Preview is a bounded source observation, not an atomic snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -1187,6 +1206,90 @@ pub struct AttunementReplanPreview {
     pub proposal_sha256: String,
 }
 
+/// Hashes are shared with the engine so clients validate exactly the same
+/// source, predecessor and proposal identity without owning lifecycle state.
+pub fn attunement_replan_seed(
+    job_id: &CanonicalId,
+    revision: u64,
+    old_plan_sha256: &str,
+    generation: u64,
+    source_sha256: &str,
+) -> Result<String> {
+    plain_json_sha256(&(
+        "attunement-replan-v1",
+        job_id,
+        revision,
+        old_plan_sha256,
+        generation,
+        source_sha256,
+    ))
+}
+
+pub fn attunement_replan_preview_sha256(
+    job_id: &CanonicalId,
+    revision: u64,
+    generation: u64,
+    plan: &AttunementPlan,
+) -> Result<String> {
+    plain_json_sha256(&(
+        "attunement-replan-preview-v1",
+        job_id,
+        revision,
+        generation,
+        plan,
+    ))
+}
+
+pub fn attunement_replan_accept_sha256(
+    preview: &AttunementReplanPreview,
+    digest: &str,
+) -> Result<String> {
+    plain_json_sha256(&("attunement-accept-replan-v1", preview, digest))
+}
+
+fn plain_json_sha256(value: &impl Serialize) -> Result<String> {
+    let encoded = serde_json::to_vec(value).map_err(|error| {
+        crate::ContractError(format!("contract digest encoding failed: {error}"))
+    })?;
+    Ok(sha256_bytes(&encoded))
+}
+
+impl AttunementReplanPreview {
+    pub fn validate_for(
+        &self,
+        job_id: &CanonicalId,
+        revision: u64,
+        old_plan: &AttunementPlan,
+    ) -> Result<()> {
+        old_plan.validate()?;
+        self.plan.validate()?;
+        if self.predecessor_job_id != *job_id
+            || self.predecessor_revision != revision
+            || self.generation == 0
+        {
+            return invalid("attunement replan predecessor or generation does not match request");
+        }
+        let seed = attunement_replan_seed(
+            job_id,
+            revision,
+            &old_plan.plan_sha256,
+            self.generation,
+            &self.plan.source_sha256,
+        )?;
+        let mut expected = old_plan.clone();
+        expected.id = CanonicalId::new(format!("attune-{}", &seed[..24]))?;
+        expected.source_sha256 = self.plan.source_sha256.clone();
+        expected.plan_sha256 = self.plan.plan_sha256.clone();
+        if self.plan != expected
+            || self.proposal_sha256
+                != attunement_replan_preview_sha256(job_id, revision, self.generation, &self.plan)?
+        {
+            return invalid("attunement replan plan or proposal digest differs");
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AttunementReplanResult {
@@ -1194,6 +1297,34 @@ pub struct AttunementReplanResult {
     pub successor: AttunementStatus,
     pub plan: AttunementPlan,
     pub idempotent_replay: bool,
+}
+
+impl AttunementReplanResult {
+    pub fn validate_for(
+        &self,
+        preview: &AttunementReplanPreview,
+        old_plan: &AttunementPlan,
+    ) -> Result<()> {
+        preview.validate_for(
+            &preview.predecessor_job_id,
+            preview.predecessor_revision,
+            old_plan,
+        )?;
+        self.predecessor.validate(old_plan)?;
+        self.successor.validate(&self.plan)?;
+        let expected_successor =
+            CanonicalId::new(format!("job-{}", &preview.plan.plan_sha256[..24]))?;
+        if self.plan != preview.plan
+            || self.predecessor.job.id != preview.predecessor_job_id
+            || preview.predecessor_revision.checked_add(1) != Some(self.predecessor.job.revision)
+            || self.predecessor.job.state != AttunementJobState::CancelRequested
+            || self.successor.job.id != expected_successor
+            || self.successor.job.state != AttunementJobState::Pending
+        {
+            return invalid("attunement replan result lineage differs from proposal");
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1241,6 +1372,39 @@ pub struct AttunementReplanReceiptReadResult {
     pub receipt: Option<AttunementReplanReceiptView>,
 }
 
+impl AttunementReplanReceiptReadResult {
+    pub fn validate_for(
+        &self,
+        request: &ReadAttunementReceipt,
+        principal: &CanonicalId,
+        instance: &CanonicalId,
+    ) -> Result<()> {
+        request.validate()?;
+        if let Some(receipt) = &self.receipt {
+            receipt.preview.validate_for(
+                &request.job_id,
+                receipt.preview.predecessor_revision,
+                &receipt.predecessor_plan,
+            )?;
+            receipt
+                .result
+                .validate_for(&receipt.preview, &receipt.predecessor_plan)?;
+            if receipt.principal_id != *principal
+                || receipt.predecessor_plan.target.instance_id != *instance
+                || receipt.operation_sha256
+                    != attunement_replan_accept_sha256(
+                        &receipt.preview,
+                        &receipt.preview.proposal_sha256,
+                    )?
+                || receipt.result.idempotent_replay
+            {
+                return invalid("attunement replan receipt identity or digest differs");
+            }
+        }
+        Ok(())
+    }
+}
+
 impl AttunementReceiptReadResult {
     pub fn validate_for(
         &self,
@@ -1281,8 +1445,14 @@ pub struct ResumeAttunement {
 }
 
 impl ResumeAttunement {
-    pub fn validate_for(&self, job: &AttunementJob, plan: &AttunementPlan) -> Result<()> {
+    /// Validate fields that do not depend on the current durable job state.
+    pub fn validate(&self) -> Result<()> {
         validate_contract_version(self.contract_version)?;
+        validate_sha256(&self.plan_sha256, "attunement command plan_sha256")
+    }
+
+    pub fn validate_for(&self, job: &AttunementJob, plan: &AttunementPlan) -> Result<()> {
+        self.validate()?;
         job.validate(plan)?;
         if !matches!(
             job.state,

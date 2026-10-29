@@ -279,6 +279,130 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
             child.stop(&mut captured);
         }
     }
+
+    // Exercise the same durable successor through the generated Rust client,
+    // with a second source edit and a forced primary-process restart.
+    let old_plan: rrd_contract::AttunementPlan =
+        serde_json::from_value(acceptance["payload"]["preview"]["plan"].clone()).unwrap();
+    let old_job: rrd_contract::AttunementJob = serde_json::from_value(successor).unwrap();
+    std::fs::write(project.join("README.md"), "typed client edit\n").unwrap();
+    let mut typed_acceptance = None;
+    let mut typed_successor = None;
+    for pass in 0..2 {
+        let (mut child, address) = RunningEngine::start(&project, &mut captured);
+        let client = RrdClient::connect_local(
+            address.parse().unwrap(),
+            old_plan.target.instance_id.clone(),
+            ClientConfig::default(),
+        )
+        .unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let session = client
+                .create_session(
+                    credential.principal_id.clone(),
+                    credential.credential(),
+                    CreateSession {
+                        limits: SessionLimits {
+                            idle_timeout_ms: 60_000,
+                            absolute_timeout_ms: 300_000,
+                            max_open_transactions: 1,
+                        },
+                    },
+                    RequestOptions::mutation(
+                        &format!("typed-session-{pass}"),
+                        &format!("typed-session-{pass}"),
+                        &format!("typed-session-{pass}"),
+                    )
+                    .unwrap(),
+                )
+                .await
+                .unwrap();
+            if pass == 0 {
+                let preview = client
+                    .preview_attunement_replan(
+                        &session,
+                        rrd_contract::PreviewAttunementReplan {
+                            contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: old_job.id.clone(),
+                            expected_revision: old_job.revision,
+                        },
+                        &old_plan,
+                        RequestOptions::read("typed-preview-request", "typed-preview-operation")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let request = rrd_contract::AcceptAttunementReplan {
+                    contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+                    proposal_sha256: preview.proposal_sha256.clone(),
+                    preview,
+                };
+                let result = client
+                    .accept_attunement_replan(
+                        &session,
+                        request.clone(),
+                        &old_plan,
+                        RequestOptions::mutation(
+                            "typed-accept-request",
+                            "typed-accept-operation",
+                            "typed-binary-accept",
+                        )
+                        .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(!result.idempotent_replay);
+                typed_successor = Some(result.successor.job);
+                typed_acceptance = Some(request);
+            } else {
+                let result = client
+                    .accept_attunement_replan(
+                        &session,
+                        typed_acceptance.clone().unwrap(),
+                        &old_plan,
+                        RequestOptions::mutation(
+                            "typed-accept-request",
+                            "typed-accept-operation",
+                            "typed-binary-accept",
+                        )
+                        .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(result.idempotent_replay);
+                assert_eq!(Some(result.successor.job), typed_successor);
+                let receipt = client
+                    .read_attunement_replan_receipt(
+                        &session,
+                        rrd_contract::ReadAttunementReceipt {
+                            contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: old_job.id.clone(),
+                            idempotency_key: rrd_contract::CorrelationId::new(
+                                "typed-binary-accept",
+                            )
+                            .unwrap(),
+                        },
+                        RequestOptions::read("typed-receipt-request", "typed-receipt-operation")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    Some(receipt.receipt.unwrap().result.successor.job),
+                    typed_successor
+                );
+            }
+        });
+        if pass == 0 {
+            child.terminate(&mut captured);
+        } else {
+            child.stop(&mut captured);
+        }
+    }
 }
 
 fn product_command() -> Command {

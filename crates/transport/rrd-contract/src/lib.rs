@@ -39,7 +39,8 @@ mod task;
 mod websocket;
 
 pub use attunement::{
-    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
+    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
+    attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
     installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
     AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
     AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,

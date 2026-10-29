@@ -81,6 +81,358 @@ async fn schema(client: &RrdClient, session: &Session, key: &str) -> DataSchemaS
 }
 
 #[tokio::test]
+async fn installed_typed_attunement_controls_replan_and_reopen() {
+    use rrd_contract::{
+        AcceptAttunementReplan, AttunementJobState, PauseAttunement, PreviewAttunementReplan,
+        ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement, ResumeAttunement,
+        ResumeAttunementWithLease, StartAttunement, StepAttunement,
+        INSTALL_ATTUNEMENT_CONTRACT_VERSION as VERSION,
+    };
+    let temporary = tempfile::tempdir().unwrap();
+    let project = temporary.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("source.txt"), "initial").unwrap();
+    let preview = RrdEngine::plan_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &RrdEngine::generate_installation_identity().unwrap(),
+        "default",
+        None,
+        &executable(),
+    )
+    .unwrap();
+    RrdEngine::apply_installation(
+        &project,
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        &executable(),
+    )
+    .unwrap();
+    let plan = preview.attunement;
+    let job_id =
+        rrd_contract::CanonicalId::new(format!("job-{}", &plan.plan_sha256[..24])).unwrap();
+    let read = ReadAttunement {
+        contract_version: VERSION,
+        job_id: job_id.clone(),
+    };
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "typed-session").await;
+    let start_request = StartAttunement {
+        contract_version: VERSION,
+        job_id: job_id.clone(),
+        plan_sha256: plan.plan_sha256.clone(),
+        expected_revision: 1,
+        lease_ms: 60_000,
+    };
+    let mut foreign_plan = plan.clone();
+    foreign_plan.target.instance_id = rrd_contract::CanonicalId::new("foreign-instance").unwrap();
+    foreign_plan.plan_sha256 = rrd_contract::attunement_plan_sha256(&foreign_plan).unwrap();
+    let foreign_request = StartAttunement {
+        plan_sha256: foreign_plan.plan_sha256.clone(),
+        ..start_request.clone()
+    };
+    assert!(matches!(
+        client
+            .start_attunement(
+                &session,
+                foreign_request,
+                &foreign_plan,
+                options("typed-foreign").unwrap()
+            )
+            .await,
+        Err(rrd_client::Error::ResponseIdentityMismatch)
+    ));
+    assert_eq!(
+        client
+            .read_attunement(
+                &session,
+                read.clone(),
+                read_options("typed-before").unwrap()
+            )
+            .await
+            .unwrap()
+            .status
+            .job
+            .revision,
+        1
+    );
+    let started = client
+        .start_attunement(
+            &session,
+            start_request.clone(),
+            &plan,
+            options("typed-start").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(started.validate_for(&job_id, 1, &plan).is_ok());
+    assert!(started.validate_for(&job_id, 2, &plan).is_err());
+    assert!(started
+        .validate_for(
+            &rrd_contract::CanonicalId::new("job-foreign").unwrap(),
+            1,
+            &plan
+        )
+        .is_err());
+    let replay = client
+        .start_attunement(
+            &session,
+            start_request,
+            &plan,
+            options("typed-start").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(started.status.job, replay.status.job);
+    let paused = client
+        .pause_attunement(
+            &session,
+            PauseAttunement {
+                contract_version: VERSION,
+                job_id: job_id.clone(),
+                expected_revision: started.status.job.revision,
+                lease_generation: started.status.job.lease.as_ref().unwrap().generation,
+            },
+            &plan,
+            options("typed-pause").unwrap(),
+        )
+        .await
+        .unwrap();
+    let resume = |status: &rrd_contract::AttunementStatus, lease_ms| ResumeAttunementWithLease {
+        request: ResumeAttunement {
+            contract_version: VERSION,
+            job_id: job_id.clone(),
+            plan_sha256: plan.plan_sha256.clone(),
+            expected_job_revision: status.job.revision,
+            last_checkpoint_sha256: status
+                .job
+                .checkpoints
+                .last()
+                .map(|c| c.checkpoint_sha256.clone()),
+            resume_from_phase: status.job.next_phase().unwrap(),
+            requested_at_unix_ms: now(),
+        },
+        lease_ms,
+    };
+    let first_resume = resume(&paused.status, 1_000);
+    let resumed = client
+        .resume_attunement(
+            &session,
+            first_resume.clone(),
+            &plan,
+            options("typed-resume").unwrap(),
+        )
+        .await
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(1_200)).await;
+    let recovered = client
+        .recover_expired_attunement(
+            &session,
+            RecoverExpiredAttunement {
+                contract_version: VERSION,
+                job_id: job_id.clone(),
+                expected_revision: resumed.status.job.revision,
+            },
+            &plan,
+            options("typed-recover").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(recovered.status.job.state, AttunementJobState::Paused);
+    let resumed = client
+        .resume_attunement(
+            &session,
+            resume(&recovered.status, 60_000),
+            &plan,
+            options("typed-resume-again").unwrap(),
+        )
+        .await
+        .unwrap();
+    let stepped = client
+        .step_attunement(
+            &session,
+            StepAttunement {
+                contract_version: VERSION,
+                job_id: job_id.clone(),
+                expected_revision: resumed.status.job.revision,
+                lease_generation: resumed.status.job.lease.as_ref().unwrap().generation,
+            },
+            &plan,
+            options("typed-step").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(stepped.status.job.checkpoints.len(), 1);
+    std::fs::write(project.join("source.txt"), "edit one").unwrap();
+    let stale = client
+        .step_attunement(
+            &session,
+            StepAttunement {
+                contract_version: VERSION,
+                job_id: job_id.clone(),
+                expected_revision: stepped.status.job.revision,
+                lease_generation: stepped.status.job.lease.as_ref().unwrap().generation,
+            },
+            &plan,
+            options("typed-stale-step").unwrap(),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(stale, rrd_client::Error::Api { .. }));
+    let request = PreviewAttunementReplan {
+        contract_version: VERSION,
+        job_id: job_id.clone(),
+        expected_revision: stepped.status.job.revision,
+    };
+    let first = client
+        .preview_attunement_replan(
+            &session,
+            request.clone(),
+            &plan,
+            read_options("typed-preview-one").unwrap(),
+        )
+        .await
+        .unwrap();
+    let mut corrupt = first.clone();
+    corrupt.proposal_sha256 = "0".repeat(64);
+    assert!(corrupt
+        .validate_for(&job_id, request.expected_revision, &plan)
+        .is_err());
+    std::fs::write(project.join("source.txt"), "edit two").unwrap();
+    let stale_accept = AcceptAttunementReplan {
+        contract_version: VERSION,
+        proposal_sha256: first.proposal_sha256.clone(),
+        preview: first,
+    };
+    assert!(client
+        .accept_attunement_replan(
+            &session,
+            stale_accept,
+            &plan,
+            options("typed-stale-accept").unwrap()
+        )
+        .await
+        .is_err());
+    let proposal = client
+        .preview_attunement_replan(
+            &session,
+            request,
+            &plan,
+            read_options("typed-preview-two").unwrap(),
+        )
+        .await
+        .unwrap();
+    let accept = AcceptAttunementReplan {
+        contract_version: VERSION,
+        proposal_sha256: proposal.proposal_sha256.clone(),
+        preview: proposal,
+    };
+    let accepted = client
+        .accept_attunement_replan(
+            &session,
+            accept.clone(),
+            &plan,
+            options("typed-accept").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(!accepted.idempotent_replay);
+    let receipt_request = ReadAttunementReceipt {
+        contract_version: VERSION,
+        job_id: job_id.clone(),
+        idempotency_key: rrd_contract::CorrelationId::new("typed-accept").unwrap(),
+    };
+    let receipt = client
+        .read_attunement_replan_receipt(
+            &session,
+            receipt_request.clone(),
+            read_options("typed-receipt").unwrap(),
+        )
+        .await
+        .unwrap();
+    let mut foreign = receipt.clone();
+    foreign.receipt.as_mut().unwrap().principal_id =
+        rrd_contract::CanonicalId::new("foreign").unwrap();
+    assert!(foreign
+        .validate_for(
+            &receipt_request,
+            session.principal_id(),
+            client.instance_id()
+        )
+        .is_err());
+    let mut wrong = accepted.clone();
+    wrong.successor.job.id = rrd_contract::CanonicalId::new("job-foreign").unwrap();
+    assert!(wrong.validate_for(&accept.preview, &plan).is_err());
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    let (reopened, shutdown, server) = start(&project).await;
+    let session = login(&reopened, &project, "typed-reopen-session").await;
+    let resume_replay = reopened
+        .resume_attunement(
+            &session,
+            first_resume,
+            &plan,
+            options("typed-resume").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(resume_replay.idempotent_replay);
+    let replay = reopened
+        .accept_attunement_replan(&session, accept, &plan, options("typed-accept").unwrap())
+        .await
+        .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.successor.job, accepted.successor.job);
+    let receipt = reopened
+        .read_attunement_replan_receipt(
+            &session,
+            receipt_request,
+            read_options("typed-receipt-reopen").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        receipt.receipt.unwrap().result.successor.job,
+        accepted.successor.job
+    );
+    let audit = reopened
+        .read_audit(
+            &session,
+            rrd_contract::ReadAudit {
+                after_sequence: 0,
+                limit: 1_024,
+            },
+            read_options("typed-audit-reopen").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        audit.records.iter().any(|record| {
+            record.request_id == "request-typed-accept"
+                && record.operation_id == "operation-typed-accept"
+                && record.principal_id.as_ref() == Some(session.principal_id())
+                && record.action == rrd_contract::SecurityAction::EstateAdmin
+                && record.decision == rrd_contract::AuditDecision::Allowed
+        }),
+        "the accepted replan authorization must remain auditable after reopen"
+    );
+    assert_eq!(
+        reopened
+            .read_attunement(&session, read, read_options("typed-old-job").unwrap())
+            .await
+            .unwrap()
+            .status
+            .job
+            .state,
+        AttunementJobState::CancelRequested
+    );
+    shutdown.send(()).unwrap();
+    server.await.unwrap().unwrap();
+}
+
+#[tokio::test]
 async fn installed_attunement_read_reports_stored_plan_and_unchecked_source_after_reopen() {
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("project");

@@ -9,7 +9,8 @@ use super::installation::{
 };
 use super::*;
 use rrd_contract::{
-    attunement_checkpoint_sha256, attunement_plan_sha256, AttunementFailure, AttunementJob,
+    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
+    attunement_replan_preview_sha256, attunement_replan_seed, AttunementFailure, AttunementJob,
     AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
     AttunementPlan, AttunementReadResult, AttunementRuntimeCoordinates,
     AttunementSourceVerification, AttunementStatus, CancelAttunement, ReadAttunement,
@@ -143,40 +144,17 @@ impl RrdEngine {
         let result = receipt.result;
         result.predecessor.validate(old_plan).map_err(contract)?;
         result.successor.validate(&result.plan).map_err(contract)?;
-        let proposal_digest = operation_digest(&(
-            "attunement-replan-preview-v1",
-            &preview.predecessor_job_id,
-            preview.predecessor_revision,
-            preview.generation,
-            &preview.plan,
-        ))?;
-        let operation_digest = operation_digest(&(
-            "attunement-accept-replan-v1",
-            &preview,
-            &preview.proposal_sha256,
-        ))?;
-        let seed = operation_digest_for_replan(&preview, old_plan)?;
-        let mut expected_plan = old_plan.clone();
-        expected_plan.id = preview.plan.id.clone();
-        expected_plan.source_sha256 = preview.plan.source_sha256.clone();
-        expected_plan.plan_sha256 = preview.plan.plan_sha256.clone();
+        let operation_digest = attunement_replan_accept_sha256(&preview, &preview.proposal_sha256)
+            .map_err(contract)?;
         let (current_generation, expected_generation) =
             (self.attunement_replan_generation(old)?, preview.generation);
-        if preview.predecessor_job_id != old.id
-            || preview.proposal_sha256 != proposal_digest
+        if preview
+            .validate_for(&old.id, preview.predecessor_revision, old_plan)
+            .is_err()
+            || result.validate_for(&preview, old_plan).is_err()
             || receipt.operation_sha256 != operation_digest
-            || expected_generation == 0
             || current_generation.checked_add(1) != Some(expected_generation)
-            || preview.plan.id != canonical_prefixed("attune", &seed)?
-            || preview.plan.target != old_plan.target
-            || preview.plan != expected_plan
-            || result.plan != preview.plan
-            || result.predecessor.job.id != old.id
-            || preview.predecessor_revision.checked_add(1) != Some(result.predecessor.job.revision)
             || old.revision < result.predecessor.job.revision
-            || result.predecessor.job.state != AttunementJobState::CancelRequested
-            || result.successor.job.id != canonical_prefixed("job", &preview.plan.plan_sha256)?
-            || result.successor.job.state != AttunementJobState::Pending
             || result.idempotent_replay
         {
             return Err(ServiceError::Storage(
@@ -327,26 +305,17 @@ impl RrdEngine {
                 ServiceError::ConfigurationLimit("attunement replan generation overflow".into())
             })?;
         let source = self.attunement_source_observation()?;
-        let seed = operation_digest(&(
-            "attunement-replan-v1",
-            &job.id,
-            job.revision,
-            &old.plan_sha256,
-            generation,
-            &source,
-        ))?;
+        let seed =
+            attunement_replan_seed(&job.id, job.revision, &old.plan_sha256, generation, &source)
+                .map_err(contract)?;
         let mut plan = old.clone();
         plan.id = canonical_prefixed("attune", &seed)?;
         plan.source_sha256 = source;
         plan.plan_sha256 = attunement_plan_sha256(&plan).map_err(contract)?;
         plan.validate().map_err(contract)?;
-        let proposal_sha256 = operation_digest(&(
-            "attunement-replan-preview-v1",
-            &job.id,
-            job.revision,
-            generation,
-            &plan,
-        ))?;
+        let proposal_sha256 =
+            attunement_replan_preview_sha256(&job.id, job.revision, generation, &plan)
+                .map_err(contract)?;
         Ok(AttunementReplanPreview {
             predecessor_job_id: job.id.clone(),
             predecessor_revision: job.revision,
@@ -423,7 +392,7 @@ impl RrdEngine {
             return Err(ServiceError::OperationDigestMismatch);
         }
         let operation_sha256 =
-            operation_digest(&("attunement-accept-replan-v1", preview, expected_sha256))?;
+            attunement_replan_accept_sha256(preview, expected_sha256).map_err(contract)?;
         let receipt_key = attunement_replan_receipt_key(
             &self.instance,
             &preview.predecessor_job_id,
@@ -1046,20 +1015,6 @@ impl RrdEngine {
         next.current_phase = next.next_phase();
         Ok(())
     }
-}
-
-fn operation_digest_for_replan(
-    preview: &AttunementReplanPreview,
-    old: &AttunementPlan,
-) -> Result<String> {
-    operation_digest(&(
-        "attunement-replan-v1",
-        &preview.predecessor_job_id,
-        preview.predecessor_revision,
-        &old.plan_sha256,
-        preview.generation,
-        &preview.plan.source_sha256,
-    ))
 }
 
 fn attunement_replan_receipt_key(

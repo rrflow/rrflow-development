@@ -1148,3 +1148,19 @@ fn bootstrap_rejects_unknown_effects_versions_and_unbounded_generation() {
     json["bootstrap"]["initial_records"][0] = serde_json::json!("unknown_record");
     assert!(serde_json::from_value::<InstallationPlan>(json).is_err());
 }
+
+#[test]
+fn replan_seed_preserves_the_existing_engine_wire_digest() {
+    let digest = rrd_contract::attunement_replan_seed(
+        &canonical_id("job-test"),
+        5,
+        &"a".repeat(64),
+        2,
+        &"b".repeat(64),
+    )
+    .unwrap();
+    assert_eq!(
+        digest,
+        "a2b55f6708f6bd425c4ffea1a6002bcff1a49568d2a5d54619b9497908196e8f"
+    );
+}
