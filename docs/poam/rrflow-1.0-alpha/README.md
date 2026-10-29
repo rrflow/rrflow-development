@@ -55,4 +55,5 @@
 - [POAM-043 — transaction previews rebuild the whole scope and skip object checks](poam-043.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-043`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-043) — active parent-owned POA&M detail
 - [POAM-044 — rrflowQL refusals are unstructured, and queries cannot be checked without running](poam-044.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-044`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-044) — active parent-owned POA&M detail
 - [POAM-045 — vector search returns a vector's old version after it moves to another collection](poam-045.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-045`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-045) — active parent-owned POA&M detail
+- [POAM-046 — a vector index makes the public changefeed refuse its scope](poam-046.md) — [`rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-046`](rrflow://rrflow-instance/data/poam/rrflow-1.0-alpha/poam-046) — active parent-owned POA&M detail
 <!-- rrflow:generated-index:end -->

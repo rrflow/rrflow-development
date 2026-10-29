@@ -107,6 +107,22 @@ http_dispatch_catalogue! {
     VectorCollectionList => ("vector-collection-list", RrdOperation::VectorCollectionList),
     VectorPointRetrieve => ("vector-point-retrieve", RrdOperation::VectorPointRetrieve),
     VectorPointScroll => ("vector-point-scroll", RrdOperation::VectorPointScroll),
+    VectorQuantizationActivate => (
+        "vector-quantization-activate",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorQuantizationBuild => (
+        "vector-quantization-build",
+        RrdOperation::VectorCollectionEnsure
+    ),
+    VectorQuantizationList => (
+        "vector-quantization-list",
+        RrdOperation::VectorCollectionList
+    ),
+    VectorQuantizationRetire => (
+        "vector-quantization-retire",
+        RrdOperation::VectorCollectionEnsure
+    ),
     VectorSearch => ("vector-search", RrdOperation::VectorSearch),
 }
 
@@ -301,6 +317,18 @@ impl AppState {
             }
             Some(HttpDispatch::VectorPointRetrieve) => {
                 self.retrieve_vector_points(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationBuild) => {
+                self.build_vector_quantization(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationList) => {
+                self.list_vector_quantizations(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationActivate) => {
+                self.activate_vector_quantization(&headers, &body, now)
+            }
+            Some(HttpDispatch::VectorQuantizationRetire) => {
+                self.retire_vector_quantization(&headers, &body, now)
             }
             Some(HttpDispatch::VectorSearch) => self.search_vectors(&headers, &body, now),
             Some(HttpDispatch::EstateRead) => self.read_estate(&headers, &body, &path, now),
