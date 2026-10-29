@@ -2383,8 +2383,11 @@ fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry) {
         out.push(u8::from(schema.allow_additional_properties));
     }
     out.extend_from_slice(b"rrflow-unified-catalogue-v1\0");
-    text(out, registry.catalogue.namespace.as_str());
-    text(out, registry.catalogue.database.as_str());
+    // The v1 encoding's former namespace/database slot. Estate organisation
+    // retired that label, and the slot keeps its only value so every registry
+    // already committed keeps its digest.
+    text(out, "default");
+    text(out, "default");
     out.extend_from_slice(&(registry.tables.len() as u64).to_be_bytes());
     for (kind, table) in &registry.tables {
         text(out, kind.as_str());
@@ -2411,6 +2414,62 @@ fn encode_schema(out: &mut Vec<u8>, registry: &RuntimeSchemaRegistry) {
         });
         encode_property_schemas(out, &table.properties);
         out.push(u8::from(table.allow_additional_properties));
+    }
+    if !registry.organisation.is_default() {
+        encode_organisation(out, &registry.organisation);
+    }
+}
+
+/// Appended only when the organisation is not the default. What can follow a
+/// schema in a commit or change encoding is a mutation tag or an optional-text
+/// flag, both below 0x20, so the 0xFF marker keeps the encoding unambiguous.
+fn encode_organisation(out: &mut Vec<u8>, organisation: &crate::RuntimeEstateOrganisation) {
+    out.push(0xFF);
+    out.extend_from_slice(b"rrflow-estate-organisation-v1\0");
+    out.extend_from_slice(&(organisation.domains.len() as u64).to_be_bytes());
+    for (id, domain) in &organisation.domains {
+        text(out, id.as_str());
+        text(out, &domain.title);
+        text(out, &domain.description);
+        optional_text(out, domain.parent.as_ref().map(RuntimeType::as_str));
+    }
+    out.extend_from_slice(&(organisation.categories.len() as u64).to_be_bytes());
+    for (id, category) in &organisation.categories {
+        text(out, id.as_str());
+        text(out, &category.title);
+        text(out, &category.description);
+        out.push(match category.targets {
+            crate::RuntimeCategoryTargets::Kinds => 0,
+            crate::RuntimeCategoryTargets::Records => 1,
+            crate::RuntimeCategoryTargets::KindsAndRecords => 2,
+        });
+        out.push(match category.cardinality {
+            crate::RuntimeTagCardinality::Single => 0,
+            crate::RuntimeTagCardinality::Multiple => 1,
+        });
+        out.push(u8::from(category.open));
+        out.extend_from_slice(&(category.tags.len() as u64).to_be_bytes());
+        for (tag, schema) in &category.tags {
+            text(out, tag.as_str());
+            text(out, &schema.title);
+            text(out, &schema.description);
+        }
+    }
+    for memberships in [&organisation.kind_domains, &organisation.collection_domains] {
+        out.extend_from_slice(&(memberships.len() as u64).to_be_bytes());
+        for (identity, domain) in memberships {
+            text(out, identity.as_str());
+            text(out, domain.as_str());
+        }
+    }
+    out.extend_from_slice(&(organisation.kind_tags.len() as u64).to_be_bytes());
+    for (kind, tags) in &organisation.kind_tags {
+        text(out, kind.as_str());
+        out.extend_from_slice(&(tags.len() as u64).to_be_bytes());
+        for reference in tags {
+            text(out, reference.category.as_str());
+            text(out, reference.tag.as_str());
+        }
     }
 }
 
