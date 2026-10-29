@@ -63,7 +63,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2`.
+`d05f33ca1532bd33c4186b6111a2ee6a99f38a5ac87984a9e729426e6da56edd`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -310,6 +310,15 @@ Native installed view/pin/output ceilings also apply; the metadata registry
 admits at most the smaller of 64 or the installed active-view ceiling. Open
 retries with different parameters conflict; matching retries observe the
 current retained page. Cursor IDs may be reused after release or expiry.
+
+An explicit `open_range` action accepts the same batch and lifetime budgets
+plus nonempty `start` and `end` byte arrays of at most 4,096 bytes each. It
+retains a physical snapshot over the half-open interval `[start, end)`; the
+start must sort before the end. This is an operator-supplied physical range,
+not a semantic query or an automatically chosen subset. It uses the same native
+pin limits, authorization and ownership lifecycle. The original `open` remains
+a full-range snapshot and may be denied when its selected ownership exceeds the
+configured ceiling. Neither action returns physical keys or values.
 
 `observe` hashes the current retained page without advancing. `advance`
 supplies `expected_ordinal`; replaying the immediately previous advance returns

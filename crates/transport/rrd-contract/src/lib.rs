@@ -245,7 +245,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "893220861b59bdc9a991fe530c35a17d6785effc2b23670930186618ada509d2";
+    "d05f33ca1532bd33c4186b6111a2ee6a99f38a5ac87984a9e729426e6da56edd";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

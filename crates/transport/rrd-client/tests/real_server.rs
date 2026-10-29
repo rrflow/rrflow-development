@@ -1140,6 +1140,52 @@ async fn rust_client_negotiates_authenticates_queries_and_reads_audit() {
             .unwrap()
             .released
     );
+    let range = rrd_contract::StorageCursorAction::OpenRange {
+        batch_rows: 1,
+        batch_bytes: 4096,
+        lifetime_ms: 30_000,
+        start: vec![0],
+        end: vec![255],
+    };
+    assert!(client
+        .inspect_storage_cursor(
+            &websocket_limited_session,
+            cursor_request(range.clone()),
+            RequestOptions::read("range-denied", "range-denied").unwrap(),
+        )
+        .await
+        .is_err());
+    let range_page = client
+        .inspect_storage_cursor(
+            &session,
+            cursor_request(range.clone()),
+            RequestOptions::read("range-open", "range-open").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(range_page.rows > 0 && range_page.source_open);
+    assert_eq!(
+        client
+            .inspect_storage_cursor(
+                &session,
+                cursor_request(range),
+                RequestOptions::read("range-replay", "range-replay").unwrap(),
+            )
+            .await
+            .unwrap(),
+        range_page
+    );
+    assert!(
+        client
+            .inspect_storage_cursor(
+                &session,
+                cursor_request(rrd_contract::StorageCursorAction::Release {}),
+                RequestOptions::read("range-release", "range-release").unwrap(),
+            )
+            .await
+            .unwrap()
+            .released
+    );
     assert!(client
         .read_storage_diagnostics(
             &websocket_limited_session,

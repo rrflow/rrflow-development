@@ -79,12 +79,22 @@ impl RrdEngine {
                 page_sha256: digest::sha256_hex(b"rrflow-storage-cursor-released-v1"),
             });
         }
-        if let StorageCursorAction::Open {
-            batch_rows,
-            batch_bytes,
-            lifetime_ms,
-        } = request.action
-        {
+        let opening = match &request.action {
+            StorageCursorAction::Open {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+            } => Some((*batch_rows, *batch_bytes, *lifetime_ms, None)),
+            StorageCursorAction::OpenRange {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+                start,
+                end,
+            } => Some((*batch_rows, *batch_bytes, *lifetime_ms, Some((start, end)))),
+            _ => None,
+        };
+        if let Some((batch_rows, batch_bytes, lifetime_ms, range)) = opening {
             if let Some(entry) = registry.get(&key) {
                 if entry.opened != request.action {
                     return Err(ServiceError::IdempotencyConflict);
@@ -106,9 +116,16 @@ impl RrdEngine {
                     return Err(ServiceError::SessionNotFound);
                 }
                 let deadline = Instant::now() + Duration::from_millis(lifetime);
-                let cursor = store
-                    .inspect_storage(usize::from(batch_rows), batch_bytes as usize)
-                    .map_err(crate::engine::error::storage_read_error)?;
+                let cursor = match range {
+                    Some((start, end)) => store.inspect_storage_range(
+                        usize::from(batch_rows),
+                        batch_bytes as usize,
+                        start.clone(),
+                        end.clone(),
+                    ),
+                    None => store.inspect_storage(usize::from(batch_rows), batch_bytes as usize),
+                }
+                .map_err(crate::engine::error::storage_read_error)?;
                 if Instant::now() >= deadline {
                     return Err(ServiceError::Contract(
                         "storage cursor lifetime elapsed during capture".into(),

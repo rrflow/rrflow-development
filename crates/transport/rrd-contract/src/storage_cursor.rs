@@ -18,6 +18,19 @@ pub enum StorageCursorAction {
         batch_bytes: u32,
         lifetime_ms: u32,
     },
+    /// Retain a snapshot over the explicit half-open physical key range.
+    OpenRange {
+        #[schemars(range(min = 1, max = 4096))]
+        batch_rows: u16,
+        #[schemars(range(min = 1, max = 4194304))]
+        batch_bytes: u32,
+        #[schemars(range(min = 1, max = 60000))]
+        lifetime_ms: u32,
+        #[schemars(length(min = 1, max = 4096))]
+        start: Vec<u8>,
+        #[schemars(length(min = 1, max = 4096))]
+        end: Vec<u8>,
+    },
     Observe {},
     Advance {
         expected_ordinal: u64,
@@ -31,17 +44,36 @@ impl InspectStorageCursor {
             scope: self.scope.clone(),
         }
         .validate()?;
-        if let StorageCursorAction::Open {
-            batch_rows,
-            batch_bytes,
-            lifetime_ms,
-        } = self.action
-        {
-            if !(1..=4096).contains(&batch_rows)
-                || !(1..=4 * 1024 * 1024).contains(&batch_bytes)
-                || !(1..=60_000).contains(&lifetime_ms)
+        let budgets = match &self.action {
+            StorageCursorAction::Open {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+            }
+            | StorageCursorAction::OpenRange {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+                ..
+            } => Some((*batch_rows, *batch_bytes, *lifetime_ms)),
+            _ => None,
+        };
+        if let Some((rows, bytes, lifetime)) = budgets {
+            if !(1..=4096).contains(&rows)
+                || !(1..=4 * 1024 * 1024).contains(&bytes)
+                || !(1..=60_000).contains(&lifetime)
             {
                 return invalid("invalid storage cursor batch or lifetime budget");
+            }
+        }
+        if let StorageCursorAction::OpenRange { start, end, .. } = &self.action {
+            if start.is_empty()
+                || end.is_empty()
+                || start.len() > 4096
+                || end.len() > 4096
+                || start >= end
+            {
+                return invalid("invalid bounded storage cursor key range");
             }
         }
         Ok(())
