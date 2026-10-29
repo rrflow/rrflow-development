@@ -111,6 +111,39 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
+    """Admit one trusted-main cache experiment without changing CI requirements."""
+    trigger = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(trigger is not None and trigger.group(1) == "  workflow_dispatch:\n\n",
+            "cache warmer must be manual-only")
+    jobs = job_blocks(workflow)
+    require(set(jobs) == {"cache-reopen"}, "cache warmer must contain one job")
+    job = jobs["cache-reopen"]
+    require(re.findall(r"(?m)^    if: (.+)$", job) == ["${{ github.ref == 'refs/heads/main' }}"],
+            "cache warmer must be scoped to the main dispatch ref")
+    require("    runs-on: macos-latest\n" in job and "- macos-latest" in reopen,
+            "cache warmer must match the macOS reopen runner")
+    for setting in ('CARGO_PROFILE_DEV_DEBUG: "0"', 'CARGO_PROFILE_TEST_DEBUG: "0"'):
+        require(setting in job and setting in reopen, "cache build profile differs from reopen")
+    require('CARGO_BUILD_JOBS: "1"' in job and
+            "CARGO_BUILD_JOBS: ${{ matrix.os == 'windows-latest' && '2' || '1' }}" in reopen,
+            "cache build jobs differ from macOS reopen")
+    require('CARGO_INCREMENTAL: "0"' in workflow and 'CARGO_TERM_COLOR: always' in workflow,
+            "cache warmer environment differs from reusable CI")
+    require("shared-key: installed-reopen-macos-latest" in job and
+            "shared-key: installed-reopen-${{ matrix.os }}" in reopen and
+            "cache-on-failure: false" in job and "cache-on-failure: false" in reopen,
+            "cache warmer key or failure behavior differs from reopen")
+    actions = lambda text: re.findall(r"(?m)^\s*- uses: ([^\s#]+)", text)
+    require(actions(job) == actions(reopen)[:3], "cache warmer actions differ from reopen")
+    expected = "cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run"
+    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == [expected] and
+            f"run: {expected}" in reopen, "cache warmer build differs from reopen")
+    for _, body in checkout_steps(workflow):
+        require(not any(re.match(r"(?:ref|repository|path)\s*:", item) for item in body),
+                "cache warmer must use the triggering main revision")
+
+
 def verify_execution_inventory_ci(verify: str) -> None:
     """Keep each retained inventory bound to the clean checked-out revision."""
     marker = "      - name: Enforce exhaustive RRFlow 1.0 file planning\n"
@@ -589,6 +622,9 @@ def main() -> None:
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
     verify_candidate_admission(caller)
+    warmer = workflows.get(WORKFLOW_DIRECTORY / "ci-cache-warm.yml")
+    require(warmer is not None, "trusted macOS reopen cache warmer is absent")
+    verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
     verify_execution_inventory_ci(jobs["verify"])
     require(
         reusable.count("python3 scripts/ci/test_candidate_admission.py") == 1,
