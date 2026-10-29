@@ -12,6 +12,7 @@ mod exact;
 mod filter;
 mod hnsw;
 mod plan;
+mod qjl;
 mod quantization;
 mod quantization_catalog;
 mod quantized_segment;
@@ -59,6 +60,7 @@ pub use plan::{
     AccessPathKind, CandidatePath, PlanDecision, RejectedPath, SearchPlan, VectorPlanner,
     EXACT_SCAN_PROJECTION_ID,
 };
+pub use qjl::{QjlProjection, MAX_QJL_DIMENSIONS};
 pub use quantization::ScalarQuantizedVector;
 pub use quantization_catalog::{
     QuantizationArtifactCatalogue, QuantizationArtifactEntry, QuantizationArtifactSnapshot,
@@ -81,4 +83,7 @@ pub use turbo_segment::{
     TurboQuantDescriptor, TurboQuantSegment, TurboQuantSegmentConfig,
     TURBOQUANT_SEGMENT_FORMAT_VERSION,
 };
-pub use turboquant::{TurboQuantBits, TurboQuantVector, TURBOQUANT_FORMAT_VERSION};
+pub use turboquant::{
+    TurboQuantBits, TurboQuantEstimator, TurboQuantInnerProductCode, TurboQuantQuery,
+    TurboQuantVector, TURBOQUANT_FORMAT_VERSION,
+};

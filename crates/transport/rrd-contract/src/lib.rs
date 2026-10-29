@@ -245,7 +245,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f7d1ed963f6644d261dc072e1d1c964c563520c4ecebf41baca48a242208e1e8";
+    "e36d68262029ca7fdf40eb5a612ec6b1b117abbc0be0c6f69461684add642083";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -1341,6 +1341,9 @@ pub enum VectorQuantizationMethod {
     TurboQuant {
         bits: VectorQuantizationBits,
         seed: u64,
+        /// Absent means `mse`, as before the inner-product estimator existed.
+        #[serde(default, skip_serializing_if = "VectorQuantizationEstimator::is_mse")]
+        estimator: VectorQuantizationEstimator,
     },
 }
 
@@ -1370,6 +1373,26 @@ impl VectorQuantizationMethod {
     }
 }
 
+/// How a TurboQuant generation estimates a query's inner products.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VectorQuantizationEstimator {
+    /// TurboQuant_mse: each coordinate's nearest codebook value, rescaled to
+    /// the vector's length.
+    #[default]
+    Mse,
+    /// TurboQuant_prod: an MSE stage one bit narrower plus one sign bit per
+    /// coordinate of its residual's Gaussian projection, an unbiased estimate
+    /// of inner products.
+    InnerProduct,
+}
+
+impl VectorQuantizationEstimator {
+    pub fn is_mse(&self) -> bool {
+        *self == Self::Mse
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VectorQuantizationArtifactState {
@@ -1393,6 +1416,14 @@ pub struct BuildVectorQuantizationArtifact {
 impl BuildVectorQuantizationArtifact {
     pub fn validate(&self) -> Result<()> {
         validate_vector_scope(&self.scope)?;
+        if let VectorQuantizationMethod::TurboQuant {
+            bits: VectorQuantizationBits::Bits1_5,
+            estimator: VectorQuantizationEstimator::InnerProduct,
+            ..
+        } = self.method
+        {
+            return invalid("1.5-bit TurboQuant has no inner-product estimator");
+        }
         if self.max_storage_keys == 0 || self.max_storage_keys > MAX_VECTOR_STORAGE_KEYS {
             return invalid(format!(
                 "quantization build max_storage_keys must be in 1..={MAX_VECTOR_STORAGE_KEYS}"

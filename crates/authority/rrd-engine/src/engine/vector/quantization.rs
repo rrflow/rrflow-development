@@ -241,7 +241,11 @@ impl RrdEngine {
                 .map_err(core_vector)?;
                 (artifact, versions, None, encoded)
             }
-            VectorQuantizationMethod::TurboQuant { bits, seed } => {
+            VectorQuantizationMethod::TurboQuant {
+                bits,
+                seed,
+                estimator,
+            } => {
                 let config = rrd_vector::TurboQuantSegmentConfig {
                     id: artifact_id.clone(),
                     scope: scope.clone(),
@@ -252,6 +256,14 @@ impl RrdEngine {
                     seed,
                     embedding_model: vector.embedding_model.clone(),
                     filter_properties,
+                    estimator: match estimator {
+                        rrd_contract::VectorQuantizationEstimator::Mse => {
+                            rrd_vector::TurboQuantEstimator::Mse
+                        }
+                        rrd_contract::VectorQuantizationEstimator::InnerProduct => {
+                            rrd_vector::TurboQuantEstimator::InnerProduct
+                        }
+                    },
                 };
                 match self.turboquant_base(&lifecycle, &artifact_id, &config)? {
                     // The base's versions and codes stand; only the identities
@@ -749,6 +761,14 @@ fn public_quantization_artifact(
                     rrd_vector::TurboQuantBits::Bits1 => VectorQuantizationBits::Bits1,
                 },
                 seed: descriptor.seed,
+                estimator: match descriptor.estimator {
+                    rrd_vector::TurboQuantEstimator::Mse => {
+                        rrd_contract::VectorQuantizationEstimator::Mse
+                    }
+                    rrd_vector::TurboQuantEstimator::InnerProduct => {
+                        rrd_contract::VectorQuantizationEstimator::InnerProduct
+                    }
+                },
             },
             descriptor.candidate_versions,
             descriptor.packed_vector_bytes,

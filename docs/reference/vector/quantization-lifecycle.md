@@ -73,7 +73,7 @@ The implemented codec families are:
 | Scalar | 4x | artifact-wide symmetric signed int8 scale and dense codes |
 | Product | 4x, 8x, 16x, 32x, or 64x | deterministic 256-entry subspace codebooks and centroid codes |
 | Binary | 32x | sign-bit vectors with full-precision query scoring |
-| TurboQuant | 8x, 16x, 21x, or 32x | seeded Hadamard rotation, fixed low-bit codes, and norm correction |
+| TurboQuant | 8x, 16x, 21x, or 32x | seeded Hadamard rotation, fixed low-bit codes, and norm correction; or, with `estimator: inner_product`, codes one bit narrower plus the residual's QJL signs |
 
 These ratios compare full-precision vector bytes to packed vector bytes, not
 complete artifact size or resident memory. Metadata and product codebooks are
@@ -87,6 +87,32 @@ operations. The planner rechecks scope, field, dimensions, metric, model,
 filter coverage, source cursor, valid time, read cursor, generation, and
 artifact identity. Approximate scores select references, then exact-f32
 reranking produces final results.
+
+TurboQuant has two estimators (E-04d), chosen at build as part of the
+generation's configuration:
+
+- **`mse`, the default:** TurboQuant_mse. Each coordinate keeps its nearest
+  codebook value, rescaled to the vector's length. Its inner products shrink
+  at low widths: on unit vectors across inner products from 0 to 0.9, the
+  slope of estimate on truth is 0.996 at 4 bits, 0.942 at 2 and 0.803 at 1,
+  about √(2/π).
+- **`inner_product`:** TurboQuant_prod ([arXiv:2504.19874](https://arxiv.org/abs/2504.19874),
+  Algorithm 2). It stores codes one bit narrower (3-, 1- or 0-bit Lloyd-Max
+  stages at 4, 2 and 1 total bits), the signs of the residual's projection by
+  a seeded dense Gaussian matrix S, and the residual's length. Its estimate is
+  unbiased: on the same vectors the slope is 1.00 within its standard error
+  at every width, and the mean squared error stays under the paper's bound.
+  - The residual is projected in the rotated space, which is distributed as
+    the paper's S·r.
+  - S is drawn from the seed, with a deterministic logarithm, so its bytes
+    are reproducible on every platform.
+  - S is dense, so the estimator accepts at most 4096 padded dimensions, and
+    a loaded generation keeps its S (at most 64 MiB).
+  - It refuses 1.5 bits, which has no narrower stage, and Manhattan
+    collections.
+
+An estimator is part of the configuration, so an incremental build never
+extends a generation of the other one.
 
 ## Current persistence boundary
 
@@ -161,7 +187,7 @@ canonical full-precision vectors and the exact scorer remain authoritative.
 | Part | Current state | Owning gate and required behavior |
 |---|---|---|
 | Persistent vector search | The MSE codec and lifecycle above serve after explicit activation, through the generation plus the stamped delta (E-04b). A TurboQuant build extends its base with the change (E-04c); the catalogue still replays from cursor zero. | E-04 maintains TurboQuant generations incrementally and atomically with point commits. F-03 runs candidate generation and exact reranking in the stamped Arrow pipeline. Closing [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) removes the per-search catalogue rebuild. |
-| Inner-product variant | Absent: `rrd-vector`'s `turboquant` module implements the MSE path only. | E-04 adds the [paper's](https://arxiv.org/abs/2504.19874) product estimator, an MSE stage plus a one-bit Quantized Johnson-Lindenstrauss residual, as an explicit lifecycle codec choice. Recall and score error are measured against the MSE variant and exact search on the same corpus. |
+| Inner-product variant | `estimator: inner_product` (E-04d) builds, serves, extends and replays through the lifecycle above. Its estimate is unbiased, and its recall, score error and bias are measured beside the MSE variant and exact search on the same corpus. | J-04 qualifies its quality, memory and latency on representative corpora. Larger dimensions need a projection the paper's analysis covers. |
 | Model KV cache | Absent: RRFlow runs embedding models only, and attention caches belong to admitted model runtimes. | In Gate G, SWAG selects a TurboQuant KV-cache format only when an admitted runtime advertises it and qualification passes. The format joins the [cache identity](../inference/lfg-swag.md#cache-identity-and-sharing). This is inference acceleration, not rrflowKV compression. |
 | Sync transfer | Absent. | H-07 may offer a selected-data profile in which a device receives verified quantized artifacts instead of a family's full-precision vectors, which reduces transfer bytes. That device only proposes candidates: its returned hits are exact-reranked by a peer that holds the canonical vectors, or they are labelled approximate. Full synchronization still transfers canonical vectors. |
 
@@ -170,11 +196,19 @@ part. A published paper result is not RRFlow evidence.
 
 ## Evidence and remaining gates
 
-The fixed 512-vector by 64-dimension matrix covers eleven codec/ratio rows,
-eight queries, exact reranking over 96 candidates, mmap descriptor identity,
-corruption denial, scalar/SIMD parity, byte accounting, mean absolute score
-error no greater than 0.15, and mean Recall@10 of at least 0.80. The retained
-debug-host observation is
+The fixed 512-vector by 64-dimension matrix covers fourteen codec/ratio rows,
+including TurboQuant's inner-product estimator at 4, 2 and 1 bits. It checks:
+
+- eight queries, with exact reranking over 96 candidates;
+- mmap descriptor identity and corruption denial;
+- scalar/SIMD parity and byte accounting;
+- mean absolute score error no greater than 0.15 and mean Recall@10 of at
+  least 0.80.
+
+Each row also reports its mean signed score error. On that cosine corpus, the
+inner-product rows trade recall for unbiasedness at equal width: Recall@10 is
+1.00, 0.94 and 0.85 at 4, 2 and 1 bits, against MSE's 1.00, 1.00 and 0.975.
+The retained debug-host observation is
 [`docs/evidence/g04-w04-quantization-local-512x64.json`](../../evidence/g04-w04-quantization-local-512x64.json);
 it is not a release SLO or Qdrant-equivalence claim.
 

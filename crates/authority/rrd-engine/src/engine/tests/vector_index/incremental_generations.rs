@@ -2,7 +2,8 @@
 //! configuration with the vectors changed since it. The generation it
 //! publishes is byte for byte the one a full build makes from every version,
 //! its work follows the change rather than the estate, and a build without a
-//! sound base encodes every version.
+//! sound base encodes every version. The inner-product estimator (E-04d) goes
+//! through the same lifecycle as its own configuration.
 
 use super::*;
 use crate::engine::vector::{read_vector_versions, vector_matches_collection};
@@ -169,7 +170,11 @@ fn build_request(
         scope: scope(),
         collection_id: CanonicalId::new("documents").unwrap(),
         vector_name: CanonicalId::new("body").unwrap(),
-        method: VectorQuantizationMethod::TurboQuant { bits, seed },
+        method: VectorQuantizationMethod::TurboQuant {
+            bits,
+            seed,
+            estimator: rrd_contract::VectorQuantizationEstimator::Mse,
+        },
         filter_properties: Vec::new(),
         max_storage_keys,
     }
@@ -302,6 +307,7 @@ fn full_build(
         seed: descriptor.seed,
         embedding_model: descriptor.embedding_model.clone(),
         filter_properties: descriptor.filter_properties.clone(),
+        estimator: descriptor.estimator,
     };
     let full = rrd_vector::TurboQuantSegment::build(
         config,
@@ -791,4 +797,81 @@ fn an_extended_build_is_bounded_by_its_budget() {
     assert_eq!(exact.base_generation, Some(1));
     assert_eq!(exact.read_evidence.keys_examined, keys);
     assert_eq!(exact.read_evidence.key_budget, keys);
+}
+
+fn inner_product_request(seed: u64) -> BuildVectorQuantizationArtifact {
+    let mut request = build_request(seed, VectorQuantizationBits::Bits4, 1_000_000);
+    request.method = VectorQuantizationMethod::TurboQuant {
+        bits: VectorQuantizationBits::Bits4,
+        seed,
+        estimator: rrd_contract::VectorQuantizationEstimator::InnerProduct,
+    };
+    request
+}
+
+/// E-04d: an inner-product generation is built, verified, served, extended
+/// and reopened like an MSE one, and it is its own configuration.
+#[test]
+fn an_inner_product_generation_serves_extends_and_is_its_own_configuration() {
+    let (root, engine, lease) = fixture(DOCUMENTS, 4);
+    let first = try_build(
+        &engine,
+        &lease,
+        &inner_product_request(SEED),
+        "product-first",
+        400,
+    )
+    .unwrap();
+    assert_eq!(first.base_generation, None);
+    assert_eq!(
+        first.artifact.method,
+        inner_product_request(SEED).method,
+        "the listed method keeps its estimator"
+    );
+    assert_equals_full_build(&engine, 1);
+    activate(&engine, &lease, &first, 410);
+    assert_serves_exactly(&engine, &lease, 0);
+
+    // An MSE build of the same seed and width is another configuration.
+    let mse = build(
+        &engine,
+        &lease,
+        SEED,
+        VectorQuantizationBits::Bits4,
+        "mse",
+        420,
+    );
+    assert_eq!(mse.base_generation, None);
+    assert_ne!(
+        mse.artifact.configuration_sha256,
+        first.artifact.configuration_sha256
+    );
+
+    change(&engine, &lease, 500);
+    let second = try_build(
+        &engine,
+        &lease,
+        &inner_product_request(SEED),
+        "product-second",
+        600,
+    )
+    .unwrap();
+    assert_eq!(second.artifact.generation, 3);
+    assert_eq!(second.base_generation, Some(1));
+    let versions = assert_equals_full_build(&engine, 3);
+    assert_eq!(second.encoded_versions, changed_versions(&versions));
+
+    drop(engine);
+    let engine = RrdEngine::open(root.path(), instance(), TOKEN_KEY).unwrap();
+    activate(&engine, &lease, &second, 610);
+    assert_serves_exactly(&engine, &lease, 100);
+
+    // 1.5 bits has no inner-product estimator.
+    let mut refused = inner_product_request(SEED);
+    refused.method = VectorQuantizationMethod::TurboQuant {
+        bits: VectorQuantizationBits::Bits1_5,
+        seed: SEED,
+        estimator: rrd_contract::VectorQuantizationEstimator::InnerProduct,
+    };
+    assert!(try_build(&engine, &lease, &refused, "product-refused", 700).is_err());
 }
