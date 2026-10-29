@@ -1,0 +1,11 @@
+{
+  "engine_authorized": false,
+  "failure": {
+    "dispatch_may_have_occurred": true,
+    "http_status": null,
+    "reason": "chat transport failed; remote outcome unknown"
+  },
+  "scope": "operator_transport_observation",
+  "training_admitted": false,
+  "worker_dispatched": false
+}

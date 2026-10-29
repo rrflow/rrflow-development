@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-29T17:20:18.021689+00:00",
+  "case": "withheld",
+  "exit": 0,
+  "receipt": {
+    "engine_authorized": false,
+    "observation": {
+      "allowance_sha256": "a50525816a81da3e5a852fdaa39506b0efa789cad9e20bdc2789666cc26c5161",
+      "choice": {
+        "kind": "abstain",
+        "reason": "no_eligible_candidate"
+      },
+      "configuration_sha256": "4621b748db8fbfa1aee8e49dffafcc635394301a1ed58c796db537cc98ca6063",
+      "content_sha256": "3c54cfeb084b86ecaaa6d6b3a48f465afa1ac42943f44402ae7a0f37d8f1ae5c",
+      "elapsed_ms": 1613,
+      "http_status": 200,
+      "request_sha256": "7aa984acac004aa36d4a4d315d82054a2e7756b432f5491a7cb7a5a5e7dc0cf6",
+      "response_sha256": "2f567a286c3d9e8d581fb4a436d7c64f2239adbff7c6e9a7f5d4dcec1485726b",
+      "service_id": "swag-qwen3-coder-intent-20261028",
+      "usage": {
+        "completion_tokens": 19,
+        "prompt_tokens": 1408,
+        "total_tokens": 1427
+      }
+    },
+    "scope": "operator_transport_observation",
+    "training_admitted": false,
+    "worker_dispatched": false
+  }
+}
