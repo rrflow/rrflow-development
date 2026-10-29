@@ -800,6 +800,312 @@ fn replan_lost_response_survives_process_kill_and_replays() {
 }
 
 #[test]
+fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    std::fs::write(installed.root.path().join("README.md"), "receipt source\n").unwrap();
+    let preview = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            1,
+            BASE + 1_000,
+            "request-replan-read-preview",
+            "operation-replan-read-preview",
+        )
+        .unwrap();
+    assert!(engine
+        .read_attunement_replan_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("read-replan"),
+            BASE + 1_100,
+            "request-missing-replan",
+            "operation-missing-replan"
+        )
+        .unwrap()
+        .is_none());
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &preview,
+            &preview.proposal_sha256,
+            &context("read-replan"),
+            BASE + 1_200,
+        )
+        .unwrap();
+    let before = engine.storage.control().journal_since(0, 1024).unwrap();
+    let receipt = engine
+        .read_attunement_replan_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("read-replan"),
+            BASE + 1_300,
+            "request-read-replan",
+            "operation-read-replan",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(receipt.preview, preview);
+    assert_eq!(receipt.predecessor_plan, installed.preview.attunement);
+    assert_eq!(receipt.result, accepted);
+    assert!(engine
+        .read_attunement_replan_receipt(
+            &session.session_id,
+            &id("bad-token"),
+            &installed.job,
+            &id("read-replan"),
+            BASE + 1_400,
+            "request-bad-replan",
+            "operation-bad-replan"
+        )
+        .is_err());
+    let after = engine.storage.control().journal_since(0, 1024).unwrap();
+    let count = |rows: &[rrd_store::ControlJournalEntry]| {
+        rows.iter()
+            .filter(|row| row.action.starts_with("attunement.replan_"))
+            .count()
+    };
+    assert_eq!(count(&before), count(&after));
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 1_500).job,
+        accepted.predecessor.job
+    );
+    let successor_start = AttunementCommand::Start {
+        job_id: accepted.successor.job.id.clone(),
+        plan_sha256: accepted.plan.plan_sha256.clone(),
+        expected_revision: 1,
+        lease_ms: 30_000,
+    };
+    let successor = call(
+        &engine,
+        &session,
+        &successor_start,
+        "receipt-successor-start",
+        BASE + 1_600,
+    )
+    .unwrap();
+    std::fs::write(installed.root.path().join("README.md"), "later edit\n").unwrap();
+    let later = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &successor.status.job.id,
+            successor.status.job.revision,
+            BASE + 1_700,
+            "request-later-preview",
+            "operation-later-preview",
+        )
+        .unwrap();
+    engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &later,
+            &later.proposal_sha256,
+            &context("later-replan"),
+            BASE + 1_800,
+        )
+        .unwrap();
+    let historical = engine
+        .read_attunement_replan_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("read-replan"),
+            BASE + 1_900,
+            "request-historical-replan-read",
+            "operation-historical-replan-read",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(historical, receipt);
+    drop(engine);
+    let engine = installed.reopen(BASE + 2_000);
+    let renewed = installed.session(&engine, "replan-read-reopen", BASE + 2_100);
+    let reopened = engine
+        .read_attunement_replan_receipt(
+            &renewed.session_id,
+            &renewed.token,
+            &installed.job,
+            &id("read-replan"),
+            BASE + 2_200,
+            "request-replan-reopen",
+            "operation-replan-reopen",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(reopened, receipt);
+}
+
+#[test]
+fn replan_receipt_and_replay_reject_a_corrupt_successor_link() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let preview = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            1,
+            BASE + 1_000,
+            "request-corrupt-preview",
+            "operation-corrupt-preview",
+        )
+        .unwrap();
+    engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &preview,
+            &preview.proposal_sha256,
+            &context("corrupt-replan"),
+            BASE + 1_200,
+        )
+        .unwrap();
+    let link = format!(
+        "{}/successor",
+        crate::engine::installation::attunement_job_key(engine.instance_id(), &installed.job)
+    );
+    let expected = engine.storage.control().get(&link).unwrap();
+    let mut changed = preview.clone();
+    changed.generation += 1;
+    engine
+        .storage
+        .control()
+        .commit(&ControlTransition {
+            key: link,
+            expected,
+            replacement: Some(serde_json::to_vec(&changed).unwrap()),
+            at: BASE + 1_300,
+            actor: "test-fixture".into(),
+            action: "attunement.fixture_corrupt_link".into(),
+            request_id: "request-corrupt-link".into(),
+            operation_id: "operation-corrupt-link".into(),
+        })
+        .unwrap();
+    assert!(engine
+        .read_attunement_replan_receipt(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            &id("corrupt-replan"),
+            BASE + 1_400,
+            "request-corrupt-read",
+            "operation-corrupt-read"
+        )
+        .is_err());
+    assert!(engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &preview,
+            &preview.proposal_sha256,
+            &context("corrupt-replan"),
+            BASE + 1_500
+        )
+        .is_err());
+}
+
+#[test]
+fn replan_receipt_is_not_visible_to_another_authorized_principal() {
+    let (installed, engine, owner) = Installed::new(InstallationTargetKind::ExistingProject);
+    let preview = engine
+        .preview_attunement_replan(
+            &owner.session_id,
+            &owner.token,
+            &installed.job,
+            1,
+            BASE + 1_000,
+            "request-private-preview",
+            "operation-private-preview",
+        )
+        .unwrap();
+    engine
+        .accept_attunement_replan(
+            &owner.session_id,
+            &owner.token,
+            &preview,
+            &preview.proposal_sha256,
+            &context("private-replan"),
+            BASE + 1_200,
+        )
+        .unwrap();
+    let repository = SecurityRepository::new(&engine.storage, engine.instance_id().clone());
+    let mut authority = repository.load().unwrap().unwrap();
+    let revision = authority.revision;
+    authority.revision += 1;
+    let principal_id = CanonicalId::new("other-replan-reader").unwrap();
+    let resource = ResourcePath {
+        segments: vec![
+            ResourceId::new(ResourceKind::Instance, engine.instance_id().as_str()).unwrap(),
+        ],
+    };
+    authority.principals.insert(
+        principal_id.clone(),
+        Principal {
+            id: principal_id.clone(),
+            kind: PrincipalKind::Service,
+            credential_sha256: digest::sha256_hex(b"other-replan-reader"),
+            credential_revision: 1,
+            not_before_unix_ms: 1,
+            expires_at_unix_ms: u64::MAX,
+            disabled: false,
+            role_ids: Default::default(),
+            grants: [SecurityAction::SessionCreate, SecurityAction::EstateRead]
+                .into_iter()
+                .map(|action| ResourceGrant {
+                    action,
+                    resource_prefix: resource.clone(),
+                    data_policy: None,
+                })
+                .collect(),
+        },
+    );
+    repository
+        .replace(
+            revision,
+            authority,
+            BASE + 1_300,
+            "test",
+            "reader-update",
+            "reader-update",
+        )
+        .unwrap();
+    let reader = engine
+        .create_authenticated_session(
+            &principal_id,
+            b"other-replan-reader",
+            &CreateSession {
+                limits: SessionLimits {
+                    idle_timeout_ms: 120_000,
+                    absolute_timeout_ms: 120_000,
+                    max_open_transactions: 2,
+                },
+            },
+            &id("other-replan-session"),
+            BASE + 1_400,
+            "request-other-replan-session",
+            "operation-other-replan-session",
+        )
+        .unwrap();
+    assert!(engine
+        .read_attunement_replan_receipt(
+            &reader.session_id,
+            &reader.token,
+            &installed.job,
+            &id("private-replan"),
+            BASE + 1_500,
+            "request-foreign-replan",
+            "operation-foreign-replan"
+        )
+        .unwrap()
+        .is_none());
+}
+
+#[test]
 fn attunement_receipt_readback_preserves_original_result_after_reopen() {
     let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
     assert!(engine

@@ -117,7 +117,7 @@ mod installation;
 mod observation_source;
 pub use attunement::{
     AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,
-    AttunementReplanResult,
+    AttunementReplanReceiptView, AttunementReplanResult,
 };
 mod invocation;
 mod knowledge;

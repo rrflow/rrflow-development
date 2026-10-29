@@ -114,9 +114,20 @@ pub struct AttunementReplanResult {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ReplanReceipt {
+    format_version: u16,
     principal_id: CanonicalId,
     operation_sha256: String,
     result: AttunementReplanResult,
+}
+
+/// Previously accepted replan, read without executing its mutation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttunementReplanReceiptView {
+    pub principal_id: CanonicalId,
+    pub operation_sha256: String,
+    pub preview: AttunementReplanPreview,
+    pub predecessor_plan: AttunementPlan,
+    pub result: AttunementReplanResult,
 }
 
 /// An existing committed control receipt, read without replaying its command.
@@ -138,6 +149,119 @@ struct Receipt {
 }
 
 impl RrdEngine {
+    fn validate_replan_receipt(
+        &self,
+        principal: &CanonicalId,
+        old: &AttunementJob,
+        old_plan: &AttunementPlan,
+        receipt: ReplanReceipt,
+    ) -> Result<AttunementReplanReceiptView> {
+        if receipt.format_version != 1 || &receipt.principal_id != principal {
+            return Err(ServiceError::Storage(
+                "invalid attunement replan receipt identity".into(),
+            ));
+        }
+        let link_key = format!("{}/successor", attunement_job_key(&self.instance, &old.id));
+        let preview: AttunementReplanPreview =
+            decode(
+                &self.storage.control().get(&link_key)?.ok_or_else(|| {
+                    ServiceError::Storage("attunement replan link missing".into())
+                })?,
+            )?;
+        let result = receipt.result;
+        result.predecessor.validate(old_plan).map_err(contract)?;
+        result.successor.validate(&result.plan).map_err(contract)?;
+        let proposal_digest = operation_digest(&(
+            "attunement-replan-preview-v1",
+            &preview.predecessor_job_id,
+            preview.predecessor_revision,
+            preview.generation,
+            &preview.plan,
+        ))?;
+        let operation_digest = operation_digest(&(
+            "attunement-accept-replan-v1",
+            &preview,
+            &preview.proposal_sha256,
+        ))?;
+        let seed = operation_digest_for_replan(&preview, old_plan)?;
+        let mut expected_plan = old_plan.clone();
+        expected_plan.id = preview.plan.id.clone();
+        expected_plan.source_sha256 = preview.plan.source_sha256.clone();
+        expected_plan.plan_sha256 = preview.plan.plan_sha256.clone();
+        let (current_generation, expected_generation) =
+            (self.attunement_replan_generation(old)?, preview.generation);
+        if preview.predecessor_job_id != old.id
+            || preview.proposal_sha256 != proposal_digest
+            || receipt.operation_sha256 != operation_digest
+            || expected_generation == 0
+            || current_generation.checked_add(1) != Some(expected_generation)
+            || preview.plan.id != canonical_prefixed("attune", &seed)?
+            || preview.plan.target != old_plan.target
+            || preview.plan != expected_plan
+            || result.plan != preview.plan
+            || result.predecessor.job.id != old.id
+            || preview.predecessor_revision.checked_add(1) != Some(result.predecessor.job.revision)
+            || old.revision < result.predecessor.job.revision
+            || result.predecessor.job.state != AttunementJobState::CancelRequested
+            || result.successor.job.id != canonical_prefixed("job", &preview.plan.plan_sha256)?
+            || result.successor.job.state != AttunementJobState::Pending
+            || result.idempotent_replay
+        {
+            return Err(ServiceError::Storage(
+                "invalid attunement replan receipt lineage".into(),
+            ));
+        }
+        let (_, successor, stored_plan) = self.load_attunement(&result.successor.job.id)?;
+        if stored_plan != preview.plan
+            || self.attunement_replan_generation(&successor)? != expected_generation
+        {
+            return Err(ServiceError::Storage(
+                "invalid attunement successor binding".into(),
+            ));
+        }
+        Ok(AttunementReplanReceiptView {
+            principal_id: receipt.principal_id,
+            operation_sha256: receipt.operation_sha256,
+            preview,
+            predecessor_plan: old_plan.clone(),
+            result,
+        })
+    }
+
+    /// Read the original principal's receipt without replaying acceptance.
+    #[allow(clippy::too_many_arguments)]
+    pub fn read_attunement_replan_receipt(
+        &self,
+        session: &CorrelationId,
+        token: &CorrelationId,
+        job_id: &CanonicalId,
+        idempotency_key: &CorrelationId,
+        now: u64,
+        request_id: &str,
+        operation_id: &str,
+    ) -> Result<Option<AttunementReplanReceiptView>> {
+        let (_, authorization) = self.authorize(
+            session,
+            token,
+            SecurityAction::EstateRead,
+            now,
+            request_id,
+            operation_id,
+        )?;
+        let principal = authorization
+            .principal_id
+            .ok_or(ServiceError::Unauthenticated)?;
+        let key =
+            attunement_replan_receipt_key(&self.instance, job_id, &principal, idempotency_key)?;
+        let Some(bytes) = self.storage.control().get(&key)? else {
+            return Ok(None);
+        };
+        let receipt: ReplanReceipt = decode(&bytes)?;
+        let (_, old, old_plan) = self.load_attunement(job_id)?;
+        self.validate_replan_receipt(&principal, &old, &old_plan, receipt)
+            .map(Some)
+    }
+
     fn attunement_installed_record(&self) -> Result<InstalledEstateRecord> {
         let record: InstalledEstateRecord = decode(
             &self
@@ -328,19 +452,14 @@ impl RrdEngine {
         }
         let operation_sha256 =
             operation_digest(&("attunement-accept-replan-v1", preview, expected_sha256))?;
-        let receipt_key = format!(
-            "{}/replan-receipt/{}",
-            attunement_job_key(&self.instance, &preview.predecessor_job_id),
-            operation_digest(&(
-                &principal,
-                context
-                    .idempotency_key
-                    .as_ref()
-                    .ok_or_else(|| ServiceError::Contract(
-                        "attunement replan requires idempotency".into()
-                    ))?
-            ))?
-        );
+        let receipt_key = attunement_replan_receipt_key(
+            &self.instance,
+            &preview.predecessor_job_id,
+            &principal,
+            context.idempotency_key.as_ref().ok_or_else(|| {
+                ServiceError::Contract("attunement replan requires idempotency".into())
+            })?,
+        )?;
         let _gate = self.admit_transaction(
             preview,
             context.request_id.as_str(),
@@ -362,27 +481,13 @@ impl RrdEngine {
             if receipt.principal_id != principal || receipt.operation_sha256 != operation_sha256 {
                 return Err(ServiceError::IdempotencyConflict);
             }
-            receipt
-                .result
-                .predecessor
-                .validate(&old_plan)
-                .map_err(contract)?;
-            receipt
-                .result
-                .successor
-                .validate(&receipt.result.plan)
-                .map_err(contract)?;
-            if receipt.result.plan != preview.plan
-                || receipt.result.predecessor.job.id != old.id
-                || receipt.result.idempotent_replay
-            {
-                return Err(ServiceError::Storage(
-                    "invalid attunement replan receipt".into(),
-                ));
+            let view = self.validate_replan_receipt(&principal, &old, &old_plan, receipt)?;
+            if view.preview != *preview {
+                return Err(ServiceError::IdempotencyConflict);
             }
             return Ok(AttunementReplanResult {
                 idempotent_replay: true,
-                ..receipt.result
+                ..view.result
             });
         }
         if old.revision != preview.predecessor_revision {
@@ -446,6 +551,7 @@ impl RrdEngine {
             idempotent_replay: false,
         };
         let receipt = ReplanReceipt {
+            format_version: 1,
             principal_id: principal,
             operation_sha256,
             result: result.clone(),
@@ -968,6 +1074,33 @@ impl RrdEngine {
         next.current_phase = next.next_phase();
         Ok(())
     }
+}
+
+fn operation_digest_for_replan(
+    preview: &AttunementReplanPreview,
+    old: &AttunementPlan,
+) -> Result<String> {
+    operation_digest(&(
+        "attunement-replan-v1",
+        &preview.predecessor_job_id,
+        preview.predecessor_revision,
+        &old.plan_sha256,
+        preview.generation,
+        &preview.plan.source_sha256,
+    ))
+}
+
+fn attunement_replan_receipt_key(
+    instance: &CanonicalId,
+    job_id: &CanonicalId,
+    principal: &CanonicalId,
+    key: &CorrelationId,
+) -> Result<String> {
+    Ok(format!(
+        "{}/replan-receipt/{}",
+        attunement_job_key(instance, job_id),
+        operation_digest(&(principal, key))?
+    ))
 }
 
 fn attunement_receipt_key(
