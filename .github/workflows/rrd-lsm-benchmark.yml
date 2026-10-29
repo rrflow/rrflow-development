@@ -1,111 +1,53 @@
-name: RRD LSM benchmark
-
+name: C-07 real macOS capacity diagnostic experiment
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 6 * * 1"
-
 permissions:
   contents: read
-
 jobs:
-  rrflow-kv-semantic:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - profile: small-batch
-            operations: 2048
-            batch_size: 16
-            reads: 1024
-            read_width: 16
-          - profile: standard
-            operations: 2048
-            batch_size: 64
-            reads: 1024
-            read_width: 32
-          - profile: read-heavy
-            operations: 4096
-            batch_size: 64
-            reads: 4096
-            read_width: 64
-          - profile: sustained
-            operations: 16384
-            batch_size: 128
-            reads: 2048
-            read_width: 64
-          - profile: extended
-            operations: 70000
-            batch_size: 128
-            reads: 2048
-            read_width: 64
+  native-capacity:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: recursive
       - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Run isolated rrflowKV semantic profile
+        with:
+          shared-key: c07-real-native-capacity-diagnostic
+          cache-on-failure: false
+      - name: Bind exact source and verify native fixture guards
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD
+          git rev-parse 'HEAD^{tree}'
+          python3 scripts/ci/test_native_capacity.py
+      - name: Run required installed native capacity cases
+        timeout-minutes: 30
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
+        run: python3 scripts/ci/run_native_capacity.py
+      - name: Run repeated APFS cases
+        timeout-minutes: 15
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
         run: >-
-          cargo run --release --locked -p rrd-store --example engine_benchmark --
-          --trials 9 --operations ${{ matrix.operations }}
-          --batch-size ${{ matrix.batch_size }} --reads ${{ matrix.reads }}
-          --read-width ${{ matrix.read_width }}
-          --write-path-diagnostics
-          --output target/rrflow-kv-${{ matrix.profile }}.json
-      - name: Retain raw benchmark evidence
+          python3 scripts/ci/run_native_capacity.py
+          --mode fresh --mode existing --mode fresh --mode existing
+          --mode fresh --mode existing
+      - name: Retain bounded native capacity diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: rrflow-kv-${{ matrix.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: target/rrflow-kv-${{ matrix.profile }}.json
-          if-no-files-found: error
-
-  rrflow-kv-ai-reads:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - workload: current-hot-hit
-            payload: repeated-byte
-          - workload: cold-hit
-            payload: repeated-byte
-          - workload: point-miss
-            payload: repeated-byte
-          - workload: historical-hot-hit
-            payload: repeated-byte
-          - workload: metadata-fanout
-            payload: repeated-byte
-          - workload: metadata-fanout
-            payload: structured-json
-          - workload: metadata-fanout
-            payload: deterministic-entropy
-          - workload: metadata-fanout
-            payload: embedding-f32
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          submodules: recursive
-      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Run isolated AI-read profile
-        run: >-
-          cargo run --release --locked -p rrd-store --example ai_hotset_benchmark --
-          --workload ${{ matrix.workload }} --payload-profile ${{ matrix.payload }}
-          --trials 5 --cold-keys 8192
-          --hot-keys 128 --reads 8192 --batch-size 128 --value-bytes 128
-          --fanout-width 32
-          --output target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
-      - name: Retain raw AI-read evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: target/rrflow-kv-ai-${{ matrix.workload }}-${{ matrix.payload }}.json
-          if-no-files-found: error
+          name: c07-real-native-capacity-diagnostics
+          path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json
+          if-no-files-found: ignore
+          retention-days: 14
