@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Archive rejection tests; these fixtures are not model or qualification data."""
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -9,6 +10,9 @@ import unittest
 import zipfile
 
 import verify_controller_trial as verifier
+
+ACTUAL_ARCHIVE = None
+ACTUAL_SHA256 = None
 
 
 class ArchiveRejectionTests(unittest.TestCase):
@@ -107,5 +111,66 @@ class ArchiveRejectionTests(unittest.TestCase):
             verifier.parse_manifest(json.dumps(manifest).encode())
 
 
+class ActualArtifactTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if ACTUAL_ARCHIVE is None:
+            raise unittest.SkipTest('supply --archive and --sha256 for actual artifact checks')
+        verifier.verify_archive(ACTUAL_ARCHIVE, ACTUAL_SHA256)
+
+    def test_actual_round_trip(self):
+        manifest = verifier.verify_archive(ACTUAL_ARCHIVE, ACTUAL_SHA256)
+        self.assertEqual(manifest['platform'], 'x86_64-pc-windows-msvc')
+
+    def reject_modified_copy(self, case, message):
+        with tempfile.TemporaryDirectory() as temporary:
+            changed = Path(temporary) / 'corrupted.zip'
+            with zipfile.ZipFile(ACTUAL_ARCHIVE) as source, zipfile.ZipFile(changed, 'w') as target:
+                receipt = json.loads(source.read('build-receipt.json'))
+                manifest = json.loads(source.read(verifier.MANIFEST))
+                if case == 'receipt':
+                    receipt['binary'] = '../rrflow.exe'
+                    data = json.dumps(receipt).encode()
+                    manifest['files']['build-receipt.json'] = {
+                        'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data)}
+                for info in source.infolist():
+                    if case == 'missing' and info.filename == 'rrflow.exe':
+                        continue
+                    content = source.read(info)
+                    if case == 'bytes' and info.filename == 'rrflow.exe':
+                        content = bytes([content[0] ^ 1]) + content[1:]
+                    if case == 'receipt' and info.filename == 'build-receipt.json':
+                        content = data
+                    if case == 'receipt' and info.filename == verifier.MANIFEST:
+                        content = json.dumps(manifest).encode()
+                    target.writestr(info, content)
+                if case in ('extra', 'escape'):
+                    target.writestr('unexpected.txt' if case == 'extra' else '../escape.txt', b'')
+            with self.assertRaisesRegex(ValueError, message):
+                verifier.verify_archive(changed, verifier.digest_file(changed))
+
+    def test_actual_changed_executable(self):
+        self.reject_modified_copy('bytes', 'member digest differs')
+
+    def test_actual_missing_executable(self):
+        self.reject_modified_copy('missing', 'missing or unexpected')
+
+    def test_actual_extra_file(self):
+        self.reject_modified_copy('extra', 'missing or unexpected')
+
+    def test_actual_unsafe_path(self):
+        self.reject_modified_copy('escape', 'unsafe')
+
+    def test_actual_rehashed_receipt_mismatch(self):
+        self.reject_modified_copy('receipt', 'binary receipt differs')
+
+
 if __name__ == '__main__':
-    unittest.main()
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--archive', type=Path)
+    parser.add_argument('--sha256')
+    args, remaining = parser.parse_known_args()
+    if bool(args.archive) != bool(args.sha256):
+        parser.error('--archive and --sha256 must be supplied together')
+    ACTUAL_ARCHIVE, ACTUAL_SHA256 = args.archive, args.sha256
+    unittest.main(argv=[__file__, *remaining])
