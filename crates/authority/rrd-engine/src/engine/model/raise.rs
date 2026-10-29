@@ -194,16 +194,102 @@ pub(in crate::engine) fn public_properties(
         .collect()
 }
 
+fn public_organisation(
+    organisation: &rrd_core::RuntimeEstateOrganisation,
+) -> Result<DataEstateOrganisation> {
+    let id = |value: &RuntimeType| public_change_id(value.as_str());
+    let memberships = |entries: &BTreeMap<RuntimeType, RuntimeType>| {
+        entries
+            .iter()
+            .map(|(identity, domain)| Ok((id(identity)?, id(domain)?)))
+            .collect::<Result<BTreeMap<_, _>>>()
+    };
+    Ok(DataEstateOrganisation {
+        domains: organisation
+            .domains
+            .iter()
+            .map(|(domain_id, domain)| {
+                Ok((
+                    id(domain_id)?,
+                    DataDomainSchema {
+                        title: domain.title.clone(),
+                        description: domain.description.clone(),
+                        parent: domain.parent.as_ref().map(id).transpose()?,
+                    },
+                ))
+            })
+            .collect::<Result<_>>()?,
+        categories: organisation
+            .categories
+            .iter()
+            .map(|(category_id, category)| {
+                Ok((
+                    id(category_id)?,
+                    DataCategorySchema {
+                        title: category.title.clone(),
+                        description: category.description.clone(),
+                        targets: match category.targets {
+                            rrd_core::RuntimeCategoryTargets::Kinds => DataCategoryTargets::Kinds,
+                            rrd_core::RuntimeCategoryTargets::Records => {
+                                DataCategoryTargets::Records
+                            }
+                            rrd_core::RuntimeCategoryTargets::KindsAndRecords => {
+                                DataCategoryTargets::KindsAndRecords
+                            }
+                        },
+                        cardinality: match category.cardinality {
+                            rrd_core::RuntimeTagCardinality::Single => DataTagCardinality::Single,
+                            rrd_core::RuntimeTagCardinality::Multiple => {
+                                DataTagCardinality::Multiple
+                            }
+                        },
+                        open: category.open,
+                        tags: category
+                            .tags
+                            .iter()
+                            .map(|(tag, schema)| {
+                                Ok((
+                                    id(tag)?,
+                                    DataTagSchema {
+                                        title: schema.title.clone(),
+                                        description: schema.description.clone(),
+                                    },
+                                ))
+                            })
+                            .collect::<Result<_>>()?,
+                    },
+                ))
+            })
+            .collect::<Result<_>>()?,
+        kind_domains: memberships(&organisation.kind_domains)?,
+        collection_domains: memberships(&organisation.collection_domains)?,
+        kind_tags: organisation
+            .kind_tags
+            .iter()
+            .map(|(kind, tags)| {
+                Ok((
+                    id(kind)?,
+                    tags.iter()
+                        .map(|reference| {
+                            Ok(DataTagReference {
+                                category: id(&reference.category)?,
+                                tag: id(&reference.tag)?,
+                            })
+                        })
+                        .collect::<Result<_>>()?,
+                ))
+            })
+            .collect::<Result<_>>()?,
+    })
+}
+
 pub(in crate::engine) fn public_schema(
     registry: &RuntimeSchemaRegistry,
 ) -> Result<DataSchemaRegistry> {
     Ok(DataSchemaRegistry {
         revision: registry.revision,
         migration: registry.migration.clone(),
-        catalogue: DataCatalogueIdentity {
-            namespace: public_change_id(registry.catalogue.namespace.as_str())?,
-            database: public_change_id(registry.catalogue.database.as_str())?,
-        },
+        organisation: public_organisation(&registry.organisation)?,
         tables: registry
             .tables
             .iter()

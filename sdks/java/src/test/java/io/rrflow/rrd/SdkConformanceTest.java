@@ -165,6 +165,31 @@ final class SdkConformanceTest {
                 options("vector-search", session, false, Map.of(), null));
         assertTrue(containsVector(
                 vectors.path("hits"), expected.path("vector_reference").asString()));
+        // The runners share one estate, so activate the generation this build returned.
+        JsonNode quantization = vector.path("quantization");
+        JsonNode built = api.call(
+                OperationId.VECTOR_QUANTIZATION_BUILD,
+                quantization.path("build"),
+                options("quantization-build", session, true, Map.of(), null));
+        JsonNode artifact = built.path("artifact");
+        assertEquals(
+                quantization.path("activate").path("artifact_id").asString(),
+                artifact.path("artifact_id").asString());
+        ObjectNode activate = (ObjectNode) quantization.path("activate").deepCopy();
+        activate.set("generation", artifact.path("generation"));
+        api.call(
+                OperationId.VECTOR_QUANTIZATION_ACTIVATE,
+                activate,
+                options("quantization-activate", session, true, Map.of(), null));
+        JsonNode quantized = api.call(
+                OperationId.VECTOR_SEARCH,
+                quantization.path("search"),
+                options("quantized-search", session, false, Map.of(), null));
+        assertEquals(
+                expected.path("quantized_access_path").asString(),
+                quantized.path("access_path").asString());
+        assertTrue(containsVector(
+                quantized.path("hits"), expected.path("vector_reference").asString()));
 
         JsonNode changes = api.call(
                 OperationId.CHANGEFEED_READ,

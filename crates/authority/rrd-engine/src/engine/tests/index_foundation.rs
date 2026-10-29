@@ -104,7 +104,7 @@ fn public_engine_owns_every_index_family_and_enforces_unique_commits() {
                 registry: DataSchemaRegistry {
                     revision: 1,
                     migration: "install index foundation fixture".into(),
-                    catalogue: DataCatalogueIdentity::default(),
+                    organisation: DataEstateOrganisation::default(),
                     tables: BTreeMap::from([
                         (
                             CanonicalId::new("document").unwrap(),

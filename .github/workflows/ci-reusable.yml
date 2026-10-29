@@ -247,7 +247,9 @@ jobs:
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
       - name: Test offline controller outcome review exchange
-        run: python3 scripts/inference/test_review_outcomes.py
+        run: |
+          python3 scripts/inference/test_review_outcomes.py
+          python3 scripts/inference/test_review_decisions.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
       - name: Enforce knowledge-package drift and reproducibility
@@ -262,12 +264,28 @@ jobs:
           python3 scripts/knowledge/test_export.py
       - name: Enforce exhaustive RRFlow 1.0 file planning
         run: |
+          set -euo pipefail
           python3 scripts/ci/test_execution_inventory.py
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
+          python3 scripts/ci/build_execution_inventory.py
+          git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt
+          test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"
           python3 scripts/ci/build_execution_inventory.py --check
           python3 scripts/knowledge/render_capacity_profiles.py --check
           python3 scripts/knowledge/test_capacity_profiles.py
           python3 scripts/ci/test_collect_storage_acceptance.py
           python3 scripts/ci/test_sustained_launch.py
+      - name: Retain revision-bound execution inventory
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: execution-inventory-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            target/rrflow-1.0-file-plan.jsonl
+            target/rrflow-inventory-revision.txt
+          if-no-files-found: error
+          retention-days: 14
       - name: Enforce generated product-surface parity
         run: python3 scripts/ci/check_generated_surfaces.py
       - name: Enforce RRFlow engine ownership

@@ -38,7 +38,15 @@ interface Corpus {
     commit: JsonObject & { operation_sha256: string };
   };
   query: JsonObject;
-  vector: { ensure: JsonObject; search: JsonObject };
+  vector: {
+    ensure: JsonObject;
+    search: JsonObject;
+    quantization: {
+      build: JsonObject;
+      activate: JsonObject & { artifact_id: string };
+      search: JsonObject;
+    };
+  };
   changefeed: {
     read: JsonObject & { after_cursor: number; limit: number; scope: string };
     follow_wait_timeout_ms: number;
@@ -51,6 +59,7 @@ interface Corpus {
     endpoint_count: number;
     query_identity: string;
     vector_reference: string;
+    quantized_access_path: string;
     estate_revision: number;
     typed_error: string;
     retry_attempts: number;
@@ -198,6 +207,34 @@ const vectors = await client.call(
 );
 assert.ok(
   vectors.hits.some(
+    (hit) => `${hit.reference.kind}:${hit.reference.id}` === corpus.expected.vector_reference,
+  ),
+);
+// The quantization lifecycle. The runners share one estate, so this runner
+// activates the generation its own build returned.
+const quantization = corpus.vector.quantization;
+const built = await client.call(
+  "vector-quantization-build",
+  quantization.build as RequestPayload<"vector-quantization-build">,
+  mutation("quantization-build", session),
+);
+assert.equal(built.artifact.artifact_id, quantization.activate.artifact_id);
+await client.call(
+  "vector-quantization-activate",
+  {
+    ...quantization.activate,
+    generation: built.artifact.generation,
+  } as RequestPayload<"vector-quantization-activate">,
+  mutation("quantization-activate", session),
+);
+const quantized = await client.call(
+  "vector-search",
+  quantization.search as RequestPayload<"vector-search">,
+  read("quantized-search", session),
+);
+assert.equal(quantized.access_path, corpus.expected.quantized_access_path);
+assert.ok(
+  quantized.hits.some(
     (hit) => `${hit.reference.kind}:${hit.reference.id}` === corpus.expected.vector_reference,
   ),
 );

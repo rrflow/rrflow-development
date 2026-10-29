@@ -17,13 +17,15 @@ second roadmap, architecture, POA&M, or status authority.
 | What verified gap is being remediated? | [Canonical POA&M](../../poam/rrflow-1.0-alpha.md) and its linked item record |
 | What boundary and semantics constrain the design? | [Architecture](../../architecture/) and [reference](../../reference/) owners |
 | Which exact final paths may change now? | The open pull request's description and diff ([pull request and CI binding](change-authoring.md#pull-request-and-ci-binding)) |
-| Which current and planned files map to gates? | [Generated file plan](../rrflow-1.0-file-plan.jsonl) |
+| Which current and planned files map to gates? | [Inventory descriptor](../rrflow-1.0-file-plan.jsonl); generate the current view with `python3 scripts/ci/build_execution_inventory.py` |
 | What happened in completed packages? | [Linked change journals](../../evidence/change-journals/) and gate evidence records |
 
 The roadmap dependency spine is the only current-package pointer. This record
 does not repeat it. The open pull request is the only exact path envelope for
 the in-progress repository mutation. The generated file plan is discovery
 and impact inventory; it is not permission to edit or evidence of completion.
+The tracked JSONL link is a stable retirement descriptor; the current view is
+regenerated from the current checkout into ignored `target/rrflow-1.0-file-plan.jsonl`.
 
 ## Former monolith disposition
 
@@ -35,7 +37,7 @@ receipt disappear:
 |---|---|
 | Change-authoring routine, checklist, evidence template, run widening, and stop conditions | [Change-authoring procedure](change-authoring.md) and [CI operations](../../operations/ci.md) |
 | Product vocabulary, dependency direction, target source placement, and runtime flows | [System overview](../../architecture/system-overview.md), [engine data flow](../../architecture/engine-data-flow.md), [agent bootstrap](../../reference/agent-bootstrap.md), and [installed lifecycle](../../reference/deployment/installed-lifecycle.md) |
-| Current implementation inventory and structural traceability | Generated [file plan](../rrflow-1.0-file-plan.jsonl), the package's pull request, and its final linked journal |
+| Current implementation inventory and structural traceability | Generated file inventory ([descriptor](../rrflow-1.0-file-plan.jsonl)), the package's pull request, and its final linked journal |
 | Gate work packages, dependency order, and acceptance | Canonical [roadmap](../rrflow-1.0.md), [gate chapters](../rrflow-1.0/), and [dependency spine](../rrflow-1.0/executable-dependency-spine.md) |
 | Verified gaps and remediation lifecycle | Canonical [POA&M](../../poam/rrflow-1.0-alpha.md) and its child records |
 | Ninety-six completed package receipts | Generated [change-journal index](../../evidence/change-journals/); each payload retains its baseline locator and digest |
@@ -78,8 +80,10 @@ POA&M. Do not grow this navigation record into a global implementation audit.
 Use these generated and executable views together:
 
 1. Git supplies the exact current tree and changed-path history.
-2. `docs/roadmap/rrflow-1.0-file-plan.jsonl` projects tracked and declared
-   future paths to owning gates.
+2. Run `python3 scripts/ci/build_execution_inventory.py` to project tracked
+   and declared future paths to owning gates in `target/rrflow-1.0-file-plan.jsonl`.
+   The [tracked descriptor](../rrflow-1.0-file-plan.jsonl) preserves the former
+   link and identifies the last tracked projection; it is not the current map.
 3. Cargo metadata, contract catalogues, schemas, and focused tests expose the
    implemented dependency and behavior surface.
 4. The active change package narrows the permitted edit set.
