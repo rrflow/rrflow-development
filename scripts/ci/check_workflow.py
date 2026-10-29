@@ -112,7 +112,15 @@ def job_blocks(workflow: str) -> dict[str, str]:
 
 
 def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
-    """Keep the native worker's Windows lifecycle and Linux image oracles required."""
+    """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
+    marker = "      - name: Require bounded native sampler failure\n"
+    require(reopen.count(marker) == 1, "bounded native sampler failure CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        timeout-minutes: 5\n"
+        "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture\n"
+    )
+    require(block == required, "bounded native sampler failure step must retain its exact timeout and command")
     marker = "      - name: Verify owned Windows native sampler lifecycle\n"
     require(reopen.count(marker) == 1, "native sampler Windows CI step must occur once")
     block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]

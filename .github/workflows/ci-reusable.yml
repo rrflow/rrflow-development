@@ -551,6 +551,9 @@ jobs:
       - name: Exercise installed capacity workload and backup readback
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_capacity_workload_smoke --exact --ignored --nocapture
+      - name: Require bounded native sampler failure
+        timeout-minutes: 5
+        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture
       - name: Verify owned Windows native sampler lifecycle
         if: runner.os == 'Windows'
         timeout-minutes: 5

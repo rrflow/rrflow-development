@@ -32,6 +32,14 @@ succeed; replacing the pinned path with different bytes was denied. This does
 not establish binary provenance before the pin, uncontained launch identity,
 bounded native cleanup, hosted CI or the frozen capacity/soak evidence.
 
+The [bounded acquisition candidate](../../evidence/change-journals/gate-c/c-07g-bounded-native-acquisition.md)
+addresses a separate wait: the sampler previously awaited its worker response
+without a deadline if the monitor could not finish. On expiry it now reports an
+error and, while the owner remains alive, denies admission until its monitor
+finishes. A deliberately delayed monitor test covers that state; it does not
+prove an operating-system-stuck process can be terminated or reaped, and C-07
+remains open.
+
 The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 retains a macOS installed-domain-crash failure from run 40730847766: native
 `hdiutil create` returned `Resource busy` while preparing a capacity image.

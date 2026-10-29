@@ -104,6 +104,19 @@ impl Owner {
     }
 
     async fn acquire_request(&self, request: Request) -> DriverResult<Observation> {
+        self.acquire_request_with(request, DEADLINE, run_helper)
+            .await
+    }
+
+    async fn acquire_request_with<F>(
+        &self,
+        request: Request,
+        deadline: Duration,
+        runner: F,
+    ) -> DriverResult<Observation>
+    where
+        F: FnOnce(&str, Arc<AtomicBool>) -> DriverResult<Observation> + Send + 'static,
+    {
         let expected_pid = request.pid;
         let expected_harness = request.harness_pid;
         let input = serde_json::to_string(&request).map_err(|error| error.to_string())?;
@@ -133,7 +146,7 @@ impl Owner {
             }
             let token = cancel.clone();
             let thread = thread::spawn(move || {
-                let result = run_helper(&input, token);
+                let result = runner(&input, token);
                 let _ = sender.send(result);
             });
             *active = Some(Active {
@@ -142,7 +155,10 @@ impl Owner {
             });
         }
         let _cancel_on_drop = CancelOnDrop(cancel.clone());
-        let observation = receiver.await.map_err(|_| "native worker monitor stopped");
+        let observation = tokio::time::timeout(deadline, receiver)
+            .await
+            .map_err(|_| "native worker acquisition exceeded its deadline")?
+            .map_err(|_| "native worker monitor stopped");
         self.join_finished(Some(&cancel)).await?;
         let observation = observation??;
         if observation.pid != expected_pid
@@ -156,7 +172,15 @@ impl Owner {
     }
 
     async fn join_finished(&self, expected: Option<&Arc<AtomicBool>>) -> DriverResult<()> {
-        let deadline = tokio::time::Instant::now() + DEADLINE;
+        self.join_finished_with_timeout(expected, DEADLINE).await
+    }
+
+    async fn join_finished_with_timeout(
+        &self,
+        expected: Option<&Arc<AtomicBool>>,
+        timeout: Duration,
+    ) -> DriverResult<()> {
+        let deadline = tokio::time::Instant::now() + timeout;
         loop {
             {
                 let mut active = self
@@ -306,6 +330,99 @@ fn native_sample_helper() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse() {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let directory = tempfile::tempdir().unwrap();
+                let marker = directory.path().join("held-native-worker");
+                let owner = Owner::default();
+                let pending_owner = owner.clone();
+                let pending_marker = marker.clone();
+                let (release, held) = std::sync::mpsc::sync_channel::<()>(1);
+                let (reaped, observed_reap) = std::sync::mpsc::sync_channel::<()>(1);
+                let pending = tokio::spawn(async move {
+                    pending_owner
+                        .acquire_request_with(
+                            Request {
+                                pid: std::process::id(),
+                                harness_pid: std::process::id(),
+                                allocation: None,
+                                hold_marker: Some(pending_marker),
+                            },
+                            Duration::from_secs(4),
+                            move |input, cancel| {
+                                let result = run_helper(input, cancel);
+                                let _ = reaped.send(());
+                                // Test-only delay models a monitor that cannot yet
+                                // report cleanup; it is not an OS failure claim.
+                                let _ = held.recv_timeout(Duration::from_secs(10));
+                                result
+                            },
+                        )
+                        .await
+                });
+                let helper_pid = tokio::time::timeout(Duration::from_secs(3), async {
+                    loop {
+                        if let Ok(value) = std::fs::read_to_string(&marker) {
+                            if let Ok(pid) = value.parse::<u32>() {
+                                break pid;
+                            }
+                        }
+                        tokio::time::sleep(Duration::from_millis(5)).await;
+                    }
+                })
+                .await
+                .expect("real native helper did not enter the hold");
+                let result = tokio::time::timeout(Duration::from_secs(6), pending)
+                    .await
+                    .expect("acquisition did not return within the test bound")
+                    .unwrap();
+                assert_eq!(
+                    result.err().as_deref(),
+                    Some("native worker acquisition exceeded its deadline")
+                );
+                tokio::time::timeout(Duration::from_secs(2), async {
+                    while observed_reap.try_recv().is_err() {
+                        tokio::time::sleep(Duration::from_millis(5)).await;
+                    }
+                })
+                .await
+                .expect("test helper did not finish its real cancellation");
+                let mut processes = sysinfo::System::new();
+                let helper = sysinfo::Pid::from_u32(helper_pid);
+                processes.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[helper]), true);
+                assert!(processes.process(helper).is_none());
+                assert_eq!(
+                    owner
+                        .acquire(std::process::id(), &None)
+                        .await
+                        .err()
+                        .as_deref(),
+                    Some("previous native sample is still active or being reaped")
+                );
+                assert_eq!(
+                    owner
+                        .join_finished_with_timeout(None, Duration::from_millis(100))
+                        .await
+                        .unwrap_err(),
+                    "native worker cleanup exceeded its deadline"
+                );
+                tokio::time::timeout(Duration::from_millis(500), async {
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                })
+                .await
+                .expect("unfinished cleanup blocked the scheduler");
+                release.send(()).unwrap();
+                owner.shutdown().await.unwrap();
+                assert!(owner.acquire(std::process::id(), &None).await.is_ok());
+                owner.shutdown().await.unwrap();
+            });
+    }
 
     #[cfg(target_os = "linux")]
     #[test]
