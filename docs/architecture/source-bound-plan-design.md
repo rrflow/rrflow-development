@@ -31,6 +31,14 @@ engine-owned per-prompt handoff, effect-scoped question records, or supported
 attunement replan is implemented here. An installation plan, a status API, a
 schema, or a Git commit is not evidence that these behaviors exist.
 
+The existing `AttunementJob::validate_transition` rejects a change to an
+existing job's `plan_id` or `plan_sha256`. Receipt readback resolves the plan
+recorded by the receipt; control replay currently validates against the
+current job's plan. Because the supported transition does not retarget that
+job, an artificial test that rewrites its plan would not prove a supported
+replan failure. A real successor and cross-job replay still require their own
+implementation and evidence.
+
 ## Proposed ownership and identities
 
 `RrdEngine` owns the accepted plan, its source binding, authorization,
@@ -117,12 +125,15 @@ identity and is never relabelled as a D-03 snapshot.
 5. On explicit acceptance of the replacement, the engine atomically records
    the accepted version and supersession against the expected previous plan
    and job revision, fences prior workers, and records the decision and
-   receipt through its existing durable authority. A conflict means refresh
-   and retry, not silently replacing a newer version. Old plans, checkpoints
-   and receipts remain attributable to the old source. Previously published
-   output is not silently relabelled current or deleted; reuse needs matching
-   dependency, policy, authorization and output evidence. A new job may refer
-   to the replacement, but its identity and lifecycle remain engine-owned.
+   receipt through its existing durable authority. Under the current immutable
+   job contract, the replacement uses a distinct job bound to the new plan;
+   the previous job is not retargeted. Changing that contract would require a
+   separate explicit design and evidence. A conflict means refresh and retry,
+   not silently replacing a newer version. Old jobs, plans, checkpoints and
+   receipts remain attributable to the old source. Previously published output
+   is not silently relabelled current or deleted; reuse needs matching
+   dependency, policy, authorization and output evidence. The successor link,
+   job creation and fencing remain engine-owned future behavior.
 
 The replan operation must be available without reinstalling or deleting the
 estate. Cancellation and recovery must remain possible even when ordinary work
