@@ -14,6 +14,45 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
+locally exercised held and interrupted resource acquisition and Windows Job
+membership for the engine, harness and helper. A [subsequent Windows Job test](../../evidence/change-journals/gate-c/c-07g-native-worker-windows-ci.md)
+observed the held helper terminate after its test parent was killed and the
+launcher quiesced the Job. It has not established bounded cleanup when native
+termination or reaping fails, abrupt parent death outside that Job or on other
+platforms, helper image identity, frozen-profile overhead or the 24-hour soak.
+The original delayed-sample cause remains unproven; this candidate does not
+close C-07 or POAM-035.
+
+The [Windows image-pin candidate](../../evidence/change-journals/gate-c/c-07g-windows-harness-image-pin.md)
+reproduced a running copied harness pathname being renamed and holds its
+qualification image and non-reparse ancestors across the owned Job. On the
+tested host, a hard link could still be added and a same-file rename could
+succeed; replacing the pinned path with different bytes was denied. This does
+not establish binary provenance before the pin, uncontained launch identity,
+bounded native cleanup, hosted CI or the frozen capacity/soak evidence.
+
+The [bounded acquisition candidate](../../evidence/change-journals/gate-c/c-07g-bounded-native-acquisition.md)
+addresses a separate wait: the sampler previously awaited its worker response
+without a deadline if the monitor could not finish. On expiry it now reports an
+error and, while the owner remains alive, denies admission until its monitor
+finishes. A deliberately delayed monitor test covers that state; it does not
+prove an operating-system-stuck process can be terminated or reaped, and C-07
+remains open.
+
+The [Windows supervisor cleanup test](../../evidence/change-journals/gate-c/c-07g-windows-timeout-supervisor.md)
+deliberately leaves a real held helper alive after an acquisition timeout and
+incomplete cleanup report, then observes the owned Job terminate it after the
+test harness exits. The monitor's refusal to forward cancellation is injected;
+this does not by itself establish termination of an OS-stuck process or Linux cleanup.
+
+The [Linux cgroup supervisor test](../../evidence/change-journals/gate-c/c-07g-linux-cgroup-supervisor.md)
+separately verified engine, harness and helper containment, then observed a
+killable helper exit after its timed-out test harness and the launcher's owned
+cgroup cleanup in one delegated WSL2 scope. It retained pidfds to identify the
+actual processes. Monitor unresponsiveness was injected; native Linux hardware,
+OS-stuck termination, full-profile and soak evidence remain open.
+
 The [SDK candidate CI correction record](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
 retains a macOS installed-domain-crash failure from run 40730847766: native
 `hdiutil create` returned `Resource busy` while preparing a capacity image.

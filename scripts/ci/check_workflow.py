@@ -111,6 +111,46 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
+    """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
+    marker = "      - name: Require bounded native sampler failure\n"
+    require(reopen.count(marker) == 1, "bounded native sampler failure CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        timeout-minutes: 5\n"
+        "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture\n"
+    )
+    require(block == required, "bounded native sampler failure step must retain its exact timeout and command")
+    marker = "      - name: Verify owned Windows native sampler lifecycle\n"
+    require(reopen.count(marker) == 1, "native sampler Windows CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        if: runner.os == 'Windows'\n"
+        "        timeout-minutes: 5\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          python scripts/ci/test_windows_harness_image.py --profile release\n"
+        "          python scripts/ci/test_native_sample_worker.py --profile release\n"
+    )
+    require(block == required, "native sampler CI step must retain its exact condition, timeout and command")
+    marker = "      - name: Verify Linux native sampler running image\n"
+    require(reopen.count(marker) == 1, "native sampler Linux image CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        if: runner.os == 'Linux'\n"
+        "        timeout-minutes: 5\n"
+        "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest --exact --nocapture\n"
+    )
+    require(block == required, "native sampler Linux image step must retain its exact condition, timeout and command")
+    policy_marker = "      - name: Enforce repository CI policy\n"
+    require(verify.count(policy_marker) == 1, "repository CI policy step must occur once")
+    policy = verify.split(policy_marker, 1)[1].split("      - name:", 1)[0]
+    require(policy.count("          python3 scripts/ci/test_native_sample_policy.py\n") == 1
+            and "continue-on-error:" not in policy,
+            "native sampler policy regressions must run without a bypass")
+
+
 def verify_execution_inventory_ci(verify: str) -> None:
     """Keep each retained inventory bound to the clean checked-out revision."""
     marker = "      - name: Enforce exhaustive RRFlow 1.0 file planning\n"
@@ -430,6 +470,25 @@ def verify_sdk_conformance(block: str) -> None:
     )
 
 
+def verify_standalone_rrflowdb(jobs: dict[str, str]) -> None:
+    build = "cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb"
+    run = '"$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"'
+    step = ("      - name: Build and exercise the standalone rrflowDB example\n"
+            "        shell: bash\n"
+            "        run: |\n"
+            f"          {build}\n"
+            '          suffix=""\n'
+            '          python_command=python3\n'
+            '          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi\n'
+            f"          {run}\n")
+    for name in ("topology-smoke", "estate-portability"):
+        block = jobs[name]
+        require(block.count(step) == 1 and block.count(run) == 1,
+                f"{name} must unconditionally build and run the native standalone rrflowDB example")
+    require(jobs["verify"].count("python3 scripts/ci/test_rrflowdb_standalone.py") == 1,
+            "verify must run standalone rrflowDB oracle and process tests")
+
+
 def single_ci_value(reusable: str, pattern: str, label: str) -> str:
     values = set(re.findall(pattern, reusable))
     require(
@@ -571,6 +630,7 @@ def main() -> None:
     jobs = job_blocks(reusable)
     verify_candidate_admission(caller)
     verify_execution_inventory_ci(jobs["verify"])
+    verify_native_sample_worker_ci(jobs["installed-reopen"], jobs["verify"])
     require(
         reusable.count("python3 scripts/ci/test_candidate_admission.py") == 1,
         "candidate admission regressions must run exactly once",
@@ -810,6 +870,7 @@ def main() -> None:
 
     suite_count, package_count = verify_engine_suites(jobs["engine-suites"])
     verify_sdk_conformance(jobs["sdk-conformance"])
+    verify_standalone_rrflowdb(jobs)
     feature_count = verify_optional_features(
         jobs["optional-features"], jobs["pgvector-feature"]
     )

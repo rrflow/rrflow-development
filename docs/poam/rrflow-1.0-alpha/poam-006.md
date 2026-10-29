@@ -387,6 +387,18 @@ adds direct installed-open and verification evidence for torn/missing active
 WAL preservation. Both cases pass locally without production changes; the final
 native candidate must execute the added test before D-01 acceptance closes.
 
+## Standalone database example
+
+The documented source-built local database path had a reproducible Windows
+installation failure: Cargo's primary executable and its `deps` entry were
+hard links to the same file, while installed executable admission requires a
+single link. A clean source build succeeded, the original path was denied,
+and a separately copied executable with the same SHA-256 completed an actual
+installed database lifecycle. The security boundary remains intact. The
+[standalone database journey journal](../../evidence/change-journals/gate-h/h-04-standalone-rrflowdb-journey.md)
+records the guide correction and test; Linux/macOS hosted results, candidate
+CI and merge qualification remain pending. This does not close D-01 or H-04.
+
 ## Endpoint and task contract integration
 
 The [combined integration record](../../evidence/change-journals/gate-d/endpoint-profile-task-control-integration.md)

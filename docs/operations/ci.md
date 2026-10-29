@@ -37,18 +37,22 @@ preemption affect interpretation.
 
 The trace span contains SHA-256 of the client request ID rather than its raw
 value. The digest can still be sensitive or guessable; treat traces as scoped
-diagnostic data. The caller must record a unique ID for each request and
-compute the same digest to join records. The current C-07 resource sampler
-reuses `capacity-resource`, so this trace alone does not give that sampler a
-unique sample-to-request identity; update the sampler in its own integration
-package before making a one-to-one correlation claim. Missing or truncated
-events are missing evidence, not zero cost. Exact-field or source-location
-subscriber filters can affect the `tracing` enabled check; use the stated
-target filter and validate capture on the installed candidate.
+diagnostic data. The C-07 sampler uses a checked process-local request counter
+and prints the matching digest for completed slow samples within its existing
+64-record bound; include the harness process and campaign identity when joining
+across restarts. Failed or canceled calls need not produce a completed-sample
+record, and records beyond that bound are not retained. Other callers need
+their own unique request IDs and matching digest to join records. Missing or
+truncated events are missing evidence, not zero cost. Exact-field or
+source-location subscriber filters can affect the `tracing` enabled check; use
+the stated target filter and validate capture on the installed candidate.
 
 The [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
 records the bounded controlled test and its limits. The original failed run
 used an earlier binary and cannot retroactively acquire these events.
+The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installed-trace-correlation.md)
+records the small installed mixed-family and restart proof; it is not capacity
+or soak qualification.
 
 ## Candidate chain
 
@@ -95,6 +99,15 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
+
+The Linux lifecycle and Windows/macOS portability lanes also build the native
+`rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
+copies, and run the installed example over authenticated loopback HTTP. The
+runner checks the exact synthetic task and owning relationship at one read
+stamp, changes the task, rejects the old expectation, verifies the stopped
+estate and reads the same state after reopening. It bounds child output and
+execution, and terminates only its own processes. This is a small fresh-project
+integration corpus, not the complete H-04 SDK matrix or C-07 qualification.
 
 The Linux topology and Windows/macOS estate partitions also require
 `projected_lifetime` and `reader::lifetime_tests`: overlapping empty-reader

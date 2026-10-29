@@ -10,6 +10,7 @@ type Result<T> = std::result::Result<T, String>;
 
 #[derive(Clone)]
 pub(super) struct Workload {
+    pub native_worker: super::native_worker::Owner,
     pub client: RrdClient,
     pub session: Session,
     pub valid_at: u64,
