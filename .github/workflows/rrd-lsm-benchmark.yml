@@ -14,7 +14,6 @@ jobs:
       CARGO_BUILD_JOBS: "2"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
-      RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +31,8 @@ jobs:
           python3 scripts/ci/test_native_capacity.py
       - name: Run required APFS repetitions as preflight
         timeout-minutes: 30
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
         run: >-
           python3 scripts/ci/run_native_capacity.py
           --mode fresh --mode existing --mode fresh --mode existing
