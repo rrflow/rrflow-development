@@ -86,6 +86,13 @@ jobs:
         run: python3 scripts/ci/run_filesystem_containment.py
       - name: Test the real install, serve, authenticate, stop, reopen lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+      - name: Build and exercise the standalone rrflowDB example
+        shell: bash
+        run: |
+          cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+          suffix=""
+          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; fi
+          python3 scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"
       - name: Test bounded native lifecycle capture
         run: cargo test -p rrflow-cli --test lifecycle_process --locked
       - name: Require native foreign-owner denial
@@ -200,6 +207,13 @@ jobs:
           retention-days: 14
       - name: Test native installed primary lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+      - name: Build and exercise the standalone rrflowDB example
+        shell: bash
+        run: |
+          cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+          suffix=""
+          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; fi
+          python3 scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"
       - name: Deny installed lifecycle test warnings
         run: cargo clippy -p rrflow-cli --test installed_lifecycle --test lifecycle_process --locked -- -D warnings
       - name: Build cross-package controller fixture
@@ -241,6 +255,7 @@ jobs:
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
+          python3 scripts/ci/test_rrflowdb_standalone.py
           python3 scripts/ci/check_workflow.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
