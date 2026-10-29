@@ -175,7 +175,7 @@ final class SdkConformanceTest {
         assertEquals(
                 quantization.path("activate").path("artifact_id").asString(),
                 artifact.path("artifact_id").asString());
-        ObjectNode activate = quantization.path("activate").deepCopy();
+        ObjectNode activate = (ObjectNode) quantization.path("activate").deepCopy();
         activate.set("generation", artifact.path("generation"));
         api.call(
                 OperationId.VECTOR_QUANTIZATION_ACTIVATE,
