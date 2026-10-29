@@ -1,0 +1,12 @@
+{
+  "configuration.json": "01c7b5577155069eaa864e1c21ab43879312af8800e46652eb46b30019d52e0e",
+  "allowance.json": "5f6806efc8ff9ab94b7711cdc449a1698c7756768e2209a59d1f5224c76063f3",
+  "choice-content.json": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+  "choice-request.json": "530580d5f8d58b1f225365dd76eed08f408d08389bb1efb607cfb0ca36a04f96",
+  "choice-response.json": "f5956243a0d6b1131cd368787e22d6ac3841e61313940b1154dc968a9c9124a5",
+  "default-effort-request.json": "637a1d9892adb2e718e3a48d41ea01d4304d4995fd32b0e63c86101c53ba884c",
+  "default-effort-response.json": "76c16fab8123ec6a06a38421c0a9055eea1a92cea98e8b1db1b6d2f3ce8a08f3",
+  "effort-observation.json": "5eb0aa053596ef03db099e8c99ba73d20346f9c137bd40603201f3b92ab2f92c",
+  "receipt.json": "a0995906c97f4660f1c6bb9e7e0a293a0e9b3474f650f243f192da87fb29cf46",
+  "task.json": "2f2f080a08f41fd5b4f8f5e2895ace9230a6c3cd1e7659b0382989644b6d1656"
+}

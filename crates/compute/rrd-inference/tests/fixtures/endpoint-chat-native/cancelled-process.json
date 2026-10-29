@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-29T17:20:19.793887+00:00",
+  "case": "cancelled",
+  "exit": 1,
+  "receipt": {
+    "engine_authorized": false,
+    "failure": {
+      "dispatch_may_have_occurred": true,
+      "http_status": null,
+      "reason": "chat cancelled"
+    },
+    "scope": "operator_transport_observation",
+    "training_admitted": false,
+    "worker_dispatched": false
+  }
+}
