@@ -62,6 +62,18 @@ engines.
 decision, and the [estate organisation contract](../../reference/data/estate-organisation.md)
 owns its terms.
 
+## Progress
+
+H-11a closed the registry part of this gap. Domain and category definitions,
+the membership of every kind and vector collection, and kind tags are part of
+the schema registry. They are validated at the public boundary and in the
+kernel, persisted on rrflowMX and rrflowKV, and readable after reopen. The
+former `namespace`/`database` label is gone, and every default-organisation
+registry keeps its digest. Record tags, scoped reads, isolation, domain grants
+and per-domain evidence remain open, so every read is still estate-wide. The
+[H-11a journal](../../evidence/change-journals/gate-h/h-11a-estate-organisation-registry.md)
+records the evidence.
+
 ## Owning gates
 
 H-11 owns the organisation contract and its engine behaviour. H-06 projects it

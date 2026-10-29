@@ -218,6 +218,21 @@ async fn installed_attunement_cancel_survives_restart_and_replays() {
         )
         .await
         .unwrap();
+    let receipt_request = rrd_contract::ReadAttunementReceipt {
+        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        job_id: read.job_id.clone(),
+        idempotency_key: rrd_contract::CorrelationId::new("cancel-once").unwrap(),
+    };
+    assert!(client
+        .read_attunement_receipt(
+            &session,
+            receipt_request.clone(),
+            read_options("receipt-before").unwrap()
+        )
+        .await
+        .unwrap()
+        .receipt
+        .is_none());
     let cancel = rrd_contract::CancelAttunement {
         contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
         job_id: read.job_id.clone(),
@@ -261,6 +276,72 @@ async fn installed_attunement_cancel_survives_restart_and_replays() {
         rrd_contract::AttunementJobState::CancelRequested
     );
     assert_eq!(accepted.status.job.revision, before.status.job.revision + 1);
+    let receipt = client
+        .read_attunement_receipt(
+            &session,
+            receipt_request.clone(),
+            read_options("receipt-after").unwrap(),
+        )
+        .await
+        .unwrap()
+        .receipt
+        .unwrap();
+    assert_eq!(receipt.status, accepted.status);
+    assert_eq!(receipt.plan, before.plan);
+    assert_eq!(receipt.principal_id, *session.principal_id());
+    assert_eq!(receipt.operation_sha256.len(), 64);
+    assert_eq!(
+        receipt.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
+    let result = rrd_contract::AttunementReceiptReadResult {
+        receipt: Some(receipt.clone()),
+    };
+    result
+        .validate_for(
+            &receipt_request,
+            session.principal_id(),
+            client.instance_id(),
+        )
+        .unwrap();
+    let mut forged = result.clone();
+    forged.receipt.as_mut().unwrap().operation_sha256 = "not-a-digest".into();
+    assert!(forged
+        .validate_for(
+            &receipt_request,
+            session.principal_id(),
+            client.instance_id()
+        )
+        .is_err());
+    let mut wrong_job = receipt_request.clone();
+    wrong_job.job_id = rrd_contract::CanonicalId::new("job-other").unwrap();
+    assert!(result
+        .validate_for(&wrong_job, session.principal_id(), client.instance_id())
+        .is_err());
+    let other = rrd_contract::CanonicalId::new("other-principal").unwrap();
+    assert!(result
+        .validate_for(&receipt_request, &other, client.instance_id())
+        .is_err());
+    let other_instance = rrd_contract::CanonicalId::new("other-instance").unwrap();
+    assert!(result
+        .validate_for(&receipt_request, session.principal_id(), &other_instance)
+        .is_err());
+    let mut missing = receipt_request.clone();
+    missing.idempotency_key = rrd_contract::CorrelationId::new("different-key").unwrap();
+    assert!(client
+        .read_attunement_receipt(&session, missing, read_options("receipt-missing").unwrap())
+        .await
+        .unwrap()
+        .receipt
+        .is_none());
+    assert!(client
+        .read_attunement_receipt(
+            &closed,
+            receipt_request.clone(),
+            read_options("receipt-denied").unwrap()
+        )
+        .await
+        .is_err());
     let mut changed = cancel.clone();
     changed.reason = "different intent".into();
     assert!(client
@@ -275,6 +356,17 @@ async fn installed_attunement_cancel_survives_restart_and_replays() {
     server.await.unwrap().unwrap();
     let (client, shutdown, server) = start(&project).await;
     let session = login(&client, &project, "cancel-reopened-session").await;
+    let after_receipt = client
+        .read_attunement_receipt(
+            &session,
+            receipt_request,
+            read_options("receipt-reopened").unwrap(),
+        )
+        .await
+        .unwrap()
+        .receipt
+        .unwrap();
+    assert_eq!(after_receipt, receipt);
     let after = client
         .read_attunement(&session, read, read_options("cancel-after").unwrap())
         .await

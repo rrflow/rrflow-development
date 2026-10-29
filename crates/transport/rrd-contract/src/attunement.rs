@@ -5,8 +5,8 @@
 //! authority that may persist transitions and checkpoints.
 
 use crate::{
-    invalid, sha256_bytes, validate_sha256, CanonicalId, DeploymentProfile, EstateConfiguration,
-    InstalledEstateIdentity, MemorySeatDefinition, Result, SecurityAction,
+    invalid, sha256_bytes, validate_sha256, CanonicalId, CorrelationId, DeploymentProfile,
+    EstateConfiguration, InstalledEstateIdentity, MemorySeatDefinition, Result, SecurityAction,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -1064,6 +1064,64 @@ impl AttunementReadResult {
     pub fn validate(&self) -> Result<()> {
         self.plan.validate()?;
         self.status.validate(&self.plan)
+    }
+}
+
+/// Read the authenticated principal's receipt without replaying its command.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReadAttunementReceipt {
+    pub contract_version: u16,
+    pub job_id: CanonicalId,
+    pub idempotency_key: CorrelationId,
+}
+
+impl ReadAttunementReceipt {
+    pub fn validate(&self) -> Result<()> {
+        validate_contract_version(self.contract_version)
+    }
+}
+
+/// Original committed outcome and the immutable plan it references.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReceipt {
+    pub principal_id: CanonicalId,
+    pub operation_sha256: String,
+    pub plan: AttunementPlan,
+    pub status: AttunementStatus,
+    pub source_verification: AttunementSourceVerification,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementReceiptReadResult {
+    pub receipt: Option<AttunementReceipt>,
+}
+
+impl AttunementReceiptReadResult {
+    pub fn validate_for(
+        &self,
+        request: &ReadAttunementReceipt,
+        principal: &CanonicalId,
+        instance: &CanonicalId,
+    ) -> Result<()> {
+        request.validate()?;
+        if let Some(receipt) = &self.receipt {
+            validate_sha256(
+                &receipt.operation_sha256,
+                "attunement receipt operation digest",
+            )?;
+            receipt.plan.validate()?;
+            receipt.status.validate(&receipt.plan)?;
+            if receipt.status.job.id != request.job_id
+                || receipt.principal_id != *principal
+                || receipt.plan.target.instance_id != *instance
+            {
+                return invalid("attunement receipt identity does not match request");
+            }
+        }
+        Ok(())
     }
 }
 

@@ -80,3 +80,7 @@ replan engine work. Every packet explicitly remains
 `pending_independent_review`, `trainingAdmitted: false` and
 `deploymentQualified: false`. Real independent review, consent, split checks,
 acceptance evaluation and authorized engine effects are still required.
+
+Use the [explicit label-review validator](review-decisions.md) to check a
+completed review against the original packet/export. Its output remains
+development evidence and does not admit training or activate a model.
