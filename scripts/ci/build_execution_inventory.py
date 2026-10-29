@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / "docs" / "roadmap" / "rrflow-1.0-file-plan.jsonl"
+OUTPUT = ROOT / "target" / "rrflow-1.0-file-plan.jsonl"
 ROADMAP = ROOT / "docs" / "roadmap" / "rrflow-1.0.md"
 ACTIVE_CHANGE_PLAN = "docs/roadmap/rrflow-1.0-active-change.json"
 
@@ -1693,9 +1693,6 @@ def git_files() -> list[str]:
         capture_output=True,
     )
     paths = [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
-    output_relative = OUTPUT.relative_to(ROOT).as_posix()
-    if output_relative not in paths:
-        paths.append(output_relative)
     return sorted(paths)
 
 
@@ -2007,6 +2004,7 @@ def main() -> int:
             f"execution-inventory: OK: {len(expected.splitlines())} current, generated, and planned path records"
         )
         return 0
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_bytes(expected)
     print(
         f"execution-inventory: wrote {len(expected.splitlines())} current, generated, and planned path records"
