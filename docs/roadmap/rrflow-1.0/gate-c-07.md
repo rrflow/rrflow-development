@@ -779,7 +779,7 @@ measurement receipts and serve them after restart; its own claims cannot be
 the sole acceptance oracle. The current Markdown/Git owners remain the
 authoritative development records until KB-06/07 and KB-08 qualify durable
 knowledge import/resolution. Do not move planning authority into an unqualified
-database or create automatic editor hooks.
+database or an editor hook; a hook stays an alias stub onto those owners.
 
 After D-02 through D-04 and E/F pass, add a bounded repository corpus with
 source edits, renamed/deleted files, contradictory notes and revoked access.

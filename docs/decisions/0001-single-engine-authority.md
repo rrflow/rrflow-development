@@ -78,7 +78,10 @@ not create `GraphDB`, `MemoryDB`, `VectorDB`, or DataFusion-owned authorities.
 - Silent rrflowMX-to-rrflowDB promotion was rejected because volatile state
   cannot acquire durability without an explicit authorized commit.
 - Provider- or editor-owned lifecycle hooks were rejected because clients
-  cannot become RRFlow's reasoning or mutation authority.
+  cannot become RRFlow's reasoning or mutation authority. That rejection
+  covers hooks that own lifecycle, state, or authority;
+  [ADR-0004](0004-host-hooks-as-alias-stubs.md) permits a hook that is an alias
+  stub onto one RRFlow owner.
 
 ## Links
 
