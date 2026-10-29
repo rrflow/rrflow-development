@@ -4,6 +4,7 @@ All model/provider/task inputs are supplied files. No generated labels or model
 responses. Starts and terminates only owned child processes; retains no secrets.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -26,8 +27,12 @@ def main():
     parser.add_argument('--output', required=True)
     parser.add_argument('--recover-proof', help='Read an existing attempt and budget; never dispatch or replay.')
     parser.add_argument('--admission-only', action='store_true', help='Exercise installed denials without provider credentials or dispatch.')
+    parser.add_argument('--fault-case', choices=['configuration', 'session', 'stop', 'disconnect'])
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
+    if args.fault_case and (recovery or args.admission_only):
+        parser.error('A live fault case excludes recovery and admission-only modes.')
+    relay = None
     required_inputs = inputs[:4] if args.admission_only else inputs
     if args.admission_only and (recovery or any(getattr(args, name.replace('-', '_')) is not None for name in inputs[4:])):
         parser.error('Admission-only mode excludes recovery and provider credential inputs.')
@@ -76,6 +81,15 @@ def main():
         policy = profile['selection_policy']
         binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
         assert binding.get('credential'), 'Proof requires an explicitly credentialed binding'
+        if args.fault_case:
+            from installed_controller_fault_relay import FaultRelay
+            fault_timeout = binding['limits']['timeout_ms'] / 1000
+            relay = FaultRelay(binding['endpoint']['url'], out, fault_timeout,
+                               binding['limits']['max_input_bytes'], policy['limits']['maximum_response_bytes'],
+                               2 if args.fault_case == 'configuration' else 1, args.fault_case == 'disconnect')
+            binding['endpoint']['url'] = relay.base_url
+            save('effective-profile.json', profile)
+
         if not args.admission_only:
             mapping = {'format_version': 1, 'entries': [{
                 'reference': binding['credential'], 'environment_variable': args.environment_name}]}
@@ -98,6 +112,8 @@ def main():
     budget_before_restart = None
 
     phases = ['recovered'] if recovery else (['missing-credential', 'denial-reopened'] if args.admission_only else ['missing-credential', 'authorized', 'reopened'])
+    if args.fault_case:
+        phases = ['missing-credential', 'authorized', 'fault-reopened']
     for phase in phases:
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
@@ -153,12 +169,15 @@ def main():
                     except HTTPError as error:
                         return error.code, json.load(error), body
 
-                status, response, _ = http('session-create', {'limits': {
-                    'idle_timeout_ms': 120000, 'absolute_timeout_ms': 300000, 'max_open_transactions': 1}},
-                    {'Authorization': 'ApiKey ' + credential['credential'], 'X-RRD-Principal': credential['principal_id']})
-                assert status == 200, 'Session admission failed'
-                session = response['outcome']['payload']
-                headers = {'Authorization': 'Bearer ' + session['token'], 'X-RRD-Session': session['session_id']}
+                def session_headers():
+                    status, response, _ = http('session-create', {'limits': {
+                        'idle_timeout_ms': 120000, 'absolute_timeout_ms': 300000, 'max_open_transactions': 1}},
+                        {'Authorization': 'ApiKey ' + credential['credential'], 'X-RRD-Principal': credential['principal_id']})
+                    assert status == 200, 'Session admission failed'
+                    session = response['outcome']['payload']
+                    return {'Authorization': 'Bearer ' + session['token'], 'X-RRD-Session': session['session_id']}
+
+                headers = session_headers()
 
                 def call(name, operation, payload, expected=200, authenticate=True, error_contains=None):
                     descriptor = endpoints[operation]
@@ -255,6 +274,73 @@ def main():
                 else:
                     assert request_payload is not None
                     selection = {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}
+                    if args.fault_case:
+                        if phase == 'authorized':
+                            reasons = {'configuration': 'InputsChanged', 'session': 'AuthorizationChanged',
+                                       'stop': 'chat cancelled', 'disconnect': 'remote outcome unknown'}
+                            with ThreadPoolExecutor(max_workers=1) as executor:
+                                pending = executor.submit(call, 'fault-proposal', 'task-endpoint-propose',
+                                                          request_payload, 412, True, reasons[args.fault_case])
+                                try:
+                                    assert relay.ready.wait(fault_timeout), 'No actual provider response at relay'
+                                    assert relay.error is None, 'Provider/relay failed before controlled fault'
+                                    if args.fault_case == 'configuration':
+                                        plan = call('replace-preview', 'endpoint-configuration-preview',
+                                                    {'expected_revision': configuration['revision'], 'profile': profile})
+                                        configuration = call('replace-apply', 'endpoint-configuration-apply',
+                                                             {'plan': plan, 'approved_plan_sha256': plan['plan_sha256']})
+                                    elif args.fault_case == 'session':
+                                        call('close-inflight-session', 'session-close', {})
+                                    elif args.fault_case == 'stop':
+                                        active = call('active-budget', 'task-budget-read',
+                                                      {key: selection[key] for key in ['scope', 'task_id']})
+                                        call('stop-inflight', 'task-budget-stop',
+                                             {**{key: selection[key] for key in ['scope', 'task_id']},
+                                              'expected_budget_sha256': active['budget_sha256']})
+                                finally:
+                                    relay.release.set()
+                                pending.result(timeout=90)
+                            if args.fault_case == 'session':
+                                headers = session_headers()
+                            attempt = call('fault-attempt', 'task-attempt-read', selection)
+                            budget = call('fault-budget', 'task-budget-read',
+                                          {key: selection[key] for key in ['scope', 'task_id']})
+                            assert attempt['attempt'].get('endpoint_proposal') is None
+                            assert budget['budget']['reserved_steps'] == 1
+                            assert budget['budget']['active_attempt'] is None
+                            if args.fault_case in ['configuration', 'session']:
+                                assert attempt['attempt']['status'] == 'invalidated'
+                                assert budget['budget']['execution_may_continue'] is False
+                                assert budget['budget']['stopped'] is None
+                            else:
+                                assert attempt['attempt']['status'] == 'stopped'
+                                assert budget['budget']['execution_may_continue'] is True
+                                assert budget['budget']['stopped'] == ('cancelled' if args.fault_case == 'stop' else 'attempt_failed')
+                            if args.fault_case == 'configuration':
+                                save('changed-configuration.json', configuration)
+                                fresh = subprocess.run([args.contract_example, 'proposal-request', str(out / 'task-record.json'),
+                                    str(out / 'changed-configuration.json'), 'actual-successor-' + uuid4().hex],
+                                    capture_output=True, text=True, encoding='utf-8', timeout=30, check=True)
+                                fresh_request = json.loads(fresh.stdout)
+                                save('fresh-proposal-request.json', fresh_request)
+                                accepted = call('fresh-proposal', 'task-endpoint-propose', fresh_request)
+                                next_budget = call('fresh-budget', 'task-budget-read',
+                                                   {key: selection[key] for key in ['scope', 'task_id']})
+                                assert next_budget['budget']['reserved_steps'] == 2
+                                assert next_budget['budget']['deadline_unix_ms'] == budget['budget']['deadline_unix_ms']
+                                assert next_budget['budget']['charged_elapsed_ms'] >= budget['budget']['charged_elapsed_ms']
+                                budget = next_budget
+                            attempt_before_restart, budget_before_restart = attempt, budget
+                        else:
+                            attempt = call('fault-attempt', 'task-attempt-read', selection)
+                            budget = call('fault-budget', 'task-budget-read',
+                                          {key: selection[key] for key in ['scope', 'task_id']})
+                            assert attempt == attempt_before_restart and budget == budget_before_restart
+                            if args.fault_case == 'configuration':
+                                fresh_attempt = call('fresh-attempt', 'task-attempt-read',
+                                                     {key: fresh_request[key] for key in ['scope', 'task_id', 'attempt_id']})
+                                assert fresh_attempt['attempt']['endpoint_proposal'] == accepted
+                        continue
                     if phase == 'authorized':
                         accepted = call('proposal', 'task-endpoint-propose', request_payload)
                     else:
@@ -276,6 +362,20 @@ def main():
                     process.terminate()
                     process.wait(timeout=30)
                 save(phase + '-owned-process-stopped.json', {'pid': process.pid, 'exitCode': process.returncode})
+    if args.fault_case:
+        relay.close()
+        assert relay.calls == (2 if args.fault_case == 'configuration' else 1)
+        save('result.json', {'sourceCommit': build['provenance']['source_commit'],
+             'binarySha256': build['executable_sha256'],
+             'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'relaySha256': hashlib.sha256(Path(__file__).with_name('installed_controller_fault_relay.py').read_bytes()).hexdigest(),
+             'faultCase': args.fault_case, 'actualProviderCalls': relay.calls,
+             'attempt': attempt_before_restart, 'budget': budget_before_restart,
+             'freshProposal': accepted, 'restartReadbackEqual': True,
+             'ownedServersStopped': True, 'modelQualityQualified': False, 'trainingDataCreated': False,
+             'scope': 'actual provider response held/dropped before engine publication; no provider termination claim'})
+        print(json.dumps({'output': str(out), 'status': 'installed live fault and reopen checks passed'}))
+        return
     if args.admission_only:
         save('result.json', {'sourceCommit': build['provenance']['source_commit'],
              'binarySha256': build['executable_sha256'],

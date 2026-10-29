@@ -685,6 +685,11 @@ implemented by this task-text operation.
 
 The [admission implementation record](../../evidence/change-journals/gate-g/controller-task-proposal-admission.md)
 separates local checks from required installed BF16 and candidate/merge-group proof.
+The [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
+now prove one real BF16 completion, accepted-result reopen/replay and controlled
+configuration/session/Stop/lost-response cases. The public receipts preserve
+uncertainty; held-response Stop is not remote provider termination. Candidate CI
+and protected landing remain separate acceptance requirements.
 This experimental operation closes no Gate G or model-quality requirement.
 
 ## Acceptance and signals

@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
+prove a real configured BF16 proposal, restart/replay and guarded completion under
+configuration replacement, session closure, Stop and response loss. A fresh
+request after configuration invalidation succeeds without resetting the task's
+spent effort or deadline. These bounded task-text proofs do not close worker
+execution, repository-source successor planning, remote hard-stop, public
+uncertainty reconciliation or routing qualification. Candidate CI/landing remain.
+
 PR206's installed development trial at
 `d365d02891350590aa4495b46fc665ef313aec24` reached the new authenticated endpoint
 proposal operation but returned uncertain transport failure. Reopening the same

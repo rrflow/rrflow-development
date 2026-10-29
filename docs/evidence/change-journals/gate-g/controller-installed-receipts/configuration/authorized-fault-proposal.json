@@ -1,0 +1,43 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-29b703ed5d844a3b855dd128a34bbc95",
+      "operation_id": "controller-proof-29b703ed5d844a3b855dd128a34bbc95",
+      "idempotency_key": "controller-proof-29b703ed5d844a3b855dd128a34bbc95",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-4ca7d9e3bc4e99ce78d83179"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-4ca7d9e3bc4e99ce78d83179",
+      "task_id": "task-f94b7089114d3aac9ef712eb579b75e7c61e8b5d25226a7b9221e05007bc5188",
+      "attempt_id": "actual-proposal-c0287d15ad564daebba4b3be03255250",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "780e08765e469732488f48808e57b9551b21e30fd975dde9a264730a303ca8c0",
+      "expected_configuration_sha256": "9b0ed871185936175e003e9bbd329c0fc5f7324f26c7208284c1e5741ba3fa27"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-29b703ed5d844a3b855dd128a34bbc95",
+    "operation_id": "controller-proof-29b703ed5d844a3b855dd128a34bbc95",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "TaskAttemptInvalidated(InputsChanged)",
+        "retryable": false
+      }
+    }
+  }
+}
