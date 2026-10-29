@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-29T16:55:13.565382+00:00",
+  "taskUrl": "https://github.com/rrflow/rrflow-development/pull/198",
+  "taskHead": "add51483f251888889a2fbdcef8521b3e1dbcd68",
+  "configurationSha256": "4621b748db8fbfa1aee8e49dffafcc635394301a1ed58c796db537cc98ca6063",
+  "operatorWithheldCandidates": true,
+  "defaultEffortCall": {
+    "httpStatus": 200,
+    "elapsedSeconds": 3.8850684000062756,
+    "model": "swag-qwen3-coder-intent-20261028",
+    "requestSha256": "637a1d9892adb2e718e3a48d41ea01d4304d4995fd32b0e63c86101c53ba884c",
+    "responseSha256": "d2f59072da16456f29f519e4b1d1f4f24a0a3bf02dbfd5d44650affb16074e7a",
+    "contentSha256": "fa9d8612d497dce644474d2a03afb2da41602943e7dda934bb79580885bd4536",
+    "usage": {
+      "prompt_tokens": 713,
+      "total_tokens": 764,
+      "completion_tokens": 51,
+      "prompt_tokens_details": null
+    }
+  },
+  "choiceCall": {
+    "httpStatus": 200,
+    "elapsedSeconds": 1.5536027000052854,
+    "model": "swag-qwen3-coder-intent-20261028",
+    "requestSha256": "88aed860505af7643ce0a7ed5cc9ab84e37fdef06c2bb366777a88f22a460e1e",
+    "responseSha256": "f883184c586d700bb3183dfa39c3253d9e6cc75b7a3803c247266c74e1371c80",
+    "contentSha256": "3c54cfeb084b86ecaaa6d6b3a48f465afa1ac42943f44402ae7a0f37d8f1ae5c",
+    "usage": {
+      "prompt_tokens": 1270,
+      "total_tokens": 1289,
+      "completion_tokens": 19,
+      "prompt_tokens_details": null
+    }
+  },
+  "scope": "offline_wire_compatibility_on_real_task",
+  "workerDispatched": false,
+  "trainingAdmitted": false,
+  "humanReviewed": false,
+  "routingQualified": false,
+  "limitations": [
+    "Service alias is observed, not independent attestation of loaded model bytes.",
+    "Observed default effort does not establish arbitrary effort support or downstream task quality."
+  ]
+}

@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration types exist, LFG and SWAG execution are unimplemented
+**Status:** active target contract; configuration and pure endpoint-choice validation exist, LFG and SWAG execution are unimplemented
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -71,6 +71,33 @@ types. A separate admitted external activity executes a selected provider.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
+
+### Executable validation prerequisite
+
+`rrd-contract` now exports `EndpointSelectionAllowance`,
+`EndpointSelectionCandidate`, `EndpointEffortSupport`, explicit
+`EndpointSelectionLimits` and `EndpointSelectionChoice`. The allowance binds
+the complete current `EndpointConfiguration` digest, workload class, configured
+binding/service/manifest identities and declared supported effort values.
+Choices contain only a binding and optional effort, or an explicit abstention.
+Unknown effort support cannot silently become permission to omit effort.
+
+`EndpointSelectionChoice::decode` bounds raw bytes and rejects malformed or
+unknown fields, foreign bindings, changed configuration, unsupported effort and
+contradictory no-candidate abstention. Supplied capability evidence digests are
+identifiers, not verified attestations. These pure types perform no network call
+and grant no authority. Engine-derived eligibility, task/source binding,
+authenticated admission, descriptor verification and dispatch remain missing.
+The existing three reasoning-tree decisions and public catalogue are unchanged.
+
+The offline `endpoint_selection` example provides `schema`,
+`configuration-sha256 CONFIGURATION` and
+`verify CONFIGURATION ALLOWANCE RESPONSE` commands. Retained actual BF16
+responses and installed configuration exercise its wire compatibility; denial
+tests perturb those records in memory only. The
+[validation journal](../../evidence/change-journals/gate-g/controller-endpoint-choice-validation.md)
+records provenance and limits. These observations are not training targets,
+human review, provider-quality evidence or completion of G-01b.
 
 ### Inputs and configuration ownership
 
