@@ -308,6 +308,37 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "private launcher-owned abrupt-parent fixture"]
+    fn native_job_abrupt_parent_fixture() {
+        use std::io::Write;
+        let directory = PathBuf::from(std::env::var_os("RRFLOW_NATIVE_ABORT_FIXTURE").unwrap());
+        assert!(directory.is_absolute() && directory.is_dir());
+        let mut marker = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(directory.join("parent.pid"))
+            .unwrap();
+        writeln!(marker, "{}", std::process::id()).unwrap();
+        marker.sync_all().unwrap();
+        let owner = Owner::default();
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let _ = owner
+                    .acquire_request(Request {
+                        pid: std::process::id(),
+                        harness_pid: std::process::id(),
+                        allocation: None,
+                        hold_marker: Some(directory.join("worker.pid")),
+                    })
+                    .await;
+            });
+        panic!("abrupt-parent fixture ended before its owner killed it");
+    }
+
+    #[test]
     #[ignore = "requires an explicitly launcher-owned native allocation"]
     fn native_job_contains_engine_harness_and_worker() {
         let raw = std::env::var("RRFLOW_SUSTAINED_ALLOCATION_RECEIPT").unwrap();

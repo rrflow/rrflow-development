@@ -111,6 +111,25 @@ def job_blocks(workflow: str) -> dict[str, str]:
     }
 
 
+def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
+    """Keep the native worker's owned Windows lifecycle oracle required."""
+    marker = "      - name: Verify owned Windows native sampler lifecycle\n"
+    require(reopen.count(marker) == 1, "native sampler Windows CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        if: runner.os == 'Windows'\n"
+        "        timeout-minutes: 5\n"
+        "        run: python scripts/ci/test_native_sample_worker.py --profile release\n"
+    )
+    require(block == required, "native sampler CI step must retain its exact condition, timeout and command")
+    policy_marker = "      - name: Enforce repository CI policy\n"
+    require(verify.count(policy_marker) == 1, "repository CI policy step must occur once")
+    policy = verify.split(policy_marker, 1)[1].split("      - name:", 1)[0]
+    require(policy.count("          python3 scripts/ci/test_native_sample_policy.py\n") == 1
+            and "continue-on-error:" not in policy,
+            "native sampler policy regressions must run without a bypass")
+
+
 def verify_execution_inventory_ci(verify: str) -> None:
     """Keep each retained inventory bound to the clean checked-out revision."""
     marker = "      - name: Enforce exhaustive RRFlow 1.0 file planning\n"
@@ -571,6 +590,7 @@ def main() -> None:
     jobs = job_blocks(reusable)
     verify_candidate_admission(caller)
     verify_execution_inventory_ci(jobs["verify"])
+    verify_native_sample_worker_ci(jobs["installed-reopen"], jobs["verify"])
     require(
         reusable.count("python3 scripts/ci/test_candidate_admission.py") == 1,
         "candidate admission regressions must run exactly once",
