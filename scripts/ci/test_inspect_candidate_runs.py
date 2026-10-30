@@ -104,6 +104,21 @@ class InspectionTests(unittest.TestCase):
         self.assertIsNone(report["attention"][0]["conclusion"])
         self.assertIsNone(report["attention"][0]["steps"][0]["conclusion"])
 
+    def test_pending_steps_do_not_hide_active_or_unknown_states(self):
+        run, jobs, commit = fixture()
+        jobs[0].update(status="in_progress", conclusion=None)
+        jobs[0]["steps"] = [
+            {"name": "pending", "status": "pending", "conclusion": None},
+            {"name": "queued", "status": "queued", "conclusion": None},
+            {"name": "active", "status": "in_progress", "conclusion": None},
+            {"name": "failed", "status": "completed", "conclusion": "failure"},
+            {"name": "missing", "status": "completed", "conclusion": None},
+            {"name": "unknown", "status": "future_status", "conclusion": None},
+        ]
+        report = summarize(collect(7, requester(run, jobs, commit)))
+        self.assertEqual([s["name"] for s in report["attention"][0]["steps"]],
+                         ["active", "failed", "missing", "unknown"])
+
 
 if __name__ == "__main__":
     unittest.main()
