@@ -110,3 +110,153 @@ fn inspection_admission_and_drop_release_native_owners() {
         Some(0)
     );
 }
+
+#[test]
+fn full_range_inspection_denies_excess_pins_without_leaking_owners() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("kv");
+    let store = RrflowKvStore::open(&path).unwrap();
+    let mut seed = store.begin_transaction().unwrap();
+    seed.put(b"retained".to_vec(), b"acknowledged".to_vec())
+        .unwrap();
+    seed.commit(Durability::Authoritative).unwrap();
+    store.flush(1).unwrap();
+    drop(store);
+
+    let store = RrflowKvStore::open_with_options(
+        &path,
+        DatabaseOptions {
+            pinned_read_bytes: 1,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    match store.inspect_storage(1, 4096) {
+        Err(rrd_store::Error::ProjectedReadLimit {
+            resource: rrd_lsm::ProjectedReadResource::PinnedBytes,
+            limit,
+            observed,
+        }) => {
+            assert_eq!(limit, 1);
+            assert!(observed > limit);
+        }
+        Err(other) => panic!("unexpected inspection error: {other}"),
+        Ok(_) => panic!("full-range inspection exceeded the pin limit without denial"),
+    }
+    let owners = store.physical_store_evidence().unwrap();
+    assert_eq!(owners.active_read_views, Some(0));
+    assert_eq!(owners.pinned_read_bytes, Some(0));
+    assert_eq!(owners.retained_projected_bytes, Some(0));
+    drop(store);
+
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    let read = reopened.begin_transaction().unwrap();
+    assert_eq!(
+        read.get(b"retained").unwrap(),
+        Some(b"acknowledged".to_vec())
+    );
+}
+
+#[test]
+fn bounded_inspection_retains_snapshot_under_pin_cap_and_maintenance() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("kv");
+    let store = RrflowKvStore::open(&path).unwrap();
+    let mut first = store.begin_transaction().unwrap();
+    for key in [b"a00".as_slice(), b"a01".as_slice()] {
+        first.put(key.to_vec(), b"original".to_vec()).unwrap();
+    }
+    first.commit(Durability::Authoritative).unwrap();
+    store.flush(1).unwrap();
+    let first_bytes = store
+        .physical_store_evidence()
+        .unwrap()
+        .segment_bytes
+        .unwrap();
+    let mut second = store.begin_transaction().unwrap();
+    for key in [b"z00".as_slice(), b"z01".as_slice()] {
+        second.put(key.to_vec(), b"other".to_vec()).unwrap();
+    }
+    second.commit(Durability::Authoritative).unwrap();
+    store.flush(2).unwrap();
+    let all_bytes = store
+        .physical_store_evidence()
+        .unwrap()
+        .segment_bytes
+        .unwrap();
+    assert!(all_bytes > first_bytes && first_bytes > 0);
+    drop(store);
+
+    let store = RrflowKvStore::open_with_options(
+        &path,
+        DatabaseOptions {
+            pinned_read_bytes: first_bytes,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(matches!(
+        store.inspect_storage(1, 4096),
+        Err(rrd_store::Error::ProjectedReadLimit {
+            resource: rrd_lsm::ProjectedReadResource::PinnedBytes,
+            ..
+        })
+    ));
+    let mut cursor = store
+        .inspect_storage_range(1, 4096, b"a".to_vec(), b"b".to_vec())
+        .unwrap();
+    let before = cursor.page().unwrap();
+    assert_eq!(
+        before.sha256,
+        page_hash(before.sequence, 0, b"a00", b"original")
+    );
+    assert!(before.source_open);
+    assert_eq!(
+        store.physical_store_evidence().unwrap().pinned_read_bytes,
+        Some(first_bytes)
+    );
+    let mut update = store.begin_transaction().unwrap();
+    update.put(b"a00".to_vec(), b"updated".to_vec()).unwrap();
+    update.delete(b"a01".to_vec()).unwrap();
+    update.commit(Durability::Authoritative).unwrap();
+    store.flush(3).unwrap();
+    store.compact(4, 4).unwrap();
+    store.garbage_collect(5, 5).unwrap();
+    assert_eq!(cursor.page().unwrap(), before);
+    cursor.advance(0).unwrap();
+    let next = cursor.page().unwrap();
+    assert_eq!(
+        next.sha256,
+        page_hash(before.sequence, 1, b"a01", b"original")
+    );
+    cursor.advance(0).unwrap();
+    assert_eq!(cursor.page().unwrap(), next);
+    cursor.cancel_source().unwrap();
+    assert!(!cursor.page().unwrap().source_open);
+    assert_eq!(cursor.page().unwrap().sha256, next.sha256);
+    assert_eq!(
+        store.physical_store_evidence().unwrap().pinned_read_bytes,
+        Some(0)
+    );
+    assert!(
+        store
+            .physical_store_evidence()
+            .unwrap()
+            .retained_projected_bytes
+            .unwrap()
+            > 0
+    );
+    drop(cursor);
+    assert_eq!(
+        store
+            .physical_store_evidence()
+            .unwrap()
+            .retained_projected_bytes,
+        Some(0)
+    );
+    drop(store);
+    let reopened = RrflowKvStore::open(&path).unwrap();
+    let read = reopened.begin_transaction().unwrap();
+    assert_eq!(read.get(b"a00").unwrap(), Some(b"updated".to_vec()));
+    assert_eq!(read.get(b"a01").unwrap(), None);
+}
