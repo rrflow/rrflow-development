@@ -1,7 +1,7 @@
 # C-07 installed stale-snapshot conflict oracle
 
-**Status:** controlled correctness characterization; capacity failure root cause remains unproven  
-**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-installed-conflict-oracle`  
+**Status:** controlled correctness characterization; capacity failure root cause remains unproven
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-installed-conflict-oracle`
 **Owner:** OBJ-02 / C-07 / POAM-035 / [PR214](https://github.com/rrflow/rrflow-development/pull/214)
 
 Starting revision `f65e0a9e0de509865c13957fc3a903e31c9ff63b` includes the [failed 4k characterization](c-07-write-conflict-characterization.md). The PR brief was extended before the test edit. That run recorded three runtime-conflict write rejections, but its client intervals did not identify which internal conflict branch fired or establish transaction read-stamp timing. The target was a controlled installed-engine oracle for one possible mechanism, without changing engine behavior, thresholds, retry policy, or the campaign.
@@ -21,3 +21,4 @@ Checklist: the PR brief preceded the scoped source edit; the failure was preserv
 
 The first navigation regeneration rejected the Windows PowerShell UTF-8 BOM as a missing title; the BOM was removed and regeneration was rerun.
 The first `python scripts/ci/build_execution_inventory.py --check` reported expected drift after the new journal; the local generated inventory was refreshed before rechecking.
+The first staged `git diff --check` flagged two Markdown line-break spaces; the command chain committed despite that failure. The spaces were removed in the following local commit and the staged check was repeated.
