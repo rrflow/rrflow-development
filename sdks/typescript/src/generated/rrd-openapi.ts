@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46
+// OpenAPI SHA-256: fb2bf476a766d125f24b1b68617f42df7edaef75292c968da1cf43f6c73fb7b0
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -2975,8 +2975,8 @@ export interface operations {
                         request_id: string;
                     };
                     payload: {
-                        /** Format: uint16 */
-                        contract_version: number;
+                        /** @constant */
+                        contract_version: 2;
                         /** Format: uint64 */
                         expected_job_revision: number;
                         /**
@@ -3033,8 +3033,8 @@ export interface operations {
                                  *     they never replace it as lifecycle authority.
                                  */
                                 status: {
-                                    /** Format: uint16 */
-                                    contract_version: number;
+                                    /** @constant */
+                                    contract_version: 2;
                                     /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
                                     job: {
                                         /** @default [] */
@@ -3043,8 +3043,8 @@ export interface operations {
                                             /** Format: uint64 */
                                             committed_at_unix_ms: number;
                                             configuration_sha256: string;
-                                            /** Format: uint16 */
-                                            contract_version: number;
+                                            /** @constant */
+                                            contract_version: 2;
                                             coordinates: {
                                                 /** Format: uint64 */
                                                 catalogue_revision: number;
@@ -3069,8 +3069,8 @@ export interface operations {
                                             /** Format: uint16 */
                                             sequence: number;
                                         }[];
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** Format: uint64 */
                                         created_at_unix_ms: number;
                                         /** @enum {string|null} */
@@ -3178,8 +3178,8 @@ export interface operations {
                                  *     they never replace it as lifecycle authority.
                                  */
                                 status: {
-                                    /** Format: uint16 */
-                                    contract_version: number;
+                                    /** @constant */
+                                    contract_version: 2;
                                     /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
                                     job: {
                                         /** @default [] */
@@ -3188,8 +3188,8 @@ export interface operations {
                                             /** Format: uint64 */
                                             committed_at_unix_ms: number;
                                             configuration_sha256: string;
-                                            /** Format: uint16 */
-                                            contract_version: number;
+                                            /** @constant */
+                                            contract_version: 2;
                                             coordinates: {
                                                 /** Format: uint64 */
                                                 catalogue_revision: number;
@@ -3214,8 +3214,8 @@ export interface operations {
                                             /** Format: uint16 */
                                             sequence: number;
                                         }[];
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** Format: uint64 */
                                         created_at_unix_ms: number;
                                         /** @enum {string|null} */
@@ -3329,8 +3329,8 @@ export interface operations {
                     };
                     /** @description Read one engine-owned installed job by its durable identity. */
                     payload: {
-                        /** Format: uint16 */
-                        contract_version: number;
+                        /** @constant */
+                        contract_version: 2;
                         /**
                          * @description A canonical public identifier component.
                          *
@@ -3376,8 +3376,8 @@ export interface operations {
                             payload: {
                                 /** @description A bounded, content-addressed plan over one project source snapshot. */
                                 plan: {
-                                    /** Format: uint16 */
-                                    contract_version: number;
+                                    /** @constant */
+                                    contract_version: 2;
                                     /** Format: uint64 */
                                     estimated_max_duration_ms: number;
                                     /** Format: uint64 */
@@ -3440,8 +3440,8 @@ export interface operations {
                                  *     they never replace it as lifecycle authority.
                                  */
                                 status: {
-                                    /** Format: uint16 */
-                                    contract_version: number;
+                                    /** @constant */
+                                    contract_version: 2;
                                     /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
                                     job: {
                                         /** @default [] */
@@ -3450,8 +3450,8 @@ export interface operations {
                                             /** Format: uint64 */
                                             committed_at_unix_ms: number;
                                             configuration_sha256: string;
-                                            /** Format: uint16 */
-                                            contract_version: number;
+                                            /** @constant */
+                                            contract_version: 2;
                                             coordinates: {
                                                 /** Format: uint64 */
                                                 catalogue_revision: number;
@@ -3476,8 +3476,8 @@ export interface operations {
                                             /** Format: uint16 */
                                             sequence: number;
                                         }[];
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** Format: uint64 */
                                         created_at_unix_ms: number;
                                         /** @enum {string|null} */
@@ -3581,8 +3581,8 @@ export interface operations {
                             payload: {
                                 /** @description A bounded, content-addressed plan over one project source snapshot. */
                                 plan: {
-                                    /** Format: uint16 */
-                                    contract_version: number;
+                                    /** @constant */
+                                    contract_version: 2;
                                     /** Format: uint64 */
                                     estimated_max_duration_ms: number;
                                     /** Format: uint64 */
@@ -3645,8 +3645,8 @@ export interface operations {
                                  *     they never replace it as lifecycle authority.
                                  */
                                 status: {
-                                    /** Format: uint16 */
-                                    contract_version: number;
+                                    /** @constant */
+                                    contract_version: 2;
                                     /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
                                     job: {
                                         /** @default [] */
@@ -3655,8 +3655,8 @@ export interface operations {
                                             /** Format: uint64 */
                                             committed_at_unix_ms: number;
                                             configuration_sha256: string;
-                                            /** Format: uint16 */
-                                            contract_version: number;
+                                            /** @constant */
+                                            contract_version: 2;
                                             coordinates: {
                                                 /** Format: uint64 */
                                                 catalogue_revision: number;
@@ -3681,8 +3681,8 @@ export interface operations {
                                             /** Format: uint16 */
                                             sequence: number;
                                         }[];
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** Format: uint64 */
                                         created_at_unix_ms: number;
                                         /** @enum {string|null} */
@@ -3796,8 +3796,8 @@ export interface operations {
                     };
                     /** @description Read the authenticated principal's receipt without replaying its command. */
                     payload: {
-                        /** Format: uint16 */
-                        contract_version: number;
+                        /** @constant */
+                        contract_version: 2;
                         idempotency_key: string;
                         /**
                          * @description A canonical public identifier component.
@@ -3846,8 +3846,8 @@ export interface operations {
                                     operation_sha256: string;
                                     /** @description A bounded, content-addressed plan over one project source snapshot. */
                                     plan: {
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** Format: uint64 */
                                         estimated_max_duration_ms: number;
                                         /** Format: uint64 */
@@ -3917,8 +3917,8 @@ export interface operations {
                                      *     they never replace it as lifecycle authority.
                                      */
                                     status: {
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
                                         job: {
                                             /** @default [] */
@@ -3927,8 +3927,8 @@ export interface operations {
                                                 /** Format: uint64 */
                                                 committed_at_unix_ms: number;
                                                 configuration_sha256: string;
-                                                /** Format: uint16 */
-                                                contract_version: number;
+                                                /** @constant */
+                                                contract_version: 2;
                                                 coordinates: {
                                                     /** Format: uint64 */
                                                     catalogue_revision: number;
@@ -3953,8 +3953,8 @@ export interface operations {
                                                 /** Format: uint16 */
                                                 sequence: number;
                                             }[];
-                                            /** Format: uint16 */
-                                            contract_version: number;
+                                            /** @constant */
+                                            contract_version: 2;
                                             /** Format: uint64 */
                                             created_at_unix_ms: number;
                                             /** @enum {string|null} */
@@ -4061,8 +4061,8 @@ export interface operations {
                                     operation_sha256: string;
                                     /** @description A bounded, content-addressed plan over one project source snapshot. */
                                     plan: {
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** Format: uint64 */
                                         estimated_max_duration_ms: number;
                                         /** Format: uint64 */
@@ -4132,8 +4132,8 @@ export interface operations {
                                      *     they never replace it as lifecycle authority.
                                      */
                                     status: {
-                                        /** Format: uint16 */
-                                        contract_version: number;
+                                        /** @constant */
+                                        contract_version: 2;
                                         /** @description The authoritative durable job snapshot projected by `RrdEngine`. */
                                         job: {
                                             /** @default [] */
@@ -4142,8 +4142,8 @@ export interface operations {
                                                 /** Format: uint64 */
                                                 committed_at_unix_ms: number;
                                                 configuration_sha256: string;
-                                                /** Format: uint16 */
-                                                contract_version: number;
+                                                /** @constant */
+                                                contract_version: 2;
                                                 coordinates: {
                                                     /** Format: uint64 */
                                                     catalogue_revision: number;
@@ -4168,8 +4168,8 @@ export interface operations {
                                                 /** Format: uint16 */
                                                 sequence: number;
                                             }[];
-                                            /** Format: uint16 */
-                                            contract_version: number;
+                                            /** @constant */
+                                            contract_version: 2;
                                             /** Format: uint64 */
                                             created_at_unix_ms: number;
                                             /** @enum {string|null} */

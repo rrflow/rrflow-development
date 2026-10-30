@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46
+// OpenAPI SHA-256: fb2bf476a766d125f24b1b68617f42df7edaef75292c968da1cf43f6c73fb7b0
 package io.rrflow.rrd;
 
 public enum OperationId {
@@ -66,7 +66,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46";
+    static final String OPENAPI_DOCUMENT_SHA256 = "fb2bf476a766d125f24b1b68617f42df7edaef75292c968da1cf43f6c73fb7b0";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 

@@ -19,7 +19,7 @@ becomes lifecycle, planning, status, or evidence authority.
 | Signal contract version | `1` |
 | Runtime trace contract version | `1` |
 | Signal catalogue SHA-256 | `239df2ced5974d4351ca01565369646964cb65c63d0fbae01dddccb4c3ac5a07` |
-| OpenAPI document SHA-256 | `fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46` |
+| OpenAPI document SHA-256 | `fb2bf476a766d125f24b1b68617f42df7edaef75292c968da1cf43f6c73fb7b0` |
 | Default diagnostic level | `normal` |
 | Default metric cardinality limit | `2000` points per collection cycle |
 

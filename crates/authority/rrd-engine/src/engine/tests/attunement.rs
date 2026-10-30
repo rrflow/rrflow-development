@@ -138,7 +138,7 @@ fn step(job: &AttunementJob) -> AttunementCommand {
 fn resume(job: &AttunementJob, at: u64) -> AttunementCommand {
     AttunementCommand::Resume {
         request: ResumeAttunement {
-            contract_version: 1,
+            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
             job_id: job.id.clone(),
             plan_sha256: job.plan_sha256.clone(),
             expected_job_revision: job.revision,
@@ -146,7 +146,7 @@ fn resume(job: &AttunementJob, at: u64) -> AttunementCommand {
                 .checkpoints
                 .last()
                 .map(|checkpoint| checkpoint.checkpoint_sha256.clone()),
-            resume_from_phase: job.next_phase().unwrap(),
+            resume_from_phase: job.current_phase.unwrap(),
             requested_at_unix_ms: at,
         },
         lease_ms: 30_000,
@@ -155,7 +155,7 @@ fn resume(job: &AttunementJob, at: u64) -> AttunementCommand {
 fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
     AttunementCommand::Cancel {
         request: CancelAttunement {
-            contract_version: 1,
+            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
             job_id: job.id.clone(),
             plan_sha256: job.plan_sha256.clone(),
             expected_job_revision: job.revision,
@@ -167,6 +167,134 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
             requested_at_unix_ms: at,
         },
     }
+}
+
+#[test]
+fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
+    // Install a test-only plan through the actual control store. There is no
+    // public operation for accepting custom attunement plans in this package.
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let mut plan = installed.preview.attunement.clone();
+    plan.id = CanonicalId::new("test-variable-plan").unwrap();
+    let mut second = plan.phases[0].clone();
+    second.sequence = 2;
+    second.configuration_sha256 = digest::sha256_hex(b"second-connect-configuration");
+    let mut verify = plan.phases.last().unwrap().clone();
+    verify.sequence = 3;
+    plan.phases = vec![plan.phases[0].clone(), second, verify];
+    plan.plan_sha256 = rrd_contract::attunement_plan_sha256(&plan).unwrap();
+    plan.validate().unwrap();
+    let job_id = CanonicalId::new("test-variable-job").unwrap();
+    let mut job = installed.read(&engine, &session, BASE + 500).job;
+    job.id = job_id.clone();
+    job.plan_id = plan.id.clone();
+    job.plan_sha256 = plan.plan_sha256.clone();
+    job.validate(&plan).unwrap();
+    let transition = |key, replacement| ControlTransition {
+        key,
+        expected: None,
+        replacement: Some(replacement),
+        at: BASE + 600,
+        actor: "test:fixture".into(),
+        action: "test.plan-fixture".into(),
+        request_id: "test-plan".into(),
+        operation_id: "test-plan".into(),
+    };
+    engine
+        .storage
+        .control()
+        .commit_batch(&[
+            transition(
+                crate::engine::installation::attunement_plan_key(engine.instance_id(), &plan.id),
+                serde_json::to_vec(&plan).unwrap(),
+            ),
+            transition(
+                crate::engine::installation::attunement_job_key(engine.instance_id(), &job_id),
+                serde_json::to_vec(&job).unwrap(),
+            ),
+        ])
+        .unwrap();
+    let start = AttunementCommand::Start {
+        job_id: job_id.clone(),
+        plan_sha256: plan.plan_sha256.clone(),
+        expected_revision: 1,
+        lease_ms: 30_000,
+    };
+    let running = call(&engine, &session, &start, "variable-start", BASE + 1_000).unwrap();
+    let first = call(
+        &engine,
+        &session,
+        &step(&running.status.job),
+        "variable-first",
+        BASE + 2_000,
+    )
+    .unwrap();
+    assert_eq!(first.status.job.current_phase, Some(Phase::Connect));
+    let paused = call(
+        &engine,
+        &session,
+        &AttunementCommand::Pause {
+            job_id: job_id.clone(),
+            expected_revision: first.status.job.revision,
+            lease_generation: first.status.job.lease.as_ref().unwrap().generation,
+        },
+        "variable-pause",
+        BASE + 3_000,
+    )
+    .unwrap();
+    drop(engine);
+    let engine = installed.reopen(BASE + 4_000);
+    let renewed = installed.session(&engine, "variable-reopened", BASE + 4_100);
+    let read = engine
+        .read_attunement(
+            &renewed.session_id,
+            &renewed.token,
+            &job_id,
+            BASE + 4_500,
+            "variable-read",
+            "variable-read",
+        )
+        .unwrap();
+    assert_eq!(read.job, paused.status.job);
+    let running = call(
+        &engine,
+        &renewed,
+        &resume(&read.job, BASE + 5_000),
+        "variable-resume",
+        BASE + 5_000,
+    )
+    .unwrap();
+    let second = call(
+        &engine,
+        &renewed,
+        &step(&running.status.job),
+        "variable-second",
+        BASE + 6_000,
+    )
+    .unwrap();
+    assert_eq!(second.status.job.current_phase, Some(Phase::Verify));
+    assert_eq!(
+        second.status.job.checkpoints[1].configuration_sha256,
+        plan.phases[1].configuration_sha256
+    );
+    assert_eq!(
+        second.status.job.checkpoints[1].input_sha256,
+        second.status.job.checkpoints[0].output_sha256
+    );
+    let unavailable = call(
+        &engine,
+        &renewed,
+        &step(&second.status.job),
+        "variable-verify",
+        BASE + 7_000,
+    )
+    .unwrap();
+    assert_eq!(unavailable.status.job.state, State::Failed);
+    assert_eq!(unavailable.status.job.checkpoints.len(), 2);
+    assert_eq!(
+        unavailable.status.job.failure.unwrap().code.as_str(),
+        "phase-unavailable"
+    );
 }
 
 #[test]
@@ -464,7 +592,7 @@ fn attunement_receipt_readback_rejects_corrupt_identity() {
 fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
     let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
     let request = rrd_contract::ReadAttunement {
-        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
         job_id: installed.job.clone(),
     };
     let started = call(

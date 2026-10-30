@@ -11,7 +11,7 @@ use rrd_contract::{
     AttunementLease, AttunementPhase, AttunementPhaseCheckpoint, AttunementPlan,
     AttunementReadResult, AttunementRuntimeCoordinates, AttunementSourceVerification,
     AttunementStatus, CancelAttunement, ReadAttunement, ResumeAttunement,
-    INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    ATTUNEMENT_CONTRACT_VERSION,
 };
 use std::time::Instant;
 
@@ -122,7 +122,7 @@ impl RrdEngine {
             session,
             token,
             &ReadAttunement {
-                contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+                contract_version: ATTUNEMENT_CONTRACT_VERSION,
                 job_id: job.clone(),
             },
             now,
@@ -341,7 +341,7 @@ impl RrdEngine {
                         "start must bind the pending installed plan".into(),
                     ));
                 }
-                claim(&mut next, &holder, *lease_ms, at)?;
+                claim(&mut next, &plan, &holder, *lease_ms, at)?;
                 "attunement.started"
             }
             AttunementCommand::Resume { request, lease_ms } => {
@@ -351,7 +351,7 @@ impl RrdEngine {
                         "resume time is in the future".into(),
                     ));
                 }
-                claim(&mut next, &holder, *lease_ms, at)?;
+                claim(&mut next, &plan, &holder, *lease_ms, at)?;
                 "attunement.resumed"
             }
             AttunementCommand::Pause {
@@ -385,7 +385,7 @@ impl RrdEngine {
                     ));
                 }
                 next.state = AttunementJobState::CancelRequested;
-                next.current_phase = next.next_phase();
+                next.current_phase = next.next_phase(&plan);
                 next.failure = None;
                 "attunement.cancel_requested"
             }
@@ -538,14 +538,27 @@ impl RrdEngine {
             .read_stamp(&ScopeId::new(format!("instance:{}", self.instance)).map_err(contract)?)?;
         let output_sha256 =
             operation_digest(&("attunement-connect-v1", &plan.target, &configuration, &read))?;
+        let planned = plan
+            .phases
+            .get(next.checkpoints.len())
+            .ok_or_else(|| ServiceError::Contract("attunement plan has no next step".into()))?;
+        if planned.phase != AttunementPhase::Connect {
+            return Err(ServiceError::Contract(
+                "attunement step is not connect".into(),
+            ));
+        }
+        let input_sha256 = next.checkpoints.last().map_or_else(
+            || plan.source_sha256.clone(),
+            |checkpoint| checkpoint.output_sha256.clone(),
+        );
         let mut checkpoint = AttunementPhaseCheckpoint {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             job_id: next.id.clone(),
             plan_sha256: plan.plan_sha256.clone(),
             phase: AttunementPhase::Connect,
-            sequence: 1,
-            configuration_sha256: plan.phases[0].configuration_sha256.clone(),
-            input_sha256: plan.source_sha256.clone(),
+            sequence: planned.sequence,
+            configuration_sha256: planned.configuration_sha256.clone(),
+            input_sha256,
             output_sha256,
             coordinates: AttunementRuntimeCoordinates {
                 runtime_manifest_sha256: read.manifest_id,
@@ -559,7 +572,7 @@ impl RrdEngine {
         checkpoint.checkpoint_sha256 =
             attunement_checkpoint_sha256(&checkpoint).map_err(contract)?;
         next.checkpoints.push(checkpoint);
-        next.current_phase = next.next_phase();
+        next.current_phase = next.next_phase(plan);
         Ok(())
     }
 }
@@ -577,14 +590,20 @@ fn attunement_receipt_key(
     ))
 }
 
-fn claim(job: &mut AttunementJob, holder: &CanonicalId, lease_ms: u64, at: u64) -> Result<()> {
+fn claim(
+    job: &mut AttunementJob,
+    plan: &AttunementPlan,
+    holder: &CanonicalId,
+    lease_ms: u64,
+    at: u64,
+) -> Result<()> {
     if lease_ms == 0 || lease_ms > MAX_LEASE_MS {
         return Err(ServiceError::ConfigurationLimit(
             "attunement lease must be 1..=60000 milliseconds".into(),
         ));
     }
     job.state = AttunementJobState::Running;
-    job.current_phase = job.next_phase();
+    job.current_phase = job.next_phase(plan);
     job.failure = None;
     job.lease = Some(AttunementLease {
         id: CanonicalId::new(format!(
@@ -631,7 +650,7 @@ fn worker(session: &CorrelationId) -> Result<CanonicalId> {
 }
 fn status(job: AttunementJob, plan: &AttunementPlan, at: u64) -> Result<AttunementStatus> {
     let status = AttunementStatus {
-        contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: ATTUNEMENT_CONTRACT_VERSION,
         observed_at_unix_ms: at,
         job,
     };

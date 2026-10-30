@@ -131,6 +131,9 @@ checked-in `OperationId.java` contains:
 - OpenAPI SHA-256
   `fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46`.
 
+That audit describes an earlier projection. The current generated OpenAPI
+SHA-256 is `fb2bf476a766d125f24b1b68617f42df7edaef75292c968da1cf43f6c73fb7b0`.
+
 An earlier flat record incorrectly said 34 routes when the generator, enum,
 unit assertion, public catalogue, and OpenAPI projection contained 33. The
 prompt-flight family (`flight-launch`, `flight-list`, `flight-read`) then

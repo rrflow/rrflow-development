@@ -103,7 +103,7 @@ async fn installed_attunement_read_reports_stored_plan_and_unchecked_source_afte
     )
     .unwrap();
     let request = rrd_contract::ReadAttunement {
-        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
         job_id: rrd_contract::CanonicalId::new(format!(
             "job-{}",
             &preview.attunement.plan_sha256[..24]
@@ -201,7 +201,7 @@ async fn installed_attunement_cancel_survives_restart_and_replays() {
     )
     .unwrap();
     let read = rrd_contract::ReadAttunement {
-        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
         job_id: rrd_contract::CanonicalId::new(format!(
             "job-{}",
             &preview.attunement.plan_sha256[..24]
@@ -219,7 +219,7 @@ async fn installed_attunement_cancel_survives_restart_and_replays() {
         .await
         .unwrap();
     let receipt_request = rrd_contract::ReadAttunementReceipt {
-        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
         job_id: read.job_id.clone(),
         idempotency_key: rrd_contract::CorrelationId::new("cancel-once").unwrap(),
     };
@@ -234,7 +234,7 @@ async fn installed_attunement_cancel_survives_restart_and_replays() {
         .receipt
         .is_none());
     let cancel = rrd_contract::CancelAttunement {
-        contract_version: rrd_contract::INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+        contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
         job_id: read.job_id.clone(),
         plan_sha256: before.plan.plan_sha256.clone(),
         expected_job_revision: before.status.job.revision,
