@@ -60,3 +60,4 @@
 | POAM-044 | High | Open | [rrflowQL refusals are unstructured, and queries cannot be checked without running](rrflow-1.0-alpha/poam-044.md) |
 | POAM-045 | High | Open | [vector search returns a vector's old version after it moves to another collection](rrflow-1.0-alpha/poam-045.md) |
 | POAM-046 | High | Open | [a vector index makes the public changefeed refuse its scope](rrflow-1.0-alpha/poam-046.md) |
+| POAM-047 | High | Open | [concurrent identical immutable-object publication can be rejected](rrflow-1.0-alpha/poam-047.md) |
