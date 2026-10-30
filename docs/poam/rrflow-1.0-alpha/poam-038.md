@@ -47,6 +47,8 @@ or conflicting effects before commit. Once the Inventory and later phases act on
 project sources, a plan made before an edit would drive those effects, and its
 checkpoints would present evidence for sources that no longer exist.
 
+The [installed build-output characterization](../../evidence/change-journals/gate-d/d-03-build-output-precondition-gap.md) demonstrates that changing only a Git-ignored `target` artifact changes the current whole-project installation precondition and prevents the original preview from applying. This is a source/effect-scoping gap and a usability problem for ordinary builds, not a reason to bypass the stale-input check. Remediate with an explicit, safely bound scope and the D-03 source-inventory boundary; preserve tracked source and project-mutation protection. The observed small fixture does not prove a large-project bound failure.
+
 ## Owning gates
 
 D-02b durable worker, D-03 committed inventory and D-11 restore/repair.
