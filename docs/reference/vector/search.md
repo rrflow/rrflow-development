@@ -26,7 +26,10 @@ metrics return negative distance.
 
 The latest transaction-visible version wins per vector identity. Future
 valid-time versions do not hide an applicable version, while a visible
-retirement does. Exact filters support equality, inequality, membership,
+retirement does. A collection-addressed search applies its collection and
+named vector to that version, never to a version it replaced. An identity that
+moved to another collection is therefore found only there. Point retrieval,
+scroll and the retrieval query resolve with the same rule. Exact filters support equality, inequality, membership,
 ranges, existence, and bounded recursive `all`, `any`, and `not`. Final order
 is score descending, reference ascending, then source cursor descending.
 
@@ -50,6 +53,14 @@ runtime-dispatched AVX2 scoring, and final exact reranking. New vector or
 retirement versions after an HNSW generation are searched as an exact overlay
 until a new immutable generation incorporates them. Sparse and multi-dense
 queries remain exact-only.
+
+Every approximate path reranks the identities it proposes from the request's
+canonical candidates, never from the versions its generation stored. A
+generation built while an identity was in the collection can still propose
+it after the identity moves. The rerank discards it, which costs recall
+([POAM-048](../../poam/rrflow-1.0-alpha/poam-048.md)). An exact segment's
+hits stand only when the canonical candidates confirm each one; otherwise the
+exact scan answers.
 
 Quantized and TurboQuant candidates can also be selected through the same
 planner and exact-f32 reranking path. Their format and lifecycle semantics are
