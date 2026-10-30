@@ -1494,6 +1494,96 @@ fn installed_sampler_trace_during_write_load() {
 }
 
 #[test]
+#[ignore = "explicit installed controlled conflict oracle"]
+fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
+    use rrd_contract::{
+        AbortTransaction, BeginTransaction, CanonicalId, ErrorCode, TransactionState,
+    };
+
+    fn mutation_options(id: &str) -> RequestOptions {
+        RequestOptions::new(id, id, Some(id), Some(u64::MAX)).unwrap()
+    }
+
+    let estate = Estate::install("fresh");
+    let clock = Instant::now();
+    let (child, client, _) = estate.start_for(clock, Duration::from_secs(300));
+    let credential = rrd_engine::RrdEngine::read_installed_api_key(&estate.project).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let session = client
+            .create_session(
+                credential.principal_id.clone(),
+                credential.credential(),
+                CreateSession {
+                    limits: SessionLimits {
+                        idle_timeout_ms: 300_000,
+                        absolute_timeout_ms: 600_000,
+                        max_open_transactions: 4,
+                    },
+                },
+                mutation_options("conflict-oracle-session"),
+            )
+            .await
+            .unwrap();
+        let mut work = Workload {
+            native_worker: Default::default(),
+            client,
+            session,
+            valid_at: estate.at,
+            dimensions: 16,
+            seed: 73,
+            records: 8,
+            read_distribution: ReadKeyDistribution::Uniform {},
+            edges_per_record: 3,
+            vectors_per_record: 2,
+            payload_bytes: 1024,
+            query_budget: serde_json::from_value(estate.plan["configuration"]["query"].clone())
+                .unwrap(),
+        };
+        work.initialize().await.unwrap();
+        let first = work.seed_record(0).unwrap();
+        let second = work.seed_record(1).unwrap();
+        let begin = || BeginTransaction {
+            scope: CanonicalId::new("data").unwrap(),
+            timeout_ms: 60_000,
+        };
+        let left = work.client.begin_transaction(&work.session, begin(), mutation_options("conflict-left-begin")).await.unwrap();
+        let right = work.client.begin_transaction(&work.session, begin(), mutation_options("conflict-right-begin")).await.unwrap();
+        assert_eq!(left.read_cursor, right.read_cursor);
+        let accepted = work.client.commit_transaction(&work.session, &left.transaction_id, first.mutation.clone().unwrap(), mutation_options("conflict-left-commit")).await.unwrap();
+        let published_cursor = accepted.last_runtime_cursor.unwrap();
+        assert!(published_cursor > left.read_cursor);
+        let rejected = work.client.commit_transaction(&work.session, &right.transaction_id, second.mutation.clone().unwrap(), mutation_options("conflict-right-stale-commit")).await.unwrap_err();
+        match rejected {
+            rrd_client::Error::Api { error, .. } => {
+                assert_eq!(error.code, ErrorCode::Conflict);
+                assert_eq!(error.message, format!("StorageConflict(\"runtime commit conflict: expected cursor {}, actual cursor {}\")", right.read_cursor, published_cursor));
+            }
+            other => panic!("unexpected typed error: {other:?}"),
+        }
+        let aborted = work.client.abort_transaction(&work.session, &right.transaction_id, AbortTransaction {}, mutation_options("conflict-right-abort")).await.unwrap();
+        assert_eq!(aborted.state, TransactionState::Aborted);
+        work.verify(&first).await.unwrap();
+        work.verify_absent(&second.key).await.unwrap();
+        let fresh = work.execute(&second).await.unwrap();
+        assert!(!fresh.idempotent_replay);
+        work.verify(&second).await.unwrap();
+        super::kill(child, clock);
+        let (reopened, client, _) = estate.start_for(clock, Duration::from_secs(300));
+        work.client = client;
+        work.verify(&first).await.unwrap();
+        work.verify(&second).await.unwrap();
+        let replay = work.execute(&second).await.unwrap();
+        assert!(replay.idempotent_replay);
+        assert_eq!(replay.receipt_sha256, fresh.receipt_sha256);
+        super::kill(reopened, clock);
+    });
+}
+
+#[test]
 #[ignore = "explicit native capacity-driver smoke; candidate portability job"]
 fn installed_capacity_workload_smoke() {
     let estate = Estate::install("fresh");
