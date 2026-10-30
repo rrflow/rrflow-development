@@ -11,10 +11,10 @@
 //!   centroid-norm correction.
 //! - **Inner product** (TurboQuant_prod, Algorithm 2) packs indices from a
 //!   codebook one bit narrower, followed by the signs of the residual's QJL
-//!   projection (`qjl`), and stores the residual's length. Its estimate of
-//!   ⟨y, x⟩ is unbiased. The residual is taken in the rotated space: S·Πᵀ is
-//!   again i.i.d. normal when S is, so projecting the rotated residual with an
-//!   independent S is distributed as the paper's S·r.
+//!   projection (`qjl`), and stores the residual's length. The paper's
+//!   unbiasedness result assumes an independent Gaussian projection; this
+//!   seeded finite-precision adaptation is evaluated by fixture, not proved
+//!   unbiased by those observations.
 
 use crate::contract::invalid;
 use crate::qjl::QjlProjection;
@@ -289,8 +289,8 @@ impl TurboQuantInnerProductCode {
             return invalid("1.5-bit TurboQuant has no inner-product estimator");
         };
         let padded_dimensions = inner_product_padded_dimensions(values.len());
-        if projection.dimensions() != padded_dimensions {
-            return invalid("the QJL projection differs from the vector's padded dimensions");
+        if projection.dimensions() != padded_dimensions || !projection.matches_seed(seed) {
+            return invalid("the QJL projection differs from the vector's dimensions or seed");
         }
         let original_norm = l2_norm(values);
         let mut rotated = vec![0.0_f64; padded_dimensions];
@@ -330,7 +330,7 @@ impl TurboQuantInnerProductCode {
             .sum::<f64>()
             .sqrt() as f32;
         let signs = projection
-            .project(&residual)
+            .project(&residual)?
             .into_iter()
             .map(|value| u8::from(value >= 0.0))
             .collect::<Vec<_>>();
@@ -414,8 +414,8 @@ impl TurboQuantQuery {
             );
         }
         let padded_dimensions = inner_product_padded_dimensions(query.len());
-        if projection.dimensions() != padded_dimensions {
-            return invalid("the QJL projection differs from the query's padded dimensions");
+        if projection.dimensions() != padded_dimensions || !projection.matches_seed(seed) {
+            return invalid("the QJL projection differs from the query's dimensions or seed");
         }
         Self::prepare(
             query,
@@ -451,7 +451,9 @@ impl TurboQuantQuery {
         }
         let rotation = Rotation::new(padded_dimensions, seed);
         rotation.apply(&mut rotated);
-        let projected = projection.map(|projection| projection.project(&rotated));
+        let projected = projection
+            .map(|projection| projection.project(&rotated))
+            .transpose()?;
         Ok(Self {
             metric,
             bits,
@@ -1024,7 +1026,7 @@ mod tests {
     }
 
     #[test]
-    fn the_inner_product_estimator_is_unbiased_and_within_its_distortion_bound() {
+    fn inner_product_estimator_matches_the_bias_and_distortion_fixture() {
         // Theorem 2: D_prod <= sqrt(3)·pi²·|y|²/(d·4^b) for unit x, with b
         // the total bits per coordinate.
         for (bits, total) in [

@@ -13,6 +13,14 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_policy;
+mod endpoint_selection;
+pub use endpoint_policy::EndpointSelectionPolicy;
+pub use endpoint_selection::{
+    EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
+    EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
+    ENDPOINT_SELECTION_VERSION,
+};
 mod observation_source;
 pub use observation_source::*;
 mod flight;
@@ -245,7 +253,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "e36d68262029ca7fdf40eb5a612ec6b1b117abbc0be0c6f69461684add642083";
+    "3390bdc6904f6b419b38de4ace9dae7729da7b9f593bd651e220fb90ff0537ef";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;

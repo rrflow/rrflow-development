@@ -1,9 +1,9 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: e36d68262029ca7fdf40eb5a612ec6b1b117abbc0be0c6f69461684add642083
+# OpenAPI SHA-256: 3390bdc6904f6b419b38de4ace9dae7729da7b9f593bd651e220fb90ff0537ef
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "e36d68262029ca7fdf40eb5a612ec6b1b117abbc0be0c6f69461684add642083"
+    "3390bdc6904f6b419b38de4ace9dae7729da7b9f593bd651e220fb90ff0537ef"
 )
 
 OperationId = Literal[
