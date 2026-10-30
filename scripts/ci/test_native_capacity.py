@@ -3,6 +3,7 @@ from contextlib import contextmanager, redirect_stdout, redirect_stderr
 import errno
 import io
 import json
+import os
 import plistlib
 import subprocess
 from pathlib import Path
@@ -12,6 +13,7 @@ from unittest.mock import patch
 
 import run_native_capacity as runner
 import run_filesystem_containment as containment
+import check_workflow
 
 
 class NativeCapacityCases(unittest.TestCase):
@@ -102,6 +104,120 @@ class NativeCapacityCases(unittest.TestCase):
         self.assertEqual(self.generation, 1)
         self.assertTrue((self.root / "capacity.img").is_file())
         self.assertNotIn("native_capacity_suite=", output.getvalue())
+
+    def test_failed_native_create_retains_bounded_case_receipt_without_retry(self):
+        @contextmanager
+        def failed_create(fixture, size):
+            self.generation += 1
+            result = subprocess.CompletedProcess(["hdiutil", "create"], 1, "x" * 20000,
+                                                 "verbose context\nhdiutil: create failed - Resource busy\n")
+            raise runner.NativeCommandFailure("hdiutil", "create", result)
+            yield  # pragma: no cover
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics),
+                       "GITHUB_SHA": "abc", "GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "2"}
+        with patch.dict(os.environ, environment), patch.object(runner, "volume", failed_create):
+            with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy"):
+                runner.cases(self.config, self.root)
+        self.assertEqual(self.generation, 1)
+        files = list(diagnostics.glob("*.json"))
+        self.assertEqual(len(files), 1)
+        receipt = json.loads(files[0].read_text(encoding="utf8"))
+        self.assertEqual((receipt["mode"], receipt["point"]), ("fresh", runner.POINTS[0]))
+        self.assertEqual(receipt["case_index"], 1)
+        self.assertEqual((receipt["tool"], receipt["verb"], receipt["returncode"]), ("hdiutil", "create", 1))
+        self.assertEqual(receipt["github_sha"], "abc")
+        self.assertEqual(receipt["cleanup_state"], "unknown")
+        self.assertEqual(len(receipt["stdout_head"]), 8192)
+        self.assertEqual(len(receipt["stdout_tail"]), 8192)
+        self.assertIn("Resource busy", receipt["stderr_tail"])
+
+    def test_macos_volume_requests_verbose_creation_once_and_propagates_busy(self):
+        result = subprocess.CompletedProcess([], 1, "native detail", "Resource busy")
+        calls = []
+        def native(*args, **kwargs):
+            calls.append((args, kwargs))
+            raise runner.NativeCommandFailure(args[0], args[1], result)
+        with patch.object(runner.sys, "platform", "darwin"), patch.object(runner, "native_command", side_effect=native):
+            with self.assertRaisesRegex(runner.NativeCommandFailure, "Resource busy"):
+                with runner.volume(self.root, 256):
+                    self.fail("failed creation must not yield a volume")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0][:3], ("hdiutil", "create", "-verbose"))
+        self.assertFalse((self.root / "capacity.dmg").exists())
+
+    def test_unrelated_error_does_not_save_product_output_and_bad_path_is_refused(self):
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        env = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}
+        with patch.dict(os.environ, env):
+            runner.retain_native_failure(self.config, self.root, "fresh", runner.POINTS[0], 1, RuntimeError("private product output"))
+        self.assertEqual(list(diagnostics.iterdir()), [])
+        bad = self.root / "outside" / "rrflow-capacity-diagnostics"
+        bad.parent.mkdir()
+        with patch.dict(os.environ, {**env, "RRFLOW_CAPACITY_DIAGNOSTICS": str(bad)}):
+            with self.assertRaisesRegex(Exception, "directly inside runner temp"):
+                runner.retain_native_failure(self.config, self.root, "fresh", runner.POINTS[0], 1, RuntimeError("private"))
+
+    def test_diagnostic_failure_does_not_replace_original_or_enable_later_case(self):
+        @contextmanager
+        def fail(fixture, size):
+            self.generation += 1
+            raise RuntimeError("original fixture failure")
+            yield  # pragma: no cover
+        with patch.object(runner, "volume", fail), patch.object(runner, "retain_native_failure", side_effect=RuntimeError("diagnostic unavailable")), redirect_stderr(io.StringIO()) as output:
+            with self.assertRaisesRegex(RuntimeError, "original fixture failure"):
+                runner.cases(self.config, self.root)
+        self.assertEqual(self.generation, 1)
+        self.assertIn("diagnostic retention failed", output.getvalue())
+
+    def test_cleanup_error_preserves_preceding_native_create_diagnostic(self):
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        env = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics)}
+        try:
+            try:
+                raise runner.NativeCommandFailure("hdiutil", "create", subprocess.CompletedProcess([], 1, "", "Resource busy"))
+            except runner.NativeCommandFailure:
+                raise RuntimeError("cleanup failed")
+        except RuntimeError as cleanup:
+            with patch.dict(os.environ, env):
+                runner.retain_native_failure(self.config, self.root, "existing", runner.POINTS[2], 7, cleanup)
+        receipt = json.loads(next(diagnostics.glob("*.json")).read_text(encoding="utf8"))
+        self.assertEqual(receipt["mode"], "existing")
+        self.assertEqual(receipt["point"], runner.POINTS[2])
+        self.assertEqual(receipt["case_index"], 7)
+        self.assertEqual(receipt["cleanup_state"], "unknown")
+        self.assertIn("Resource busy", receipt["stderr_tail"])
+
+    def test_ci_policy_rejects_lost_diagnostics_or_native_repetitions(self):
+        workflow = check_workflow.REUSABLE.read_text(encoding="utf8")
+        job = check_workflow.job_blocks(workflow)["installed-crash"]
+        check_workflow.verify_native_capacity_diagnostics(job)
+        for altered in [
+            job.replace("RRFLOW_CAPACITY_DIAGNOSTICS:", "REMOVED_DIAGNOSTICS:", 1),
+            job.replace("if: always() && matrix.os == 'macos-latest'", "if: success()", 1),
+            job.replace("rrflow-capacity-diagnostics/*.json", "**/*", 1),
+            job.replace("--mode fresh --mode existing\n", "", 1),
+        ]:
+            with self.assertRaises(check_workflow.PolicyError):
+                check_workflow.verify_native_capacity_diagnostics(altered)
+
+    def test_manual_preflight_cannot_replace_candidate_or_hide_failures(self):
+        workflow = check_workflow.NATIVE_PREFLIGHT.read_text(encoding="utf8")
+        check_workflow.verify_native_capacity_preflight(workflow)
+        for altered in [
+            workflow.replace("  workflow_dispatch:\n", "  pull_request:\n", 1),
+            workflow.replace("--mode fresh --mode existing\n", "", 1),
+            workflow.replace("    runs-on: macos-latest", "    runs-on: ubuntu-latest", 1),
+            workflow.replace("      - name: Bind exact revision", "      - continue-on-error: true\n      - name: Bind exact revision", 1),
+            workflow.replace("          submodules: recursive", "          submodules: recursive\n          ref: main", 1),
+            workflow.replace("python3 scripts/ci/macos_native_failure_preflight.py", "python3 omitted.py", 1),
+            workflow.replace("rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "**/*", 1),
+            workflow.replace("if-no-files-found: error", "if-no-files-found: ignore", 1),
+            workflow.replace("      - name: Retain injected native failure receipt\n        if: always()", "      - name: Retain injected native failure receipt\n        if: always() && false", 1),
+            workflow.replace("      - name: Retain native capacity create diagnostics\n        if: always()", "      - name: Retain native capacity create diagnostics\n        if: success()", 1),
+        ]:
+            with self.assertRaises(check_workflow.PolicyError):
+                check_workflow.verify_native_capacity_preflight(altered)
 
 
 class MountedFixtureCleanup(unittest.TestCase):

@@ -1256,6 +1256,24 @@
         }
       ]
     },
+    "ReaderSelection": {
+      "description": "A reviewed selection of records actually created by the workload adapter.\nOmission preserves the historical full-range reader and campaign identity.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "workload_records",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ReasoningLimits": {
       "additionalProperties": false,
       "properties": {
@@ -1739,6 +1757,16 @@
     },
     "read_distribution": {
       "$ref": "#/$defs/ReadKeyDistribution"
+    },
+    "reader_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReaderSelection"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "required_lanes": {
       "items": {
