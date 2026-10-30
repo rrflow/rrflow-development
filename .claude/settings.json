@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash /d/.usr/Temp/claude/d--localdev-devlabs-rrflow/f68a0455-656a-431a-b336-6025c25e75be/scratchpad/poam047-suites.sh)",
+      "Bash(py -3 /d/.usr/Temp/claude/d--localdev-devlabs-rrflow/f68a0455-656a-431a-b336-6025c25e75be/scratchpad/poam047-cursor.py .)"
+    ],
+    "additionalDirectories": [
+      "D:\\localdev\\devlabs\\rrflow-poam045\\docs\\evidence\\change-journals\\gate-e",
+      "D:\\localdev\\devlabs\\rrflow-poam045\\crates\\authority\\rrd-engine\\src\\engine\\vector"
+    ]
+  }
+}
