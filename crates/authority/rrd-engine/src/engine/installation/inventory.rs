@@ -13,7 +13,7 @@ use std::fs::Metadata;
 use std::io::Read;
 use std::path::Path;
 
-pub(super) fn project_inventory_sha256(
+pub(in crate::engine) fn project_inventory_sha256(
     project: &AnchoredPath,
     profile: &DefaultInstallProfile,
 ) -> Result<String> {

@@ -70,6 +70,8 @@ pub enum ServiceError {
     PermissionDenied,
     DeadlineExceeded,
     ProjectBindingMismatch,
+    /// The currently observed project precondition differs from the accepted plan.
+    AttunementSourceChanged,
     /// Another process holds the installed estate's single writer lock.
     EstateInUse(String),
     ClockUnavailable(ClockObservationFailure),
@@ -136,6 +138,7 @@ impl ServiceError {
             | Self::TaskAttemptInvalidated(_)
             | Self::EndpointCallFailed { .. }
             | Self::ProjectBindingMismatch
+            | Self::AttunementSourceChanged
             | Self::EstateInUse(_) => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::StorageAdmission(_)

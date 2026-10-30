@@ -18,8 +18,8 @@ use rrd_contract::{
     EstateConfiguration, EstateConfigurationInput, InstallationActionDisposition,
     InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
     InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
-    InstalledEstateIdentity, PersistMemoryEstate, StorageProfileKind, ATTUNEMENT_PHASES,
-    INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    InstalledEstateIdentity, PersistMemoryEstate, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
+    ATTUNEMENT_PHASES, INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityState, SECURITY_FORMAT};
@@ -48,7 +48,8 @@ mod inventory;
 mod lease;
 pub(super) mod recovery;
 
-use inventory::{project_inventory_sha256, project_inventory_sha256_excluding};
+pub(super) use inventory::project_inventory_sha256;
+use inventory::project_inventory_sha256_excluding;
 
 use recovery::{
     acknowledge_intent, load_or_create_intent, materialize_secret, read_existing_intent,
@@ -401,7 +402,7 @@ impl RrdEngine {
             })
             .collect::<Result<Vec<_>>>()?;
         let mut attunement = AttunementPlan {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             id: attunement_id,
             target: target.clone(),
             source_sha256: project_precondition_sha256.clone(),
@@ -916,7 +917,7 @@ impl RrdEngine {
         checkpoint.checkpoint_sha256 = installation_checkpoint_sha256(&checkpoint)?;
         checkpoint.validate()?;
         let job = AttunementJob {
-            contract_version: INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+            contract_version: ATTUNEMENT_CONTRACT_VERSION,
             id: canonical_prefixed("job", &preview.attunement.plan_sha256)?,
             plan_id: preview.attunement.id.clone(),
             plan_sha256: preview.attunement.plan_sha256.clone(),

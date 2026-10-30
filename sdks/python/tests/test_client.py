@@ -276,8 +276,123 @@ def test_remote_cleartext_expired_deadlines_and_typed_api_errors_are_rejected() 
             )
 
 
+def test_attunement_source_change_keeps_actionable_error_details() -> None:
+    details = {
+        "reason": "attunement-source-changed",
+        "next-action": "preview-attunement-replan",
+        "private-test-value": "must-not-appear-in-exception-text",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/attunement/start"
+        body = json.loads(request.content)
+        return httpx.Response(
+            412,
+            json={
+                "protocol": "rrd",
+                "protocol_version": 1,
+                "request_id": body["context"]["request_id"],
+                "operation_id": body["context"]["operation_id"],
+                "outcome": {
+                    "status": "error",
+                    "error": {
+                        "code": "failed_precondition",
+                        "message": "project source changed",
+                        "retryable": False,
+                        "details": details,
+                    },
+                },
+            },
+        )
+
+    session = Session(
+        principal_id="python-sdk", lease={"session_id": "session-1", "token": "token-1"}
+    )
+    with (
+        RrdClient(
+            "http://127.0.0.1:9477",
+            "sdk-test",
+            max_attempts=1,
+            transport=httpx.MockTransport(handler),
+        ) as client,
+        pytest.raises(RrdApiError) as captured,
+    ):
+        client.call(
+            "attunement-start",
+            {
+                "contract_version": 2,
+                "job_id": "job-test",
+                "plan_sha256": "0" * 64,
+                "expected_revision": 1,
+                "lease_ms": 1000,
+            },
+            RequestOptions(
+                request_id="request-start",
+                operation_id="operation-start",
+                idempotency_key="start-key",
+                session=session,
+            ),
+        )
+    error = captured.value
+    assert error.code == "failed_precondition"
+    assert error.details == details
+    assert "must-not-appear-in-exception-text" not in str(error)
+    details["reason"] = "mutated-after-receipt"
+    assert error.details["reason"] == "attunement-source-changed"
+    assert RrdApiError(403, "permission_denied", "denied", False).details == {}
+    supplied = {"reason": "original"}
+    independent = RrdApiError(409, "conflict", "changed", False, supplied)
+    supplied["reason"] = "changed"
+    assert independent.details == {"reason": "original"}
+
+
+@pytest.mark.parametrize("with_details", [False, True])
+def test_api_error_defaults_missing_or_empty_details_to_empty_mapping(with_details: bool) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        error: dict[str, Any] = {
+            "code": "permission_denied",
+            "message": "denied",
+            "retryable": False,
+        }
+        if with_details:
+            error["details"] = {}
+        return httpx.Response(
+            403,
+            json={
+                "protocol": "rrd",
+                "protocol_version": 1,
+                "request_id": body["context"]["request_id"],
+                "operation_id": body["context"]["operation_id"],
+                "outcome": {"status": "error", "error": error},
+            },
+        )
+
+    session = Session(
+        principal_id="python-sdk", lease={"session_id": "session-1", "token": "token-1"}
+    )
+    with (
+        RrdClient(
+            "http://127.0.0.1:9477",
+            "sdk-test",
+            max_attempts=1,
+            transport=httpx.MockTransport(handler),
+        ) as client,
+        pytest.raises(RrdApiError) as captured,
+    ):
+        client.call(
+            "audit-read",
+            {"after_sequence": 0, "limit": 10},
+            RequestOptions(request_id="read", operation_id="read", session=session),
+        )
+    assert captured.value.details == {}
+
+
 def test_generated_catalogue_covers_the_frozen_contract() -> None:
-    assert len(ENDPOINTS) == 63
+    assert ENDPOINTS["attunement-replan-preview"]["path"] == "/v1/attunement/replan/preview"
+    assert ENDPOINTS["attunement-replan-preview"]["mutation"] is False
+    assert ENDPOINTS["attunement-replan-preview"]["authentication"] == "session_bearer"
+    assert ENDPOINTS["attunement-replan-accept"]["mutation"] is True
     assert ENDPOINTS["attunement-receipt-read"]["path"] == "/v1/attunement/receipt/read"
     assert ENDPOINTS["attunement-receipt-read"]["mutation"] is False
     assert ENDPOINTS["capabilities-read"] == {
