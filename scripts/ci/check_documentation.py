@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
@@ -27,6 +28,26 @@ if NAVIGATION_SPEC is None or NAVIGATION_SPEC.loader is None:
     raise RuntimeError(f"cannot load navigation renderer from {NAVIGATION_PATH}")
 NAVIGATION = importlib.util.module_from_spec(NAVIGATION_SPEC)
 NAVIGATION_SPEC.loader.exec_module(NAVIGATION)
+
+
+def valid_inventory_descriptor(source: str) -> bool:
+    try:
+        descriptor = json.loads(source)
+    except (TypeError, ValueError):
+        return False
+    return (
+        isinstance(descriptor, dict)
+        and set(descriptor) == {"format_version", "status", "generator", "current_output", "previous_git_blob"}
+        and type(descriptor["format_version"]) is int
+        and descriptor["format_version"] == 1
+        and descriptor["status"] == "retired_tracked_projection"
+        and descriptor["generator"] == "scripts/ci/build_execution_inventory.py"
+        and descriptor["current_output"] == "target/rrflow-1.0-file-plan.jsonl"
+        and isinstance(descriptor["previous_git_blob"], str)
+        and re.fullmatch(r"[0-9a-f]{40}", descriptor["previous_git_blob"]) is not None
+    )
+
+
 README = ROOT / "README.md"
 AGENTS = ROOT / "AGENTS.md"
 DOCS_INDEX = ROOT / "docs" / "README.md"
@@ -883,7 +904,9 @@ def main() -> int:
     if "The executable dependency sequence below is fixed" in execution_map:
         failures.append("the execution portal duplicates the dependency sequence")
     if not EXECUTION_FILE_PLAN.is_file():
-        failures.append("the exhaustive RRFlow 1.0 file plan is absent")
+        failures.append("the RRFlow inventory descriptor is absent")
+    elif not valid_inventory_descriptor(EXECUTION_FILE_PLAN.read_text(encoding="utf-8")):
+        failures.append("the RRFlow inventory descriptor is invalid")
     change_authoring = CHANGE_AUTHORING.read_text(encoding="utf-8")
     for required_evidence_field in (
         "alpha outcome or prerequisite advanced:",

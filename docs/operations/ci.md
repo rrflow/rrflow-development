@@ -37,18 +37,22 @@ preemption affect interpretation.
 
 The trace span contains SHA-256 of the client request ID rather than its raw
 value. The digest can still be sensitive or guessable; treat traces as scoped
-diagnostic data. The caller must record a unique ID for each request and
-compute the same digest to join records. The current C-07 resource sampler
-reuses `capacity-resource`, so this trace alone does not give that sampler a
-unique sample-to-request identity; update the sampler in its own integration
-package before making a one-to-one correlation claim. Missing or truncated
-events are missing evidence, not zero cost. Exact-field or source-location
-subscriber filters can affect the `tracing` enabled check; use the stated
-target filter and validate capture on the installed candidate.
+diagnostic data. The C-07 sampler uses a checked process-local request counter
+and prints the matching digest for completed slow samples within its existing
+64-record bound; include the harness process and campaign identity when joining
+across restarts. Failed or canceled calls need not produce a completed-sample
+record, and records beyond that bound are not retained. Other callers need
+their own unique request IDs and matching digest to join records. Missing or
+truncated events are missing evidence, not zero cost. Exact-field or
+source-location subscriber filters can affect the `tracing` enabled check; use
+the stated target filter and validate capture on the installed candidate.
 
 The [C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07g-diagnostic-lock-attribution.md)
 records the bounded controlled test and its limits. The original failed run
 used an earlier binary and cannot retroactively acquire these events.
+The [integrated trace journal](../evidence/change-journals/gate-c/c-07g-installed-trace-correlation.md)
+records the small installed mixed-family and restart proof; it is not capacity
+or soak qualification.
 
 ## Candidate chain
 
@@ -95,6 +99,15 @@ check for branch protection:
 - ordinary-primary fresh/existing 100-cycle acknowledged kill/reopen histories
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
+
+The Linux lifecycle and Windows/macOS portability lanes also build the native
+`rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
+copies, and run the installed example over authenticated loopback HTTP. The
+runner checks the exact synthetic task and owning relationship at one read
+stamp, changes the task, rejects the old expectation, verifies the stopped
+estate and reads the same state after reopening. It bounds child output and
+execution, and terminates only its own processes. This is a small fresh-project
+integration corpus, not the complete H-04 SDK matrix or C-07 qualification.
 
 The Linux topology and Windows/macOS estate partitions also require
 `projected_lifetime` and `reader::lifetime_tests`: overlapping empty-reader
@@ -317,13 +330,18 @@ candidate. The ordinary suite's ignored privileged case is not acceptance;
 the explicit isolated invocation must pass. This bounded fixture does not
 replace D-01.5's wider native filesystem and offline qualification.
 
-The repository-policy partition also verifies the generated
-`docs/roadmap/rrflow-1.0-file-plan.jsonl`. That inventory must match every
-tracked or non-ignored path and every long-lived future path registered by its
-generator. Newly created paths become current inventory records; the pull
-request description binds their intended scope. Regenerate the inventory with
-`python3 scripts/ci/build_execution_inventory.py` after an accepted path or
-content change.
+The repository-policy partition generates and checks the complete Git-backed
+inventory in ignored `target/rrflow-1.0-file-plan.jsonl`, then retains it and
+the exact checked-out Git revision as a CI artifact. The generator must cover
+every tracked or non-ignored path and every long-lived future path registered by
+its generator; a missing or stale local output fails `--check`. CI rejects dirty
+or untracked non-ignored source before generating the artifact. The stable
+`docs/roadmap/rrflow-1.0-file-plan.jsonl` link is a retirement descriptor, not
+current inventory. Generate a current local view using
+`python3 scripts/ci/build_execution_inventory.py` and check it with the same
+command plus `--check`. Newly created paths become current inventory records;
+the pull request description still binds their intended scope. This removes a
+shared generated merge-conflict point without removing any candidate CI test.
 
 The Connectome UI is optional for engine operation, while candidate CI follows
 repository policy and recursively materializes every declared submodule. The
@@ -800,3 +818,25 @@ The macOS installed-crash lane additionally runs three planned fresh/existing
 WAL capacity pairs, each on a newly owned APFS image. These regress the
 intermittent selected-WAL error gap; the first failure stops the run. They do
 not replace the full native capacity matrix or permit retry-until-green.
+
+An owned APFS image creation failure records bounded `hdiutil create -verbose`
+output, the failing mode and point, harness digest and CI run coordinates in a
+dedicated runner-temp JSON file. The macOS job attempts to upload only those
+diagnostic JSON files, including after a failed capacity step. No disk image or
+product output is uploaded. A lost runner or failed artifact upload can still
+prevent retention. The record does not classify the cause, retry the case, or
+turn a failed native test into acceptance; see the
+[C-07 diagnostic journal](../evidence/change-journals/gate-c/c-07-native-create-diagnostics.md).
+
+The separate manual `c07-native-preflight.yml` workflow runs the same three
+fresh/existing APFS pairs and controlled failure diagnostics on one macOS
+runner. First it deliberately supplies an invalid filesystem to the native
+image-create command and verifies that the runner retains the resulting error;
+that injected receipt is uploaded separately from any real capacity failure.
+The injected failure is a diagnostic test, never a capacity pass. Once that
+workflow exists on default `main`, dispatch an exact branch
+with `gh workflow run c07-native-preflight.yml --ref <branch>` and verify the
+run's recorded head and tree. This is a focused diagnostic, not candidate CI,
+the required merge group, the full capacity matrix, or a soak. A passing run
+does not erase a prior failure or prove its cause. Normal PR and merge-group
+events continue to run the unchanged complete pipeline.

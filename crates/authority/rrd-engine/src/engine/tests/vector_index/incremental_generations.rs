@@ -1,8 +1,8 @@
 //! E-04c: a TurboQuant build extends the newest published generation of its
 //! configuration with the vectors changed since it. The generation it
 //! publishes is byte for byte the one a full build makes from every version,
-//! its work follows the change rather than the estate, and a build without a
-//! sound base encodes every version.
+//! its source-version reads and newly encoded versions follow the change, and
+//! a build without a sound base encodes every version.
 
 use super::*;
 use crate::engine::vector::{read_vector_versions, vector_matches_collection};
@@ -531,7 +531,7 @@ fn an_extended_build_reads_and_encodes_only_the_change() {
     };
     let (small, small_full) = measure(DOCUMENTS, 4);
     let (large, large_full) = measure(DOCUMENTS * 10, 80);
-    assert_eq!(small, large, "an extended build's work follows the change");
+    assert_eq!(small, large, "source reads and encoding follow the change");
     assert!(large_full.0 > small_full.0, "a full build encodes more");
     assert!(large_full.1 > small_full.1, "a full build reads more");
     assert!(small.0 < small_full.0);

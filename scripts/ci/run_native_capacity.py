@@ -31,6 +31,58 @@ class NotRun(RuntimeError):
     pass
 
 
+class NativeCommandFailure(RuntimeError):
+    """Failure from one owned native command, with bounded diagnostic output."""
+    def __init__(self, tool, verb, result):
+        self.tool = tool
+        self.verb = verb
+        self.returncode = result.returncode
+        self.stdout_head = result.stdout[:8192]
+        self.stdout_tail = result.stdout[-8192:]
+        self.stderr_head = result.stderr[:8192]
+        self.stderr_tail = result.stderr[-8192:]
+        super().__init__(f"native {tool} failed ({result.returncode}): "
+                         + result.stderr[-2048:] + result.stdout[-2048:])
+
+
+def retain_native_failure(config, fixture, mode, point, case_index, error):
+    """Retain only controlled hdiutil create output, never product or image data."""
+    directory = os.environ.get("RRFLOW_CAPACITY_DIAGNOSTICS")
+    runner_temp = os.environ.get("RUNNER_TEMP")
+    if not directory or not runner_temp:
+        return
+    path = Path(directory)
+    parent = Path(runner_temp).resolve(strict=True)
+    require(path.name == "rrflow-capacity-diagnostics" and path.parent.resolve(strict=True) == parent,
+            "capacity diagnostic directory must be directly inside runner temp")
+    require(not path.is_symlink(), "capacity diagnostic directory is a symlink")
+    path.mkdir(exist_ok=True)
+    require(path.is_dir() and not path.is_symlink(), "invalid capacity diagnostic directory")
+    source = error
+    seen = set()
+    for _ in range(4):
+        if source is None or id(source) in seen:
+            break
+        seen.add(id(source))
+        if isinstance(source, NativeCommandFailure) and (source.tool, source.verb) == ("hdiutil", "create"):
+            receipt = {"version": 1, "mode": mode, "point": point, "case_index": case_index,
+                       "fixture": fixture.name, "size_mib": config["size_mib"],
+                       "harness_sha256": config["harness_sha256"],
+                       "github_sha": os.environ.get("GITHUB_SHA"),
+                       "github_run_id": os.environ.get("GITHUB_RUN_ID"),
+                       "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+                       "tool": source.tool, "verb": source.verb, "returncode": source.returncode,
+                       "stdout_head": source.stdout_head, "stdout_tail": source.stdout_tail,
+                       "stderr_head": source.stderr_head, "stderr_tail": source.stderr_tail,
+                       "cleanup_state": "unknown"}
+            encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8", errors="replace")
+            require(len(encoded) <= 256 * 1024, "capacity diagnostic exceeds output bound")
+            with (path / f"failure-{secrets.token_hex(16)}.json").open("xb") as output:
+                output.write(encoded)
+            return
+        source = source.__context__
+
+
 def tools_available():
     names = {"linux": ["sudo", "unshare", "losetup", "mkfs.ext4", "mount", "umount", "findmnt"],
              "darwin": ["hdiutil", "diskutil"], "win32": ["powershell.exe"]}
@@ -75,8 +127,8 @@ def native_command(*arguments, **kwargs):
     # These are owned-image OS commands only, never credential-bearing product
     # output. Keep the failing tool and bounded native message in CI evidence.
     result = run(*arguments, check=False, **kwargs)
-    require(result.returncode == 0, f"native {arguments[0]} failed ({result.returncode}): "
-            + result.stderr[-2048:] + result.stdout[-2048:])
+    if result.returncode != 0:
+        raise NativeCommandFailure(arguments[0], arguments[1], result)
     return result
 
 
@@ -136,7 +188,7 @@ def volume(fixture: Path, size: int):
             require(0 < inode_count <= 8192, "owned ext4 inode count exceeds bounded filler")
             identity = {"device": device, "image": str(image), "mount": info[0], "inodes": inode_count}
         elif sys.platform == "darwin":
-            native_command("hdiutil", "create", "-size", f"{size}m", "-fs", "APFS", "-type", "UDIF",
+            native_command("hdiutil", "create", "-verbose", "-size", f"{size}m", "-fs", "APFS", "-type", "UDIF",
                 "-volname", "RRFlowCapacity", str(image), timeout=120)
             attach = plistlib.loads(native_command("hdiutil", "attach", "-nobrowse", "-mountpoint", str(root),
                                         "-plist", str(image), timeout=60).stdout.encode())
@@ -248,15 +300,24 @@ def cleanup_detached_volume(fixture):
 
 def cases(config, fixture):
     results = []
+    case_index = 0
     for mode in config["modes"]:
         for point in config["points"]:
+            case_index += 1
             # A new filesystem per case prevents prior exhaustion/deletion
             # allocation state from influencing the next native error oracle.
-            with volume(fixture, config["size_mib"]) as (descriptor, identity):
-                receipt = execute(Path(config["executable"]), descriptor, point, mode)
-                results.append({"mode": mode, "point": point, "build": receipt["build"],
-                                "expected_sha256": receipt["expected_sha256"], "filesystem": identity})
-            cleanup_detached_volume(fixture)
+            try:
+                with volume(fixture, config["size_mib"]) as (descriptor, identity):
+                    receipt = execute(Path(config["executable"]), descriptor, point, mode)
+                    results.append({"mode": mode, "point": point, "build": receipt["build"],
+                                    "expected_sha256": receipt["expected_sha256"], "filesystem": identity})
+                cleanup_detached_volume(fixture)
+            except Exception as error:
+                try:
+                    retain_native_failure(config, fixture, mode, point, case_index, error)
+                except Exception as diagnostic_error:
+                    print("native capacity diagnostic retention failed: " + str(diagnostic_error)[:1024], file=sys.stderr)
+                raise
     # This statement is reachable only after owned process and volume cleanup.
     print("native_capacity_suite=" + json.dumps({"version": 2, "status": "passed",
           "harness_sha256": config["harness_sha256"], "cases": results}), flush=True)
