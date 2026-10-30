@@ -609,7 +609,8 @@ impl PointRun<'_> {
             })?;
         }
         let mut sample_task = sample_task::SampleTask::new();
-        if phase == LoadPhase::Warmup && first == 0 {
+        let mut initial_sample_pending = !(phase == LoadPhase::Warmup && first == 0);
+        if !initial_sample_pending {
             // The evaluator requires this real ownership baseline before any
             // initial warmup effect; later segment samples need no such fence.
             resources.push(self.sample(writer).await?);
@@ -660,8 +661,11 @@ impl PointRun<'_> {
                     }
                     _=tokio::time::sleep_until(due.into()) => break,
                     value=sample_task.finish(), if sample_pending => {
-                        resources.push(Self::record_sample(writer, value?.ok_or("missing resource sample")?)?);
-                        next_sample=resource_window::next_sample_deadline(next_sample,period,Instant::now())?;
+                        let value=value?.ok_or("missing resource sample")?;
+                        let observed=self.clock.checked_add(Duration::from_nanos(value.elapsed_ns)).ok_or("sample timestamp overflow")?;
+                        resources.push(Self::record_sample(writer,value)?);
+                        next_sample=resource_window::after_sample_deadline(next_sample,period,observed,Instant::now(),initial_sample_pending)?;
+                        initial_sample_pending=false;
                     }
                     _=tokio::time::sleep_until(next_sample.into()), if !sample_pending => {
                         if resources.len() as u64>=campaign.evidence.samples_per_segment.get() {return Err("resource sample cap exhausted".into());}
@@ -751,8 +755,11 @@ impl PointRun<'_> {
             tokio::select! {
                 result=joins.join_next() => collect(result.ok_or("missing scheduled task")?.map_err(|_|"scheduled task panicked")?,started,&mut attempts,&mut ledger,&mut failure,writer)?,
                 value=sample_task.finish(), if sample_pending => {
-                    resources.push(Self::record_sample(writer, value?.ok_or("missing resource sample")?)?);
-                    next_sample=resource_window::next_sample_deadline(next_sample,period,Instant::now())?;
+                    let value=value?.ok_or("missing resource sample")?;
+                    let observed=self.clock.checked_add(Duration::from_nanos(value.elapsed_ns)).ok_or("sample timestamp overflow")?;
+                    resources.push(Self::record_sample(writer,value)?);
+                    next_sample=resource_window::after_sample_deadline(next_sample,period,observed,Instant::now(),initial_sample_pending)?;
+                    initial_sample_pending=false;
                 }
                 _=tokio::time::sleep_until(next_sample.into()), if !sample_pending => {
                     if resources.len() as u64>=campaign.evidence.samples_per_segment.get(){return Err("resource sample cap exhausted".into());}
@@ -767,9 +774,18 @@ impl PointRun<'_> {
                 .finish()
                 .await?
                 .ok_or("missing resource sample")?;
+            let observed = self
+                .clock
+                .checked_add(Duration::from_nanos(value.elapsed_ns))
+                .ok_or("sample timestamp overflow")?;
             resources.push(Self::record_sample(writer, value)?);
-            next_sample =
-                resource_window::next_sample_deadline(next_sample, period, Instant::now())?;
+            next_sample = resource_window::after_sample_deadline(
+                next_sample,
+                period,
+                observed,
+                Instant::now(),
+                initial_sample_pending,
+            )?;
         }
         let reader_receipt = match held_reader {
             Some(reader) => Some(reader.finish(&self.workload, self.clock).await?),
