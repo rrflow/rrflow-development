@@ -523,6 +523,14 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+      - name: Isolate macOS reopen toolchain
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_home="${RUNNER_TEMP}/rrflow-reopen-rustup"
+          test ! -e "$toolchain_home"
+          printf 'RUSTUP_HOME=%s\n' "$toolchain_home" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
         with:
           components: clippy
