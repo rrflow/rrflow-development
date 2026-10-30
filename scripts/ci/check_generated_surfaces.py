@@ -12,8 +12,6 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from rust_client_projection import render as render_rust_client
-
 ROOT = Path(__file__).resolve().parents[2]
 KERNEL_SIGNAL_FIXTURE = (
     ROOT / "crates/kernel/rrd-core/fixtures/telemetry-catalogue-v1.json"
@@ -841,18 +839,6 @@ def main() -> None:
         render_rust(kernel_catalogue_json, kernel_fingerprint), write=args.write
     )
     raw, document = contract_export()
-    catalogue_raw, catalogue = contract_export("--catalogue")
-    rust_client = ROOT / "crates/transport/rrd-client/src/generated/operations.rs"
-    try:
-        projected_client = render_rust_client(catalogue_raw, catalogue)
-    except (ValueError, KeyError, subprocess.CalledProcessError) as error:
-        raise SurfaceError(f"Rust client projection failed: {error}") from error
-    if args.write:
-        rust_client.parent.mkdir(parents=True, exist_ok=True)
-        rust_client.write_bytes(projected_client)
-    else:
-        require(rust_client.is_file(), "Rust client projection is absent")
-        require(rust_client.read_bytes() == projected_client, "Rust client projection is stale")
     digest = hashlib.sha256(raw).hexdigest()
     operation_count = validate_endpoint_outputs(
         document, digest, require_current_digest=not args.write

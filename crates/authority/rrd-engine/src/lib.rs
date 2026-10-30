@@ -23,6 +23,7 @@ pub use edge::{OfflineDocument, OfflineEdgeConfig, OfflineEdgeIndex, OfflineQuer
 #[cfg(feature = "full")]
 pub use engine::{
     load_estate_configuration, AttunementCommand, AttunementControlResult, AttunementReceiptView,
+    AttunementReplanPreview, AttunementReplanReceiptView, AttunementReplanResult,
     AuthorizedInvocation, ClockAssessment, ClockAssessmentStatus, ClockObservation,
     ClockObservationFailure, ClockSourceKind, ClockTrustLevel, DefaultAttunementPhase,
     DefaultInstallProfile, DistributedAuthorityRead, DistributedReadRoute, EndpointCredentials,

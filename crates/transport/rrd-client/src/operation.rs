@@ -1,6 +1,7 @@
 //! Typed public operations, envelope construction, and outcome correlation.
 
 use crate::error::{contract, decode};
+use crate::operations as generated;
 use crate::{Error, Result, RrdClient, Session};
 use hyper::{Method, StatusCode};
 use rrd_contract::{
@@ -80,21 +81,8 @@ impl RrdClient {
         request: rrd_contract::CancelAttunement,
         options: RequestOptions,
     ) -> Result<rrd_contract::AttunementCancelResult> {
-        let catalogue = rrd_contract::endpoint_catalogue();
-        let endpoint = catalogue
-            .endpoints
-            .iter()
-            .find(|endpoint| endpoint.operation.as_str() == "attunement-cancel")
-            .ok_or_else(|| Error::Contract("attunement cancel operation is unavailable".into()))?;
         let result: rrd_contract::AttunementCancelResult = self
-            .session_call(
-                Method::POST,
-                &endpoint.path,
-                session,
-                &request,
-                options,
-                endpoint.mutation,
-            )
+            .generated_attunement_call::<generated::AttunementCancel>(session, &request, options)
             .await?;
         result.validate_for(&request).map_err(contract)?;
         Ok(result)
@@ -108,22 +96,9 @@ impl RrdClient {
         options: RequestOptions,
     ) -> Result<rrd_contract::AttunementReceiptReadResult> {
         request.validate().map_err(contract)?;
-        let catalogue = rrd_contract::endpoint_catalogue();
-        let endpoint = catalogue
-            .endpoints
-            .iter()
-            .find(|endpoint| endpoint.operation.as_str() == "attunement-receipt-read")
-            .ok_or_else(|| {
-                Error::Contract("attunement receipt read operation is unavailable".into())
-            })?;
         let result: rrd_contract::AttunementReceiptReadResult = self
-            .session_call(
-                Method::POST,
-                &endpoint.path,
-                session,
-                &request,
-                options,
-                endpoint.mutation,
+            .generated_attunement_call::<generated::AttunementReceiptRead>(
+                session, &request, options,
             )
             .await?;
         result
@@ -141,21 +116,8 @@ impl RrdClient {
     ) -> Result<rrd_contract::AttunementReadResult> {
         request.validate().map_err(contract)?;
         let job_id = request.job_id.clone();
-        let catalogue = rrd_contract::endpoint_catalogue();
-        let endpoint = catalogue
-            .endpoints
-            .iter()
-            .find(|endpoint| endpoint.operation.as_str() == "attunement-read")
-            .ok_or_else(|| Error::Contract("attunement read operation is unavailable".into()))?;
         let result: rrd_contract::AttunementReadResult = self
-            .session_call(
-                Method::POST,
-                &endpoint.path,
-                session,
-                request,
-                options,
-                endpoint.mutation,
-            )
+            .generated_attunement_call::<generated::AttunementRead>(session, &request, options)
             .await?;
         result.validate().map_err(contract)?;
         if result.plan.target.instance_id != self.instance || result.status.job.id != job_id {

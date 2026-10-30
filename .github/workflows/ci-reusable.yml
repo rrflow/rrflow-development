@@ -260,6 +260,7 @@ jobs:
         run: |
           python3 scripts/ci/test_candidate_admission.py
           python3 scripts/ci/test_native_sample_policy.py
+          python3 scripts/ci/test_sdk_attunement_policy.py
           python3 scripts/ci/test_rrflowdb_standalone.py
           python3 scripts/ci/test_cache_warm_policy.py
           python3 scripts/ci/check_workflow.py
@@ -309,7 +310,7 @@ jobs:
       - name: Enforce generated product-surface parity
         run: python3 scripts/ci/check_generated_surfaces.py
       - name: Test catalogue-derived Rust client projection
-        run: python3 scripts/ci/test_rust_client_projection.py
+        run: cargo test --locked -p rrd-client --test generated_catalogue
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
       - name: Verify controlled evaluation evidence
@@ -444,6 +445,16 @@ jobs:
           printf '%s\n' "$maven_root/bin" >> "$GITHUB_PATH"
       - name: Test SDK harness native manifest privacy
         run: python3 -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
+      - name: Exercise installed Python attunement recovery
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p rrflow-cli --bin rrflow --profile test --locked
+          export RRFLOW_TEST_BINARY="$GITHUB_WORKSPACE/target/debug/rrflow"
+          test -x "$RRFLOW_TEST_BINARY"
+          uv --directory sdks/python run --frozen pytest -o addopts= --color=no -q tests/test_installed_attunement.py | tee "$RUNNER_TEMP/rrflow-python-attunement.txt"
+          grep -Eq '^1 passed in [0-9.]+s[[:space:]]*$' "$RUNNER_TEMP/rrflow-python-attunement.txt"
       - name: Qualify all supported SDKs against one live corpus
         run: python3 scripts/ci/run_sdk_conformance.py
 

@@ -324,7 +324,10 @@ fn supported_sdks_share_one_strict_semantic_corpus() {
     .unwrap();
     corpus.validate().unwrap();
     assert_eq!(corpus.required_domains.len(), 13);
-    assert_eq!(corpus.expected.endpoint_count, 63);
+    assert_eq!(
+        usize::from(corpus.expected.endpoint_count),
+        rrd_contract::endpoint_catalogue().endpoints.len()
+    );
     assert_eq!(
         rrd_contract::transaction_operation_sha256(&corpus.transaction.commit.mutations),
         corpus.transaction.commit.operation_sha256
@@ -1356,7 +1359,10 @@ fn diagnostic_storage_observation_matches_its_profile_and_evidence_level() {
 fn endpoint_catalogue_is_complete_sorted_and_transport_neutral() {
     let catalogue = rrd_contract::endpoint_catalogue();
     catalogue.validate().unwrap();
-    assert_eq!(catalogue.endpoints.len(), 63);
+    assert!(catalogue
+        .endpoints
+        .iter()
+        .any(|endpoint| endpoint.operation.as_str() == "attunement-replan-accept"));
     assert_eq!(
         catalogue.endpoints[0].operation.as_str(),
         "attunement-cancel"
