@@ -165,22 +165,28 @@ impl RrdEngine {
         }
 
         let read = self.storage.runtime().read_stamp(&scope)?;
-        let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
-        let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
-            .filter(|candidate| {
-                vector_matches_collection(
-                    &candidate.vector,
-                    &request.collection_id,
-                    &request.vector_name,
-                )
-            })
-            .collect::<Vec<_>>();
-        let source_cursor = candidates
-            .iter()
-            .map(|candidate| candidate.source_cursor)
-            .max()
-            .unwrap_or(0);
+        let in_source = |candidate: &rrd_vector::VectorCandidate| {
+            vector_matches_collection(
+                &candidate.vector,
+                &request.collection_id,
+                &request.vector_name,
+            )
+        };
+        // Every version of this named vector in the scope, for a full build.
+        let read_everything = || -> Result<(Vec<rrd_vector::VectorCandidate>, VersionsRead)> {
+            let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
+            let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
+                .into_iter()
+                .filter(|candidate| in_source(candidate))
+                .collect::<Vec<_>>();
+            Ok((
+                candidates,
+                VersionsRead {
+                    selected_versions: direct.selected_versions,
+                    read_evidence: direct.read_evidence,
+                },
+            ))
+        };
         let method_name = match request.method {
             VectorQuantizationMethod::Scalar => "scalar",
             VectorQuantizationMethod::Product { .. } => "product",
@@ -205,45 +211,117 @@ impl RrdEngine {
             .iter()
             .map(|property| property.as_str().to_owned())
             .collect::<BTreeSet<_>>();
-        let artifact: rrd_vector::VectorArtifact = match request.method {
+        let (artifact, versions, base_generation, encoded_versions): (
+            rrd_vector::VectorArtifact,
+            VersionsRead,
+            Option<u64>,
+            usize,
+        ) = match request.method {
             VectorQuantizationMethod::Scalar
             | VectorQuantizationMethod::Product { .. }
-            | VectorQuantizationMethod::Binary => rrd_vector::QuantizedSegment::build(
-                rrd_vector::QuantizedSegmentConfig {
-                    id: artifact_id.clone(),
-                    scope: scope.clone(),
-                    field: vector.field.clone(),
-                    dimensions,
-                    metric: vector.metric,
-                    method: internal_quantization_method(&request.method)?,
-                    embedding_model: vector.embedding_model.clone(),
-                    filter_properties,
-                },
-                generation,
-                source_cursor,
-                candidates,
-            )
-            .map(Into::into)
-            .map_err(core_vector)?,
-            VectorQuantizationMethod::TurboQuant { bits, seed } => {
-                rrd_vector::TurboQuantSegment::build(
-                    rrd_vector::TurboQuantSegmentConfig {
+            | VectorQuantizationMethod::Binary => {
+                let (candidates, versions) = read_everything()?;
+                let encoded = candidates.len();
+                let artifact = rrd_vector::QuantizedSegment::build(
+                    rrd_vector::QuantizedSegmentConfig {
                         id: artifact_id.clone(),
                         scope: scope.clone(),
                         field: vector.field.clone(),
                         dimensions,
                         metric: vector.metric,
-                        bits: internal_turboquant_bits(bits),
-                        seed,
+                        method: internal_quantization_method(&request.method)?,
                         embedding_model: vector.embedding_model.clone(),
                         filter_properties,
                     },
                     generation,
-                    source_cursor,
+                    newest_cursor(&candidates),
                     candidates,
                 )
                 .map(Into::into)
-                .map_err(core_vector)?
+                .map_err(core_vector)?;
+                (artifact, versions, None, encoded)
+            }
+            VectorQuantizationMethod::TurboQuant { bits, seed } => {
+                let config = rrd_vector::TurboQuantSegmentConfig {
+                    id: artifact_id.clone(),
+                    scope: scope.clone(),
+                    field: vector.field.clone(),
+                    dimensions,
+                    metric: vector.metric,
+                    bits: internal_turboquant_bits(bits),
+                    seed,
+                    embedding_model: vector.embedding_model.clone(),
+                    filter_properties,
+                };
+                match self.turboquant_base(&lifecycle, &artifact_id, &config)? {
+                    // The base's versions and codes stand; only the identities
+                    // changed in this source since it are read and encoded.
+                    Some(base) => {
+                        let source = rrd_store::VectorSourceAddress {
+                            collection: rrd_core::VectorCollectionAddress {
+                                collection_id: request.collection_id.as_str().into(),
+                                vector_name: request.vector_name.as_str().into(),
+                            },
+                            field: vector.field.clone(),
+                        };
+                        let deltas = self
+                            .storage
+                            .runtime()
+                            .read_vector_deltas(
+                                &read,
+                                &source,
+                                base.descriptor().stamp.source_cursor,
+                                rrd_store::RuntimeReadBudget::new(request.max_storage_keys)
+                                    .map_err(|error| ServiceError::Vector(error.to_string()))?,
+                            )
+                            .map_err(crate::engine::error::storage_read_error)?;
+                        let replaced = deltas
+                            .deltas
+                            .iter()
+                            .map(|delta| delta.reference.clone())
+                            .collect::<BTreeSet<_>>();
+                        let candidates =
+                            rrd_vector::candidates_from_changes(&deltas.changes, &scope)
+                                .into_iter()
+                                .filter(|candidate| in_source(candidate))
+                                .collect::<Vec<_>>();
+                        let encoded = candidates.len();
+                        let versions = VersionsRead {
+                            selected_versions: u64::try_from(deltas.changes.len()).map_err(
+                                |_| {
+                                    ServiceError::Vector(
+                                        "selected vector versions exceed u64".into(),
+                                    )
+                                },
+                            )?,
+                            read_evidence: crate::runtime::public_read_evidence(deltas.evidence)?,
+                        };
+                        let artifact = rrd_vector::TurboQuantSegment::extend(
+                            &base, config, generation, &replaced, candidates,
+                        )
+                        .map(Into::into)
+                        .map_err(core_vector)?;
+                        (
+                            artifact,
+                            versions,
+                            Some(base.descriptor().stamp.generation),
+                            encoded,
+                        )
+                    }
+                    None => {
+                        let (candidates, versions) = read_everything()?;
+                        let encoded = candidates.len();
+                        let artifact = rrd_vector::TurboQuantSegment::build(
+                            config,
+                            generation,
+                            newest_cursor(&candidates),
+                            candidates,
+                        )
+                        .map(Into::into)
+                        .map_err(core_vector)?;
+                        (artifact, versions, None, encoded)
+                    }
+                }
             }
         };
         let data = rrd_store::DataRuntimeRef::new(&self.storage, &self.objects);
@@ -274,9 +352,53 @@ impl RrdEngine {
                 publication.state,
                 publication.lifecycle_revision,
             )?,
-            selected_versions: direct.selected_versions,
-            read_evidence: direct.read_evidence,
+            selected_versions: versions.selected_versions,
+            read_evidence: versions.read_evidence,
+            base_generation,
+            encoded_versions: u64::try_from(encoded_versions)
+                .map_err(|_| ServiceError::Vector("encoded vector versions exceed u64".into()))?,
             idempotent_replay: false,
+        })
+    }
+
+    /// The base a TurboQuant build extends: the newest published generation
+    /// of `artifact_id` whose configuration is `config`, decoded from its
+    /// object through the binding serving uses, which verifies the bytes
+    /// against the published descriptor. Without one, or when its object
+    /// does not verify, the build encodes every version instead.
+    fn turboquant_base(
+        &self,
+        lifecycle: &rrd_vector::QuantizationArtifactCatalogue,
+        artifact_id: &ProjectionId,
+        config: &rrd_vector::TurboQuantSegmentConfig,
+    ) -> Result<Option<rrd_vector::TurboQuantSegment>> {
+        let digest = config.digest().map_err(core_vector)?;
+        let Some(entry) = lifecycle
+            .artifacts
+            .iter()
+            .rev()
+            .filter(|((id, _), _)| id == artifact_id)
+            .map(|(_, artifact)| &artifact.entry)
+            .find(|entry| {
+                entry.kind == rrd_vector::VectorArtifactKind::TurboQuant
+                    && entry.descriptor.stamp().config_digest == digest
+            })
+        else {
+            return Ok(None);
+        };
+        let binding = crate::VectorArtifactBinding {
+            kind: entry.kind,
+            descriptor: entry.descriptor.clone(),
+            object: entry.object.clone(),
+        };
+        let decoded = match binding.decode_mapped(&self.objects) {
+            Ok(Some(artifact)) => Ok(artifact),
+            Ok(None) => binding.decode_owned(&self.objects),
+            Err(error) => Err(error),
+        };
+        Ok(match decoded.as_deref() {
+            Ok(rrd_vector::VectorArtifact::TurboQuant(segment)) => Some(segment.clone()),
+            _ => None,
         })
     }
 
@@ -492,6 +614,8 @@ impl RrdEngine {
             selected_versions: u64::try_from(direct.changes.len())
                 .map_err(|_| ServiceError::Vector("selected versions exceed u64".into()))?,
             read_evidence: crate::runtime::public_read_evidence(direct.evidence)?,
+            base_generation: None,
+            encoded_versions: 0,
             idempotent_replay: true,
         })
     }
@@ -562,6 +686,21 @@ fn internal_quantization_method(
             ))
         }
     })
+}
+
+/// The read behind a build: the vector versions it selected and its evidence.
+struct VersionsRead {
+    selected_versions: u64,
+    read_evidence: rrd_contract::ReadEvidence,
+}
+
+/// A generation's source cursor: the newest version it encodes.
+fn newest_cursor(candidates: &[rrd_vector::VectorCandidate]) -> u64 {
+    candidates
+        .iter()
+        .map(|candidate| candidate.source_cursor)
+        .max()
+        .unwrap_or(0)
 }
 
 fn internal_turboquant_bits(bits: VectorQuantizationBits) -> rrd_vector::TurboQuantBits {
