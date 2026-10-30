@@ -1,6 +1,6 @@
 # Experimental controller testing bundle
 
-**Status:** active engineering delivery tooling; artifact and release qualification pending
+**Status:** active Windows engineering artifact; model reliability and release qualification open
 **Coordinate:** `rrflow://rrflow-instance/data/reference/deployment/controller-testing-bundle`
 **Owner:** installed-lifecycle engineering delivery; J-03/J-05 remain open
 
@@ -46,6 +46,10 @@ and private credentials outside the archive. Recovery reads the existing attempt
 without another model call. Preserve uncertain attempts and original receipts.
 
 The [implementation journal](../../evidence/change-journals/repository/controller-testing-bundle-tooling.md)
-records the package's evidence. Engine-owned worker execution, source-edit
+records the tooling. The [actual artifact journal](../../evidence/change-journals/repository/controller-testing-bundle-artifact.md)
+records verified relocation, a real BF16 proposal/reopen and primary readiness,
+alongside an actual invalid model effort choice rejected by the engine. This is
+a usable engineering trial, not a qualified model or default release.
+Engine-owned worker execution, source-edit
 replanning, connected UI, routing quality, training permission, other platforms,
 signed releases and container delivery require their own evidence.
