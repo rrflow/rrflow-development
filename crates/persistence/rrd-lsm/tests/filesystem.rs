@@ -1,4 +1,4 @@
-use rrd_lsm::filesystem::{AnchoredPath, OpenOptions};
+use rrd_lsm::filesystem::{AnchoredPath, OpenOptions, SourceLeaf};
 use std::io::{Read, Write};
 
 #[test]
@@ -156,6 +156,10 @@ fn mounted_volume_crossing_is_denied_before_any_effect() {
     assert_ne!(std::fs::metadata(&mount).unwrap().dev(), device);
     let sentinel = mount.join("sentinel");
     std::fs::write(&sentinel, b"outside").unwrap();
+    assert_eq!(
+        anchor.join("mounted").source_leaf().unwrap(),
+        SourceLeaf::Mount
+    );
     let target = anchor.join("mounted/sentinel");
     assert_eq!(
         target.open_read().unwrap_err().kind(),
@@ -362,6 +366,8 @@ fn junction_substitution_denies_read_create_publication_and_cleanup() {
         "junction fixture failed: {result:?}"
     );
     let child = anchor.join("child");
+    assert_eq!(child.source_leaf().unwrap(), SourceLeaf::Symlink);
+    assert!(child.join("sentinel").source_leaf().is_err());
     assert!(child.join("sentinel").read().is_err());
     assert!(OpenOptions::new()
         .write(true)
@@ -419,6 +425,10 @@ fn bind_mount_crossing_is_denied_before_any_effect() {
         }
     }
     let _unmount = Unmount(mount);
+    assert_eq!(
+        anchor.join("mounted").source_leaf().unwrap(),
+        SourceLeaf::Mount
+    );
     let target = anchor.join("mounted/sentinel");
     assert_eq!(
         target.open_read().unwrap_err().kind(),
@@ -436,4 +446,49 @@ fn bind_mount_crossing_is_denied_before_any_effect() {
     assert_eq!(std::fs::read(outside.join("sentinel")).unwrap(), b"outside");
     assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 1);
     assert_eq!(anchor.join("pending").read().unwrap(), b"owned");
+}
+
+#[test]
+fn source_leaf_preserves_ordinary_observations_and_denies_hardlink_aliases() {
+    let fixture = tempfile::tempdir().unwrap();
+    let root = fixture.path().join("root");
+    std::fs::create_dir(&root).unwrap();
+    let anchor = AnchoredPath::open_root(&root).unwrap();
+    std::fs::write(root.join("source"), b"ordinary source").unwrap();
+    let path = anchor.join("source");
+    assert_eq!(
+        path.source_leaf().unwrap(),
+        SourceLeaf::Ordinary(path.source_observation().unwrap())
+    );
+    assert_eq!(
+        anchor.source_leaf().unwrap(),
+        SourceLeaf::Ordinary(anchor.source_observation().unwrap())
+    );
+    assert!(anchor.join("../outside").source_leaf().is_err());
+    std::fs::hard_link(root.join("source"), fixture.path().join("alias")).unwrap();
+    assert!(path.source_leaf().is_err());
+    assert!(path.open_read().is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn source_leaf_records_dangling_loop_and_socket_without_following_or_opening_content() {
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    std::os::unix::fs::symlink("missing", fixture.path().join("dangling")).unwrap();
+    std::os::unix::fs::symlink("loop", fixture.path().join("loop")).unwrap();
+    let socket = std::os::unix::net::UnixListener::bind(fixture.path().join("socket")).unwrap();
+    for name in ["dangling", "loop"] {
+        assert_eq!(
+            anchor.join(name).source_leaf().unwrap(),
+            SourceLeaf::Symlink
+        );
+        assert!(anchor.join(name).open_read().is_err());
+    }
+    assert_eq!(
+        anchor.join("socket").source_leaf().unwrap(),
+        SourceLeaf::Special
+    );
+    assert!(anchor.join("socket").open_read().is_err());
+    drop(socket);
 }

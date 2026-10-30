@@ -17,7 +17,7 @@ pub(crate) mod file_io;
 mod native;
 mod source;
 pub(crate) use native::FileIdentity;
-pub use source::{SourceKind, SourceObservation};
+pub use source::{SourceKind, SourceLeaf, SourceObservation};
 pub(crate) mod space;
 
 #[cfg(test)]

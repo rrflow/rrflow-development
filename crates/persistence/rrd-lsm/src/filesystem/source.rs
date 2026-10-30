@@ -19,6 +19,18 @@ pub enum SourceKind {
     Directory,
 }
 
+/// A metadata-only leaf classification. Non-ordinary variants carry neither
+/// target paths nor target content and never grant traversal/read authority.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", content = "observation", rename_all = "snake_case")]
+pub enum SourceLeaf {
+    Ordinary(SourceObservation),
+    /// Includes non-followed Windows directory junctions/reparse aliases.
+    Symlink,
+    Mount,
+    Special,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct Timestamp {
     seconds: i64,
@@ -206,6 +218,33 @@ fn changed() -> io::Error {
 }
 
 impl AnchoredPath {
+    /// Classifies a leaf relative to retained, no-follow parent authority.
+    /// Links and special objects are identified by no-follow metadata without
+    /// opening their content. Ordinary metadata handles are checked against the
+    /// admitted mount before an observation is returned. Parent aliases and
+    /// hardlinked files remain errors, never implicit grants.
+    pub fn source_leaf(&self) -> io::Result<SourceLeaf> {
+        if self.relative.as_os_str().is_empty() {
+            return stable_capture(&self.root.file).map(SourceLeaf::Ordinary);
+        }
+        let (parent, name, _ancestors) = self.parent_handle()?;
+        let metadata = cap::stat(&parent, Path::new(&name), cap::FollowSymlinks::No)?;
+        if metadata.is_symlink() {
+            return Ok(SourceLeaf::Symlink);
+        }
+        if !metadata.is_file() && !metadata.is_dir() {
+            return Ok(SourceLeaf::Special);
+        }
+        let mut options = cap::OpenOptions::new();
+        options.read(true).follow(cap::FollowSymlinks::No);
+        native::metadata_options(&mut options);
+        let file = cap::open(&parent, Path::new(&name), &options)?;
+        if native::mount_identity(&file)? != self.root.mount {
+            return Ok(SourceLeaf::Mount);
+        }
+        stable_capture(&file).map(SourceLeaf::Ordinary)
+    }
+
     /// Opens only metadata through this root's no-follow/mount admission.
     /// Directory observations are supported; symlinks, special files and hard
     /// linked regular files retain the existing containment denial.
