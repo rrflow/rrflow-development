@@ -5,10 +5,131 @@ use rrd_contract::*;
 use rrflow_eval::storage::{digest, Digest, ReadKeyDistribution, StorageLoadKind, WriteTransition};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::Instant;
 
 pub(super) const WORKLOAD_RECORD_KIND: &str = "capacity_document";
 
 type Result<T> = std::result::Result<T, String>;
+
+#[test]
+fn slow_write_phase_trace_is_bounded_and_private() {
+    let counter = AtomicUsize::new(0);
+    assert_eq!(
+        admit_write_trace(&counter, "load-secret", 199_999_999),
+        WriteTraceAdmission::Skip
+    );
+    assert_eq!(
+        admit_write_trace(&counter, "seed-secret", 200_000_000),
+        WriteTraceAdmission::Skip
+    );
+    let results = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    (0..16)
+                        .map(|_| admit_write_trace(&counter, "load-secret", 200_000_000))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|worker| worker.join().unwrap())
+            .collect::<Vec<_>>()
+    });
+    assert_eq!(
+        results
+            .iter()
+            .filter(|value| **value == WriteTraceAdmission::Record)
+            .count(),
+        64
+    );
+    assert_eq!(
+        results
+            .iter()
+            .filter(|value| **value == WriteTraceAdmission::Exhausted)
+            .count(),
+        1
+    );
+    let line = format_write_trace("load-secret", 123, 456, 600, WriteTraceOutcome::Accepted);
+    assert!(line.contains(&rrd_core::digest::sha256_hex(b"load-secret")));
+    assert!(line.contains("begin_ns=123 commit_ns=456 total_ns=600 outcome=accepted"));
+    assert!(!line.contains("load-secret"));
+}
+
+const SLOW_WRITE_NS: u64 = 200_000_000;
+const MAX_WRITE_TRACES: usize = 64;
+static WRITE_TRACES: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, PartialEq, Eq)]
+enum WriteTraceAdmission {
+    Skip,
+    Record,
+    Exhausted,
+}
+
+#[derive(Clone, Copy)]
+enum WriteTraceOutcome {
+    Accepted,
+    CommitError,
+    BeginError,
+}
+
+fn admit_write_trace(counter: &AtomicUsize, key: &str, total_ns: u64) -> WriteTraceAdmission {
+    if !key.starts_with("load-") || total_ns < SLOW_WRITE_NS {
+        return WriteTraceAdmission::Skip;
+    }
+    match counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+        (count <= MAX_WRITE_TRACES).then_some(count + 1)
+    }) {
+        Ok(count) if count < MAX_WRITE_TRACES => WriteTraceAdmission::Record,
+        Ok(_) => WriteTraceAdmission::Exhausted,
+        Err(_) => WriteTraceAdmission::Skip,
+    }
+}
+
+fn format_write_trace(
+    key: &str,
+    begin_ns: u64,
+    commit_ns: u64,
+    total_ns: u64,
+    outcome: WriteTraceOutcome,
+) -> String {
+    let outcome = match outcome {
+        WriteTraceOutcome::Accepted => "accepted",
+        WriteTraceOutcome::CommitError => "commit-error",
+        WriteTraceOutcome::BeginError => "begin-error",
+    };
+    format!(
+        "c07_write_phase_trace request_sha256={} begin_ns={begin_ns} commit_ns={commit_ns} total_ns={total_ns} outcome={outcome}",
+        rrd_core::digest::sha256_hex(key.as_bytes())
+    )
+}
+
+fn record_write_trace(
+    key: &str,
+    begin_ns: u64,
+    commit_ns: u64,
+    total_ns: u64,
+    outcome: WriteTraceOutcome,
+) {
+    match admit_write_trace(&WRITE_TRACES, key, total_ns) {
+        WriteTraceAdmission::Skip => {}
+        WriteTraceAdmission::Record => {
+            eprintln!(
+                "{}",
+                format_write_trace(key, begin_ns, commit_ns, total_ns, outcome)
+            )
+        }
+        WriteTraceAdmission::Exhausted => {
+            eprintln!("c07_write_phase_trace_exhausted limit={MAX_WRITE_TRACES}")
+        }
+    }
+}
+
+fn elapsed_ns(started: Instant) -> u64 {
+    started.elapsed().as_nanos().try_into().unwrap_or(u64::MAX)
+}
 
 #[derive(Clone)]
 pub(super) struct Workload {
@@ -893,6 +1014,8 @@ impl Workload {
         )
     }
     async fn commit(&self, key: &str, request: CommitTransaction) -> Result<CommitReceipt> {
+        let started = Instant::now();
+        let total_started = started;
         let lease = self
             .client
             .begin_transaction(
@@ -903,12 +1026,38 @@ impl Workload {
                 },
                 options(&format!("{key}-begin")),
             )
-            .await
-            .map_err(client_error)?;
+            .await;
+        let begin_ns = elapsed_ns(started);
+        let lease = match lease {
+            Ok(lease) => lease,
+            Err(error) => {
+                record_write_trace(
+                    key,
+                    begin_ns,
+                    0,
+                    elapsed_ns(total_started),
+                    WriteTraceOutcome::BeginError,
+                );
+                return Err(client_error(error));
+            }
+        };
+        let started = Instant::now();
         let result = self
             .client
             .commit_transaction(&self.session, &lease.transaction_id, request, options(key))
             .await;
+        let commit_ns = elapsed_ns(started);
+        record_write_trace(
+            key,
+            begin_ns,
+            commit_ns,
+            elapsed_ns(total_started),
+            if result.is_ok() {
+                WriteTraceOutcome::Accepted
+            } else {
+                WriteTraceOutcome::CommitError
+            },
+        );
         match result {
             Ok(receipt) => Ok(receipt),
             Err(error) => {
