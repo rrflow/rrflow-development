@@ -272,8 +272,11 @@ def verify_execution_inventory_ci(verify: str) -> None:
         "git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt",
         'test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"',
         "python3 scripts/ci/build_execution_inventory.py --check",
+        "          python3 scripts/ci/test_analyze_sustained_conflicts.py\n",
     ):
         require(block.count(required) == 1, f"CI inventory generation missing: {required.strip()}")
+    require("continue-on-error:" not in block and "    if:" not in block,
+            "CI inventory and conflict analysis cannot be bypassed")
     order = (
         "set -euo pipefail",
         "git diff --exit-code",
@@ -788,7 +791,8 @@ def main() -> None:
         reusable.count("python3 scripts/knowledge/render_capacity_profiles.py --check") == 1
         and reusable.count("python3 scripts/knowledge/test_capacity_profiles.py") == 1
         and reusable.count("python3 scripts/ci/test_collect_storage_acceptance.py") == 1
-        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1,
+        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1
+        and reusable.count("python3 scripts/ci/test_analyze_sustained_conflicts.py") == 1,
         "the owning J-04 capacity projection must be checked exactly once",
     )
 
