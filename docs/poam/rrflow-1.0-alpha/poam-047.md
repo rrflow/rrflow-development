@@ -22,6 +22,14 @@ establish that a losing publisher's acknowledgement survives a crash. The
 repair stays draft until that ordering and native durability are addressed or
 otherwise supported by appropriate evidence.
 
+The follow-up draft coordinates cooperating publication, quarantine and
+reclamation through OS-backed locks keyed by the canonical content shard. A
+waiting writer no longer passes the guard until the holder's publication call
+returns, and a test kills the holder process before retrying. The lock currently
+has no cancellation or configurable wait budget. Windows power-loss durability,
+concurrent corruption/reclamation, resource impact and final candidate CI are
+not established by those local tests; this record remains open.
+
 ## Impact
 
 The immutable object authority can reject a correct concurrent publication,
