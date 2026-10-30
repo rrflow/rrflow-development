@@ -89,6 +89,322 @@ fn binary() -> PathBuf {
     DISTRIBUTION.with(|distribution| distribution.executable.clone())
 }
 
+fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
+    use serde_json::{json, Value};
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+
+    fn post(address: &str, path: &str, body: &Value, headers: &[(&str, String)]) -> (u16, Value) {
+        let bytes = serde_json::to_vec(body).unwrap();
+        let mut stream = TcpStream::connect(address).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(30)))
+            .unwrap();
+        write!(stream, "POST {path} HTTP/1.1\r\nHost: {address}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n", bytes.len()).unwrap();
+        for (name, value) in headers {
+            write!(stream, "{name}: {value}\r\n").unwrap();
+        }
+        stream.write_all(b"\r\n").unwrap();
+        stream.write_all(&bytes).unwrap();
+        let mut response = Vec::new();
+        stream.read_to_end(&mut response).unwrap();
+        let split = response
+            .windows(4)
+            .position(|part| part == b"\r\n\r\n")
+            .unwrap();
+        let status = String::from_utf8_lossy(&response[..split])
+            .lines()
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .nth(1)
+            .unwrap()
+            .parse()
+            .unwrap();
+        (
+            status,
+            serde_json::from_slice(&response[split + 4..]).unwrap(),
+        )
+    }
+    fn payload(response: &Value) -> &Value {
+        &response["outcome"]["payload"]
+    }
+
+    let root = tempfile::tempdir().unwrap();
+    let project = root.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("README.md"), "original source\n").unwrap();
+    let identity = invoke(&["install", "identity"]);
+    assert_success(&identity, "identity");
+    let identity: Value = serde_json::from_slice(&identity.stdout).unwrap();
+    let project_arg = project.to_str().unwrap();
+    let plan = invoke(&[
+        "install",
+        "plan",
+        "--identity",
+        identity["installation_identity"].as_str().unwrap(),
+        "--mode",
+        "existing",
+        "--project",
+        project_arg,
+    ]);
+    assert_success(&plan, "install plan");
+    let preview: Value = serde_json::from_slice(&plan.stdout).unwrap();
+    let plan_file = root.path().join("plan.json");
+    std::fs::write(&plan_file, &plan.stdout).unwrap();
+    let applied = invoke(&[
+        "install",
+        "apply",
+        "--mode",
+        "existing",
+        "--project",
+        project_arg,
+        "--plan",
+        plan_file.to_str().unwrap(),
+        "--expect",
+        preview["installation"]["plan_sha256"].as_str().unwrap(),
+    ]);
+    assert_success(&applied, "install apply");
+    let instance = preview["installation"]["target"]["instance_id"]
+        .as_str()
+        .unwrap();
+    let plan_sha = preview["attunement"]["plan_sha256"].as_str().unwrap();
+    let job = format!("job-{}", &plan_sha[..24]);
+    let credential = RrdEngine::read_installed_api_key(&project).unwrap();
+    let make = |payload: Value, operation: &str, mutation: bool| {
+        json!({
+            "protocol":"rrd", "protocol_version":1,
+            "context":{"request_id":format!("request-{operation}"),"operation_id":format!("operation-{operation}"),"idempotency_key":if mutation { Some(operation) } else { None },"deadline_unix_ms":null},
+            "resource":{"segments":[{"kind":"instance","id":instance}]}, "payload":payload
+        })
+    };
+    std::fs::write(project.join("README.md"), "edited source\n").unwrap();
+    let mut captured = Vec::new();
+    let mut acceptance = Value::Null;
+    let mut successor = Value::Null;
+    for pass in 0..2 {
+        let (mut child, address) = RunningEngine::start(&project, &mut captured);
+        let create = make(
+            json!({"limits":{"idle_timeout_ms":60000,"absolute_timeout_ms":300000,"max_open_transactions":1}}),
+            &format!("binary-session-{pass}"),
+            true,
+        );
+        let (status, session) = post(
+            &address,
+            "/v1/sessions",
+            &create,
+            &[
+                (
+                    "X-RRD-Principal",
+                    credential.principal_id.as_str().to_owned(),
+                ),
+                (
+                    "Authorization",
+                    format!("ApiKey {}", credential.credential()),
+                ),
+            ],
+        );
+        assert_eq!(status, 200, "session creation failed");
+        let headers = [
+            (
+                "X-RRD-Session",
+                payload(&session)["session_id"].as_str().unwrap().to_owned(),
+            ),
+            (
+                "Authorization",
+                format!("Bearer {}", payload(&session)["token"].as_str().unwrap()),
+            ),
+        ];
+        if pass == 0 {
+            let start = make(
+                json!({"contract_version":rrd_contract::ATTUNEMENT_CONTRACT_VERSION,"job_id":job,"plan_sha256":plan_sha,"expected_revision":1,"lease_ms":60000}),
+                "binary-stale-start",
+                true,
+            );
+            let (status, stale) = post(&address, "/v1/attunement/start", &start, &headers);
+            assert_eq!(status, 412, "{stale}");
+            let proposal = make(
+                json!({"contract_version":rrd_contract::ATTUNEMENT_CONTRACT_VERSION,"job_id":job,"expected_revision":1}),
+                "binary-preview",
+                false,
+            );
+            let (status, proposed) = post(
+                &address,
+                "/v1/attunement/replan/preview",
+                &proposal,
+                &headers,
+            );
+            assert_eq!(status, 200, "{proposed}");
+            acceptance = make(
+                json!({"contract_version":rrd_contract::ATTUNEMENT_CONTRACT_VERSION,"preview":payload(&proposed),"proposal_sha256":payload(&proposed)["proposal_sha256"]}),
+                "binary-accept",
+                true,
+            );
+            let (status, accepted) = post(
+                &address,
+                "/v1/attunement/replan/accept",
+                &acceptance,
+                &headers,
+            );
+            assert_eq!(status, 200, "{accepted}");
+            assert_eq!(payload(&accepted)["idempotent_replay"], false);
+            successor = payload(&accepted)["successor"]["job"].clone();
+            child.terminate(&mut captured);
+        } else {
+            let (status, replay) = post(
+                &address,
+                "/v1/attunement/replan/accept",
+                &acceptance,
+                &headers,
+            );
+            assert_eq!(status, 200, "{replay}");
+            assert_eq!(payload(&replay)["idempotent_replay"], true);
+            assert_eq!(payload(&replay)["successor"]["job"], successor);
+            let read = make(
+                json!({"contract_version":rrd_contract::ATTUNEMENT_CONTRACT_VERSION,"job_id":job,"idempotency_key":"binary-accept"}),
+                "binary-receipt",
+                false,
+            );
+            let (status, receipt) = post(
+                &address,
+                "/v1/attunement/replan/receipt/read",
+                &read,
+                &headers,
+            );
+            assert_eq!(status, 200, "{receipt}");
+            assert_eq!(
+                payload(&receipt)["receipt"]["result"]["successor"]["job"],
+                successor
+            );
+            child.stop(&mut captured);
+        }
+    }
+
+    // Exercise the same durable successor through the generated Rust client,
+    // with a second source edit and a forced primary-process restart.
+    let old_plan: rrd_contract::AttunementPlan =
+        serde_json::from_value(acceptance["payload"]["preview"]["plan"].clone()).unwrap();
+    let old_job: rrd_contract::AttunementJob = serde_json::from_value(successor).unwrap();
+    std::fs::write(project.join("README.md"), "typed client edit\n").unwrap();
+    let mut typed_acceptance = None;
+    let mut typed_successor = None;
+    for pass in 0..2 {
+        let (mut child, address) = RunningEngine::start(&project, &mut captured);
+        let client = RrdClient::connect_local(
+            address.parse().unwrap(),
+            old_plan.target.instance_id.clone(),
+            ClientConfig::default(),
+        )
+        .unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let session = client
+                .create_session(
+                    credential.principal_id.clone(),
+                    credential.credential(),
+                    CreateSession {
+                        limits: SessionLimits {
+                            idle_timeout_ms: 60_000,
+                            absolute_timeout_ms: 300_000,
+                            max_open_transactions: 1,
+                        },
+                    },
+                    RequestOptions::mutation(
+                        &format!("typed-session-{pass}"),
+                        &format!("typed-session-{pass}"),
+                        &format!("typed-session-{pass}"),
+                    )
+                    .unwrap(),
+                )
+                .await
+                .unwrap();
+            if pass == 0 {
+                let preview = client
+                    .preview_attunement_replan(
+                        &session,
+                        rrd_contract::PreviewAttunementReplan {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: old_job.id.clone(),
+                            expected_revision: old_job.revision,
+                        },
+                        &old_plan,
+                        RequestOptions::read("typed-preview-request", "typed-preview-operation")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let request = rrd_contract::AcceptAttunementReplan {
+                    contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                    proposal_sha256: preview.proposal_sha256.clone(),
+                    preview,
+                };
+                let result = client
+                    .accept_attunement_replan(
+                        &session,
+                        request.clone(),
+                        &old_plan,
+                        RequestOptions::mutation(
+                            "typed-accept-request",
+                            "typed-accept-operation",
+                            "typed-binary-accept",
+                        )
+                        .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(!result.idempotent_replay);
+                typed_successor = Some(result.successor.job);
+                typed_acceptance = Some(request);
+            } else {
+                let result = client
+                    .accept_attunement_replan(
+                        &session,
+                        typed_acceptance.clone().unwrap(),
+                        &old_plan,
+                        RequestOptions::mutation(
+                            "typed-accept-request",
+                            "typed-accept-operation",
+                            "typed-binary-accept",
+                        )
+                        .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(result.idempotent_replay);
+                assert_eq!(Some(result.successor.job), typed_successor);
+                let receipt = client
+                    .read_attunement_replan_receipt(
+                        &session,
+                        rrd_contract::ReadAttunementReceipt {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: old_job.id.clone(),
+                            idempotency_key: rrd_contract::CorrelationId::new(
+                                "typed-binary-accept",
+                            )
+                            .unwrap(),
+                        },
+                        RequestOptions::read("typed-receipt-request", "typed-receipt-operation")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    Some(receipt.receipt.unwrap().result.successor.job),
+                    typed_successor
+                );
+            }
+        });
+        if pass == 0 {
+            child.terminate(&mut captured);
+        } else {
+            child.stop(&mut captured);
+        }
+    }
+}
+
 fn product_command() -> Command {
     DISTRIBUTION.with(StandaloneDistribution::command)
 }
@@ -604,6 +920,7 @@ fn install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape() {
 #[test]
 fn installed_engine_plans_applies_serves_discovers_authenticates_and_reopens() {
     installed_lifecycle("existing");
+    installed_binary_replans_and_reads_receipt_after_forced_restart();
 }
 
 #[test]
