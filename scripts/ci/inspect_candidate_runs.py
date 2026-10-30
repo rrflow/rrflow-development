@@ -86,6 +86,8 @@ def summarize(snapshot):
             if not isinstance(step, dict):
                 continue
             conclusion, status = step.get("conclusion"), step.get("status")
+            if conclusion is None and status in ("pending", "queued", "waiting", "requested"):
+                continue
             if conclusion not in ("success", "skipped") or status != "completed":
                 interesting.append({"name": step.get("name"), "status": status,
                                     "conclusion": conclusion,
