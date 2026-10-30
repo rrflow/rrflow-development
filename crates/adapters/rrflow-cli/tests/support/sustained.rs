@@ -357,12 +357,22 @@ impl PointRun<'_> {
         Ok(value)
     }
     fn start_sample(&self, task: &mut sample_task::SampleTask<ResourceSample>) -> DriverResult<()> {
+        self.start_sample_at(task, None)
+    }
+    fn start_sample_at(
+        &self,
+        task: &mut sample_task::SampleTask<ResourceSample>,
+        not_before: Option<Instant>,
+    ) -> DriverResult<()> {
         let work = self.workload.clone();
         let pid = self.pid;
         let clock = self.clock;
         let allocation = self.allocation.clone();
         let gate = self.sample_gate.clone();
         task.start(async move {
+            if let Some(not_before) = not_before {
+                tokio::time::sleep_until(not_before.into()).await;
+            }
             if let Some(gate) = gate {
                 gate.wait().await;
             }
@@ -598,7 +608,18 @@ impl PointRun<'_> {
                 sample: Box::new(value.clone()),
             })?;
         }
-        resources.push(self.sample(writer).await?);
+        let mut sample_task = sample_task::SampleTask::new();
+        if phase == LoadPhase::Warmup && first == 0 {
+            // The evaluator requires this real ownership baseline before any
+            // initial warmup effect; later segment samples need no such fence.
+            resources.push(self.sample(writer).await?);
+        } else {
+            let not_before = self
+                .clock
+                .checked_add(Duration::from_nanos(started))
+                .ok_or("initial sample deadline overflow")?;
+            self.start_sample_at(&mut sample_task, Some(not_before))?;
+        }
         let held_reader = if phase == LoadPhase::Measured
             && campaign
                 .required_lanes
@@ -624,15 +645,9 @@ impl PointRun<'_> {
         let deadline = Duration::from_millis(campaign.schedule.operation_deadline_ms.get());
         let period = Duration::from_millis(campaign.schedule.sample_ms.get());
         let last_observed = self.clock
-            + Duration::from_nanos(
-                resources
-                    .last()
-                    .ok_or("missing first resource sample")?
-                    .elapsed_ns,
-            );
+            + Duration::from_nanos(resources.last().map_or(started, |value| value.elapsed_ns));
         let mut next_sample =
             resource_window::next_sample_deadline(last_observed, period, Instant::now())?;
-        let mut sample_task = sample_task::SampleTask::new();
         for (offset, operation) in prepared.iter().enumerate() {
             let sequence = first + offset as u64;
             let due = self.clock + Duration::from_nanos(scheduled(sequence));
@@ -1858,6 +1873,80 @@ fn installed_capacity_workload_smoke() {
         }).collect();
         outcomes.sort_by_key(|attempt| attempt.sequence);
         assert_eq!(serde_json::to_value(outcomes).unwrap(), serde_json::to_value(&segment.attempts).unwrap());
+        // A later segment's initial sample must not hold scheduled offers.
+        // No carried samples are supplied, making the first Resource event a
+        // deterministic distinction from the old synchronous initial sample.
+        let mut initial_campaign = smoke_campaign();
+        initial_campaign.schedule.sample_ms = 1_000u64.try_into().unwrap();
+        let mut host = sysinfo::System::new();
+        host.refresh_memory();
+        let host_bytes = host.total_memory();
+        assert!(host_bytes > 0, "real host memory is required for this installed fixture");
+        initial_campaign.storage.budgets.host_bytes = host_bytes.try_into().unwrap();
+        initial_campaign.allocation.host_bytes = host_bytes.try_into().unwrap();
+        initial_campaign.storage.budgets.retained_bytes = (16 * 1024 * 1024u64).try_into().unwrap();
+        initial_campaign.required_lanes.push(CapacityLane::ReaderPinInterference);
+        initial_campaign.reader_selection = Some(ReaderSelection::WorkloadRecords {});
+        let initial_evidence = evidence_root.path().join("initial-sample-segment");
+        let initial_writer = CampaignWriter::create(&initial_evidence, initial_campaign.clone()).unwrap();
+        initial_writer.admit_next().unwrap();
+        let initial_gate = std::sync::Arc::new(sample_task::SampleGate::default());
+        let initial_clock = Instant::now() - Duration::from_secs(10);
+        let mut initial_run = PointRun {
+            campaign: &initial_campaign, point: &initial_campaign.points[0],
+            workload: work.clone(), pid: child.id(), clock: initial_clock, allocation: None,
+            generations: vec![0; 5], previous_resources: Vec::new(),
+            backup: management::ManagementTask::new(), sample_gate: Some(initial_gate.clone()),
+        };
+        // Sequences 15-18 are real writes; avoid sequence 14's backup lane.
+        let origin = ns(initial_clock).checked_sub(3_000_000_000).unwrap();
+        let mut initial_segment = Box::pin(initial_run.segment(&initial_writer, LoadPhase::Measured, origin, 15, 5, true));
+        tokio::time::timeout(Duration::from_secs(20), async {
+            tokio::select! {
+                _ = initial_gate.entered.notified() => {}
+                result = &mut initial_segment => panic!("segment ended before initial sample gate: {result:?}"),
+            }
+        }).await.unwrap();
+        initial_writer.checkpoint_progress().unwrap();
+        let progress = std::fs::read_to_string(initial_evidence.join("progress.jsonl")).unwrap();
+        assert!(!progress.lines().map(|line| serde_json::from_str::<ProgressEvent>(line).unwrap())
+            .any(|event| matches!(event, ProgressEvent::Resource { .. })), "initial sample completed before its gate");
+        let acknowledged = tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                tokio::select! {
+                    result = &mut initial_segment => panic!("segment ended while initial sample held: {result:?}"),
+                    _ = tokio::time::sleep(Duration::from_millis(50)) => {
+                        initial_writer.checkpoint_progress().unwrap();
+                        let raw = std::fs::read_to_string(initial_evidence.join("progress.jsonl")).unwrap();
+                        let events: Vec<ProgressEvent> = raw.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+                        if let Some(attempt) = events.iter().find_map(|event| match event {
+                            ProgressEvent::LoadOutcome { attempt, .. }
+                                if attempt.outcome == LoadOutcome::Acknowledged
+                                    && events.iter().any(|other| matches!(other,
+                                        ProgressEvent::Readback { observation: Readback::Present { logical_id, .. }, .. }
+                                            if logical_id == &attempt.logical_id)) => Some(attempt.clone()),
+                            _ => None,
+                        }) { break attempt; }
+                    }
+                }
+            }
+        }).await.unwrap();
+        assert!(!initial_gate.dropped.load(std::sync::atomic::Ordering::SeqCst));
+        initial_gate.open();
+        let initial_segment = tokio::time::timeout(Duration::from_secs(30), initial_segment).await.unwrap().unwrap();
+        assert!(initial_segment.attempts.iter().any(|attempt| attempt.sequence == acknowledged.sequence));
+        assert!(!initial_segment.resources.is_empty());
+        let reader = initial_segment.reader.as_ref().expect("reader remains mandatory");
+        reader.validate().unwrap();
+        assert!(reader.opened_ns <= acknowledged.started_ns && acknowledged.finished_ns <= reader.observed_ns);
+        validate_segment(&initial_campaign, &initial_segment).unwrap_or_else(|error| {
+            let retained: Vec<_> = initial_segment.resources.iter().map(|sample| &sample.retained_bytes).collect();
+            panic!("segment validation failed: {error}; retained samples: {retained:?}")
+        });
+        let mut missing_samples = initial_segment.clone();
+        missing_samples.resources.clear();
+        assert_eq!(validate_segment(&initial_campaign, &missing_samples).unwrap_err(),
+            "segment evidence missing or exceeds bound");
         // Hold a harness-only asynchronous sample in the actual scheduled
         // segment. A later real ACK must be journaled before the gate opens;
         // the completed segment must contain that exact acknowledged attempt.
