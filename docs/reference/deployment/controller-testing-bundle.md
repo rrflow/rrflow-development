@@ -50,6 +50,10 @@ records the tooling. The [actual artifact journal](../../evidence/change-journal
 records verified relocation, a real BF16 proposal/reopen and primary readiness,
 alongside an actual invalid model effort choice rejected by the engine. This is
 a usable engineering trial, not a qualified model or default release.
+The [refreshed artifact record](../../evidence/change-journals/repository/controller-bundle-refreshed-artifact.md)
+binds the later combined-engine archive to its own release build, 18 integrity
+checks and relocated native install/restart verification. It includes no new
+model observation; earlier BF16 results do not transfer to the refreshed binary.
 Engine-owned worker execution, source-edit
 replanning, connected UI, routing quality, training permission, other platforms,
 signed releases and container delivery require their own evidence.
