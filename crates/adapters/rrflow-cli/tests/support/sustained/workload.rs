@@ -4,7 +4,7 @@ use rrd_client::{RequestOptions, RrdClient, Session};
 use rrd_contract::*;
 use rrflow_eval::storage::{digest, Digest, ReadKeyDistribution, StorageLoadKind, WriteTransition};
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 pub(super) const WORKLOAD_RECORD_KIND: &str = "capacity_document";
 
@@ -92,6 +92,41 @@ fn conflict_numeric_pair(detail: &str, prefix: &str, separator: &str) -> bool {
             .parse::<u64>()
             .is_ok_and(|number| number.to_string() == value)
     })
+}
+
+// Only closed numeric cursor values and a one-way synthetic request digest are
+// retained. A reported conflict is not proof of effect or of its internal origin.
+fn runtime_conflict_trace(
+    error: &rrd_client::Error,
+    key: &str,
+    read_cursor: u64,
+    counter: &AtomicUsize,
+) -> Option<String> {
+    let rrd_client::Error::Api { error, .. } = error else {
+        return None;
+    };
+    if error.code != ErrorCode::Conflict {
+        return None;
+    }
+    let detail = error
+        .message
+        .strip_prefix("StorageConflict(\"runtime commit conflict: expected cursor ")?
+        .strip_suffix("\")")?;
+    let (expected, actual) = detail.split_once(", actual cursor ")?;
+    let expected_number = expected.parse::<u64>().ok()?;
+    let actual_number = actual.parse::<u64>().ok()?;
+    if expected_number.to_string() != expected || actual_number.to_string() != actual {
+        return None;
+    }
+    counter
+        .try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+            (count < 32).then_some(count + 1)
+        })
+        .ok()?;
+    Some(format!(
+        "c07_runtime_conflict_trace request_sha256={} read_cursor={} expected_cursor={} actual_cursor={}",
+        rrd_core::digest::sha256_hex(key.as_bytes()), read_cursor, expected_number, actual_number
+    ))
 }
 
 // Diagnostic-only projection of the current engine's error spelling. This is
@@ -303,6 +338,56 @@ fn client_error(value: rrd_client::Error) -> String {
     };
     let detail = digest("c07g.client-error", &value.to_string()).expect("error digest");
     format!("{code}:{}", detail.as_str())
+}
+
+#[test]
+fn runtime_conflict_trace_is_closed_correlatable_and_bounded() {
+    use std::sync::atomic::AtomicUsize;
+    let api = |message: &str| rrd_client::Error::Api {
+        status: 409_u16.try_into().unwrap(),
+        error: ErrorBody {
+            code: ErrorCode::Conflict,
+            message: message.into(),
+            retryable: false,
+            details: BTreeMap::new(),
+        },
+    };
+    let engine_error = rrd_engine::ServiceError::from(rrd_store::Error::RuntimeConflict {
+        expected: 7,
+        actual: 9,
+    });
+    let valid = api(&engine_error.to_string());
+    let counter = AtomicUsize::new(0);
+    let line = runtime_conflict_trace(&valid, "synthetic-secret-key", 7, &counter).unwrap();
+    assert!(line.contains("read_cursor=7 expected_cursor=7 actual_cursor=9"));
+    assert!(line.contains(&rrd_core::digest::sha256_hex(b"synthetic-secret-key")));
+    assert!(!line.contains("synthetic-secret-key"));
+    for invalid in [
+        "StorageConflict(\"runtime commit conflict: expected cursor 07, actual cursor 9\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor 7, actual cursor 9 secret\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor -1, actual cursor 9\")",
+        "StorageConflict(\"runtime commit conflict: expected cursor 18446744073709551616, actual cursor 9\")",
+        "StorageConflict(\"runtime schema conflict: expected revision 7, actual revision 9\")",
+    ] {
+        assert!(runtime_conflict_trace(&api(invalid), "key", 7, &counter).is_none());
+    }
+    let concurrent = AtomicUsize::new(0);
+    let admitted = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    (0..16)
+                        .filter(|_| runtime_conflict_trace(&valid, "key", 7, &concurrent).is_some())
+                        .count()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::<usize>()
+    });
+    assert_eq!(admitted, 32);
 }
 
 #[test]
@@ -734,6 +819,12 @@ impl Workload {
         match result {
             Ok(receipt) => Ok(receipt),
             Err(error) => {
+                static CONFLICT_TRACES: AtomicUsize = AtomicUsize::new(0);
+                if let Some(trace) =
+                    runtime_conflict_trace(&error, key, lease.read_cursor, &CONFLICT_TRACES)
+                {
+                    eprintln!("{trace}");
+                }
                 let cause = client_error(error);
                 // A broad Conflict/ResourceExhausted code is not proof of no
                 // effect. The engine refuses abort while an intent is uncertain
