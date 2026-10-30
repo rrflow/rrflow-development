@@ -665,19 +665,50 @@ impl LocalObjectStore {
         if final_path.try_exists()? {
             match self.verify(sha256) {
                 Ok(_) => {
-                    // Content addressing makes an existing verified value equivalent.
+                    // A concurrent winner may still be syncing its directory.
+                    // The backend sync is a no-op on Windows, so that platform's
+                    // in-flight winner durability remains unqualified (POAM-047).
+                    parent.sync_directory()?;
                     stage_path.remove_file()?;
                 }
                 Err(Error::ObjectCorrupt { .. }) => {
                     self.quarantine(sha256)?;
-                    publish_object_path(stage_path, final_path)?;
+                    self.publish_absent_stage(stage_path, final_path, sha256)?;
                 }
                 Err(error) => return Err(error),
             }
         } else {
-            publish_object_path(stage_path, final_path)?;
+            self.publish_absent_stage(stage_path, final_path, sha256)?;
         }
         Ok(())
+    }
+
+    fn publish_absent_stage(
+        &self,
+        stage_path: &AnchoredPath,
+        final_path: &AnchoredPath,
+        sha256: &str,
+    ) -> Result<()> {
+        match stage_path.rename_new_to(final_path) {
+            Ok(()) => Ok(()),
+            Err(error)
+                if error.kind() == std::io::ErrorKind::AlreadyExists
+                    && stage_path.try_exists()? =>
+            {
+                // Only an authenticated winner is equivalent. The Windows
+                // directory-sync limitation is tracked in POAM-047.
+                // The stage must still exist, so an error after our own rename
+                // (including a directory-sync failure) cannot be accepted.
+                self.verify(sha256)?;
+                final_path
+                    .parent()
+                    .ok_or_else(|| Error::Object("object publication target has no parent".into()))?
+                    .sync_directory()?;
+                stage_path.remove_file()?;
+                Ok(())
+            }
+            Err(error) => Err(error.into()),
+        }
     }
 }
 
@@ -791,6 +822,133 @@ mod tests {
             store.inventory(&BTreeSet::new()).unwrap().entries[0].state
                 == ObjectInventoryState::Orphan
         );
+    }
+
+    #[test]
+    fn concurrent_identical_puts_publish_one_verified_object_without_rejection() {
+        use std::sync::{mpsc, Arc, Condvar, Mutex};
+        use std::time::Duration;
+
+        let directory = tempdir().unwrap();
+        let store = Arc::new(LocalObjectStore::open(directory.path()).unwrap());
+        for iteration in 0..200 {
+            let bytes = format!("concurrent-object-{iteration}").into_bytes();
+            let gate = Arc::new((Mutex::new(false), Condvar::new()));
+            let (ready, staged) = mpsc::channel();
+            let results = std::thread::scope(|scope| {
+                let start = || {
+                    let store = Arc::clone(&store);
+                    let gate = Arc::clone(&gate);
+                    let ready = ready.clone();
+                    let bytes = bytes.clone();
+                    scope.spawn(move || {
+                        store.put_with_hook(&bytes, |step| {
+                            if step == ObjectStep::AfterStageSync {
+                                ready
+                                    .send(())
+                                    .map_err(|error| Error::Object(error.to_string()))?;
+                                let (lock, changed) = &*gate;
+                                let open = lock.lock().expect("publication gate");
+                                let (open, timeout) = changed
+                                    .wait_timeout_while(open, Duration::from_secs(10), |open| {
+                                        !*open
+                                    })
+                                    .expect("publication gate");
+                                if !*open || timeout.timed_out() {
+                                    return Err(Error::Object("publication gate timed out".into()));
+                                }
+                            }
+                            Ok(())
+                        })
+                    })
+                };
+                let workers = [start(), start()];
+                let both_staged =
+                    (0..2).all(|_| staged.recv_timeout(Duration::from_secs(10)).is_ok());
+                let (lock, changed) = &*gate;
+                *lock.lock().expect("publication gate") = true;
+                changed.notify_all();
+                let results = workers.map(|worker| worker.join().expect("publication worker"));
+                assert!(
+                    both_staged,
+                    "both writers must reach the synchronized stage"
+                );
+                results
+            });
+            let [first, second] = results.map(|result| result.expect("concurrent publication"));
+            assert_eq!(first, second);
+            assert_eq!(store.verify(&first.sha256).unwrap(), first);
+            let reference = ObjectReference::for_bytes(
+                "concurrent-object",
+                None,
+                "application/octet-stream",
+                &bytes,
+                first.receipt.clone(),
+            )
+            .unwrap();
+            assert_eq!(store.get(&reference).unwrap(), bytes);
+        }
+        assert!(store
+            .inventory(&BTreeSet::new())
+            .unwrap()
+            .staging_files
+            .is_empty());
+    }
+
+    #[test]
+    fn exclusive_publication_only_adopts_an_authenticated_winner() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let bytes = b"authenticated winner";
+        let winner = store.put(bytes).unwrap();
+        let target = store.root.join(&winner.receipt.key);
+        let stage = store.root.join("staging").join("collision-test");
+        fs::write(stage.diagnostic_path(), b"staged candidate").unwrap();
+
+        store
+            .publish_absent_stage(&stage, &target, &winner.sha256)
+            .unwrap();
+        assert!(!stage.try_exists().unwrap());
+        assert_eq!(fs::read(target.diagnostic_path()).unwrap(), bytes);
+
+        fs::write(stage.diagnostic_path(), b"another staged candidate").unwrap();
+        fs::write(target.diagnostic_path(), b"corrupt winner").unwrap();
+        assert!(matches!(
+            store.publish_absent_stage(&stage, &target, &winner.sha256),
+            Err(Error::ObjectCorrupt { .. })
+        ));
+        assert!(stage.try_exists().unwrap());
+        assert_eq!(
+            fs::read(target.diagnostic_path()).unwrap(),
+            b"corrupt winner"
+        );
+
+        stage.remove_file().unwrap();
+        assert!(store
+            .publish_absent_stage(&stage, &target, &winner.sha256)
+            .is_err());
+        assert_eq!(
+            fs::read(target.diagnostic_path()).unwrap(),
+            b"corrupt winner"
+        );
+    }
+
+    #[test]
+    fn publishing_over_a_preexisting_corrupt_object_preserves_recovery() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let winner = store.put(b"original bytes").unwrap();
+        fs::write(store.root().join(&winner.receipt.key), b"corrupt bytes").unwrap();
+
+        assert_eq!(store.put(b"original bytes").unwrap(), winner);
+        assert_eq!(store.verify(&winner.sha256).unwrap(), winner);
+        let inventory = store.inventory(&BTreeSet::new()).unwrap();
+        assert_eq!(inventory.quarantined_files.len(), 1);
+        assert_eq!(
+            fs::read(&inventory.quarantined_files[0]).unwrap(),
+            b"corrupt bytes"
+        );
+        assert!(inventory.staging_files.is_empty());
     }
 
     #[test]
