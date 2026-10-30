@@ -61,9 +61,14 @@ def assemble(args):
     # Assembly tooling can advance independently; every runtime/contract input
     # must still match the actual binary source rather than relabeling that binary.
     command(['git', 'diff', '--exit-code', provenance['source_commit'], '--',
-             'crates', 'sdks', 'Cargo.toml', 'Cargo.lock'], capture_output=True)
+             'crates', 'sdks', 'Cargo.toml', 'Cargo.lock', '.cargo',
+             'rust-toolchain', 'rust-toolchain.toml'], capture_output=True)
     env = dict(os.environ)
     env.pop('RRFLOW_BUILD_MANIFEST', None)
+    if build_rrflow.build_environment(env) != provenance['build_environment_sha256']:
+        raise ValueError('helper build environment differs from primary provenance')
+    if command(['rustc', '--version'], capture_output=True, env=env).stdout.strip() != provenance['rustc']:
+        raise ValueError('helper compiler differs from primary provenance')
     compiled = command(['cargo', 'build', '--locked', '-p', 'rrd-contract', '--example',
                         'endpoint_selection', '--profile', 'release', '--target-dir',
                         str(args.target_dir.resolve()), '--message-format', 'json'],
