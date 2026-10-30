@@ -1,6 +1,6 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46" as const;
+// OpenAPI SHA-256: 897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252" as const;
 
 export const endpoints = {
   "attunement-cancel": {
