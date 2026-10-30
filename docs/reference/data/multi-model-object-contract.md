@@ -91,6 +91,17 @@ inventory, corruption quarantine, and caller-directed reclamation. Streaming
 ingest hashes and bounds the payload without first materializing the complete
 object.
 
+Local publication, quarantine and caller-directed reclamation coordinate through
+OS-backed locks sharded by the canonical content-address prefix. A cooperating
+writer holds the lock until its publication calls return; a losing writer then
+authenticates the winner before discarding its own stage. The lock files are
+bounded synchronization metadata, not object records. A trace event reports
+lock-wait time without the content digest or payload. Lock acquisition currently
+blocks while a living holder is stalled; cancellation and a configurable wait
+budget are not implemented. Windows power-loss durability and concurrent
+corruption/reclamation qualification remain open under
+[POAM-047](../../poam/rrflow-1.0-alpha/poam-047.md).
+
 `S3CompatibleObjectStore<C>` is a provider-neutral adapter over the
 `S3ObjectClient` port. It validates declared authentication, signed-payload,
 conditional-write, checksum, pagination, ranged-read, and resumable-multipart

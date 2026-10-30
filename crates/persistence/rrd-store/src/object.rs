@@ -622,6 +622,11 @@ impl LocalObjectStore {
     /// Moves corrupt objects out of the addressable namespace. The returned
     /// path is operator evidence; no reachable reference is silently rewritten.
     pub fn quarantine(&self, sha256: &str) -> Result<PathBuf> {
+        let _guard = self.publication_guard(sha256)?;
+        self.quarantine_locked(sha256)
+    }
+
+    fn quarantine_locked(&self, sha256: &str) -> Result<PathBuf> {
         let key = ObjectReference::canonical_key(sha256).map_err(Error::from)?;
         let source = self.root.join(key);
         if !source.try_exists()? {
@@ -641,6 +646,7 @@ impl LocalObjectStore {
     pub fn reclaim_orphans(&self, unreachable: &BTreeSet<String>) -> Result<Vec<String>> {
         let mut removed = Vec::new();
         for sha256 in unreachable {
+            let _guard = self.publication_guard(sha256)?;
             let key = ObjectReference::canonical_key(sha256).map_err(Error::from)?;
             let path = self.root.join(key);
             if path.try_exists()? {
@@ -658,6 +664,7 @@ impl LocalObjectStore {
         final_path: &AnchoredPath,
         sha256: &str,
     ) -> Result<()> {
+        let _guard = self.publication_guard(sha256)?;
         let parent = final_path
             .parent()
             .ok_or_else(|| Error::Object("object publication target has no parent".into()))?;
@@ -665,19 +672,73 @@ impl LocalObjectStore {
         if final_path.try_exists()? {
             match self.verify(sha256) {
                 Ok(_) => {
-                    // Content addressing makes an existing verified value equivalent.
+                    // A cooperating publisher holds the same guard until its
+                    // native publication and directory-sync calls return.
+                    parent.sync_directory()?;
                     stage_path.remove_file()?;
                 }
                 Err(Error::ObjectCorrupt { .. }) => {
-                    self.quarantine(sha256)?;
-                    publish_object_path(stage_path, final_path)?;
+                    self.quarantine_locked(sha256)?;
+                    self.publish_absent_stage(stage_path, final_path, sha256)?;
                 }
                 Err(error) => return Err(error),
             }
         } else {
-            publish_object_path(stage_path, final_path)?;
+            self.publish_absent_stage(stage_path, final_path, sha256)?;
         }
         Ok(())
+    }
+
+    /// A bounded set of OS-backed stripes coordinates the same digest across
+    /// processes. The handle releases its lock on drop or process death.
+    fn publication_guard(&self, sha256: &str) -> Result<File> {
+        let key = ObjectReference::canonical_key(sha256).map_err(Error::from)?;
+        let stripe = key
+            .split('/')
+            .nth(2)
+            .ok_or_else(|| Error::Object("canonical object key has no shard".into()))?;
+        let locks = self.root.join("publication-locks");
+        locks.create_dir_all()?;
+        let path = locks.join(stripe);
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)?;
+        let started = std::time::Instant::now();
+        tracing::trace!("object publication lock wait started");
+        file.lock()?;
+        let elapsed_micros = u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
+        tracing::trace!(elapsed_micros, "object publication lock acquired");
+        Ok(file)
+    }
+
+    fn publish_absent_stage(
+        &self,
+        stage_path: &AnchoredPath,
+        final_path: &AnchoredPath,
+        sha256: &str,
+    ) -> Result<()> {
+        match stage_path.rename_new_to(final_path) {
+            Ok(()) => Ok(()),
+            Err(error)
+                if error.kind() == std::io::ErrorKind::AlreadyExists
+                    && stage_path.try_exists()? =>
+            {
+                // Only an authenticated winner is equivalent. A cooperating
+                // winner has released the same publication guard by now.
+                // The stage must still exist, so an error after our own rename
+                // (including a directory-sync failure) cannot be accepted.
+                self.verify(sha256)?;
+                final_path
+                    .parent()
+                    .ok_or_else(|| Error::Object("object publication target has no parent".into()))?
+                    .sync_directory()?;
+                stage_path.remove_file()?;
+                Ok(())
+            }
+            Err(error) => Err(error.into()),
+        }
     }
 }
 
@@ -791,6 +852,221 @@ mod tests {
             store.inventory(&BTreeSet::new()).unwrap().entries[0].state
                 == ObjectInventoryState::Orphan
         );
+    }
+
+    #[test]
+    fn concurrent_identical_puts_publish_one_verified_object_without_rejection() {
+        use std::sync::{mpsc, Arc, Condvar, Mutex};
+        use std::time::Duration;
+
+        let directory = tempdir().unwrap();
+        let store = Arc::new(LocalObjectStore::open(directory.path()).unwrap());
+        for iteration in 0..200 {
+            let bytes = format!("concurrent-object-{iteration}").into_bytes();
+            let gate = Arc::new((Mutex::new(false), Condvar::new()));
+            let (ready, staged) = mpsc::channel();
+            let results = std::thread::scope(|scope| {
+                let start = || {
+                    let store = Arc::clone(&store);
+                    let gate = Arc::clone(&gate);
+                    let ready = ready.clone();
+                    let bytes = bytes.clone();
+                    scope.spawn(move || {
+                        store.put_with_hook(&bytes, |step| {
+                            if step == ObjectStep::AfterStageSync {
+                                ready
+                                    .send(())
+                                    .map_err(|error| Error::Object(error.to_string()))?;
+                                let (lock, changed) = &*gate;
+                                let open = lock.lock().expect("publication gate");
+                                let (open, timeout) = changed
+                                    .wait_timeout_while(open, Duration::from_secs(10), |open| {
+                                        !*open
+                                    })
+                                    .expect("publication gate");
+                                if !*open || timeout.timed_out() {
+                                    return Err(Error::Object("publication gate timed out".into()));
+                                }
+                            }
+                            Ok(())
+                        })
+                    })
+                };
+                let workers = [start(), start()];
+                let both_staged =
+                    (0..2).all(|_| staged.recv_timeout(Duration::from_secs(10)).is_ok());
+                let (lock, changed) = &*gate;
+                *lock.lock().expect("publication gate") = true;
+                changed.notify_all();
+                let results = workers.map(|worker| worker.join().expect("publication worker"));
+                assert!(
+                    both_staged,
+                    "both writers must reach the synchronized stage"
+                );
+                results
+            });
+            let [first, second] = results.map(|result| result.expect("concurrent publication"));
+            assert_eq!(first, second);
+            assert_eq!(store.verify(&first.sha256).unwrap(), first);
+            let reference = ObjectReference::for_bytes(
+                "concurrent-object",
+                None,
+                "application/octet-stream",
+                &bytes,
+                first.receipt.clone(),
+            )
+            .unwrap();
+            assert_eq!(store.get(&reference).unwrap(), bytes);
+        }
+        assert!(store
+            .inventory(&BTreeSet::new())
+            .unwrap()
+            .staging_files
+            .is_empty());
+    }
+
+    #[test]
+    fn exclusive_publication_only_adopts_an_authenticated_winner() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let bytes = b"authenticated winner";
+        let winner = store.put(bytes).unwrap();
+        let target = store.root.join(&winner.receipt.key);
+        let stage = store.root.join("staging").join("collision-test");
+        fs::write(stage.diagnostic_path(), b"staged candidate").unwrap();
+
+        store
+            .publish_absent_stage(&stage, &target, &winner.sha256)
+            .unwrap();
+        assert!(!stage.try_exists().unwrap());
+        assert_eq!(fs::read(target.diagnostic_path()).unwrap(), bytes);
+
+        fs::write(stage.diagnostic_path(), b"another staged candidate").unwrap();
+        fs::write(target.diagnostic_path(), b"corrupt winner").unwrap();
+        assert!(matches!(
+            store.publish_absent_stage(&stage, &target, &winner.sha256),
+            Err(Error::ObjectCorrupt { .. })
+        ));
+        assert!(stage.try_exists().unwrap());
+        assert_eq!(
+            fs::read(target.diagnostic_path()).unwrap(),
+            b"corrupt winner"
+        );
+
+        stage.remove_file().unwrap();
+        assert!(store
+            .publish_absent_stage(&stage, &target, &winner.sha256)
+            .is_err());
+        assert_eq!(
+            fs::read(target.diagnostic_path()).unwrap(),
+            b"corrupt winner"
+        );
+    }
+
+    #[test]
+    fn publisher_waits_for_the_same_digest_guard() {
+        use std::sync::{mpsc, Arc};
+        use std::time::Duration;
+
+        let directory = tempdir().unwrap();
+        let store = Arc::new(LocalObjectStore::open(directory.path()).unwrap());
+        let bytes = b"guarded publication";
+        let sha256 = digest::sha256_hex(bytes);
+        let guard = store.publication_guard(&sha256).unwrap();
+        let (staged_tx, staged_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
+        let worker_store = Arc::clone(&store);
+        let worker = std::thread::spawn(move || {
+            let result = worker_store.put_with_hook(bytes, |step| {
+                if step == ObjectStep::AfterStageSync {
+                    staged_tx
+                        .send(())
+                        .map_err(|error| Error::Object(error.to_string()))?;
+                }
+                Ok(())
+            });
+            done_tx.send(result).unwrap();
+        });
+        staged_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert!(matches!(
+            done_rx.recv_timeout(Duration::from_millis(100)),
+            Err(mpsc::RecvTimeoutError::Timeout)
+        ));
+        drop(guard);
+        let result = done_rx
+            .recv_timeout(Duration::from_secs(10))
+            .unwrap()
+            .unwrap();
+        assert_eq!(result.sha256, sha256);
+        worker.join().unwrap();
+    }
+
+    #[test]
+    #[ignore = "child process for publication_guard_is_released_when_owner_dies"]
+    fn publication_guard_owner_child() {
+        let root = std::env::var_os("RRFLOW_OBJECT_LOCK_ROOT").unwrap();
+        let ready = std::env::var_os("RRFLOW_OBJECT_LOCK_READY").unwrap();
+        let store = LocalObjectStore::open(root).unwrap();
+        let _guard = store
+            .publication_guard(&digest::sha256_hex(b"crash lock"))
+            .unwrap();
+        fs::write(ready, b"locked").unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(60));
+    }
+
+    #[test]
+    fn publication_guard_is_released_when_owner_dies() {
+        use std::process::{Command, Stdio};
+        use std::time::{Duration, Instant};
+
+        let directory = tempdir().unwrap();
+        let root = directory.path().join("store");
+        let ready = directory.path().join("ready");
+        let store = LocalObjectStore::open(&root).unwrap();
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "object::tests::publication_guard_owner_child",
+                "--ignored",
+            ])
+            .env("RRFLOW_OBJECT_LOCK_ROOT", &root)
+            .env("RRFLOW_OBJECT_LOCK_READY", &ready)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !ready.exists() && Instant::now() < deadline && child.try_wait().unwrap().is_none() {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let locked = ready.exists();
+        if child.try_wait().unwrap().is_none() {
+            child.kill().unwrap();
+        }
+        child.wait().unwrap();
+        assert!(locked, "child did not acquire the publication guard");
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || tx.send(store.put(b"crash lock")).unwrap());
+        let recovered = rx.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+        assert_eq!(recovered.sha256, digest::sha256_hex(b"crash lock"));
+    }
+
+    #[test]
+    fn publishing_over_a_preexisting_corrupt_object_preserves_recovery() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let winner = store.put(b"original bytes").unwrap();
+        fs::write(store.root().join(&winner.receipt.key), b"corrupt bytes").unwrap();
+
+        assert_eq!(store.put(b"original bytes").unwrap(), winner);
+        assert_eq!(store.verify(&winner.sha256).unwrap(), winner);
+        let inventory = store.inventory(&BTreeSet::new()).unwrap();
+        assert_eq!(inventory.quarantined_files.len(), 1);
+        assert_eq!(
+            fs::read(&inventory.quarantined_files[0]).unwrap(),
+            b"corrupt bytes"
+        );
+        assert!(inventory.staging_files.is_empty());
     }
 
     #[test]
