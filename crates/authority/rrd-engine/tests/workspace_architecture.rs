@@ -133,6 +133,7 @@ fn engine_has_exact_composition() {
     assert_exact(
         production_workspace_dependencies(&metadata, "rrd-engine"),
         names(&[
+            "rrd-attunement",
             "rrd-contract",
             "rrd-estate",
             "rrd-security",
