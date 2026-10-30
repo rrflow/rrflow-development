@@ -26,6 +26,47 @@ class NativeCapacityCases(unittest.TestCase):
         self.config = {"size_mib": 256, "modes": ["fresh", "existing"],
                        "points": list(runner.POINTS), "executable": "unused", "harness_sha256": "test"}
 
+    def test_open_output_capture_retains_only_bounded_case_metadata(self):
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics),
+                       "GITHUB_SHA": "abc", "GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "2"}
+        try:
+            try:
+                raise runner.CommandOutputNotClosed("hdiutil-attach", 0, True, False)
+            except runner.CommandOutputNotClosed:
+                raise RuntimeError("private cleanup path and product output")
+        except RuntimeError as error:
+            with patch.dict(os.environ, environment):
+                runner.retain_native_failure(self.config, self.root, "existing", runner.POINTS[1], 22, error)
+        files = list(diagnostics.glob("*.json"))
+        self.assertEqual(len(files), 1)
+        raw = files[0].read_text(encoding="utf8")
+        receipt = json.loads(raw)
+        self.assertEqual((receipt["mode"], receipt["point"], receipt["case_index"]),
+                         ("existing", runner.POINTS[1], 22))
+        self.assertEqual(receipt["command_category"], "hdiutil-attach")
+        self.assertEqual(receipt["child_returncode"], 0)
+        self.assertTrue(receipt["stdout_open"])
+        self.assertFalse(receipt["stderr_open"])
+        self.assertEqual(receipt["cleanup_state"], "unknown")
+        self.assertNotIn("private", raw)
+        self.assertNotIn(str(self.root), raw)
+
+    def test_open_output_metadata_denies_untrusted_identifiers(self):
+        diagnostics = self.root / "rrflow-capacity-diagnostics"
+        environment = {"RUNNER_TEMP": str(self.root), "RRFLOW_CAPACITY_DIAGNOSTICS": str(diagnostics),
+                       "GITHUB_SHA": "private-secret", "GITHUB_RUN_ID": "private-secret"}
+        config = {"size_mib": "private-secret", "harness_sha256": "private-secret"}
+        error = runner.CommandOutputNotClosed("private-secret", "private-secret", True, False)
+        with patch.dict(os.environ, environment):
+            runner.retain_native_failure(config, self.root, "private-secret", "private-secret", 22, error)
+        raw = next(diagnostics.glob("*.json")).read_text(encoding="utf8")
+        receipt = json.loads(raw)
+        self.assertNotIn("private-secret", raw)
+        self.assertEqual(receipt["command_category"], "other")
+        self.assertEqual((receipt["mode"], receipt["point"]), ("unknown", "unknown"))
+        self.assertIsNone(receipt["child_returncode"])
+
     @contextmanager
     def volume(self, fixture, size):
         self.assertEqual(fixture, self.root)

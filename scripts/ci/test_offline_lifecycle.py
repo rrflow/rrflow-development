@@ -14,6 +14,38 @@ import run_offline_lifecycle as runner
 
 
 class OfflineLifecyclePolicyTests(unittest.TestCase):
+    def test_open_output_metadata_rejects_unrecognized_category_and_status(self):
+        error = runner.CommandOutputNotClosed("private-path", "private-status", True, False)
+        self.assertEqual(error.command_category, "other")
+        self.assertIsNone(error.child_returncode)
+        self.assertNotIn("private", str(error))
+
+    @unittest.skipUnless(os.name == "posix", "requires a real inherited POSIX pipe")
+    def test_exited_child_with_inherited_stdout_reports_bounded_closed_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "private-marker"
+            grandchild = "import pathlib,sys,time; time.sleep(4); pathlib.Path(sys.argv[1]).write_text('done')"
+            parent = ("import subprocess,sys; "
+                      "subprocess.Popen([sys.executable,'-c',sys.argv[1],sys.argv[2]], stderr=subprocess.DEVNULL)")
+            started = time.monotonic()
+            completed = []
+            with self.assertRaises(RuntimeError) as captured:
+                runner.run(sys.executable, "-c", parent, grandchild, str(marker), timeout=10,
+                           check=False, on_completion=completed.append)
+            error = captured.exception
+            self.assertEqual(type(error).__name__, "CommandOutputNotClosed")
+            self.assertEqual(error.command_category, "other")
+            self.assertEqual(error.child_returncode, 0)
+            self.assertTrue(error.stdout_open)
+            self.assertFalse(error.stderr_open)
+            self.assertEqual(completed, [])
+            self.assertNotIn(str(marker), str(error))
+            self.assertLess(time.monotonic() - started, 4)
+            deadline = time.monotonic() + 5
+            while not marker.exists() and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertTrue(marker.exists(), "controlled descendant did not exit")
+
     def test_timeout_budget_keeps_namespace_wrapper_above_harness_deadline(self):
         harness, wrapper = runner.lifecycle_timeouts()
         self.assertEqual((harness, wrapper), (540, 600))
