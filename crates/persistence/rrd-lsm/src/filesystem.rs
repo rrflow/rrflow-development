@@ -15,7 +15,9 @@ use std::sync::Arc;
 #[path = "filesystem/io.rs"]
 pub(crate) mod file_io;
 mod native;
+mod source;
 pub(crate) use native::FileIdentity;
+pub use source::{SourceKind, SourceObservation};
 pub(crate) mod space;
 
 #[cfg(test)]

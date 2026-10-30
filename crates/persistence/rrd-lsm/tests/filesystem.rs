@@ -1,6 +1,127 @@
 use rrd_lsm::filesystem::{AnchoredPath, OpenOptions};
 use std::io::{Read, Write};
 
+#[test]
+fn source_observation_binds_native_object_without_moving_the_read_cursor() {
+    use rrd_lsm::filesystem::SourceKind;
+    use std::io::Seek;
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    std::fs::write(fixture.path().join("source"), b"actual file bytes").unwrap();
+    let path = anchor.join("source");
+    let before = path.source_observation().unwrap();
+    let mut file = path.open_read().unwrap();
+    let mut first = [0; 3];
+    file.read_exact(&mut first).unwrap();
+    assert_eq!(first, *b"act");
+    assert_eq!(path.source_observation_for_file(&file).unwrap(), before);
+    assert_eq!(file.stream_position().unwrap(), 3);
+    assert_eq!(before.kind(), SourceKind::File);
+    assert_eq!(before.bytes(), 17);
+    assert_eq!(
+        before.revision_sha256().unwrap(),
+        path.source_observation()
+            .unwrap()
+            .revision_sha256()
+            .unwrap()
+    );
+    assert_eq!(
+        anchor.source_observation().unwrap().kind(),
+        SourceKind::Directory
+    );
+}
+
+#[test]
+fn source_observation_detects_replacement_with_equal_length_and_mtime() {
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let source = fixture.path().join("source");
+    std::fs::write(&source, b"before").unwrap();
+    let modified = std::fs::metadata(&source).unwrap().modified().unwrap();
+    let before = anchor.join("source").source_observation().unwrap();
+    // Retain the old object under another name to prevent inode/file-ID reuse.
+    std::fs::rename(&source, fixture.path().join("retained")).unwrap();
+    std::fs::write(&source, b"after!").unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&source)
+        .unwrap()
+        .set_times(std::fs::FileTimes::new().set_modified(modified))
+        .unwrap();
+    assert_eq!(
+        std::fs::metadata(&source).unwrap().modified().unwrap(),
+        modified
+    );
+    let after = anchor.join("source").source_observation().unwrap();
+    assert_eq!(before.bytes(), after.bytes());
+    assert_ne!(
+        before.revision_sha256().unwrap(),
+        after.revision_sha256().unwrap()
+    );
+    let retained = anchor.join("retained").open_read().unwrap();
+    assert_eq!(
+        anchor
+            .join("source")
+            .source_observation_for_file(&retained)
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+}
+
+#[test]
+fn source_observation_rejects_racy_reuse_and_detects_a_timestamp_preserved_edit() {
+    use std::time::{Duration, SystemTime};
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let source = fixture.path().join("source");
+    std::fs::write(&source, b"before").unwrap();
+    let modified = std::fs::metadata(&source).unwrap().modified().unwrap();
+    let before = anchor.join("source").source_observation().unwrap();
+    let observed_at = SystemTime::now();
+    assert!(!before.predates(observed_at, Duration::ZERO));
+    assert!(!before.predates(observed_at, Duration::from_secs(2)));
+    // This is native timestamp characterization, not a production retry loop.
+    // Coarse/unknown filesystems must force engine content revalidation instead.
+    std::thread::sleep(Duration::from_millis(30));
+    let mut writer = std::fs::File::options().write(true).open(&source).unwrap();
+    writer.write_all(b"after!").unwrap();
+    writer
+        .set_times(std::fs::FileTimes::new().set_modified(modified))
+        .unwrap();
+    writer.sync_all().unwrap();
+    drop(writer);
+    let after = anchor.join("source").source_observation().unwrap();
+    assert_eq!(
+        std::fs::metadata(&source).unwrap().modified().unwrap(),
+        modified
+    );
+    assert_eq!(before.bytes(), after.bytes());
+    assert_ne!(
+        before.revision_sha256().unwrap(),
+        after.revision_sha256().unwrap()
+    );
+}
+
+#[test]
+fn source_observation_retains_escape_and_hard_link_denial() {
+    let fixture = tempfile::tempdir().unwrap();
+    let root = fixture.path().join("root");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(fixture.path().join("outside"), b"outside").unwrap();
+    let anchor = AnchoredPath::open_root(&root).unwrap();
+    assert!(anchor.join("../outside").source_observation().is_err());
+    std::fs::hard_link(fixture.path().join("outside"), root.join("linked")).unwrap();
+    assert_eq!(
+        anchor
+            .join("linked")
+            .source_observation()
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::PermissionDenied
+    );
+}
+
 #[cfg(target_os = "macos")]
 #[test]
 #[ignore = "required native CI attaches and cleans a test-owned APFS image"]
