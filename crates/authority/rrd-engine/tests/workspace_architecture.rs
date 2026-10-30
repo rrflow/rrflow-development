@@ -115,8 +115,15 @@ fn attunement_proposals_have_no_runtime_or_store_dependency() {
     let metadata = workspace_metadata();
     assert_exact(
         &metadata.packages["rrd-attunement"].all,
-        names(&["rrd-core", "serde", "serde_json"]),
-        "attunement is pure compute over kernel hashes and serialized observations",
+        names(&[
+            "rrd-core",
+            "serde",
+            "serde_json",
+            "gix-index",
+            "gix-ignore",
+            "filetime",
+        ]),
+        "attunement uses pure buffer parsing, kernel hashes and serialized observations",
     );
 }
 
