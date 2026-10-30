@@ -41,7 +41,43 @@ Cross-surface proof must compare the result,
 denial, stamp, digest, receipt, and causal identity produced by the engine—not
 merely compare JSON shapes.
 
-## Audited current surface
+## Catalogue-derived controller proposal binding
+
+The fixed-path session POST metadata is now projected from `endpoint_catalogue()`
+by `python scripts/ci/check_generated_surfaces.py --write`; `--check` rejects
+missing or stale output. The projection currently contains 51 typed markers.
+It carries method/path/type/mutation metadata, not semantic validation or engine
+authority. Only `operations::TaskEndpointPropose` currently implements the sealed
+`ValidatedOperation` interface. Other markers cannot be passed to this API;
+existing legacy methods retain their documented behavior.
+
+```rust,ignore
+let proposal = client
+    .call_operation::<rrd_client::operations::TaskEndpointPropose>(
+        &session, request, options,
+    )
+    .await?;
+```
+
+The caller supplies the existing `EndpointSelectionRequest`, a native `Session`
+and mutation `RequestOptions`. The binding validates the request before network
+work and checks response scope, task, attempt and expected task/configuration
+digests, protocol/correlation, status and JSON media type. Full candidate/packet
+admission remains in the engine. A successful proposal permits no worker effect.
+Credentials never need to enter the renderer.
+
+This call sends once even when general client retries exceed one. After timeout
+or response loss, use `read_task_attempt` to inspect durable state; do not submit
+a new attempt automatically. Validation tests using archived actual responses
+are transport evidence, not fresh model results or routing qualification. The
+complete generated-client migration and installed cross-surface H-04 corpus
+remain open at [POAM-011](../../poam/rrflow-1.0-alpha/poam-011.md).
+
+## Historical 55-operation surface audit
+
+The table below records the earlier 55-operation audit. The current catalogue
+has since advanced; do not treat these counts as complete current SDK coverage.
+
 
 The executable `endpoint_catalogue()` contains 55 HTTP operations and one
 generic authenticated `/v1/ws` descriptor. `RrdClient` currently supplies

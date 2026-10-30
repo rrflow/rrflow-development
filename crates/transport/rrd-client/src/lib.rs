@@ -4,6 +4,7 @@
 //! internals. Loopback HTTP remains available for local development. Remote
 //! endpoints use an explicit mutually authenticated TLS configuration.
 
+mod catalogue_call;
 mod client;
 mod endpoint;
 mod error;
@@ -13,6 +14,10 @@ mod session;
 mod subscription;
 mod transport;
 
+#[path = "generated/operations.rs"]
+pub mod operations;
+
+pub use catalogue_call::{OperationMetadata, ValidatedOperation};
 pub use client::RrdClient;
 pub use error::{is_unauthenticated, Error, Result};
 pub use operation::RequestOptions;

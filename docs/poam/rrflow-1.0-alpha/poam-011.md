@@ -189,6 +189,15 @@ evidence across HTTP, WebSocket, Rust, every generated SDK, CLI, MCP, GraphQL,
 and Connectome; missing harness configuration fails or is explicitly skipped
 and never reports conformance.
 
+## Controller native binding increment
+
+[Draft PR222](https://github.com/rrflow/rrflow-development/pull/222) adds catalogue-derived
+fixed-session metadata and an explicitly validated controller proposal call.
+The [implementation receipt](../../evidence/change-journals/gate-h/h-04-controller-native-binding.md)
+separates generated metadata from callable support and retains the initial denial
+fixture failure. This does not close the complete compiler, legacy method migration,
+all-operation semantic validation or installed cross-surface conformance gaps.
+
 ## Evidence history
 
 - Structural SDK evidence:

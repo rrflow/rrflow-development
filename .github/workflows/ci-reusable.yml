@@ -308,6 +308,8 @@ jobs:
           retention-days: 14
       - name: Enforce generated product-surface parity
         run: python3 scripts/ci/check_generated_surfaces.py
+      - name: Test catalogue-derived Rust client projection
+        run: python3 scripts/ci/test_rust_client_projection.py
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
       - name: Verify controlled evaluation evidence
