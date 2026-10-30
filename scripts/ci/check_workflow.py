@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 CALLER = ROOT / ".github/workflows/ci.yml"
 REUSABLE = ROOT / ".github/workflows/ci-reusable.yml"
+NATIVE_PREFLIGHT = ROOT / ".github/workflows/c07-native-preflight.yml"
 DEVELOPMENT_CONTAINER = ROOT / ".devcontainer"
 DIGEST_PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
 
@@ -109,6 +110,105 @@ def job_blocks(workflow: str) -> dict[str, str]:
         else jobs[match.end() :]
         for index, match in enumerate(matches)
     }
+
+
+def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
+    """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
+    marker = "      - name: Require bounded native sampler failure\n"
+    require(reopen.count(marker) == 1, "bounded native sampler failure CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        timeout-minutes: 5\n"
+        "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture\n"
+    )
+    require(block == required, "bounded native sampler failure step must retain its exact timeout and command")
+    marker = "      - name: Verify owned Windows native sampler lifecycle\n"
+    require(reopen.count(marker) == 1, "native sampler Windows CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        if: runner.os == 'Windows'\n"
+        "        timeout-minutes: 5\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          python scripts/ci/test_windows_harness_image.py --profile release\n"
+        "          python scripts/ci/test_native_sample_worker.py --profile release\n"
+    )
+    require(block == required, "native sampler CI step must retain its exact condition, timeout and command")
+    marker = "      - name: Verify Linux native sampler running image\n"
+    require(reopen.count(marker) == 1, "native sampler Linux image CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        if: runner.os == 'Linux'\n"
+        "        timeout-minutes: 5\n"
+        "        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest --exact --nocapture\n"
+    )
+    require(block == required, "native sampler Linux image step must retain its exact condition, timeout and command")
+    policy_marker = "      - name: Enforce repository CI policy\n"
+    require(verify.count(policy_marker) == 1, "repository CI policy step must occur once")
+    policy = verify.split(policy_marker, 1)[1].split("      - name:", 1)[0]
+    require(policy.count("          python3 scripts/ci/test_native_sample_policy.py\n") == 1
+            and "continue-on-error:" not in policy,
+            "native sampler policy regressions must run without a bypass")
+
+
+def verify_native_capacity_diagnostics(job: str) -> None:
+    """Preserve native qualification and retain only bounded create diagnostics."""
+    def step(name: str) -> str:
+        marker = f"      - name: {name}\n"
+        require(job.count(marker) == 1, f"native capacity step missing or duplicated: {name}")
+        return job.split(marker, 1)[1].split("      - name:", 1)[0]
+
+    first = step("Qualify installed native capacity failure and recovery")
+    repeated = step("Require repeated APFS exhaustion and recovery")
+    upload = step("Retain native capacity create diagnostics")
+    destination = "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics"
+    require(destination in first and destination in repeated,
+            "both capacity runs must bind their diagnostic directory")
+    require("run: python3 scripts/ci/run_native_capacity.py" in first,
+            "initial native capacity run must remain required")
+    require("if: matrix.os == 'macos-latest'" in repeated
+            and "python3 scripts/ci/run_native_capacity.py" in repeated
+            and repeated.count("--mode fresh --mode existing") == 3,
+            "macOS repeated native capacity cases must remain required")
+    require("if: always() && matrix.os == 'macos-latest'" in upload
+            and "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json" in upload
+            and "if-no-files-found: ignore" in upload
+            and "actions/upload-artifact@" in upload,
+            "native failure artifact must retain only controlled diagnostics")
+
+
+def verify_native_capacity_preflight(workflow: str) -> None:
+    """A manual characterization cannot stand in for candidate or merge CI."""
+    events = re.search(r"(?ms)^on:\n(.*?)(?=^\S)", workflow)
+    require(events is not None and events.group(1) == "  workflow_dispatch:\n\n",
+            "native preflight must be manual only")
+    jobs = job_blocks(workflow)
+    require(set(jobs) == {"native-preflight"}, "native preflight must remain isolated")
+    job = jobs["native-preflight"]
+    for required in ["runs-on: macos-latest", 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+                     "python3 scripts/ci/test_native_capacity.py", "python3 scripts/ci/test_macos_native_failure_preflight.py",
+                     "python3 scripts/ci/macos_native_failure_preflight.py", "python3 scripts/ci/run_native_capacity.py",
+                     "RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics",
+                     "path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "if: always()"]:
+        require(required in job, f"native preflight missing: {required}")
+    require(job.count("--mode fresh --mode existing") == 3 and "continue-on-error" not in job,
+            "native preflight must run all repeated cases without ignoring failure")
+    for name, artifact_path, missing in [
+        ("Retain injected native failure receipt",
+         "${{ runner.temp }}/rrflow-native-failure-probe/rrflow-capacity-diagnostics/*.json", "error"),
+        ("Retain native capacity create diagnostics",
+         "${{ runner.temp }}/rrflow-capacity-diagnostics/*.json", "ignore"),
+    ]:
+        marker = f"      - name: {name}\n"
+        require(job.count(marker) == 1, f"native preflight artifact missing or duplicated: {name}")
+        step = job.split(marker, 1)[1].split("      - name:", 1)[0]
+        require("        if: always()\n" in step and "actions/upload-artifact@" in step
+                and f"path: {artifact_path}" in step and f"if-no-files-found: {missing}" in step,
+                f"native preflight artifact is not isolated and failure-preserving: {name}")
+    require(not any(re.match(r"(?:ref|repository|path)\s*:", entry)
+                    for _, body in checkout_steps(job) for entry in body),
+            "native preflight must checkout the dispatched revision")
 
 
 def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
@@ -478,6 +578,25 @@ def verify_sdk_conformance(block: str) -> None:
     )
 
 
+def verify_standalone_rrflowdb(jobs: dict[str, str]) -> None:
+    build = "cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb"
+    run = '"$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"'
+    step = ("      - name: Build and exercise the standalone rrflowDB example\n"
+            "        shell: bash\n"
+            "        run: |\n"
+            f"          {build}\n"
+            '          suffix=""\n'
+            '          python_command=python3\n'
+            '          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi\n'
+            f"          {run}\n")
+    for name in ("topology-smoke", "estate-portability"):
+        block = jobs[name]
+        require(block.count(step) == 1 and block.count(run) == 1,
+                f"{name} must unconditionally build and run the native standalone rrflowDB example")
+    require(jobs["verify"].count("python3 scripts/ci/test_rrflowdb_standalone.py") == 1,
+            "verify must run standalone rrflowDB oracle and process tests")
+
+
 def single_ci_value(reusable: str, pattern: str, label: str) -> str:
     values = set(re.findall(pattern, reusable))
     require(
@@ -614,6 +733,8 @@ def verify_development_container(reusable: str, pgvector_job: str) -> int:
 
 def main() -> None:
     workflows = workflow_sources()
+    require(NATIVE_PREFLIGHT in workflows, "native macOS preflight workflow missing")
+    verify_native_capacity_preflight(workflows[NATIVE_PREFLIGHT])
     caller = workflows[CALLER]
     reusable = workflows[REUSABLE]
     jobs = job_blocks(reusable)
@@ -622,6 +743,7 @@ def main() -> None:
     require(warmer is not None, "trusted macOS reopen cache warmer is absent")
     verify_macos_reopen_cache_warm(warmer, jobs["installed-reopen"])
     verify_execution_inventory_ci(jobs["verify"])
+    verify_native_sample_worker_ci(jobs["installed-reopen"], jobs["verify"])
     require(
         reusable.count("python3 scripts/ci/test_candidate_admission.py") == 1,
         "candidate admission regressions must run exactly once",
@@ -743,6 +865,7 @@ def main() -> None:
     require("--features" not in reopen and "--all-features" not in reopen,
             "ordinary reopen corpus must not activate diagnostic features")
     diagnostic = jobs["installed-crash"]
+    verify_native_capacity_diagnostics(diagnostic)
     for platform in ["ubuntu-latest", "macos-latest", "windows-latest"]:
         require(f"- {platform}" in diagnostic, f"diagnostic primary must qualify {platform}")
     for command in [
@@ -861,6 +984,7 @@ def main() -> None:
 
     suite_count, package_count = verify_engine_suites(jobs["engine-suites"])
     verify_sdk_conformance(jobs["sdk-conformance"])
+    verify_standalone_rrflowdb(jobs)
     feature_count = verify_optional_features(
         jobs["optional-features"], jobs["pgvector-feature"]
     )
