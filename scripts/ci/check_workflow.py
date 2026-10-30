@@ -529,7 +529,7 @@ def verify_optional_features(optional: str, pgvector: str) -> int:
     return len(expected)
 
 
-def verify_sdk_conformance(block: str) -> None:
+def verify_sdk_conformance(block: str, verify: str) -> None:
     required = [
         "uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413",
         "uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
@@ -561,6 +561,28 @@ def verify_sdk_conformance(block: str) -> None:
         block.count("python3 scripts/ci/run_sdk_conformance.py") == 1,
         "SDK qualification must execute through one cohesive orchestrator",
     )
+
+    marker = "      - name: Exercise installed Python attunement recovery\n"
+    require(block.count(marker) == 1, "installed Python attunement step must occur once")
+    step = block.split(marker, 1)[1].split("      - name:", 1)[0]
+    expected = (
+        "        timeout-minutes: 10\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          cargo build -p rrflow-cli --bin rrflow --profile test --locked\n"
+        '          export RRFLOW_TEST_BINARY="$GITHUB_WORKSPACE/target/debug/rrflow"\n'
+        '          test -x "$RRFLOW_TEST_BINARY"\n'
+        '          uv --directory sdks/python run --frozen pytest -o addopts= --color=no -q tests/test_installed_attunement.py | tee "$RUNNER_TEMP/rrflow-python-attunement.txt"\n'
+        '          grep -Eq \'^1 passed in [0-9.]+s[[:space:]]*$\' "$RUNNER_TEMP/rrflow-python-attunement.txt"\n'
+    )
+    require(step == expected, "installed Python attunement step must run the exact unskipped test")
+    policy_marker = "      - name: Enforce repository CI policy\n"
+    require(verify.count(policy_marker) == 1, "repository CI policy step must occur once")
+    policy = verify.split(policy_marker, 1)[1].split("      - name:", 1)[0]
+    require(policy.count("          python3 scripts/ci/test_sdk_attunement_policy.py\n") == 1
+            and "continue-on-error:" not in policy and "        if:" not in policy,
+            "SDK attunement policy regressions must run without a bypass")
 
 
 def verify_standalone_rrflowdb(jobs: dict[str, str]) -> None:
@@ -968,7 +990,7 @@ def main() -> None:
     )
 
     suite_count, package_count = verify_engine_suites(jobs["engine-suites"])
-    verify_sdk_conformance(jobs["sdk-conformance"])
+    verify_sdk_conformance(jobs["sdk-conformance"], jobs["verify"])
     verify_standalone_rrflowdb(jobs)
     feature_count = verify_optional_features(
         jobs["optional-features"], jobs["pgvector-feature"]
