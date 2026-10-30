@@ -262,6 +262,7 @@ jobs:
           python3 scripts/ci/test_native_sample_policy.py
           python3 scripts/ci/test_rrflowdb_standalone.py
           python3 scripts/ci/test_cache_warm_policy.py
+          python3 scripts/ci/test_merge_conflict_policy.py
           python3 scripts/ci/check_workflow.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py

@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote
@@ -262,24 +263,60 @@ def markdown_section(source: str, heading: str) -> str | None:
     return match.group(1).strip() if match is not None else None
 
 
+def poam_ids_valid(
+    record_ids: list[str], observed_ids: list[str], historical_ids: set[str] | None = None
+) -> bool:
+    """Require one ordered ledger row per valid record, without requiring gaps to be filled."""
+    return (
+        bool(record_ids)
+        and record_ids[0] == "POAM-001"
+        and all(re.fullmatch(r"POAM-(?!000)[0-9]{3}", value) for value in record_ids)
+        and record_ids == sorted(set(record_ids))
+        and observed_ids == record_ids
+        and (historical_ids or set()).issubset(record_ids)
+    )
+
+
+def historical_poam_ids(root: Path) -> set[str]:
+    """Prevent removal of records introduced on this checkout's first-parent history."""
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"], cwd=root,
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    if shallow != "false":
+        raise ValueError("POA&M history requires a non-shallow Git checkout")
+    result = subprocess.run(
+        ["git", "log", "--first-parent", "--diff-merges=first-parent", "--diff-filter=A",
+         "--format=", "--name-only", "-z", "HEAD", "--", "docs/poam/rrflow-1.0-alpha"],
+        cwd=root, check=True, capture_output=True,
+    )
+    paths = result.stdout.decode("utf-8", errors="strict").split("\0")
+    return {
+        match.group(1).upper()
+        for path in paths
+        if (match := re.fullmatch(r"docs/poam/rrflow-1\.0-alpha/(poam-[0-9]{3})\.md", path))
+    }
+
+
 def poam_integrity_failures(parent: str) -> list[str]:
     """Keep the POA&M ledger complete while detail stays with linked owners."""
     failures: list[str] = []
     rows = POAM_ROW.findall(parent)
-    # Every detail record keeps its ledger row for life, closed or not, so the
-    # records on disk fix the contiguous range the ledger must list.
+    # Every detail record keeps its ledger row for life, closed or not. Gaps
+    # allow independent branches to reserve distinct identifiers.
     record_ids = sorted(
         record.stem.upper()
         for record in POAM_RECORDS.glob("poam-[0-9][0-9][0-9].md")
     )
-    expected_ids = [
-        f"POAM-{ordinal:03d}" for ordinal in range(1, len(record_ids) + 1)
-    ]
     observed_ids = [row[0] for row in rows]
-    if not expected_ids or record_ids != expected_ids or observed_ids != expected_ids:
+    try:
+        history = historical_poam_ids(ROOT)
+    except (OSError, UnicodeError, ValueError, subprocess.CalledProcessError) as error:
+        failures.append(f"cannot verify POA&M first-parent history: {error}")
+        history = set()
+    if not poam_ids_valid(record_ids, observed_ids, history):
         failures.append(
-            "the POA&M ledger and its detail records must hold POAM-001 through "
-            f"POAM-{len(record_ids):03d} exactly once and in order"
+            "the POA&M ledger must retain historical IDs and list every valid detail record exactly once in ID order"
         )
 
     governance = POAM_GOVERNANCE.read_text(encoding="utf-8")
