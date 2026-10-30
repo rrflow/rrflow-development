@@ -32,12 +32,13 @@ binary needs no Python, Rust compiler, source checkout or model for this flow.
 Read installation-plan.json before applying. It is the exact change preview:
   $plan = Get-Content -Raw .\installation-plan.json | ConvertFrom-Json
   .\rrflow.exe --json install apply --project $project --mode existing --plan .\installation-plan.json --expect $plan.installation.plan_sha256
-  .\rrflow.exe serve --project $project
+  .\rrflow.exe serve --project $project --bind 127.0.0.1:0
 
 In a second PowerShell window, from this bundle:
   .\rrflow.exe --json ready --project <same-project-directory>
 
-ready authenticates and returns the current engine discovery endpoints. Use its
+The operating system chooses a free loopback port. ready authenticates and
+returns the current engine discovery endpoints. Use its
 public catalogue/schemas for client operations. Stop the owned serve process with
 Ctrl+C. Then, while the estate is stopped:
   .\rrflow.exe --json verify --project <same-project-directory> --level quick
