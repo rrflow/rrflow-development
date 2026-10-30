@@ -94,9 +94,31 @@ fn conflict_numeric_pair(detail: &str, prefix: &str, separator: &str) -> bool {
     })
 }
 
+// This is diagnostic classification only; it does not infer publication or
+// retry effects. Never copy dynamic server text into the evidence stream.
+fn structured_snapshot_conflict(error: &ErrorBody) -> Option<(u64, u64)> {
+    if error.code != ErrorCode::Conflict || error.retryable || error.details.len() != 4 {
+        return None;
+    }
+    let value = |name: &str| error.details.get(&CanonicalId::new(name).ok()?);
+    if value("reason")?.as_str() != "transaction-snapshot-stale"
+        || value("next-action")?.as_str() != "abort-and-reexecute-transaction"
+    {
+        return None;
+    }
+    let expected = value("expected-cursor")?;
+    let actual = value("actual-cursor")?;
+    let expected_number = expected.parse::<u64>().ok()?;
+    let actual_number = actual.parse::<u64>().ok()?;
+    (expected_number.to_string() == *expected
+        && actual_number.to_string() == *actual
+        && actual_number > expected_number)
+        .then_some((expected_number, actual_number))
+}
+
 // Only closed numeric cursor values and a one-way synthetic request digest are
 // retained. A reported conflict is not proof of effect or of its internal origin.
-fn runtime_conflict_trace(
+pub(super) fn runtime_conflict_trace(
     error: &rrd_client::Error,
     key: &str,
     read_cursor: u64,
@@ -108,16 +130,21 @@ fn runtime_conflict_trace(
     if error.code != ErrorCode::Conflict {
         return None;
     }
-    let detail = error
-        .message
-        .strip_prefix("StorageConflict(\"runtime commit conflict: expected cursor ")?
-        .strip_suffix("\")")?;
-    let (expected, actual) = detail.split_once(", actual cursor ")?;
-    let expected_number = expected.parse::<u64>().ok()?;
-    let actual_number = actual.parse::<u64>().ok()?;
-    if expected_number.to_string() != expected || actual_number.to_string() != actual {
-        return None;
-    }
+    let (expected_number, actual_number) = if let Some(pair) = structured_snapshot_conflict(error) {
+        pair
+    } else {
+        let detail = error
+            .message
+            .strip_prefix("StorageConflict(\"runtime commit conflict: expected cursor ")?
+            .strip_suffix("\")")?;
+        let (expected, actual) = detail.split_once(", actual cursor ")?;
+        let expected_number = expected.parse::<u64>().ok()?;
+        let actual_number = actual.parse::<u64>().ok()?;
+        if expected_number.to_string() != expected || actual_number.to_string() != actual {
+            return None;
+        }
+        (expected_number, actual_number)
+    };
     counter
         .try_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
             (count < 32).then_some(count + 1)
@@ -309,7 +336,7 @@ fn pinned_read_denial(message: &str) -> Option<(u64, u64)> {
 
 // Preserve only the closed client/API classification and a digest of details.
 // Server messages, transport text and credentials never enter campaign output.
-fn client_error(value: rrd_client::Error) -> String {
+pub(super) fn client_error(value: rrd_client::Error) -> String {
     use rrd_client::Error;
     let code = match &value {
         Error::Api { error, .. } => {
@@ -320,7 +347,12 @@ fn client_error(value: rrd_client::Error) -> String {
                     serde_json::json!({"resource":"pinned_bytes","limit":limit,"observed":observed})
                 );
             }
-            if let Some(label) = engine_error_label(&error.message) {
+            let label = if structured_snapshot_conflict(error).is_some() {
+                Some("storage-runtime-conflict")
+            } else {
+                engine_error_label(&error.message)
+            };
+            if let Some(label) = label {
                 code.push('-');
                 code.push_str(label);
             }
@@ -388,6 +420,67 @@ fn runtime_conflict_trace_is_closed_correlatable_and_bounded() {
             .sum::<usize>()
     });
     assert_eq!(admitted, 32);
+}
+
+#[test]
+fn structured_snapshot_conflict_is_closed_and_retains_diagnostic_evidence() {
+    let mut error = ErrorBody {
+        code: ErrorCode::Conflict,
+        message: "private-server-text".into(),
+        retryable: false,
+        details: [
+            ("reason", "transaction-snapshot-stale"),
+            ("next-action", "abort-and-reexecute-transaction"),
+            ("expected-cursor", "7"),
+            ("actual-cursor", "9"),
+        ]
+        .into_iter()
+        .map(|(key, value)| (CanonicalId::new(key).unwrap(), value.into()))
+        .collect(),
+    };
+    assert_eq!(structured_snapshot_conflict(&error), Some((7, 9)));
+    let api = |body: ErrorBody| rrd_client::Error::Api {
+        status: 409_u16.try_into().unwrap(),
+        error: body,
+    };
+    let line =
+        runtime_conflict_trace(&api(error.clone()), "secret-key", 7, &AtomicUsize::new(0)).unwrap();
+    assert!(line.contains("read_cursor=7 expected_cursor=7 actual_cursor=9"));
+    assert!(!line.contains("secret"));
+    let classified = client_error(api(error.clone()));
+    assert!(classified.starts_with("api-conflict-storage-runtime-conflict:"));
+    assert!(!classified.contains("private"));
+    for invalid in ["07", "-1", "18446744073709551616", "9 private", "7"] {
+        error
+            .details
+            .insert(CanonicalId::new("actual-cursor").unwrap(), invalid.into());
+        assert_eq!(structured_snapshot_conflict(&error), None);
+        assert!(
+            runtime_conflict_trace(&api(error.clone()), "secret-key", 7, &AtomicUsize::new(0))
+                .is_none()
+        );
+    }
+    error
+        .details
+        .insert(CanonicalId::new("actual-cursor").unwrap(), "9".into());
+    error.retryable = true;
+    assert_eq!(structured_snapshot_conflict(&error), None);
+    error.retryable = false;
+    error.code = ErrorCode::Internal;
+    assert_eq!(structured_snapshot_conflict(&error), None);
+    error.code = ErrorCode::Conflict;
+    error
+        .details
+        .insert(CanonicalId::new("next-action").unwrap(), "private".into());
+    assert_eq!(structured_snapshot_conflict(&error), None);
+    error.details.insert(
+        CanonicalId::new("next-action").unwrap(),
+        "abort-and-reexecute-transaction".into(),
+    );
+    error
+        .details
+        .insert(CanonicalId::new("extra").unwrap(), "private".into());
+    assert_eq!(structured_snapshot_conflict(&error), None);
 }
 
 #[test]

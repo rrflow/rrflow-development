@@ -99,6 +99,14 @@ internal failures. Error messages and detail values are bounded. Credentials,
 secrets, arbitrary headers, and private storage types are not public contract
 payloads.
 
+A transaction commit whose exact outcome is absent and whose runtime cursor has
+advanced past the lease's read cursor returns `conflict` with `retryable=false`.
+Its details identify `transaction-snapshot-stale`, the bounded expected and
+actual cursors, and `abort-and-reexecute-transaction`. The caller must abort the
+old transaction and redo its reads, decisions and writes on a fresh snapshot.
+The engine does not silently rebase or replay the stale commit. A generic
+conflict or uncertain outcome does not carry this conclusion.
+
 ## Deployment and capability discovery
 
 The accepted

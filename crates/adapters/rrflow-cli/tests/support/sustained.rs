@@ -1550,21 +1550,132 @@ fn installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect() {
             scope: CanonicalId::new("data").unwrap(),
             timeout_ms: 60_000,
         };
-        let left = work.client.begin_transaction(&work.session, begin(), mutation_options("conflict-left-begin")).await.unwrap();
-        let right = work.client.begin_transaction(&work.session, begin(), mutation_options("conflict-right-begin")).await.unwrap();
+        let left = work
+            .client
+            .begin_transaction(
+                &work.session,
+                begin(),
+                mutation_options("conflict-left-begin"),
+            )
+            .await
+            .unwrap();
+        let right = work
+            .client
+            .begin_transaction(
+                &work.session,
+                begin(),
+                mutation_options("conflict-right-begin"),
+            )
+            .await
+            .unwrap();
         assert_eq!(left.read_cursor, right.read_cursor);
-        let accepted = work.client.commit_transaction(&work.session, &left.transaction_id, first.mutation.clone().unwrap(), mutation_options("conflict-left-commit")).await.unwrap();
+        let accepted = work
+            .client
+            .commit_transaction(
+                &work.session,
+                &left.transaction_id,
+                first.mutation.clone().unwrap(),
+                mutation_options("conflict-left-commit"),
+            )
+            .await
+            .unwrap();
         let published_cursor = accepted.last_runtime_cursor.unwrap();
         assert!(published_cursor > left.read_cursor);
-        let rejected = work.client.commit_transaction(&work.session, &right.transaction_id, second.mutation.clone().unwrap(), mutation_options("conflict-right-stale-commit")).await.unwrap_err();
+        let rejected = work
+            .client
+            .commit_transaction(
+                &work.session,
+                &right.transaction_id,
+                second.mutation.clone().unwrap(),
+                mutation_options("conflict-right-stale-commit"),
+            )
+            .await
+            .unwrap_err();
         match rejected {
-            rrd_client::Error::Api { error, .. } => {
+            rrd_client::Error::Api { status, error } => {
                 assert_eq!(error.code, ErrorCode::Conflict);
-                assert_eq!(error.message, format!("StorageConflict(\"runtime commit conflict: expected cursor {}, actual cursor {}\")", right.read_cursor, published_cursor));
+                assert!(
+                    !error.retryable,
+                    "a stale commit cannot be retried as the same transaction"
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("reason").unwrap())
+                        .map(String::as_str),
+                    Some("transaction-snapshot-stale")
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("next-action").unwrap())
+                        .map(String::as_str),
+                    Some("abort-and-reexecute-transaction")
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("expected-cursor").unwrap()),
+                    Some(&right.read_cursor.to_string())
+                );
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("actual-cursor").unwrap()),
+                    Some(&published_cursor.to_string())
+                );
+                let api = rrd_client::Error::Api { status, error };
+                let trace = workload::runtime_conflict_trace(
+                    &api,
+                    "synthetic-conflict-key",
+                    right.read_cursor,
+                    &std::sync::atomic::AtomicUsize::new(0),
+                )
+                .expect("real stale response must retain bounded cursor diagnostics");
+                assert!(trace.contains(&format!(
+                    "read_cursor={} expected_cursor={} actual_cursor={}",
+                    right.read_cursor, right.read_cursor, published_cursor
+                )));
+                assert!(!trace.contains("synthetic-conflict-key"));
+                assert!(workload::client_error(api)
+                    .starts_with("api-conflict-storage-runtime-conflict:"));
             }
             other => panic!("unexpected typed error: {other:?}"),
         }
-        let aborted = work.client.abort_transaction(&work.session, &right.transaction_id, AbortTransaction {}, mutation_options("conflict-right-abort")).await.unwrap();
+        let repeated = work
+            .client
+            .commit_transaction(
+                &work.session,
+                &right.transaction_id,
+                second.mutation.clone().unwrap(),
+                mutation_options("conflict-right-stale-commit"),
+            )
+            .await
+            .unwrap_err();
+        match repeated {
+            rrd_client::Error::Api { error, .. } => {
+                assert_eq!(error.code, ErrorCode::Conflict);
+                assert!(!error.retryable);
+                assert_eq!(
+                    error
+                        .details
+                        .get(&CanonicalId::new("reason").unwrap())
+                        .map(String::as_str),
+                    Some("transaction-snapshot-stale")
+                );
+            }
+            other => panic!("unexpected repeated error: {other:?}"),
+        }
+        let aborted = work
+            .client
+            .abort_transaction(
+                &work.session,
+                &right.transaction_id,
+                AbortTransaction {},
+                mutation_options("conflict-right-abort"),
+            )
+            .await
+            .unwrap();
         assert_eq!(aborted.state, TransactionState::Aborted);
         work.verify(&first).await.unwrap();
         work.verify_absent(&second.key).await.unwrap();
