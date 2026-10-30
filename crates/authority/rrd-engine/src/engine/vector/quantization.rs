@@ -172,15 +172,16 @@ impl RrdEngine {
                 &request.vector_name,
             )
         };
-        // Every version of this named vector in the scope, for a full build.
-        let read_everything = || -> Result<(Vec<rrd_vector::VectorCandidate>, VersionsRead)> {
+        // What this source holds of every vector version in the scope, for a
+        // full build.
+        let read_everything = || -> Result<(rrd_vector::SourceHistory, VersionsRead)> {
             let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
-            let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-                .into_iter()
-                .filter(|candidate| in_source(candidate))
-                .collect::<Vec<_>>();
+            let history = rrd_vector::source_history(
+                rrd_vector::candidates_from_changes(&direct.changes, &scope),
+                in_source,
+            );
             Ok((
-                candidates,
+                history,
                 VersionsRead {
                     selected_versions: direct.selected_versions,
                     read_evidence: direct.read_evidence,
@@ -220,8 +221,8 @@ impl RrdEngine {
             VectorQuantizationMethod::Scalar
             | VectorQuantizationMethod::Product { .. }
             | VectorQuantizationMethod::Binary => {
-                let (candidates, versions) = read_everything()?;
-                let encoded = candidates.len();
+                let (history, versions) = read_everything()?;
+                let encoded = history.versions.len();
                 let artifact = rrd_vector::QuantizedSegment::build(
                     rrd_vector::QuantizedSegmentConfig {
                         id: artifact_id.clone(),
@@ -234,8 +235,8 @@ impl RrdEngine {
                         filter_properties,
                     },
                     generation,
-                    newest_cursor(&candidates),
-                    candidates,
+                    history.source_cursor,
+                    history.versions,
                 )
                 .map(Into::into)
                 .map_err(core_vector)?;
@@ -292,12 +293,14 @@ impl RrdEngine {
                             .iter()
                             .map(|delta| delta.reference.clone())
                             .collect::<BTreeSet<_>>();
-                        let candidates =
-                            rrd_vector::candidates_from_changes(&deltas.changes, &scope)
-                                .into_iter()
-                                .filter(|candidate| in_source(candidate))
-                                .collect::<Vec<_>>();
-                        let encoded = candidates.len();
+                        // The deltas hold each changed identity's complete
+                        // history, so a move out resolves as a full build
+                        // resolves it.
+                        let history = rrd_vector::source_history(
+                            rrd_vector::candidates_from_changes(&deltas.changes, &scope),
+                            in_source,
+                        );
+                        let encoded = history.versions.len();
                         let versions = VersionsRead {
                             selected_versions: u64::try_from(deltas.changes.len()).map_err(
                                 |_| {
@@ -308,8 +311,21 @@ impl RrdEngine {
                             )?,
                             read_evidence: crate::runtime::public_read_evidence(deltas.evidence)?,
                         };
+                        // The base covers every unchanged identity's
+                        // versions and exits, so with the changed histories'
+                        // cursor this is the cursor a full build covers.
+                        let source_cursor = base
+                            .descriptor()
+                            .stamp
+                            .source_cursor
+                            .max(history.source_cursor);
                         let artifact = rrd_vector::TurboQuantSegment::extend(
-                            &base, config, generation, &replaced, candidates,
+                            &base,
+                            config,
+                            generation,
+                            &replaced,
+                            history.versions,
+                            source_cursor,
                         )
                         .map(Into::into)
                         .map_err(core_vector)?;
@@ -321,13 +337,13 @@ impl RrdEngine {
                         )
                     }
                     None => {
-                        let (candidates, versions) = read_everything()?;
-                        let encoded = candidates.len();
+                        let (history, versions) = read_everything()?;
+                        let encoded = history.versions.len();
                         let artifact = rrd_vector::TurboQuantSegment::build(
                             config,
                             generation,
-                            newest_cursor(&candidates),
-                            candidates,
+                            history.source_cursor,
+                            history.versions,
                         )
                         .map(Into::into)
                         .map_err(core_vector)?;
@@ -704,15 +720,6 @@ fn internal_quantization_method(
 struct VersionsRead {
     selected_versions: u64,
     read_evidence: rrd_contract::ReadEvidence,
-}
-
-/// A generation's source cursor: the newest version it encodes.
-fn newest_cursor(candidates: &[rrd_vector::VectorCandidate]) -> u64 {
-    candidates
-        .iter()
-        .map(|candidate| candidate.source_cursor)
-        .max()
-        .unwrap_or(0)
 }
 
 fn internal_turboquant_bits(bits: VectorQuantizationBits) -> rrd_vector::TurboQuantBits {

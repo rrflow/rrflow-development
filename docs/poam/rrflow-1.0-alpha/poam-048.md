@@ -53,6 +53,53 @@ nearest proposals have moved away. It raises no error and gives no evidence
 that recall was lost. The loss grows with moves and persists across
 generations.
 
+## Remediation
+
+Pull request #217 gives every generation build its collection's view of each
+identity's complete history (`rrd_vector::source_history`). That covers HNSW
+full and advance, the scalar, product and binary codecs, and TurboQuant full
+and extend.
+
+An exit is a version outside the collection that directly follows one in it:
+the move the store records as a removal delta. At an exit:
+
+- every held version that applies only from the exit's valid time on is
+  dropped;
+- the version the collection resolves to just before the exit takes effect
+  is copied, with the exit's cursor, ending at the exit's valid time.
+
+That window is never empty, so no format changes. An estate without moves
+builds the same bytes.
+
+A graph cannot remove a node. So when the view no longer holds a version the
+active HNSW graph stores, `ensure_vector_index` builds the next generation in
+full instead of advancing or replaying it.
+
+A version outside the collection that follows another outside it is not an
+exit. The store records no change to the collection for it, so an extended
+TurboQuant generation still equals a full build. In that rare case the
+generation can still propose the version the collection held before, and the
+rerank discards it.
+
+The tests:
+
+- **The #211 recall probe is now permanent.** Five engine tests in
+  `engine::tests::vector_index::collection_moves` show that, near a moved
+  identity's value at valid times 10 and 60, every generation built or
+  maintained after the moves fills its rerank width. That covers HNSW built
+  after the moves and HNSW advanced from a graph built before them, scalar
+  quantization, and TurboQuant built after the moves and extended from a
+  generation built before them.
+- **A property test** in `rrd-vector` (`source::tests`) runs 20,000 randomized
+  histories across three collections. At every valid time, a collection's own
+  resolution of its view finds the identity live with the same value exactly
+  when canonical resolution does, apart from that one allowed case.
+- **An E-04c test** shows an extended generation equals a full build after
+  such a change.
+
+The row is Verifying until Gate E records that evidence at the merged
+revision.
+
 ## Owning gates
 
 E-04
@@ -66,7 +113,13 @@ Roadmap owner: [Gate E](../../roadmap/rrflow-1.0/gate-e.md).
 - **A recall oracle.** After moves in both directions and a move that takes
   effect later in valid time, an approximate search near a moved identity's
   replaced version fills its rerank width with identities the collection
-  holds. This holds for HNSW (built before the moves, after them, and
-  advanced), scalar quantization, and TurboQuant (full and extended).
-- **Generation contents.** No generation proposes an identity's replaced
-  version at a valid time where its later version names another collection.
+  holds. This holds for every generation built or maintained after the moves:
+  HNSW (built after them, and advanced from a graph built before them),
+  scalar quantization, and TurboQuant (full, and extended from a generation
+  built before them). A generation built before a move and not maintained
+  since keeps proposing the identity until its next generation, as it does
+  for a retirement.
+- **Generation contents.** No generation built or maintained after a move
+  proposes the replaced version at a valid time where the move applies. The
+  one exception is a version outside the collection that follows another
+  outside it, which the store does not record as a change to the collection.

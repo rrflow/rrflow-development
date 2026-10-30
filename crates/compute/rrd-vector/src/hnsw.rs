@@ -308,16 +308,7 @@ impl HnswIndex {
             return invalid("HNSW node limit exceeded");
         }
         validate_candidate_versions(&candidates)?;
-        let existing = self
-            .nodes
-            .iter()
-            .map(|node| {
-                (
-                    node.candidate.vector.reference.clone(),
-                    node.candidate.source_cursor,
-                )
-            })
-            .collect::<BTreeSet<_>>();
+        let existing = self.stored_versions();
         candidates.sort_by(|left, right| {
             left.source_cursor
                 .cmp(&right.source_cursor)
@@ -441,6 +432,20 @@ impl HnswIndex {
             versions,
             bytes,
         })
+    }
+
+    /// The identity and source cursor of every version this generation
+    /// stores. A generation never removes one.
+    pub fn stored_versions(&self) -> BTreeSet<(rrd_core::RuntimeRef, u64)> {
+        self.nodes
+            .iter()
+            .map(|node| {
+                (
+                    node.candidate.vector.reference.clone(),
+                    node.candidate.source_cursor,
+                )
+            })
+            .collect()
     }
 
     pub fn descriptor(&self) -> &HnswDescriptor {

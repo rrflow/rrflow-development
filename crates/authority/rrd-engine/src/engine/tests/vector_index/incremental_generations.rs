@@ -6,7 +6,7 @@
 //! through the same lifecycle as its own configuration.
 
 use super::*;
-use crate::engine::vector::{read_vector_versions, vector_matches_collection};
+use crate::engine::vector::{read_vector_versions, source_history};
 use rrd_contract::{BuildVectorQuantizationArtifactResult, SessionLease, VectorSearchResult};
 use rrd_store::{DataRuntimeAccess, ImmutableObjectStore};
 use std::collections::BTreeSet;
@@ -272,16 +272,14 @@ fn full_build(
     let scope = engine.query_scope(&scope()).unwrap();
     let read = engine.storage.runtime().read_stamp(&scope).unwrap();
     let direct = read_vector_versions(engine, &read, 1_000_000).unwrap();
-    let candidates = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-        .into_iter()
-        .filter(|candidate| {
-            vector_matches_collection(
-                &candidate.vector,
-                &CanonicalId::new("documents").unwrap(),
-                &CanonicalId::new("body").unwrap(),
-            )
-        })
-        .collect::<Vec<_>>();
+    let rrd_vector::SourceHistory {
+        versions: candidates,
+        source_cursor,
+    } = source_history(
+        rrd_vector::candidates_from_changes(&direct.changes, &scope),
+        &CanonicalId::new("documents").unwrap(),
+        &CanonicalId::new("body").unwrap(),
+    );
     let versions = candidates
         .iter()
         .map(|candidate| {
@@ -291,11 +289,6 @@ fn full_build(
             )
         })
         .collect();
-    let source_cursor = candidates
-        .iter()
-        .map(|candidate| candidate.source_cursor)
-        .max()
-        .unwrap();
     let descriptor = generation.descriptor();
     let config = rrd_vector::TurboQuantSegmentConfig {
         id: descriptor.stamp.id.clone(),
@@ -479,6 +472,54 @@ fn an_extended_generation_equals_a_full_build_and_serves() {
     );
     activate(&engine, &lease, &third, 720);
     assert_serves_exactly(&engine, &lease, 100);
+}
+
+/// POAM-048: `d3` leaves `documents` from valid time 50, which the base sees,
+/// then changes in `archive` from valid time 10. That second version follows
+/// one outside `documents`, so the store records no change to `documents`
+/// and the build does not re-encode `d3`; a full build must hold the same.
+#[test]
+fn a_change_outside_the_source_after_a_move_leaves_the_extension_exact() {
+    let (_root, engine, lease) = fixture(DOCUMENTS, 0);
+    commit_vectors(
+        &engine,
+        &lease,
+        400,
+        vec![put("d3", "archive", "archive-embedding", 40, 50)],
+    );
+    let first = build(
+        &engine,
+        &lease,
+        SEED,
+        VectorQuantizationBits::Bits4,
+        "first",
+        410,
+    );
+    assert_eq!(first.base_generation, None);
+    assert_equals_full_build(&engine, 1);
+
+    commit_vectors(
+        &engine,
+        &lease,
+        500,
+        vec![put("d3", "archive", "archive-embedding", 41, 10)],
+    );
+    commit_vectors(
+        &engine,
+        &lease,
+        510,
+        vec![put("d5", "documents", "body-embedding", 55, 1)],
+    );
+    let second = build(
+        &engine,
+        &lease,
+        SEED,
+        VectorQuantizationBits::Bits4,
+        "second",
+        600,
+    );
+    assert_eq!(second.base_generation, Some(1));
+    assert_equals_full_build(&engine, 2);
 }
 
 #[test]

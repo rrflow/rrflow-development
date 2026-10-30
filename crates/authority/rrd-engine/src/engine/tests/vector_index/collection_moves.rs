@@ -1,7 +1,9 @@
 //! POAM-045: an identity is found only in the collection its visible version
 //! names. Identities move between collections, out and back, and later in
 //! valid time; every search path answers what point retrieval answers at the
-//! same stamp.
+//! same stamp. POAM-048: a generation built or maintained after the moves
+//! stops proposing the identities that left. POAM-047: a collection every
+//! identity has left can be deleted.
 
 use super::*;
 use rrd_contract::{
@@ -376,6 +378,19 @@ fn search(
     valid_at: u64,
     mode: VectorSearchMode,
 ) -> VectorSearchResult {
+    search_near(engine, lease, collection, valid_at, 3, 20, mode)
+}
+
+/// A search of `collection` near the value of seed `near`.
+fn search_near(
+    engine: &RrdEngine,
+    lease: &SessionLease,
+    collection: &str,
+    valid_at: u64,
+    near: usize,
+    top_k: u64,
+    mode: VectorSearchMode,
+) -> VectorSearchResult {
     engine
         .search_vectors(
             &lease.session_id,
@@ -386,10 +401,12 @@ fn search(
                 collection_id: Some(CanonicalId::new(collection).unwrap()),
                 vector_name: Some(CanonicalId::new("body").unwrap()),
                 field: None,
-                query: VectorSearchQuery::Dense { values: values(3) },
+                query: VectorSearchQuery::Dense {
+                    values: values(near),
+                },
                 filter: None,
                 metric: None,
-                top_k: 20,
+                top_k,
                 mode,
                 max_storage_keys: 100_000,
             },
@@ -611,4 +628,224 @@ fn every_move_is_a_delta_of_the_sources_it_leaves_and_joins() {
         }
         location.insert(id, to);
     }
+}
+
+/// POAM-048: near `a`'s value, whose identity left `documents`, a search with
+/// three rerank slots fills them with identities `documents` holds. A
+/// generation that still proposed `a`, `b` or `c` would spend slots on them
+/// and return fewer hits.
+fn assert_fills_its_rerank_slots(engine: &RrdEngine, lease: &SessionLease, path: &str) {
+    for valid_at in [10, 60] {
+        let held = retrieved(engine, lease, "documents", valid_at);
+        let served = search_near(
+            engine,
+            lease,
+            "documents",
+            valid_at,
+            0,
+            3,
+            VectorSearchMode::RequireApproximate {
+                exact_rerank: 3,
+                ef_search: 32,
+            },
+        );
+        assert_eq!(served.access_path.as_str(), path);
+        assert_eq!(
+            served.resources.overlay_candidates, 0,
+            "{path} at {valid_at} serves a generation built after the moves"
+        );
+        assert_eq!(
+            served.hits.len(),
+            3.min(held.len()),
+            "{path} at {valid_at} returned {:?}",
+            hit_ids(&served)
+        );
+        assert!(hit_ids(&served).is_subset(&held), "{path} at {valid_at}");
+    }
+}
+
+#[test]
+fn turboquant_built_after_the_moves_proposes_only_identities_it_holds() {
+    let (_root, engine, lease) = fixture(Accelerator::TurboQuantAfter);
+    assert_fills_its_rerank_slots(&engine, &lease, "turboquant");
+}
+
+#[test]
+fn turboquant_extended_after_the_moves_proposes_only_identities_it_holds() {
+    let (_root, engine, lease) = fixture(Accelerator::TurboQuantBefore);
+    let extended = engine
+        .build_vector_quantization_artifact(
+            &lease.session_id,
+            &lease.token,
+            &BuildVectorQuantizationArtifact {
+                scope: scope(),
+                collection_id: CanonicalId::new("documents").unwrap(),
+                vector_name: CanonicalId::new("body").unwrap(),
+                method: VectorQuantizationMethod::TurboQuant {
+                    bits: VectorQuantizationBits::Bits4,
+                    seed: 29,
+                    estimator: rrd_contract::VectorQuantizationEstimator::Mse,
+                },
+                filter_properties: Vec::new(),
+                max_storage_keys: 100_000,
+            },
+            &mutation_context(
+                &id("build-extended"),
+                "request-build-extended",
+                "operation-build-extended",
+            ),
+            600,
+        )
+        .unwrap();
+    assert!(extended.base_generation.is_some(), "the build extends");
+    engine
+        .activate_vector_quantization_artifact(
+            &lease.session_id,
+            &lease.token,
+            &ActivateVectorQuantizationArtifact {
+                scope: scope(),
+                artifact_id: extended.artifact.artifact_id,
+                generation: extended.artifact.generation,
+            },
+            &mutation_context(
+                &id("activate-extended"),
+                "request-activate-extended",
+                "operation-activate-extended",
+            ),
+            610,
+        )
+        .unwrap();
+    assert_fills_its_rerank_slots(&engine, &lease, "turboquant");
+}
+
+#[test]
+fn scalar_quantization_built_after_the_moves_proposes_only_identities_it_holds() {
+    let (_root, engine, lease) = fixture(Accelerator::ScalarAfter);
+    assert_fills_its_rerank_slots(&engine, &lease, "scalar_quantized");
+}
+
+#[test]
+fn hnsw_built_after_the_moves_proposes_only_identities_it_holds() {
+    let (_root, engine, lease) = fixture(Accelerator::HnswAfter);
+    assert_fills_its_rerank_slots(&engine, &lease, "hnsw");
+}
+
+#[test]
+fn hnsw_maintained_after_the_moves_proposes_only_identities_it_holds() {
+    let (_root, engine, lease) = fixture(Accelerator::HnswBefore);
+    hnsw(&engine, &lease, "hnsw-maintained");
+    assert_fills_its_rerank_slots(&engine, &lease, "hnsw");
+}
+
+/// Deletes `collection` at `valid_at`, under its own request identity.
+fn delete(
+    engine: &RrdEngine,
+    lease: &SessionLease,
+    collection: &str,
+    valid_at: u64,
+) -> std::result::Result<rrd_contract::DeleteVectorCollectionResult, ServiceError> {
+    engine.delete_vector_collection(
+        &lease.session_id,
+        &lease.token,
+        &rrd_contract::DeleteVectorCollection {
+            scope: scope(),
+            collection_id: CanonicalId::new(collection).unwrap(),
+            valid_at,
+            max_storage_keys: 100_000,
+        },
+        &mutation_context(
+            &id(&format!("delete-{collection}-{valid_at}")),
+            &format!("request-delete-{collection}-{valid_at}"),
+            &format!("operation-delete-{collection}-{valid_at}"),
+        ),
+        900 + valid_at,
+    )
+}
+
+/// Moves every identity `documents` holds to `archive`, each from valid time
+/// 1 except those `later` names, which move from the time given.
+fn empty_documents(engine: &RrdEngine, lease: &SessionLease, later: &[(&str, u64)]) {
+    let moved = IDENTITIES
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| **id != "e")
+        .map(|(seed, id)| {
+            let from = later
+                .iter()
+                .find(|(late, _)| late == id)
+                .map_or(1, |(_, from)| *from);
+            put(id, "archive", seed, from)
+        })
+        .collect::<Vec<_>>();
+    commit_vectors(engine, lease, 500, moved);
+}
+
+/// POAM-047: once every identity has left `documents`, it holds no point at
+/// any valid time and can be deleted.
+#[test]
+fn a_collection_every_identity_left_can_be_deleted() {
+    let (_root, engine, lease) = estate();
+    empty_documents(&engine, &lease, &[]);
+    assert!(retrieved(&engine, &lease, "documents", 10).is_empty());
+    assert!(retrieved(&engine, &lease, "documents", 60).is_empty());
+    let deleted = delete(&engine, &lease, "documents", 60);
+    assert!(deleted.is_ok(), "{deleted:?}");
+}
+
+/// POAM-047: a collection still holds an identity until its move out takes
+/// effect, one that moved back, and one that moves back only after the
+/// deletion time.
+#[test]
+fn a_collection_an_identity_still_holds_refuses_deletion() {
+    let (_root, engine, lease) = estate();
+    empty_documents(&engine, &lease, &[("b", 100)]);
+    assert!(retrieved(&engine, &lease, "documents", 60).contains("b"));
+    assert!(delete(&engine, &lease, "documents", 60).is_err());
+    assert!(retrieved(&engine, &lease, "documents", 100).is_empty());
+    let deleted = delete(&engine, &lease, "documents", 100);
+    assert!(deleted.is_ok(), "{deleted:?}");
+
+    let (_root, engine, lease) = estate();
+    empty_documents(&engine, &lease, &[]);
+    commit_vectors(&engine, &lease, 510, vec![put("d", "documents", 3, 1)]);
+    assert!(delete(&engine, &lease, "documents", 60).is_err());
+
+    let (_root, engine, lease) = estate();
+    empty_documents(&engine, &lease, &[]);
+    commit_vectors(&engine, &lease, 510, vec![put("d", "documents", 3, 100)]);
+    assert!(retrieved(&engine, &lease, "documents", 60).is_empty());
+    assert!(retrieved(&engine, &lease, "documents", 100).contains("d"));
+    assert!(delete(&engine, &lease, "documents", 60).is_err());
+}
+
+/// POAM-048: `h` holds the newest version in `documents`, which every
+/// generation's coverage reached. When it moves out, the next generation
+/// drops it yet still covers the move, so its coverage never moves backward
+/// and it publishes.
+#[test]
+fn a_generation_after_its_newest_version_moves_out_still_publishes() {
+    let (_root, engine, lease) = estate();
+    hnsw(&engine, &lease, "hnsw-first");
+    let turboquant = VectorQuantizationMethod::TurboQuant {
+        bits: VectorQuantizationBits::Bits4,
+        seed: 29,
+        estimator: rrd_contract::VectorQuantizationEstimator::Mse,
+    };
+    quantize(&engine, &lease, turboquant.clone(), "turboquant-first");
+    quantize(
+        &engine,
+        &lease,
+        VectorQuantizationMethod::Scalar,
+        "scalar-first",
+    );
+    commit_vectors(&engine, &lease, 600, vec![put("h", "archive", 7, 1)]);
+    hnsw(&engine, &lease, "hnsw-second");
+    quantize(&engine, &lease, turboquant, "turboquant-second");
+    quantize(
+        &engine,
+        &lease,
+        VectorQuantizationMethod::Scalar,
+        "scalar-second",
+    );
+    assert!(!retrieved(&engine, &lease, "documents", 60).contains("h"));
 }
