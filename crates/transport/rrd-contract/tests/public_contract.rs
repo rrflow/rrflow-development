@@ -2921,3 +2921,123 @@ fn storage_cursor_rejects_unknown_actions_fields_and_unbounded_budgets() {
         .is_err());
     }
 }
+
+#[test]
+fn bounded_storage_cursor_requires_ordered_bounded_physical_keys() {
+    use rrd_contract::{CorrelationId, InspectStorageCursor, StorageCursorAction};
+    let request = |start: Vec<u8>, end: Vec<u8>| {
+        let action = serde_json::from_value::<StorageCursorAction>(serde_json::json!({
+            "kind": "open_range", "batch_rows": 1, "batch_bytes": 4096,
+            "lifetime_ms": 1000, "start": start, "end": end
+        }));
+        action.map(|action| InspectStorageCursor {
+            scope: "instance:test".into(),
+            cursor_id: CorrelationId::new("reader").unwrap(),
+            action,
+        })
+    };
+    assert!(request(b"a".to_vec(), b"z".to_vec())
+        .unwrap()
+        .validate()
+        .is_ok());
+    for (start, end) in [
+        (vec![], b"z".to_vec()),
+        (b"a".to_vec(), vec![]),
+        (b"z".to_vec(), b"a".to_vec()),
+        (b"a".to_vec(), b"a".to_vec()),
+        (vec![1; 4097], vec![2; 4097]),
+        (b"a".to_vec(), vec![2; 4097]),
+    ] {
+        assert!(request(start, end).unwrap().validate().is_err());
+    }
+    let invalid_budget = serde_json::json!({
+        "kind": "open_range", "batch_rows": 0, "batch_bytes": 4096,
+        "lifetime_ms": 1000, "start": [97], "end": [98]
+    });
+    let action = serde_json::from_value::<StorageCursorAction>(invalid_budget).unwrap();
+    assert!(InspectStorageCursor {
+        scope: "instance:test".into(),
+        cursor_id: CorrelationId::new("reader").unwrap(),
+        action,
+    }
+    .validate()
+    .is_err());
+    let extra = serde_json::json!({
+        "kind": "open_range", "batch_rows": 1, "batch_bytes": 4096,
+        "lifetime_ms": 1000, "start": [97], "end": [98], "extra": true
+    });
+    assert!(serde_json::from_value::<StorageCursorAction>(extra).is_err());
+}
+
+#[test]
+fn bounded_storage_cursor_schema_exposes_the_runtime_limits() {
+    let schema =
+        serde_json::to_value(schemars::schema_for!(rrd_contract::StorageCursorAction)).unwrap();
+    let variants = schema["oneOf"].as_array().unwrap();
+    let range = variants
+        .iter()
+        .find(|v| v["properties"]["kind"]["const"] == "open_range")
+        .unwrap();
+    for field in ["start", "end"] {
+        assert_eq!(range["properties"][field]["minItems"], 1);
+        assert_eq!(range["properties"][field]["maxItems"], 4096);
+    }
+    for (field, max) in [
+        ("batch_rows", 4096),
+        ("batch_bytes", 4 * 1024 * 1024),
+        ("lifetime_ms", 60000),
+    ] {
+        assert_eq!(range["properties"][field]["minimum"], 1);
+        assert_eq!(range["properties"][field]["maximum"], max);
+    }
+    fn projected(value: &serde_json::Value) -> bool {
+        if value["properties"]["kind"]["const"] == "open_range"
+            && value["properties"]["start"]["minItems"] == 1
+            && value["properties"]["start"]["maxItems"] == 4096
+            && value["properties"]["end"]["minItems"] == 1
+            && value["properties"]["end"]["maxItems"] == 4096
+            && value["properties"]["lifetime_ms"]["maximum"] == 60000
+        {
+            return true;
+        }
+        match value {
+            serde_json::Value::Array(items) => items.iter().any(projected),
+            serde_json::Value::Object(fields) => fields.values().any(projected),
+            _ => false,
+        }
+    }
+    assert!(projected(&rrd_contract::openapi_document().unwrap()));
+}
+
+#[test]
+fn storage_cursor_record_kind_is_typed_and_preserves_diagnostic_budgets() {
+    use rrd_contract::{CorrelationId, InspectStorageCursor, StorageCursorAction};
+    let action = |kind: &str, rows: u16| {
+        serde_json::from_value::<StorageCursorAction>(serde_json::json!({
+            "kind": "open_record_kind", "record_kind": kind,
+            "batch_rows": rows, "batch_bytes": 4096, "lifetime_ms": 1000
+        }))
+    };
+    let request = InspectStorageCursor {
+        scope: "instance:test".into(),
+        cursor_id: CorrelationId::new("reader").unwrap(),
+        action: action("capacity_document", 1).unwrap(),
+    };
+    assert!(request.validate().is_ok());
+    assert!(action("", 1).is_err());
+    assert!(action("NOT-A-CANONICAL-ID", 1).is_err());
+    assert!(InspectStorageCursor {
+        action: action("capacity_document", 0).unwrap(),
+        ..request
+    }
+    .validate()
+    .is_err());
+    assert!(
+        serde_json::from_value::<StorageCursorAction>(serde_json::json!({
+            "kind": "open_record_kind", "record_kind": "capacity_document",
+            "batch_rows": 1, "batch_bytes": 4096, "lifetime_ms": 1000,
+            "start": [1]
+        }))
+        .is_err()
+    );
+}
