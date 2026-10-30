@@ -1,6 +1,6 @@
 # C-07 bounded conflict cursor correlation
 
-**Status:** diagnostic implementation; no capacity repair or causal attribution
+**Status:** active diagnostic implementation; no capacity repair or causal attribution
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-conflict-cursor-diagnostic`
 **Owner:** OBJ-02 / C-07 / POAM-035 / [PR214](https://github.com/rrflow/rrflow-development/pull/214)
 

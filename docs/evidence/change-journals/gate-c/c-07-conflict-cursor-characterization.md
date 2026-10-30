@@ -1,6 +1,6 @@
 # C-07 installed write-conflict cursor characterization
 
-**Status:** failed short characterization; cursor advancement observed, repair pending
+**Status:** active failed short characterization; cursor advancement observed, repair pending
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-conflict-cursor-characterization`
 **Owner:** OBJ-02 / C-07 / POAM-035 / [PR214](https://github.com/rrflow/rrflow-development/pull/214)
 

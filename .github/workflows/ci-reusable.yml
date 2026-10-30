@@ -553,6 +553,13 @@ jobs:
       - name: Exercise installed capacity workload and backup readback
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_capacity_workload_smoke --exact --ignored --nocapture
+      - name: Require installed stale-snapshot conflict safety
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p rrflow-cli --test installed_reopen --release --locked -- --ignored --list | grep -Fx 'sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect: test'
+          cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect --exact --ignored --nocapture
       - name: Require bounded native sampler failure
         timeout-minutes: 5
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture

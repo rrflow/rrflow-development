@@ -1,6 +1,6 @@
 # C-07 installed stale-snapshot conflict oracle
 
-**Status:** controlled correctness characterization; capacity failure root cause remains unproven
+**Status:** active controlled correctness characterization; capacity failure root cause remains unproven
 **Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07-installed-conflict-oracle`
 **Owner:** OBJ-02 / C-07 / POAM-035 / [PR214](https://github.com/rrflow/rrflow-development/pull/214)
 
