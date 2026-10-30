@@ -342,7 +342,7 @@ jobs:
           - name: kernel-storage
             packages: "-p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance"
           - name: query-retrieval
-            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-operator-knowledge"
+            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
           - name: engine-authority
             packages: "-p rrd-contract -p rrd-cluster -p rrd-engine -p rrd-estate -p rrd-security"
           - name: service-protocol
