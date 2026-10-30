@@ -392,13 +392,7 @@ impl RrdEngine {
                                     operation_id,
                                 )?;
                             }
-                            return Err(match error {
-                                rrd_store::Error::TransactionLimit { .. }
-                                | rrd_store::Error::SourcePageLimit { .. } => {
-                                    ServiceError::StorageAdmission(error.to_string())
-                                }
-                                other => other.into(),
-                            });
+                            return Err(classify_rejected_commit(error));
                         }
                     },
                 }
@@ -677,4 +671,52 @@ fn require_same_commit(
         return Err(ServiceError::IdempotencyConflict);
     }
     Ok(())
+}
+
+// This classifier is used only after exact outcome reconciliation found no
+// commit. A physical conflict can map to RuntimeConflict without an advanced
+// cursor, so only a strictly newer cursor proves this read stamp is stale.
+fn classify_rejected_commit(error: rrd_store::Error) -> ServiceError {
+    match error {
+        rrd_store::Error::RuntimeConflict { expected, actual } if actual > expected => {
+            ServiceError::TransactionSnapshotStale { expected, actual }
+        }
+        rrd_store::Error::TransactionLimit { .. } | rrd_store::Error::SourcePageLimit { .. } => {
+            ServiceError::StorageAdmission(error.to_string())
+        }
+        other => other.into(),
+    }
+}
+
+#[cfg(test)]
+mod stale_snapshot_tests {
+    use super::*;
+
+    #[test]
+    fn only_an_advanced_cursor_gets_the_stale_transaction_action() {
+        let stale = classify_rejected_commit(rrd_store::Error::RuntimeConflict {
+            expected: 7,
+            actual: 8,
+        });
+        assert!(matches!(
+            stale,
+            ServiceError::TransactionSnapshotStale {
+                expected: 7,
+                actual: 8
+            }
+        ));
+        assert_eq!(stale.kind(), ServiceErrorKind::Conflict);
+        assert!(!stale.retryable());
+        for actual in [6, 7] {
+            let other = classify_rejected_commit(rrd_store::Error::RuntimeConflict {
+                expected: 7,
+                actual,
+            });
+            assert!(matches!(other, ServiceError::StorageConflict(_)));
+            assert!(other.retryable());
+        }
+        let unrelated =
+            classify_rejected_commit(rrd_store::Error::IdempotencyConflict("fixture".into()));
+        assert!(matches!(unrelated, ServiceError::StorageConflict(_)));
+    }
 }

@@ -114,6 +114,18 @@ def job_blocks(workflow: str) -> dict[str, str]:
 
 def verify_native_sample_worker_ci(reopen: str, verify: str) -> None:
     """Keep bounded failure, Windows lifecycle and Linux image oracles required."""
+    marker = "      - name: Require installed stale-snapshot conflict safety\n"
+    require(reopen.count(marker) == 1, "installed conflict safety CI step must occur once")
+    block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
+    required = (
+        "        timeout-minutes: 5\n"
+        "        shell: bash\n"
+        "        run: |\n"
+        "          set -euo pipefail\n"
+        "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- --ignored --list | grep -Fx 'sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect: test'\n"
+        "          cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect --exact --ignored --nocapture\n"
+    )
+    require(block == required, "installed conflict safety step must retain its exact matrix-wide list check, timeout and command")
     marker = "      - name: Require bounded native sampler failure\n"
     require(reopen.count(marker) == 1, "bounded native sampler failure CI step must occur once")
     block = reopen.split(marker, 1)[1].split("      - name:", 1)[0]
@@ -260,8 +272,11 @@ def verify_execution_inventory_ci(verify: str) -> None:
         "git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt",
         'test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"',
         "python3 scripts/ci/build_execution_inventory.py --check",
+        "          python3 scripts/ci/test_analyze_sustained_conflicts.py\n",
     ):
         require(block.count(required) == 1, f"CI inventory generation missing: {required.strip()}")
+    require("continue-on-error:" not in block and "    if:" not in block,
+            "CI inventory and conflict analysis cannot be bypassed")
     order = (
         "set -euo pipefail",
         "git diff --exit-code",
@@ -776,7 +791,8 @@ def main() -> None:
         reusable.count("python3 scripts/knowledge/render_capacity_profiles.py --check") == 1
         and reusable.count("python3 scripts/knowledge/test_capacity_profiles.py") == 1
         and reusable.count("python3 scripts/ci/test_collect_storage_acceptance.py") == 1
-        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1,
+        and reusable.count("python3 scripts/ci/test_sustained_launch.py") == 1
+        and reusable.count("python3 scripts/ci/test_analyze_sustained_conflicts.py") == 1,
         "the owning J-04 capacity projection must be checked exactly once",
     )
 

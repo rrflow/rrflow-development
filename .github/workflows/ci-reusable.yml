@@ -297,6 +297,7 @@ jobs:
           python3 scripts/knowledge/test_capacity_profiles.py
           python3 scripts/ci/test_collect_storage_acceptance.py
           python3 scripts/ci/test_sustained_launch.py
+          python3 scripts/ci/test_analyze_sustained_conflicts.py
       - name: Retain revision-bound execution inventory
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -553,6 +554,13 @@ jobs:
       - name: Exercise installed capacity workload and backup readback
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_capacity_workload_smoke --exact --ignored --nocapture
+      - name: Require installed stale-snapshot conflict safety
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p rrflow-cli --test installed_reopen --release --locked -- --ignored --list | grep -Fx 'sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect: test'
+          cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_disjoint_writes_from_one_stamp_conflict_without_partial_effect --exact --ignored --nocapture
       - name: Require bounded native sampler failure
         timeout-minutes: 5
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture
