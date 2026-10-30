@@ -1,15 +1,23 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 52b7e85144b8b7b4e75291033cf151a0674c97f87fff2054d66f23c97a4bfb6d
+# OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "52b7e85144b8b7b4e75291033cf151a0674c97f87fff2054d66f23c97a4bfb6d"
+    "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a"
 )
 
 OperationId = Literal[
     "attunement-cancel",
+    "attunement-pause",
     "attunement-read",
     "attunement-receipt-read",
+    "attunement-recover-expired",
+    "attunement-replan-accept",
+    "attunement-replan-preview",
+    "attunement-replan-receipt-read",
+    "attunement-resume",
+    "attunement-start",
+    "attunement-step",
     "audit-export",
     "audit-read",
     "backup-create",
@@ -87,6 +95,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": True,
         "path": "/v1/attunement/cancel",
     },
+    "attunement-pause": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/pause",
+    },
     "attunement-read": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -98,6 +112,48 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/attunement/receipt/read",
+    },
+    "attunement-recover-expired": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/recover-expired",
+    },
+    "attunement-replan-accept": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/replan/accept",
+    },
+    "attunement-replan-preview": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/replan/preview",
+    },
+    "attunement-replan-receipt-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/replan/receipt/read",
+    },
+    "attunement-resume": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/resume",
+    },
+    "attunement-start": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/start",
+    },
+    "attunement-step": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/step",
     },
     "audit-export": {
         "authentication": "session_bearer",

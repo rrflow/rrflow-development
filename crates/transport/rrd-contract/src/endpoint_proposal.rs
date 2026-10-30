@@ -240,23 +240,33 @@ impl EndpointSelectionProposal {
         bounded(self, MAX_ROUTE_RESPONSE_BYTES)
     }
 
+    /// Validate identities the caller supplied, without claiming possession of
+    /// the engine's packet or authority to execute the selected worker.
+    pub fn validate_request_identity(&self, request: &EndpointSelectionRequest) -> Result<()> {
+        self.validate()?;
+        request.validate()?;
+        if self.scope != request.scope
+            || self.task_id != request.task_id
+            || self.attempt_id != request.attempt_id
+            || self.task_sha256 != request.expected_task_sha256
+            || self.configuration_sha256 != request.expected_configuration_sha256
+        {
+            return invalid("endpoint proposal request identity mismatch");
+        }
+        Ok(())
+    }
+
     pub fn validate_for(
         &self,
         request: &EndpointSelectionRequest,
         packet: &EndpointSelectionPacket,
         configuration: &EndpointConfiguration,
     ) -> Result<()> {
-        self.validate()?;
-        request.validate()?;
+        self.validate_request_identity(request)?;
         packet.validate_for(configuration)?;
-        if self.scope != request.scope
-            || self.scope != packet.task.scope
-            || self.task_id != request.task_id
+        if self.scope != packet.task.scope
             || self.task_id != packet.task.task_id
-            || self.attempt_id != request.attempt_id
-            || self.task_sha256 != request.expected_task_sha256
             || self.task_sha256 != packet.task.task_sha256
-            || self.configuration_sha256 != request.expected_configuration_sha256
             || self.configuration_sha256 != configuration.sha256()?
             || self.packet_sha256 != packet.sha256(configuration)?
             || self.allowance_sha256 != packet.allowance.sha256(configuration)?
