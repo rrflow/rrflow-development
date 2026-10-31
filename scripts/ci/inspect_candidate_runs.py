@@ -12,6 +12,7 @@ from run_offline_lifecycle import require
 
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 MAX_JOBS = 128
+MAX_LONGEST_STEPS = 10
 
 
 def identity(record, run_id):
@@ -80,18 +81,30 @@ def job_steps(job):
 def summarize(snapshot):
     run = snapshot["run"]
     rows = []
+    longest = []
+    timed_step_count = 0
     for job in snapshot["jobs"]:
         interesting = []
-        for step in job_steps(job):
+        for position, step in enumerate(job_steps(job)):
             if not isinstance(step, dict):
                 continue
             conclusion, status = step.get("conclusion"), step.get("status")
+            elapsed = duration(step.get("started_at"), step.get("completed_at"))
+            job_name, step_name = job.get("name"), step.get("name")
+            if (status == "completed" and elapsed is not None
+                    and isinstance(job_name, str) and isinstance(step_name, str)):
+                timed_step_count += 1
+                row = {"job": job_name, "job_url": job.get("html_url"), "name": step_name,
+                       "conclusion": conclusion, "seconds": elapsed}
+                longest.append((-elapsed, job_name, step_name, job["id"], position, row))
+                longest.sort(key=lambda item: item[:5])
+                del longest[MAX_LONGEST_STEPS:]
             if conclusion is None and status in ("pending", "queued", "waiting", "requested"):
                 continue
             if conclusion not in ("success", "skipped") or status != "completed":
                 interesting.append({"name": step.get("name"), "status": status,
                                     "conclusion": conclusion,
-                                    "seconds": duration(step.get("started_at"), step.get("completed_at"))})
+                                    "seconds": elapsed})
         if job.get("conclusion") not in ("success", "skipped") or job.get("status") != "completed" or interesting:
             rows.append({"name": job.get("name"), "status": job.get("status"),
                          "conclusion": job.get("conclusion"), "url": job.get("html_url"), "steps": interesting})
@@ -99,7 +112,9 @@ def summarize(snapshot):
             "event_head": run.get("head_sha"), "event_branch": run.get("head_branch"),
             "tested_source": snapshot["tested_source"], "tested_tree": snapshot["tested_tree"],
             "status": run.get("status"), "conclusion": run.get("conclusion"),
-            "url": run.get("html_url"), "job_count": len(snapshot["jobs"]), "attention": rows}
+            "url": run.get("html_url"), "job_count": len(snapshot["jobs"]), "attention": rows,
+            "timed_step_count": timed_step_count,
+            "longest_steps": [item[5] for item in longest]}
 
 
 def compare(first, second):

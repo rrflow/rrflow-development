@@ -119,6 +119,38 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual([s["name"] for s in report["attention"][0]["steps"]],
                          ["active", "failed", "missing", "unknown"])
 
+    def test_longest_completed_steps_include_success_without_inventing_time(self):
+        run, jobs, commit = fixture()
+        jobs[0]["html_url"] = "https://example.invalid/job/100"
+        jobs[0]["steps"] = [
+            {"name": "compile", "status": "completed", "conclusion": "success",
+             "started_at": "2026-10-30T03:00:00Z", "completed_at": "2026-10-30T03:40:00Z"},
+            {"name": "test", "status": "completed", "conclusion": "failure",
+             "started_at": "2026-10-30T03:40:00Z", "completed_at": "2026-10-30T03:41:00Z"},
+            {"name": "active", "status": "in_progress", "conclusion": None,
+             "started_at": "2026-10-30T03:41:00Z", "completed_at": None},
+            {"name": "bad-clock", "status": "completed", "conclusion": "success",
+             "started_at": "not-a-time", "completed_at": "2026-10-30T03:42:00Z"},
+        ]
+        report = summarize(collect(7, requester(run, jobs, commit)))
+        self.assertEqual(report["timed_step_count"], 2)
+        self.assertEqual([(step["name"], step["seconds"]) for step in report["longest_steps"]],
+                         [("compile", 2400), ("test", 60)])
+        self.assertEqual(report["longest_steps"][0]["job_url"], "https://example.invalid/job/100")
+        self.assertEqual(report["attention"][0]["steps"][0]["name"], "test")
+
+    def test_longest_steps_are_bounded_and_ties_are_deterministic(self):
+        run, jobs, commit = fixture()
+        jobs[0]["steps"] = [
+            {"name": f"step-{i:02}", "status": "completed", "conclusion": "success",
+             "started_at": "2026-10-30T03:00:00Z", "completed_at": "2026-10-30T03:01:00Z"}
+            for i in reversed(range(12))
+        ]
+        report = summarize(collect(7, requester(run, jobs, commit)))
+        self.assertEqual(report["timed_step_count"], 12)
+        self.assertEqual([step["name"] for step in report["longest_steps"]],
+                         [f"step-{i:02}" for i in range(10)])
+
 
 if __name__ == "__main__":
     unittest.main()

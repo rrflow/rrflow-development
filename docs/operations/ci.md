@@ -117,8 +117,10 @@ Use the result to choose a focused reproduction; do not infer a root cause from
 a duration or replace the original failure with a later unrelated pass.
 
 The report identifies the event head, tested reusable-workflow revision and
-tree, attempt, incomplete or failed jobs and steps, and matching named failure
-durations. It compares event heads with the current PR head, so a merge-group
+tree, attempt, incomplete or failed jobs and steps, matching named failure
+durations, and up to ten longest completed steps with valid timestamps. The
+timing list includes successful steps and is a snapshot, not a diagnosis. It
+compares event heads with the current PR head, so a merge-group
 head will normally differ. A shared tree does not establish identical execution
 environment or PR association. Inspect the run and job links and logs before
 diagnosis; timestamps and unfinished job inventories can be incomplete. The
@@ -221,8 +223,8 @@ Its child guards retain the fixture until the process is reaped.
 
 All three native lanes require `python scripts/ci/run_offline_lifecycle.py
 --receipt <runner-temp>/rrflow-offline.json` (Linux uses `python3`). The runner
-requires exactly five declared cases and exactly five passing results with no
-ignored or filtered cases. Fresh/existing receipts bind the actual executable,
+requires exactly the cases in its `REQUIRED_CASES` set, each passing once with
+no ignored or filtered cases. Fresh/existing receipts bind the actual executable,
 build metadata, public-contract and signal digests, installation/restore plans,
 backup, read manifest and asserted durable cursors. Unknown receipt fields are
 rejected. Retained artifacts contain these bounded, non-secret receipts and
