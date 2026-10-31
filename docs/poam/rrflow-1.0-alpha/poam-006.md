@@ -139,6 +139,15 @@ Focused and interruption/reopen checks pass; full candidate and real-repository
 qualification remain pending. This does not establish zero-content-read
 freshness, reduced RSS, safe upgrades or completed D-03 acceptance.
 
+The [installed incremental trial](../../evidence/change-journals/gate-d/d-03-incremental-installed-trial.md)
+records an initial fresh-estate `ProjectBindingMismatch` before server readiness.
+Offline inspection and a separate restart subsequently passed without modifying
+the binding; the cause remains unresolved and must be diagnosed before native
+qualification. Continuing that preserved estate proved 4,279 initial mutations,
+three on unchanged input, six after an ordinary README edit and successor plan,
+then three on another unchanged run, with exact reopen and offline verification.
+This does not erase the initial failure or establish a repeatable turnkey start.
+
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
 Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
 Connect checkpoint and cursor; no Inventory completion was published. The
