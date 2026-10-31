@@ -1,4 +1,4 @@
-"""Actual installed-process proposal proof, never a routing-quality evaluation.
+"""Actual installed-process proposal/worker proof, never a quality evaluation.
 
 All model/provider/task inputs are supplied files. No generated labels or model
 responses. Starts and terminates only owned child processes; retains no secrets.
@@ -28,8 +28,12 @@ def main():
     parser.add_argument('--recover-proof', help='Read an existing attempt and budget; never dispatch or replay.')
     parser.add_argument('--admission-only', action='store_true', help='Exercise installed denials without provider credentials or dispatch.')
     parser.add_argument('--fault-case', choices=['configuration', 'session', 'stop', 'disconnect'])
+    parser.add_argument('--worker', action='store_true',
+                        help='Execute one configured selected worker through engine authority; retain draft only.')
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
+    if args.worker and (recovery or args.admission_only or args.fault_case):
+        parser.error('Worker baseline excludes recovery, admission-only and selector fault modes.')
     if args.fault_case and (recovery or args.admission_only):
         parser.error('A live fault case excludes recovery and admission-only modes.')
     relay = None
@@ -79,6 +83,8 @@ def main():
         save('profile-input.json', profile)
         save('task-source.json', task_source)
         policy = profile['selection_policy']
+        if args.worker:
+            assert profile.get('worker_policy'), 'Worker mode requires explicit operator worker policy'
         binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
         assert binding.get('credential'), 'Proof requires an explicitly credentialed binding'
         if args.fault_case:
@@ -110,15 +116,23 @@ def main():
     accepted = None
     attempt_before_restart = None
     budget_before_restart = None
+    worker_request = None
+    worker_output = None
+    worker_before_restart = None
+    if recovery and (recovery / 'worker-request.json').exists():
+        worker_request = json.loads((recovery / 'worker-request.json').read_text(encoding='utf-8'))
 
     phases = ['recovered'] if recovery else (['missing-credential', 'denial-reopened'] if args.admission_only else ['missing-credential', 'authorized', 'reopened'])
     if args.fault_case:
         phases = ['missing-credential', 'authorized', 'fault-reopened']
+    if args.worker:
+        phases = ['missing-credential', 'authorized', 'worker-missing-credential',
+                  'worker-authorized', 'reopened']
     for phase in phases:
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
         command = [str(binary), '--json', 'serve', '--project', str(project), '--bind', '127.0.0.1:0']
-        if phase in ['authorized', 'reopened']:
+        if phase in ['authorized', 'worker-authorized', 'reopened']:
             env[args.environment_name] = secret
             command += ['--endpoint-credentials', str(out / 'credential-mapping.json')]
         with log_path.open('xb') as log:
@@ -197,6 +211,47 @@ def main():
                     assert endpoints['task-budget-read']['mutation'] is False
                     attempt = call('attempt', 'task-attempt-read', selection)
                     budget = call('budget', 'task-budget-read', {key: selection[key] for key in ['scope', 'task_id']})
+                    if worker_request is not None:
+                        worker_before_restart = call('worker-attempt', 'task-attempt-read',
+                            {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']})
+                elif phase in ['worker-missing-credential', 'worker-authorized']:
+                    assert worker_request is not None
+                    worker_selection = {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']}
+                    budget_selection = {key: worker_request[key] for key in ['scope', 'task_id']}
+                    if phase == 'worker-missing-credential':
+                        call('worker-missing-credential', 'task-worker-execute', worker_request, 412,
+                             error_contains='configured endpoint credential is unavailable')
+                        assert call('budget', 'task-budget-read', budget_selection) == budget_before_restart
+                        missing = call('worker-attempt', 'task-attempt-read', worker_selection)
+                        assert missing['attempt'] is None
+                    else:
+                        worker_output = call('worker', 'task-worker-execute', worker_request)
+                        for field, expected in {
+                            'scope': worker_request['scope'], 'task_id': worker_request['task_id'],
+                            'attempt_id': worker_request['attempt_id'],
+                            'selection_attempt_id': worker_request['selection_attempt_id'],
+                            'selection_sha256': worker_request['expected_selection_sha256'],
+                            'task_sha256': worker_request['expected_task_sha256'],
+                            'configuration_sha256': worker_request['expected_configuration_sha256'],
+                            'binding_id': accepted['choice']['binding_id'],
+                        }.items():
+                            assert worker_output[field] == expected, 'Worker identity mismatch: ' + field
+                        assert hashlib.sha256(worker_output['content'].encode('utf-8')).hexdigest() == worker_output['content_sha256']
+                        worker_before_restart = call('worker-attempt', 'task-attempt-read', worker_selection)
+                        assert worker_before_restart['attempt']['status'] == 'accepted'
+                        assert worker_before_restart['attempt']['worker_output'] == worker_output
+                        budget = call('worker-budget', 'task-budget-read', budget_selection)
+                        assert budget['budget']['reserved_steps'] == 2
+                        assert budget['budget']['active_attempt'] is None
+                        assert budget['budget']['execution_may_continue'] is False
+                        assert budget['budget']['deadline_unix_ms'] == budget_before_restart['budget']['deadline_unix_ms']
+                        call('worker-replay', 'task-worker-execute', worker_request, 412,
+                             error_contains='ReasoningAttemptRecorded')
+                        assert call('after-replay-budget', 'task-budget-read', budget_selection) == budget
+                        task_view = call('task', 'task-read', {**budget_selection,
+                                         'max_storage_keys': request_payload['max_storage_keys']})
+                        assert task_view['task'] == task, 'Worker text must not complete or alter the task'
+                        budget_before_restart = budget
                 elif phase == 'denial-reopened':
                     budget = call('budget', 'task-budget-read', {key: request_payload[key] for key in ['scope', 'task_id']})
                     assert budget['budget'] is None
@@ -349,14 +404,37 @@ def main():
                     budget = call('budget', 'task-budget-read', {key: selection[key] for key in ['scope', 'task_id']})
                     assert attempt['attempt']['status'] == 'accepted'
                     assert attempt['attempt']['endpoint_proposal'] == accepted
-                    assert budget['budget']['reserved_steps'] == 1
+                    assert budget['budget']['reserved_steps'] == (2 if args.worker and phase == 'reopened' else 1)
                     assert budget['budget']['active_attempt'] is None
                     assert budget['budget']['execution_may_continue'] is False
                     if phase == 'authorized':
                         attempt_before_restart, budget_before_restart = attempt, budget
+                        if args.worker:
+                            assert accepted['choice']['kind'] == 'select', 'Actual controller abstained; do not fabricate a selection'
+                            worker_request = {
+                                'scope': request_payload['scope'], 'task_id': request_payload['task_id'],
+                                'attempt_id': 'actual-worker-' + uuid4().hex,
+                                'selection_attempt_id': request_payload['attempt_id'],
+                                'expected_selection_sha256': attempt['attempt']['outcome_sha256'],
+                                'expected_task_sha256': request_payload['expected_task_sha256'],
+                                'expected_configuration_sha256': request_payload['expected_configuration_sha256'],
+                                'max_storage_keys': request_payload['max_storage_keys'], 'context': None,
+                            }
+                            save('worker-request.json', worker_request)
+                            call('worker-unauthenticated', 'task-worker-execute', worker_request, 401, False)
+                            assert call('after-worker-denial-budget', 'task-budget-read',
+                                        {key: selection[key] for key in ['scope', 'task_id']}) == budget
                     else:
                         assert attempt == attempt_before_restart
                         assert budget == budget_before_restart
+                        if args.worker:
+                            readback = call('worker-attempt', 'task-attempt-read',
+                                {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']})
+                            assert readback == worker_before_restart
+                            call('worker-replay', 'task-worker-execute', worker_request, 412,
+                                 error_contains='ReasoningAttemptRecorded')
+                            assert call('after-worker-replay-budget', 'task-budget-read',
+                                        {key: selection[key] for key in ['scope', 'task_id']}) == budget
             finally:
                 if process.poll() is None:
                     process.terminate()
@@ -392,17 +470,22 @@ def main():
         save('result.json', {'sourceCommit': build['provenance']['source_commit'],
              'binarySha256': build['executable_sha256'], 'proof': str(recovery),
              'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-             'attempt': attempt, 'budget': budget, 'providerCallRequested': False,
+             'attempt': attempt, 'workerAttempt': worker_before_restart,
+             'budget': budget, 'providerCallRequested': False,
              'ownedServersStopped': True, 'modelQualityQualified': False, 'trainingDataCreated': False})
         print(json.dumps({'output': str(out), 'status': 'existing attempt and budget read; no provider call'}))
         return
     save('result.json', {'sourceCommit': build['provenance']['source_commit'],
          'binarySha256': build['executable_sha256'], 'acceptedProposal': accepted,
+         'acceptedWorkerDraft': worker_output, 'workerAttempt': worker_before_restart,
          'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
          'restartReadbackEqual': True, 'sameAttemptReplayRejected': True, 'ownedServersStopped': True,
          'engineDispatchObserved': True, 'modelQualityQualified': False, 'trainingDataCreated': False,
-         'scope': 'actual experimental task-text controller transport/admission; no worker execution or source-edit plan proof'})
-    print(json.dumps({'output': str(out), 'status': 'actual installed proposal/reopen checks passed'}))
+         'scope': ('actual controller and worker draft admission, missing credentials, restart and replay; '
+                   'no project effects, source-edit plan proof or quality labels' if args.worker else
+                   'actual experimental task-text controller transport/admission; no worker execution or source-edit plan proof')})
+    print(json.dumps({'output': str(out), 'status': 'actual installed proposal/worker/reopen checks passed' if args.worker
+                     else 'actual installed proposal/reopen checks passed'}))
 
 
 if __name__ == '__main__':

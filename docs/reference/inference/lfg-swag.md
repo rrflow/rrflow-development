@@ -1,6 +1,6 @@
 # LFG analysis and SWAG controller
 
-**Status:** active target contract; configuration, choice validation and optional chat transport exist; engine-admitted LFG/SWAG execution is unimplemented
+**Status:** active target contract; experimental engine-admitted selection and worker drafts exist; full LFG/SWAG journey remains incomplete
 **Coordinate:** `rrflow://rrflow-instance/data/reference/inference/lfg-swag`
 **Owner:** configurable CPU prompt analysis, System One selection, model dispatch, and inference-cache identity
 
@@ -79,6 +79,15 @@ do not attest current project-file freshness. Worker readback requires TaskRead
 and, for context-derived drafts, current MemoryContextRead permission.
 The [worker activity journal](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
 separates local protocol checks from installed provider and public-release proof.
+The [installed worker journal](../../evidence/change-journals/gate-g/task-worker-installed-live.md)
+retains a real configured selector/worker draft, credential denials, restart and
+replay checks, alongside the first rejected model choice. Run the existing
+`scripts/inference/installed_controller_proof.py --worker` with its explicit
+build receipt, contract example, profile, actual task source and private credential
+inputs. Worker mode requires an explicit worker policy and excludes selector fault
+and admission-only modes. `--recover-proof` reads both retained attempts without
+provider credentials or dispatch. A successful trial is not a quality label or
+permission to mutate a project.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.

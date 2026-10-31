@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The [installed worker trial](../../evidence/change-journals/gate-g/task-worker-installed-live.md)
+now proves an actual configured selection and worker draft on the exact clean
+`c75c1896` binary, including missing credentials, restart/readback and replay
+denial. The first model-choice failure and its uncertain estate remain retained.
+This is one-candidate task-text evidence; model quality, full UI/project effects,
+RROFLOW and reviewed learning remain open. Composed CI and protected landing
+are still required. Earlier entries below retain their source-specific limits.
+
 The [worker activity increment](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
 now composes a selected model call with existing task authority, effort, context,
 shared capacity and readback. Local controlled protocol checks cover success,
