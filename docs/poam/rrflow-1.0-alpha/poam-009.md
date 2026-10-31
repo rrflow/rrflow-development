@@ -12,8 +12,12 @@ independently.
 
 The [selected-worker boundary observation](../../evidence/change-journals/gate-g/task-worker-model-boundary.md)
 confirms that the composed 71-operation controller can retain a routing proposal
-but exposes no selected-worker execution. Its transport currently decodes only
-endpoint choices. Reuse the task budget, authority guards and authorized context
+but exposes no selected-worker execution. The
+[transport/configuration increment](../../evidence/change-journals/gate-g/task-worker-model-transport-policy.md)
+adds bounded model text beside strict endpoint-choice decoding and explicit
+worker settings under existing configuration approval. Focused protocol and
+engine persistence checks pass; the admitted worker operation remains missing.
+Reuse the task budget, authority guards and authorized context
 for a separately admitted model activity; draft text cannot become a project
 effect, correctness label or training consent. Implementation and real installed
 worker evidence remain pending.

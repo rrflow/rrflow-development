@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: d4fbddb341893b19347e46c5f54605c888edc932ea5084dc81eb00fd422e754b
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -14082,6 +14082,62 @@ export interface operations {
                                      */
                                     workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                 } | null;
+                                /**
+                                 * @description Installed through the existing endpoint profile preview/apply transaction.
+                                 *     Absence disables worker calls. Every call still needs task, context, session,
+                                 *     budget and current-input admission by the engine.
+                                 */
+                                worker_policy?: {
+                                    /** @description Explicit permission to export admitted task text and selected context. */
+                                    allow_context_export: boolean;
+                                    allow_network: boolean;
+                                    allow_unverified_identity: boolean;
+                                    bindings: {
+                                        allow_default_effort: boolean;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /**
+                                         * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                         *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                         */
+                                        effort_values: {
+                                            [key: string]: string;
+                                        };
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        /** @description Reference to observed wire support; its presence is not an attestation. */
+                                        protocol_evidence_sha256: string;
+                                        system_prompt: string;
+                                    }[];
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint32 */
+                                    maximum_concurrent_calls: number;
+                                } | null;
                             } | null;
                         };
                     };
@@ -14346,6 +14402,62 @@ export interface operations {
                                          *     decides which endpoint serves it.
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
                                     } | null;
                                 } | null;
                                 /**
@@ -14614,6 +14726,62 @@ export interface operations {
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                     } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -14858,6 +15026,62 @@ export interface operations {
                                  *     decides which endpoint serves it.
                                  */
                                 workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                            } | null;
+                            /**
+                             * @description Installed through the existing endpoint profile preview/apply transaction.
+                             *     Absence disables worker calls. Every call still needs task, context, session,
+                             *     budget and current-input admission by the engine.
+                             */
+                            worker_policy?: {
+                                /** @description Explicit permission to export admitted task text and selected context. */
+                                allow_context_export: boolean;
+                                allow_network: boolean;
+                                allow_unverified_identity: boolean;
+                                bindings: {
+                                    allow_default_effort: boolean;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    binding_id: string;
+                                    /**
+                                     * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                     *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                     */
+                                    effort_values: {
+                                        [key: string]: string;
+                                    };
+                                    /**
+                                     * @description No defaults: the installed binding's policy must name the supported wire
+                                     *     parameters. An omitted temperature is distinct from requesting zero.
+                                     */
+                                    generation: {
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        response_format: {
+                                            /** @constant */
+                                            type: "text";
+                                        } | {
+                                            /** @constant */
+                                            type: "json_object";
+                                        };
+                                        /** Format: uint16 */
+                                        temperature_milli?: number | null;
+                                        /** @enum {string} */
+                                        token_parameter: "max_tokens" | "max_completion_tokens";
+                                    };
+                                    /** Format: uint64 */
+                                    maximum_response_bytes: number;
+                                    /** @description Reference to observed wire support; its presence is not an attestation. */
+                                    protocol_evidence_sha256: string;
+                                    system_prompt: string;
+                                }[];
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /** Format: uint32 */
+                                maximum_concurrent_calls: number;
                             } | null;
                         } | null;
                     };
@@ -15130,6 +15354,62 @@ export interface operations {
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                     } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
+                                    } | null;
                                 } | null;
                             };
                             /** @constant */
@@ -15398,6 +15678,62 @@ export interface operations {
                                          *     decides which endpoint serves it.
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
                                     } | null;
                                 } | null;
                             };
@@ -15707,6 +16043,62 @@ export interface operations {
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                     } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -15973,6 +16365,62 @@ export interface operations {
                                          *     decides which endpoint serves it.
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
                                     } | null;
                                 } | null;
                                 /**

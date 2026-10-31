@@ -13,6 +13,12 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_generation;
+mod endpoint_worker;
+pub use endpoint_generation::{
+    EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
+};
+pub use endpoint_worker::{EndpointWorkerBinding, EndpointWorkerPolicy, ENDPOINT_WORKER_VERSION};
 mod endpoint_policy;
 mod endpoint_proposal;
 mod endpoint_selection;
@@ -260,7 +266,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a";
+    "d4fbddb341893b19347e46c5f54605c888edc932ea5084dc81eb00fd422e754b";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
