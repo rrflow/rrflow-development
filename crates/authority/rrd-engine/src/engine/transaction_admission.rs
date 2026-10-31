@@ -33,7 +33,7 @@ impl InvocationAdmission {
     pub(super) fn cancel(&self) {
         self.cancelled.store(true, Ordering::Release);
     }
-    fn check(&self) -> Result<()> {
+    pub(super) fn check(&self) -> Result<()> {
         if self.cancelled.load(Ordering::Acquire) {
             return Err(ServiceError::AdmissionCancelled);
         }
@@ -70,6 +70,28 @@ pub(crate) struct TransactionPermit<'a> {
     ticket: u64,
     bytes: u64,
     active: bool,
+}
+
+impl TransactionPermit<'_> {
+    /// Grow the active reservation to the actual composed write before commit.
+    /// Pending requests remain charged; no second gate or storage transaction.
+    pub(super) fn charge(&mut self, request: &impl Serialize, limit: u64) -> Result<()> {
+        let bytes = request_charge(request, limit)?.max(self.bytes);
+        let mut state = self.gate.state.lock().map_err(|_| poisoned())?;
+        if !self.active || !state.active || state.fenced {
+            return Err(poisoned());
+        }
+        let other = state.bytes.checked_sub(self.bytes).ok_or_else(poisoned)?;
+        if bytes > limit.saturating_sub(other) {
+            return Err(ServiceError::StorageAdmission(
+                "composed transaction exceeds logical-byte admission".into(),
+            ));
+        }
+        state.bytes = other + bytes;
+        self.bytes = bytes;
+        state.peak_bytes = state.peak_bytes.max(state.bytes);
+        Ok(())
+    }
 }
 
 impl Drop for TransactionPermit<'_> {
@@ -270,6 +292,34 @@ impl RrdEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn composed_charge_rejection_retains_reservation_until_drop() {
+        let gate = TransactionGate::default();
+        let policy = rrd_contract::StorageLimits {
+            transaction_admission_bytes: 16,
+            ..rrd_contract::StorageLimits::default()
+        };
+        let mut permit = gate.acquire(&policy, &"a", None).unwrap();
+        permit.charge(&"expanded", 16).unwrap();
+        assert_eq!(gate.state.lock().unwrap().bytes, 10);
+        permit.charge(&"a", 16).unwrap();
+        assert_eq!(
+            gate.state.lock().unwrap().bytes,
+            10,
+            "a smaller group cannot release the retained preparation charge"
+        );
+        assert!(matches!(
+            permit.charge(&"this cannot fit in sixteen bytes", 16),
+            Err(ServiceError::StorageAdmission(_))
+        ));
+        assert_eq!(gate.state.lock().unwrap().bytes, 10);
+        assert_eq!(gate.state.lock().unwrap().outstanding, 1);
+        drop(permit);
+        assert_eq!(gate.state.lock().unwrap().bytes, 0);
+        assert_eq!(gate.state.lock().unwrap().outstanding, 0);
+        assert!(gate.acquire(&policy, &"retry", None).is_ok());
+    }
 
     #[test]
     fn expired_invocation_and_panicked_writer_cannot_grant_new_effects() {

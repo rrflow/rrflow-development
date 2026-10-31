@@ -42,6 +42,15 @@ or provide a public project-tailored plan. The [correction record](../../evidenc
 retains the source and candidate distinction. Per-prompt reasoning handoff is a
 separate missing capability, not evidence supplied by an installation template.
 
+The [dependent public-proposal candidate](../../evidence/change-journals/gate-d/d-02-authorized-attunement-proposal.md) permits an explicitly supplied,
+validated attunement sequence and seals it into an installation preview. Its
+schema is a mechanical proposal-shape projection; it does not select or generate
+per-prompt schemas. The installed plan retains selected kinds, positions,
+estimates and descriptor digests, while proposal descriptions remain in the
+preview and are not yet available through engine readback. Only Connect executes.
+This candidate does not close the handoff, open-question, automatic planning or
+source-to-knowledge gaps, and requires candidate and merge-group evidence.
+
 ## Impact
 
 An agent cannot prove which plan it executed, who approved it, or which
