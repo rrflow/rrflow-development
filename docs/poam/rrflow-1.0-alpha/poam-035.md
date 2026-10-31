@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [immutable-object collision observation](../../evidence/change-journals/gate-c/c-07-object-publication-observation.md)
+records a Windows concurrent quantization-build failure and a replacing-rename
+hazard with a reader-held winner. A passing focused rerun does not clear the
+failure. Characterize the late-publisher boundary, preserve the winner after
+digest verification, retain durability/crash hooks and verify the combined
+engine before dependent qualification. The exact original error location is
+unproven; no repair or gate completion is claimed by the native probe.
+
 The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
 locally exercised held and interrupted resource acquisition and Windows Job
 membership for the engine, harness and helper. A [subsequent Windows Job test](../../evidence/change-journals/gate-c/c-07g-native-worker-windows-ci.md)
