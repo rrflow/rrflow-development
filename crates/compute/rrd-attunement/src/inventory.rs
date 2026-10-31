@@ -6,13 +6,13 @@
 //! entries, containment, change set and checkpoint before calling it a snapshot.
 
 use rrd_core::digest::{sha256_hex, Sha256};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 
 const FORMAT_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceScope {
     pub estate: String,
     pub project: String,
@@ -20,7 +20,7 @@ pub struct SourceScope {
     pub root: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Revisions {
     pub policy_sha256: String,
     pub walker: String,
@@ -29,7 +29,7 @@ pub struct Revisions {
 
 /// Compute admission limits; filesystem duration, cancellation and descriptor
 /// limits are additionally enforced by the engine before/while supplying input.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Limits {
     /// Includes the implicit root directory.
     pub entries: u64,
@@ -40,7 +40,7 @@ pub struct Limits {
     pub content_bytes: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileObservation {
     pub bytes: u64,
     pub executable: bool,
@@ -51,7 +51,7 @@ pub struct FileObservation {
     pub classification_sha256: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum EntryKind {
     Directory,
@@ -76,7 +76,7 @@ pub enum EntryKind {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorClass {
     Unreadable,
@@ -86,7 +86,7 @@ pub enum ErrorClass {
     Unsupported,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     pub path: String,
     pub identity: String,
@@ -95,7 +95,7 @@ pub struct Entry {
     pub subtree_sha256: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntryChange {
     pub path: String,
     pub identity: String,
@@ -105,14 +105,14 @@ pub struct EntryChange {
 
 /// A unique equal-content add/remove pair is evidence for a candidate only.
 /// No identity is reassigned and no OS rename event is assumed authoritative.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RenameCandidate {
     pub removed_identity: String,
     pub added_identity: String,
     pub content_sha256: String,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Changes {
     pub added: Vec<EntryChange>,
     pub modified: Vec<EntryChange>,
@@ -120,7 +120,7 @@ pub struct Changes {
     pub rename_candidates: Vec<RenameCandidate>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Accounting {
     pub content_bytes: u64,
     pub reused_files: u64,
@@ -146,7 +146,118 @@ pub struct Proposal {
     proposal_sha256: String,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CommittedProposal {
+    format_version: u32,
+    scope: SourceScope,
+    revisions: Revisions,
+    limits: Limits,
+    previous_sha256: Option<String>,
+    complete: bool,
+    root_sha256: String,
+    entries: Vec<Entry>,
+    changes: Changes,
+    accounting: Accounting,
+    proposal_sha256: String,
+}
+
 impl Proposal {
+    /// Reconstruct bounded data whose expected identity the ENGINE obtained
+    /// from its committed checkpoint and authenticated runtime read. A checksum
+    /// supplied alongside arbitrary bytes is not provenance or authorization.
+    /// This validates structure/Merkle identities; historical change provenance
+    /// remains bound by the expected committed proposal digest.
+    pub fn from_committed_bytes(
+        bytes: &[u8],
+        expected_sha256: &str,
+        max_bytes: usize,
+    ) -> Result<Self> {
+        if bytes.len() > max_bytes || !digest(expected_sha256) {
+            return Err(InventoryError::InvalidCommittedProposal);
+        }
+        let wire: CommittedProposal =
+            serde_json::from_slice(bytes).map_err(|_| InventoryError::Encoding)?;
+        let mut result = Self {
+            format_version: wire.format_version,
+            scope: wire.scope,
+            revisions: wire.revisions,
+            limits: wire.limits,
+            previous_sha256: wire.previous_sha256,
+            complete: wire.complete,
+            root_sha256: wire.root_sha256,
+            entries: wire.entries,
+            changes: wire.changes,
+            accounting: wire.accounting,
+            proposal_sha256: String::new(),
+        };
+        if result.format_version != FORMAT_VERSION
+            || !result.complete
+            || result.accounting.errors != 0
+            || result.accounting.rejected_observations != 0
+            || result.previous_sha256.as_ref().is_some_and(|s| !digest(s))
+            || result.accounting.content_bytes > result.limits.content_bytes
+            || wire.proposal_sha256 != expected_sha256
+            || hash(&("rrflow-source-proposal-v1", &result))? != expected_sha256
+        {
+            return Err(InventoryError::InvalidCommittedProposal);
+        }
+        let mut rebuilt = Builder::new(
+            result.scope.clone(),
+            result.revisions.clone(),
+            result.limits.clone(),
+            None,
+        )?;
+        if result
+            .entries
+            .first()
+            .is_none_or(|e| !e.path.is_empty() || e.kind != EntryKind::Directory)
+        {
+            return Err(InventoryError::InvalidCommittedProposal);
+        }
+        let mut files = 0u64;
+        let mut previous = "";
+        for entry in result.entries.iter().skip(1) {
+            if entry.path.as_str() <= previous {
+                return Err(InventoryError::InvalidCommittedProposal);
+            }
+            previous = &entry.path;
+            match &entry.kind {
+                EntryKind::Directory => rebuilt.directory(&entry.path)?,
+                EntryKind::File {
+                    observation,
+                    content_sha256,
+                } => {
+                    rebuilt.admit_path(&entry.path)?;
+                    if !digest(content_sha256)
+                        || observation.bytes > result.limits.file_bytes
+                        || observation.revision.is_empty()
+                        || observation.revision.len() as u64 > result.limits.metadata_bytes
+                        || observation.revision.chars().any(char::is_control)
+                        || !digest(&observation.classification_sha256)
+                    {
+                        return Err(InventoryError::InvalidCommittedProposal);
+                    }
+                    rebuilt
+                        .entries
+                        .insert(entry.path.clone(), entry.kind.clone());
+                    files += 1;
+                }
+                EntryKind::Error { .. } => return Err(InventoryError::InvalidCommittedProposal),
+                other => rebuilt.leaf(&entry.path, other.clone())?,
+            }
+        }
+        let checked = rebuilt.finish(true)?;
+        if checked.entries != result.entries
+            || checked.root_sha256 != result.root_sha256
+            || result.accounting.reused_files > files
+        {
+            return Err(InventoryError::InvalidCommittedProposal);
+        }
+        result.proposal_sha256 = expected_sha256.into();
+        Ok(result)
+    }
+
     pub fn is_complete(&self) -> bool {
         self.complete
     }
@@ -183,6 +294,8 @@ pub enum InventoryError {
     IncompletePrevious,
     ForeignPrevious,
     Encoding,
+    ContentRead,
+    InvalidCommittedProposal,
 }
 
 impl fmt::Display for InventoryError {
@@ -285,9 +398,38 @@ impl<'a> Builder<'a> {
         I: IntoIterator<Item = B>,
         B: AsRef<[u8]>,
     {
-        let result = self.file_inner(path, observation, chunks);
+        self.file_fallible(
+            path,
+            observation,
+            chunks.into_iter().map(Ok::<B, std::convert::Infallible>),
+            true,
+        )
+    }
+
+    /// The engine supplies `reuse_verified` only after independently proving
+    /// the native reuse boundary. Prior metadata equality alone is insufficient.
+    /// A failed chunk is an error, never clean EOF or a publishable partial file.
+    pub fn file_fallible<I, B, E>(
+        &mut self,
+        path: &str,
+        observation: FileObservation,
+        chunks: I,
+        reuse_verified: bool,
+    ) -> Result<()>
+    where
+        I: IntoIterator<Item = std::result::Result<B, E>>,
+        B: AsRef<[u8]>,
+    {
+        let result = self.file_inner(path, observation, chunks, reuse_verified);
         self.record_rejection(&result);
         result
+    }
+
+    pub fn content_sha256(&self, path: &str) -> Option<&str> {
+        match self.entries.get(path) {
+            Some(EntryKind::File { content_sha256, .. }) => Some(content_sha256),
+            _ => None,
+        }
     }
 
     fn record_rejection(&mut self, result: &Result<()>) {
@@ -297,14 +439,15 @@ impl<'a> Builder<'a> {
         }
     }
 
-    fn file_inner<I, B>(
+    fn file_inner<I, B, E>(
         &mut self,
         path: &str,
         observation: FileObservation,
         chunks: I,
+        reuse_verified: bool,
     ) -> Result<()>
     where
-        I: IntoIterator<Item = B>,
+        I: IntoIterator<Item = std::result::Result<B, E>>,
         B: AsRef<[u8]>,
     {
         self.admit_path(path)?;
@@ -320,7 +463,7 @@ impl<'a> Builder<'a> {
         }
         let reused = self
             .prior
-            .filter(|p| p.revisions == self.revisions && p.limits == self.limits)
+            .filter(|p| reuse_verified && p.revisions == self.revisions && p.limits == self.limits)
             .and_then(|p| {
                 p.entries
                     .binary_search_by(|e| e.path.as_str().cmp(path))
@@ -346,6 +489,7 @@ impl<'a> Builder<'a> {
             let mut length = 0u64;
             let mut hasher = Sha256::new();
             for chunk in chunks {
+                let chunk = chunk.map_err(|_| InventoryError::ContentRead)?;
                 let bytes = chunk.as_ref();
                 // Empty files supply no chunks. Reject a stalled producer so
                 // arbitrarily many empty chunks cannot evade the byte bound.

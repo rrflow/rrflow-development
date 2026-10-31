@@ -115,8 +115,16 @@ fn attunement_proposals_have_no_runtime_or_store_dependency() {
     let metadata = workspace_metadata();
     assert_exact(
         &metadata.packages["rrd-attunement"].all,
-        names(&["rrd-core", "serde", "serde_json"]),
-        "attunement is pure compute over kernel hashes and serialized observations",
+        names(&[
+            "rrd-core",
+            "serde",
+            "serde_json",
+            "gix-index",
+            "gix-ignore",
+            "gix-config",
+            "filetime",
+        ]),
+        "attunement uses pure buffer parsing, kernel hashes and serialized observations",
     );
 }
 
@@ -126,6 +134,7 @@ fn engine_has_exact_composition() {
     assert_exact(
         production_workspace_dependencies(&metadata, "rrd-engine"),
         names(&[
+            "rrd-attunement",
             "rrd-contract",
             "rrd-estate",
             "rrd-security",
