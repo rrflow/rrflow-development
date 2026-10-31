@@ -19,7 +19,7 @@ use rrd_contract::{
     InstallationActionKind, InstallationActionResult, InstallationManagedPathKind,
     InstallationPlan, InstallationPlanAction, InstallationResult, InstallationTargetKind,
     InstalledEstateIdentity, PersistMemoryEstate, StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION,
-    ATTUNEMENT_PHASES, INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_PHASES,
 };
 use rrd_core::digest::Sha256 as IncrementalSha256;
 use rrd_security::{Principal, PrincipalKind, ResourceGrant, SecurityState, SECURITY_FORMAT};
@@ -41,6 +41,10 @@ pub(super) const INSTALLED_RECORD_KEY: &str = "server/state/install/record";
 const INSTALL_CHECKPOINT_KEY: &str = "server/state/install/checkpoint";
 pub(super) const MAX_LOCATOR_BYTES: u64 = 64 * 1024;
 const MAX_CONFIGURATION_BYTES: u64 = 64 * 1024;
+const MAX_ATTUNEMENT_PROPOSAL_BYTES: u64 = 64 * 1024;
+const MAX_ATTUNEMENT_DESCRIPTION_BYTES: usize = 1_024;
+pub const INSTALLATION_PREVIEW_FORMAT_VERSION: u16 = 1;
+pub const ATTUNEMENT_PROPOSAL_FORMAT_VERSION: u16 = 1;
 
 mod admission;
 mod bootstrap;
@@ -83,6 +87,145 @@ pub struct DefaultAttunementPhase {
     pub configuration: String,
     pub estimated_items: u64,
     pub estimated_input_bytes: u64,
+}
+
+/// One proposed step. Description is metadata and does not configure execution.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementProposalStep {
+    pub phase: AttunementPhase,
+    #[schemars(schema_with = "attunement_description_schema")]
+    pub description: String,
+    pub estimated_items: u64,
+    pub estimated_input_bytes: u64,
+}
+
+/// A bounded, explicitly proposed sequence of recognized attunement effects.
+/// The proposal is a public plan input, not a record of private reasoning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AttunementProposal {
+    #[schemars(schema_with = "attunement_proposal_version_schema")]
+    pub format_version: u16,
+    #[schemars(schema_with = "attunement_proposal_steps_schema")]
+    pub steps: Vec<AttunementProposalStep>,
+    pub estimated_min_duration_ms: u64,
+    pub estimated_max_duration_ms: u64,
+}
+
+fn attunement_description_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    // JSON Schema counts characters; engine validation also enforces the byte bound.
+    schemars::json_schema!({"type": "string", "minLength": 1, "maxLength": MAX_ATTUNEMENT_DESCRIPTION_BYTES})
+}
+
+fn attunement_proposal_version_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({"type": "integer", "const": ATTUNEMENT_PROPOSAL_FORMAT_VERSION})
+}
+
+fn attunement_proposal_steps_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    let mut schema = <Vec<AttunementProposalStep> as schemars::JsonSchema>::json_schema(generator);
+    schema.insert("minItems".into(), serde_json::json!(1));
+    schema.insert("maxItems".into(), serde_json::json!(MAX_ATTUNEMENT_PHASES));
+    schema
+}
+
+/// Mechanical proposal shape; semantic and effect validation remain in the engine.
+pub fn attunement_proposal_schema() -> Result<serde_json::Value> {
+    serde_json::to_value(schemars::schema_for!(AttunementProposal)).map_err(contract_json)
+}
+
+impl AttunementProposal {
+    pub fn validate(&self) -> Result<()> {
+        if self.format_version != ATTUNEMENT_PROPOSAL_FORMAT_VERSION {
+            return Err(ServiceError::Contract(
+                "unsupported attunement proposal version".into(),
+            ));
+        }
+        // Reject oversized caller-owned input before cloning descriptions.
+        if self.steps.is_empty()
+            || self.steps.len() > MAX_ATTUNEMENT_PHASES
+            || self
+                .steps
+                .iter()
+                .any(|step| step.description.len() > MAX_ATTUNEMENT_DESCRIPTION_BYTES)
+        {
+            return Err(ServiceError::Contract(
+                "attunement proposal exceeds its bounds".into(),
+            ));
+        }
+        validate_attunement_steps(
+            &self.normalized_steps(),
+            self.estimated_min_duration_ms,
+            self.estimated_max_duration_ms,
+        )
+    }
+
+    fn normalized_steps(&self) -> Vec<DefaultAttunementPhase> {
+        self.steps
+            .iter()
+            .map(|step| DefaultAttunementPhase {
+                phase: step.phase,
+                configuration: step.description.clone(),
+                estimated_items: step.estimated_items,
+                estimated_input_bytes: step.estimated_input_bytes,
+            })
+            .collect()
+    }
+}
+
+fn validate_attunement_steps(
+    steps: &[DefaultAttunementPhase],
+    minimum: u64,
+    maximum: u64,
+) -> Result<()> {
+    if steps.is_empty()
+        || steps.len() > MAX_ATTUNEMENT_PHASES
+        || minimum > maximum
+        || steps
+            .last()
+            .is_none_or(|step| step.phase != AttunementPhase::Verify)
+        || steps[..steps.len().saturating_sub(1)]
+            .iter()
+            .any(|step| step.phase == AttunementPhase::Verify)
+        || steps.iter().any(|step| {
+            step.configuration.trim().is_empty()
+                || step.configuration.len() > MAX_ATTUNEMENT_DESCRIPTION_BYTES
+                || step.configuration.as_bytes().contains(&0)
+        })
+    {
+        return Err(ServiceError::Contract(
+            "attunement proposal steps or bounds are invalid".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn planned_attunement_steps(steps: &[DefaultAttunementPhase]) -> Result<Vec<AttunementPhasePlan>> {
+    steps
+        .iter()
+        .enumerate()
+        .map(|(index, step)| {
+            Ok(AttunementPhasePlan {
+                phase: step.phase,
+                sequence: u16::try_from(index + 1)
+                    .map_err(|_| ServiceError::Contract("attunement step index overflow".into()))?,
+                configuration_sha256: json_sha256(step)?,
+                estimated_items: step.estimated_items,
+                estimated_input_bytes: step.estimated_input_bytes,
+            })
+        })
+        .collect()
+}
+
+/// Read only an explicitly selected bounded regular proposal during planning.
+pub fn load_attunement_proposal(path: &Path) -> Result<AttunementProposal> {
+    let bytes = read_regular_bounded(
+        &AnchoredPath::from_path(path).map_err(storage_error)?,
+        MAX_ATTUNEMENT_PROPOSAL_BYTES,
+    )?;
+    let proposal: AttunementProposal = serde_json::from_slice(&bytes).map_err(contract_json)?;
+    proposal.validate()?;
+    Ok(proposal)
 }
 
 impl DefaultInstallProfile {
@@ -133,23 +276,16 @@ impl DefaultInstallProfile {
             .inactive_capabilities
             .windows(2)
             .any(|capabilities| capabilities[0] >= capabilities[1])
-            || self.attunement_phases.len() != ATTUNEMENT_PHASES.len()
         {
             return Err(ServiceError::Contract(
-                "default installation profile catalogues are incomplete or non-canonical".into(),
+                "default installation profile capabilities are non-canonical".into(),
             ));
         }
-        for (phase, expected) in self.attunement_phases.iter().zip(ATTUNEMENT_PHASES) {
-            if phase.phase != expected
-                || phase.configuration.trim().is_empty()
-                || phase.configuration.len() > 1_024
-            {
-                return Err(ServiceError::Contract(
-                    "default installation profile attunement phases are invalid".into(),
-                ));
-            }
-        }
-        Ok(())
+        validate_attunement_steps(
+            &self.attunement_phases,
+            self.estimated_min_duration_ms,
+            self.estimated_max_duration_ms,
+        )
     }
 }
 
@@ -177,12 +313,29 @@ pub fn load_estate_configuration(path: Option<&Path>) -> Result<EstateConfigurat
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InstallationPreview {
+    pub preview_format_version: u16,
     pub installation: InstallationPlan,
     pub attunement: AttunementPlan,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attunement_proposal: Option<AttunementProposal>,
 }
 
 impl InstallationPreview {
     pub fn validate(&self) -> Result<()> {
+        if self.preview_format_version != INSTALLATION_PREVIEW_FORMAT_VERSION {
+            return Err(ServiceError::Contract(
+                "unsupported installation preview version".into(),
+            ));
+        }
+        if let Some(proposal) = &self.attunement_proposal {
+            proposal.validate()?;
+            if self.attunement.phases != planned_attunement_steps(&proposal.normalized_steps())?
+                || self.attunement.estimated_min_duration_ms != proposal.estimated_min_duration_ms
+                || self.attunement.estimated_max_duration_ms != proposal.estimated_max_duration_ms
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+        }
         self.installation
             .validate_attunement_plan(&self.attunement)
             .map_err(|error| ServiceError::Contract(error.to_string()))
@@ -358,6 +511,30 @@ impl RrdEngine {
         configuration_path: Option<&Path>,
         executable: &Path,
     ) -> Result<InstallationPreview> {
+        Self::plan_installation_with_proposal(
+            project,
+            target_kind,
+            installation_identity,
+            profile_id,
+            configuration_path,
+            None,
+            executable,
+        )
+    }
+
+    /// Produce an exact installation preview for a caller-selected proposal.
+    pub fn plan_installation_with_proposal(
+        project: &Path,
+        target_kind: InstallationTargetKind,
+        installation_identity: &str,
+        profile_id: &str,
+        configuration_path: Option<&Path>,
+        proposal: Option<&AttunementProposal>,
+        executable: &Path,
+    ) -> Result<InstallationPreview> {
+        if let Some(proposal) = proposal {
+            proposal.validate()?;
+        }
         if !is_sha256(installation_identity) {
             return Err(ServiceError::Contract(
                 "installation identity must contain 64 lowercase hexadecimal characters".into(),
@@ -387,27 +564,27 @@ impl RrdEngine {
             estate_id,
             instance_id,
         };
-        let phases = profile
-            .attunement_phases
-            .iter()
-            .map(|phase| {
-                Ok(AttunementPhasePlan {
-                    phase: phase.phase,
-                    sequence: phase.phase.sequence(),
-                    configuration_sha256: json_sha256(phase)?,
-                    estimated_items: phase.estimated_items,
-                    estimated_input_bytes: phase.estimated_input_bytes,
-                })
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let (steps, minimum, maximum) = match proposal {
+            Some(proposal) => (
+                proposal.normalized_steps(),
+                proposal.estimated_min_duration_ms,
+                proposal.estimated_max_duration_ms,
+            ),
+            None => (
+                profile.attunement_phases.clone(),
+                profile.estimated_min_duration_ms,
+                profile.estimated_max_duration_ms,
+            ),
+        };
+        let phases = planned_attunement_steps(&steps)?;
         let mut attunement = AttunementPlan {
             contract_version: ATTUNEMENT_CONTRACT_VERSION,
             id: attunement_id,
             target: target.clone(),
             source_sha256: project_precondition_sha256.clone(),
             phases,
-            estimated_min_duration_ms: profile.estimated_min_duration_ms,
-            estimated_max_duration_ms: profile.estimated_max_duration_ms,
+            estimated_min_duration_ms: minimum,
+            estimated_max_duration_ms: maximum,
             plan_sha256: zero_digest(),
         };
         attunement.plan_sha256 = attunement_plan_sha256(&attunement)
@@ -452,8 +629,10 @@ impl RrdEngine {
         installation.plan_sha256 = installation_plan_sha256(&installation)
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
         let preview = InstallationPreview {
+            preview_format_version: INSTALLATION_PREVIEW_FORMAT_VERSION,
             installation,
             attunement,
+            attunement_proposal: proposal.cloned(),
         };
         preview.validate()?;
         Ok(preview)
@@ -1477,19 +1656,19 @@ fn validate_sealed_preview(
         instance_id: canonical_prefixed("instance", &seed)?,
     };
     let expected_attunement_id = canonical_prefixed("attune", &seed)?;
-    let expected_phases = profile
-        .attunement_phases
-        .iter()
-        .map(|phase| {
-            Ok(AttunementPhasePlan {
-                phase: phase.phase,
-                sequence: phase.phase.sequence(),
-                configuration_sha256: json_sha256(phase)?,
-                estimated_items: phase.estimated_items,
-                estimated_input_bytes: phase.estimated_input_bytes,
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
+    let (steps, minimum, maximum) = match &preview.attunement_proposal {
+        Some(proposal) => (
+            proposal.normalized_steps(),
+            proposal.estimated_min_duration_ms,
+            proposal.estimated_max_duration_ms,
+        ),
+        None => (
+            profile.attunement_phases.clone(),
+            profile.estimated_min_duration_ms,
+            profile.estimated_max_duration_ms,
+        ),
+    };
+    let expected_phases = planned_attunement_steps(&steps)?;
     let absent = digest::sha256_hex(b"rrflow-install-managed-path-absent-v1");
     let expected_paths =
         EstateLayout::new(&install_id, &profile.initial_principal_id)?.managed_paths(&absent);
@@ -1524,8 +1703,8 @@ fn validate_sealed_preview(
         || preview.attunement.target != expected_target
         || preview.attunement.source_sha256 != installation.project_precondition_sha256
         || preview.attunement.phases != expected_phases
-        || preview.attunement.estimated_min_duration_ms != profile.estimated_min_duration_ms
-        || preview.attunement.estimated_max_duration_ms != profile.estimated_max_duration_ms
+        || preview.attunement.estimated_min_duration_ms != minimum
+        || preview.attunement.estimated_max_duration_ms != maximum
     {
         return Err(ServiceError::ProjectBindingMismatch);
     }
