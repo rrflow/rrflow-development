@@ -4435,6 +4435,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrd-attunement"
+version = "1.0.0"
+dependencies = [
+ "rrd-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rrd-client"
 version = "1.0.0"
 dependencies = [

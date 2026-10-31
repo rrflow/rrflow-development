@@ -46,6 +46,7 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
         ("rrd-query", "crates/compute/rrd-query/Cargo.toml"),
         ("rrd-vector", "crates/compute/rrd-vector/Cargo.toml"),
         ("rrd-inference", "crates/compute/rrd-inference/Cargo.toml"),
+        ("rrd-attunement", "crates/compute/rrd-attunement/Cargo.toml"),
         ("rrd-security", "crates/authority/rrd-security/Cargo.toml"),
         ("rrd-estate", "crates/authority/rrd-estate/Cargo.toml"),
         ("rrd-engine", "crates/authority/rrd-engine/Cargo.toml"),
@@ -110,6 +111,16 @@ fn workspace_packages_use_the_canonical_grouped_layout() {
 }
 
 #[test]
+fn attunement_proposals_have_no_runtime_or_store_dependency() {
+    let metadata = workspace_metadata();
+    assert_exact(
+        &metadata.packages["rrd-attunement"].all,
+        names(&["rrd-core", "serde", "serde_json"]),
+        "attunement is pure compute over kernel hashes and serialized observations",
+    );
+}
+
+#[test]
 fn engine_has_exact_composition() {
     let metadata = workspace_metadata();
     assert_exact(
@@ -169,6 +180,7 @@ fn public_contract_and_client_stay_implementation_free() {
 fn outward_consumers_cannot_bypass_the_engine_boundary() {
     let metadata = workspace_metadata();
     let internal_components = names(&[
+        "rrd-attunement",
         "rrd-estate",
         "rrd-security",
         "rrd-cluster",
@@ -197,6 +209,7 @@ fn outward_consumers_cannot_bypass_the_engine_boundary() {
 fn outward_product_sources_do_not_import_physical_components() {
     let metadata = workspace_metadata();
     let physical = [
+        "rrd_attunement",
         "rrd_cluster",
         "rrd_core",
         "rrd_estate",
