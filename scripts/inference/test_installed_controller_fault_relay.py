@@ -87,6 +87,9 @@ class FaultRelayTests(unittest.TestCase):
     def test_second_call_holds_then_drops_only_its_delivery(self):
         self.exercise(2, True)
 
+    def test_second_call_holds_then_delivers_exact_worker_bytes(self):
+        self.exercise(2, False)
+
     def test_invalid_hold_ordinal_is_rejected_before_startup(self):
         for ordinal in (0, 3):
             with self.subTest(ordinal=ordinal), self.assertRaises(ValueError):
@@ -107,6 +110,31 @@ class FaultRelayTests(unittest.TestCase):
                     result = subprocess.run([sys.executable, str(Path(__file__).with_name('installed_controller_proof.py')),
                                              '--output', str(output), *arguments], capture_output=True, timeout=10)
                     self.assertEqual(result.returncode, 2)
+                    self.assertFalse(output.exists())
+
+    def test_worker_fault_modes_parse_but_require_actual_inputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'must-not-exist'
+            for fault in ('configuration', 'session', 'stop', 'disconnect'):
+                with self.subTest(fault=fault):
+                    result = subprocess.run([sys.executable, str(Path(__file__).with_name('installed_controller_proof.py')),
+                                             '--worker', '--fault-case', fault, '--output', str(output)],
+                                            capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn(b'A new proof requires all build, profile, task and credential inputs.', result.stderr)
+                    self.assertFalse(output.exists())
+
+    def test_worker_fault_modes_reject_incompatible_inputs_before_startup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'must-not-exist'
+            for extra in (['--recover-proof', 'unused'], ['--admission-only'],
+                          ['--native-client', 'unused', '--native-client-timeout-ms', '1000']):
+                with self.subTest(extra=extra):
+                    result = subprocess.run([sys.executable, str(Path(__file__).with_name('installed_controller_proof.py')),
+                                             '--worker', '--fault-case', 'configuration', '--output', str(output), *extra],
+                                            capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertNotIn(b'A new proof requires all build, profile, task and credential inputs.', result.stderr)
                     self.assertFalse(output.exists())
 
 

@@ -38,10 +38,10 @@ def main():
     parser.add_argument('--native-client-timeout-ms', type=int)
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
-    if args.worker_interrupt and (not args.worker or args.native_client):
-        parser.error('Worker interruption requires --worker and the HTTP proof path, without --native-client.')
-    if args.worker and (recovery or args.admission_only or args.fault_case):
-        parser.error('Worker baseline excludes recovery, admission-only and selector fault modes.')
+    if args.worker_interrupt and (not args.worker or args.native_client or args.fault_case):
+        parser.error('Worker interruption requires --worker and the HTTP proof path, without native-client or completion faults.')
+    if args.worker and (recovery or args.admission_only):
+        parser.error('Worker mode excludes recovery and admission-only modes.')
     if args.native_client and (recovery or args.admission_only or args.fault_case):
         parser.error('Native client mode is a new baseline proof, not recovery, admission-only or a fault case.')
     if bool(args.native_client) != (args.native_client_timeout_ms is not None):
@@ -114,16 +114,16 @@ def main():
             from installed_controller_fault_relay import FaultRelay
             fault_timeout = binding['limits']['timeout_ms'] / 1000
             response_limit = policy['limits']['maximum_response_bytes']
-            if args.worker_interrupt:
+            if args.worker:
                 worker_binding = next((entry for entry in profile['worker_policy']['bindings']
                                        if entry['binding_id'] == binding['id']), None)
                 assert worker_binding is not None, 'Relayed controller binding needs explicit worker policy'
                 response_limit = max(response_limit, worker_binding['maximum_response_bytes'])
             relay = FaultRelay(binding['endpoint']['url'], out, fault_timeout,
                                binding['limits']['max_input_bytes'], response_limit,
-                               2 if args.worker_interrupt or args.fault_case == 'configuration' else 1,
+                               2 if args.worker or args.fault_case == 'configuration' else 1,
                                args.worker_interrupt or args.fault_case == 'disconnect',
-                               hold_call=2 if args.worker_interrupt else 1)
+                               hold_call=2 if args.worker else 1)
             binding['endpoint']['url'] = relay.base_url
             save('effective-profile.json', profile)
 
@@ -158,7 +158,8 @@ def main():
         phases = ['missing-credential', 'authorized', 'fault-reopened']
     if args.worker:
         phases = ['missing-credential', 'authorized', 'worker-missing-credential',
-                  'worker-authorized', 'worker-interrupt-reopened' if args.worker_interrupt else 'reopened']
+                  'worker-authorized', ('worker-interrupt-reopened' if args.worker_interrupt else
+                                        'worker-fault-reopened' if args.fault_case else 'reopened')]
     for phase in phases:
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
@@ -271,7 +272,7 @@ def main():
                     if worker_request is not None:
                         worker_before_restart = call('worker-attempt', 'task-attempt-read',
                             {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']})
-                elif phase == 'worker-interrupt-reopened':
+                elif phase in ['worker-interrupt-reopened', 'worker-fault-reopened']:
                     worker_selection = {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']}
                     budget_selection = {key: worker_request[key] for key in ['scope', 'task_id']}
                     assert call('worker-attempt', 'task-attempt-read', worker_selection) == worker_before_restart
@@ -290,6 +291,60 @@ def main():
                         assert call('budget', 'task-budget-read', budget_selection) == budget_before_restart
                         missing = call('worker-attempt', 'task-attempt-read', worker_selection)
                         assert missing['attempt'] is None
+                    elif args.fault_case:
+                        reasons = {'configuration': 'InputsChanged', 'session': 'AuthorizationChanged',
+                                   'stop': 'chat cancelled', 'disconnect': 'remote outcome unknown'}
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            pending = executor.submit(call, 'fault-worker', 'task-worker-execute',
+                                                      worker_request, 412, True, reasons[args.fault_case])
+                            try:
+                                assert relay.ready.wait(fault_timeout), 'Actual worker response was not observed at relay'
+                                assert relay.error is None, 'Provider/relay failed before worker completion fault'
+                                assert relay.calls == 2, 'Fault requires exactly the actual selector and worker calls'
+                                reserved = call('reserved-worker', 'task-attempt-read', worker_selection)
+                                assert reserved['attempt']['status'] == 'reserved'
+                                assert reserved['attempt'].get('worker_output') is None
+                                active = call('reserved-budget', 'task-budget-read', budget_selection)
+                                assert active['budget']['reserved_steps'] == 2
+                                assert active['budget']['active_attempt'] == worker_request['attempt_id']
+                                assert active['budget']['execution_may_continue'] is True
+                                assert active['budget']['deadline_unix_ms'] == budget_before_restart['budget']['deadline_unix_ms']
+                                if args.fault_case == 'configuration':
+                                    plan = call('replace-preview', 'endpoint-configuration-preview',
+                                                {'expected_revision': configuration['revision'], 'profile': profile})
+                                    configuration = call('replace-apply', 'endpoint-configuration-apply',
+                                                         {'plan': plan, 'approved_plan_sha256': plan['plan_sha256']})
+                                elif args.fault_case == 'session':
+                                    call('close-inflight-session', 'session-close', {})
+                                elif args.fault_case == 'stop':
+                                    call('stop-inflight', 'task-budget-stop',
+                                         {**budget_selection, 'expected_budget_sha256': active['budget_sha256']})
+                            finally:
+                                relay.release.set()
+                            pending.result(timeout=90)
+                        if args.fault_case == 'session':
+                            headers = session_headers()
+                        worker_before_restart = call('fault-worker-attempt', 'task-attempt-read', worker_selection)
+                        record = worker_before_restart['attempt']
+                        assert record.get('worker_output') is None and record['outcome_sha256'] is None
+                        budget = call('fault-worker-budget', 'task-budget-read', budget_selection)
+                        assert budget['budget']['reserved_steps'] == 2
+                        assert budget['budget']['active_attempt'] is None
+                        assert budget['budget']['deadline_unix_ms'] == budget_before_restart['budget']['deadline_unix_ms']
+                        assert budget['budget']['charged_elapsed_ms'] >= budget_before_restart['budget']['charged_elapsed_ms']
+                        if args.fault_case in ['configuration', 'session']:
+                            assert record['status'] == 'invalidated'
+                            assert budget['budget']['execution_may_continue'] is False
+                            assert budget['budget']['stopped'] is None
+                        else:
+                            assert record['status'] == 'stopped'
+                            assert budget['budget']['execution_may_continue'] is True
+                            assert budget['budget']['stopped'] == ('cancelled' if args.fault_case == 'stop' else 'attempt_failed')
+                        assert call('selector-after-fault', 'task-attempt-read',
+                                    {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}) == attempt_before_restart
+                        assert call('task-after-fault', 'task-read', {**budget_selection,
+                                    'max_storage_keys': request_payload['max_storage_keys']})['task'] == task
+                        budget_before_restart = budget
                     elif args.worker_interrupt:
                         with ThreadPoolExecutor(max_workers=1) as executor:
                             pending = executor.submit(call, 'interrupted-worker', 'task-worker-execute', worker_request)
@@ -431,7 +486,7 @@ def main():
                 else:
                     assert request_payload is not None
                     selection = {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}
-                    if args.fault_case:
+                    if args.fault_case and not args.worker:
                         if phase == 'authorized':
                             reasons = {'configuration': 'InputsChanged', 'session': 'AuthorizationChanged',
                                        'stop': 'chat cancelled', 'disconnect': 'remote outcome unknown'}
@@ -517,8 +572,8 @@ def main():
                         attempt_before_restart, budget_before_restart = attempt, budget
                         if args.worker:
                             assert accepted['choice']['kind'] == 'select', 'Actual controller abstained; do not fabricate a selection'
-                            if args.worker_interrupt:
-                                assert accepted['choice']['binding_id'] == binding['id'], 'Interruption requires the actual selected binding to be the relayed binding'
+                            if args.worker_interrupt or args.fault_case:
+                                assert accepted['choice']['binding_id'] == binding['id'], 'Worker faults require the actual selected binding to be the relayed binding'
                             worker_request = {
                                 'scope': request_payload['scope'], 'task_id': request_payload['task_id'],
                                 'attempt_id': 'actual-worker-' + uuid4().hex,
@@ -548,20 +603,23 @@ def main():
                     process.terminate()
                     process.wait(timeout=30)
                 save(phase + '-owned-process-stopped.json', {'pid': process.pid, 'exitCode': process.returncode})
-    if args.worker_interrupt:
+    if args.worker_interrupt or args.worker and args.fault_case:
         relay.close()
         assert relay.error is None and relay.calls == 2
         save('result.json', {'sourceCommit': build['provenance']['source_commit'],
              'binarySha256': build['executable_sha256'],
              'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
              'relaySha256': hashlib.sha256(Path(__file__).with_name('installed_controller_fault_relay.py').read_bytes()).hexdigest(),
+             'faultCase': 'process-interruption' if args.worker_interrupt else args.fault_case,
              'actualProviderCalls': relay.calls, 'acceptedProposal': accepted,
              'selectorAttempt': attempt_before_restart, 'workerAttempt': worker_before_restart,
              'budget': budget_before_restart, 'restartReadbackEqual': True,
              'recoveryProviderCredentialsSupplied': False, 'recoveryModelOperationRequested': False,
              'ownedServersStopped': True, 'modelQualityQualified': False, 'trainingDataCreated': False,
-             'scope': 'owned engine killed after actual worker response, before engine acceptance; retained uncertainty, no retry or provider termination claim'})
-        print(json.dumps({'output': str(out), 'status': 'installed worker interruption and readback passed'}))
+             'scope': ('owned engine killed after actual worker response, before engine acceptance; retained uncertainty, no retry or provider termination claim'
+                       if args.worker_interrupt else
+                       'actual worker response withheld after controlled completion fault; no retry, capacity reconciliation or provider termination claim')})
+        print(json.dumps({'output': str(out), 'status': 'installed worker fault and readback passed'}))
         return
     if args.fault_case:
         relay.close()
