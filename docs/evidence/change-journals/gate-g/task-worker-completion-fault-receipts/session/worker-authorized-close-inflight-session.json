@@ -1,0 +1,38 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-9dbf79a29fec414fb1ca58238d3dbe29",
+      "operation_id": "controller-proof-9dbf79a29fec414fb1ca58238d3dbe29",
+      "idempotency_key": "controller-proof-9dbf79a29fec414fb1ca58238d3dbe29",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-d4bbcc5a2c33063d4be0129e"
+        }
+      ]
+    },
+    "payload": {}
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-9dbf79a29fec414fb1ca58238d3dbe29",
+    "operation_id": "controller-proof-9dbf79a29fec414fb1ca58238d3dbe29",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "session_id": "session-caaf0a0f00d11a4e807e3ff3092515a4bac37a10dbbf5075d5eab04894a62b85",
+        "state": "closed",
+        "ended_at_unix_ms": 1793475355274,
+        "affected_open_transactions": 0,
+        "idempotent_replay": false
+      }
+    }
+  }
+}
