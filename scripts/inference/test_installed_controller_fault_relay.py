@@ -16,7 +16,7 @@ from installed_controller_fault_relay import FaultRelay
 
 
 class FaultRelayTests(unittest.TestCase):
-    def exercise(self, hold_call, drop):
+    def exercise(self, hold_call, drop, followup=False):
         payload = b'opaque local transport fixture\x00\xff'
         requests = []
 
@@ -39,7 +39,7 @@ class FaultRelayTests(unittest.TestCase):
                 output = Path(temporary)
                 options = {} if hold_call == 1 else {'hold_call': hold_call}
                 relay = FaultRelay(f'http://127.0.0.1:{upstream.server_port}/v1', output,
-                                   10, 1024, 1024, hold_call, drop, **options)
+                                   10, 1024, 1024, hold_call + int(followup), drop, **options)
 
                 def invoke(body):
                     request = Request(relay.base_url + '/chat/completions', data=body, method='POST')
@@ -72,7 +72,12 @@ class FaultRelayTests(unittest.TestCase):
                             self.assertTrue((output / 'relay-dropped-delivery.json').exists())
                         else:
                             self.assertEqual(pending.result(timeout=5), payload)
-                    self.assertEqual(relay.calls, hold_call)
+                    if followup:
+                        self.assertEqual(invoke(b'separate capacity transport probe'), payload)
+                        third = json.loads((output / 'relay-3-observation.json').read_text())
+                        self.assertFalse(third['heldBeforeEngineResponse'])
+                        self.assertEqual(third['responseSha256'], hashlib.sha256(payload).hexdigest())
+                    self.assertEqual(relay.calls, hold_call + int(followup))
                     self.assertIsNone(relay.error)
                 finally:
                     relay.close()
@@ -89,6 +94,9 @@ class FaultRelayTests(unittest.TestCase):
 
     def test_second_call_holds_then_delivers_exact_worker_bytes(self):
         self.exercise(2, False)
+
+    def test_third_call_passes_after_the_second_call_barrier(self):
+        self.exercise(2, False, followup=True)
 
     def test_invalid_hold_ordinal_is_rejected_before_startup(self):
         for ordinal in (0, 3):
@@ -136,6 +144,36 @@ class FaultRelayTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 2)
                     self.assertNotIn(b'A new proof requires all build, profile, task and credential inputs.', result.stderr)
                     self.assertFalse(output.exists())
+
+    def test_terminal_rejection_requires_distinct_mode_and_capacity_input(self):
+        combinations = [
+            ['--worker-terminal-rejection', '--capacity-task-source', 'unused'],
+            ['--worker', '--worker-terminal-rejection'],
+            ['--capacity-task-source', 'unused'],
+        ]
+        base = ['--worker', '--worker-terminal-rejection', '--capacity-task-source', 'unused']
+        combinations += [base + extra for extra in (
+            ['--worker-interrupt'], ['--fault-case', 'stop'], ['--recover-proof', 'unused'],
+            ['--admission-only'], ['--native-client', 'unused', '--native-client-timeout-ms', '1000'])]
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'must-not-exist'
+            for arguments in combinations:
+                with self.subTest(arguments=arguments):
+                    result = subprocess.run([sys.executable, str(Path(__file__).with_name('installed_controller_proof.py')),
+                                             '--output', str(output), *arguments], capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertNotIn(b'A new proof requires all build, profile, task and credential inputs.', result.stderr)
+                    self.assertFalse(output.exists())
+
+    def test_terminal_rejection_parses_but_requires_real_inputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'must-not-exist'
+            result = subprocess.run([sys.executable, str(Path(__file__).with_name('installed_controller_proof.py')),
+                                     '--worker', '--worker-terminal-rejection', '--capacity-task-source', 'unused',
+                                     '--output', str(output)], capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn(b'A new proof requires all build, profile, task and credential inputs.', result.stderr)
+            self.assertFalse(output.exists())
 
 
 if __name__ == '__main__':

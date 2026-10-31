@@ -34,10 +34,18 @@ def main():
                         help='Execute one configured selected worker through engine authority; retain draft only.')
     parser.add_argument('--worker-interrupt', action='store_true',
                         help='Kill the owned engine after holding its actual worker response; reopen without redispatch.')
+    parser.add_argument('--worker-terminal-rejection', action='store_true',
+                        help='Require a real length-terminated worker rejection and prove capacity with another real task.')
+    parser.add_argument('--capacity-task-source', help='Separate actual task source for the terminal-rejection capacity proof.')
     parser.add_argument('--native-client', help='Use the task_model_call Rust example for admitted model calls.')
     parser.add_argument('--native-client-timeout-ms', type=int)
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
+    if args.worker_terminal_rejection and (not args.worker or args.worker_interrupt or args.fault_case
+                                          or args.native_client or recovery or args.admission_only):
+        parser.error('Terminal rejection requires --worker without interruption, fault, native, recovery or admission-only modes.')
+    if bool(args.capacity_task_source) != args.worker_terminal_rejection:
+        parser.error('Terminal rejection requires exactly one separate --capacity-task-source.')
     if args.worker_interrupt and (not args.worker or args.native_client or args.fault_case):
         parser.error('Worker interruption requires --worker and the HTTP proof path, without native-client or completion faults.')
     if args.worker and (recovery or args.admission_only):
@@ -103,6 +111,11 @@ def main():
             save('native-client-identity.json', {'binarySha256': client_digest, 'sourcePath': str(source_client)})
         profile = json.loads(Path(args.profile).read_text(encoding='utf-8'))
         task_source = json.loads(Path(args.task_source).read_text(encoding='utf-8'))
+        if args.worker_terminal_rejection:
+            capacity_source = json.loads(Path(args.capacity_task_source).read_text(encoding='utf-8'))
+            assert capacity_source['url'] != task_source['url'], 'Capacity proof requires a different actual task source'
+            assert capacity_source['title'] and capacity_source['body'] and capacity_source['headRefOid']
+            save('capacity-task-source.json', capacity_source)
         save('profile-input.json', profile)
         save('task-source.json', task_source)
         policy = profile['selection_policy']
@@ -110,7 +123,7 @@ def main():
             assert profile.get('worker_policy'), 'Worker mode requires explicit operator worker policy'
         binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
         assert binding.get('credential'), 'Proof requires an explicitly credentialed binding'
-        if args.fault_case or args.worker_interrupt:
+        if args.fault_case or args.worker_interrupt or args.worker_terminal_rejection:
             from installed_controller_fault_relay import FaultRelay
             fault_timeout = binding['limits']['timeout_ms'] / 1000
             response_limit = policy['limits']['maximum_response_bytes']
@@ -119,8 +132,11 @@ def main():
                                        if entry['binding_id'] == binding['id']), None)
                 assert worker_binding is not None, 'Relayed controller binding needs explicit worker policy'
                 response_limit = max(response_limit, worker_binding['maximum_response_bytes'])
+            if args.worker_terminal_rejection:
+                assert binding['limits']['max_concurrency'] == 1, 'Capacity proof requires a one-call binding limit'
             relay = FaultRelay(binding['endpoint']['url'], out, fault_timeout,
                                binding['limits']['max_input_bytes'], response_limit,
+                               3 if args.worker_terminal_rejection else
                                2 if args.worker or args.fault_case == 'configuration' else 1,
                                args.worker_interrupt or args.fault_case == 'disconnect',
                                hold_call=2 if args.worker else 1)
@@ -150,6 +166,7 @@ def main():
     worker_request = None
     worker_output = None
     worker_before_restart = None
+    capacity_probe = None
     if recovery and (recovery / 'worker-request.json').exists():
         worker_request = json.loads((recovery / 'worker-request.json').read_text(encoding='utf-8'))
 
@@ -160,11 +177,14 @@ def main():
         phases = ['missing-credential', 'authorized', 'worker-missing-credential',
                   'worker-authorized', ('worker-interrupt-reopened' if args.worker_interrupt else
                                         'worker-fault-reopened' if args.fault_case else 'reopened')]
+    if args.worker_terminal_rejection:
+        phases = ['missing-credential', 'authorized', 'worker-missing-credential', 'worker-authorized',
+                  'worker-terminal-reopened', 'capacity-authorized', 'capacity-reopened']
     for phase in phases:
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
         command = [str(binary), '--json', 'serve', '--project', str(project), '--bind', '127.0.0.1:0']
-        if phase in ['authorized', 'worker-authorized', 'reopened']:
+        if phase in ['authorized', 'worker-authorized', 'reopened', 'capacity-authorized']:
             env[args.environment_name] = secret
             command += ['--endpoint-credentials', str(out / 'credential-mapping.json')]
         with log_path.open('xb') as log:
@@ -272,7 +292,8 @@ def main():
                     if worker_request is not None:
                         worker_before_restart = call('worker-attempt', 'task-attempt-read',
                             {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']})
-                elif phase in ['worker-interrupt-reopened', 'worker-fault-reopened']:
+                elif phase in ['worker-interrupt-reopened', 'worker-fault-reopened',
+                               'worker-terminal-reopened', 'capacity-reopened']:
                     worker_selection = {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']}
                     budget_selection = {key: worker_request[key] for key in ['scope', 'task_id']}
                     assert call('worker-attempt', 'task-attempt-read', worker_selection) == worker_before_restart
@@ -281,6 +302,49 @@ def main():
                                 {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}) == attempt_before_restart
                     assert call('task', 'task-read', {**budget_selection,
                                 'max_storage_keys': request_payload['max_storage_keys']})['task'] == task
+                    if phase == 'capacity-reopened':
+                        assert call('capacity-attempt', 'task-attempt-read',
+                                    {key: capacity_request[key] for key in ['scope', 'task_id', 'attempt_id']}) == capacity_probe['attempt']
+                        assert call('capacity-budget', 'task-budget-read',
+                                    {key: capacity_request[key] for key in ['scope', 'task_id']}) == capacity_probe['budget']
+                elif phase == 'capacity-authorized':
+                    original_budget = {key: worker_request[key] for key in ['scope', 'task_id']}
+                    call('original-worker-replay', 'task-worker-execute', worker_request, 412,
+                         error_contains='ReasoningAttemptRecorded')
+                    assert relay.calls == 2, 'Replay must not redispatch'
+                    assert call('original-budget', 'task-budget-read', original_budget) == budget_before_restart
+                    goal = capacity_source['body'].encode('utf-8')[:4096].decode('utf-8', errors='ignore')
+                    capacity_task = call('open-capacity-task', 'task-open', {'scope': 'instance:' + instance,
+                                         'title': capacity_source['title'], 'goal': goal})['task']
+                    assert capacity_task['task_id'] != task['task_id']
+                    save('capacity-task-record.json', capacity_task)
+                    save('capacity-task-context-projection.json', {'sourceUrl': capacity_source['url'],
+                         'originalBodySha256': hashlib.sha256(capacity_source['body'].encode('utf-8')).hexdigest(),
+                         'projectedBodyBytes': len(goal.encode('utf-8')), 'truncated': goal != capacity_source['body'],
+                         'use': 'separate real-task capacity proof; no retry or training label'})
+                    generated = subprocess.run([args.contract_example, 'proposal-request',
+                        str(out / 'capacity-task-record.json'), str(out / 'configuration.json'),
+                        'actual-capacity-proposal-' + uuid4().hex], capture_output=True, text=True,
+                        encoding='utf-8', timeout=30, check=True)
+                    capacity_request = json.loads(generated.stdout)
+                    save('capacity-proposal-request.json', capacity_request)
+                    proposal = call('capacity-proposal', 'task-endpoint-propose', capacity_request)
+                    assert proposal['controller_binding_id'] == binding['id']
+                    assert relay.calls == 3 and relay.error is None
+                    capacity_attempt = call('capacity-attempt', 'task-attempt-read',
+                                            {key: capacity_request[key] for key in ['scope', 'task_id', 'attempt_id']})
+                    assert capacity_attempt['attempt']['status'] == 'accepted'
+                    assert capacity_attempt['attempt']['endpoint_proposal'] == proposal
+                    capacity_budget = call('capacity-budget', 'task-budget-read',
+                                           {key: capacity_request[key] for key in ['scope', 'task_id']})
+                    assert capacity_budget['budget']['reserved_steps'] == 1
+                    assert capacity_budget['budget']['active_attempt'] is None
+                    assert capacity_budget['budget']['execution_may_continue'] is False
+                    assert capacity_budget['budget']['stopped'] is None
+                    capacity_probe = {'proposal': proposal, 'attempt': capacity_attempt, 'budget': capacity_budget}
+                    assert call('original-budget-after-capacity', 'task-budget-read', original_budget) == budget_before_restart
+                    assert call('original-worker-after-capacity', 'task-attempt-read',
+                                {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']}) == worker_before_restart
                 elif phase in ['worker-missing-credential', 'worker-authorized']:
                     assert worker_request is not None
                     worker_selection = {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']}
@@ -291,6 +355,42 @@ def main():
                         assert call('budget', 'task-budget-read', budget_selection) == budget_before_restart
                         missing = call('worker-attempt', 'task-attempt-read', worker_selection)
                         assert missing['attempt'] is None
+                    elif args.worker_terminal_rejection:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            pending = executor.submit(call, 'terminal-worker', 'task-worker-execute', worker_request,
+                                                      412, True, 'chat response is incomplete or requests unsupported effects')
+                            try:
+                                assert relay.ready.wait(fault_timeout), 'No actual terminal worker response observed'
+                                assert relay.error is None and relay.calls == 2
+                                actual = json.loads((out / 'relay-2-provider-response.json').read_bytes())
+                                assert actual['model'] == binding['service_id'] and len(actual['choices']) == 1
+                                choice = actual['choices'][0]
+                                assert choice['finish_reason'] == 'length', 'Provider did not produce the requested fault condition'
+                                assert choice['message']['role'] == 'assistant'
+                                assert not choice['message'].get('tool_calls') and not choice['message'].get('function_call')
+                                reserved = call('reserved-worker', 'task-attempt-read', worker_selection)
+                                assert reserved['attempt']['status'] == 'reserved'
+                                active = call('reserved-budget', 'task-budget-read', budget_selection)
+                                assert active['budget']['active_attempt'] == worker_request['attempt_id']
+                                assert active['budget']['reserved_steps'] == 2 and active['budget']['execution_may_continue']
+                            finally:
+                                relay.release.set()
+                            pending.result(timeout=90)
+                        worker_before_restart = call('terminal-worker-attempt', 'task-attempt-read', worker_selection)
+                        record = worker_before_restart['attempt']
+                        assert record['status'] == 'stopped' and record.get('worker_output') is None
+                        assert record['outcome_sha256'] is None
+                        budget = call('terminal-worker-budget', 'task-budget-read', budget_selection)
+                        assert budget['budget']['reserved_steps'] == 2 and budget['budget']['active_attempt'] is None
+                        assert budget['budget']['execution_may_continue'] is False
+                        assert budget['budget']['stopped'] == 'attempt_failed'
+                        assert budget['budget']['deadline_unix_ms'] == budget_before_restart['budget']['deadline_unix_ms']
+                        assert budget['budget']['charged_elapsed_ms'] >= budget_before_restart['budget']['charged_elapsed_ms']
+                        assert call('selector-after-rejection', 'task-attempt-read',
+                                    {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}) == attempt_before_restart
+                        assert call('task-after-rejection', 'task-read', {**budget_selection,
+                                    'max_storage_keys': request_payload['max_storage_keys']})['task'] == task
+                        budget_before_restart = budget
                     elif args.fault_case:
                         reasons = {'configuration': 'InputsChanged', 'session': 'AuthorizationChanged',
                                    'stop': 'chat cancelled', 'disconnect': 'remote outcome unknown'}
@@ -572,7 +672,7 @@ def main():
                         attempt_before_restart, budget_before_restart = attempt, budget
                         if args.worker:
                             assert accepted['choice']['kind'] == 'select', 'Actual controller abstained; do not fabricate a selection'
-                            if args.worker_interrupt or args.fault_case:
+                            if args.worker_interrupt or args.fault_case or args.worker_terminal_rejection:
                                 assert accepted['choice']['binding_id'] == binding['id'], 'Worker faults require the actual selected binding to be the relayed binding'
                             worker_request = {
                                 'scope': request_payload['scope'], 'task_id': request_payload['task_id'],
@@ -603,6 +703,22 @@ def main():
                     process.terminate()
                     process.wait(timeout=30)
                 save(phase + '-owned-process-stopped.json', {'pid': process.pid, 'exitCode': process.returncode})
+    if args.worker_terminal_rejection:
+        relay.close()
+        assert relay.error is None and relay.calls == 3
+        save('result.json', {'sourceCommit': build['provenance']['source_commit'],
+             'binarySha256': build['executable_sha256'],
+             'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'relaySha256': hashlib.sha256(Path(__file__).with_name('installed_controller_fault_relay.py').read_bytes()).hexdigest(),
+             'actualProviderCalls': relay.calls, 'acceptedProposal': accepted,
+             'selectorAttempt': attempt_before_restart, 'workerAttempt': worker_before_restart,
+             'budget': budget_before_restart, 'capacityProbe': capacity_probe,
+             'restartReadbackEqual': True, 'sameAttemptReplayRejected': True,
+             'capacityAvailableAfterReopen': True, 'originalBudgetUnchangedAfterOtherTask': True,
+             'ownedServersStopped': True, 'modelQualityQualified': False, 'trainingDataCreated': False,
+             'scope': 'actual terminal worker rejection and separate real-task capacity proof; no original-task resume or historical lease clearance'})
+        print(json.dumps({'output': str(out), 'status': 'installed terminal rejection and capacity proof passed'}))
+        return
     if args.worker_interrupt or args.worker and args.fault_case:
         relay.close()
         assert relay.error is None and relay.calls == 2
