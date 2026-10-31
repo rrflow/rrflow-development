@@ -1,0 +1,75 @@
+{
+  "sourceCommit": "d365d02891350590aa4495b46fc665ef313aec24",
+  "binarySha256": "7fe07a7198b864a2642c5a9a521e8e13ac7a7d935fd62e8477f2c075fd7680b9",
+  "runnerSha256": "75ad84d69c2ce1fec8ec1021eedef398144ba5508a2e70d841c7998b40cf9d80",
+  "relaySha256": "92e4d85c0080e4d9012ddf5d9a8b0790d2e41f264c874b8daca8202fb84ada4e",
+  "faultCase": "configuration",
+  "actualProviderCalls": 2,
+  "attempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-c0287d15ad564daebba4b3be03255250",
+      "ordinal": 1,
+      "status": "invalidated",
+      "outcome_sha256": null,
+      "result": null,
+      "invalidation": "inputs_changed"
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-4ca7d9e3bc4e99ce78d83179",
+      "scope": "instance:instance-4ca7d9e3bc4e99ce78d83179",
+      "task_id": "task-f94b7089114d3aac9ef712eb579b75e7c61e8b5d25226a7b9221e05007bc5188",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1793316121638,
+      "deadline_unix_ms": 1793317021638,
+      "last_observed_at_unix_ms": 1793316125452,
+      "charged_elapsed_ms": 3781,
+      "reserved_steps": 2,
+      "active_attempt": null,
+      "execution_may_continue": false,
+      "stopped": null,
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "17b1334712c82a179cc7014aee6704d3a139de304e3c3a4c33a0d463d4faa825"
+  },
+  "freshProposal": {
+    "contract_version": 1,
+    "purpose": "experimental_proposal",
+    "scope": "instance:instance-4ca7d9e3bc4e99ce78d83179",
+    "task_id": "task-f94b7089114d3aac9ef712eb579b75e7c61e8b5d25226a7b9221e05007bc5188",
+    "attempt_id": "actual-successor-66b41da5834743bbbd97af77a88b8983",
+    "task_sha256": "780e08765e469732488f48808e57b9551b21e30fd975dde9a264730a303ca8c0",
+    "packet_sha256": "250c7cb509b5584f1dfae1429d544ac369a46086b180982c118c7fd4054009fc",
+    "configuration_sha256": "28425c52d2247111d3b1af248aee89bf9f5ad73b1cae3cab82bebe659391b7ea",
+    "allowance_sha256": "ddcaeb777488b6578344e3a20d0aae87d475b697f909ba0d26d00bc8a24231a6",
+    "controller_binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "request_sha256": "3d21c0cee140cd3905c3d865bcbd04b95846271886902bf7dea6fe94be993a44",
+    "response_sha256": "a126440c6cdeba88f4ef774e6d7c1459d9e7b1804dda2f5d433e4ef700807837",
+    "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+    "choice": {
+      "kind": "select",
+      "binding_id": "swag-custom-bf16",
+      "effort": null
+    },
+    "usage": {
+      "prompt_tokens": 1806,
+      "completion_tokens": 20,
+      "total_tokens": 1826
+    },
+    "elapsed_ms": 1746,
+    "http_status": 200
+  },
+  "restartReadbackEqual": true,
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false,
+  "scope": "actual provider response held/dropped before engine publication; no provider termination claim"
+}

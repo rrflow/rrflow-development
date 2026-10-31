@@ -30,6 +30,11 @@ pub enum ServiceError {
     ReasoningAttemptRecorded {
         outcome_sha256: Option<String>,
     },
+    TaskAttemptInvalidated(rrd_contract::TaskAttemptInvalidation),
+    EndpointCallFailed {
+        reason: &'static str,
+        execution_may_continue: bool,
+    },
     InferenceCancelled {
         execution_may_continue: bool,
     },
@@ -65,6 +70,8 @@ pub enum ServiceError {
     PermissionDenied,
     DeadlineExceeded,
     ProjectBindingMismatch,
+    /// The currently observed project precondition differs from the accepted plan.
+    AttunementSourceChanged,
     /// Another process holds the installed estate's single writer lock.
     EstateInUse(String),
     ClockUnavailable(ClockObservationFailure),
@@ -128,7 +135,10 @@ impl ServiceError {
             | Self::InferenceCancelled { .. }
             | Self::ReasoningBudgetStopped(_)
             | Self::ReasoningAttemptRecorded { .. }
+            | Self::TaskAttemptInvalidated(_)
+            | Self::EndpointCallFailed { .. }
             | Self::ProjectBindingMismatch
+            | Self::AttunementSourceChanged
             | Self::EstateInUse(_) => ServiceErrorKind::FailedPrecondition,
             Self::TransactionQuota
             | Self::StorageAdmission(_)

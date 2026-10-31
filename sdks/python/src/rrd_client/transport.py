@@ -67,6 +67,7 @@ def decode_response(
             outcome_error.code,
             outcome_error.message,
             outcome_error.retryable,
+            outcome_error.details,
         )
     if not isinstance(envelope.outcome.payload, dict):
         raise RrdClientError("RRD success payload must be an object")

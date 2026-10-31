@@ -1,12 +1,20 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252
+// OpenAPI SHA-256: 43205ef142fdbe8a7a5f2ca970c05bdbf789a6aeddaba4742a94be9e37067ca2
 namespace Rrflow.Rrd;
 
 public enum OperationId
 {
     AttunementCancel,
+    AttunementPause,
     AttunementRead,
     AttunementReceiptRead,
+    AttunementRecoverExpired,
+    AttunementReplanAccept,
+    AttunementReplanPreview,
+    AttunementReplanReceiptRead,
+    AttunementResume,
+    AttunementStart,
+    AttunementStep,
     AuditExport,
     AuditRead,
     BackupCreate,
@@ -50,6 +58,7 @@ public enum OperationId
     TaskBudgetStop,
     TaskClose,
     TaskEmbeddingExecute,
+    TaskEndpointPropose,
     TaskList,
     TaskOpen,
     TaskRead,
@@ -84,14 +93,22 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252";
-    public const int Count = 62;
+    public const string OpenApiDocumentSha256 = "43205ef142fdbe8a7a5f2ca970c05bdbf789a6aeddaba4742a94be9e37067ca2";
+    public const int Count = 71;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
         OperationId.AttunementCancel => new("attunement-cancel", "POST", "/v1/attunement/cancel", Authentication.SessionBearer, true),
+        OperationId.AttunementPause => new("attunement-pause", "POST", "/v1/attunement/pause", Authentication.SessionBearer, true),
         OperationId.AttunementRead => new("attunement-read", "POST", "/v1/attunement/read", Authentication.SessionBearer, false),
         OperationId.AttunementReceiptRead => new("attunement-receipt-read", "POST", "/v1/attunement/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementRecoverExpired => new("attunement-recover-expired", "POST", "/v1/attunement/recover-expired", Authentication.SessionBearer, true),
+        OperationId.AttunementReplanAccept => new("attunement-replan-accept", "POST", "/v1/attunement/replan/accept", Authentication.SessionBearer, true),
+        OperationId.AttunementReplanPreview => new("attunement-replan-preview", "POST", "/v1/attunement/replan/preview", Authentication.SessionBearer, false),
+        OperationId.AttunementReplanReceiptRead => new("attunement-replan-receipt-read", "POST", "/v1/attunement/replan/receipt/read", Authentication.SessionBearer, false),
+        OperationId.AttunementResume => new("attunement-resume", "POST", "/v1/attunement/resume", Authentication.SessionBearer, true),
+        OperationId.AttunementStart => new("attunement-start", "POST", "/v1/attunement/start", Authentication.SessionBearer, true),
+        OperationId.AttunementStep => new("attunement-step", "POST", "/v1/attunement/step", Authentication.SessionBearer, true),
         OperationId.AuditExport => new("audit-export", "POST", "/v1/audit/export", Authentication.SessionBearer, false),
         OperationId.AuditRead => new("audit-read", "POST", "/v1/audit/read", Authentication.SessionBearer, false),
         OperationId.BackupCreate => new("backup-create", "POST", "/v1/backups", Authentication.SessionBearer, true),
@@ -135,6 +152,7 @@ public static class EndpointCatalog
         OperationId.TaskBudgetStop => new("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SessionBearer, true),
         OperationId.TaskClose => new("task-close", "POST", "/v1/tasks/close", Authentication.SessionBearer, true),
         OperationId.TaskEmbeddingExecute => new("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SessionBearer, true),
+        OperationId.TaskEndpointPropose => new("task-endpoint-propose", "POST", "/v1/tasks/endpoint/propose", Authentication.SessionBearer, true),
         OperationId.TaskList => new("task-list", "POST", "/v1/tasks/list", Authentication.SessionBearer, false),
         OperationId.TaskOpen => new("task-open", "POST", "/v1/tasks", Authentication.SessionBearer, true),
         OperationId.TaskRead => new("task-read", "POST", "/v1/tasks/read", Authentication.SessionBearer, false),

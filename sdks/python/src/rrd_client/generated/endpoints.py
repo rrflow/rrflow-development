@@ -1,15 +1,23 @@
 # Generated from rrd-contract; do not edit.
-# OpenAPI SHA-256: 897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252
+# OpenAPI SHA-256: 43205ef142fdbe8a7a5f2ca970c05bdbf789a6aeddaba4742a94be9e37067ca2
 from typing import Final, Literal, TypedDict
 
 ENDPOINT_OPENAPI_DOCUMENT_SHA256: Final[str] = (
-    "897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252"
+    "43205ef142fdbe8a7a5f2ca970c05bdbf789a6aeddaba4742a94be9e37067ca2"
 )
 
 OperationId = Literal[
     "attunement-cancel",
+    "attunement-pause",
     "attunement-read",
     "attunement-receipt-read",
+    "attunement-recover-expired",
+    "attunement-replan-accept",
+    "attunement-replan-preview",
+    "attunement-replan-receipt-read",
+    "attunement-resume",
+    "attunement-start",
+    "attunement-step",
     "audit-export",
     "audit-read",
     "backup-create",
@@ -53,6 +61,7 @@ OperationId = Literal[
     "task-budget-stop",
     "task-close",
     "task-embedding-execute",
+    "task-endpoint-propose",
     "task-list",
     "task-open",
     "task-read",
@@ -86,6 +95,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "mutation": True,
         "path": "/v1/attunement/cancel",
     },
+    "attunement-pause": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/pause",
+    },
     "attunement-read": {
         "authentication": "session_bearer",
         "method": "POST",
@@ -97,6 +112,48 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": False,
         "path": "/v1/attunement/receipt/read",
+    },
+    "attunement-recover-expired": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/recover-expired",
+    },
+    "attunement-replan-accept": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/replan/accept",
+    },
+    "attunement-replan-preview": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/replan/preview",
+    },
+    "attunement-replan-receipt-read": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": False,
+        "path": "/v1/attunement/replan/receipt/read",
+    },
+    "attunement-resume": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/resume",
+    },
+    "attunement-start": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/start",
+    },
+    "attunement-step": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/attunement/step",
     },
     "audit-export": {
         "authentication": "session_bearer",
@@ -355,6 +412,12 @@ ENDPOINTS: Final[dict[OperationId, Endpoint]] = {
         "method": "POST",
         "mutation": True,
         "path": "/v1/tasks/embedding/execute",
+    },
+    "task-endpoint-propose": {
+        "authentication": "session_bearer",
+        "method": "POST",
+        "mutation": True,
+        "path": "/v1/tasks/endpoint/propose",
     },
     "task-list": {
         "authentication": "session_bearer",

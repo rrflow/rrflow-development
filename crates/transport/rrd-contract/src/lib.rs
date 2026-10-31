@@ -14,8 +14,10 @@ pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCurso
 mod endpoint_binding;
 mod endpoint_configuration;
 mod endpoint_policy;
+mod endpoint_proposal;
 mod endpoint_selection;
 pub use endpoint_policy::EndpointSelectionPolicy;
+pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
@@ -47,19 +49,24 @@ mod task;
 mod websocket;
 
 pub use attunement::{
-    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_verification_sha256,
-    installation_plan_sha256, installation_result_sha256, AttunementCancelResult,
-    AttunementFailure, AttunementJob, AttunementJobState, AttunementLease, AttunementPhase,
-    AttunementPhaseCheckpoint, AttunementPhasePlan, AttunementPlan, AttunementReadResult,
-    AttunementReceipt, AttunementReceiptReadResult, AttunementRuntimeCoordinates,
+    attunement_checkpoint_sha256, attunement_plan_sha256, attunement_replan_accept_sha256,
+    attunement_replan_preview_sha256, attunement_replan_seed, attunement_verification_sha256,
+    installation_plan_sha256, installation_result_sha256, AcceptAttunementReplan,
+    AttunementCancelResult, AttunementControlResponse, AttunementFailure, AttunementJob,
+    AttunementJobState, AttunementLease, AttunementPhase, AttunementPhaseCheckpoint,
+    AttunementPhasePlan, AttunementPlan, AttunementReadResult, AttunementReceipt,
+    AttunementReceiptReadResult, AttunementReplanPreview, AttunementReplanReceiptReadResult,
+    AttunementReplanReceiptView, AttunementReplanResult, AttunementRuntimeCoordinates,
     AttunementSourceVerification, AttunementStatus, AttunementVerification,
     AttunementVerificationCheck, AttunementVerificationStatus, CancelAttunement,
     InstallationActionDisposition, InstallationActionKind, InstallationActionResult,
     InstallationBootstrap, InstallationBootstrapPolicy, InstallationManagedPath,
     InstallationManagedPathKind, InstallationPlan, InstallationPlanAction, InstallationRecordKind,
     InstallationRemovalRule, InstallationResult, InstallationSpecialization,
-    InstallationStorageGeneration, InstallationTargetKind, ReadAttunement, ReadAttunementReceipt,
-    ResumeAttunement, ATTUNEMENT_PHASES, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
+    InstallationStorageGeneration, InstallationTargetKind, PauseAttunement,
+    PreviewAttunementReplan, ReadAttunement, ReadAttunementReceipt, RecoverExpiredAttunement,
+    ResumeAttunement, ResumeAttunementWithLease, StartAttunement, StepAttunement,
+    ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_BOOTSTRAP_VERSION, INSTALLATION_LEASE_PATH,
     INSTALLATION_LEASE_PRECONDITION, INSTALLATION_PLAN_CONTRACT_VERSION,
     INSTALL_ATTUNEMENT_CONTRACT_VERSION, MAX_ATTUNEMENT_CANCEL_REASON_BYTES,
     MAX_ATTUNEMENT_FAILURE_BYTES, MAX_ATTUNEMENT_PHASES, MAX_ATTUNEMENT_VERIFICATION_CHECKS,
@@ -253,7 +260,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "897fb573b894751ea075ec5acf9c2e1ad5a0a634ad1c23b525d2376be21f8252";
+    "43205ef142fdbe8a7a5f2ca970c05bdbf789a6aeddaba4742a94be9e37067ca2";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3048,6 +3055,7 @@ pub enum SecurityAction {
     MemoryContextRead,
     ReasoningRead,
     ReasoningWrite,
+    EndpointPropose,
     KnowledgeTreeRead,
     KnowledgeTreeWrite,
 }
@@ -3055,7 +3063,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 53] = [
+    pub const ALL: [Self; 54] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3107,6 +3115,7 @@ impl SecurityAction {
         Self::MemoryContextRead,
         Self::ReasoningRead,
         Self::ReasoningWrite,
+        Self::EndpointPropose,
         Self::KnowledgeTreeRead,
         Self::KnowledgeTreeWrite,
     ];
@@ -3664,6 +3673,86 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "DiagnosticSnapshot",
         ),
         endpoint(
+            "attunement-pause",
+            HttpMethod::Post,
+            "/v1/attunement/pause",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "PauseAttunement",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-recover-expired",
+            HttpMethod::Post,
+            "/v1/attunement/recover-expired",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "RecoverExpiredAttunement",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-resume",
+            HttpMethod::Post,
+            "/v1/attunement/resume",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "ResumeAttunementWithLease",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-start",
+            HttpMethod::Post,
+            "/v1/attunement/start",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "StartAttunement",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-step",
+            HttpMethod::Post,
+            "/v1/attunement/step",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "StepAttunement",
+            "AttunementControlResponse",
+        ),
+        endpoint(
+            "attunement-replan-preview",
+            HttpMethod::Post,
+            "/v1/attunement/replan/preview",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateAdmin,
+            "PreviewAttunementReplan",
+            "AttunementReplanPreview",
+        ),
+        endpoint(
+            "attunement-replan-accept",
+            HttpMethod::Post,
+            "/v1/attunement/replan/accept",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EstateAdmin,
+            "AcceptAttunementReplan",
+            "AttunementReplanResult",
+        ),
+        endpoint(
+            "attunement-replan-receipt-read",
+            HttpMethod::Post,
+            "/v1/attunement/replan/receipt/read",
+            EndpointAuthentication::SessionBearer,
+            false,
+            SecurityAction::EstateRead,
+            "ReadAttunementReceipt",
+            "AttunementReplanReceiptReadResult",
+        ),
+        endpoint(
             "attunement-cancel",
             HttpMethod::Post,
             "/v1/attunement/cancel",
@@ -4002,6 +4091,16 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             SecurityAction::ReasoningRead,
             "ReadTaskAttempt",
             "TaskAttemptView",
+        ),
+        endpoint(
+            "task-endpoint-propose",
+            HttpMethod::Post,
+            "/v1/tasks/endpoint/propose",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "EndpointSelectionRequest",
+            "EndpointSelectionProposal",
         ),
         endpoint(
             "task-close",
@@ -4499,6 +4598,7 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ActivateBuiltinEmbedding" => schema_json::<RequestEnvelope<ActivateBuiltinEmbedding>>(),
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
+        "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
@@ -4544,6 +4644,13 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ListTasks" => schema_json::<RequestEnvelope<ListTasks>>(),
         "ReadTask" => schema_json::<RequestEnvelope<ReadTask>>(),
         "ReadAttunement" => schema_json::<RequestEnvelope<ReadAttunement>>(),
+        "StartAttunement" => schema_json::<RequestEnvelope<StartAttunement>>(),
+        "StepAttunement" => schema_json::<RequestEnvelope<StepAttunement>>(),
+        "PauseAttunement" => schema_json::<RequestEnvelope<PauseAttunement>>(),
+        "RecoverExpiredAttunement" => schema_json::<RequestEnvelope<RecoverExpiredAttunement>>(),
+        "ResumeAttunementWithLease" => schema_json::<RequestEnvelope<ResumeAttunementWithLease>>(),
+        "PreviewAttunementReplan" => schema_json::<RequestEnvelope<PreviewAttunementReplan>>(),
+        "AcceptAttunementReplan" => schema_json::<RequestEnvelope<AcceptAttunementReplan>>(),
         "ReadAttunementReceipt" => schema_json::<RequestEnvelope<ReadAttunementReceipt>>(),
         "CancelAttunement" => schema_json::<RequestEnvelope<CancelAttunement>>(),
         "ReadEstate" => schema_json::<RequestEnvelope<ReadEstate>>(),
@@ -4575,6 +4682,7 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),
@@ -4597,6 +4705,12 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "TaskPage" => schema_json::<ResponseEnvelope<TaskPage>>(),
         "TaskReadResult" => schema_json::<ResponseEnvelope<TaskReadResult>>(),
         "AttunementReadResult" => schema_json::<ResponseEnvelope<AttunementReadResult>>(),
+        "AttunementControlResponse" => schema_json::<ResponseEnvelope<AttunementControlResponse>>(),
+        "AttunementReplanPreview" => schema_json::<ResponseEnvelope<AttunementReplanPreview>>(),
+        "AttunementReplanResult" => schema_json::<ResponseEnvelope<AttunementReplanResult>>(),
+        "AttunementReplanReceiptReadResult" => {
+            schema_json::<ResponseEnvelope<AttunementReplanReceiptReadResult>>()
+        }
         "AttunementReceiptReadResult" => {
             schema_json::<ResponseEnvelope<AttunementReceiptReadResult>>()
         }
