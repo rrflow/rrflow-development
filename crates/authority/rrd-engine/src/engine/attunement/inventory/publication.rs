@@ -10,6 +10,7 @@ struct Progress {
     plan_sha256: String,
     phase_index: u64,
     proposal_sha256: String,
+    publication_sha256: String,
     prior_head_sha256: Option<String>,
     completed_groups: usize,
     read: ReadStamp,
@@ -98,6 +99,10 @@ impl Publication<'_> {
         permit: &mut TransactionPermit<'_>,
     ) -> std::result::Result<AttunementControlResult, PublicationError> {
         self.authorize()?;
+        // Reuse validation can take time even when the remaining commit fits
+        // one batch. Every completion rechecks source at this shared boundary.
+        (self.recheck_source)()?;
+        (self.check)()?;
         let (_, _, accepted) = self.engine.storage.runtime().commit_with_control_builder(
             commit,
             |read, outcome| {
@@ -224,6 +229,7 @@ impl Publication<'_> {
         &self,
         mut full: RuntimeCommit,
         mut permit: TransactionPermit<'_>,
+        publication_sha256: &str,
     ) -> Result<AttunementControlResult> {
         let key = format!(
             "server/state/{}/inventory/progress/{}/{}",
@@ -239,12 +245,13 @@ impl Publication<'_> {
         let mut offset = 0;
         if let Some(bytes) = &progress_bytes {
             let progress: Progress = decode(bytes)?;
-            if progress.format_version != 1
+            if progress.format_version != 2
                 || progress.job_id != self.work.before.id
                 || progress.plan_sha256 != self.work.plan.plan_sha256
                 || progress.phase_index != self.work.before.checkpoints.len() as u64
                 || progress.read.scope != full.scope
                 || !records::is_digest(&progress.proposal_sha256)
+                || !records::is_digest(&progress.publication_sha256)
                 || progress
                     .prior_head_sha256
                     .as_ref()
@@ -261,6 +268,7 @@ impl Publication<'_> {
                 .validate_read_stamp(&progress.read)?;
             let current = self.engine.storage.runtime().read_stamp(&full.scope)?;
             if progress.proposal_sha256 == self.proposal.proposal_sha256()
+                && progress.publication_sha256 == publication_sha256
                 && progress.prior_head_sha256 == prior_head_sha256
                 && progress.read == current
             {
@@ -305,11 +313,12 @@ impl Publication<'_> {
                         return Err(contract("Inventory group cursor mismatch").into());
                     }
                     let progress = Progress {
-                        format_version: 1,
+                        format_version: 2,
                         job_id: self.work.before.id.clone(),
                         plan_sha256: self.work.plan.plan_sha256.clone(),
                         phase_index: self.work.before.checkpoints.len() as u64,
                         proposal_sha256: self.proposal.proposal_sha256().into(),
+                        publication_sha256: publication_sha256.into(),
                         prior_head_sha256: prior_head_sha256.clone(),
                         completed_groups: end,
                         read: read.clone(),
@@ -355,15 +364,17 @@ impl Publication<'_> {
                 Err(error) => return Err(error.into()),
             }
         }
-        // Groups alone never certify complete project input. Revalidate after
-        // bounded publication, and preserve the previous complete head on drift.
-        (self.check)()?;
-        (self.recheck_source)()?;
+        // Groups alone never certify complete input. The shared finish boundary
+        // revalidates source before publishing the new complete head.
         (self.check)()?;
         let read = self.engine.storage.runtime().read_stamp(&full.scope)?;
         full.expected_cursor = read.commit_cursor;
         full.at = self.at()?;
-        full.mutations = parts.complete;
+        full.mutations = if parts.groups.is_empty() {
+            parts.schema.into_iter().chain(parts.complete).collect()
+        } else {
+            parts.complete
+        };
         self.finish(
             &full,
             progress_bytes.as_deref().map(|bytes| (key.as_str(), bytes)),

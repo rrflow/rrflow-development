@@ -131,6 +131,40 @@ candidate and protected qualification. No POA&M status changes.
 
 ### Whole-repository Inventory publication and binary replacement
 
+PR226's [incremental publication record](../../evidence/change-journals/gate-d/d-03-incremental-publication.md)
+retains an installed unchanged-input failure: every entry/edge was republished.
+Current authenticated fact comparison now permits bounded write reuse, and
+private progress binds its exact publication work set before reusing an offset.
+Focused and interruption/reopen checks pass; full candidate and real-repository
+qualification remain pending. This does not establish zero-content-read
+freshness, reduced RSS, safe upgrades or completed D-03 acceptance.
+
+The [installed incremental trial](../../evidence/change-journals/gate-d/d-03-incremental-installed-trial.md)
+records an initial fresh-estate `ProjectBindingMismatch` before server readiness.
+Offline inspection and a separate restart subsequently passed without modifying
+the binding; the cause remains unresolved and must be diagnosed before native
+qualification. Continuing that preserved estate proved 4,279 initial mutations,
+three on unchanged input, six after an ordinary README edit and successor plan,
+then three on another unchanged run, with exact reopen and offline verification.
+This does not erase the initial failure or establish a repeatable turnkey start.
+
+PR227's [startup binding separation](../../evidence/change-journals/gate-d/d-03-startup-binding-inspection.md)
+characterizes an independent lockout: invalid project Git input prevents opening
+otherwise valid installed engine state because startup unnecessarily computes
+the full source-inspection report. The focused correction preserves all estate
+binding checks and keeps source admission on dependent operations; startup and
+job readback pass, invalid-input Start denies, repaired input starts, and bootstrap
+tampering still denies startup. All 342 engine tests and strict lint pass locally.
+The [combined installed trial](../../evidence/change-journals/gate-d/d-03-startup-installed-trial.md)
+at `39a7b644` now passes unavailable-input startup/readback, unchanged job after
+denied Start, repaired-input admission, and the actual repository's 4,279/3/6/3
+Inventory/restart/edit/successor history. Seven installed CLI lifecycle cases pass.
+Quick verification passes its 13 checks but explicitly reports current content
+different from the original installation precondition; the scheduled Verify phase
+did not run. Candidate/protected, platform and upgrade qualification remain open.
+The denial is currently surfaced as HTTP 500/internal, and the original
+intermittent rejection's exact cause remains unproven.
+
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
 Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
 Connect checkpoint and cursor; no Inventory completion was published. The

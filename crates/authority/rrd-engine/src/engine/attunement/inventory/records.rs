@@ -28,6 +28,7 @@ pub(super) fn load_prior(
     plan: &AttunementPlan,
     max_bytes: u64,
     max_entries: u64,
+    remaining_keys: &mut u64,
 ) -> Result<(Option<Vec<u8>>, Option<Proposal>)> {
     let Some(bytes) = engine.storage.control().get(&head_key(&engine.instance))? else {
         return Ok((None, None));
@@ -41,13 +42,12 @@ pub(super) fn load_prior(
     {
         return Err(invalid());
     }
-    let mut keys = engine.estate_configuration.query.max_storage_keys;
     let reference = RuntimeRef::new(SNAPSHOT, &head.proposal_sha256).map_err(contract)?;
     let mut records = read_records(
         engine,
         &head.read,
         std::slice::from_ref(&reference),
-        &mut keys,
+        remaining_keys,
     )?;
     let snapshot = records.remove(&reference).ok_or_else(invalid)?;
     let mut header = properties_json(&snapshot.properties)?;
@@ -79,7 +79,7 @@ pub(super) fn load_prior(
     }
     let changes_ref = RuntimeRef::new(CHANGES, &head.proposal_sha256).map_err(contract)?;
     references.push(changes_ref.clone());
-    let rows = read_records(engine, &head.read, &references, &mut keys)?;
+    let rows = read_records(engine, &head.read, &references, remaining_keys)?;
     let entries = references[..members.len()]
         .iter()
         .map(|reference| {
@@ -288,7 +288,7 @@ pub(super) fn partition(mutations: Vec<RuntimeMutation>) -> Result<PublicationPa
             _ => return Err(invalid()),
         }
     }
-    if parts.groups.is_empty() || parts.complete.is_empty() {
+    if parts.complete.is_empty() {
         return Err(invalid());
     }
     Ok(parts)
