@@ -34,22 +34,6 @@ pub const MAX_ATTUNEMENT_FAILURE_BYTES: usize = 4_096;
 pub const MAX_ATTUNEMENT_CANCEL_REASON_BYTES: usize = 4_096;
 pub const MAX_ATTUNEMENT_VERIFICATION_CHECKS: usize = 256;
 
-/// The bundled default profile's phase order. Individual plans own their own
-/// ordered steps; this list does not determine a running job's progression.
-pub const ATTUNEMENT_PHASES: [AttunementPhase; 11] = [
-    AttunementPhase::Connect,
-    AttunementPhase::Inventory,
-    AttunementPhase::Parse,
-    AttunementPhase::Normalize,
-    AttunementPhase::EntityLink,
-    AttunementPhase::LexicalIndex,
-    AttunementPhase::Embed,
-    AttunementPhase::VectorIndex,
-    AttunementPhase::Graph,
-    AttunementPhase::Ground,
-    AttunementPhase::Verify,
-];
-
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
@@ -66,24 +50,6 @@ pub enum AttunementPhase {
     Graph,
     Ground,
     Verify,
-}
-
-impl AttunementPhase {
-    pub const fn sequence(self) -> u16 {
-        match self {
-            Self::Connect => 1,
-            Self::Inventory => 2,
-            Self::Parse => 3,
-            Self::Normalize => 4,
-            Self::EntityLink => 5,
-            Self::LexicalIndex => 6,
-            Self::Embed => 7,
-            Self::VectorIndex => 8,
-            Self::Graph => 9,
-            Self::Ground => 10,
-            Self::Verify => 11,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
