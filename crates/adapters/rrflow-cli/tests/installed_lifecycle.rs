@@ -962,6 +962,31 @@ fn assert_restarted_status(
 }
 
 #[test]
+fn repository_discovery_is_read_only_without_an_installed_engine() {
+    let project = tempfile::tempdir().unwrap();
+    std::fs::write(project.path().join("source.txt"), b"project-owned").unwrap();
+    let before = inventory(project.path());
+    let output = invoke(&[
+        "--json",
+        "install",
+        "discover",
+        "--project",
+        project.path().to_str().unwrap(),
+    ]);
+    assert_success(&output, "repository discovery");
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["git_index_verified"], false);
+    assert_eq!(report["selection_available"], false);
+    assert_eq!(
+        report["coverage"],
+        "present_tracked_gitlink_directories_only"
+    );
+    assert_eq!(report["candidates"], serde_json::json!([]));
+    assert_eq!(inventory(project.path()), before);
+    assert!(!project.path().join(".rrflow").exists());
+}
+
+#[test]
 fn primary_help_exposes_only_the_installed_product_lifecycle() {
     let output = invoke(&["--help"]);
     assert_success(&output, "primary help");

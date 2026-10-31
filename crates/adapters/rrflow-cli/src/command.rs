@@ -146,6 +146,13 @@ pub enum InstallAction {
     Identity,
     /// Emit the machine-readable attunement proposal shape without writes.
     AttunementSchema,
+    /// Report present tracked Git submodule candidates without changing the project.
+    Discover {
+        #[arg(long, default_value = ".")]
+        project: std::path::PathBuf,
+        #[arg(long, default_value = "default")]
+        profile: String,
+    },
     /// Emit an exact, deterministic preview and perform no project writes.
     Plan {
         #[arg(long, default_value = ".")]

@@ -167,8 +167,8 @@ pub use installation::{
     attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
     AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
     InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
-    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
-    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
+    InstallationVerificationStatus, InstalledEstateRecord, NestedRepositoryDiscovery,
+    ProjectLocator, ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,
