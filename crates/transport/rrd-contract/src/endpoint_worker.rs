@@ -92,6 +92,32 @@ pub struct TaskWorkerOutput {
 }
 
 impl TaskWorkerOutput {
+    /// Validate only identities known from the submitted request. This does not
+    /// attest provider capability, loaded weights, draft quality or project effects.
+    pub fn validate_request_identity(&self, request: &TaskWorkerRequest) -> Result<()> {
+        request.validate()?;
+        self.validate()?;
+        if self.scope != request.scope
+            || self.task_id != request.task_id
+            || self.attempt_id != request.attempt_id
+            || self.selection_attempt_id != request.selection_attempt_id
+            || self.selection_sha256 != request.expected_selection_sha256
+            || self.task_sha256 != request.expected_task_sha256
+            || self.configuration_sha256 != request.expected_configuration_sha256
+        {
+            return invalid("worker response identity differs from request");
+        }
+        match (&request.context, &self.context) {
+            (None, None) => Ok(()),
+            (Some(expected), Some(observed))
+                if crate::context_request_sha256(expected)? == observed.request_sha256 =>
+            {
+                Ok(())
+            }
+            _ => invalid("worker context identity differs from request"),
+        }
+    }
+
     pub fn validate(&self) -> Result<()> {
         crate::task::validate_scope(&self.scope)?;
         if self.contract_version != ENDPOINT_WORKER_VERSION

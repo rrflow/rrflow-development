@@ -10,6 +10,13 @@ independently.
 
 ## Observed deficiency
 
+The [native worker composition](../../evidence/change-journals/gate-g/task-worker-native-client.md)
+integrates PR222's catalogue-derived client into the worker candidate. Both model
+operations share one-attempt carriage and contract-owned response validation;
+the installed example and proof runner support both modes. Exact-source native
+trial, composed candidate CI and protected dependency landing remain acceptance
+requirements; prior installed HTTP evidence does not imply UI completion.
+
 The [installed worker trial](../../evidence/change-journals/gate-g/task-worker-installed-live.md)
 now proves an actual configured selection and worker draft on the exact clean
 `c75c1896` binary, including missing credentials, restart/readback and replay

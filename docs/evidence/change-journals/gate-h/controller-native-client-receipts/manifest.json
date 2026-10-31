@@ -1,0 +1,102 @@
+{
+  "format_version": 1,
+  "purpose": "actual native SDK proposal and engine restart evidence; not model qualification",
+  "files": [
+    {
+      "file": "client-build-identity.json",
+      "bytes": 434,
+      "sha256": "0049ba696eb1335c1c120ac70798722517aee7e6bb13e3d052adfd3dbf38b451",
+      "sourceEvidence": "controller-native-client/client-build-identity.json"
+    },
+    {
+      "file": "endpoint-preflight.json",
+      "bytes": 332,
+      "sha256": "072fee802a4d4e35e37bacc7c12f3ff33867f886b4d2efe4dd32e46379f21d9a",
+      "sourceEvidence": "controller-native-client/endpoint-preflight.json"
+    },
+    {
+      "file": "native-client.stdout.json",
+      "bytes": 1650,
+      "sha256": "56a13a3590849a86a8653a3c6a428d6f83fde212f5a5e11f50788886836b9a12",
+      "sourceEvidence": "installed-controller-native-client/native-client.stdout.json"
+    },
+    {
+      "file": "native-client-exit.json",
+      "bytes": 23,
+      "sha256": "ea61d7736f0b7ecb9b35158f03de77013db6b100cf1d36c957e78e6c8817c5b6",
+      "sourceEvidence": "installed-controller-native-client/native-client-exit.json"
+    },
+    {
+      "file": "authorized-attempt.json",
+      "bytes": 2907,
+      "sha256": "7a337cfa328efd9bcf09cd7d88f55b73da76af414977dad590f56131d5bfa8ea",
+      "sourceEvidence": "installed-controller-native-client/authorized-attempt.json"
+    },
+    {
+      "file": "authorized-budget.json",
+      "bytes": 1979,
+      "sha256": "f705ec07b70c1cff79f45b2b703084b70c2db278c13465a4a2e025a2ca27ac9e",
+      "sourceEvidence": "installed-controller-native-client/authorized-budget.json"
+    },
+    {
+      "file": "reopened-attempt.json",
+      "bytes": 2907,
+      "sha256": "ca819c5a63014c6fbbe2bee58de73e35c314b428ebe5d5a70aea080576fcf6bd",
+      "sourceEvidence": "installed-controller-native-client/reopened-attempt.json"
+    },
+    {
+      "file": "reopened-budget.json",
+      "bytes": 1979,
+      "sha256": "61ea7213dc90f51898d39f780624fe0da440365a8cdb476cfe832cf7222481b9",
+      "sourceEvidence": "installed-controller-native-client/reopened-budget.json"
+    },
+    {
+      "file": "reopened-replay.json",
+      "bytes": 1550,
+      "sha256": "cf6c6d6c4debf57059308e07402181e15ef0a2e1bf4f5f45177f480ebaed2b81",
+      "sourceEvidence": "installed-controller-native-client/reopened-replay.json"
+    },
+    {
+      "file": "missing-credential-missing-credential.json",
+      "bytes": 1542,
+      "sha256": "dcc43a3a797b333123b02de022dcaa0cc43bf71c00676ca66390df4c5b7b8c0b",
+      "sourceEvidence": "installed-controller-native-client/missing-credential-missing-credential.json"
+    },
+    {
+      "file": "missing-credential-unauthenticated.json",
+      "bytes": 1490,
+      "sha256": "a2ef09d7dac93d129043dc0ff4d5ca66c06b110bc8d3315dc441e4f2cbc9dd3d",
+      "sourceEvidence": "installed-controller-native-client/missing-credential-unauthenticated.json"
+    },
+    {
+      "file": "proposal-request.json",
+      "bytes": 450,
+      "sha256": "279675dd2092574d71f294d37d8d1c5a3d5745a1c6bace13740160d146bf912e",
+      "sourceEvidence": "installed-controller-native-client/proposal-request.json"
+    },
+    {
+      "file": "task-context-projection.json",
+      "bytes": 298,
+      "sha256": "6009028e6829717d4a00e9fed0d12c6942d7b8fdd1ee833a8dc308adee9156b0",
+      "sourceEvidence": "installed-controller-native-client/task-context-projection.json"
+    },
+    {
+      "file": "result.json",
+      "bytes": 1914,
+      "sha256": "90951d6dbbfc0e747a1a495b5c3af4c3363cae976029b0b44ca083a88c4171b2",
+      "sourceEvidence": "installed-controller-native-client/result.json"
+    },
+    {
+      "file": "authorized-owned-process-stopped.json",
+      "bytes": 40,
+      "sha256": "f50fe74b5545fee3667f60f82e9f91eedebae8ca44137d4c29d9cc6302cdf048",
+      "sourceEvidence": "installed-controller-native-client/authorized-owned-process-stopped.json"
+    },
+    {
+      "file": "reopened-owned-process-stopped.json",
+      "bytes": 40,
+      "sha256": "6ee6655f9f70add3e789db6a3f48c8b158ab2315cbe19c13fb981d21077dd567",
+      "sourceEvidence": "installed-controller-native-client/reopened-owned-process-stopped.json"
+    }
+  ]
+}

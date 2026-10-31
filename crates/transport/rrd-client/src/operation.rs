@@ -1,7 +1,7 @@
 //! Typed public operations, envelope construction, and outcome correlation.
 
 use crate::error::{contract, decode};
-use crate::generated_operations as generated;
+use crate::operations as generated;
 use crate::{Error, Result, RrdClient, Session};
 use hyper::{Method, StatusCode};
 use rrd_contract::{

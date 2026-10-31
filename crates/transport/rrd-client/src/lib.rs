@@ -5,6 +5,7 @@
 //! endpoints use an explicit mutually authenticated TLS configuration.
 
 mod attunement;
+mod catalogue_call;
 mod client;
 mod endpoint;
 mod error;
@@ -16,7 +17,8 @@ mod transport;
 mod worker;
 
 #[allow(dead_code)] // The complete generated projection precedes full H-04 client migration.
-mod generated_operations {
+/// Catalogue-derived markers; metadata alone does not authorize a call.
+pub mod operations {
     pub(crate) trait GeneratedOperation {
         type Request: serde::Serialize;
         type Response: serde::de::DeserializeOwned;
@@ -44,6 +46,7 @@ mod generated_operations {
     }
 }
 
+pub use catalogue_call::{OperationMetadata, ValidatedOperation};
 pub use client::RrdClient;
 pub use error::{is_unauthenticated, Error, Result};
 pub use operation::RequestOptions;

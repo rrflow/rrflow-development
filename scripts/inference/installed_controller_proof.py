@@ -15,6 +15,7 @@ import time
 import tomllib
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from urllib.parse import urlparse
 from uuid import uuid4
 
 
@@ -30,10 +31,18 @@ def main():
     parser.add_argument('--fault-case', choices=['configuration', 'session', 'stop', 'disconnect'])
     parser.add_argument('--worker', action='store_true',
                         help='Execute one configured selected worker through engine authority; retain draft only.')
+    parser.add_argument('--native-client', help='Use the task_model_call Rust example for admitted model calls.')
+    parser.add_argument('--native-client-timeout-ms', type=int)
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
     if args.worker and (recovery or args.admission_only or args.fault_case):
         parser.error('Worker baseline excludes recovery, admission-only and selector fault modes.')
+    if args.native_client and (recovery or args.admission_only or args.fault_case):
+        parser.error('Native client mode is a new baseline proof, not recovery, admission-only or a fault case.')
+    if bool(args.native_client) != (args.native_client_timeout_ms is not None):
+        parser.error('Native client mode requires both the executable and explicit timeout.')
+    if args.native_client_timeout_ms is not None and args.native_client_timeout_ms <= 0:
+        parser.error('Native client timeout must be positive.')
     if args.fault_case and (recovery or args.admission_only):
         parser.error('A live fault case excludes recovery and admission-only modes.')
     relay = None
@@ -78,6 +87,15 @@ def main():
         assert binary.stat().st_nlink == 1
         save('build-receipt.json', receipt)
         assert cli('version')['build'] == build
+        if args.native_client:
+            source_client = Path(args.native_client).resolve()
+            client_digest = hashlib.sha256(source_client.read_bytes()).hexdigest()
+            (out / 'native-client').mkdir()
+            native_executable = out / 'native-client' / source_client.name
+            shutil.copyfile(source_client, native_executable)
+            assert native_executable.stat().st_nlink == 1
+            assert hashlib.sha256(native_executable.read_bytes()).hexdigest() == client_digest
+            save('native-client-identity.json', {'binarySha256': client_digest, 'sourcePath': str(source_client)})
         profile = json.loads(Path(args.profile).read_text(encoding='utf-8'))
         task_source = json.loads(Path(args.task_source).read_text(encoding='utf-8'))
         save('profile-input.json', profile)
@@ -204,6 +222,32 @@ def main():
                         assert error_contains in response['outcome']['error']['message'], 'Unexpected denial reason'
                     return response['outcome'].get('payload')
 
+                def native_call(name, operation, request_file, payload, result_field):
+                    parsed = urlparse(base)
+                    assert parsed.scheme == 'http' and parsed.hostname in ['127.0.0.1', '::1']
+                    assert parsed.port is not None
+                    command = [str(native_executable), operation, str(project), parsed.netloc,
+                               str(out / request_file), str(args.native_client_timeout_ms)]
+                    prefix = phase + '-' + name
+                    save(prefix + '-intent.json', {'operation': operation, 'payload': payload,
+                         'nativeClientSha256': client_digest, 'responseObserved': False})
+                    try:
+                        completed = subprocess.run(command, capture_output=True,
+                                                   timeout=args.native_client_timeout_ms / 1000 * 4)
+                    except subprocess.TimeoutExpired as error:
+                        (out / (prefix + '.stdout.json')).write_bytes(error.stdout or b'')
+                        (out / (prefix + '.stderr.log')).write_bytes(error.stderr or b'')
+                        save(prefix + '-exit.json', {'exitCode': None, 'timedOut': True})
+                        raise
+                    (out / (prefix + '.stdout.json')).write_bytes(completed.stdout)
+                    (out / (prefix + '.stderr.log')).write_bytes(completed.stderr)
+                    save(prefix + '-exit.json', {'exitCode': completed.returncode, 'timedOut': False})
+                    assert completed.returncode == 0, 'Native call failed; preserve output and recover without redispatch.'
+                    native = json.loads(completed.stdout)
+                    assert native['operation'] == operation and native['request'] == payload
+                    assert native['sessionCloseError'] is None and native['outcome']['status'] == 'ok'
+                    return native['outcome'][result_field]
+
                 if phase == 'recovered':
                     selection = {key: request_payload[key] for key in ['scope', 'task_id', 'attempt_id']}
                     # No proposal/replay operation and no provider credentials in this phase.
@@ -225,7 +269,10 @@ def main():
                         missing = call('worker-attempt', 'task-attempt-read', worker_selection)
                         assert missing['attempt'] is None
                     else:
-                        worker_output = call('worker', 'task-worker-execute', worker_request)
+                        worker_output = (native_call('native-worker', 'task-worker-execute',
+                                                     'worker-request.json', worker_request, 'worker')
+                                         if args.native_client else
+                                         call('worker', 'task-worker-execute', worker_request))
                         for field, expected in {
                             'scope': worker_request['scope'], 'task_id': worker_request['task_id'],
                             'attempt_id': worker_request['attempt_id'],
@@ -397,7 +444,11 @@ def main():
                                 assert fresh_attempt['attempt']['endpoint_proposal'] == accepted
                         continue
                     if phase == 'authorized':
-                        accepted = call('proposal', 'task-endpoint-propose', request_payload)
+                        if args.native_client:
+                            accepted = native_call('native-proposal', 'task-endpoint-propose',
+                                                   'proposal-request.json', request_payload, 'proposal')
+                        else:
+                            accepted = call('proposal', 'task-endpoint-propose', request_payload)
                     else:
                         call('replay', 'task-endpoint-propose', request_payload, 412)
                     attempt = call('attempt', 'task-attempt-read', selection)

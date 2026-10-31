@@ -88,6 +88,12 @@ inputs. Worker mode requires an explicit worker policy and excludes selector fau
 and admission-only modes. `--recover-proof` reads both retained attempts without
 provider credentials or dispatch. A successful trial is not a quality label or
 permission to mutate a project.
+The native proof mode uses the `task_model_call` Rust example for both the
+proposal and selected worker. Its typed worker wrapper shares the catalogue
+call's one-attempt transport and contract-owned identity checks. The example
+receives an explicit engine operation and installed project; it never talks
+directly to a model provider. Native-client source and engine artifact identity
+must both accompany any installed trial result.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
