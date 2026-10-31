@@ -1,0 +1,12 @@
+{
+  "sourcePath": "D:\\projects\\swag\\.swag\\evidence\\20261031\\worker-native-client\\profile-short-worker.json",
+  "sourceSha256": "7765a4b1c1e454fd70b276725589bf713b66b952e0f94310897bded76646d669",
+  "faultProfileSha256": "4646fe6e55734487cb70b2f625d953611c1bdfb04efd7164d1ba16bda222cd62",
+  "resumeProfileSha256": "7765a4b1c1e454fd70b276725589bf713b66b952e0f94310897bded76646d669",
+  "workerBinding": "swag-custom-bf16",
+  "field": "generation.maximum_output_tokens",
+  "before": 512,
+  "fault": 1,
+  "restored": 512,
+  "purpose": "explicit terminal-completion fault and same-task recovery; no response alteration or training label"
+}

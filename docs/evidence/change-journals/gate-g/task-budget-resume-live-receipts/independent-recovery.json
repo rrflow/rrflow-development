@@ -1,0 +1,314 @@
+{
+  "sourceCommit": "6a4cbb042a13f5a7c41b53d11d62b54a85df3bed",
+  "binarySha256": "d4cc99d8527b97ba145023e0b1cc4a7c26a0682f6edc8c2d5d8d9ff1ad4ffec0",
+  "proof": "D:\\projects\\swag\\.swag\\evidence\\20261031\\task-budget-resume-installed\\proof",
+  "runnerSha256": "23068420ea509de7bffac6ecfc289ded2ceac0ce34a307c686417fa2645d27fe",
+  "attempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-286ac681a5f3485bb08773387a97ba5f",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "bfe57c33556e8b3adde2e4e706a9235081aea63fe0f0564bcd7f1c092b5d1bd7",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+        "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+        "attempt_id": "actual-proposal-286ac681a5f3485bb08773387a97ba5f",
+        "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+        "packet_sha256": "c6ab8300f11cc2511ac86e43a46ca140023ad81ee5333335f0dc1b21a784df87",
+        "configuration_sha256": "b1ebb5790f7e532cd1eab7845449571cf07e27a11f1333916d6ec3bbb9d40716",
+        "allowance_sha256": "190335a97a4bcd0d1216c0ac10987b6c48db4b6cfab890775d0f19cad0211bf2",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "0c91811b2fdf372b4cf36ac04a0edd1f2010d7177e29072bc54f4b9adbb9518c",
+        "response_sha256": "1c75006a195015c9e7abc13068e4f2ffe031a23512259a286d22aa33f02d76b7",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": {
+          "prompt_tokens": 2026,
+          "completion_tokens": 20,
+          "total_tokens": 2046
+        },
+        "elapsed_ms": 1892,
+        "http_status": 200
+      }
+    }
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-630f788efada45b7bb139c0b3bf42885",
+      "ordinal": 2,
+      "status": "stopped",
+      "outcome_sha256": null,
+      "result": null
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-c4a41309a51cc10ddcf3134c",
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1793480958524,
+      "deadline_unix_ms": 1793481858524,
+      "last_observed_at_unix_ms": 1793480984032,
+      "charged_elapsed_ms": 21529,
+      "reserved_steps": 4,
+      "active_attempt": null,
+      "execution_may_continue": false,
+      "stopped": null,
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "b922c24727e7fe37e04f1f8cc2943fc2bc33b0bce3ec316681b2981ec79e44d2"
+  },
+  "providerCallRequested": false,
+  "resumeProbe": {
+    "resumeRequest": {
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "expected_budget_sha256": "b7859be45d22d58ad9b9b4d69a8d78aa49069808ea1e5c91dcea57154b259698"
+    },
+    "stoppedBudget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-c4a41309a51cc10ddcf3134c",
+        "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+        "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1793480958524,
+        "deadline_unix_ms": 1793481858524,
+        "last_observed_at_unix_ms": 1793480962884,
+        "charged_elapsed_ms": 2507,
+        "reserved_steps": 2,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": "attempt_failed",
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "b7859be45d22d58ad9b9b4d69a8d78aa49069808ea1e5c91dcea57154b259698"
+    },
+    "resumedBudget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-c4a41309a51cc10ddcf3134c",
+        "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+        "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1793480958524,
+        "deadline_unix_ms": 1793481858524,
+        "last_observed_at_unix_ms": 1793480964839,
+        "charged_elapsed_ms": 2507,
+        "reserved_steps": 2,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": null,
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "b21de0473b5d13efce5f4f168d85092cda71e0a872ae547b176bb10923906135"
+    },
+    "proposalRequest": {
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+      "max_storage_keys": 1000000,
+      "expected_task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+      "expected_configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a"
+    },
+    "proposal": {
+      "contract_version": 1,
+      "purpose": "experimental_proposal",
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+      "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+      "packet_sha256": "438767b27f5a364324a05febfb9095a3237f13059ab53c1069e13c1780380c21",
+      "configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+      "allowance_sha256": "9e7e826124154784d2df9c2798251532d587a8e1944637d6b21705614bedc19c",
+      "controller_binding_id": "swag-custom-bf16",
+      "service_id": "swag-qwen3-coder-intent-20261028",
+      "request_sha256": "261621a79fd42dccd3997e4eeedd30fbc11b69bcc1253f7550f86da158778094",
+      "response_sha256": "8336d23defe274ca7f071064db28d7df6fa9d013b61a37114b37b64a6bb13746",
+      "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+      "choice": {
+        "kind": "select",
+        "binding_id": "swag-custom-bf16",
+        "effort": null
+      },
+      "usage": {
+        "prompt_tokens": 2030,
+        "completion_tokens": 20,
+        "total_tokens": 2050
+      },
+      "elapsed_ms": 1743,
+      "http_status": 200
+    },
+    "selectorAttempt": {
+      "attempt": {
+        "attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+        "ordinal": 3,
+        "status": "accepted",
+        "outcome_sha256": "5984ca411d3019e874b5294655f35a45fc4e0964c7fa9c214eea98f0695b5243",
+        "result": null,
+        "endpoint_proposal": {
+          "contract_version": 1,
+          "purpose": "experimental_proposal",
+          "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+          "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+          "attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+          "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+          "packet_sha256": "438767b27f5a364324a05febfb9095a3237f13059ab53c1069e13c1780380c21",
+          "configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+          "allowance_sha256": "9e7e826124154784d2df9c2798251532d587a8e1944637d6b21705614bedc19c",
+          "controller_binding_id": "swag-custom-bf16",
+          "service_id": "swag-qwen3-coder-intent-20261028",
+          "request_sha256": "261621a79fd42dccd3997e4eeedd30fbc11b69bcc1253f7550f86da158778094",
+          "response_sha256": "8336d23defe274ca7f071064db28d7df6fa9d013b61a37114b37b64a6bb13746",
+          "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+          "choice": {
+            "kind": "select",
+            "binding_id": "swag-custom-bf16",
+            "effort": null
+          },
+          "usage": {
+            "prompt_tokens": 2030,
+            "completion_tokens": 20,
+            "total_tokens": 2050
+          },
+          "elapsed_ms": 1743,
+          "http_status": 200
+        }
+      }
+    },
+    "workerRequest": {
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "attempt_id": "actual-resumed-worker-eae16a9424bf413682df673615c0e24a",
+      "selection_attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+      "expected_selection_sha256": "5984ca411d3019e874b5294655f35a45fc4e0964c7fa9c214eea98f0695b5243",
+      "expected_task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+      "expected_configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+      "max_storage_keys": 1000000,
+      "context": null
+    },
+    "workerOutput": {
+      "contract_version": 1,
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "attempt_id": "actual-resumed-worker-eae16a9424bf413682df673615c0e24a",
+      "selection_attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+      "selection_sha256": "5984ca411d3019e874b5294655f35a45fc4e0964c7fa9c214eea98f0695b5243",
+      "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+      "configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+      "binding_id": "swag-custom-bf16",
+      "service_id": "swag-qwen3-coder-intent-20261028",
+      "packet_sha256": "e01f68ad98950fbcf1daf1376c76a5bcf5fa747be2ef25a61e8a13e0bb732d45",
+      "request_sha256": "fd7c19fa2e2a29fe8b81d2ba05765b6956692b55791ec4bdc138654cd110c5cf",
+      "response_sha256": "94b742f1ca0a986704141f8e0a2010d1da5a58b3c777b0d95e3d975f44dff28a",
+      "content_sha256": "edf63beafaba96d036f88047a8a50944b3dc39c97d558730313d5b35bcf78a5a",
+      "content": "{\n  \"implementation_steps\": [\n    \"Modify the budget contract and engine to support resuming safely stopped tasks by preserving original state including effort, deadline, and repetition history.\",\n    \"Update HTTP dispatch logic to handle the new `task-budget-resume` operation while validating task status and preventing invalid resumes.\",\n    \"Adjust native validation and engine tests to ensure resume functionality works correctly without resetting effort or altering authorization flow.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that resumed tasks retain their original deadline, spent effort, and repetition history through end-to-end testing.\",\n    \"Validate that attempting to resume an active, unknown outcome, or stale task fails appropriately with correct error responses.\",\n    \"Ensure all existing contract and server tests continue to pass after integrating the resume functionality.\"\n  ],\n  \"unresolved_questions\": [\n    \"How should the system handle cases where the original attempt ID is replayed after a resume operation?\",\n    \"What are the implications of resuming tasks with different estate configurations than when they were originally stopped?\",\n    \"Are there any edge cases in the runtime cursor handling during resume that could affect consistency?\"\n  ]\n}",
+      "read": {
+        "runtime_manifest_sha256": "df6ebc648f737a69b68fcf083a1212220f244f5f71e8cf0e207dfea94ffdf5a5",
+        "runtime_cursor": 12,
+        "schema_revision": 3,
+        "catalogue_revision": 0
+      },
+      "context": null,
+      "usage": {
+        "prompt_tokens": 1526,
+        "completion_tokens": 229,
+        "total_tokens": 1755
+      },
+      "elapsed_ms": 17228,
+      "http_status": 200
+    },
+    "workerAttempt": {
+      "attempt": {
+        "attempt_id": "actual-resumed-worker-eae16a9424bf413682df673615c0e24a",
+        "ordinal": 4,
+        "status": "accepted",
+        "outcome_sha256": "7902385dd12718832644762a0d03e4dc5203c8b779dec0a11341ca4543e36a4f",
+        "result": null,
+        "worker_output": {
+          "contract_version": 1,
+          "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+          "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+          "attempt_id": "actual-resumed-worker-eae16a9424bf413682df673615c0e24a",
+          "selection_attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+          "selection_sha256": "5984ca411d3019e874b5294655f35a45fc4e0964c7fa9c214eea98f0695b5243",
+          "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+          "configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+          "binding_id": "swag-custom-bf16",
+          "service_id": "swag-qwen3-coder-intent-20261028",
+          "packet_sha256": "e01f68ad98950fbcf1daf1376c76a5bcf5fa747be2ef25a61e8a13e0bb732d45",
+          "request_sha256": "fd7c19fa2e2a29fe8b81d2ba05765b6956692b55791ec4bdc138654cd110c5cf",
+          "response_sha256": "94b742f1ca0a986704141f8e0a2010d1da5a58b3c777b0d95e3d975f44dff28a",
+          "content_sha256": "edf63beafaba96d036f88047a8a50944b3dc39c97d558730313d5b35bcf78a5a",
+          "content": "{\n  \"implementation_steps\": [\n    \"Modify the budget contract and engine to support resuming safely stopped tasks by preserving original state including effort, deadline, and repetition history.\",\n    \"Update HTTP dispatch logic to handle the new `task-budget-resume` operation while validating task status and preventing invalid resumes.\",\n    \"Adjust native validation and engine tests to ensure resume functionality works correctly without resetting effort or altering authorization flow.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that resumed tasks retain their original deadline, spent effort, and repetition history through end-to-end testing.\",\n    \"Validate that attempting to resume an active, unknown outcome, or stale task fails appropriately with correct error responses.\",\n    \"Ensure all existing contract and server tests continue to pass after integrating the resume functionality.\"\n  ],\n  \"unresolved_questions\": [\n    \"How should the system handle cases where the original attempt ID is replayed after a resume operation?\",\n    \"What are the implications of resuming tasks with different estate configurations than when they were originally stopped?\",\n    \"Are there any edge cases in the runtime cursor handling during resume that could affect consistency?\"\n  ]\n}",
+          "read": {
+            "runtime_manifest_sha256": "df6ebc648f737a69b68fcf083a1212220f244f5f71e8cf0e207dfea94ffdf5a5",
+            "runtime_cursor": 12,
+            "schema_revision": 3,
+            "catalogue_revision": 0
+          },
+          "context": null,
+          "usage": {
+            "prompt_tokens": 1526,
+            "completion_tokens": 229,
+            "total_tokens": 1755
+          },
+          "elapsed_ms": 17228,
+          "http_status": 200
+        }
+      }
+    },
+    "budget": {
+      "budget": {
+        "format_version": 1,
+        "instance_id": "instance-c4a41309a51cc10ddcf3134c",
+        "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+        "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+        "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+        "limits": {
+          "max_run_elapsed_ms": 900000,
+          "max_steps": 256,
+          "max_step_elapsed_ms": 60000
+        },
+        "started_at_unix_ms": 1793480958524,
+        "deadline_unix_ms": 1793481858524,
+        "last_observed_at_unix_ms": 1793480984032,
+        "charged_elapsed_ms": 21529,
+        "reserved_steps": 4,
+        "active_attempt": null,
+        "execution_may_continue": false,
+        "stopped": null,
+        "stop_expected_sha256": null
+      },
+      "budget_sha256": "b922c24727e7fe37e04f1f8cc2943fc2bc33b0bce3ec316681b2981ec79e44d2"
+    }
+  },
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false
+}
