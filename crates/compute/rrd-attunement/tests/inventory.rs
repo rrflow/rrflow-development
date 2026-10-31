@@ -55,6 +55,53 @@ fn entry<'a>(p: &'a Proposal, path: &str) -> &'a Entry {
 }
 
 #[test]
+fn committed_reconstruction_requires_the_expected_digest_and_valid_tree() {
+    let original = sample(false);
+    let encoded = serde_json::to_vec(&original).unwrap();
+    let restored =
+        Proposal::from_committed_bytes(&encoded, original.proposal_sha256(), encoded.len())
+            .unwrap();
+    assert_eq!(restored, original);
+    assert!(Proposal::from_committed_bytes(&encoded, &"0".repeat(64), encoded.len()).is_err());
+    assert!(Proposal::from_committed_bytes(
+        &encoded,
+        original.proposal_sha256(),
+        encoded.len() - 1
+    )
+    .is_err());
+    let mut tampered = serde_json::to_value(&original).unwrap();
+    tampered["entries"][0]["identity"] = "0".repeat(64).into();
+    assert!(Proposal::from_committed_bytes(
+        &serde_json::to_vec(&tampered).unwrap(),
+        original.proposal_sha256(),
+        encoded.len() * 2
+    )
+    .is_err());
+}
+
+#[test]
+fn fallible_content_cannot_become_eof_or_implicitly_reuse_metadata() {
+    let prior = sample(false);
+    let mut b = builder(Some(&prior));
+    assert_eq!(
+        b.file_fallible("src/a.rs", file(3, "a"), [Err::<&[u8], ()>(())], false),
+        Err(InventoryError::ContentRead)
+    );
+    assert!(!b.finish(false).unwrap().is_complete());
+    let mut b = builder(Some(&prior));
+    b.directory("src").unwrap();
+    b.file_fallible("src/a.rs", file(3, "a"), [Ok::<_, ()>(b"def")], false)
+        .unwrap();
+    let result = b.finish(true).unwrap();
+    assert_eq!(result.accounting().reused_files, 0);
+    assert_eq!(result.accounting().content_bytes, 3);
+    assert_ne!(
+        entry(&result, "src/a.rs").subtree_sha256,
+        entry(&prior, "src/a.rs").subtree_sha256
+    );
+}
+
+#[test]
 fn traversal_order_and_chunk_partition_do_not_change_the_proposal() {
     assert_eq!(sample(false), sample(true));
     let mut b = builder(None);

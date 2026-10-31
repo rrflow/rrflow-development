@@ -89,6 +89,60 @@ fn binary() -> PathBuf {
     DISTRIBUTION.with(|distribution| distribution.executable.clone())
 }
 
+async fn inventory_through_client(
+    client: &RrdClient,
+    session: &rrd_client::Session,
+    pending: &rrd_contract::AttunementJob,
+    plan: &rrd_contract::AttunementPlan,
+    prefix: &str,
+) -> rrd_contract::AttunementJob {
+    let options = |suffix: &str| {
+        let key = format!("{prefix}-{suffix}");
+        RequestOptions::mutation(&key, &key, &key).unwrap()
+    };
+    let mut job = client
+        .start_attunement(
+            session,
+            rrd_contract::StartAttunement {
+                contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                job_id: pending.id.clone(),
+                plan_sha256: pending.plan_sha256.clone(),
+                expected_revision: pending.revision,
+                lease_ms: 60_000,
+            },
+            plan,
+            options("start"),
+        )
+        .await
+        .unwrap()
+        .status
+        .job;
+    for phase in [
+        rrd_contract::AttunementPhase::Connect,
+        rrd_contract::AttunementPhase::Inventory,
+    ] {
+        assert_eq!(job.current_phase, Some(phase));
+        job = client
+            .step_attunement(
+                session,
+                rrd_contract::StepAttunement {
+                    contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                    job_id: job.id.clone(),
+                    expected_revision: job.revision,
+                    lease_generation: job.lease.as_ref().unwrap().generation,
+                },
+                plan,
+                options(&format!("{phase:?}")),
+            )
+            .await
+            .unwrap()
+            .status
+            .job;
+        assert_eq!(job.checkpoints.last().unwrap().phase, phase);
+    }
+    job
+}
+
 fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
     use serde_json::{json, Value};
     use std::io::{Read, Write};
@@ -288,6 +342,7 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
     std::fs::write(project.join("README.md"), "typed client edit\n").unwrap();
     let mut typed_acceptance = None;
     let mut typed_successor = None;
+    let mut typed_inventory = None;
     for pass in 0..2 {
         let (mut child, address) = RunningEngine::start(&project, &mut captured);
         let client = RrdClient::connect_local(
@@ -356,6 +411,16 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                     .await
                     .unwrap();
                 assert!(!result.idempotent_replay);
+                typed_inventory = Some(
+                    inventory_through_client(
+                        &client,
+                        &session,
+                        &result.successor.job,
+                        &request.preview.plan,
+                        "binary-inventory",
+                    )
+                    .await,
+                );
                 typed_successor = Some(result.successor.job);
                 typed_acceptance = Some(request);
             } else {
@@ -394,6 +459,75 @@ fn installed_binary_replans_and_reads_receipt_after_forced_restart() {
                 assert_eq!(
                     Some(receipt.receipt.unwrap().result.successor.job),
                     typed_successor
+                );
+                let inventoried = typed_inventory.as_ref().unwrap();
+                let current_plan = &typed_acceptance.as_ref().unwrap().preview.plan;
+                let read = client
+                    .read_attunement(
+                        &session,
+                        rrd_contract::ReadAttunement {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: inventoried.id.clone(),
+                        },
+                        RequestOptions::read("binary-inventory-read", "binary-inventory-read")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    read.status.job, *inventoried,
+                    "acknowledged Inventory survives process death"
+                );
+                std::fs::write(project.join("README.md"), "edit after durable Inventory\n")
+                    .unwrap();
+                let preview = client
+                    .preview_attunement_replan(
+                        &session,
+                        rrd_contract::PreviewAttunementReplan {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            job_id: inventoried.id.clone(),
+                            expected_revision: inventoried.revision,
+                        },
+                        current_plan,
+                        RequestOptions::read("binary-inventory-replan", "binary-inventory-replan")
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let successor_plan = preview.plan.clone();
+                let result = client
+                    .accept_attunement_replan(
+                        &session,
+                        rrd_contract::AcceptAttunementReplan {
+                            contract_version: rrd_contract::ATTUNEMENT_CONTRACT_VERSION,
+                            proposal_sha256: preview.proposal_sha256.clone(),
+                            preview,
+                        },
+                        current_plan,
+                        RequestOptions::mutation(
+                            "binary-inventory-accept",
+                            "binary-inventory-accept",
+                            "binary-inventory-accept",
+                        )
+                        .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let next = inventory_through_client(
+                    &client,
+                    &session,
+                    &result.successor.job,
+                    &successor_plan,
+                    "binary-second-inventory",
+                )
+                .await;
+                assert_ne!(
+                    next.checkpoints[1].output_sha256,
+                    inventoried.checkpoints[1].output_sha256
+                );
+                assert!(
+                    next.checkpoints[1].coordinates.runtime_cursor
+                        > inventoried.checkpoints[1].coordinates.runtime_cursor
                 );
             }
         });

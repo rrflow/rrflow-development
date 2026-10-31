@@ -1,17 +1,54 @@
-//! Bounded installation preconditions, not a committed attunement snapshot.
+//! Bounded installation preconditions and read-only Inventory preparation.
 //!
-//! Stable input retains the version-one digest grammar. Enumeration admits
-//! entries before retaining them, and hashing reads at most the admitted file
-//! length. Observed metadata drift fails closed; this is not an atomic
-//! filesystem snapshot or the D-03 incremental inventory implementation.
+//! Version-three preconditions bind admitted policy/Git inputs and exclude safety paths
+//! before content reads. Enumeration admits entries before retaining them, and
+//! hashing reads at most the admitted file length. Metadata drift fails closed;
+//! this is not an atomic
+//! filesystem snapshot or evidence for metadata-only content reuse.
 
+use super::policy::CompiledPolicy;
 use super::DefaultInstallProfile;
 use crate::engine::{Result, ServiceError};
 use rrd_core::digest::Sha256 as IncrementalSha256;
-use rrd_store::filesystem::AnchoredPath;
+use rrd_store::filesystem::{AnchoredPath, SourceKind, SourceLeaf};
+
+mod git_inputs;
+use git_inputs::GitInputs;
+
+struct WalkEntry {
+    path: AnchoredPath,
+    observed: Option<SourceLeaf>,
+    gitlink: bool,
+    excluded: Option<String>,
+}
+
 use std::fs::Metadata;
 use std::io::Read;
 use std::path::Path;
+use std::time::{Duration, Instant};
+
+struct WorkBudget<'a> {
+    check_external: &'a dyn Fn() -> Result<()>,
+    started: Instant,
+    duration: Duration,
+}
+
+impl WorkBudget<'_> {
+    fn new(elapsed_ms: u64) -> Self {
+        Self {
+            check_external: &|| Ok(()),
+            started: Instant::now(),
+            duration: Duration::from_millis(elapsed_ms),
+        }
+    }
+    fn check(&self) -> Result<()> {
+        (self.check_external)()?;
+        if self.started.elapsed() >= self.duration {
+            return Err(ServiceError::DeadlineExceeded);
+        }
+        Ok(())
+    }
+}
 
 pub(in crate::engine) fn project_inventory_sha256(
     project: &AnchoredPath,
@@ -25,101 +62,327 @@ pub(super) fn project_inventory_sha256_excluding(
     profile: &DefaultInstallProfile,
     excluded_relative: Option<&Path>,
 ) -> Result<String> {
-    let mut entries = Vec::<(AnchoredPath, bool)>::new();
+    scan_project(project, profile, excluded_relative, None, &|| Ok(())).map(|(digest, _)| digest)
+}
+
+mod proposal;
+pub(in crate::engine) use proposal::prepare_project_inventory;
+
+fn scan_project(
+    project: &AnchoredPath,
+    profile: &DefaultInstallProfile,
+    excluded_relative: Option<&Path>,
+    proposal: Option<(
+        rrd_attunement::inventory::SourceScope,
+        Option<&rrd_attunement::inventory::Proposal>,
+    )>,
+    check: &dyn Fn() -> Result<()>,
+) -> Result<(String, Option<rrd_attunement::inventory::Proposal>)> {
+    let policy = profile.inventory_policy.compile()?;
+    let budget = WorkBudget {
+        check_external: check,
+        ..WorkBudget::new(policy.source.limits.elapsed_ms)
+    };
+    let root_observation = project.source_observation().map_err(storage_error)?;
+    let mut git = GitInputs::read(project, &policy, &budget)?;
+    let mut entries = Vec::<WalkEntry>::new();
     let admitted_lease = super::lease::admit_existing(project)?;
     collect_project_entries(
         project,
-        excluded_relative,
-        admitted_lease.is_some(),
-        profile.inventory_max_files,
+        WalkOptions {
+            excluded_relative,
+            lease_admitted: admitted_lease.is_some(),
+            record_exclusions: proposal.is_some(),
+        },
+        &policy,
+        &budget,
+        &mut git,
         &mut entries,
     )?;
-    entries.sort_by(|left, right| left.0.relative_path().cmp(right.0.relative_path()));
+    let mut builder = proposal
+        .map(|(scope, prior)| proposal::builder(scope, prior, &policy, &git))
+        .transpose()?;
+    entries.sort_by(|left, right| left.path.relative_path().cmp(right.path.relative_path()));
     let mut aggregate = IncrementalSha256::new();
-    aggregate.update(b"rrflow-project-inventory-v1\0");
+    aggregate.update(b"rrflow-project-precondition-v3\0");
+    aggregate.update(policy.sha256.as_bytes());
+    aggregate.update(git.identity()?.as_bytes());
     let mut total = 0u64;
-    for (path, directory) in entries {
+    for entry in &entries {
+        let path = &entry.path;
+        budget.check()?;
         let relative = path.relative_path();
         let relative = relative
             .to_str()
             .ok_or(ServiceError::ProjectBindingMismatch)?
             .replace('\\', "/");
-        aggregate.update(if directory { b"d\0" } else { b"f\0" });
+        if let Some(rule) = &entry.excluded {
+            if let Some(builder) = &mut builder {
+                builder
+                    .leaf(
+                        &relative,
+                        rrd_attunement::inventory::EntryKind::Excluded { rule: rule.clone() },
+                    )
+                    .map_err(storage_error)?;
+            }
+            continue;
+        }
+        let (tag, file) = match entry
+            .observed
+            .as_ref()
+            .ok_or(ServiceError::ProjectBindingMismatch)?
+        {
+            _ if entry.gitlink => (b"g\0", false),
+            SourceLeaf::Ordinary(obs) if obs.kind() == SourceKind::Directory => (b"d\0", false),
+            SourceLeaf::Ordinary(_) => (b"f\0", true),
+            SourceLeaf::Symlink => (b"l\0", false),
+            SourceLeaf::Mount => (b"m\0", false),
+            SourceLeaf::Special => (b"s\0", false),
+        };
+        aggregate.update(tag);
         aggregate.update(&(relative.len() as u64).to_be_bytes());
         aggregate.update(relative.as_bytes());
-        if !directory {
+        if file {
             let metadata = path
                 .metadata()
                 .map_err(|error| ServiceError::Storage(error.to_string()))?;
             total = total.checked_add(metadata.len()).ok_or_else(|| {
                 ServiceError::Contract("project inventory byte count overflowed".into())
             })?;
-            if total > profile.inventory_max_bytes {
+            if metadata.len() > policy.source.limits.file_bytes {
+                // The file changed since enumeration and cannot silently enter
+                // the oversized-file exclusion after its path was admitted.
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            if total > policy.source.limits.content_bytes {
                 return Err(ServiceError::Contract(
                     "project inventory exceeds the configured byte bound".into(),
                 ));
             }
             aggregate.update(&metadata.len().to_be_bytes());
-            aggregate.update(hash_inventory_file(&path, &metadata)?.as_bytes());
+            if path.source_leaf().map_err(storage_error)?
+                != entry
+                    .observed
+                    .as_ref()
+                    .ok_or(ServiceError::ProjectBindingMismatch)?
+                    .clone()
+            {
+                return Err(ServiceError::ProjectBindingMismatch);
+            }
+            let digest = if let Some(builder) = &mut builder {
+                proposal::ingest_file(builder, &relative, entry, &budget)?
+            } else {
+                hash_inventory_file(path, &metadata, &budget)?
+            };
+            aggregate.update(digest.as_bytes());
+        } else if let Some(builder) = &mut builder {
+            proposal::ingest_leaf(builder, &relative, entry)?;
         }
     }
-    Ok(aggregate.finalize_hex())
+    // Revalidate the whole admitted set, not just each file at the moment it
+    // was read. Directory identity/metadata detects observable enumeration drift.
+    // These observations are not an OS snapshot or a metadata-only reuse proof.
+    for entry in &entries {
+        budget.check()?;
+        if entry.excluded.is_none()
+            && entry.path.source_leaf().map_err(storage_error)?
+                != entry
+                    .observed
+                    .as_ref()
+                    .ok_or(ServiceError::ProjectBindingMismatch)?
+                    .clone()
+        {
+            return Err(ServiceError::ProjectBindingMismatch);
+        }
+    }
+    git.revalidate(&budget)?;
+    if project.source_observation().map_err(storage_error)? != root_observation {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    budget.check()?;
+    let proposed = builder
+        .map(|builder| builder.finish(true).map_err(storage_error))
+        .transpose()?;
+    if let Some(proposed) = &proposed {
+        proposal::require_output_bound(proposed, policy.source.limits.output_bytes)?;
+    }
+    Ok((aggregate.finalize_hex(), proposed))
+}
+
+struct WalkOptions<'a> {
+    excluded_relative: Option<&'a Path>,
+    lease_admitted: bool,
+    record_exclusions: bool,
 }
 
 fn collect_project_entries(
     root: &AnchoredPath,
-    excluded_relative: Option<&Path>,
-    lease_admitted: bool,
-    max_entries: u64,
-    output: &mut Vec<(AnchoredPath, bool)>,
+    options: WalkOptions<'_>,
+    policy: &CompiledPolicy<'_>,
+    budget: &WorkBudget,
+    git: &mut GitInputs,
+    output: &mut Vec<WalkEntry>,
 ) -> Result<()> {
+    let WalkOptions {
+        excluded_relative,
+        lease_admitted,
+        record_exclusions,
+    } = options;
     let mut pending = vec![root.to_owned()];
+    let mut visited = 0u64;
+    let mut metadata_bytes = 0u64;
     while let Some(current) = pending.pop() {
+        budget.check()?;
+        git.enter(&current, policy, budget)?;
+        let remaining_metadata = policy
+            .source
+            .limits
+            .metadata_bytes
+            .checked_sub(git.metadata_bytes)
+            .filter(|remaining| *remaining >= metadata_bytes)
+            .ok_or_else(|| {
+                ServiceError::ConfigurationLimit("inventory metadata byte bound exceeded".into())
+            })?;
         let entries = current.entries().map_err(storage_error)?;
         // Do not collect or sort a whole directory before applying the bound.
         // The admitted output is sorted once, by the digest builder.
         for entry in entries {
-            let path = entry.map_err(storage_error)?;
-            let relative = path.relative_path();
-            if excluded_relative == Some(relative)
-                || lease_admitted && relative == Path::new(super::lease::RELATIVE_PATH)
-                || relative.components().next().is_some_and(|component| {
-                    matches!(component.as_os_str().to_str(), Some(".git" | ".rrflow"))
-                })
-            {
-                continue;
-            }
-            if output.len() as u64 >= max_entries {
+            budget.check()?;
+            if visited >= policy.source.limits.entries {
                 return Err(ServiceError::Contract(
                     "project inventory exceeds the configured file bound".into(),
                 ));
             }
-            let metadata = path.metadata().map_err(storage_error)?;
-            if metadata.file_type().is_symlink() {
-                return Err(ServiceError::ProjectBindingMismatch);
+            visited += 1;
+            let path = entry.map_err(storage_error)?;
+            let relative = path.relative_path();
+            if excluded_relative == Some(relative)
+                || lease_admitted && relative == Path::new(super::lease::RELATIVE_PATH)
+            {
+                continue;
             }
-            if metadata.is_dir() {
+            let normalized = relative
+                .to_str()
+                .ok_or(ServiceError::ProjectBindingMismatch)?
+                .replace('\\', "/");
+            // Non-directory-only rules can exclude a leaf without even opening
+            // its metadata handle (important for locked secret files).
+            let excluded = policy.excluded(&normalized, false)?.map(str::to_owned);
+            let excluded = match excluded {
+                Some(rule) => Some(rule),
+                None if git.excluded_without_metadata(&normalized)? => Some("git-ignore".into()),
+                None => None,
+            };
+            if let Some(rule) = excluded {
+                if record_exclusions {
+                    account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+                    output.push(WalkEntry {
+                        path,
+                        observed: None,
+                        gitlink: false,
+                        excluded: Some(rule),
+                    });
+                }
+                continue;
+            }
+            let observed = path.source_leaf().map_err(storage_error)?;
+            let directory = matches!(&observed, SourceLeaf::Ordinary(obs) if obs.kind() == SourceKind::Directory);
+            let excluded = policy.excluded(&normalized, directory)?.map(str::to_owned);
+            let excluded = match excluded {
+                Some(rule) => Some(rule),
+                None if !git.admits(&normalized, directory)? => Some("git-ignore".into()),
+                None => None,
+            };
+            if let Some(rule) = excluded {
+                if record_exclusions {
+                    account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+                    output.push(WalkEntry {
+                        path,
+                        observed: Some(observed),
+                        gitlink: false,
+                        excluded: Some(rule),
+                    });
+                }
+                continue;
+            }
+            let gitlink = git.is_submodule(&normalized);
+            if let SourceLeaf::Ordinary(obs) = &observed {
+                if obs.kind() == SourceKind::File && obs.bytes() > policy.source.limits.file_bytes {
+                    if record_exclusions {
+                        account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+                        output.push(WalkEntry {
+                            path,
+                            observed: Some(observed),
+                            gitlink: false,
+                            excluded: Some("file-byte-limit".into()),
+                        });
+                    }
+                    continue;
+                }
+            }
+            account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+            if directory && !gitlink {
                 pending.push(path.clone());
-                output.push((path, true));
-            } else if metadata.is_file() {
-                output.push((path, false));
-            } else {
-                return Err(ServiceError::ProjectBindingMismatch);
             }
+            output.push(WalkEntry {
+                path,
+                observed: Some(observed),
+                gitlink,
+                excluded: None,
+            });
         }
     }
     Ok(())
 }
 
-fn hash_inventory_file(path: &AnchoredPath, admitted: &Metadata) -> Result<String> {
+fn account_metadata(path: &AnchoredPath, accounted: &mut u64, ceiling: u64) -> Result<()> {
+    // Retained logical metadata accounting, not an RSS measurement. Include
+    // both path buffers and possible pending-directory copies before retention.
+    let bytes = 2
+        * (std::mem::size_of::<WalkEntry>()
+            + path.relative_path().as_os_str().as_encoded_bytes().len()
+            + path.diagnostic_path().as_os_str().as_encoded_bytes().len()) as u64;
+    *accounted = accounted.checked_add(bytes).ok_or_else(|| {
+        ServiceError::ConfigurationLimit("inventory metadata accounting overflow".into())
+    })?;
+    if *accounted > ceiling {
+        return Err(ServiceError::ConfigurationLimit(
+            "inventory metadata byte bound exceeded".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn hash_inventory_file(
+    path: &AnchoredPath,
+    admitted: &Metadata,
+    budget: &WorkBudget,
+) -> Result<String> {
+    budget.check()?;
     if admitted.file_type().is_symlink() || !admitted.is_file() {
         return Err(ServiceError::ProjectBindingMismatch);
     }
+    let before = path.source_observation().map_err(storage_error)?;
     let mut file = path.open_read().map_err(storage_error)?;
+    if before
+        != path
+            .source_observation_for_file(&file)
+            .map_err(storage_error)?
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
     require_same_observation(admitted, &file.metadata().map_err(storage_error)?)?;
-    let digest = hash_exact_contents(&mut file, admitted.len())?;
+    let digest = hash_exact_contents(&mut file, admitted.len(), budget)?;
     require_same_observation(admitted, &file.metadata().map_err(storage_error)?)?;
     require_same_observation(admitted, &path.metadata().map_err(storage_error)?)?;
+    if before
+        != path
+            .source_observation_for_file(&file)
+            .map_err(storage_error)?
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    budget.check()?;
     Ok(digest)
 }
 
@@ -135,11 +398,16 @@ fn require_same_observation(admitted: &Metadata, observed: &Metadata) -> Result<
     Ok(())
 }
 
-fn hash_exact_contents(reader: &mut impl Read, admitted_bytes: u64) -> Result<String> {
+fn hash_exact_contents(
+    reader: &mut impl Read,
+    admitted_bytes: u64,
+    budget: &WorkBudget,
+) -> Result<String> {
     let mut bounded = reader.take(admitted_bytes);
     let mut hasher = IncrementalSha256::new();
     let mut buffer = [0u8; 64 * 1024];
     loop {
+        budget.check()?;
         let read = match bounded.read(&mut buffer) {
             Ok(read) => read,
             Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
@@ -153,6 +421,7 @@ fn hash_exact_contents(reader: &mut impl Read, admitted_bytes: u64) -> Result<St
     if bounded.limit() != 0 {
         return Err(ServiceError::ProjectBindingMismatch);
     }
+    budget.check()?;
     Ok(hasher.finalize_hex())
 }
 
@@ -164,6 +433,12 @@ fn storage_error(error: impl std::fmt::Display) -> ServiceError {
 mod tests {
     use super::*;
     use std::fs::File;
+    fn hash_exact_contents(reader: &mut impl Read, admitted_bytes: u64) -> Result<String> {
+        super::hash_exact_contents(reader, admitted_bytes, &WorkBudget::new(30_000))
+    }
+    fn hash_inventory_file(path: &AnchoredPath, admitted: &Metadata) -> Result<String> {
+        super::hash_inventory_file(path, admitted, &WorkBudget::new(30_000))
+    }
     fn project_inventory_sha256(path: &Path, profile: &DefaultInstallProfile) -> Result<String> {
         super::project_inventory_sha256(
             &AnchoredPath::open_root(path).map_err(storage_error)?,
@@ -187,17 +462,34 @@ mod tests {
         max: u64,
         output: &mut Vec<(AnchoredPath, bool)>,
     ) -> Result<()> {
-        super::collect_project_entries(
-            &AnchoredPath::open_root(path).map_err(storage_error)?,
-            exclude,
-            false,
-            max,
-            output,
-        )
+        let (mut profile, _) = DefaultInstallProfile::load("default")?;
+        profile.inventory_policy.limits.entries = max;
+        let policy = profile.inventory_policy.compile()?;
+        let root = AnchoredPath::open_root(path).map_err(storage_error)?;
+        let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+        let mut git = GitInputs::read(&root, &policy, &budget)?;
+        let mut entries = Vec::new();
+        let result = super::collect_project_entries(
+            &root,
+            WalkOptions {
+                excluded_relative: exclude,
+                lease_admitted: false,
+                record_exclusions: false,
+            },
+            &policy,
+            &budget,
+            &mut git,
+            &mut entries,
+        );
+        output.extend(entries.into_iter().map(|entry| {
+            let directory = matches!(&entry.observed, Some(SourceLeaf::Ordinary(obs)) if obs.kind() == SourceKind::Directory);
+            (entry.path, directory)
+        }));
+        result
     }
 
     #[test]
-    fn project_inventory_preserves_the_version_one_digest_grammar() {
+    fn project_precondition_binds_version_three_policy_git_inputs_and_eligible_source() {
         let root = tempfile::tempdir().unwrap();
         std::fs::create_dir(root.path().join("src")).unwrap();
         std::fs::create_dir(root.path().join(".git")).unwrap();
@@ -205,12 +497,16 @@ mod tests {
         std::fs::write(root.path().join("src/main.rs"), b"fn main() {}\n").unwrap();
         std::fs::write(root.path().join("empty"), b"").unwrap();
         std::fs::write(root.path().join("README.md"), b"RRFlow\n").unwrap();
-        std::fs::write(root.path().join(".git/config"), b"excluded").unwrap();
+        std::fs::write(
+            root.path().join(".git/config"),
+            b"[core]\nrepositoryFormatVersion = 0\n",
+        )
+        .unwrap();
         std::fs::write(root.path().join(".rrflow/cache"), b"excluded").unwrap();
         let (profile, _) = DefaultInstallProfile::load("default").unwrap();
         assert_eq!(
             project_inventory_sha256(root.path(), &profile).unwrap(),
-            "a1a2f8baba5c66694e08b3263eb9e4df589451ef7d65d00891a26bd201937514"
+            "31a1b80977ce83f586733848513b6d9079fecf3337034f4a4e6ad05208c9af9a"
         );
     }
 
@@ -223,7 +519,7 @@ mod tests {
             std::fs::create_dir(&directory).unwrap();
         }
         std::fs::write(directory.join("leaf"), b"source").unwrap();
-        for bound in [0, 1, 7, 24] {
+        for bound in [1, 7, 24] {
             let mut entries = Vec::new();
             let error =
                 collect_project_entries(root.path(), None, bound, &mut entries).unwrap_err();
@@ -238,8 +534,8 @@ mod tests {
     #[test]
     fn exclusions_and_creation_order_do_not_change_the_digest_or_admitted_count() {
         let (mut profile, _) = DefaultInstallProfile::load("default").unwrap();
-        profile.inventory_max_files = 3;
-        profile.inventory_max_bytes = 3;
+        profile.inventory_policy.limits.entries = 6;
+        profile.inventory_policy.limits.content_bytes = 3;
         let first = tempfile::tempdir().unwrap();
         let second = tempfile::tempdir().unwrap();
         for (root, names) in [
@@ -267,11 +563,192 @@ mod tests {
         );
         assert!(project_inventory_sha256(first.path(), &profile).is_err());
         std::fs::remove_file(first.path().join("intent")).unwrap();
-        profile.inventory_max_bytes = 1;
+        profile.inventory_policy.limits.content_bytes = 1;
         assert!(project_inventory_sha256(first.path(), &profile)
             .unwrap_err()
             .to_string()
             .contains("byte bound"));
+    }
+
+    #[test]
+    fn git_walk_retains_tracked_ignored_source_and_binds_metadata_inputs() {
+        let root = tempfile::tempdir().unwrap();
+        for directory in [".git/info", "src", "ignored", ".github/workflows"] {
+            std::fs::create_dir_all(root.path().join(directory)).unwrap();
+        }
+        std::fs::write(
+            root.path().join(".git/config"),
+            b"[core]\nrepositoryFormatVersion=0\nignoreCase=false\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.path().join(".git/index"),
+            include_bytes!(
+                "../../../../../compute/rrd-attunement/tests/fixtures/git-index/sha1-v2.index"
+            ),
+        )
+        .unwrap();
+        std::fs::write(root.path().join(".gitignore"), b"ignored/\n*.log\n").unwrap();
+        std::fs::write(root.path().join(".git/info/exclude"), b"*.bak\n").unwrap();
+        std::fs::write(root.path().join("src/.gitignore"), b"!keep.log\n").unwrap();
+        for path in [
+            "src/main.rs",
+            "ignored/tracked.txt",
+            ".github/workflows/check.yml",
+            "src/keep.log",
+        ] {
+            std::fs::write(root.path().join(path), b"source").unwrap();
+        }
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        let first = project_inventory_sha256(root.path(), &profile).unwrap();
+        for path in [
+            "ignored/untracked.txt",
+            "other.log",
+            "other.bak",
+            "src/drop.log",
+            ".env",
+        ] {
+            std::fs::write(root.path().join(path), b"excluded").unwrap();
+        }
+        assert_eq!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            first
+        );
+        for path in [
+            "src/main.rs",
+            "ignored/tracked.txt",
+            ".github/workflows/check.yml",
+            "src/keep.log",
+        ] {
+            std::fs::write(root.path().join(path), b"changed").unwrap();
+            assert_ne!(
+                project_inventory_sha256(root.path(), &profile).unwrap(),
+                first,
+                "{path}"
+            );
+            std::fs::write(root.path().join(path), b"source").unwrap();
+        }
+        std::fs::write(root.path().join(".git/info/exclude"), b"*.bak\n*.new\n").unwrap();
+        assert_ne!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            first
+        );
+        std::fs::write(
+            root.path().join(".git/config"),
+            b"[include]\npath=../outside\n",
+        )
+        .unwrap();
+        assert!(project_inventory_sha256(root.path(), &profile).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn git_ignored_locked_file_is_never_opened() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join(".git")).unwrap();
+        std::fs::write(root.path().join(".gitignore"), b"*.log\n").unwrap();
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        let first = project_inventory_sha256(root.path(), &profile).unwrap();
+        let locked = File::options()
+            .create_new(true)
+            .read(true)
+            .write(true)
+            .share_mode(0)
+            .open(root.path().join("private.log"))
+            .unwrap();
+        assert_eq!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            first
+        );
+        drop(locked);
+    }
+
+    #[test]
+    fn git_inputs_detect_appearance_change_and_bound_bytes() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join(".git")).unwrap();
+        let (mut profile, _) = DefaultInstallProfile::load("default").unwrap();
+        let anchor = AnchoredPath::open_root(root.path()).unwrap();
+        let budget = WorkBudget::new(30_000);
+        let policy = profile.inventory_policy.compile().unwrap();
+        let mut git = GitInputs::read(&anchor, &policy, &budget).unwrap();
+        git.enter(&anchor, &policy, &budget).unwrap();
+        git.revalidate(&budget).unwrap();
+        std::fs::write(root.path().join(".gitignore"), b"*.log\n").unwrap();
+        assert!(git.revalidate(&budget).is_err());
+        let mut git = GitInputs::read(&anchor, &policy, &budget).unwrap();
+        git.enter(&anchor, &policy, &budget).unwrap();
+        std::fs::write(root.path().join(".gitignore"), b"*.bak\n").unwrap();
+        assert!(git.revalidate(&budget).is_err());
+        std::fs::write(root.path().join(".git/config"), vec![b' '; 2048]).unwrap();
+        profile.inventory_policy.limits.git_input_bytes = 1024;
+        assert!(project_inventory_sha256(root.path(), &profile)
+            .unwrap_err()
+            .to_string()
+            .contains("Git input byte bound"));
+    }
+
+    #[test]
+    fn directory_alias_is_a_leaf_and_target_content_is_not_read() {
+        let root = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("private"), b"first").unwrap();
+        let link = root.path().join("alias");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+        #[cfg(windows)]
+        {
+            let result = std::process::Command::new("cmd")
+                .args(["/C", "mklink", "/J"])
+                .arg(&link)
+                .arg(outside.path())
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        let first = project_inventory_sha256(root.path(), &profile).unwrap();
+        std::fs::write(outside.path().join("private"), b"changed outside content").unwrap();
+        assert_eq!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            first
+        );
+        let anchored = AnchoredPath::open_root(root.path()).unwrap();
+        let policy = profile.inventory_policy.compile().unwrap();
+        let budget = WorkBudget::new(30_000);
+        let mut git = GitInputs::read(&anchored, &policy, &budget).unwrap();
+        let mut entries = Vec::new();
+        super::collect_project_entries(
+            &anchored,
+            WalkOptions {
+                excluded_relative: None,
+                lease_admitted: false,
+                record_exclusions: false,
+            },
+            &policy,
+            &budget,
+            &mut git,
+            &mut entries,
+        )
+        .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].observed, Some(SourceLeaf::Symlink));
+    }
+
+    #[test]
+    fn linked_worktree_metadata_requires_explicit_admission() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join(".git"), b"gitdir: ../outside\n").unwrap();
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        assert!(project_inventory_sha256(root.path(), &profile)
+            .unwrap_err()
+            .to_string()
+            .contains("requires admission"));
     }
 
     struct EndlessReader {
@@ -329,5 +806,103 @@ mod tests {
         file.set_times(std::fs::FileTimes::new().set_modified(modified))
             .unwrap();
         assert!(hash_inventory_file(&AnchoredPath::from_path(&path).unwrap(), &admitted).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn secret_exclusions_precede_actual_file_opening() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let (profile, _) = DefaultInstallProfile::load("default").unwrap();
+        std::fs::write(root.path().join("source.rs"), b"source").unwrap();
+        let expected = project_inventory_sha256(root.path(), &profile).unwrap();
+        std::fs::create_dir(root.path().join(".swag")).unwrap();
+        let secrets: Vec<_> = [".env", "server.env", ".swag/session"]
+            .into_iter()
+            .map(|name| {
+                File::options()
+                    .create_new(true)
+                    .write(true)
+                    .read(true)
+                    .share_mode(0)
+                    .open(root.path().join(name))
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            expected
+        );
+        let eligible = File::options()
+            .create_new(true)
+            .write(true)
+            .read(true)
+            .share_mode(0)
+            .open(root.path().join("ordinary.rs"))
+            .unwrap();
+        assert!(project_inventory_sha256(root.path(), &profile).is_err());
+        drop(eligible);
+        drop(secrets);
+    }
+
+    #[test]
+    fn generated_and_oversized_files_are_excluded_but_hidden_configuration_matters() {
+        let root = tempfile::tempdir().unwrap();
+        let (mut profile, _) = DefaultInstallProfile::load("default").unwrap();
+        profile.inventory_policy.limits.file_bytes = 8;
+        let expected = project_inventory_sha256(root.path(), &profile).unwrap();
+        std::fs::create_dir(root.path().join("target")).unwrap();
+        std::fs::write(root.path().join("target/generated"), b"generated").unwrap();
+        std::fs::write(root.path().join("large"), b"oversized source").unwrap();
+        assert_eq!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            expected
+        );
+        std::fs::create_dir(root.path().join(".github")).unwrap();
+        std::fs::write(root.path().join(".github/config"), b"config").unwrap();
+        let hidden = project_inventory_sha256(root.path(), &profile).unwrap();
+        assert_ne!(hidden, expected);
+        profile.inventory_policy.limits.file_bytes += 1;
+        assert_ne!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            hidden
+        );
+    }
+
+    #[test]
+    fn metadata_and_depth_budgets_reject_before_complete_precondition() {
+        let root = tempfile::tempdir().unwrap();
+        let (mut profile, _) = DefaultInstallProfile::load("default").unwrap();
+        for number in 0..16 {
+            std::fs::write(root.path().join(format!("source-{number}")), b"a").unwrap();
+        }
+        profile.inventory_policy.limits.metadata_bytes = 1024;
+        profile.inventory_policy.limits.git_input_bytes = 1024;
+        profile.inventory_policy.limits.path_bytes = 512;
+        assert!(project_inventory_sha256(root.path(), &profile)
+            .unwrap_err()
+            .to_string()
+            .contains("metadata byte bound"));
+        let (mut profile, _) = DefaultInstallProfile::load("default").unwrap();
+        profile.inventory_policy.limits.depth = 1;
+        std::fs::create_dir(root.path().join("src")).unwrap();
+        std::fs::write(root.path().join("src/nested"), b"a").unwrap();
+        assert!(project_inventory_sha256(root.path(), &profile)
+            .unwrap_err()
+            .to_string()
+            .contains("PathLimit"));
+    }
+
+    #[test]
+    fn expired_budget_performs_no_content_read() {
+        let mut reader = EndlessReader {
+            consumed: 0,
+            interrupt_once: false,
+        };
+        assert!(matches!(
+            super::hash_exact_contents(&mut reader, 10, &WorkBudget::new(0)),
+            Err(ServiceError::DeadlineExceeded)
+        ));
+        assert_eq!(reader.consumed, 0);
     }
 }

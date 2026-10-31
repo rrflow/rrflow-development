@@ -30,11 +30,11 @@ use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 
-const INSTALL_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/default-profile-v2.json");
+const INSTALL_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/default-profile-v3.json");
 const DEFAULT_CONFIGURATION_BYTES: &[u8] =
     include_bytes!("../../assets/install/default-estate-configuration-v3.toml");
-const CLYFFY_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/clyffy-profile-v2.json");
-const INSTALL_PROFILE_FORMAT: u16 = 2;
+const CLYFFY_PROFILE_BYTES: &[u8] = include_bytes!("../../assets/install/clyffy-profile-v3.json");
+const INSTALL_PROFILE_FORMAT: u16 = 3;
 const LOCATOR_FORMAT: u16 = 2;
 const INSTALLED_RECORD_FORMAT: u16 = 2;
 const INSTALL_CHECKPOINT_FORMAT: u16 = 2;
@@ -50,10 +50,11 @@ mod admission;
 mod bootstrap;
 mod inventory;
 mod lease;
+mod policy;
 pub(super) mod recovery;
 
-pub(super) use inventory::project_inventory_sha256;
 use inventory::project_inventory_sha256_excluding;
+pub(super) use inventory::{prepare_project_inventory, project_inventory_sha256};
 
 use recovery::{
     acknowledge_intent, load_or_create_intent, materialize_secret, read_existing_intent,
@@ -76,8 +77,7 @@ pub struct DefaultInstallProfile {
     pub attunement_phases: Vec<DefaultAttunementPhase>,
     pub estimated_min_duration_ms: u64,
     pub estimated_max_duration_ms: u64,
-    pub inventory_max_files: u64,
-    pub inventory_max_bytes: u64,
+    pub(super) inventory_policy: policy::InventoryPolicy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -255,14 +255,13 @@ impl DefaultInstallProfile {
             || self.configuration_asset != "default-estate-configuration-v3.toml"
             || self.initial_grant_policy.as_str() != "local-owner-all-actions"
             || !(32..=4_096).contains(&self.credential_bytes)
-            || self.inventory_max_files == 0
-            || self.inventory_max_bytes == 0
             || self.estimated_min_duration_ms > self.estimated_max_duration_ms
         {
             return Err(ServiceError::Contract(
                 "default installation profile has invalid bounds or identity".into(),
             ));
         }
+        self.inventory_policy.compile()?;
         self.specialization
             .validate()
             .map_err(|error| ServiceError::Contract(error.to_string()))?;
