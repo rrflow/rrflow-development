@@ -154,9 +154,16 @@ otherwise valid installed engine state because startup unnecessarily computes
 the full source-inspection report. The focused correction preserves all estate
 binding checks and keeps source admission on dependent operations; startup and
 job readback pass, invalid-input Start denies, repaired input starts, and bootstrap
-tampering still denies startup. All 342 engine tests and strict lint pass locally;
-installed and candidate/protected qualification remain open.
-This does not identify the original intermittent rejection's exact cause.
+tampering still denies startup. All 342 engine tests and strict lint pass locally.
+The [combined installed trial](../../evidence/change-journals/gate-d/d-03-startup-installed-trial.md)
+at `39a7b644` now passes unavailable-input startup/readback, unchanged job after
+denied Start, repaired-input admission, and the actual repository's 4,279/3/6/3
+Inventory/restart/edit/successor history. Seven installed CLI lifecycle cases pass.
+Quick verification passes its 13 checks but explicitly reports current content
+different from the original installation precondition; the scheduled Verify phase
+did not run. Candidate/protected, platform and upgrade qualification remain open.
+The denial is currently surfaced as HTTP 500/internal, and the original
+intermittent rejection's exact cause remains unproven.
 
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
 Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
