@@ -632,7 +632,7 @@ impl LocalObjectStore {
             sha256,
             STAGE_ORDINAL.fetch_add(1, Ordering::Relaxed)
         ));
-        publish_object_path(&source, &target)?;
+        source.rename_to(&target)?;
         Ok(target.diagnostic_path().to_owned())
     }
 
@@ -670,12 +670,12 @@ impl LocalObjectStore {
                 }
                 Err(Error::ObjectCorrupt { .. }) => {
                     self.quarantine(sha256)?;
-                    publish_object_path(stage_path, final_path)?;
+                    publish_object_path(stage_path, final_path, sha256)?;
                 }
                 Err(error) => return Err(error),
             }
         } else {
-            publish_object_path(stage_path, final_path)?;
+            publish_object_path(stage_path, final_path, sha256)?;
         }
         Ok(())
     }
@@ -744,14 +744,162 @@ fn sorted_paths(path: &AnchoredPath) -> Result<Vec<AnchoredPath>> {
     path.read_dir().map_err(Error::from)
 }
 
-fn publish_object_path(source: &AnchoredPath, target: &AnchoredPath) -> Result<()> {
-    source.rename_to(target).map_err(Error::from)
+fn publish_object_path(
+    source: &AnchoredPath,
+    target: &AnchoredPath,
+    expected_sha256: &str,
+) -> Result<()> {
+    match source.rename_new_to(target) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            // Another publisher can win after the caller observed absence.
+            // Reuse only verified content, preserving its file identity and readers.
+            let mut winner = target.open_read()?;
+            let (actual, _) = digest_reader(&mut winner)?;
+            if actual != expected_sha256 {
+                return Err(Error::ObjectCorrupt {
+                    expected: expected_sha256.to_owned(),
+                    actual,
+                });
+            }
+            target
+                .parent()
+                .ok_or_else(|| Error::Object("object publication target has no parent".into()))?
+                .sync_directory()?;
+            source.remove_file()?;
+            Ok(())
+        }
+        Err(error) => Err(Error::from(error)),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn publication_keeps_a_reader_held_winner() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let bytes = b"late immutable-object publisher";
+        let winner = store.put(bytes).unwrap();
+        let target = store.root.join(&winner.receipt.key);
+        let stage = store.root.join("staging/late-publisher");
+        let mut writer = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&stage)
+            .unwrap();
+        writer.write_all(bytes).unwrap();
+        writer.sync_all().unwrap();
+        drop(writer);
+        // Model a publisher that observed absence before the winner appeared.
+        // A reader may retain the winning file while this late caller publishes.
+        #[cfg(windows)]
+        let mut reader = {
+            use std::os::windows::fs::OpenOptionsExt;
+            std::fs::OpenOptions::new()
+                .read(true)
+                .share_mode(3) // read/write sharing; replacement is not authorized
+                .open(target.diagnostic_path())
+                .unwrap()
+        };
+        #[cfg(not(windows))]
+        let mut reader = target.open_read().unwrap();
+        #[cfg(unix)]
+        let original_identity = {
+            use std::os::unix::fs::MetadataExt;
+            let metadata = reader.metadata().unwrap();
+            (metadata.dev(), metadata.ino())
+        };
+
+        publish_object_path(&stage, &target, &winner.sha256)
+            .expect("reuse the verified publication winner");
+        assert!(!stage.try_exists().unwrap());
+        assert_eq!(store.verify(&winner.sha256).unwrap(), winner);
+        let mut retained = Vec::new();
+        reader.read_to_end(&mut retained).unwrap();
+        assert_eq!(retained, bytes);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let metadata = target.metadata().unwrap();
+            assert_eq!((metadata.dev(), metadata.ino()), original_identity);
+        }
+    }
+
+    #[test]
+    fn publication_rejects_a_corrupt_collision_and_retains_the_stage() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let bytes = b"verified stage must survive a corrupt collision";
+        let winner = store.put(bytes).unwrap();
+        let target = store.root.join(&winner.receipt.key);
+        fs::write(target.diagnostic_path(), b"corrupt competing winner").unwrap();
+        let stage = store.root.join("staging/collision-stage");
+        let mut writer = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&stage)
+            .unwrap();
+        writer.write_all(bytes).unwrap();
+        writer.sync_all().unwrap();
+        drop(writer);
+
+        assert!(matches!(
+            publish_object_path(&stage, &target, &winner.sha256),
+            Err(Error::ObjectCorrupt { .. })
+        ));
+        assert_eq!(fs::read(stage.diagnostic_path()).unwrap(), bytes);
+        assert_eq!(
+            fs::read(target.diagnostic_path()).unwrap(),
+            b"corrupt competing winner"
+        );
+    }
+
+    #[test]
+    fn publication_preserves_a_missing_source_error() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let source = store.root.join("staging/missing");
+        let target = store.root.join("staging/unpublished");
+        assert!(publish_object_path(&source, &target, &digest::sha256_hex(b"missing")).is_err());
+        assert!(!source.try_exists().unwrap());
+        assert!(!target.try_exists().unwrap());
+    }
+
+    #[test]
+    fn concurrent_object_publishers_return_one_verified_address() {
+        let directory = tempdir().unwrap();
+        let store = LocalObjectStore::open(directory.path()).unwrap();
+        let barrier = std::sync::Barrier::new(4);
+        let bytes = b"concurrent immutable content";
+        let results = std::thread::scope(|scope| {
+            let workers: Vec<_> = (0..4)
+                .map(|_| {
+                    scope.spawn(|| {
+                        store.put_with_hook(bytes, |step| {
+                            if step == ObjectStep::AfterStageSync {
+                                barrier.wait();
+                            }
+                            Ok(())
+                        })
+                    })
+                })
+                .collect();
+            workers
+                .into_iter()
+                .map(|worker| worker.join().unwrap().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert!(results.iter().all(|result| result == &results[0]));
+        assert_eq!(store.verify(&results[0].sha256).unwrap(), results[0]);
+        let inventory = store.inventory(&BTreeSet::new()).unwrap();
+        assert_eq!(inventory.entries.len(), 1);
+        assert!(inventory.staging_files.is_empty());
+        assert!(inventory.quarantined_files.is_empty());
+    }
 
     #[test]
     fn memory_objects_keep_the_same_content_address_and_receipt_boundary() {
