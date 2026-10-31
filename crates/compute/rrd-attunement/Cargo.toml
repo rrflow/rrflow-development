@@ -10,3 +10,7 @@ description = "Pure deterministic source inventory proposals for RRFlow."
 rrd-core = { path = "../../kernel/rrd-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+gix-index = { version = "=0.58.0", default-features = false, features = ["sha1", "sha256"] }
+gix-ignore = { version = "=0.24.1", default-features = false }
+gix-config = { version = "=0.62.2", default-features = false, features = ["sha1", "sha256"] }
+filetime = "=0.2.29"

@@ -20,7 +20,7 @@ class SdkAttunementPolicyTests(unittest.TestCase):
             '          export RRFLOW_TEST_BINARY="$GITHUB_WORKSPACE/target/debug/rrflow"\n'
             '          test -x "$RRFLOW_TEST_BINARY"\n'
             '          uv --directory sdks/python run --frozen pytest -o addopts= --color=no -q tests/test_installed_attunement.py | tee "$RUNNER_TEMP/rrflow-python-attunement.txt"\n'
-            "          grep -Eq '^1 passed in [0-9.]+s[[:space:]]*$' \"$RUNNER_TEMP/rrflow-python-attunement.txt\"\n"
+            "          grep -Eq '^2 passed in [0-9.]+s[[:space:]]*$' \"$RUNNER_TEMP/rrflow-python-attunement.txt\"\n"
         )
         self.assertEqual(self.sdk.count(self.step), 1)
 
