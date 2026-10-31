@@ -3,6 +3,7 @@
 import json
 import copy
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import sys
@@ -138,6 +139,25 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             with self.subTest(output=invalid), self.assertRaises(RuntimeError):
                 runner.require_lifecycle_results(invalid)
 
+    def test_preflight_checks_compiled_harness_listing_without_relaxing_set(self):
+        listing = "\n".join(f"{case}: test" for case in sorted(runner.REQUIRED_CASES))
+        with tempfile.TemporaryDirectory() as directory:
+            harness = Path(directory) / "harness"
+            harness.write_bytes(b"bounded fixture")
+            completed = subprocess.CompletedProcess([], 0, listing, "")
+            with patch.object(runner, "run", return_value=completed) as invoke:
+                receipt = runner.preflight_lifecycle_harness(harness)
+            self.assertEqual(receipt, {"harness_sha256": runner.sha256(harness),
+                                       "required_cases": len(runner.REQUIRED_CASES)})
+            invoke.assert_called_once_with(str(harness.resolve()), "--list", "--format=terse",
+                                           timeout=30, output_limit=1024 * 1024)
+            for bad in [listing + "\nunknown: test", "\n".join(listing.splitlines()[1:]),
+                        listing + "\n" + listing.splitlines()[0]]:
+                with self.subTest(listing=bad), patch.object(
+                    runner, "run", return_value=subprocess.CompletedProcess([], 0, bad, "")
+                ), self.assertRaisesRegex(RuntimeError, "exactly the required lifecycle cases"):
+                    runner.preflight_lifecycle_harness(harness)
+
     def test_child_deadline_and_output_limit_are_enforced(self):
         start = time.monotonic()
         observed = []
@@ -179,6 +199,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             "primary_help_exposes_only_the_installed_product_lifecycle",
             "raw_database_and_development_commands_fail_during_argument_parsing",
             "install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape",
+            "installed_plan_accepts_selected_attunement_and_rejects_tampering",
             "fresh_installed_engine_survives_restart_and_restore",
             "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
             "a_served_estate_is_found_proved_and_not_served_twice",
