@@ -10,7 +10,7 @@ use super::policy::CompiledPolicy;
 use super::DefaultInstallProfile;
 use crate::engine::{Result, ServiceError};
 use rrd_core::digest::Sha256 as IncrementalSha256;
-use rrd_store::filesystem::{AnchoredPath, SourceKind, SourceLeaf};
+use rrd_store::filesystem::{AnchoredPath, SourceKind, SourceLeaf, SourceObservation};
 
 mod git_inputs;
 use git_inputs::GitInputs;
@@ -179,10 +179,26 @@ fn scan_project(
             proposal::ingest_leaf(builder, &relative, entry)?;
         }
     }
-    // Revalidate the whole admitted set, not just each file at the moment it
-    // was read. Directory identity/metadata detects observable enumeration drift.
-    // These observations are not an OS snapshot or a metadata-only reuse proof.
-    for entry in &entries {
+    revalidate_observations(project, &root_observation, &entries, &git, &budget)?;
+    let proposed = builder
+        .map(|builder| builder.finish(true).map_err(storage_error))
+        .transpose()?;
+    if let Some(proposed) = &proposed {
+        proposal::require_output_bound(proposed, policy.source.limits.output_bytes)?;
+    }
+    Ok((aggregate.finalize_hex(), proposed))
+}
+
+// Share the same source-observation checks with non-authoritative discovery.
+// Neither this check nor an unchanged directory is an atomic filesystem snapshot.
+fn revalidate_observations(
+    project: &AnchoredPath,
+    root_observation: &SourceObservation,
+    entries: &[WalkEntry],
+    git: &GitInputs,
+    budget: &WorkBudget,
+) -> Result<()> {
+    for entry in entries {
         budget.check()?;
         if entry.excluded.is_none()
             && entry.path.source_leaf().map_err(storage_error)?
@@ -195,18 +211,71 @@ fn scan_project(
             return Err(ServiceError::ProjectBindingMismatch);
         }
     }
-    git.revalidate(&budget)?;
-    if project.source_observation().map_err(storage_error)? != root_observation {
+    git.revalidate(budget)?;
+    if &project.source_observation().map_err(storage_error)? != root_observation {
         return Err(ServiceError::ProjectBindingMismatch);
     }
-    budget.check()?;
-    let proposed = builder
-        .map(|builder| builder.finish(true).map_err(storage_error))
-        .transpose()?;
-    if let Some(proposed) = &proposed {
-        proposal::require_output_bound(proposed, policy.source.limits.output_bytes)?;
+    budget.check()
+}
+
+/// Read only the admitted parent tree and return present tracked gitlink
+/// directories as provisional candidates. Child metadata is never opened.
+pub(super) fn discover_gitlinks(
+    project: &AnchoredPath,
+    profile: &DefaultInstallProfile,
+    profile_sha256: String,
+) -> Result<super::NestedRepositoryDiscovery> {
+    let policy = profile.inventory_policy.compile()?;
+    let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+    let root_observation = project.source_observation().map_err(storage_error)?;
+    let mut git = GitInputs::read(project, &policy, &budget)?;
+    let mut entries = Vec::new();
+    collect_project_entries(
+        project,
+        WalkOptions {
+            excluded_relative: None,
+            lease_admitted: false,
+            record_exclusions: false,
+        },
+        &policy,
+        &budget,
+        &mut git,
+        &mut entries,
+    )?;
+    let mut candidates = Vec::new();
+    for entry in &entries {
+        if entry.gitlink
+            && matches!(&entry.observed, Some(SourceLeaf::Ordinary(obs)) if obs.kind() == SourceKind::Directory)
+        {
+            let path = entry
+                .path
+                .relative_path()
+                .to_str()
+                .ok_or(ServiceError::ProjectBindingMismatch)?
+                .replace('\\', "/");
+            candidates.push(path);
+        }
     }
-    Ok((aggregate.finalize_hex(), proposed))
+    candidates.sort();
+    candidates.dedup();
+    let result = super::NestedRepositoryDiscovery {
+        format_version: 1,
+        profile_sha256,
+        git_inputs_sha256: git.identity()?,
+        git_index_verified: git.has_verified_index(),
+        coverage: "present_tracked_gitlink_directories_only",
+        recommended_layout: "separate_projects",
+        selection_available: false,
+        candidates,
+    };
+    let output = serde_json::to_string_pretty(&result).map_err(storage_error)?;
+    if output.len() as u64 > policy.source.limits.output_bytes {
+        return Err(ServiceError::ConfigurationLimit(
+            "repository discovery output byte bound exceeded".into(),
+        ));
+    }
+    revalidate_observations(project, &root_observation, &entries, &git, &budget)?;
+    Ok(result)
 }
 
 struct WalkOptions<'a> {
@@ -738,6 +807,91 @@ mod tests {
         .unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].observed, Some(SourceLeaf::Symlink));
+    }
+
+    #[test]
+    fn discovery_reports_real_gitlinks_without_following_child_metadata() {
+        use std::process::Command;
+        let root = tempfile::tempdir().unwrap();
+        let git = |args: &[&str]| {
+            let output = Command::new("git")
+                .current_dir(root.path())
+                .args(args)
+                .env_remove("GIT_DIR")
+                .env_remove("GIT_WORK_TREE")
+                .env_remove("GIT_INDEX_FILE")
+                .env_remove("GIT_COMMON_DIR")
+                .env_remove("GIT_TEMPLATE_DIR")
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env(
+                    "GIT_CONFIG_GLOBAL",
+                    if cfg!(windows) { "NUL" } else { "/dev/null" },
+                )
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+        git(&["init", "--quiet", "--object-format=sha1"]);
+        for child in ["z-child", "a-child"] {
+            std::fs::create_dir(root.path().join(child)).unwrap();
+            std::fs::write(
+                root.path().join(child).join(".git"),
+                b"gitdir: ../outside\n",
+            )
+            .unwrap();
+            std::fs::write(root.path().join(child).join(".gitignore"), b"first\n").unwrap();
+            git(&[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("160000,1111111111111111111111111111111111111111,{child}"),
+            ]);
+        }
+        std::fs::create_dir_all(root.path().join("untracked/.git")).unwrap();
+        let (profile, digest) = DefaultInstallProfile::load("default").unwrap();
+        let anchor = AnchoredPath::open_root(root.path()).unwrap();
+        let first = super::discover_gitlinks(&anchor, &profile, digest.clone()).unwrap();
+        assert!(first.git_index_verified);
+        assert_eq!(first.candidates, ["a-child", "z-child"]);
+        assert!(!first.selection_available);
+        assert_eq!(first.coverage, "present_tracked_gitlink_directories_only");
+        assert!(!root.path().join(".rrflow").exists());
+        std::fs::write(root.path().join("a-child/.git"), b"gitdir: ../elsewhere\n").unwrap();
+        std::fs::write(root.path().join("a-child/.gitignore"), b"later\n").unwrap();
+        let second = super::discover_gitlinks(&anchor, &profile, digest.clone()).unwrap();
+        assert_eq!(first, second, "child metadata must not be read");
+        git(&[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            "160000,2222222222222222222222222222222222222222,a-child",
+        ]);
+        let third = super::discover_gitlinks(&anchor, &profile, digest).unwrap();
+        assert_eq!(first.candidates, third.candidates);
+        assert_ne!(first.git_inputs_sha256, third.git_inputs_sha256);
+        assert!(!root.path().join(".rrflow").exists());
+    }
+
+    #[test]
+    fn discovery_classifies_missing_index_and_enforces_existing_bounds() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("source"), b"source").unwrap();
+        let anchor = AnchoredPath::open_root(root.path()).unwrap();
+        let (mut profile, digest) = DefaultInstallProfile::load("default").unwrap();
+        let result = super::discover_gitlinks(&anchor, &profile, digest.clone()).unwrap();
+        assert!(!result.git_index_verified);
+        assert!(result.candidates.is_empty());
+        assert!(!result.selection_available);
+        profile.inventory_policy.limits.output_bytes = 1;
+        assert!(super::discover_gitlinks(&anchor, &profile, digest)
+            .unwrap_err()
+            .to_string()
+            .contains("discovery output byte bound"));
+        assert!(!root.path().join(".rrflow").exists());
     }
 
     #[test]

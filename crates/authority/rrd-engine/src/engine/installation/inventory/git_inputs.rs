@@ -184,6 +184,11 @@ impl GitInputs {
             .is_some())
     }
 
+    /// True only when the root index was present and its checksum verified.
+    pub fn has_verified_index(&self) -> bool {
+        self.tracked.is_some()
+    }
+
     pub fn is_submodule(&self, path: &str) -> bool {
         self.tracked
             .as_ref()

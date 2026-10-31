@@ -310,6 +310,19 @@ pub fn load_estate_configuration(path: Option<&Path>) -> Result<EstateConfigurat
     Ok(configuration)
 }
 
+/// A read-only suggestion; neither a complete repository inventory nor a plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct NestedRepositoryDiscovery {
+    pub format_version: u16,
+    pub profile_sha256: String,
+    pub git_inputs_sha256: String,
+    pub git_index_verified: bool,
+    pub coverage: &'static str,
+    pub recommended_layout: &'static str,
+    pub selection_available: bool,
+    pub candidates: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InstallationPreview {
@@ -514,6 +527,17 @@ impl RrdEngine {
         let entropy = crate::engine::token_key::generate_token_key()
             .map_err(|error| ServiceError::Storage(error.to_string()))?;
         Ok(digest::sha256_hex(&entropy))
+    }
+
+    /// Discover present tracked submodule directories inside the selected root.
+    /// This neither follows child Gitfiles nor authorizes or changes installation.
+    pub fn discover_nested_repositories(
+        project: &Path,
+        profile_id: &str,
+    ) -> Result<NestedRepositoryDiscovery> {
+        let (profile, profile_sha256) = DefaultInstallProfile::load(profile_id)?;
+        let project = AnchoredPath::open_root(project).map_err(storage_error)?;
+        inventory::discover_gitlinks(&project, &profile, profile_sha256)
     }
 
     pub fn plan_installation(
