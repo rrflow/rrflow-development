@@ -484,6 +484,71 @@ fn inventory_source_rejection_preserves_runtime_and_allows_retry() {
 }
 
 #[test]
+fn inventory_larger_than_one_physical_batch_publishes_and_reopens() {
+    let (installed, engine, session) =
+        Installed::with_source(InstallationTargetKind::ExistingProject, None, |root| {
+            let source = root.join("src");
+            std::fs::create_dir(&source).unwrap();
+            for index in 0..2048 {
+                std::fs::write(
+                    source.join(format!("entry-{index:04}.txt")),
+                    format!("source entry {index}\n"),
+                )
+                .unwrap();
+            }
+        });
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(60_000),
+        "large-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "large-connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let inventoried = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "large-inventory",
+        connected.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.checkpoints.len(), 2);
+    assert_eq!(
+        inventoried.status.job.checkpoints[1].phase,
+        Phase::Inventory
+    );
+    let groups = engine
+        .storage
+        .control()
+        .journal_since(0, 1024)
+        .unwrap()
+        .into_iter()
+        .filter(|entry| entry.action == "attunement.inventory_group_published")
+        .count();
+    assert!(
+        groups > 1,
+        "the whole input must cross the native atomic batch boundary"
+    );
+    let reopened_at = inventoried.status.job.updated_at_unix_ms + 1_000;
+    drop(engine);
+    let engine = installed.reopen(reopened_at);
+    let session = installed.session(&engine, "large-reopen", reopened_at + 100);
+    assert_eq!(
+        installed.read(&engine, &session, reopened_at + 200).job,
+        inventoried.status.job
+    );
+}
+
+#[test]
 fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
     let defaults = rrd_contract::EstateConfiguration::default();
     let input = rrd_contract::EstateConfigurationInput {
@@ -560,6 +625,252 @@ fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
     assert_eq!(
         installed.read(&engine, &session, BASE + 4_200).job,
         connected.status.job
+    );
+}
+
+#[test]
+fn inventory_interruption_preserves_incomplete_groups_and_resumes_after_reopen() {
+    partial_inventory_recovery(false);
+}
+
+#[test]
+fn inventory_edit_during_publication_rejects_stale_completion_and_allows_replan() {
+    partial_inventory_recovery(true);
+}
+
+fn partial_inventory_recovery(edit_source: bool) {
+    let (installed, engine, session) =
+        Installed::with_source(InstallationTargetKind::ExistingProject, None, |root| {
+            let source = root.join("src");
+            std::fs::create_dir(&source).unwrap();
+            for index in 0..2048 {
+                std::fs::write(
+                    source.join(format!("entry-{index:04}.txt")),
+                    format!("source entry {index}\n"),
+                )
+                .unwrap();
+            }
+        });
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(60_000),
+        "interrupt-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "interrupt-connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let at = connected.status.job.updated_at_unix_ms + 1;
+    let progress_key = format!(
+        "server/state/{}/inventory/progress/{}/1",
+        engine.instance_id(),
+        installed.job
+    );
+    let head_key = format!("server/state/{}/inventory/head", engine.instance_id());
+    let scope_id = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    std::thread::scope(|scope| {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let engine = &engine;
+        let session = &session;
+        let command = step(&connected.status.job);
+        let worker = scope.spawn(move || {
+            let authorized = engine
+                .begin_invocation(
+                    Invocation {
+                        context: context("interrupt-inventory"),
+                        resource: ResourcePath {
+                            segments: vec![rrd_contract::ResourceId::new(
+                                rrd_contract::ResourceKind::Instance,
+                                engine.instance_id().as_str(),
+                            )
+                            .unwrap()],
+                        },
+                        observed_at_unix_ms: at,
+                        attempt: 1,
+                        request_sha256: digest::sha256_hex(&serde_json::to_vec(&command).unwrap()),
+                    },
+                    RrdOperation::EstateAdmin,
+                    InvocationCredential::Session {
+                        session_id: &session.session_id,
+                        token: &session.token,
+                    },
+                )
+                .unwrap();
+            sender.send(authorized).unwrap();
+            call(engine, session, &command, "interrupt-inventory", at)
+        });
+        let authorized = receiver
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .unwrap();
+        let deadline = std::time::Instant::now();
+        while engine
+            .storage
+            .control()
+            .get(&progress_key)
+            .unwrap()
+            .is_none()
+        {
+            assert!(
+                !worker.is_finished(),
+                "Inventory finished before recording progress"
+            );
+            assert!(deadline.elapsed() < std::time::Duration::from_secs(60));
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        if edit_source {
+            std::fs::write(
+                installed.root.path().join("README.md"),
+                "edited during publication\n",
+            )
+            .unwrap();
+            assert!(matches!(
+                worker.join().unwrap(),
+                Err(ServiceError::AttunementSourceChanged)
+            ));
+        } else {
+            authorized.cancel_pending();
+            assert!(matches!(
+                worker.join().unwrap(),
+                Err(ServiceError::AdmissionCancelled)
+            ));
+        }
+    });
+    assert!(engine.storage.control().get(&head_key).unwrap().is_none());
+    let partial = engine.storage.runtime().read_stamp(&scope_id).unwrap();
+    assert!(
+        partial.commit_cursor
+            > connected.status.job.checkpoints[0]
+                .coordinates
+                .runtime_cursor
+    );
+    assert_eq!(
+        installed.read(&engine, &session, at + 30_000).job,
+        connected.status.job
+    );
+    let partial_rows = engine
+        .storage
+        .runtime()
+        .read_changes(&partial, 0, 10_000)
+        .unwrap();
+    assert!(!partial_rows.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == "source-tree-snapshot")));
+    let reopened_at = connected
+        .status
+        .job
+        .lease
+        .as_ref()
+        .unwrap()
+        .expires_at_unix_ms
+        + 1_000;
+    drop(engine);
+    let engine = installed.reopen(reopened_at);
+    let session = installed.session(&engine, "interrupt-reopen", reopened_at + 100);
+    let recovered = call(
+        &engine,
+        &session,
+        &AttunementCommand::RecoverExpired {
+            job_id: installed.job.clone(),
+            expected_revision: connected.status.job.revision,
+        },
+        "interrupt-recover",
+        reopened_at + 200,
+    )
+    .unwrap();
+    let resumed = call(
+        &engine,
+        &session,
+        &resume(&recovered.status.job, reopened_at + 300),
+        "interrupt-resume",
+        reopened_at + 300,
+    );
+    if edit_source {
+        assert!(matches!(
+            resumed,
+            Err(ServiceError::AttunementSourceChanged)
+        ));
+        assert!(engine.storage.control().get(&head_key).unwrap().is_none());
+        let replan = engine
+            .preview_attunement_replan(
+                &session.session_id,
+                &session.token,
+                &installed.job,
+                recovered.status.job.revision,
+                reopened_at + 400,
+                "request-partial-replan",
+                "operation-partial-replan",
+            )
+            .unwrap();
+        let accepted = engine
+            .accept_attunement_replan(
+                &session.session_id,
+                &session.token,
+                &replan,
+                &replan.proposal_sha256,
+                &context("partial-accept"),
+                reopened_at + 500,
+            )
+            .unwrap();
+        assert_ne!(
+            accepted.successor.job.plan_sha256,
+            connected.status.job.plan_sha256
+        );
+        assert!(accepted.successor.job.checkpoints.is_empty());
+        assert!(engine.storage.control().get(&head_key).unwrap().is_none());
+        return;
+    }
+    let resumed = resumed.unwrap();
+    let complete = call(
+        &engine,
+        &session,
+        &step(&resumed.status.job),
+        "interrupt-continue",
+        resumed.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    assert_eq!(complete.status.job.checkpoints.len(), 2);
+    assert!(engine
+        .storage
+        .control()
+        .get(&progress_key)
+        .unwrap()
+        .is_none());
+    assert!(engine.storage.control().get(&head_key).unwrap().is_some());
+    let read = engine.storage.runtime().read_stamp(&scope_id).unwrap();
+    let changes = engine
+        .storage
+        .runtime()
+        .read_changes(&read, 0, 10_000)
+        .unwrap();
+    let identities: Vec<_> = changes
+        .changes
+        .iter()
+        .filter_map(|change| match &change.mutation {
+            RuntimeMutation::Record { record }
+                if record.reference.kind.as_str() == "source-tree-entry" =>
+            {
+                Some(record.reference.clone())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        identities.len(),
+        2052, // Root, src, README, the excluded .rrflow marker, and 2,048 files.
+        "resume must not republish already committed groups"
+    );
+    assert_eq!(
+        identities
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        identities.len()
     );
 }
 

@@ -241,6 +241,59 @@ pub(super) fn mutations(
     Ok(mutations)
 }
 
+pub(super) struct PublicationParts {
+    pub schema: Vec<RuntimeMutation>,
+    pub groups: Vec<Vec<RuntimeMutation>>,
+    pub complete: Vec<RuntimeMutation>,
+}
+
+/// Each entry and its parent edge form one source-observation group. The root
+/// snapshot edge, complete manifests and retirements stay in final publication;
+/// intermediate groups cannot retire a previously published source view.
+pub(super) fn partition(mutations: Vec<RuntimeMutation>) -> Result<PublicationParts> {
+    let mut parts = PublicationParts {
+        schema: Vec::new(),
+        groups: Vec::new(),
+        complete: Vec::new(),
+    };
+    for mutation in mutations {
+        match &mutation {
+            RuntimeMutation::Schema { .. } => parts.schema.push(mutation),
+            RuntimeMutation::Record { record } if record.reference.kind.as_str() == ENTRY => {
+                parts.groups.push(vec![mutation])
+            }
+            RuntimeMutation::Relation { relation }
+                if relation.reference.kind.as_str() == CONTAINS
+                    && relation.from.kind.as_str() == ENTRY =>
+            {
+                let group = parts.groups.last_mut().ok_or_else(invalid)?;
+                if !matches!(group.first(), Some(RuntimeMutation::Record { record }) if record.reference == relation.to)
+                {
+                    return Err(invalid());
+                }
+                group.push(mutation);
+            }
+            RuntimeMutation::Record { record }
+                if [SNAPSHOT, CHANGES].contains(&record.reference.kind.as_str()) =>
+            {
+                parts.complete.push(mutation)
+            }
+            RuntimeMutation::Relation { relation }
+                if relation.reference.kind.as_str() == CONTAINS
+                    && relation.from.kind.as_str() == SNAPSHOT =>
+            {
+                parts.complete.push(mutation)
+            }
+            RuntimeMutation::Retire { .. } => parts.complete.push(mutation),
+            _ => return Err(invalid()),
+        }
+    }
+    if parts.groups.is_empty() || parts.complete.is_empty() {
+        return Err(invalid());
+    }
+    Ok(parts)
+}
+
 fn record(kind: &str, id: &str, value: &impl Serialize, at: u64) -> Result<RuntimeMutation> {
     let value = serde_json::to_value(value).map_err(contract)?;
     let object = value.as_object().ok_or_else(invalid)?;
@@ -386,7 +439,7 @@ fn invalid() -> ServiceError {
     ServiceError::Storage("invalid committed source inventory".into())
 }
 
-fn is_digest(value: &str) -> bool {
+pub(super) fn is_digest(value: &str) -> bool {
     value.len() == 64
         && value
             .bytes()

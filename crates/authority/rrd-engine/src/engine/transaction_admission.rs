@@ -76,7 +76,7 @@ impl TransactionPermit<'_> {
     /// Grow the active reservation to the actual composed write before commit.
     /// Pending requests remain charged; no second gate or storage transaction.
     pub(super) fn charge(&mut self, request: &impl Serialize, limit: u64) -> Result<()> {
-        let bytes = request_charge(request, limit)?;
+        let bytes = request_charge(request, limit)?.max(self.bytes);
         let mut state = self.gate.state.lock().map_err(|_| poisoned())?;
         if !self.active || !state.active || state.fenced {
             return Err(poisoned());
@@ -303,6 +303,12 @@ mod tests {
         let mut permit = gate.acquire(&policy, &"a", None).unwrap();
         permit.charge(&"expanded", 16).unwrap();
         assert_eq!(gate.state.lock().unwrap().bytes, 10);
+        permit.charge(&"a", 16).unwrap();
+        assert_eq!(
+            gate.state.lock().unwrap().bytes,
+            10,
+            "a smaller group cannot release the retained preparation charge"
+        );
         assert!(matches!(
             permit.charge(&"this cannot fit in sixteen bytes", 16),
             Err(ServiceError::StorageAdmission(_))
