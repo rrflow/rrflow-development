@@ -144,6 +144,8 @@ pub enum RestoreAction {
 pub enum InstallAction {
     /// Generate a new identity input without writing project or engine state.
     Identity,
+    /// Emit the machine-readable attunement proposal shape without writes.
+    AttunementSchema,
     /// Emit an exact, deterministic preview and perform no project writes.
     Plan {
         #[arg(long, default_value = ".")]
@@ -158,6 +160,9 @@ pub enum InstallAction {
         /// Operator-authored estate ceilings sealed into the installation plan.
         #[arg(long)]
         configuration: Option<std::path::PathBuf>,
+        /// Bounded JSON proposal for recognized attunement effects.
+        #[arg(long)]
+        attunement_proposal: Option<std::path::PathBuf>,
         /// Debug-test surrogate for the distribution executable.
         #[arg(long = "test-distribution-executable", hide = true)]
         test_distribution_executable: Option<std::path::PathBuf>,

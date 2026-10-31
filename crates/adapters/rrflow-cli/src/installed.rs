@@ -246,22 +246,31 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
             "installation_identity": RrdEngine::generate_installation_identity()?,
         }))?
         .into()),
+        InstallAction::AttunementSchema => {
+            Ok(serde_json::to_string_pretty(&rrd_engine::attunement_proposal_schema()?)?.into())
+        }
         InstallAction::Plan {
             project,
             mode,
             identity,
             profile,
             configuration,
+            attunement_proposal,
             test_distribution_executable,
         } => {
             let started = Instant::now();
             let executable = distribution_executable_path(test_distribution_executable.as_deref())?;
-            let preview = RrdEngine::plan_installation(
+            let proposal = attunement_proposal
+                .as_deref()
+                .map(rrd_engine::load_attunement_proposal)
+                .transpose()?;
+            let preview = RrdEngine::plan_installation_with_proposal(
                 project,
                 target_kind(*mode),
                 identity,
                 profile,
                 configuration.as_deref(),
+                proposal.as_ref(),
                 &executable,
             )?;
             tracing::info!(

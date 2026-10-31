@@ -14,6 +14,18 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [controller/Inventory integration](../../evidence/change-journals/gate-g/controller-inventory-integration.md)
+full engine suite exposed a Windows concurrent quantization-build failure:
+immutable object publication returned OS error 5, Access is denied. The focused
+test subsequently passed, so that run does not clear the failure. Object-store
+publication currently checks target existence before a replacing rename; a
+native probe reproduces code 5 when a concurrently published winner is held
+without delete sharing. Non-replacing publication reports an existing target
+instead. The original error's exact operation remains unproven. Characterize
+the publication race at the persistence owner and retain digest verification,
+durability and concurrency checks before refreshing dependent qualification.
+Do not weaken the concurrent oracle or claim that a passing retry is a repair.
+
 The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
 locally exercised held and interrupted resource acquisition and Windows Job
 membership for the engine, harness and helper. A [subsequent Windows Job test](../../evidence/change-journals/gate-c/c-07g-native-worker-windows-ci.md)

@@ -342,7 +342,7 @@ jobs:
           - name: kernel-storage
             packages: "-p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance"
           - name: query-retrieval
-            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-operator-knowledge"
+            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
           - name: engine-authority
             packages: "-p rrd-contract -p rrd-cluster -p rrd-engine -p rrd-estate -p rrd-security"
           - name: service-protocol
@@ -452,7 +452,7 @@ jobs:
           export RRFLOW_TEST_BINARY="$GITHUB_WORKSPACE/target/debug/rrflow"
           test -x "$RRFLOW_TEST_BINARY"
           uv --directory sdks/python run --frozen pytest -o addopts= --color=no -q tests/test_installed_attunement.py | tee "$RUNNER_TEMP/rrflow-python-attunement.txt"
-          grep -Eq '^1 passed in [0-9.]+s[[:space:]]*$' "$RUNNER_TEMP/rrflow-python-attunement.txt"
+          grep -Eq '^2 passed in [0-9.]+s[[:space:]]*$' "$RUNNER_TEMP/rrflow-python-attunement.txt"
       - name: Qualify all supported SDKs against one live corpus
         run: python3 scripts/ci/run_sdk_conformance.py
 
