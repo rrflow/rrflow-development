@@ -31,6 +31,17 @@ Verified at development `main` `04fae276`:
   The D-02a job-control hold in [POAM-006](poam-006.md) was itself such a
   question, tracked only in documents.
 
+
+A follow-up inspection of development main `6fe8b759` found an additional
+public-path restriction: `DefaultInstallProfile::load` accepts only the bundled
+`default` and `clyffy` profiles, `validate` requires each profile's exact
+11-entry `ATTUNEMENT_PHASES` order, and `validate_sealed_preview` requires the
+plan to equal that profile. The [plan-owned progression candidate](../../evidence/change-journals/gate-d/d-02-plan-owned-attunement.md)
+changes internal sequencing but does not remove these installation restrictions
+or provide a public project-tailored plan. The [correction record](../../evidence/change-journals/gate-d/d-02-installation-profile-plan-gap.md)
+retains the source and candidate distinction. Per-prompt reasoning handoff is a
+separate missing capability, not evidence supplied by an installation template.
+
 ## Impact
 
 An agent cannot prove which plan it executed, who approved it, or which

@@ -1,6 +1,7 @@
 package io.rrflow.rrd;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -222,7 +223,10 @@ final class RrdClientTest {
                                     "request-expired", "operation-expired", null,
                                     Instant.ofEpochMilli(1), Map.of(), null, session, null)));
             assertTrue(expired.getMessage().contains("deadline has expired"));
-            assertEquals(62, OperationId.values().length);
+            assertEquals("/v1/attunement/replan/preview", OperationId.ATTUNEMENT_REPLAN_PREVIEW.path());
+            assertFalse(OperationId.ATTUNEMENT_REPLAN_PREVIEW.mutation());
+            assertEquals(OperationId.Authentication.SESSION_BEARER, OperationId.ATTUNEMENT_REPLAN_PREVIEW.authentication());
+            assertTrue(OperationId.ATTUNEMENT_REPLAN_ACCEPT.mutation());
             assertEquals("/v1/attunement/receipt/read", OperationId.ATTUNEMENT_RECEIPT_READ.path());
             assertEquals(false, OperationId.ATTUNEMENT_RECEIPT_READ.mutation());
             assertTrue(OperationId.BACKUP_CREATE.mutation());

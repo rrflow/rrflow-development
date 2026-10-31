@@ -1,11 +1,17 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: c1c8c59f888c3c1425789feec81c008d3aa0cd0676f6155a526ccd96aca2c606
-export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "c1c8c59f888c3c1425789feec81c008d3aa0cd0676f6155a526ccd96aca2c606" as const;
+// OpenAPI SHA-256: 17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0
+export const ENDPOINT_OPENAPI_DOCUMENT_SHA256 = "17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0" as const;
 
 export const endpoints = {
   "attunement-cancel": {
     "method": "POST",
     "path": "/v1/attunement/cancel",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-pause": {
+    "method": "POST",
+    "path": "/v1/attunement/pause",
     "authentication": "session_bearer",
     "mutation": true
   },
@@ -20,6 +26,48 @@ export const endpoints = {
     "path": "/v1/attunement/receipt/read",
     "authentication": "session_bearer",
     "mutation": false
+  },
+  "attunement-recover-expired": {
+    "method": "POST",
+    "path": "/v1/attunement/recover-expired",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-replan-accept": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/accept",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-replan-preview": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/preview",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-replan-receipt-read": {
+    "method": "POST",
+    "path": "/v1/attunement/replan/receipt/read",
+    "authentication": "session_bearer",
+    "mutation": false
+  },
+  "attunement-resume": {
+    "method": "POST",
+    "path": "/v1/attunement/resume",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-start": {
+    "method": "POST",
+    "path": "/v1/attunement/start",
+    "authentication": "session_bearer",
+    "mutation": true
+  },
+  "attunement-step": {
+    "method": "POST",
+    "path": "/v1/attunement/step",
+    "authentication": "session_bearer",
+    "mutation": true
   },
   "audit-export": {
     "method": "POST",

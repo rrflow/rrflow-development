@@ -63,7 +63,7 @@ version, which remains frozen at `1.0.0` by the
 [version policy](../release/version-policy.md).
 
 The deterministic OpenAPI projection is currently bound to SHA-256
-`c1c8c59f888c3c1425789feec81c008d3aa0cd0676f6155a526ccd96aca2c606`.
+`17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0`.
 Changing its bytes requires an explicit protocol/schema review and regeneration
 of every checked-in SDK surface; `scripts/ci/check_generated_surfaces.py`
 verifies the SDK projections, the signal reference, and this citation against
@@ -310,6 +310,23 @@ Native installed view/pin/output ceilings also apply; the metadata registry
 admits at most the smaller of 64 or the installed active-view ceiling. Open
 retries with different parameters conflict; matching retries observe the
 current retained page. Cursor IDs may be reused after release or expiry.
+
+An explicit `open_range` action accepts the same batch and lifetime budgets
+plus nonempty `start` and `end` byte arrays of at most 4,096 bytes each. It
+retains a physical snapshot over the half-open interval `[start, end)`; the
+start must sort before the end. This is an operator-supplied physical range,
+not a semantic query or an automatically chosen subset. It uses the same native
+pin limits, authorization and ownership lifecycle. The original `open` remains
+a full-range snapshot and may be denied when its selected ownership exceeds the
+configured ceiling. Neither action returns physical keys or values.
+
+`open_record_kind` takes the same budgets and a canonical record-kind identifier.
+The engine uses the already authorized instance scope, and rrflowKV derives the
+physical prefix for current records internally. The response remains a physical
+inspection hash and counters, not a semantic record query. A selected range can
+still overlap every immutable segment or exceed the native pin ceiling; callers
+must handle the same bounded admission failure. The action returns no raw keys
+or values and follows the same session, retry and owner-release rules.
 
 `observe` hashes the current retained page without advancing. `advance`
 supplies `expected_ordinal`; replaying the immediately previous advance returns
