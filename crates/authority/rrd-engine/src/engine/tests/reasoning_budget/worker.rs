@@ -1,4 +1,5 @@
 //! Admission probes, not model-quality observations or learning records.
+mod resume;
 mod terminal_response;
 use super::*;
 use crate::engine::operation_digest;

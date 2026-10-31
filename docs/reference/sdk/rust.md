@@ -49,8 +49,9 @@ fixed-path session POST operations; there is no separately checked-in Rust
 projection. Generator and compiled-catalogue tests verify complete coverage,
 metadata changes and malformed-input rejection.
 It carries method/path/type/mutation metadata, not semantic validation or engine
-authority. `operations::TaskEndpointPropose` and `operations::TaskWorkerExecute`
-implement the sealed `ValidatedOperation` interface. Other markers cannot be passed to this API;
+authority. `operations::TaskEndpointPropose`, `operations::TaskWorkerExecute`
+and `operations::TaskBudgetResume` implement the sealed `ValidatedOperation`
+interface. Other markers cannot be passed to this API;
 existing legacy methods retain their documented behavior.
 
 ```rust,ignore
@@ -67,6 +68,12 @@ work and checks response scope, task, attempt and expected task/configuration
 digests, protocol/correlation, status and JSON media type. Full candidate/packet
 admission remains in the engine. A successful proposal permits no worker effect.
 Credentials never need to enter the renderer.
+
+For explicit recovery, call `call_operation::<operations::TaskBudgetResume>`
+with `ResumeTaskBudget` and the exact digest returned by `read_task_budget`.
+The contract validates the resumed budget's identity and state. Carriage sends
+once; a lost acknowledgement requires readback. Resume does not dispatch work,
+reset spent effort/deadlines, clear unknown leases or make old attempts replayable.
 
 `client.execute_task_worker(&session, request, options)` is the typed wrapper
 over that same operation carriage. The worker request names the accepted

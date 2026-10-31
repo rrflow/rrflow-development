@@ -106,5 +106,47 @@ fn rejected_terminal_response_releases_capacity_but_lost_response_does_not() {
                 .unwrap(),
             retained
         );
+        let resume = rrd_contract::ResumeTaskBudget {
+            scope: request.scope.clone(),
+            task_id: request.task_id.clone(),
+            expected_budget_sha256: operation_digest(&after).unwrap(),
+        };
+        let resumed = engine.resume_task_budget_with_clock(
+            &lease.session_id,
+            &lease.token,
+            &resume,
+            "resume",
+            "resume",
+            &FixedClock::at(1_400),
+        );
+        if lost {
+            assert!(matches!(
+                resumed,
+                Err(ServiceError::ReasoningBudgetStopped(
+                    ReasoningBudgetStop::UnresolvedAttempt
+                ))
+            ));
+            assert_eq!(budget(&engine, &lease, &request.task_id), after);
+        } else {
+            let mut expected = after;
+            expected.stopped = None;
+            expected.last_observed_at_unix_ms = 1_400;
+            assert_eq!(resumed.unwrap().budget, Some(expected));
+            assert!(matches!(
+                engine.execute_task_worker_with_clock(
+                    &lease.session_id,
+                    &lease.token,
+                    &request,
+                    "old-worker",
+                    "old-worker",
+                    &FixedClock::at(1_500),
+                ),
+                Err(ServiceError::ReasoningAttemptRecorded { .. })
+            ));
+        }
+        assert_eq!(
+            engine.storage.control().get(&key).unwrap().unwrap(),
+            capacity
+        );
     }
 }

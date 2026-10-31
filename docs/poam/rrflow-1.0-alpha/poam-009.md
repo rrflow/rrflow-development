@@ -10,6 +10,13 @@ independently.
 
 ## Observed deficiency
 
+The [explicit budget-resume increment](../../evidence/change-journals/gate-g/task-budget-resume.md)
+adds the existing engine's authenticated transition for safely completed stopped
+work while retaining original effort/deadline and attempt history. Unknown or
+active work remains denied. Installed same-task BF16 recovery, UI composition,
+candidate/dependency landing and the broader project workflow remain required;
+this does not qualify automatic retry or unknown-outcome reconciliation.
+
 The [terminal-response repair](../../evidence/change-journals/gate-g/task-worker-terminal-response.md)
 addresses a reproduced completion-classification defect: a matching worker reply
 ending at its token limit was rejected but classified as still possibly running.

@@ -71,6 +71,7 @@ fn fixed_session_metadata_has_exact_catalogue_coverage() {
     assert_eq!(TaskEndpointPropose::MUTATION, proposal.mutation);
     fn callable<O: rrd_client::ValidatedOperation>() {}
     callable::<rrd_client::operations::TaskWorkerExecute>();
+    callable::<rrd_client::operations::TaskBudgetResume>();
 }
 
 #[test]

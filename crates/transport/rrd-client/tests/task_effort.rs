@@ -314,7 +314,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
     let mut next = execute.clone();
     next.attempt_id = CorrelationId::new("second").unwrap();
     assert!(client
-        .execute_task_embedding(session, next, mutation("after-stop"))
+        .execute_task_embedding(session, next.clone(), mutation("after-stop"))
         .await
         .is_err());
     let mut foreign = read_budget.clone();
@@ -437,7 +437,7 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
     );
     assert_eq!(
         client
-            .stop_task_budget(session, stop, mutation("reopened-stop"))
+            .stop_task_budget(session, stop.clone(), mutation("reopened-stop"))
             .await
             .unwrap(),
         stopped
@@ -456,6 +456,84 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
             .unwrap(),
         repeat_stopped
     );
+    use rrd_client::operations::TaskBudgetResume;
+    let resume = ResumeTaskBudget {
+        scope: scope.clone(),
+        task_id: task.clone(),
+        expected_budget_sha256: stopped.budget_sha256.clone().unwrap(),
+    };
+    denied(
+        client
+            .call_operation::<TaskBudgetResume>(
+                &sessions[1],
+                resume.clone(),
+                mutation("denied-resume"),
+            )
+            .await
+            .unwrap_err(),
+    );
+    let resumed = client
+        .call_operation::<TaskBudgetResume>(session, resume.clone(), mutation("resume"))
+        .await
+        .unwrap();
+    let mut preserved = stopped.budget.clone().unwrap();
+    preserved.stopped = None;
+    preserved.stop_expected_sha256 = None;
+    preserved.last_observed_at_unix_ms = resumed.budget.as_ref().unwrap().last_observed_at_unix_ms;
+    assert_eq!(resumed.budget, Some(preserved.clone()));
+    assert!(client
+        .call_operation::<TaskBudgetResume>(session, resume, mutation("stale-resume"))
+        .await
+        .is_err());
+    assert!(client
+        .stop_task_budget(session, stop, mutation("old-stop-after-resume"))
+        .await
+        .is_err());
+    let repeated = repeat_stopped.budget.as_ref().unwrap();
+    assert!(client
+        .call_operation::<TaskBudgetResume>(
+            session,
+            ResumeTaskBudget {
+                scope: scope.clone(),
+                task_id: repeated.task_id.clone(),
+                expected_budget_sha256: repeat_stopped.budget_sha256.clone().unwrap(),
+            },
+            mutation("resume-repetition-denied")
+        )
+        .await
+        .is_err());
+    client
+        .activate_builtin_embedding(
+            session,
+            ActivateBuiltinEmbedding {
+                scope: scope.clone(),
+                dimensions: 32,
+                seed: 42,
+            },
+            mutation("resume-activate"),
+        )
+        .await
+        .unwrap();
+    client
+        .execute_task_embedding(session, next, mutation("explicit-next-step"))
+        .await
+        .unwrap();
+    let after = client
+        .read_task_budget(
+            session,
+            ReadTaskBudget {
+                scope,
+                task_id: task,
+            },
+            read("after-resume-step"),
+        )
+        .await
+        .unwrap()
+        .budget
+        .unwrap();
+    assert_eq!(after.reserved_steps, preserved.reserved_steps + 1);
+    assert_eq!(after.deadline_unix_ms, preserved.deadline_unix_ms);
+    assert!(after.charged_elapsed_ms >= preserved.charged_elapsed_ms);
     shutdown.send(()).unwrap();
     running.await.unwrap().unwrap();
 }
