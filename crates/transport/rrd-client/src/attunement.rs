@@ -1,6 +1,6 @@
 //! Typed attunement calls use generated catalogue bindings and engine-owned plans.
 use crate::error::contract;
-use crate::generated_operations::{self as generated, GeneratedOperation};
+use crate::operations::{self as generated, GeneratedOperation};
 use crate::{Error, RequestOptions, Result, RrdClient, Session};
 use hyper::Method;
 use rrd_contract::{

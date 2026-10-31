@@ -45,6 +45,12 @@ struct AttemptRecord {
     outcome: AttemptOutcome,
     outcome_sha256: Option<String>,
     result: Option<GenerateEmbeddingsResult>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    endpoint_proposal: Option<rrd_contract::EndpointSelectionProposal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    worker_output: Option<rrd_contract::TaskWorkerOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +59,99 @@ enum AttemptOutcome {
     Reserved,
     Accepted,
     Stopped,
+    Invalidated,
+}
+
+/// Internal typed completion; public callers cannot inject a retained output.
+#[derive(Debug, Clone)]
+pub(super) enum TaskAttemptOutput {
+    Embedding(Box<GenerateEmbeddingsResult>),
+    EndpointProposal(Box<rrd_contract::EndpointSelectionProposal>),
+    Worker(Box<rrd_contract::TaskWorkerOutput>),
+}
+
+impl From<rrd_contract::EndpointSelectionProposal> for TaskAttemptOutput {
+    fn from(output: rrd_contract::EndpointSelectionProposal) -> Self {
+        Self::EndpointProposal(Box::new(output))
+    }
+}
+
+impl TaskAttemptOutput {
+    fn bytes(&self) -> Result<Vec<u8>> {
+        match self {
+            Self::Embedding(output) => serde_json::to_vec(output),
+            Self::EndpointProposal(output) => serde_json::to_vec(output),
+            Self::Worker(output) => serde_json::to_vec(output),
+        }
+        .map_err(contract_json)
+    }
+
+    fn validate_for(&self, budget: &TaskReasoningBudget, attempt: &AttemptRecord) -> Result<()> {
+        match self {
+            Self::Worker(output) => {
+                output
+                    .validate()
+                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                if output.scope != budget.scope
+                    || output.task_id != budget.task_id
+                    || output.attempt_id != attempt.attempt_id
+                {
+                    return Err(ServiceError::Contract(
+                        "task worker output identity mismatch".into(),
+                    ));
+                }
+            }
+            Self::Embedding(output) => {
+                output
+                    .validate()
+                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                if output.scope != budget.scope
+                    || self.bytes()?.len() > rrd_contract::MAX_TASK_EMBEDDING_OUTPUT_BYTES
+                {
+                    return Err(ServiceError::ConfigurationLimit(
+                        "task embedding output scope or bound mismatch".into(),
+                    ));
+                }
+            }
+            Self::EndpointProposal(output) => {
+                output
+                    .validate()
+                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                if output.scope != budget.scope
+                    || output.task_id != budget.task_id
+                    || output.attempt_id != attempt.attempt_id
+                {
+                    return Err(ServiceError::Contract(
+                        "task proposal output identity mismatch".into(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Engine-owned control bytes that must still match at the completion commit.
+/// These are compare-only semantic guards: their replacement is the same bytes.
+/// They never accept client-supplied keys or modify another authority's value.
+pub(super) struct AttemptAuthorityGuard {
+    pub key: String,
+    pub expected: Vec<u8>,
+}
+
+/// Effect-specific admission state committed with the existing attempt ledger.
+/// Only engine composition supplies these keys; callers cannot inject writes.
+pub(super) struct AttemptControlWrite {
+    pub key: String,
+    pub expected: Option<Vec<u8>>,
+    pub replacement: Vec<u8>,
+}
+
+#[derive(Default)]
+pub(super) struct TaskCompletionAdmission {
+    pub guards: Vec<AttemptAuthorityGuard>,
+    pub writes: Vec<AttemptControlWrite>,
+    pub invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
 }
 
 pub(super) struct Reservation {
@@ -61,6 +160,12 @@ pub(super) struct Reservation {
     read: ReadStamp,
     control: EmbeddingExecutionControl,
     started: Instant,
+}
+
+impl Reservation {
+    pub(super) fn execution_control(&self) -> &EmbeddingExecutionControl {
+        &self.control
+    }
 }
 
 impl RrdEngine {
@@ -201,6 +306,26 @@ impl RrdEngine {
         clock: &dyn ClockSource,
         context: &EngineControlContext<'_>,
     ) -> Result<Reservation> {
+        self.reserve_controlled_task_attempt(
+            input,
+            repetition_identity,
+            &TaskCompletionAdmission::default(),
+            clock,
+            context,
+        )
+    }
+
+    pub(super) fn reserve_controlled_task_attempt(
+        &self,
+        input: &TaskAttemptAdmission<'_>,
+        repetition_identity: impl FnOnce() -> Result<String>,
+        admission: &TaskCompletionAdmission,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<Reservation> {
+        if let Some(reason) = admission.invalidation {
+            return Err(ServiceError::TaskAttemptInvalidated(reason));
+        }
         let started = input.started;
         validate_attempt_digest(input.request_sha256)?;
         let at = observe_required(clock, "reasoning-reserve")?.observed_at_unix_ms;
@@ -308,8 +433,18 @@ impl RrdEngine {
             outcome: AttemptOutcome::Reserved,
             outcome_sha256: None,
             result: None,
+            endpoint_proposal: None,
+            worker_output: None,
+            invalidation: None,
         };
-        self.commit_budget(&read, expected, &budget, Some((None, &attempt)), context)?;
+        self.commit_budget_controlled(
+            &read,
+            expected,
+            &budget,
+            Some((None, &attempt)),
+            admission,
+            context,
+        )?;
         Ok(Reservation {
             budget,
             attempt,
@@ -322,10 +457,59 @@ impl RrdEngine {
     fn finish_task_attempt(
         &self,
         reservation: Reservation,
-        mut result: Result<GenerateEmbeddingsResult>,
+        result: Result<GenerateEmbeddingsResult>,
         clock: &dyn ClockSource,
         context: &EngineControlContext<'_>,
     ) -> Result<GenerateEmbeddingsResult> {
+        match self.finish_admitted_task_attempt(
+            reservation,
+            result.map(|output| TaskAttemptOutput::Embedding(Box::new(output))),
+            |_| Ok(Vec::new()),
+            clock,
+            context,
+        )? {
+            TaskAttemptOutput::Embedding(output) => Ok(*output),
+            TaskAttemptOutput::EndpointProposal(_) | TaskAttemptOutput::Worker(_) => {
+                Err(ServiceError::Storage("unexpected task output kind".into()))
+            }
+        }
+    }
+
+    pub(super) fn finish_admitted_task_attempt(
+        &self,
+        reservation: Reservation,
+        result: Result<TaskAttemptOutput>,
+        mut admit_completion: impl FnMut(&ReadStamp) -> Result<Vec<AttemptAuthorityGuard>>,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<TaskAttemptOutput> {
+        self.finish_controlled_task_attempt(
+            reservation,
+            result,
+            |read| match admit_completion(read) {
+                Ok(guards) => Ok(TaskCompletionAdmission {
+                    guards,
+                    ..Default::default()
+                }),
+                Err(ServiceError::TaskAttemptInvalidated(reason)) => Ok(TaskCompletionAdmission {
+                    invalidation: Some(reason),
+                    ..Default::default()
+                }),
+                Err(error) => Err(error),
+            },
+            clock,
+            context,
+        )
+    }
+
+    pub(super) fn finish_controlled_task_attempt(
+        &self,
+        reservation: Reservation,
+        mut result: Result<TaskAttemptOutput>,
+        mut admit_completion: impl FnMut(&ReadStamp) -> Result<TaskCompletionAdmission>,
+        clock: &dyn ClockSource,
+        context: &EngineControlContext<'_>,
+    ) -> Result<TaskAttemptOutput> {
         let Reservation {
             budget: reserved,
             mut attempt,
@@ -334,17 +518,9 @@ impl RrdEngine {
             ..
         } = reservation;
         let expected_attempt = Some(serde_json::to_vec(&attempt).map_err(contract_json)?);
-        let at = observe_required(clock, "reasoning-complete")?.observed_at_unix_ms;
-        let elapsed = u64::try_from(started.elapsed().as_millis())
-            .unwrap_or(u64::MAX)
-            .saturating_add(1);
         if let Ok(output) = &result {
-            if serde_json::to_vec(output).map_err(contract_json)?.len()
-                > rrd_contract::MAX_TASK_EMBEDDING_OUTPUT_BYTES
-            {
-                result = Err(ServiceError::ConfigurationLimit(
-                    "task output exceeds the retained output bound".into(),
-                ));
+            if let Err(error) = output.validate_for(&reserved, &attempt) {
+                result = Err(error);
             }
         }
         for index in 0..3 {
@@ -361,6 +537,22 @@ impl RrdEngine {
                     "attempt no longer owns completion".into(),
                 ));
             }
+            let scope = self.query_scope(&budget.scope)?;
+            let read = self.storage.runtime().read_stamp(&scope)?;
+            // Cleanup also runs for known failures. If admission cannot be read,
+            // leave the reservation unresolved rather than releasing capacity.
+            let admission = admit_completion(&read)?;
+            if result.is_ok() {
+                if let Some(reason) = admission.invalidation {
+                    result = Err(ServiceError::TaskAttemptInvalidated(reason));
+                }
+            }
+            // Reobserve after admission and on every conflict retry. A slow
+            // freshness check cannot extend the original deadline/effort.
+            let at = observe_required(clock, "reasoning-complete")?.observed_at_unix_ms;
+            let elapsed = u64::try_from(started.elapsed().as_millis())
+                .unwrap_or(u64::MAX)
+                .saturating_add(1);
             budget.charged_elapsed_ms = reserved.charged_elapsed_ms.saturating_add(elapsed);
             let stop = budget.stopped.or_else(|| {
                 if at < budget.last_observed_at_unix_ms {
@@ -375,7 +567,9 @@ impl RrdEngine {
                         }
                         _ => ReasoningBudgetStop::Deadline,
                     })
-                } else if result.is_err() {
+                } else if result.is_err()
+                    && !matches!(result, Err(ServiceError::TaskAttemptInvalidated(_)))
+                {
                     Some(ReasoningBudgetStop::AttemptFailed)
                 } else {
                     None
@@ -383,7 +577,9 @@ impl RrdEngine {
             });
             if let Some(reason) = stop {
                 budget.stopped = Some(reason);
-                if result.as_ref().err().is_none_or(ServiceError::retryable) {
+                if result.as_ref().err().is_none_or(ServiceError::retryable)
+                    || matches!(result, Err(ServiceError::TaskAttemptInvalidated(_)))
+                {
                     result = Err(ServiceError::ReasoningBudgetStopped(reason));
                 }
             }
@@ -395,24 +591,48 @@ impl RrdEngine {
                 })
                 | Err(ServiceError::InferenceCancelled {
                     execution_may_continue,
+                })
+                | Err(ServiceError::EndpointCallFailed {
+                    execution_may_continue,
+                    ..
                 }) => *execution_may_continue,
                 Err(ServiceError::Storage(_)) => true,
                 _ => false,
             };
+            attempt.invalidation = match &result {
+                Err(ServiceError::TaskAttemptInvalidated(reason)) => Some(*reason),
+                _ => None,
+            };
             attempt.outcome = if result.is_ok() {
                 AttemptOutcome::Accepted
+            } else if attempt.invalidation.is_some() {
+                AttemptOutcome::Invalidated
             } else {
                 AttemptOutcome::Stopped
             };
-            attempt.outcome_sha256 = result.as_ref().ok().map(operation_digest).transpose()?;
-            attempt.result = result.as_ref().ok().cloned();
-            let scope = self.query_scope(&budget.scope)?;
-            let read = self.storage.runtime().read_stamp(&scope)?;
-            match self.commit_budget(
+            attempt.outcome_sha256 = result
+                .as_ref()
+                .ok()
+                .map(|output| output.bytes().map(|bytes| digest::sha256_hex(&bytes)))
+                .transpose()?;
+            attempt.result = match &result {
+                Ok(TaskAttemptOutput::Embedding(output)) => Some((**output).clone()),
+                _ => None,
+            };
+            attempt.endpoint_proposal = match &result {
+                Ok(TaskAttemptOutput::EndpointProposal(output)) => Some((**output).clone()),
+                _ => None,
+            };
+            attempt.worker_output = match &result {
+                Ok(TaskAttemptOutput::Worker(output)) => Some((**output).clone()),
+                _ => None,
+            };
+            match self.commit_budget_controlled(
                 &read,
                 expected_budget,
                 &budget,
                 Some((expected_attempt.clone(), &attempt)),
+                &admission,
                 context,
             ) {
                 Err(ServiceError::StorageConflict(_)) if index < 2 => continue,
@@ -444,10 +664,10 @@ fn validate_attempt_digest(value: &str) -> Result<()> {
     Ok(())
 }
 
-struct ActiveTaskCancellation<'a> {
-    engine: &'a RrdEngine,
-    key: String,
-    attempt_id: CorrelationId,
+pub(super) struct ActiveTaskCancellation<'a> {
+    pub engine: &'a RrdEngine,
+    pub key: String,
+    pub attempt_id: CorrelationId,
 }
 impl Drop for ActiveTaskCancellation<'_> {
     fn drop(&mut self) {

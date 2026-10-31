@@ -97,7 +97,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
             panic!("credential resolution after denial")
         })
         .unwrap_err();
-    assert!(!denied.dispatch_may_have_occurred);
+    assert!(!denied.dispatch_may_have_occurred());
     let cancelled = EmbeddingCancellation::default();
     cancelled.cancel();
     let cancelled =
@@ -109,7 +109,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
                 panic!("resolution after stop")
             })
             .unwrap_err();
-        assert!(!failure.dispatch_may_have_occurred);
+        assert!(!failure.dispatch_may_have_occurred());
     }
     let failure = prepared
         .execute(NetworkPolicy::Allow, &control(), |reference, _| {
@@ -117,7 +117,7 @@ fn network_denial_expiry_and_cancellation_precede_credentials_and_io() {
         })
         .unwrap_err();
     assert_eq!(failure.reason, "credential unavailable");
-    assert!(!failure.dispatch_may_have_occurred);
+    assert!(!failure.dispatch_may_have_occurred());
     assert!(!serde_json::to_string(&failure).unwrap().contains(
         &configuration.profile.as_ref().unwrap().bindings[0]
             .credential
@@ -175,7 +175,7 @@ fn altered_model_truncation_unsupported_effects_and_bad_usage_fail() {
         let failure = prepared
             .decode_response(serde_json::to_vec(&value).unwrap())
             .unwrap_err();
-        assert!(failure.dispatch_may_have_occurred);
+        assert!(failure.dispatch_may_have_occurred());
     }
     let bytes = read("available", "choice-response.json");
     assert!(prepared
@@ -205,6 +205,22 @@ fn missing_usage_is_unknown_and_outer_response_is_bounded() {
         prepared.decode_response(bytes).unwrap_err().reason,
         "chat response exceeds byte limit"
     );
+}
+
+#[test]
+fn rejected_selection_after_completed_generation_does_not_retain_unknown_execution() {
+    let (configuration, allowance, request) = inputs("available");
+    let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
+    let prepared =
+        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+    let mut output = response("available");
+    output["choices"][0]["message"]["content"] = serde_json::json!("{}");
+    let error = prepared
+        .decode_response(serde_json::to_vec(&output).unwrap())
+        .unwrap_err();
+    assert_eq!(error.reason, "invalid endpoint selection choice");
+    assert!(error.dispatch_may_have_occurred());
+    assert!(!error.execution_may_continue());
 }
 
 #[test]
@@ -277,4 +293,41 @@ fn native_live_calls_retain_actual_bytes_and_uncertain_failures() {
         assert_eq!(receipt["observation"]["http_status"], 200);
         assert!(receipt["observation"]["elapsed_ms"].as_u64().unwrap() > 0);
     }
+}
+
+#[test]
+fn partial_reported_usage_preserves_unknowns_and_rejects_impossible_totals() {
+    let (configuration, allowance, request) = inputs("available");
+    let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
+    let prepared =
+        PreparedEndpointChat::new(&configuration, binding, &allowance, &request).unwrap();
+    let original = response("available");
+    let mut partial = original.clone();
+    partial["usage"]
+        .as_object_mut()
+        .unwrap()
+        .remove("completion_tokens");
+    let observed = prepared
+        .decode_response(serde_json::to_vec(&partial).unwrap())
+        .unwrap();
+    assert!(observed.usage.as_ref().unwrap().completion_tokens.is_none());
+    assert_eq!(
+        observed.usage.unwrap().prompt_tokens,
+        original["usage"]["prompt_tokens"].as_u64()
+    );
+    // Explicit in-memory denial perturbations of the retained response. These
+    // values are not provider observations and are never exported as examples.
+    partial["usage"]["total_tokens"] = serde_json::json!(0);
+    assert!(prepared
+        .decode_response(serde_json::to_vec(&partial).unwrap())
+        .is_err());
+    let mut overflow = original;
+    overflow["usage"]
+        .as_object_mut()
+        .unwrap()
+        .remove("total_tokens");
+    overflow["usage"]["prompt_tokens"] = serde_json::json!(u64::MAX);
+    assert!(prepared
+        .decode_response(serde_json::to_vec(&overflow).unwrap())
+        .is_err());
 }

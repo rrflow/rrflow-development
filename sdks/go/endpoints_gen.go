@@ -2,9 +2,9 @@
 
 package rrd
 
-// OpenAPI SHA-256: 17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0
+// OpenAPI SHA-256: a0cc8919d190031c4e0e1493be97e66e6b9ae86479a407e29395dc66cee01f45
 
-const EndpointOpenAPIDocumentSHA256 = "17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0"
+const EndpointOpenAPIDocumentSHA256 = "a0cc8919d190031c4e0e1493be97e66e6b9ae86479a407e29395dc66cee01f45"
 
 type OperationID string
 
@@ -63,9 +63,11 @@ const (
 	OperationTaskBudgetStop               OperationID = "task-budget-stop"
 	OperationTaskClose                    OperationID = "task-close"
 	OperationTaskEmbeddingExecute         OperationID = "task-embedding-execute"
+	OperationTaskEndpointPropose          OperationID = "task-endpoint-propose"
 	OperationTaskList                     OperationID = "task-list"
 	OperationTaskOpen                     OperationID = "task-open"
 	OperationTaskRead                     OperationID = "task-read"
+	OperationTaskWorkerExecute            OperationID = "task-worker-execute"
 	OperationTransactionAbort             OperationID = "transaction-abort"
 	OperationTransactionBegin             OperationID = "transaction-begin"
 	OperationTransactionCommit            OperationID = "transaction-commit"
@@ -136,9 +138,11 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTaskBudgetStop:               {Method: "POST", Path: "/v1/tasks/budget/stop", Authentication: "session_bearer", Mutation: true},
 	OperationTaskClose:                    {Method: "POST", Path: "/v1/tasks/close", Authentication: "session_bearer", Mutation: true},
 	OperationTaskEmbeddingExecute:         {Method: "POST", Path: "/v1/tasks/embedding/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskEndpointPropose:          {Method: "POST", Path: "/v1/tasks/endpoint/propose", Authentication: "session_bearer", Mutation: true},
 	OperationTaskList:                     {Method: "POST", Path: "/v1/tasks/list", Authentication: "session_bearer", Mutation: false},
 	OperationTaskOpen:                     {Method: "POST", Path: "/v1/tasks", Authentication: "session_bearer", Mutation: true},
 	OperationTaskRead:                     {Method: "POST", Path: "/v1/tasks/read", Authentication: "session_bearer", Mutation: false},
+	OperationTaskWorkerExecute:            {Method: "POST", Path: "/v1/tasks/worker/execute", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionAbort:             {Method: "DELETE", Path: "/v1/transactions/{transaction}", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionBegin:             {Method: "POST", Path: "/v1/transactions", Authentication: "session_bearer", Mutation: true},
 	OperationTransactionCommit:            {Method: "POST", Path: "/v1/transactions/{transaction}/commit", Authentication: "session_bearer", Mutation: true},

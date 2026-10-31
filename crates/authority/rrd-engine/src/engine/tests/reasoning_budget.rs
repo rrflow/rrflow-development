@@ -18,6 +18,10 @@ use std::time::{Duration, Instant};
 
 const SCOPE: &str = "instance:test-instance";
 
+mod completion;
+mod proposal;
+mod worker;
+
 // Retained real task/request inputs in a fresh test estate. These are admission
 // and persistence probes: no provider is installed or called, no model output
 // is manufactured, and no record is admitted as training or evaluation data.

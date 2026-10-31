@@ -271,6 +271,7 @@ jobs:
           python3 scripts/inference/test_review_outcomes.py
           python3 scripts/inference/test_capture_observations.py
           python3 scripts/inference/test_review_decisions.py
+          python3 scripts/inference/test_installed_controller_fault_relay.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
       - name: Enforce knowledge-package drift and reproducibility
@@ -309,6 +310,8 @@ jobs:
           retention-days: 14
       - name: Enforce generated product-surface parity
         run: python3 scripts/ci/check_generated_surfaces.py
+      - name: Test catalogue-derived Rust client projection
+        run: cargo test --locked -p rrd-client --test generated_catalogue
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
       - name: Verify controlled evaluation evidence

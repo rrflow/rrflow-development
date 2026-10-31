@@ -13,9 +13,20 @@ mod storage_cursor;
 pub use storage_cursor::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
 mod endpoint_binding;
 mod endpoint_configuration;
+mod endpoint_generation;
+mod endpoint_worker;
+pub use endpoint_generation::{
+    EndpointGenerationSettings, EndpointResponseFormat, EndpointTokenParameter,
+};
+pub use endpoint_worker::{
+    EndpointWorkerBinding, EndpointWorkerPolicy, TaskWorkerContext, TaskWorkerOutput,
+    TaskWorkerRequest, ENDPOINT_WORKER_VERSION,
+};
 mod endpoint_policy;
+mod endpoint_proposal;
 mod endpoint_selection;
 pub use endpoint_policy::EndpointSelectionPolicy;
+pub use endpoint_proposal::*;
 pub use endpoint_selection::{
     EndpointAbstentionReason, EndpointEffortSupport, EndpointSelectionAllowance,
     EndpointSelectionCandidate, EndpointSelectionChoice, EndpointSelectionLimits,
@@ -258,7 +269,7 @@ use std::fmt;
 pub const PROTOCOL: &str = "rrd";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const OPENAPI_DOCUMENT_SHA256: &str =
-    "17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0";
+    "a0cc8919d190031c4e0e1493be97e66e6b9ae86479a407e29395dc66cee01f45";
 pub const MAX_ID_BYTES: usize = 128;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_CAPABILITIES: usize = 512;
@@ -3046,6 +3057,8 @@ pub enum SecurityAction {
     MemoryContextRead,
     ReasoningRead,
     ReasoningWrite,
+    EndpointPropose,
+    WorkerExecute,
     KnowledgeTreeRead,
     KnowledgeTreeWrite,
 }
@@ -3053,7 +3066,7 @@ pub enum SecurityAction {
 impl SecurityAction {
     /// Canonical policy-action catalogue. Installation profiles and other
     /// projections consume this list instead of maintaining parallel copies.
-    pub const ALL: [Self; 53] = [
+    pub const ALL: [Self; 55] = [
         Self::ServiceInspect,
         Self::UnknownRequest,
         Self::SessionCreate,
@@ -3105,6 +3118,8 @@ impl SecurityAction {
         Self::MemoryContextRead,
         Self::ReasoningRead,
         Self::ReasoningWrite,
+        Self::EndpointPropose,
+        Self::WorkerExecute,
         Self::KnowledgeTreeRead,
         Self::KnowledgeTreeWrite,
     ];
@@ -4082,6 +4097,26 @@ pub fn endpoint_catalogue() -> EndpointCatalogue {
             "TaskAttemptView",
         ),
         endpoint(
+            "task-endpoint-propose",
+            HttpMethod::Post,
+            "/v1/tasks/endpoint/propose",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::EndpointPropose,
+            "EndpointSelectionRequest",
+            "EndpointSelectionProposal",
+        ),
+        endpoint(
+            "task-worker-execute",
+            HttpMethod::Post,
+            "/v1/tasks/worker/execute",
+            EndpointAuthentication::SessionBearer,
+            true,
+            SecurityAction::WorkerExecute,
+            "TaskWorkerRequest",
+            "TaskWorkerOutput",
+        ),
+        endpoint(
             "task-close",
             HttpMethod::Post,
             "/v1/tasks/close",
@@ -4577,6 +4612,8 @@ fn request_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "ActivateBuiltinEmbedding" => schema_json::<RequestEnvelope<ActivateBuiltinEmbedding>>(),
         "ConfigureTaskBudget" => schema_json::<RequestEnvelope<ConfigureTaskBudget>>(),
         "ExecuteTaskEmbedding" => schema_json::<RequestEnvelope<ExecuteTaskEmbedding>>(),
+        "EndpointSelectionRequest" => schema_json::<RequestEnvelope<EndpointSelectionRequest>>(),
+        "TaskWorkerRequest" => schema_json::<RequestEnvelope<TaskWorkerRequest>>(),
         "ReadTaskAttempt" => schema_json::<RequestEnvelope<ReadTaskAttempt>>(),
         "ReadTaskBudget" => schema_json::<RequestEnvelope<ReadTaskBudget>>(),
         "StopTaskBudget" => schema_json::<RequestEnvelope<StopTaskBudget>>(),
@@ -4660,6 +4697,8 @@ fn response_envelope_schema(name: &str) -> Result<serde_json::Value> {
         "EmbeddingModelCatalogue" => schema_json::<ResponseEnvelope<EmbeddingModelCatalogue>>(),
         "GenerateEmbeddingsResult" => schema_json::<ResponseEnvelope<GenerateEmbeddingsResult>>(),
         "TaskAttemptView" => schema_json::<ResponseEnvelope<TaskAttemptView>>(),
+        "EndpointSelectionProposal" => schema_json::<ResponseEnvelope<EndpointSelectionProposal>>(),
+        "TaskWorkerOutput" => schema_json::<ResponseEnvelope<TaskWorkerOutput>>(),
         "TaskBudgetView" => schema_json::<ResponseEnvelope<TaskBudgetView>>(),
         "AuditExport" => schema_json::<ResponseEnvelope<AuditExport>>(),
         "AuditPage" => schema_json::<ResponseEnvelope<AuditPage>>(),

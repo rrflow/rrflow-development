@@ -50,6 +50,9 @@ pub enum Command {
         project: std::path::PathBuf,
         #[arg(long, default_value = "127.0.0.1:9477")]
         bind: std::net::SocketAddr,
+        /// JSON mapping of endpoint credential references to explicit environment names.
+        #[arg(long)]
+        endpoint_credentials: Option<std::path::PathBuf>,
         /// Debug-test surrogate for the distribution executable.
         #[arg(long = "test-distribution-executable", hide = true)]
         test_distribution_executable: Option<std::path::PathBuf>,
