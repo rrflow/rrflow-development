@@ -11,11 +11,26 @@ use rrd_contract::{
     InstallationRecordKind, InstallationRemovalRule, InstallationResult,
     InstallationSpecialization, InstallationStorageGeneration, InstallationTargetKind,
     InstalledEstateIdentity, MemorySeatDefinition, ResumeAttunement, SecurityAction,
-    StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION, ATTUNEMENT_PHASES,
-    INSTALLATION_PLAN_CONTRACT_VERSION, INSTALL_ATTUNEMENT_CONTRACT_VERSION,
+    StorageProfileKind, ATTUNEMENT_CONTRACT_VERSION, INSTALLATION_PLAN_CONTRACT_VERSION,
+    INSTALL_ATTUNEMENT_CONTRACT_VERSION,
 };
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
+
+// Test fixture only: runtime plans own their positions and may differ.
+const ATTUNEMENT_PHASES: [AttunementPhase; 11] = [
+    AttunementPhase::Connect,
+    AttunementPhase::Inventory,
+    AttunementPhase::Parse,
+    AttunementPhase::Normalize,
+    AttunementPhase::EntityLink,
+    AttunementPhase::LexicalIndex,
+    AttunementPhase::Embed,
+    AttunementPhase::VectorIndex,
+    AttunementPhase::Graph,
+    AttunementPhase::Ground,
+    AttunementPhase::Verify,
+];
 
 const CREATED_AT: u64 = 1_800_000_000_000;
 
@@ -30,6 +45,10 @@ fn attunement_schema_projects_version_and_plan_bounds() {
     assert_eq!(
         plan["properties"]["phases"]["maxItems"],
         serde_json::json!(rrd_contract::MAX_ATTUNEMENT_PHASES)
+    );
+    assert_eq!(
+        plan["$defs"]["AttunementPhasePlan"]["properties"]["description"]["maxLength"],
+        serde_json::json!(rrd_contract::MAX_ATTUNEMENT_DESCRIPTION_BYTES)
     );
     let installation = serde_json::to_value(schema_for!(InstallationResult)).unwrap();
     assert!(installation["properties"]["contract_version"]
@@ -205,12 +224,17 @@ fn attunement_plan() -> AttunementPlan {
         phases: ATTUNEMENT_PHASES
             .iter()
             .copied()
-            .map(|phase| AttunementPhasePlan {
-                phase,
-                sequence: phase.sequence(),
-                configuration_sha256: digest(100 + u64::from(phase.sequence())),
-                estimated_items: u64::from(phase.sequence()) * 10,
-                estimated_input_bytes: u64::from(phase.sequence()) * 1_024,
+            .enumerate()
+            .map(|(index, phase)| {
+                let sequence = u16::try_from(index + 1).unwrap();
+                AttunementPhasePlan {
+                    phase,
+                    sequence,
+                    description: format!("test step {sequence}"),
+                    configuration_sha256: digest(100 + u64::from(sequence)),
+                    estimated_items: u64::from(sequence) * 10,
+                    estimated_input_bytes: u64::from(sequence) * 1_024,
+                }
             })
             .collect(),
         estimated_min_duration_ms: 1_800_000,
@@ -219,6 +243,49 @@ fn attunement_plan() -> AttunementPlan {
     };
     plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
     plan
+}
+
+#[test]
+fn plan_preserves_and_binds_readable_step_descriptions() {
+    let plan = attunement_plan();
+    let mut previous_version = plan.clone();
+    previous_version.contract_version = 2;
+    previous_version.plan_sha256 = attunement_plan_sha256(&previous_version).unwrap();
+    assert!(
+        previous_version.validate().is_err(),
+        "version 2 is not version 3"
+    );
+    let encoded = serde_json::to_value(&plan).unwrap();
+    assert_eq!(encoded["phases"][0]["description"], "test step 1");
+    let mut changed = encoded.clone();
+    changed["phases"][0]["description"] = "changed after approval".into();
+    let mut changed: AttunementPlan = serde_json::from_value(changed).unwrap();
+    assert!(
+        changed.validate().is_err(),
+        "description must be bound to plan digest"
+    );
+    changed.plan_sha256 = attunement_plan_sha256(&changed).unwrap();
+    changed.validate().unwrap();
+    assert_ne!(changed.plan_sha256, plan.plan_sha256);
+    assert_ne!(
+        installation_plan(&changed).plan_sha256,
+        installation_plan(&plan).plan_sha256
+    );
+    for invalid in [
+        "".to_string(),
+        " ".to_string(),
+        "nul\0byte".to_string(),
+        "\u{e9}".repeat(513),
+    ] {
+        let mut encoded = encoded.clone();
+        encoded["phases"][0]["description"] = invalid.into();
+        let mut invalid: AttunementPlan = serde_json::from_value(encoded).unwrap();
+        invalid.plan_sha256 = attunement_plan_sha256(&invalid).unwrap();
+        assert!(
+            invalid.validate().is_err(),
+            "invalid descriptions must be refused"
+        );
+    }
 }
 
 #[test]
@@ -603,7 +670,7 @@ fn job(
         code: canonical_id("phase-execution-failed"),
         message: "phase execution failed before commit".into(),
         retryable: true,
-        evidence_sha256: digest(400 + u64::from(phase.unwrap().sequence())),
+        evidence_sha256: digest(400 + u64::try_from(checkpoint_count + 1).unwrap()),
         observed_at_unix_ms: updated_at_unix_ms,
     });
     AttunementJob {
@@ -838,14 +905,14 @@ fn install_and_attunement_contract_matches_golden_json() {
     let actual = serde_json::to_value(&fixture).unwrap();
     if std::env::var_os("RRFLOW_UPDATE_GOLDEN").is_some() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("fixtures/install-attunement-v2.json");
+            .join("fixtures/install-attunement-v3.json");
         let mut encoded = serde_json::to_string_pretty(&actual).unwrap();
         encoded.push('\n');
         std::fs::write(path, encoded).unwrap();
         return;
     }
     let expected: serde_json::Value =
-        serde_json::from_str(include_str!("../fixtures/install-attunement-v2.json")).unwrap();
+        serde_json::from_str(include_str!("../fixtures/install-attunement-v3.json")).unwrap();
     assert_eq!(
         actual,
         expected,

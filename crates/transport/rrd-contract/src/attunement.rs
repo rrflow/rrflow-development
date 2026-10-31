@@ -20,9 +20,9 @@ pub use bootstrap::{
 };
 
 pub const INSTALL_ATTUNEMENT_CONTRACT_VERSION: u16 = 1;
-/// Attunement plans and job transitions bind ordered plan positions in v2.
+/// Attunement plans retain digest-bound readable step descriptions in v3.
 /// Installation results and restore envelopes retain their separate version.
-pub const ATTUNEMENT_CONTRACT_VERSION: u16 = 2;
+pub const ATTUNEMENT_CONTRACT_VERSION: u16 = 3;
 /// Independent identity and initial-root binding are mandatory for new plans.
 /// Attunement and installation-result envelopes retain their own version.
 pub const INSTALLATION_PLAN_CONTRACT_VERSION: u16 = 4;
@@ -30,25 +30,10 @@ pub const INSTALLATION_LEASE_PATH: &str = ".rrflow-install.lock";
 pub const INSTALLATION_LEASE_PRECONDITION: &str = "rrflow-install-lease-absent-or-private-empty-v1";
 pub const MAX_INSTALLATION_ACTIONS: usize = 16;
 pub const MAX_ATTUNEMENT_PHASES: usize = 32;
+pub const MAX_ATTUNEMENT_DESCRIPTION_BYTES: usize = 1_024;
 pub const MAX_ATTUNEMENT_FAILURE_BYTES: usize = 4_096;
 pub const MAX_ATTUNEMENT_CANCEL_REASON_BYTES: usize = 4_096;
 pub const MAX_ATTUNEMENT_VERIFICATION_CHECKS: usize = 256;
-
-/// The bundled default profile's phase order. Individual plans own their own
-/// ordered steps; this list does not determine a running job's progression.
-pub const ATTUNEMENT_PHASES: [AttunementPhase; 11] = [
-    AttunementPhase::Connect,
-    AttunementPhase::Inventory,
-    AttunementPhase::Parse,
-    AttunementPhase::Normalize,
-    AttunementPhase::EntityLink,
-    AttunementPhase::LexicalIndex,
-    AttunementPhase::Embed,
-    AttunementPhase::VectorIndex,
-    AttunementPhase::Graph,
-    AttunementPhase::Ground,
-    AttunementPhase::Verify,
-];
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
@@ -66,24 +51,6 @@ pub enum AttunementPhase {
     Graph,
     Ground,
     Verify,
-}
-
-impl AttunementPhase {
-    pub const fn sequence(self) -> u16 {
-        match self {
-            Self::Connect => 1,
-            Self::Inventory => 2,
-            Self::Parse => 3,
-            Self::Normalize => 4,
-            Self::EntityLink => 5,
-            Self::LexicalIndex => 6,
-            Self::Embed => 7,
-            Self::VectorIndex => 8,
-            Self::Graph => 9,
-            Self::Ground => 10,
-            Self::Verify => 11,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -554,6 +521,9 @@ impl InstallationResult {
 pub struct AttunementPhasePlan {
     pub phase: AttunementPhase,
     pub sequence: u16,
+    /// Descriptive metadata, not an executable configuration or authorization.
+    #[schemars(schema_with = "attunement_step_description_schema")]
+    pub description: String,
     pub configuration_sha256: String,
     pub estimated_items: u64,
     pub estimated_input_bytes: u64,
@@ -561,11 +531,22 @@ pub struct AttunementPhasePlan {
 
 impl AttunementPhasePlan {
     fn validate(&self) -> Result<()> {
+        if self.description.trim().is_empty()
+            || self.description.len() > MAX_ATTUNEMENT_DESCRIPTION_BYTES
+            || self.description.as_bytes().contains(&0)
+        {
+            return invalid("attunement step description is invalid or exceeds its byte bound");
+        }
         validate_sha256(
             &self.configuration_sha256,
             "attunement phase configuration_sha256",
         )
     }
+}
+
+fn attunement_step_description_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    // JSON Schema counts characters; engine validation enforces the byte limit.
+    schemars::json_schema!({"type": "string", "minLength": 1, "maxLength": MAX_ATTUNEMENT_DESCRIPTION_BYTES})
 }
 
 fn attunement_version_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
