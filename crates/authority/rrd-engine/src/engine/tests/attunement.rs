@@ -17,17 +17,24 @@ struct Installed {
 }
 impl Installed {
     fn new(mode: InstallationTargetKind) -> (Self, RrdEngine, SessionLease) {
+        Self::with_proposal(mode, None)
+    }
+    fn with_proposal(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+    ) -> (Self, RrdEngine, SessionLease) {
         let root = tempfile::tempdir().unwrap();
         if mode == InstallationTargetKind::ExistingProject {
             std::fs::write(root.path().join("README.md"), "real project source\n").unwrap();
         }
         let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
-        let preview = RrdEngine::plan_installation(
+        let preview = RrdEngine::plan_installation_with_proposal(
             root.path(),
             mode,
             &RrdEngine::generate_installation_identity().unwrap(),
             "default",
             None,
+            proposal,
             &executable,
         )
         .unwrap();
@@ -167,6 +174,115 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
             requested_at_unix_ms: at,
         },
     }
+}
+
+#[test]
+fn publicly_selected_plan_replans_after_progress_and_reopens() {
+    let configured = |phase, name: &str| crate::AttunementProposalStep {
+        phase,
+        description: name.into(),
+        estimated_items: 1,
+        estimated_input_bytes: 0,
+    };
+    let proposal = crate::AttunementProposal {
+        format_version: crate::ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
+        steps: vec![
+            configured(Phase::Connect, "first"),
+            configured(Phase::Connect, "second"),
+            configured(Phase::Verify, "verify"),
+        ],
+        estimated_min_duration_ms: 0,
+        estimated_max_duration_ms: 1000,
+    };
+    let (installed, engine, session) =
+        Installed::with_proposal(InstallationTargetKind::ExistingProject, Some(&proposal));
+    assert_eq!(installed.preview.attunement.phases.len(), 3);
+    let running = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "public-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let first = call(
+        &engine,
+        &session,
+        &step(&running.status.job),
+        "public-step-1",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let second = call(
+        &engine,
+        &session,
+        &step(&first.status.job),
+        "public-step-2",
+        BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(second.status.job.checkpoints.len(), 2);
+    std::fs::write(
+        installed.root.path().join("README.md"),
+        "source changed after progress\n",
+    )
+    .unwrap();
+    let proposed = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            second.status.job.revision,
+            BASE + 4_000,
+            "request-public-preview",
+            "operation-public-preview",
+        )
+        .unwrap();
+    assert_ne!(
+        proposed.plan.source_sha256,
+        installed.preview.attunement.source_sha256
+    );
+    assert_eq!(proposed.plan.phases, installed.preview.attunement.phases);
+    let sequence = engine.storage.control().sequence().unwrap();
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &proposed,
+            &proposed.proposal_sha256,
+            &context("public-accept"),
+            BASE + 4_100,
+        )
+        .unwrap();
+    assert_eq!(
+        accepted.predecessor.job.checkpoints,
+        second.status.job.checkpoints
+    );
+    assert!(accepted.successor.job.checkpoints.is_empty());
+    let journal = engine
+        .storage
+        .control()
+        .journal_since(sequence, 32)
+        .unwrap();
+    assert!(journal
+        .iter()
+        .any(|entry| entry.action == "attunement.replan_receipted"));
+    drop(engine);
+    let engine = installed.reopen(BASE + 5_000);
+    let session = installed.session(&engine, "public-reopen", BASE + 5_100);
+    let replay = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &proposed,
+            &proposed.proposal_sha256,
+            &context("public-accept"),
+            BASE + 5_200,
+        )
+        .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.successor, accepted.successor);
+    assert_eq!(replay.predecessor, accepted.predecessor);
 }
 
 #[test]

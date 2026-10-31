@@ -55,7 +55,8 @@ The target command vocabulary is:
 ```text
 rrflow version
 rrflow install identity
-rrflow install plan   --project <root> --identity <256-bit-hex> --mode fresh|existing --profile <id> [--configuration <toml>]
+rrflow install attunement-schema
+rrflow install plan   --project <root> --identity <256-bit-hex> --mode fresh|existing --profile <id> [--configuration <toml>] [--attunement-proposal <json>]
 rrflow install apply  --project <root> --plan <file> --expect <sha256>
 rrflow install status --project <root>
 rrflow attune status|resume|cancel ...
@@ -187,14 +188,41 @@ adapter. The plan is canonical serialized data whose SHA-256 covers:
 Repeated planning over unchanged inputs is byte-identical. A stale plan fails
 before mutation.
 
+`rrflow install attunement-schema` emits the machine-readable shape of an
+attunement proposal without writing project state. An explicit
+`--attunement-proposal <json>` may select and order recognized steps, including
+repeated kinds, with bounded descriptions and estimates. Descriptions are
+metadata bound to the plan; they do not configure Connect or activate another
+capability. Estimates are declarations, not measured work or authority to
+exceed the engine's configured budgets. The engine checks the
+version, bounds and recognized effects and requires a final Verify step. The
+schema describes the proposal shape; engine validation also enforces semantic
+rules and is authoritative. The selected proposal is included in the versioned
+preview, its step descriptions and estimates are bound to the attunement and
+installation digests, and apply revalidates the preview before effects rather
+than rereading the proposal file. The installed attunement plan retains step
+kinds, positions, estimates and descriptor digests; it does not retain the
+proposal descriptions for later readback. Retain the approved preview if those
+descriptions are needed. Editing a project source after preview still requires
+a fresh plan or authorized replan.
+
+Without a proposal the bundled profile supplies its current eleven-step
+template; it is no longer the only allowed sequence. Only Connect currently
+executes; other steps fail explicitly as unavailable. This interface admits an
+explicit proposal and does not yet automatically select a per-prompt schema,
+generate a handoff, invoke a model, or establish indexing completion.
+
 Installation-plan contract version 4 seals the explicit identity input and
 `project_root_sha256`, a digest of the initial canonical root. Identical project
 content does not allocate an estate identity. New apply and interrupted recovery
 must match that root before effects. Once the installed locator and record are
 published, relocation, reopen and exact completed replay retain the persisted
 identity; the live path is not its permanent identity. Prior version-1/2/3 plans
-are rejected. Attunement and result envelopes retain their independent version
-1; product version remains `1.0.0`. This is not a binary-upgrade or estate-
+are rejected. Attunement plans, jobs and commands use their independent version
+2; installation results retain version 1. Installation previews now carry an
+explicit preview-format version 1 and reject unversioned or unknown preview
+formats. Product version remains `1.0.0`. No migration for earlier attunement
+state or preview files is provided. This is not a binary-upgrade or estate-
 migration facility: retain the executable that created an existing pre-alpha
 estate until its qualified upgrade path exists.
 `rrflow --json version` advertises `installation_plan_contract_version` so
