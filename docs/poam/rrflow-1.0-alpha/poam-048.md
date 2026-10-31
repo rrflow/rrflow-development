@@ -68,8 +68,11 @@ the move the store records as a removal delta. At an exit:
 - the version the collection resolves to just before the exit takes effect
   is copied, with the exit's cursor, ending at the exit's valid time.
 
-That window is never empty, so no format changes. An estate without moves
-builds the same bytes.
+That window is never empty, so no format changes. The view's source cursor
+covers every version ever in the collection and every exit, held or dropped.
+Every build takes it, so a generation's coverage never moves backward, even
+when the newest version it held moves out. An estate without moves builds the
+same bytes.
 
 A graph cannot remove a node. So when the view no longer holds a version the
 active HNSW graph stores, `ensure_vector_index` builds the next generation in
