@@ -18,6 +18,7 @@ fn profile(name: &str) -> EndpointProfileInput {
         contract_version: 1,
         name: CanonicalId::new(name).unwrap(),
         selection_policy: None,
+        worker_policy: None,
         bindings: vec![EndpointBinding {
             id: CanonicalId::new("knowledge-source").unwrap(),
             class: WorkloadClass::VectorStore,
@@ -107,6 +108,15 @@ fn read(engine: &RrdEngine, lease: &SessionLease) -> EndpointConfiguration {
 
 #[test]
 fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() {
+    configuration_policy_reopens(false);
+}
+
+#[test]
+fn worker_settings_follow_existing_configuration_approval_and_reopen() {
+    configuration_policy_reopens(true);
+}
+
+fn configuration_policy_reopens(include_worker: bool) {
     // A configuration proposal derived from actual captured settings; this
     // fresh test estate does not claim to be the captured production identity.
     let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -139,11 +149,48 @@ fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() 
         maximum_output_tokens: request["max_tokens"].as_u64().unwrap().try_into().unwrap(),
         temperature_milli: (request["temperature"].as_f64().unwrap() * 1000.0) as u16,
     };
+    let worker_policy = include_worker.then(|| {
+        let candidate = &policy.candidates[0];
+        let rrd_contract::EndpointEffortSupport::Observed {
+            evidence_sha256,
+            allow_default,
+            values,
+        } = &candidate.effort
+        else {
+            panic!("fixture requires observed support");
+        };
+        rrd_contract::EndpointWorkerPolicy {
+            contract_version: rrd_contract::ENDPOINT_WORKER_VERSION,
+            allow_network: true,
+            allow_context_export: true,
+            allow_unverified_identity: true,
+            maximum_concurrent_calls: 1,
+            bindings: vec![rrd_contract::EndpointWorkerBinding {
+                binding_id: candidate.binding_id.clone(),
+                // Protocol persistence probe, not a new capability observation.
+                protocol_evidence_sha256: evidence_sha256.clone(),
+                system_prompt: "Return a bounded draft.".into(),
+                generation: rrd_contract::EndpointGenerationSettings {
+                    maximum_output_tokens: 256,
+                    token_parameter: rrd_contract::EndpointTokenParameter::MaxCompletionTokens,
+                    temperature_milli: None,
+                    response_format: rrd_contract::EndpointResponseFormat::Text,
+                },
+                maximum_response_bytes: 16_384,
+                effort_values: values
+                    .iter()
+                    .map(|value| (value.clone(), value.clone()))
+                    .collect(),
+                allow_default_effort: *allow_default,
+            }],
+        }
+    });
     let input = EndpointProfileInput {
         contract_version: captured.contract_version,
         name: captured.name,
         bindings: captured.bindings,
         selection_policy: Some(policy.clone()),
+        worker_policy: worker_policy.clone(),
     };
     let (root, mut engine) = isolated_engine();
     bind(&mut engine, "selector-policy-persistence");
@@ -174,7 +221,26 @@ fn actual_selector_settings_follow_existing_configuration_approval_and_reopen() 
         .maximum_output_tokens += 1;
     assert!(apply(&engine, &lease, &tampered).is_err());
     assert_eq!(read(&engine, &lease), before);
+    if include_worker {
+        let mut tampered = plan.clone();
+        tampered
+            .profile
+            .as_mut()
+            .unwrap()
+            .worker_policy
+            .as_mut()
+            .unwrap()
+            .bindings[0]
+            .generation
+            .maximum_output_tokens += 1;
+        assert!(apply(&engine, &lease, &tampered).is_err());
+        assert_eq!(read(&engine, &lease), before);
+    }
     let installed = apply(&engine, &lease, &plan).unwrap();
+    assert_eq!(
+        installed.profile.as_ref().unwrap().worker_policy,
+        worker_policy
+    );
     assert_eq!(
         installed
             .profile

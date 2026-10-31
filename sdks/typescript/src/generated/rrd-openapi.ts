@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: a0cc8919d190031c4e0e1493be97e66e6b9ae86479a407e29395dc66cee01f45
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -1154,6 +1154,26 @@ export interface paths {
          * @description Returns the current version of one task record with its read stamp, selected versions, and read evidence, within max_storage_keys. The result carries no flight list; traverse rrflow-task-includes from the task in rrflowQL to reach its flights. An unknown task_id returns not found.
          */
         post: operations["task-read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tasks/worker/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute one admitted selected-worker model call
+         * @description Requires WorkerExecute, TaskRead, ReasoningRead and ReasoningWrite, plus MemoryContextRead for requested context. Resolves the exact accepted selection and current task/configuration, reserves the existing task budget and shared binding capacity, and dispatches once. Changed authority or task/configuration withholds acceptance. Context is captured historical evidence, not current project-file permission. Output is a draft, not task success. Read task-attempt-read after uncertainty; never replay an effect.
+         */
+        post: operations["task-worker-execute"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8353,7 +8373,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -8443,7 +8463,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -14082,6 +14102,62 @@ export interface operations {
                                      */
                                     workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                 } | null;
+                                /**
+                                 * @description Installed through the existing endpoint profile preview/apply transaction.
+                                 *     Absence disables worker calls. Every call still needs task, context, session,
+                                 *     budget and current-input admission by the engine.
+                                 */
+                                worker_policy?: {
+                                    /** @description Explicit permission to export admitted task text and selected context. */
+                                    allow_context_export: boolean;
+                                    allow_network: boolean;
+                                    allow_unverified_identity: boolean;
+                                    bindings: {
+                                        allow_default_effort: boolean;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        /**
+                                         * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                         *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                         */
+                                        effort_values: {
+                                            [key: string]: string;
+                                        };
+                                        /**
+                                         * @description No defaults: the installed binding's policy must name the supported wire
+                                         *     parameters. An omitted temperature is distinct from requesting zero.
+                                         */
+                                        generation: {
+                                            /** Format: uint32 */
+                                            maximum_output_tokens: number;
+                                            response_format: {
+                                                /** @constant */
+                                                type: "text";
+                                            } | {
+                                                /** @constant */
+                                                type: "json_object";
+                                            };
+                                            /** Format: uint16 */
+                                            temperature_milli?: number | null;
+                                            /** @enum {string} */
+                                            token_parameter: "max_tokens" | "max_completion_tokens";
+                                        };
+                                        /** Format: uint64 */
+                                        maximum_response_bytes: number;
+                                        /** @description Reference to observed wire support; its presence is not an attestation. */
+                                        protocol_evidence_sha256: string;
+                                        system_prompt: string;
+                                    }[];
+                                    /** Format: uint16 */
+                                    contract_version: number;
+                                    /** Format: uint32 */
+                                    maximum_concurrent_calls: number;
+                                } | null;
                             } | null;
                         };
                     };
@@ -14346,6 +14422,62 @@ export interface operations {
                                          *     decides which endpoint serves it.
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
                                     } | null;
                                 } | null;
                                 /**
@@ -14614,6 +14746,62 @@ export interface operations {
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                     } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -14858,6 +15046,62 @@ export interface operations {
                                  *     decides which endpoint serves it.
                                  */
                                 workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                            } | null;
+                            /**
+                             * @description Installed through the existing endpoint profile preview/apply transaction.
+                             *     Absence disables worker calls. Every call still needs task, context, session,
+                             *     budget and current-input admission by the engine.
+                             */
+                            worker_policy?: {
+                                /** @description Explicit permission to export admitted task text and selected context. */
+                                allow_context_export: boolean;
+                                allow_network: boolean;
+                                allow_unverified_identity: boolean;
+                                bindings: {
+                                    allow_default_effort: boolean;
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    binding_id: string;
+                                    /**
+                                     * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                     *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                     */
+                                    effort_values: {
+                                        [key: string]: string;
+                                    };
+                                    /**
+                                     * @description No defaults: the installed binding's policy must name the supported wire
+                                     *     parameters. An omitted temperature is distinct from requesting zero.
+                                     */
+                                    generation: {
+                                        /** Format: uint32 */
+                                        maximum_output_tokens: number;
+                                        response_format: {
+                                            /** @constant */
+                                            type: "text";
+                                        } | {
+                                            /** @constant */
+                                            type: "json_object";
+                                        };
+                                        /** Format: uint16 */
+                                        temperature_milli?: number | null;
+                                        /** @enum {string} */
+                                        token_parameter: "max_tokens" | "max_completion_tokens";
+                                    };
+                                    /** Format: uint64 */
+                                    maximum_response_bytes: number;
+                                    /** @description Reference to observed wire support; its presence is not an attestation. */
+                                    protocol_evidence_sha256: string;
+                                    system_prompt: string;
+                                }[];
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /** Format: uint32 */
+                                maximum_concurrent_calls: number;
                             } | null;
                         } | null;
                     };
@@ -15130,6 +15374,62 @@ export interface operations {
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                     } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
+                                    } | null;
                                 } | null;
                             };
                             /** @constant */
@@ -15398,6 +15698,62 @@ export interface operations {
                                          *     decides which endpoint serves it.
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
                                     } | null;
                                 } | null;
                             };
@@ -15707,6 +16063,62 @@ export interface operations {
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
                                     } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
+                                    } | null;
                                 } | null;
                                 /**
                                  * Format: uint64
@@ -15973,6 +16385,62 @@ export interface operations {
                                          *     decides which endpoint serves it.
                                          */
                                         workload_class: "large_model_serving" | "always_warm_small_models" | "embedding_and_reranking" | "vector_store" | "canonical_store" | "weight_updates" | "behavior_updates" | "control_plane";
+                                    } | null;
+                                    /**
+                                     * @description Installed through the existing endpoint profile preview/apply transaction.
+                                     *     Absence disables worker calls. Every call still needs task, context, session,
+                                     *     budget and current-input admission by the engine.
+                                     */
+                                    worker_policy?: {
+                                        /** @description Explicit permission to export admitted task text and selected context. */
+                                        allow_context_export: boolean;
+                                        allow_network: boolean;
+                                        allow_unverified_identity: boolean;
+                                        bindings: {
+                                            allow_default_effort: boolean;
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            /**
+                                             * @description Explicit mapping from selected effort to the adapter's wire parameter.
+                                             *     No ranking, model-name inference or silent dropping of effort is allowed.
+                                             */
+                                            effort_values: {
+                                                [key: string]: string;
+                                            };
+                                            /**
+                                             * @description No defaults: the installed binding's policy must name the supported wire
+                                             *     parameters. An omitted temperature is distinct from requesting zero.
+                                             */
+                                            generation: {
+                                                /** Format: uint32 */
+                                                maximum_output_tokens: number;
+                                                response_format: {
+                                                    /** @constant */
+                                                    type: "text";
+                                                } | {
+                                                    /** @constant */
+                                                    type: "json_object";
+                                                };
+                                                /** Format: uint16 */
+                                                temperature_milli?: number | null;
+                                                /** @enum {string} */
+                                                token_parameter: "max_tokens" | "max_completion_tokens";
+                                            };
+                                            /** Format: uint64 */
+                                            maximum_response_bytes: number;
+                                            /** @description Reference to observed wire support; its presence is not an attestation. */
+                                            protocol_evidence_sha256: string;
+                                            system_prompt: string;
+                                        }[];
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint32 */
+                                        maximum_concurrent_calls: number;
                                     } | null;
                                 } | null;
                                 /**
@@ -17112,7 +17580,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -19800,7 +20268,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -29758,7 +30226,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -29807,7 +30275,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -29861,7 +30329,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -29910,7 +30378,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "worker_execute" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -31396,6 +31864,77 @@ export interface operations {
                                     } | null;
                                     /** @enum {string} */
                                     status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                    worker_output?: {
+                                        attempt_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        configuration_sha256: string;
+                                        /** @description Provider draft only; acceptance records transport/admission, not task success. */
+                                        content: string;
+                                        content_sha256: string;
+                                        /**
+                                         * @description Captured context provenance. Neither this stamp nor generated text attests
+                                         *     current project-file freshness, correctness or permission to apply changes.
+                                         */
+                                        context?: {
+                                            packet_sha256: string;
+                                            read: {
+                                                /** Format: uint64 */
+                                                catalogue_revision: number;
+                                                /** Format: uint64 */
+                                                runtime_cursor: number;
+                                                runtime_manifest_sha256: string;
+                                                /** Format: uint64 */
+                                                schema_revision?: number | null;
+                                            };
+                                            request_sha256: string;
+                                        } | null;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        elapsed_ms?: number | null;
+                                        /** Format: uint16 */
+                                        http_status?: number | null;
+                                        packet_sha256: string;
+                                        read: {
+                                            /** Format: uint64 */
+                                            catalogue_revision: number;
+                                            /** Format: uint64 */
+                                            runtime_cursor: number;
+                                            runtime_manifest_sha256: string;
+                                            /** Format: uint64 */
+                                            schema_revision?: number | null;
+                                        };
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        scope: string;
+                                        selection_attempt_id: string;
+                                        selection_sha256: string;
+                                        /** @description Observed alias, not an attestation of loaded weights. */
+                                        service_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                        task_sha256: string;
+                                        /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                        usage?: {
+                                            /** Format: uint64 */
+                                            completion_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            prompt_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            total_tokens?: number | null;
+                                        } | null;
+                                    } | null;
                                 } | null;
                             };
                             /** @constant */
@@ -31649,6 +32188,77 @@ export interface operations {
                                     } | null;
                                     /** @enum {string} */
                                     status: "reserved" | "accepted" | "stopped" | "invalidated";
+                                    worker_output?: {
+                                        attempt_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        binding_id: string;
+                                        configuration_sha256: string;
+                                        /** @description Provider draft only; acceptance records transport/admission, not task success. */
+                                        content: string;
+                                        content_sha256: string;
+                                        /**
+                                         * @description Captured context provenance. Neither this stamp nor generated text attests
+                                         *     current project-file freshness, correctness or permission to apply changes.
+                                         */
+                                        context?: {
+                                            packet_sha256: string;
+                                            read: {
+                                                /** Format: uint64 */
+                                                catalogue_revision: number;
+                                                /** Format: uint64 */
+                                                runtime_cursor: number;
+                                                runtime_manifest_sha256: string;
+                                                /** Format: uint64 */
+                                                schema_revision?: number | null;
+                                            };
+                                            request_sha256: string;
+                                        } | null;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /** Format: uint64 */
+                                        elapsed_ms?: number | null;
+                                        /** Format: uint16 */
+                                        http_status?: number | null;
+                                        packet_sha256: string;
+                                        read: {
+                                            /** Format: uint64 */
+                                            catalogue_revision: number;
+                                            /** Format: uint64 */
+                                            runtime_cursor: number;
+                                            runtime_manifest_sha256: string;
+                                            /** Format: uint64 */
+                                            schema_revision?: number | null;
+                                        };
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        scope: string;
+                                        selection_attempt_id: string;
+                                        selection_sha256: string;
+                                        /** @description Observed alias, not an attestation of loaded weights. */
+                                        service_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                        task_sha256: string;
+                                        /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                        usage?: {
+                                            /** Format: uint64 */
+                                            completion_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            prompt_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            total_tokens?: number | null;
+                                        } | null;
+                                    } | null;
                                 } | null;
                             };
                             /** @constant */
@@ -33986,6 +34596,305 @@ export interface operations {
                                     task_id: string;
                                     title: string;
                                 };
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "task-worker-execute": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    /** @description References an accepted routing attempt; carries no endpoint or credential. */
+                    payload: {
+                        attempt_id: string;
+                        /** @description Explicit historical context selection, not permission to mutate sources. */
+                        context?: {
+                            /** Format: uint8 */
+                            max_graph_depth: number;
+                            /** Format: uint64 */
+                            max_items: number;
+                            /** Format: uint64 */
+                            max_output_bytes: number;
+                            /** Format: uint64 */
+                            max_storage_keys: number;
+                            query: string;
+                            scope: string;
+                            /** @default [] */
+                            seeds?: {
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                kind: string;
+                            }[];
+                            /** Format: uint64 */
+                            valid_at: number;
+                        } | null;
+                        expected_configuration_sha256: string;
+                        expected_selection_sha256: string;
+                        expected_task_sha256: string;
+                        /** Format: uint64 */
+                        max_storage_keys: number;
+                        scope: string;
+                        selection_attempt_id: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        task_id: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                attempt_id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                binding_id: string;
+                                configuration_sha256: string;
+                                /** @description Provider draft only; acceptance records transport/admission, not task success. */
+                                content: string;
+                                content_sha256: string;
+                                /**
+                                 * @description Captured context provenance. Neither this stamp nor generated text attests
+                                 *     current project-file freshness, correctness or permission to apply changes.
+                                 */
+                                context?: {
+                                    packet_sha256: string;
+                                    read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    request_sha256: string;
+                                } | null;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /** Format: uint64 */
+                                elapsed_ms?: number | null;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                packet_sha256: string;
+                                read: {
+                                    /** Format: uint64 */
+                                    catalogue_revision: number;
+                                    /** Format: uint64 */
+                                    runtime_cursor: number;
+                                    runtime_manifest_sha256: string;
+                                    /** Format: uint64 */
+                                    schema_revision?: number | null;
+                                };
+                                request_sha256: string;
+                                response_sha256: string;
+                                scope: string;
+                                selection_attempt_id: string;
+                                selection_sha256: string;
+                                /** @description Observed alias, not an attestation of loaded weights. */
+                                service_id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                                task_sha256: string;
+                                /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                usage?: {
+                                    /** Format: uint64 */
+                                    completion_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    prompt_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    total_tokens?: number | null;
+                                } | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            payload: {
+                                attempt_id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                binding_id: string;
+                                configuration_sha256: string;
+                                /** @description Provider draft only; acceptance records transport/admission, not task success. */
+                                content: string;
+                                content_sha256: string;
+                                /**
+                                 * @description Captured context provenance. Neither this stamp nor generated text attests
+                                 *     current project-file freshness, correctness or permission to apply changes.
+                                 */
+                                context?: {
+                                    packet_sha256: string;
+                                    read: {
+                                        /** Format: uint64 */
+                                        catalogue_revision: number;
+                                        /** Format: uint64 */
+                                        runtime_cursor: number;
+                                        runtime_manifest_sha256: string;
+                                        /** Format: uint64 */
+                                        schema_revision?: number | null;
+                                    };
+                                    request_sha256: string;
+                                } | null;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /** Format: uint64 */
+                                elapsed_ms?: number | null;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                packet_sha256: string;
+                                read: {
+                                    /** Format: uint64 */
+                                    catalogue_revision: number;
+                                    /** Format: uint64 */
+                                    runtime_cursor: number;
+                                    runtime_manifest_sha256: string;
+                                    /** Format: uint64 */
+                                    schema_revision?: number | null;
+                                };
+                                request_sha256: string;
+                                response_sha256: string;
+                                scope: string;
+                                selection_attempt_id: string;
+                                selection_sha256: string;
+                                /** @description Observed alias, not an attestation of loaded weights. */
+                                service_id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                                task_sha256: string;
+                                /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                usage?: {
+                                    /** Format: uint64 */
+                                    completion_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    prompt_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    total_tokens?: number | null;
+                                } | null;
                             };
                             /** @constant */
                             status: "ok";

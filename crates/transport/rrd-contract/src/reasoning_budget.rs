@@ -264,6 +264,8 @@ pub struct TaskAttemptSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endpoint_proposal: Option<crate::EndpointSelectionProposal>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worker_output: Option<crate::TaskWorkerOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invalidation: Option<TaskAttemptInvalidation>,
 }
 
@@ -289,7 +291,16 @@ impl TaskAttemptView {
             {
                 return invalid("only invalidated attempts have an invalidation reason");
             }
-            if attempt.result.is_some() && attempt.endpoint_proposal.is_some() {
+            if [
+                attempt.result.is_some(),
+                attempt.endpoint_proposal.is_some(),
+                attempt.worker_output.is_some(),
+            ]
+            .into_iter()
+            .filter(|present| *present)
+            .count()
+                > 1
+            {
                 return invalid("an attempt cannot retain two output kinds");
             }
             if let Some(result) = &attempt.result {
@@ -317,6 +328,19 @@ impl TaskAttemptView {
                     .map_err(|e| crate::ContractError(e.to_string()))?;
                 if attempt.outcome_sha256.as_deref() != Some(crate::sha256_bytes(&bytes).as_str()) {
                     return invalid("retained proposal digest mismatch");
+                }
+            }
+            if let Some(output) = &attempt.worker_output {
+                if attempt.status != TaskAttemptStatus::Accepted
+                    || output.attempt_id != attempt.attempt_id
+                {
+                    return invalid("worker output must belong to its accepted attempt");
+                }
+                output.validate()?;
+                let bytes =
+                    serde_json::to_vec(output).map_err(|e| crate::ContractError(e.to_string()))?;
+                if attempt.outcome_sha256.as_deref() != Some(crate::sha256_bytes(&bytes).as_str()) {
+                    return invalid("retained worker output digest mismatch");
                 }
             }
         }

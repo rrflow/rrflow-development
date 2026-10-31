@@ -1,0 +1,242 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-dc1079f206f84a8ab8c64bbc0930095e",
+      "operation_id": "controller-proof-dc1079f206f84a8ab8c64bbc0930095e",
+      "idempotency_key": "controller-proof-dc1079f206f84a8ab8c64bbc0930095e",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-418157be2839b9f6fb7284ca"
+        }
+      ]
+    },
+    "payload": {
+      "plan": {
+        "format_version": 1,
+        "identity": {
+          "project_id": "project-418157be2839b9f6fb7284ca",
+          "estate_id": "estate-418157be2839b9f6fb7284ca",
+          "instance_id": "instance-418157be2839b9f6fb7284ca"
+        },
+        "expected_revision": 1,
+        "expected_configuration_sha256": "16b6b731611a23c5ff6b17ffc8c66d9529f4e20a23d786667cab17d1c41b0c98",
+        "profile": {
+          "contract_version": 1,
+          "name": "swag-bf16-development",
+          "revision": 2,
+          "bindings": [
+            {
+              "id": "swag-custom-bf16",
+              "class": "large_model_serving",
+              "kind": "self_hosted",
+              "endpoint": {
+                "kind": "url",
+                "url": "http://127.0.0.1:51235/v1"
+              },
+              "service_id": "swag-qwen3-coder-intent-20261028",
+              "manifest_sha256": "ba7bede9963d469f312e06b337cb9241de524bdf77c7fe2ee30e09dd9b126252",
+              "credential": {
+                "provider": "operator-local",
+                "name": "swag-custom-bf16"
+              },
+              "placement": "clyffy-02",
+              "footprint": {
+                "memory_bytes": 107374182400,
+                "gpu": {
+                  "kind": "required",
+                  "memory_bytes": 107374182400
+                }
+              },
+              "limits": {
+                "max_concurrency": 1,
+                "timeout_ms": 60000,
+                "max_input_bytes": 16384
+              }
+            }
+          ],
+          "selection_policy": {
+            "contract_version": 1,
+            "purpose": "experimental_proposal",
+            "allow_unverified_identity": true,
+            "allow_network": true,
+            "maximum_concurrent_proposals": 1,
+            "controller_binding_id": "swag-custom-bf16",
+            "workload_class": "large_model_serving",
+            "limits": {
+              "maximum_allowance_bytes": 16384,
+              "maximum_response_bytes": 65536,
+              "maximum_candidates": 1,
+              "maximum_effort_values": 1,
+              "maximum_effort_bytes": 65536
+            },
+            "candidates": [
+              {
+                "binding_id": "swag-custom-bf16",
+                "service_id": "swag-qwen3-coder-intent-20261028",
+                "manifest_sha256": "ba7bede9963d469f312e06b337cb9241de524bdf77c7fe2ee30e09dd9b126252",
+                "effort": {
+                  "kind": "observed",
+                  "evidence_sha256": "5eb0aa053596ef03db099e8c99ba73d20346f9c137bd40603201f3b92ab2f92c",
+                  "allow_default": true,
+                  "values": []
+                }
+              }
+            ],
+            "system_prompt": "Propose an endpoint for a bounded textual intent summary of the supplied real development task. Use only the supplied candidate binding and its observed effort support, or abstain. This is an offline proposal, not execution authorization or a quality claim. Return only a JSON object matching this schema: {\"$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"title\": \"EndpointSelectionChoice\", \"description\": \"Only the model's observable choice. The engine owns request/source identity,\\nauthorization, timestamps, raw-output digest, usage and any accepted receipt.\", \"oneOf\": [{\"type\": \"object\", \"properties\": {\"binding_id\": {\"$ref\": \"#/$defs/CanonicalId\"}, \"effort\": {\"type\": [\"string\", \"null\"]}, \"kind\": {\"type\": \"string\", \"const\": \"select\"}}, \"additionalProperties\": false, \"required\": [\"kind\", \"binding_id\"]}, {\"type\": \"object\", \"properties\": {\"kind\": {\"type\": \"string\", \"const\": \"abstain\"}, \"reason\": {\"$ref\": \"#/$defs/EndpointAbstentionReason\"}}, \"additionalProperties\": false, \"required\": [\"kind\", \"reason\"]}], \"$defs\": {\"CanonicalId\": {\"description\": \"A canonical public identifier component.\\n\\nIDs are lowercase ASCII and intentionally URL/path safe. Human-facing\\nlabels are separate data and may use arbitrary Unicode.\", \"type\": \"string\"}, \"EndpointAbstentionReason\": {\"type\": \"string\", \"enum\": [\"no_eligible_candidate\", \"insufficient_evidence\", \"cannot_decide\"]}}}\nThe candidates describe evidence, not output fields. For kind select, binding_id must exactly match an eligible candidate. The choice effort field is null or omitted when that candidate permits default effort; otherwise it is one exact string from that candidate's effort values. Never put an evidence-status kind such as observed or declared into the choice effort field unless that exact string is itself in the allowed values. Output no extra fields or prose. You may abstain using a permitted reason.",
+            "maximum_output_tokens": 128,
+            "temperature_milli": 0
+          },
+          "worker_policy": {
+            "contract_version": 1,
+            "allow_network": true,
+            "allow_context_export": true,
+            "allow_unverified_identity": true,
+            "maximum_concurrent_calls": 1,
+            "bindings": [
+              {
+                "binding_id": "swag-custom-bf16",
+                "protocol_evidence_sha256": "cb9c7d14214459cc1c683d053c6e2dadd4bc847635ba26c1631eb73ce0192936",
+                "system_prompt": "Read the supplied real development task and return a concise JSON object describing implementation steps, verification steps, and unresolved questions. This is a draft for review. Do not claim files were edited, commands executed, tests passed, or the task completed. Keep the draft short: at most three implementation steps, three verification steps, and three unresolved questions. Use one short sentence per item; do not repeat the task description or its existing test counts.",
+                "generation": {
+                  "maximum_output_tokens": 512,
+                  "token_parameter": "max_tokens",
+                  "temperature_milli": 0,
+                  "response_format": {
+                    "type": "json_object"
+                  }
+                },
+                "maximum_response_bytes": 65536,
+                "effort_values": {},
+                "allow_default_effort": true
+              }
+            ]
+          },
+          "profile_sha256": "83506afac11c616de5327eeb9e8b2765924f22c17a64bd4bb48320195fd1196f"
+        },
+        "issued_at_unix_ms": 1793475320592,
+        "expires_at_unix_ms": 1793475620592,
+        "plan_sha256": "94dba758ded6a7638edf69e1dcc0b6064c99d647af3f5c0b3bcf45318792cd68"
+      },
+      "approved_plan_sha256": "94dba758ded6a7638edf69e1dcc0b6064c99d647af3f5c0b3bcf45318792cd68"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-dc1079f206f84a8ab8c64bbc0930095e",
+    "operation_id": "controller-proof-dc1079f206f84a8ab8c64bbc0930095e",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "format_version": 1,
+        "identity": {
+          "project_id": "project-418157be2839b9f6fb7284ca",
+          "estate_id": "estate-418157be2839b9f6fb7284ca",
+          "instance_id": "instance-418157be2839b9f6fb7284ca"
+        },
+        "revision": 2,
+        "profile": {
+          "contract_version": 1,
+          "name": "swag-bf16-development",
+          "revision": 2,
+          "bindings": [
+            {
+              "id": "swag-custom-bf16",
+              "class": "large_model_serving",
+              "kind": "self_hosted",
+              "endpoint": {
+                "kind": "url",
+                "url": "http://127.0.0.1:51235/v1"
+              },
+              "service_id": "swag-qwen3-coder-intent-20261028",
+              "manifest_sha256": "ba7bede9963d469f312e06b337cb9241de524bdf77c7fe2ee30e09dd9b126252",
+              "credential": {
+                "provider": "operator-local",
+                "name": "swag-custom-bf16"
+              },
+              "placement": "clyffy-02",
+              "footprint": {
+                "memory_bytes": 107374182400,
+                "gpu": {
+                  "kind": "required",
+                  "memory_bytes": 107374182400
+                }
+              },
+              "limits": {
+                "max_concurrency": 1,
+                "timeout_ms": 60000,
+                "max_input_bytes": 16384
+              }
+            }
+          ],
+          "selection_policy": {
+            "contract_version": 1,
+            "purpose": "experimental_proposal",
+            "allow_unverified_identity": true,
+            "allow_network": true,
+            "maximum_concurrent_proposals": 1,
+            "controller_binding_id": "swag-custom-bf16",
+            "workload_class": "large_model_serving",
+            "limits": {
+              "maximum_allowance_bytes": 16384,
+              "maximum_response_bytes": 65536,
+              "maximum_candidates": 1,
+              "maximum_effort_values": 1,
+              "maximum_effort_bytes": 65536
+            },
+            "candidates": [
+              {
+                "binding_id": "swag-custom-bf16",
+                "service_id": "swag-qwen3-coder-intent-20261028",
+                "manifest_sha256": "ba7bede9963d469f312e06b337cb9241de524bdf77c7fe2ee30e09dd9b126252",
+                "effort": {
+                  "kind": "observed",
+                  "evidence_sha256": "5eb0aa053596ef03db099e8c99ba73d20346f9c137bd40603201f3b92ab2f92c",
+                  "allow_default": true,
+                  "values": []
+                }
+              }
+            ],
+            "system_prompt": "Propose an endpoint for a bounded textual intent summary of the supplied real development task. Use only the supplied candidate binding and its observed effort support, or abstain. This is an offline proposal, not execution authorization or a quality claim. Return only a JSON object matching this schema: {\"$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"title\": \"EndpointSelectionChoice\", \"description\": \"Only the model's observable choice. The engine owns request/source identity,\\nauthorization, timestamps, raw-output digest, usage and any accepted receipt.\", \"oneOf\": [{\"type\": \"object\", \"properties\": {\"binding_id\": {\"$ref\": \"#/$defs/CanonicalId\"}, \"effort\": {\"type\": [\"string\", \"null\"]}, \"kind\": {\"type\": \"string\", \"const\": \"select\"}}, \"additionalProperties\": false, \"required\": [\"kind\", \"binding_id\"]}, {\"type\": \"object\", \"properties\": {\"kind\": {\"type\": \"string\", \"const\": \"abstain\"}, \"reason\": {\"$ref\": \"#/$defs/EndpointAbstentionReason\"}}, \"additionalProperties\": false, \"required\": [\"kind\", \"reason\"]}], \"$defs\": {\"CanonicalId\": {\"description\": \"A canonical public identifier component.\\n\\nIDs are lowercase ASCII and intentionally URL/path safe. Human-facing\\nlabels are separate data and may use arbitrary Unicode.\", \"type\": \"string\"}, \"EndpointAbstentionReason\": {\"type\": \"string\", \"enum\": [\"no_eligible_candidate\", \"insufficient_evidence\", \"cannot_decide\"]}}}\nThe candidates describe evidence, not output fields. For kind select, binding_id must exactly match an eligible candidate. The choice effort field is null or omitted when that candidate permits default effort; otherwise it is one exact string from that candidate's effort values. Never put an evidence-status kind such as observed or declared into the choice effort field unless that exact string is itself in the allowed values. Output no extra fields or prose. You may abstain using a permitted reason.",
+            "maximum_output_tokens": 128,
+            "temperature_milli": 0
+          },
+          "worker_policy": {
+            "contract_version": 1,
+            "allow_network": true,
+            "allow_context_export": true,
+            "allow_unverified_identity": true,
+            "maximum_concurrent_calls": 1,
+            "bindings": [
+              {
+                "binding_id": "swag-custom-bf16",
+                "protocol_evidence_sha256": "cb9c7d14214459cc1c683d053c6e2dadd4bc847635ba26c1631eb73ce0192936",
+                "system_prompt": "Read the supplied real development task and return a concise JSON object describing implementation steps, verification steps, and unresolved questions. This is a draft for review. Do not claim files were edited, commands executed, tests passed, or the task completed. Keep the draft short: at most three implementation steps, three verification steps, and three unresolved questions. Use one short sentence per item; do not repeat the task description or its existing test counts.",
+                "generation": {
+                  "maximum_output_tokens": 512,
+                  "token_parameter": "max_tokens",
+                  "temperature_milli": 0,
+                  "response_format": {
+                    "type": "json_object"
+                  }
+                },
+                "maximum_response_bytes": 65536,
+                "effort_values": {},
+                "allow_default_effort": true
+              }
+            ]
+          },
+          "profile_sha256": "83506afac11c616de5327eeb9e8b2765924f22c17a64bd4bb48320195fd1196f"
+        },
+        "last_applied_plan_sha256": "94dba758ded6a7638edf69e1dcc0b6064c99d647af3f5c0b3bcf45318792cd68"
+      }
+    }
+  }
+}

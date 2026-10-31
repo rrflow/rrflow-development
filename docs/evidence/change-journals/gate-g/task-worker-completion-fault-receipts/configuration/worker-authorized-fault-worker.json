@@ -1,0 +1,46 @@
+{
+  "status": 412,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-624fd60c222747bcaaf95fa9f5fe5dd7",
+      "operation_id": "controller-proof-624fd60c222747bcaaf95fa9f5fe5dd7",
+      "idempotency_key": "controller-proof-624fd60c222747bcaaf95fa9f5fe5dd7",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-418157be2839b9f6fb7284ca"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-418157be2839b9f6fb7284ca",
+      "task_id": "task-d3eee6762a2b2b2beaa7f278304654607ffcec0f9ff3a1ec4775d57ccdf23747",
+      "attempt_id": "actual-worker-a435615f7c36490bb22453c19b006fe2",
+      "selection_attempt_id": "actual-proposal-e22f1bcf3706453f8d54cadb74e180b0",
+      "expected_selection_sha256": "f9f3449e129ca1075364fe5b317e039b1598db4a6a48b41abafe15e3a4921726",
+      "expected_task_sha256": "6fdcc8bc617ff49618b9396d2ed52ab6379b4e037092edfdd73c67af61a602c1",
+      "expected_configuration_sha256": "16b6b731611a23c5ff6b17ffc8c66d9529f4e20a23d786667cab17d1c41b0c98",
+      "max_storage_keys": 1000000,
+      "context": null
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-624fd60c222747bcaaf95fa9f5fe5dd7",
+    "operation_id": "controller-proof-624fd60c222747bcaaf95fa9f5fe5dd7",
+    "outcome": {
+      "status": "error",
+      "error": {
+        "code": "failed_precondition",
+        "message": "TaskAttemptInvalidated(InputsChanged)",
+        "retryable": false
+      }
+    }
+  }
+}

@@ -41,7 +41,7 @@ Cross-surface proof must compare the result,
 denial, stamp, digest, receipt, and causal identity produced by the engine—not
 merely compare JSON shapes.
 
-## Catalogue-derived controller proposal binding
+## Catalogue-derived model operation bindings
 
 The Cargo build projects all HTTP operation types from `endpoint_catalogue()`
 through `rrd-client/build_support.rs`. The same markers carry metadata for
@@ -49,8 +49,8 @@ fixed-path session POST operations; there is no separately checked-in Rust
 projection. Generator and compiled-catalogue tests verify complete coverage,
 metadata changes and malformed-input rejection.
 It carries method/path/type/mutation metadata, not semantic validation or engine
-authority. Only `operations::TaskEndpointPropose` currently implements the sealed
-`ValidatedOperation` interface. Other markers cannot be passed to this API;
+authority. `operations::TaskEndpointPropose` and `operations::TaskWorkerExecute`
+implement the sealed `ValidatedOperation` interface. Other markers cannot be passed to this API;
 existing legacy methods retain their documented behavior.
 
 ```rust,ignore
@@ -68,7 +68,21 @@ digests, protocol/correlation, status and JSON media type. Full candidate/packet
 admission remains in the engine. A successful proposal permits no worker effect.
 Credentials never need to enter the renderer.
 
-This call sends once even when general client retries exceed one. After timeout
+`client.execute_task_worker(&session, request, options)` is the typed wrapper
+over that same operation carriage. The worker request names the accepted
+selection and expected task/configuration digests. Contract-owned validation
+checks those identities, content integrity and the requested context identity;
+it does not attest provider capability or draft quality. Engine authorization,
+reservation and guarded completion remain mandatory.
+
+The `task_model_call` example accepts an explicit operation, installed project,
+loopback address, request JSON and timeout. The single bootstrap serves either
+operation; there is no example-owned execution plan or provider call. The installed
+proof runner's `--native-client` mode can combine with `--worker` to exercise both
+calls through the SDK. Supply the separately built example and explicit timeout;
+the runner copies and hashes it and retains failures without automatic redispatch.
+
+These calls send once even when general client retries exceed one. After timeout
 or response loss, use `read_task_attempt` to inspect durable state; do not submit
 a new attempt automatically. Validation tests using archived actual responses
 are transport evidence, not fresh model results or routing qualification. The

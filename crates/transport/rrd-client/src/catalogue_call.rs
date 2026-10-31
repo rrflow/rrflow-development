@@ -53,6 +53,19 @@ impl ValidatedOperation for crate::operations::TaskEndpointPropose {
     }
 }
 
+impl ValidatedOperation for crate::operations::TaskWorkerExecute {
+    fn validate_request(request: &Self::Request) -> rrd_contract::Result<()> {
+        request.validate()
+    }
+
+    fn validate_response(
+        request: &Self::Request,
+        response: &Self::Response,
+    ) -> rrd_contract::Result<()> {
+        response.validate_request_identity(request)
+    }
+}
+
 impl RrdClient {
     /// Carry one validated operation through the current native session.
     ///

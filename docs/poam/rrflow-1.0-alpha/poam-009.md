@@ -10,6 +10,60 @@ independently.
 
 ## Observed deficiency
 
+The [terminal-response repair](../../evidence/change-journals/gate-g/task-worker-terminal-response.md)
+addresses a reproduced completion-classification defect: a matching worker reply
+ending at its token limit was rejected but classified as still possibly running.
+The common transport now separates completed generation from unknown outcomes;
+the existing engine completion transaction releases only known-completed capacity
+while preserving rejected output, charged effort and the stopped budget. This is
+not a public resume operation or retrospective reconciliation of old leases.
+Installed proof on the repaired binary and candidate/dependency landing remain
+required; the earlier live histories keep their original source identities.
+
+The [installed native trial](../../evidence/change-journals/gate-g/task-worker-native-live.md)
+now carries actual selection and worker draft calls through the composed Rust
+client, with denied credentials, restart, replay rejection and independent
+credential-free recovery. Both the first rejected worker response and the later
+successful bounded-response experiment are published as exact receipts. This
+does not establish model quality, UI completion or a production retry/reconciliation
+path; required dependency CI/landing and the full workflow remain open.
+
+The [native worker composition](../../evidence/change-journals/gate-g/task-worker-native-client.md)
+integrates PR222's catalogue-derived client into the worker candidate. Both model
+operations share one-attempt carriage and contract-owned response validation;
+the installed example and proof runner support both modes. Exact-source native
+trial, composed candidate CI and protected dependency landing remain acceptance
+requirements; prior installed HTTP evidence does not imply UI completion.
+
+The [installed worker trial](../../evidence/change-journals/gate-g/task-worker-installed-live.md)
+now proves an actual configured selection and worker draft on the exact clean
+`c75c1896` binary, including missing credentials, restart/readback and replay
+denial. The first model-choice failure and its uncertain estate remain retained.
+This is one-candidate task-text evidence; model quality, full UI/project effects,
+RROFLOW and reviewed learning remain open. Composed CI and protected landing
+are still required. Earlier entries below retain their source-specific limits.
+
+The [worker activity increment](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
+now composes a selected model call with existing task authority, effort, context,
+shared capacity and readback. Local controlled protocol checks cover success,
+denials, invalidation, Stop, response loss and reopen. Owning component/engine
+suites, strict lint and generated-surface/TypeScript checks pass; installed provider
+evidence, complete composed conformance and protected publication remain pending.
+The retained result is draft text, not a verified project effect or learning label.
+This does not close POAM-009 or the full UI-to-worker-to-observability journey.
+
+The [selected-worker boundary observation](../../evidence/change-journals/gate-g/task-worker-model-boundary.md)
+confirms that the composed 71-operation controller can retain a routing proposal
+but exposes no selected-worker execution. The
+[transport/configuration increment](../../evidence/change-journals/gate-g/task-worker-model-transport-policy.md)
+adds bounded model text beside strict endpoint-choice decoding and explicit
+worker settings under existing configuration approval. Focused protocol and
+engine persistence checks pass; the admitted worker operation remains missing.
+Reuse the task budget, authority guards and authorized context
+for a separately admitted model activity; draft text cannot become a project
+effect, correctness label or training consent. Implementation and real installed
+worker evidence remain pending.
+
 The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
 prove a real configured BF16 proposal, restart/replay and guarded completion under
 configuration replacement, session closure, Stop and response loss. A fresh
