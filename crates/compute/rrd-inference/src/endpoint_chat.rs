@@ -75,9 +75,29 @@ struct ModelWireRequest<'a> {
 #[derive(Debug, Clone, Serialize)]
 pub struct EndpointChatFailure {
     pub reason: &'static str,
-    /// Conservative after the HTTP call begins; never permission to retry.
-    pub dispatch_may_have_occurred: bool,
+    pub outcome: EndpointChatOutcome,
     pub http_status: Option<u16>,
+}
+
+/// Transport observation, not attested model identity or permission to retry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EndpointChatOutcome {
+    NotDispatched,
+    Unknown,
+    /// A bounded, matching, terminal generation response was decoded. Its
+    /// content can still be rejected and must never bypass engine admission.
+    ResponseComplete,
+}
+
+impl EndpointChatFailure {
+    pub fn dispatch_may_have_occurred(&self) -> bool {
+        self.outcome != EndpointChatOutcome::NotDispatched
+    }
+
+    pub fn execution_may_continue(&self) -> bool {
+        self.outcome == EndpointChatOutcome::Unknown
+    }
 }
 impl std::fmt::Display for EndpointChatFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -89,7 +109,19 @@ type Result<T> = std::result::Result<T, EndpointChatFailure>;
 fn failure(reason: &'static str, sent: bool) -> EndpointChatFailure {
     EndpointChatFailure {
         reason,
-        dispatch_may_have_occurred: sent,
+        outcome: if sent {
+            EndpointChatOutcome::Unknown
+        } else {
+            EndpointChatOutcome::NotDispatched
+        },
+        http_status: None,
+    }
+}
+
+fn completed_failure(reason: &'static str) -> EndpointChatFailure {
+    EndpointChatFailure {
+        reason,
+        outcome: EndpointChatOutcome::ResponseComplete,
         http_status: None,
     }
 }
@@ -352,12 +384,17 @@ impl<'a> PreparedModelChat<'a> {
             .take(maximum + 1)
             .read_to_end(&mut bytes)
             .map_err(|_| failure("chat response read failed; remote outcome unknown", true))?;
-        checkpoint(&control, true)?;
         if bytes.len() as u64 > maximum {
             return Err(failure("chat response exceeds byte limit", true));
         }
-        let mut observation = self.decode_response(bytes)?;
-        checkpoint(&control, true)?;
+        // Decode the bounded body before the final cancellation check so a
+        // completed response is not confused with an unknown remote outcome.
+        // Cancellation still forbids returning its content as accepted output.
+        let mut observation = self.decode_response(bytes).map_err(|mut error| {
+            error.http_status = Some(status);
+            error
+        })?;
+        completed_checkpoint(&control)?;
         observation.elapsed_ms =
             Some(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
         observation.http_status = Some(status);
@@ -376,12 +413,12 @@ impl<'a> PreparedModelChat<'a> {
             return Err(failure("chat response model or choice count differs", true));
         }
         let item = &response.choices[0];
-        if item.finish_reason != "stop"
-            || item.message.role != "assistant"
-            || item.message.refusal.is_some()
+        if item.message.role != "assistant"
+            || !matches!(
+                item.finish_reason.as_str(),
+                "stop" | "length" | "content_filter"
+            )
             || item.message.function_call.is_some()
-            || item.message.reasoning.is_some()
-            || item.message.reasoning_content.is_some()
             || item
                 .message
                 .tool_calls
@@ -393,25 +430,33 @@ impl<'a> PreparedModelChat<'a> {
                 true,
             ));
         }
+        if item.finish_reason != "stop"
+            || item.message.refusal.is_some()
+            || item.message.reasoning.is_some()
+            || item.message.reasoning_content.is_some()
+        {
+            return Err(completed_failure(
+                "chat response is incomplete or requests unsupported effects",
+            ));
+        }
         let content = item
             .message
             .content
             .as_ref()
-            .ok_or_else(|| failure("chat response has no content", true))?;
+            .ok_or_else(|| completed_failure("chat response has no content"))?;
         if self.response_format == EndpointResponseFormat::JsonObject
             && !serde_json::from_str::<serde_json::Value>(content)
                 .is_ok_and(|value| value.is_object())
         {
-            return Err(failure(
+            return Err(completed_failure(
                 "chat content is not the requested JSON object",
-                true,
             ));
         }
         let usage: Option<EndpointTokenUsage> = response.usage.map(Into::into);
         if let Some(usage) = &usage {
             usage
                 .validate()
-                .map_err(|_| failure("inconsistent reported usage", true))?;
+                .map_err(|_| completed_failure("inconsistent reported usage"))?;
         }
         Ok(ModelChatObservation {
             content: content.clone(),
@@ -490,7 +535,7 @@ impl<'a> PreparedEndpointChat<'a> {
         let control = control.with_deadline(deadline);
         let observed = self.transport.execute(network, &control, resolve)?;
         let mut selection = self.selection(observed)?;
-        checkpoint(&control, true)?;
+        completed_checkpoint(&control)?;
         selection.elapsed_ms =
             Some(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
         Ok(selection)
@@ -506,7 +551,7 @@ impl<'a> PreparedEndpointChat<'a> {
             self.allowance,
             self.configuration,
         )
-        .map_err(|_| failure("invalid endpoint selection choice", true))?;
+        .map_err(|_| completed_failure("invalid endpoint selection choice"))?;
         Ok(EndpointChatObservation {
             choice,
             service_id: observed.service_id,
@@ -514,7 +559,7 @@ impl<'a> PreparedEndpointChat<'a> {
             allowance_sha256: self
                 .allowance
                 .sha256(self.configuration)
-                .map_err(|_| failure("invalid selection allowance", true))?,
+                .map_err(|_| completed_failure("invalid selection allowance"))?,
             request_sha256: observed.request_sha256,
             response_sha256: observed.response_sha256,
             content_sha256: observed.content_sha256,
@@ -536,6 +581,10 @@ fn checkpoint(control: &EmbeddingExecutionControl, sent: bool) -> Result<()> {
             sent,
         )
     })
+}
+
+fn completed_checkpoint(control: &EmbeddingExecutionControl) -> Result<()> {
+    checkpoint(control, true).map_err(|error| completed_failure(error.reason))
 }
 
 fn encode_bounded(value: &impl Serialize, maximum: u64) -> Result<Vec<u8>> {

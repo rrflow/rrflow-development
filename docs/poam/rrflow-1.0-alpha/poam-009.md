@@ -10,6 +10,16 @@ independently.
 
 ## Observed deficiency
 
+The [terminal-response repair](../../evidence/change-journals/gate-g/task-worker-terminal-response.md)
+addresses a reproduced completion-classification defect: a matching worker reply
+ending at its token limit was rejected but classified as still possibly running.
+The common transport now separates completed generation from unknown outcomes;
+the existing engine completion transaction releases only known-completed capacity
+while preserving rejected output, charged effort and the stopped budget. This is
+not a public resume operation or retrospective reconciliation of old leases.
+Installed proof on the repaired binary and candidate/dependency landing remain
+required; the earlier live histories keep their original source identities.
+
 The [installed native trial](../../evidence/change-journals/gate-g/task-worker-native-live.md)
 now carries actual selection and worker draft calls through the composed Rust
 client, with denied credentials, restart, replay rejection and independent

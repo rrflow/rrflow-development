@@ -707,6 +707,13 @@ Neither mappings nor secret values enter prompts, public configuration or receip
 Capacity admission is committed with the task budget and attempt. Known completed
 or denied calls release their entry at completion; uncertain remote work retains
 capacity across reopen. There is no automatic retry or uncertainty reconciliation.
+A matching bounded response with one assistant choice, terminal generation reason
+(`stop`, `length` or `content_filter`) and no tool/function request distinguishes
+completed generation from a lost outcome. Invalid content remains rejected;
+completion does not imply acceptable output, attested identity or retry permission.
+Malformed, mismatched, oversized and lost responses remain uncertain. A failed
+attempt still spends its step and elapsed effort and stops its task budget.
+This classification applies to newly observed calls, not historical reservations.
 Read `task-attempt-read` to recover a receipt without calling the provider again.
 Changed authority/configuration/task inputs invalidate accepted-output publication
 while retaining consumed effort. Ordinary repository-edit successor plans are not

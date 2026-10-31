@@ -90,6 +90,87 @@ fn model_content_keeps_envelope_effect_and_identity_denials() {
 }
 
 #[test]
+fn rejected_content_distinguishes_completed_generation_from_unknown_outcome() {
+    use rrd_inference::endpoint_chat::EndpointChatOutcome;
+    let (configuration, mut request, response) = inputs();
+    request.settings.response_format = EndpointResponseFormat::JsonObject;
+    let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
+    let prepared = PreparedModelChat::new(&configuration, binding, &request, 16_384).unwrap();
+    let changes = [
+        (
+            "/choices/0/finish_reason",
+            serde_json::json!("length"),
+            false,
+        ),
+        (
+            "/choices/0/finish_reason",
+            serde_json::json!("content_filter"),
+            false,
+        ),
+        (
+            "/choices/0/message/content",
+            serde_json::json!("not JSON"),
+            false,
+        ),
+        ("/choices/0/message/content", Value::Null, false),
+        ("/model", serde_json::json!("wrong-model"), true),
+        (
+            "/choices/0/finish_reason",
+            serde_json::json!("unrecognized"),
+            true,
+        ),
+        ("/choices/0/finish_reason", Value::Null, true),
+        ("/choices/0/message/role", serde_json::json!("tool"), true),
+    ];
+    for (pointer, value, unknown) in changes {
+        let mut changed = response.clone();
+        *changed.pointer_mut(pointer).unwrap() = value;
+        let error = prepared
+            .decode_response(serde_json::to_vec(&changed).unwrap())
+            .unwrap_err();
+        assert_eq!(
+            error.execution_may_continue(),
+            unknown,
+            "{pointer}: {changed}"
+        );
+        assert!(error.dispatch_may_have_occurred());
+        assert_eq!(
+            error.outcome,
+            if unknown {
+                EndpointChatOutcome::Unknown
+            } else {
+                EndpointChatOutcome::ResponseComplete
+            }
+        );
+    }
+    for field in ["tool_calls", "function_call"] {
+        let mut changed = response.clone();
+        changed["choices"][0]["message"][field] = if field == "tool_calls" {
+            serde_json::json!([{}])
+        } else {
+            serde_json::json!({})
+        };
+        assert!(prepared
+            .decode_response(serde_json::to_vec(&changed).unwrap())
+            .unwrap_err()
+            .execution_may_continue());
+    }
+    let mut usage = response.clone();
+    usage["usage"] =
+        serde_json::json!({"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 99});
+    assert!(!prepared
+        .decode_response(serde_json::to_vec(&usage).unwrap())
+        .unwrap_err()
+        .execution_may_continue());
+    for bytes in [b"{".to_vec(), vec![b'x'; 16_385]] {
+        assert!(prepared
+            .decode_response(bytes)
+            .unwrap_err()
+            .execution_may_continue());
+    }
+}
+
+#[test]
 fn explicit_settings_and_json_format_are_enforced_without_default_substitution() {
     let (configuration, mut request, mut response) = inputs();
     let binding = &configuration.profile.as_ref().unwrap().bindings[0].id;
@@ -136,14 +217,14 @@ fn worker_network_and_stop_denials_do_not_resolve_credentials() {
             panic!("denied resolver")
         })
         .unwrap_err();
-    assert!(!denied.dispatch_may_have_occurred);
+    assert!(!denied.dispatch_may_have_occurred());
     cancellation.cancel();
     let stopped = prepared
         .execute(NetworkPolicy::Allow, &control, |_, _| {
             panic!("stopped resolver")
         })
         .unwrap_err();
-    assert!(!stopped.dispatch_may_have_occurred);
+    assert!(!stopped.dispatch_may_have_occurred());
 }
 
 #[test]

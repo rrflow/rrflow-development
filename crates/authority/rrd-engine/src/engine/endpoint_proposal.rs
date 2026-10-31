@@ -440,6 +440,6 @@ fn task_read(request: &EndpointSelectionRequest) -> ReadTask {
 pub(super) fn endpoint_failure(error: EndpointChatFailure) -> ServiceError {
     ServiceError::EndpointCallFailed {
         reason: error.reason,
-        execution_may_continue: error.dispatch_may_have_occurred,
+        execution_may_continue: error.execution_may_continue(),
     }
 }
