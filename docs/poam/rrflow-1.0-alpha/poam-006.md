@@ -131,6 +131,14 @@ candidate and protected qualification. No POA&M status changes.
 
 ### Whole-repository Inventory publication and binary replacement
 
+PR226's [incremental publication record](../../evidence/change-journals/gate-d/d-03-incremental-publication.md)
+retains an installed unchanged-input failure: every entry/edge was republished.
+Current authenticated fact comparison now permits bounded write reuse, and
+private progress binds its exact publication work set before reusing an offset.
+Focused and interruption/reopen checks pass; full candidate and real-repository
+qualification remain pending. This does not establish zero-content-read
+freshness, reduced RSS, safe upgrades or completed D-03 acceptance.
+
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
 Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
 Connect checkpoint and cursor; no Inventory completion was published. The

@@ -4,6 +4,7 @@ use crate::engine::transaction_admission::TransactionPermit;
 use rrd_attunement::inventory::{Proposal, SourceScope};
 mod publication;
 mod records;
+mod reuse;
 
 pub(super) struct Work<'a> {
     pub session: &'a CorrelationId,
@@ -56,8 +57,14 @@ pub(super) fn execute(
             .storage
             .transaction_admission_bytes,
     );
-    let (prior_bytes, prior) =
-        records::load_prior(engine, &work.plan, output_limit, policy.limits.entries)?;
+    let mut remaining_keys = engine.estate_configuration.query.max_storage_keys;
+    let (prior_bytes, prior) = records::load_prior(
+        engine,
+        &work.plan,
+        output_limit,
+        policy.limits.entries,
+        &mut remaining_keys,
+    )?;
     let source_scope = SourceScope {
         estate: work.plan.target.estate_id.as_str().into(),
         project: work.plan.target.project_id.as_str().into(),
@@ -78,7 +85,7 @@ pub(super) fn execute(
     let read = engine.storage.runtime().read_stamp(&scope)?;
     let at = elapsed_time(work.now, work.started)?;
     let mutations = records::mutations(engine, &scope, &read, &proposal, &precondition, at)?;
-    let commit = RuntimeCommit {
+    let mut commit = RuntimeCommit {
         scope,
         at,
         actor: format!("session:{}", work.session.as_str()),
@@ -99,6 +106,14 @@ pub(super) fn execute(
         }
         Ok(())
     };
+    let (mutations, publication_sha256) = reuse::filter(
+        engine,
+        &read,
+        std::mem::take(&mut commit.mutations),
+        &mut remaining_keys,
+        &check,
+    )?;
+    commit.mutations = mutations;
     publication::Publication {
         engine,
         work: &work,
@@ -108,7 +123,7 @@ pub(super) fn execute(
         recheck_source: &recheck_source,
         output_limit,
     }
-    .publish(commit, permit)
+    .publish(commit, permit, &publication_sha256)
 }
 
 fn bounded(value: &impl Serialize, limit: u64) -> Result<()> {
