@@ -14,17 +14,39 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [controller publication integration](../../evidence/change-journals/gate-g/controller-publication-integration.md)
+composes PR228 into the failed controller source. The original concurrency case,
+all 353 engine tests and 208 contract/inference/client tests now pass locally.
+Remaining installed and native/protected acceptance is separate; the historical
+failure and its uncertain exact native operation remain recorded. POAM-035 stays open.
+
 The [controller/Inventory integration](../../evidence/change-journals/gate-g/controller-inventory-integration.md)
 full engine suite exposed a Windows concurrent quantization-build failure:
 immutable object publication returned OS error 5, Access is denied. The focused
 test subsequently passed, so that run does not clear the failure. Object-store
-publication currently checks target existence before a replacing rename; a
+publication at that source checked target existence before a replacing rename; a
 native probe reproduces code 5 when a concurrently published winner is held
 without delete sharing. Non-replacing publication reports an existing target
 instead. The original error's exact operation remains unproven. Characterize
 the publication race at the persistence owner and retain digest verification,
 durability and concurrency checks before refreshing dependent qualification.
 Do not weaken the concurrent oracle or claim that a passing retry is a repair.
+
+The [immutable-object publication repair](../../evidence/change-journals/gate-c/c-07-object-publication-repair.md)
+first reproduces two deterministic failures, then preserves a verified
+reader-held winner through non-replacing publication and rejects corrupt
+collisions. Windows owner validation passes 257 storage tests and six native
+filesystem tests with strict lint. The original engine failure's exact operation
+is unproven; combined engine, native CI and installed qualification remain
+required. This component result does not close POAM-035.
+
+The [immutable-object collision observation](../../evidence/change-journals/gate-c/c-07-object-publication-observation.md)
+records a Windows concurrent quantization-build failure and a replacing-rename
+hazard with a reader-held winner. A passing focused rerun does not clear the
+failure. Characterize the late-publisher boundary, preserve the winner after
+digest verification, retain durability/crash hooks and verify the combined
+engine before dependent qualification. The exact original error location is
+unproven; no repair or gate completion is claimed by the native probe.
 
 The [native sampler worker candidate](../../evidence/change-journals/gate-c/c-07g-native-sample-worker.md)
 locally exercised held and interrupted resource acquisition and Windows Job
