@@ -120,6 +120,15 @@ reads in the new Inventory tests. The same record classifies those exact
 test-only oracles in the existing source-closure allowlist; it does not permit
 runtime query/retrieval log replay or weaken the scanner's exact counts.
 
+The subsequent candidate at `61bfe5a6` failed a different test in Linux
+engine-authority job `124415867194`: four Inventory-following fixtures assumed
+completion within 20 ms. The
+[completion-relative test correction](../../evidence/change-journals/gate-d/d-03-completion-relative-tests.md)
+binds subsequent effects and read/reopen times to returned job completion while
+preserving every original assertion and production enforcement. The native
+failure remains retained; local passes do not substitute for corrected
+candidate and protected qualification. No POA&M status changes.
+
 ### Whole-repository Inventory publication and binary replacement
 
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected

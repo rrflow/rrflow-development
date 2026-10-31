@@ -1548,7 +1548,7 @@ fn replan_refuses_an_unreconciled_failure() {
         &session,
         &step(&started.status.job),
         "unknown-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     let inventoried = call(
@@ -1556,7 +1556,7 @@ fn replan_refuses_an_unreconciled_failure() {
         &session,
         &step(&connected.status.job),
         "unknown-failure",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
@@ -1565,16 +1565,17 @@ fn replan_refuses_an_unreconciled_failure() {
         &session,
         &step(&inventoried.status.job),
         "unknown-parse",
-        BASE + 3_020,
+        inventoried.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let failure_at = failed.status.job.updated_at_unix_ms;
     assert!(engine
         .preview_attunement_replan(
             &session.session_id,
             &session.token,
             &installed.job,
             failed.status.job.revision,
-            BASE + 3_050,
+            failure_at + 1,
             "request-known-failure",
             "operation-known-failure"
         )
@@ -1596,7 +1597,7 @@ fn replan_refuses_an_unreconciled_failure() {
             key,
             expected,
             replacement: Some(serde_json::to_vec(&unknown).unwrap()),
-            at: BASE + 3_100,
+            at: failure_at + 2,
             actor: "test-fixture".into(),
             action: "attunement.fixture_unknown".into(),
             request_id: "request-fixture-unknown".into(),
@@ -1609,13 +1610,16 @@ fn replan_refuses_an_unreconciled_failure() {
             &session.token,
             &installed.job,
             unknown.revision,
-            BASE + 4_000,
+            failure_at + 3,
             "request-unknown",
             "operation-unknown"
         ),
         Err(ServiceError::StorageConflict(_))
     ));
-    assert_eq!(installed.read(&engine, &session, BASE + 4_100).job, unknown);
+    assert_eq!(
+        installed.read(&engine, &session, failure_at + 4).job,
+        unknown
+    );
 }
 
 #[test]
@@ -2200,13 +2204,20 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
     )
     .unwrap();
     let command = step(&started.status.job);
-    let connected = call(&engine, &session, &command, "connect", BASE + 2_000).unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &command,
+        "connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
     let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "inventory",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
@@ -2215,10 +2226,11 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
         &session,
         &step(&inventoried.status.job),
         "receipt-parse",
-        BASE + 3_020,
+        inventoried.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(failed.status.job.state, State::Failed);
+    let failure_at = failed.status.job.updated_at_unix_ms;
     let before = engine.storage.control().journal_since(0, 1024).unwrap();
     let count_receipts = |entries: &[rrd_store::ControlJournalEntry]| {
         entries
@@ -2232,7 +2244,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
             &session.token,
             &installed.job,
             &id("connect"),
-            BASE + 3_100,
+            failure_at + 1,
             "receipt-read",
             "receipt-read",
         )
@@ -2261,7 +2273,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
             &id("invalid-token"),
             &installed.job,
             &id("connect"),
-            BASE + 3_200,
+            failure_at + 2,
             "receipt-invalid",
             "receipt-invalid",
         )
@@ -2272,7 +2284,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
             &session.token,
             &CanonicalId::new("other-job").unwrap(),
             &id("connect"),
-            BASE + 3_300,
+            failure_at + 3,
             "receipt-foreign",
             "receipt-foreign",
         )
@@ -2281,19 +2293,19 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
     let after = engine.storage.control().journal_since(0, 1024).unwrap();
     assert_eq!(count_receipts(&before), count_receipts(&after));
     assert_eq!(
-        installed.read(&engine, &session, BASE + 3_500).job,
+        installed.read(&engine, &session, failure_at + 4).job,
         failed.status.job
     );
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
-    let renewed = installed.session(&engine, "receipt-renewed", BASE + 4_100);
+    let engine = installed.reopen(failure_at + 5);
+    let renewed = installed.session(&engine, "receipt-renewed", failure_at + 6);
     let reopened = engine
         .read_attunement_receipt(
             &renewed.session_id,
             &renewed.token,
             &installed.job,
             &id("connect"),
-            BASE + 5_000,
+            failure_at + 7,
             "receipt-reopened",
             "receipt-reopened",
         )
@@ -2301,7 +2313,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
         .unwrap();
     assert_eq!(reopened, receipt);
     assert_eq!(
-        installed.read(&engine, &renewed, BASE + 5_500).job,
+        installed.read(&engine, &renewed, failure_at + 8).job,
         failed.status.job
     );
 }
@@ -2496,7 +2508,7 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
         &session,
         &step(&started.status.job),
         "detail-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     let inventoried = call(
@@ -2504,7 +2516,7 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
         &session,
         &step(&connected.status.job),
         "detail-inventory",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
@@ -2513,16 +2525,17 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
         &session,
         &step(&inventoried.status.job),
         "detail-parse",
-        BASE + 3_020,
+        inventoried.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let failure_at = failed.status.job.updated_at_unix_ms;
     std::fs::write(installed.root.path().join("README.md"), "changed source\n").unwrap();
     let read = engine
         .read_attunement_detail(
             &session.session_id,
             &session.token,
             &request,
-            BASE + 4_000,
+            failure_at + 1,
             "request-detail",
             "operation-detail",
         )
@@ -2544,7 +2557,7 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
             &session.session_id,
             &invalid_token,
             &request,
-            BASE + 4_001,
+            failure_at + 2,
             "request-denied",
             "operation-denied"
         )
@@ -2570,7 +2583,14 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
         .unwrap();
         assert_eq!(start.status.job.state, State::Running);
         let work = step(&start.status.job);
-        let connected = call(&engine, &session, &work, "connect", BASE + 2_000).unwrap();
+        let connected = call(
+            &engine,
+            &session,
+            &work,
+            "connect",
+            start.status.job.updated_at_unix_ms + 1,
+        )
+        .unwrap();
         assert_eq!(connected.status.job.current_phase, Some(Phase::Inventory));
         assert_eq!(connected.status.job.checkpoints.len(), 1);
         let checkpoint = &connected.status.job.checkpoints[0];
@@ -2591,7 +2611,7 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             &session,
             &step(&connected.status.job),
             "inventory",
-            BASE + 3_000,
+            connected.status.job.updated_at_unix_ms + 1,
         )
         .unwrap();
         assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
@@ -2600,7 +2620,7 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             &session,
             &step(&inventoried.status.job),
             "parse",
-            BASE + 3_020,
+            inventoried.status.job.updated_at_unix_ms + 1,
         )
         .unwrap();
         assert_eq!(failed.status.job.state, State::Failed);
@@ -2613,25 +2633,26 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             inventoried.status.job.checkpoints
         );
         assert!(failed.status.job.lease.is_none());
+        let failure_at = failed.status.job.updated_at_unix_ms;
         drop(engine);
-        let engine = installed.reopen(BASE + 4_000);
-        let renewed = installed.session(&engine, "second-session", BASE + 4_100);
-        let replay = call(&engine, &renewed, &work, "connect", BASE + 5_000).unwrap();
+        let engine = installed.reopen(failure_at + 1);
+        let renewed = installed.session(&engine, "second-session", failure_at + 2);
+        let replay = call(&engine, &renewed, &work, "connect", failure_at + 3).unwrap();
         assert!(replay.idempotent_replay);
         assert_eq!(
             replay.status, connected.status,
             "replay returns the original receipt even after later failure"
         );
         assert_eq!(
-            installed.read(&engine, &renewed, BASE + 5_500).job,
+            installed.read(&engine, &renewed, failure_at + 4).job,
             failed.status.job
         );
         let resumed = call(
             &engine,
             &renewed,
-            &resume(&failed.status.job, BASE + 6_000),
+            &resume(&failed.status.job, failure_at + 5),
             "resume",
-            BASE + 6_000,
+            failure_at + 5,
         )
         .unwrap();
         assert_eq!(resumed.status.job.current_phase, Some(Phase::Parse));
@@ -2644,7 +2665,7 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             &renewed,
             &step(&resumed.status.job),
             "parse-again",
-            BASE + 7_000,
+            resumed.status.job.updated_at_unix_ms + 1,
         )
         .unwrap();
         assert_eq!(
@@ -2656,7 +2677,7 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
         let report = RrdEngine::inspect_installed_with_clock(
             installed.root.path(),
             &installed.executable,
-            &FixedClock::at(BASE + 8_000),
+            &FixedClock::at(failed_again.status.job.updated_at_unix_ms + 1),
         )
         .unwrap();
         assert_eq!(report.status, crate::InstallationVerificationStatus::Passed);
