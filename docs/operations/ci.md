@@ -269,7 +269,7 @@ power loss, hard resource limits, disk exhaustion or a 24-hour soak.
 The existing `lifecycle_process` target also qualifies the relay with forced
 nonblocking accepted sockets, fragmented header/body input, interrupted I/O,
 native read expiry, bounded malformed-input denial, redacted errors and idle
-guard cleanup. These helper cases preserve the five-case installed corpus.
+guard cleanup. These helper cases preserve the required installed lifecycle corpus.
 
 Preflight failures retain a bounded failed receipt even before build hashes are
 available; cleanup failure always overrides any prior passed receipt.
@@ -401,7 +401,7 @@ outputs remain temporary and are never editable documentation authority.
 The five engine suites cover every workspace package exactly once, but package
 names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
-all 20 implementation packages into separate product checks.
+each implementation package into a separate product check.
 
 The installed-reopen release build is bounded to two Cargo workers on
 `windows-latest` and one on Linux/macOS. In PR150 candidate run 40503118473
