@@ -1,5 +1,126 @@
-use rrd_lsm::filesystem::{AnchoredPath, OpenOptions};
+use rrd_lsm::filesystem::{AnchoredPath, OpenOptions, SourceLeaf};
 use std::io::{Read, Write};
+
+#[test]
+fn source_observation_binds_native_object_without_moving_the_read_cursor() {
+    use rrd_lsm::filesystem::SourceKind;
+    use std::io::Seek;
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    std::fs::write(fixture.path().join("source"), b"actual file bytes").unwrap();
+    let path = anchor.join("source");
+    let before = path.source_observation().unwrap();
+    let mut file = path.open_read().unwrap();
+    let mut first = [0; 3];
+    file.read_exact(&mut first).unwrap();
+    assert_eq!(first, *b"act");
+    assert_eq!(path.source_observation_for_file(&file).unwrap(), before);
+    assert_eq!(file.stream_position().unwrap(), 3);
+    assert_eq!(before.kind(), SourceKind::File);
+    assert_eq!(before.bytes(), 17);
+    assert_eq!(
+        before.revision_sha256().unwrap(),
+        path.source_observation()
+            .unwrap()
+            .revision_sha256()
+            .unwrap()
+    );
+    assert_eq!(
+        anchor.source_observation().unwrap().kind(),
+        SourceKind::Directory
+    );
+}
+
+#[test]
+fn source_observation_detects_replacement_with_equal_length_and_mtime() {
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let source = fixture.path().join("source");
+    std::fs::write(&source, b"before").unwrap();
+    let modified = std::fs::metadata(&source).unwrap().modified().unwrap();
+    let before = anchor.join("source").source_observation().unwrap();
+    // Retain the old object under another name to prevent inode/file-ID reuse.
+    std::fs::rename(&source, fixture.path().join("retained")).unwrap();
+    std::fs::write(&source, b"after!").unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&source)
+        .unwrap()
+        .set_times(std::fs::FileTimes::new().set_modified(modified))
+        .unwrap();
+    assert_eq!(
+        std::fs::metadata(&source).unwrap().modified().unwrap(),
+        modified
+    );
+    let after = anchor.join("source").source_observation().unwrap();
+    assert_eq!(before.bytes(), after.bytes());
+    assert_ne!(
+        before.revision_sha256().unwrap(),
+        after.revision_sha256().unwrap()
+    );
+    let retained = anchor.join("retained").open_read().unwrap();
+    assert_eq!(
+        anchor
+            .join("source")
+            .source_observation_for_file(&retained)
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+}
+
+#[test]
+fn source_observation_rejects_racy_reuse_and_detects_a_timestamp_preserved_edit() {
+    use std::time::{Duration, SystemTime};
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    let source = fixture.path().join("source");
+    std::fs::write(&source, b"before").unwrap();
+    let modified = std::fs::metadata(&source).unwrap().modified().unwrap();
+    let before = anchor.join("source").source_observation().unwrap();
+    let observed_at = SystemTime::now();
+    assert!(!before.predates(observed_at, Duration::ZERO));
+    assert!(!before.predates(observed_at, Duration::from_secs(2)));
+    // This is native timestamp characterization, not a production retry loop.
+    // Coarse/unknown filesystems must force engine content revalidation instead.
+    std::thread::sleep(Duration::from_millis(30));
+    let mut writer = std::fs::File::options().write(true).open(&source).unwrap();
+    writer.write_all(b"after!").unwrap();
+    writer
+        .set_times(std::fs::FileTimes::new().set_modified(modified))
+        .unwrap();
+    writer.sync_all().unwrap();
+    drop(writer);
+    let after = anchor.join("source").source_observation().unwrap();
+    assert_eq!(
+        std::fs::metadata(&source).unwrap().modified().unwrap(),
+        modified
+    );
+    assert_eq!(before.bytes(), after.bytes());
+    assert_ne!(
+        before.revision_sha256().unwrap(),
+        after.revision_sha256().unwrap()
+    );
+}
+
+#[test]
+fn source_observation_retains_escape_and_hard_link_denial() {
+    let fixture = tempfile::tempdir().unwrap();
+    let root = fixture.path().join("root");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(fixture.path().join("outside"), b"outside").unwrap();
+    let anchor = AnchoredPath::open_root(&root).unwrap();
+    assert!(anchor.join("../outside").source_observation().is_err());
+    std::fs::hard_link(fixture.path().join("outside"), root.join("linked")).unwrap();
+    assert_eq!(
+        anchor
+            .join("linked")
+            .source_observation()
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::PermissionDenied
+    );
+}
 
 #[cfg(target_os = "macos")]
 #[test]
@@ -35,6 +156,10 @@ fn mounted_volume_crossing_is_denied_before_any_effect() {
     assert_ne!(std::fs::metadata(&mount).unwrap().dev(), device);
     let sentinel = mount.join("sentinel");
     std::fs::write(&sentinel, b"outside").unwrap();
+    assert_eq!(
+        anchor.join("mounted").source_leaf().unwrap(),
+        SourceLeaf::Mount
+    );
     let target = anchor.join("mounted/sentinel");
     assert_eq!(
         target.open_read().unwrap_err().kind(),
@@ -241,6 +366,8 @@ fn junction_substitution_denies_read_create_publication_and_cleanup() {
         "junction fixture failed: {result:?}"
     );
     let child = anchor.join("child");
+    assert_eq!(child.source_leaf().unwrap(), SourceLeaf::Symlink);
+    assert!(child.join("sentinel").source_leaf().is_err());
     assert!(child.join("sentinel").read().is_err());
     assert!(OpenOptions::new()
         .write(true)
@@ -298,6 +425,10 @@ fn bind_mount_crossing_is_denied_before_any_effect() {
         }
     }
     let _unmount = Unmount(mount);
+    assert_eq!(
+        anchor.join("mounted").source_leaf().unwrap(),
+        SourceLeaf::Mount
+    );
     let target = anchor.join("mounted/sentinel");
     assert_eq!(
         target.open_read().unwrap_err().kind(),
@@ -315,4 +446,49 @@ fn bind_mount_crossing_is_denied_before_any_effect() {
     assert_eq!(std::fs::read(outside.join("sentinel")).unwrap(), b"outside");
     assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 1);
     assert_eq!(anchor.join("pending").read().unwrap(), b"owned");
+}
+
+#[test]
+fn source_leaf_preserves_ordinary_observations_and_denies_hardlink_aliases() {
+    let fixture = tempfile::tempdir().unwrap();
+    let root = fixture.path().join("root");
+    std::fs::create_dir(&root).unwrap();
+    let anchor = AnchoredPath::open_root(&root).unwrap();
+    std::fs::write(root.join("source"), b"ordinary source").unwrap();
+    let path = anchor.join("source");
+    assert_eq!(
+        path.source_leaf().unwrap(),
+        SourceLeaf::Ordinary(path.source_observation().unwrap())
+    );
+    assert_eq!(
+        anchor.source_leaf().unwrap(),
+        SourceLeaf::Ordinary(anchor.source_observation().unwrap())
+    );
+    assert!(anchor.join("../outside").source_leaf().is_err());
+    std::fs::hard_link(root.join("source"), fixture.path().join("alias")).unwrap();
+    assert!(path.source_leaf().is_err());
+    assert!(path.open_read().is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn source_leaf_records_dangling_loop_and_socket_without_following_or_opening_content() {
+    let fixture = tempfile::tempdir().unwrap();
+    let anchor = AnchoredPath::open_root(fixture.path()).unwrap();
+    std::os::unix::fs::symlink("missing", fixture.path().join("dangling")).unwrap();
+    std::os::unix::fs::symlink("loop", fixture.path().join("loop")).unwrap();
+    let socket = std::os::unix::net::UnixListener::bind(fixture.path().join("socket")).unwrap();
+    for name in ["dangling", "loop"] {
+        assert_eq!(
+            anchor.join(name).source_leaf().unwrap(),
+            SourceLeaf::Symlink
+        );
+        assert!(anchor.join(name).open_read().is_err());
+    }
+    assert_eq!(
+        anchor.join("socket").source_leaf().unwrap(),
+        SourceLeaf::Special
+    );
+    assert!(anchor.join("socket").open_read().is_err());
+    drop(socket);
 }

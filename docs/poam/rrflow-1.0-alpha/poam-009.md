@@ -10,6 +10,37 @@ independently.
 
 ## Observed deficiency
 
+The [selected-worker boundary observation](../../evidence/change-journals/gate-g/task-worker-model-boundary.md)
+confirms that the composed 71-operation controller can retain a routing proposal
+but exposes no selected-worker execution. The
+[transport/configuration increment](../../evidence/change-journals/gate-g/task-worker-model-transport-policy.md)
+adds bounded model text beside strict endpoint-choice decoding and explicit
+worker settings under existing configuration approval. Focused protocol and
+engine persistence checks pass; the admitted worker operation remains missing.
+Reuse the task budget, authority guards and authorized context
+for a separately admitted model activity; draft text cannot become a project
+effect, correctness label or training consent. Implementation and real installed
+worker evidence remain pending.
+
+The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
+prove a real configured BF16 proposal, restart/replay and guarded completion under
+configuration replacement, session closure, Stop and response loss. A fresh
+request after configuration invalidation succeeds without resetting the task's
+spent effort or deadline. These bounded task-text proofs do not close worker
+execution, repository-source successor planning, remote hard-stop, public
+uncertainty reconciliation or routing qualification. Candidate CI/landing remain.
+
+PR206's installed development trial at
+`d365d02891350590aa4495b46fc665ef313aec24` reached the new authenticated endpoint
+proposal operation but returned uncertain transport failure. Reopening the same
+estate retained charged effort and `execution_may_continue: true`; it did not
+produce a successful proposal. The
+[installed recovery journal](../../evidence/change-journals/gate-g/controller-task-proposal-installed-recovery.md)
+records actual readback. Durable uncertain capacity has no public reconciliation
+operation yet; restoring connectivity is not permission to clear it or repeat the
+unknown effect. Successful execution, remaining fault cases and explicit
+reconciliation semantics remain acceptance gaps. This does not close POAM-009.
+
 The [endpoint-selection capability decision](../../reference/inference/lfg-swag.md#endpoint-selection-capability-decision)
 now makes the missing public admission and selected-provider effect explicit.
 Endpoint configuration persistence cannot execute either. Descriptor/credential
