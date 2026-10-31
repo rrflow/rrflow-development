@@ -94,6 +94,10 @@ call's one-attempt transport and contract-owned identity checks. The example
 receives an explicit engine operation and installed project; it never talks
 directly to a model provider. Native-client source and engine artifact identity
 must both accompany any installed trial result.
+The [native installed receipts](../../evidence/change-journals/gate-g/task-worker-native-live.md)
+show accepted and rejected real worker attempts separately, including read-only
+recovery. They prove the named client/engine combination, not the complete UI
+journey, output quality or release readiness.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.

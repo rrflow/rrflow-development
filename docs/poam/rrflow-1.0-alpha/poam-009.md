@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The [installed native trial](../../evidence/change-journals/gate-g/task-worker-native-live.md)
+now carries actual selection and worker draft calls through the composed Rust
+client, with denied credentials, restart, replay rejection and independent
+credential-free recovery. Both the first rejected worker response and the later
+successful bounded-response experiment are published as exact receipts. This
+does not establish model quality, UI completion or a production retry/reconciliation
+path; required dependency CI/landing and the full workflow remain open.
+
 The [native worker composition](../../evidence/change-journals/gate-g/task-worker-native-client.md)
 integrates PR222's catalogue-derived client into the worker candidate. Both model
 operations share one-attempt carriage and contract-owned response validation;

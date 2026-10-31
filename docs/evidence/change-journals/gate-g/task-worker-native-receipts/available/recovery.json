@@ -1,0 +1,111 @@
+{
+  "sourceCommit": "c75c189612db7e7c8efe016fd92fb1052a3fb056",
+  "binarySha256": "60a708117899a022b04818c096af17a925c60eae06c554c39d00e5fe09e028fa",
+  "proof": "D:\\projects\\swag\\.swag\\evidence\\20261031\\installed-worker-native-short",
+  "runnerSha256": "e7e80112ddaa78b5e50a08d752964d6f00a49d7ec48524d452b605c8920c8ae7",
+  "attempt": {
+    "attempt": {
+      "attempt_id": "actual-proposal-8b8aa7bfb0ab43b0aaa1a886146957c6",
+      "ordinal": 1,
+      "status": "accepted",
+      "outcome_sha256": "8e44bb8463e5cfe012c7da6c93ed71cc9862737c95b24625309eb70c6874cf27",
+      "result": null,
+      "endpoint_proposal": {
+        "contract_version": 1,
+        "purpose": "experimental_proposal",
+        "scope": "instance:instance-96d8ed16b0df502cb3477c3a",
+        "task_id": "task-b9b247705fd646990e4ab596b22030419f02ae94780b1c04df728611c645b6ed",
+        "attempt_id": "actual-proposal-8b8aa7bfb0ab43b0aaa1a886146957c6",
+        "task_sha256": "818e633a0b86a53c00390f75262b1267590ca7bebc33afe7030eee0b2a17e7a8",
+        "packet_sha256": "58310594280e68483f54a97511550da1c0dea46eba54074ec30fcd90cfa8d717",
+        "configuration_sha256": "f7b07e4bb168e786bdfd49590bde14ef62356bc8b25168abae1a2898699b5e1f",
+        "allowance_sha256": "5cf84100a610b95b676c7324595e968aa289bdf99952e31bde0523393e628c85",
+        "controller_binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "request_sha256": "f55ac2ede9c198721eef439dde236f612f986af8e67a05a2c2099255668d5941",
+        "response_sha256": "f312d4725b3ba05e89fa2fd84d4d7cf18ae9a2bb39a947d66ec352f57a4238b4",
+        "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+        "choice": {
+          "kind": "select",
+          "binding_id": "swag-custom-bf16",
+          "effort": null
+        },
+        "usage": {
+          "prompt_tokens": 1920,
+          "completion_tokens": 20,
+          "total_tokens": 1940
+        },
+        "elapsed_ms": 1934,
+        "http_status": 200
+      }
+    }
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-b143b863acd440548183d64aaa141791",
+      "ordinal": 2,
+      "status": "accepted",
+      "outcome_sha256": "f639824cef004e3ae0c0874aa064cead17e1a85910d0f34c517e9185bb33e81e",
+      "result": null,
+      "worker_output": {
+        "contract_version": 1,
+        "scope": "instance:instance-96d8ed16b0df502cb3477c3a",
+        "task_id": "task-b9b247705fd646990e4ab596b22030419f02ae94780b1c04df728611c645b6ed",
+        "attempt_id": "actual-worker-b143b863acd440548183d64aaa141791",
+        "selection_attempt_id": "actual-proposal-8b8aa7bfb0ab43b0aaa1a886146957c6",
+        "selection_sha256": "8e44bb8463e5cfe012c7da6c93ed71cc9862737c95b24625309eb70c6874cf27",
+        "task_sha256": "818e633a0b86a53c00390f75262b1267590ca7bebc33afe7030eee0b2a17e7a8",
+        "configuration_sha256": "f7b07e4bb168e786bdfd49590bde14ef62356bc8b25168abae1a2898699b5e1f",
+        "binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "packet_sha256": "8b327a118adb038f70423d3691537694a0c24e017c68184c4fb66f3a39f320a3",
+        "request_sha256": "b51023a0df1794d139bfb3ff32170c4a1e6cad1b7bd42759fce423ac883afc2d",
+        "response_sha256": "ce45d2eccfee61350933de116edc7a72862198c07aadb3d9b6a315145296873d",
+        "content_sha256": "51b84f940be68800da9d68689a8cb15b158d0235a33a005d8c989391d727f2f0",
+        "content": "{\n  \"implementation_steps\": [\n    \"Add a new `task-worker-execute` method to the Rust engine client with typed parameters for worker model execution.\",\n    \"Generate corresponding SDK and OpenAPI projections for the new `task-worker-execute` method.\",\n    \"Integrate the new execution flow into the existing task attempt lifecycle, ensuring budget and context validation.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm the new `task-worker-execute` method compiles and integrates correctly with existing engine logic.\",\n    \"Validate that the generated SDK and OpenAPI specs accurately reflect the new method's interface and behavior.\",\n    \"Ensure the execution flow properly handles task budget reservation, context access, and output validation.\"\n  ],\n  \"unresolved_questions\": [\n    \"How will the new execution flow handle cases where the selected worker model becomes unavailable after task initiation?\",\n    \"What specific policy enforcement mechanisms are needed to ensure secure and authorized worker model execution?\",\n    \"How does the new execution path interact with existing retry and cancellation logic in the task attempt system?\"\n  ]\n}",
+        "read": {
+          "runtime_manifest_sha256": "8899c8bb6d5a9926476581613a403f5a6044cc6a2323b891222cf211da973548",
+          "runtime_cursor": 7,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "context": null,
+        "usage": {
+          "prompt_tokens": 1419,
+          "completion_tokens": 216,
+          "total_tokens": 1635
+        },
+        "elapsed_ms": 16902,
+        "http_status": 200
+      }
+    }
+  },
+  "budget": {
+    "budget": {
+      "format_version": 1,
+      "instance_id": "instance-96d8ed16b0df502cb3477c3a",
+      "scope": "instance:instance-96d8ed16b0df502cb3477c3a",
+      "task_id": "task-b9b247705fd646990e4ab596b22030419f02ae94780b1c04df728611c645b6ed",
+      "configuration_sha256": "2d382dbde4b923db65fb5ebbf841d12b45ec0e278c7cab41635dbff782072d55",
+      "limits": {
+        "max_run_elapsed_ms": 900000,
+        "max_steps": 256,
+        "max_step_elapsed_ms": 60000
+      },
+      "started_at_unix_ms": 1793468728174,
+      "deadline_unix_ms": 1793469628174,
+      "last_observed_at_unix_ms": 1793468748885,
+      "charged_elapsed_ms": 18895,
+      "reserved_steps": 2,
+      "active_attempt": null,
+      "execution_may_continue": false,
+      "stopped": null,
+      "stop_expected_sha256": null
+    },
+    "budget_sha256": "c74e12315387d5f41bbf79d7c958275874e361bf9ee5060f17e3ca82fc198d31"
+  },
+  "providerCallRequested": false,
+  "ownedServersStopped": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false
+}
