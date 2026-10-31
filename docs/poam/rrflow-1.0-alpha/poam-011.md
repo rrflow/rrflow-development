@@ -189,6 +189,15 @@ evidence across HTTP, WebSocket, Rust, every generated SDK, CLI, MCP, GraphQL,
 and Connectome; missing harness configuration fails or is explicitly skipped
 and never reports conformance.
 
+## Controller native binding increment
+
+[Draft PR222](https://github.com/rrflow/rrflow-development/pull/222) adds catalogue-derived
+fixed-session metadata and an explicitly validated controller proposal call.
+The [implementation receipt](../../evidence/change-journals/gate-h/h-04-controller-native-binding.md)
+separates generated metadata from callable support and retains the initial denial
+fixture failure. This does not close the complete compiler, legacy method migration,
+all-operation semantic validation or installed cross-surface conformance gaps.
+
 ## Evidence history
 
 - [D-02 draft public-operation review](../../evidence/change-journals/gate-h/h-04-attunement-rust-client-gap.md): the eight draft start, step, pause, resume, expired-lease recovery and replan operations have no typed Rust-client bindings. Generated endpoint maps and HTTP tests do not establish Rust-client support. Catalogue-owned Rust binding generation and installed-engine conformance remain open.

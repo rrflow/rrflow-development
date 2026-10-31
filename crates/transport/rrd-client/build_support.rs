@@ -50,7 +50,23 @@ pub fn render(catalogue: &rrd_contract::EndpointCatalogue) -> Result<String, Str
         }
         let request = rust_type(&endpoint.request_type)?;
         let response = rust_type(&endpoint.response_type)?;
-        text.push_str(&format!("pub(crate) struct {name};\nimpl GeneratedOperation for {name} {{\n    type Request = {request};\n    type Response = {response};\n    const ID: &'static str = {:?};\n}}\n", endpoint.operation.as_str()));
+        text.push_str(&format!("#[derive(Debug, Clone, Copy)]\npub struct {name};\nimpl GeneratedOperation for {name} {{\n    type Request = {request};\n    type Response = {response};\n    const ID: &'static str = {:?};\n}}\n", endpoint.operation.as_str()));
+        if endpoint.authentication == rrd_contract::EndpointAuthentication::SessionBearer
+            && endpoint.method == rrd_contract::HttpMethod::Post
+            && !endpoint.path.contains('{')
+        {
+            if !endpoint.path.bytes().all(|byte| {
+                byte.is_ascii_lowercase()
+                    || byte.is_ascii_digit()
+                    || matches!(byte, b'/' | b'_' | b'-')
+            }) {
+                return Err(format!(
+                    "unsupported fixed Rust operation path {:?}",
+                    endpoint.path
+                ));
+            }
+            text.push_str(&format!("impl crate::catalogue_call::sealed::Sealed for {name} {{}}\nimpl crate::OperationMetadata for {name} {{\n    type Request = {request};\n    type Response = {response};\n    const OPERATION: &'static str = <Self as GeneratedOperation>::ID;\n    const PATH: &'static str = {:?};\n    const MUTATION: bool = {};\n}}\n", endpoint.path, endpoint.mutation));
+        }
     }
     text.push_str("pub(crate) const GENERATED_IDS: &[&str] = &[\n");
     for endpoint in operations {
