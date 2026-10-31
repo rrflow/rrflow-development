@@ -146,7 +146,11 @@ def test_installed_python_stale_plan_replans_and_starts(owned_root: Path) -> Non
                 assert before["status"]["job"]["revision"] == 1
                 replan = client.call(
                     "attunement-replan-preview",
-                    {"contract_version": plan["contract_version"], "job_id": job_id, "expected_revision": 1},
+                    {
+                        "contract_version": plan["contract_version"],
+                        "job_id": job_id,
+                        "expected_revision": 1,
+                    },
                     options("preview", session=session),
                 )
                 accepted = client.call(
