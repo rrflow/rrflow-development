@@ -493,6 +493,19 @@ pub struct InstallationVerificationReport {
     pub checks: Vec<InstallationVerificationCheck>,
 }
 
+// Private inspection facts deliberately contain no claimed current-source
+// digest. Opening the estate consumes its verified binding; explicit full
+// inspection additionally observes project inputs and constructs the report.
+struct InstalledBindingInspection {
+    profile: DefaultInstallProfile,
+    locator: ProjectLocator,
+    source_precondition_sha256: String,
+    runtime_manifest_sha256: String,
+    clock: ClockAssessment,
+    physical: rrd_store::RrflowKvInspection,
+    checks: Vec<InstallationVerificationCheck>,
+}
+
 impl RrdEngine {
     /// Allocate one explicit, non-secret identity input before deterministic
     /// planning. Callers retain it across previews and generate a new value for
@@ -1267,7 +1280,7 @@ impl RrdEngine {
         clock: &dyn ClockSource,
     ) -> Result<Self> {
         let preflight =
-            Self::inspect_installed_anchored(project, executable, clock, "install.open.preflight")?;
+            Self::with_installed_binding(project, executable, clock, "install.open.preflight", Ok)?;
         require_accepted(&preflight.clock)?;
         let (project, locator, _) = read_locator_anchored(project)?;
         let (_, profile_sha256) = DefaultInstallProfile::load(locator.profile_id.as_str())?;
@@ -1297,8 +1310,8 @@ impl RrdEngine {
         installed.validate()?;
         require_locator_record_match(&locator, &installed)?;
         bootstrap::verify(&project, &installed.installation)?;
-        if locator.identity.instance_id != preflight.instance_id
-            || locator.plan_sha256 != preflight.plan_sha256
+        if locator.identity.instance_id != preflight.locator.identity.instance_id
+            || locator.plan_sha256 != preflight.locator.plan_sha256
             || installed.clock_anchor != preflight.clock.anchor
         {
             return Err(ServiceError::ProjectBindingMismatch);
@@ -1387,6 +1400,49 @@ impl RrdEngine {
         clock: &dyn ClockSource,
         boundary: &'static str,
     ) -> Result<InstallationVerificationReport> {
+        Self::with_installed_binding(project, executable, clock, boundary, |mut binding| {
+            let project_inventory_sha256 =
+                project_inventory_sha256(project.project(), &binding.profile)?;
+            let attunement_source_current =
+                project_inventory_sha256 == binding.source_precondition_sha256;
+            // Preserve the public report's evidence order and actual digest.
+            binding.checks.insert(
+                3,
+                InstallationVerificationCheck {
+                    id: CanonicalId::new("project-inventory")
+                        .map_err(|error| ServiceError::Contract(error.to_string()))?,
+                    passed: true,
+                    evidence_sha256: project_inventory_sha256.clone(),
+                },
+            );
+            Ok(InstallationVerificationReport {
+                status: if binding.clock.passed() {
+                    InstallationVerificationStatus::Passed
+                } else {
+                    InstallationVerificationStatus::Failed
+                },
+                product_version: binding.locator.product_version,
+                instance_id: binding.locator.identity.instance_id,
+                plan_sha256: binding.locator.plan_sha256,
+                project_inventory_sha256,
+                attunement_source_current,
+                runtime_manifest_sha256: binding.runtime_manifest_sha256,
+                runtime_cursor: binding.physical.runtime_cursor,
+                control_journal_sequence: binding.physical.control_journal_sequence,
+                clock: binding.clock,
+                physical: binding.physical,
+                checks: binding.checks,
+            })
+        })
+    }
+
+    fn with_installed_binding<T>(
+        project: &EstateFilesystem,
+        executable: &Path,
+        clock: &dyn ClockSource,
+        boundary: &'static str,
+        finish: impl FnOnce(InstalledBindingInspection) -> Result<T>,
+    ) -> Result<T> {
         let (project, locator, locator_bytes) = read_locator_anchored(project)?;
 
         let executable_sha256 = sha256_file(executable)?;
@@ -1439,9 +1495,6 @@ impl RrdEngine {
             &configuration.clock,
             boundary,
         )?;
-        let project_inventory_sha256 = project_inventory_sha256(project.project(), &profile)?;
-        let attunement_source_current =
-            project_inventory_sha256 == installed.installation.project_precondition_sha256;
         if credential.plan_sha256 != installed.installation.plan_sha256
             || credential.principal_id != installed.installation.initial_principal_id
             || digest::sha256_hex(credential.credential().as_bytes()) != installed.credential_sha256
@@ -1511,7 +1564,6 @@ impl RrdEngine {
             ("locator", digest::sha256_hex(&locator_bytes)),
             ("profile", profile_sha256),
             ("executable", executable_sha256),
-            ("project-inventory", project_inventory_sha256.clone()),
             ("physical", json_sha256(&inspector.inspection())?),
             ("installed-record", installed.record_sha256.clone()),
             ("configuration", configuration.configuration_sha256.clone()),
@@ -1538,20 +1590,13 @@ impl RrdEngine {
             passed: clock_assessment.passed(),
             evidence_sha256: json_sha256(&clock_assessment)?,
         });
-        Ok(InstallationVerificationReport {
-            status: if clock_assessment.passed() {
-                InstallationVerificationStatus::Passed
-            } else {
-                InstallationVerificationStatus::Failed
-            },
-            product_version: locator.product_version,
-            instance_id: locator.identity.instance_id,
-            plan_sha256: locator.plan_sha256,
-            project_inventory_sha256,
-            attunement_source_current,
+        // Keep the authenticated physical snapshot alive through the caller's
+        // inspection work; opening releases it before acquiring the writer.
+        finish(InstalledBindingInspection {
+            profile,
+            locator,
+            source_precondition_sha256: installed.installation.project_precondition_sha256,
             runtime_manifest_sha256,
-            runtime_cursor: inspector.inspection().runtime_cursor,
-            control_journal_sequence: inspector.inspection().control_journal_sequence,
             clock: clock_assessment,
             physical: inspector.inspection().clone(),
             checks,

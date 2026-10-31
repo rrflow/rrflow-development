@@ -11,6 +11,7 @@ use std::sync::{Arc, Barrier};
 
 const BASE: u64 = 1_800_000_000_000;
 mod inventory_delta;
+mod startup_binding;
 
 struct Installed {
     root: tempfile::TempDir,

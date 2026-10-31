@@ -148,6 +148,16 @@ three on unchanged input, six after an ordinary README edit and successor plan,
 then three on another unchanged run, with exact reopen and offline verification.
 This does not erase the initial failure or establish a repeatable turnkey start.
 
+PR227's [startup binding separation](../../evidence/change-journals/gate-d/d-03-startup-binding-inspection.md)
+characterizes an independent lockout: invalid project Git input prevents opening
+otherwise valid installed engine state because startup unnecessarily computes
+the full source-inspection report. The focused correction preserves all estate
+binding checks and keeps source admission on dependent operations; startup and
+job readback pass, invalid-input Start denies, repaired input starts, and bootstrap
+tampering still denies startup. All 342 engine tests and strict lint pass locally;
+installed and candidate/protected qualification remain open.
+This does not identify the original intermittent rejection's exact cause.
+
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
 Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
 Connect checkpoint and cursor; no Inventory completion was published. The
