@@ -1,0 +1,72 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-6beaf559029046ce91c63b4f911c80f2",
+      "operation_id": "controller-proof-6beaf559029046ce91c63b4f911c80f2",
+      "idempotency_key": "controller-proof-6beaf559029046ce91c63b4f911c80f2",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-c5087832e97c133440d7093b"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-c5087832e97c133440d7093b",
+      "task_id": "task-6d8f89bf1ea1c7ab1c69d86680f3c8f90ac5f040caf9899b2cb85d3300ebeb6f",
+      "attempt_id": "actual-worker-3ee68d9aac0e4fd397b0ad67c55e8035",
+      "selection_attempt_id": "actual-proposal-a5dbf20e12ad44ec85dc41c4850f0df6",
+      "expected_selection_sha256": "da84be7a2c20e2fcba4442cea9fd0d7836dcf2e5529b89290b4f2cbdd83864f5",
+      "expected_task_sha256": "fdaf0ca65ccd86b6e058ec054645d43d0f3f78356038cc89a4ad61934ddf0db7",
+      "expected_configuration_sha256": "3d5f5e982b106e7f8023b128181a020ed0671e7f2405666e5a3312a1acddb3b0",
+      "max_storage_keys": 1000000,
+      "context": null
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-6beaf559029046ce91c63b4f911c80f2",
+    "operation_id": "controller-proof-6beaf559029046ce91c63b4f911c80f2",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "contract_version": 1,
+        "scope": "instance:instance-c5087832e97c133440d7093b",
+        "task_id": "task-6d8f89bf1ea1c7ab1c69d86680f3c8f90ac5f040caf9899b2cb85d3300ebeb6f",
+        "attempt_id": "actual-worker-3ee68d9aac0e4fd397b0ad67c55e8035",
+        "selection_attempt_id": "actual-proposal-a5dbf20e12ad44ec85dc41c4850f0df6",
+        "selection_sha256": "da84be7a2c20e2fcba4442cea9fd0d7836dcf2e5529b89290b4f2cbdd83864f5",
+        "task_sha256": "fdaf0ca65ccd86b6e058ec054645d43d0f3f78356038cc89a4ad61934ddf0db7",
+        "configuration_sha256": "3d5f5e982b106e7f8023b128181a020ed0671e7f2405666e5a3312a1acddb3b0",
+        "binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "packet_sha256": "6cc593524be0baff68bea69c7d2e307dc6539c8267aa1c1013488a5fbb9b98fe",
+        "request_sha256": "5a9622135c22295675c2b82260ccd10238c4f1c4e17d717768a8087bc14fae37",
+        "response_sha256": "c4910eafcd68f7600a9e861f3872ec47aab4957248c27d0a70c14eeb044c0215",
+        "content_sha256": "d599b8fa8ee147c66c1890ddaee2de23789acdd2936a038d51be7399d8f464ad",
+        "content": "{\n  \"implementation_steps\": [\n    {\n      \"step\": 1,\n      \"description\": \"Define new versioned worker request/packet/output structures in the contract to support selected worker model execution.\"\n    },\n    {\n      \"step\": 2,\n      \"description\": \"Integrate optional policy with existing endpoint configuration preview and add explicit generation settings.\"\n    },\n    {\n      \"step\": 3,\n      \"description\": \"Implement the `task-worker-execute` typed Rust client method with appropriate SDK/OpenAPI projections.\"\n    },\n    {\n      \"step\": 4,\n      \"description\": \"Update RRFlow to resolve retained selection, authorize task/context access, and reserve task budget/shared binding capacity.\"\n    },\n    {\n      \"step\": 5,\n      \"description\": \"Ensure bounded draft output is accepted only under current authority and task/configuration identity.\"\n    }\n  ],\n  \"verification_steps\": [\n    {\n      \"step\": 1,\n      \"description\": \"Run seven focused engine/protocol tests to validate core functionality.\"\n    },\n    {\n      \"step\": 2,\n      \"description\": \"Execute 218 contract/inference/client tests to ensure compatibility and correctness.\"\n    },\n    {\n      \"step\": 3,\n      \"description\": \"Perform 298 engine-library tests including four existing ignored helpers.\"\n    },\n    {\n      \"step\": 4,\n      \"description\": \"Validate 18 client tests after strengthening actual socket-loss no-retry coverage.\"\n    },\n    {\n      \"step\": 5,\n      \"description\": \"Conduct 32 architecture checks to confirm structural integrity.\"\n    },\n    {\n      \"step\": 6,\n      \"description\": \"Apply strict Clippy linting and verify generated parity for 72 operations/seven signals.\"\n    },\n    {\n      \"step\": 7,\n      \"description\": \"Run TypeScript lint/typecheck/six tests along with formatting and repository metadata checks.\"\n    }\n  ],\n  \"unresolved_questions\": [\n    {\n      \"question\": \"What specific aspects of the credential/policy and process-interruption cases remain to be implemented?\"\n    },\n    {\n      \"question\": \"Which parts of the composed SDK/UI conformance and required candidate/protected CI still need to be addressed?\"\n    },\n    {\n      \"question\": \"How will unknown execution retain capacity across restarts while preserving spent effort and original deadline after input invalidation?\"\n    }\n  ]\n}",
+        "read": {
+          "runtime_manifest_sha256": "eacc3916d1dfa3e0736ff448d9bbff1fe330cec0f7f9004dc57bc8124a4e2824",
+          "runtime_cursor": 7,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "context": null,
+        "usage": {
+          "prompt_tokens": 1368,
+          "completion_tokens": 504,
+          "total_tokens": 1872
+        },
+        "elapsed_ms": 38390,
+        "http_status": 200
+      }
+    }
+  }
+}

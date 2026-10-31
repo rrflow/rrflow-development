@@ -98,8 +98,10 @@ http_dispatch_catalogue! {
     TaskBudgetConfigure => ("task-budget-configure", RrdOperation::ReasoningWrite),
     TaskBudgetRead => ("task-budget-read", RrdOperation::ReasoningRead),
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
+    TaskBudgetResume => ("task-budget-resume", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
     TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
+    TaskWorkerExecute => ("task-worker-execute", RrdOperation::WorkerExecute),
     TaskAttemptRead => ("task-attempt-read", RrdOperation::ReasoningRead),
     TaskClose => ("task-close", RrdOperation::TaskWrite),
     TaskList => ("task-list", RrdOperation::TaskRead),
@@ -324,12 +326,14 @@ impl AppState {
             }
             Some(HttpDispatch::TaskBudgetRead) => self.read_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskBudgetStop) => self.stop_task_budget(&headers, &body, now),
+            Some(HttpDispatch::TaskBudgetResume) => self.resume_task_budget(&headers, &body, now),
             Some(HttpDispatch::TaskEmbeddingExecute) => {
                 self.execute_task_embedding(&headers, &body, now)
             }
             Some(HttpDispatch::TaskEndpointPropose) => {
                 self.propose_task_endpoint(&headers, &body, now)
             }
+            Some(HttpDispatch::TaskWorkerExecute) => self.execute_task_worker(&headers, &body, now),
             Some(HttpDispatch::TaskAttemptRead) => self.read_task_attempt(&headers, &body, now),
             Some(HttpDispatch::TaskClose) => self.close_task(&headers, &body, now),
             Some(HttpDispatch::TaskList) => self.list_tasks(&headers, &body, now),

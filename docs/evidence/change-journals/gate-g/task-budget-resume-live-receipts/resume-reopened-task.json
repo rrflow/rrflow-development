@@ -1,0 +1,97 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-928955afa7d949a4b84e2a4df4b885e8",
+      "operation_id": "controller-proof-928955afa7d949a4b84e2a4df4b885e8",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-c4a41309a51cc10ddcf3134c"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "max_storage_keys": 1000000
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-928955afa7d949a4b84e2a4df4b885e8",
+    "operation_id": "controller-proof-928955afa7d949a4b84e2a4df4b885e8",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "task": {
+          "format_version": 1,
+          "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+          "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+          "title": "Resume safely stopped task budgets without resetting effort",
+          "goal": "## Outcome and ownership\r\n\r\nA safely completed failed or cancelled task can now be explicitly resumed through `task-budget-resume`, retaining its original deadline, spent effort, repetition history and old attempts. Resume dispatches nothing. Unknown/active work, stale digests, expired/exhausted budgets, changed estate configuration and closed tasks remain denied. Old attempt IDs remain non-replayable; a new attempt undergoes ordinary authorization and admission.\r\n\r\nDriver: active SWAG engineering session. Alpha project-to-learning prerequisite; Gate G-01b/G-02a / POAM-009. Depends on #206, #222 and #229. Keep draft until dependency landing, installed acceptance and its own candidate CI. No gate/version/release completion is claimed.\r\n\r\n## Scope and boundary\r\n\r\nThe branch starts at main `df26b355` and ordinarily composes #229 at `d5151eef`; baseline merge `ec681d92` has the exact worker tree. The original PR brief preceded new implementation. Review the resume delta from that baseline. Implementation revision: `6a4cbb042a13f5a7c41b53d11d62b54a85df3bed`.\r\n\r\nThe existing engine budget transaction owns recovery and compares current budget/session/security bytes plus the runtime cursor. No new lifecycle store, lease clearing, budget reset or provider policy is added. The contract catalogue owns HTTP/schema/SDK projections; native carriage sends once and validates the response. A lost acknowledgement requires budget readback, not automatic retry.\r\n\r\nAuthored changes cover the budget contract/engine, HTTP dispatch, native validation and engine/native tests. Mechanical changes cover SDK/OpenAPI projections, advertised digest, corpus endpoint count, reference citations and navigation. Unknown-outcome reconciliation, UI recovery controls, project effects and model/release qualification remain outside this package.\r\n\r\n## Evidence and review\r\n\r\n[Package journal](https://github.com/rrflow/rrflow-development/blob/6a4cbb042a13f5a7c41b53d11d62b54a85df3bed/docs/evidence/change-journals/gate-g/task-budget-resume.md) records owner/source inspection, before/after behavior, exact commands, failures, hashes and limits.\r\n\r\n- Ten focused worker/recovery tests and real authenticated HTTP resume/next-step proof pass.\r\n- Engine suite: 364 passed, four existing ignored before the advertised schema-digest correction; six bootstrap checks pass afterward. Runtime resume code is unchanged.\r\n- All 189 contract/client tests and all 33 server tests pass. The server suite required the same controller helper build as CI.\r\n- Strict all-target/all-feature Clippy, Rust formatting, all five SDK generators, 73-operation schema parity, TypeScript lint/types/six tests and repository checks pass.\r\n- Retained failures: stale corpus endpoint count; stale advertised OpenAPI digest; missing CI controller fixture; redundant test conversion; local SDK tool/encoding setup. No assertions were weakened or failed observations replaced.\r\n\r\nNo external algorithm or dependency change was needed. Existing authority/control audit owns tracing; no performance/resource or model-quality claim is made. Stop conditions remain clearing unknown work, resetting budgets, mutating old attempts, bypassing authority or expanding into automatic reconciliation.\r\n\r\nThe canonical clean-source primary is now frozen locally: 154,068,480 bytes, SHA-256 `d4cc99d8527b97ba145023e0b1cc4a7c26a0682f6edc8c2d5d8d9ff1ad4ffec0`, with `engine-frozen.json` under SWAG `.swag/evidence/20261031/task-budget-resume/`. Its captured/reproduced compilation closure, copied executable digest and clean source/version report pass verification. It is unsigned, unoptimized and excludes model weights; no installed resume trial is claimed.\r\n\r\nNext: prove public recovery plus separately authorized new BF16 work on the same actual task, retaining effort/deadline across restart. Then compose the exact SDK/engine into Connectome. Prior binaries and provider trials do not inherit this capability.\r\n\r\n## Installed recovery proof increment — before edits\r\n\r\nContinue PR230 from clean implementation `6a4cbb042a13f5a7c41b53d11d62b54a",
+          "status": "open",
+          "opened_at_unix_ms": 1793480957483,
+          "idempotency_key": "controller-proof-bb683ef79c0443658ef9d4fc3374781b",
+          "operation_sha256": "5d993abf290ba43abecb867c54680927d982be4bf75acf0a633a7da353bcc879",
+          "task_cursor": 4,
+          "known_at_cursor": 4
+        },
+        "read": {
+          "runtime_manifest_sha256": "e4166e93804c6449fb659c6489b140310639d9dad8dc17100cda3ee3818b2379",
+          "runtime_cursor": 14,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "selected_versions": 1,
+        "read_evidence": {
+          "contract_version": 1,
+          "key_budget": 1000000,
+          "point_reads": 11,
+          "range_scans": 1,
+          "keys_examined": 12,
+          "values_decoded": 12,
+          "decoded_bytes": 8262,
+          "stamp_validation": {
+            "method": "authenticated_current_head",
+            "change_reads": 0,
+            "proof_nodes": 0
+          },
+          "paths": [
+            {
+              "path": "read_stamp",
+              "point_reads": 5,
+              "range_scans": 0,
+              "keys_examined": 5,
+              "values_decoded": 5,
+              "decoded_bytes": 2609
+            },
+            {
+              "path": "record_versions",
+              "point_reads": 0,
+              "range_scans": 1,
+              "keys_examined": 1,
+              "values_decoded": 1,
+              "decoded_bytes": 5269
+            },
+            {
+              "path": "accumulator_proof",
+              "point_reads": 6,
+              "range_scans": 0,
+              "keys_examined": 6,
+              "values_decoded": 6,
+              "decoded_bytes": 384
+            }
+          ]
+        }
+      }
+    }
+  }
+}

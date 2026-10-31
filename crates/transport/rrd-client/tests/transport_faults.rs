@@ -314,3 +314,71 @@ async fn client_rejects_response_correlation_substitution() {
         Error::WebSocketProtocol(_)
     ));
 }
+
+#[tokio::test]
+async fn worker_call_does_not_repeat_after_retryable_transport_failure() {
+    let session = mock_session().await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let (finished, completion) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut head = Vec::new();
+        while !head.ends_with(b"\r\n\r\n") {
+            head.push(stream.read_u8().await.unwrap());
+            assert!(head.len() < 8192);
+        }
+        let head = String::from_utf8(head).unwrap();
+        assert!(head.starts_with("POST /v1/tasks/worker/execute HTTP/1.1"));
+        let length: usize = head
+            .lines()
+            .find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("content-length")
+                    .then(|| value.trim().parse().unwrap())
+            })
+            .unwrap();
+        assert!(length < 8192);
+        let mut body = vec![0; length];
+        stream.read_exact(&mut body).await.unwrap();
+        // Close after actually receiving the request, before sending a response.
+        // This reaches the client's retryable transport-error path.
+        stream.shutdown().await.unwrap();
+        drop(stream);
+        tokio::select! {
+            _ = listener.accept() => panic!("worker was retried"),
+            result = completion => result.unwrap(),
+        }
+    });
+    let client = RrdClient::connect_local(
+        address,
+        instance(),
+        ClientConfig {
+            max_attempts: 8,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let request = rrd_contract::TaskWorkerRequest {
+        scope: "instance:websocket-fault-instance".into(),
+        task_id: CanonicalId::new("protocol-task").unwrap(),
+        attempt_id: id("worker-fault"),
+        selection_attempt_id: id("prior-selection"),
+        expected_selection_sha256: "1".repeat(64),
+        expected_task_sha256: "2".repeat(64),
+        expected_configuration_sha256: "3".repeat(64),
+        max_storage_keys: 100,
+        context: None,
+    };
+    let error = client
+        .execute_task_worker(
+            &session,
+            request,
+            RequestOptions::mutation("worker-fault", "worker-fault", "worker-fault").unwrap(),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(error, Error::Transport(_)), "{error:?}");
+    let _ = finished.send(());
+    server.await.unwrap();
+}

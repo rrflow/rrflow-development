@@ -1,0 +1,72 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-d31e79eef70e4bde8b1fe384349d82ac",
+      "operation_id": "controller-proof-d31e79eef70e4bde8b1fe384349d82ac",
+      "idempotency_key": "controller-proof-d31e79eef70e4bde8b1fe384349d82ac",
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-c4a41309a51cc10ddcf3134c"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+      "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+      "attempt_id": "actual-resumed-worker-eae16a9424bf413682df673615c0e24a",
+      "selection_attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+      "expected_selection_sha256": "5984ca411d3019e874b5294655f35a45fc4e0964c7fa9c214eea98f0695b5243",
+      "expected_task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+      "expected_configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+      "max_storage_keys": 1000000,
+      "context": null
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-d31e79eef70e4bde8b1fe384349d82ac",
+    "operation_id": "controller-proof-d31e79eef70e4bde8b1fe384349d82ac",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "contract_version": 1,
+        "scope": "instance:instance-c4a41309a51cc10ddcf3134c",
+        "task_id": "task-a297054b58ce3bd3e4501025238101871b018b284e5901ef4672f4470461bf80",
+        "attempt_id": "actual-resumed-worker-eae16a9424bf413682df673615c0e24a",
+        "selection_attempt_id": "actual-resumed-proposal-7ed856f789d34da5b27255568998fe23",
+        "selection_sha256": "5984ca411d3019e874b5294655f35a45fc4e0964c7fa9c214eea98f0695b5243",
+        "task_sha256": "8c10d456b8a77600ece800cdcf04587942087ba3fb5a66067b4879965941bb64",
+        "configuration_sha256": "d86f1255f4064ea6cccbe6a695a9cbee1d3a01cc4b27e024e9d3fa3555c3a67a",
+        "binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "packet_sha256": "e01f68ad98950fbcf1daf1376c76a5bcf5fa747be2ef25a61e8a13e0bb732d45",
+        "request_sha256": "fd7c19fa2e2a29fe8b81d2ba05765b6956692b55791ec4bdc138654cd110c5cf",
+        "response_sha256": "94b742f1ca0a986704141f8e0a2010d1da5a58b3c777b0d95e3d975f44dff28a",
+        "content_sha256": "edf63beafaba96d036f88047a8a50944b3dc39c97d558730313d5b35bcf78a5a",
+        "content": "{\n  \"implementation_steps\": [\n    \"Modify the budget contract and engine to support resuming safely stopped tasks by preserving original state including effort, deadline, and repetition history.\",\n    \"Update HTTP dispatch logic to handle the new `task-budget-resume` operation while validating task status and preventing invalid resumes.\",\n    \"Adjust native validation and engine tests to ensure resume functionality works correctly without resetting effort or altering authorization flow.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm that resumed tasks retain their original deadline, spent effort, and repetition history through end-to-end testing.\",\n    \"Validate that attempting to resume an active, unknown outcome, or stale task fails appropriately with correct error responses.\",\n    \"Ensure all existing contract and server tests continue to pass after integrating the resume functionality.\"\n  ],\n  \"unresolved_questions\": [\n    \"How should the system handle cases where the original attempt ID is replayed after a resume operation?\",\n    \"What are the implications of resuming tasks with different estate configurations than when they were originally stopped?\",\n    \"Are there any edge cases in the runtime cursor handling during resume that could affect consistency?\"\n  ]\n}",
+        "read": {
+          "runtime_manifest_sha256": "df6ebc648f737a69b68fcf083a1212220f244f5f71e8cf0e207dfea94ffdf5a5",
+          "runtime_cursor": 12,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "context": null,
+        "usage": {
+          "prompt_tokens": 1526,
+          "completion_tokens": 229,
+          "total_tokens": 1755
+        },
+        "elapsed_ms": 17228,
+        "http_status": 200
+      }
+    }
+  }
+}

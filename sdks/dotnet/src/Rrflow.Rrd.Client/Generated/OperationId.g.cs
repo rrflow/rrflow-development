@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139
 namespace Rrflow.Rrd;
 
 public enum OperationId
@@ -55,6 +55,7 @@ public enum OperationId
     TaskAttemptRead,
     TaskBudgetConfigure,
     TaskBudgetRead,
+    TaskBudgetResume,
     TaskBudgetStop,
     TaskClose,
     TaskEmbeddingExecute,
@@ -62,6 +63,7 @@ public enum OperationId
     TaskList,
     TaskOpen,
     TaskRead,
+    TaskWorkerExecute,
     TransactionAbort,
     TransactionBegin,
     TransactionCommit,
@@ -93,8 +95,8 @@ public sealed record Endpoint(
 
 public static class EndpointCatalog
 {
-    public const string OpenApiDocumentSha256 = "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a";
-    public const int Count = 71;
+    public const string OpenApiDocumentSha256 = "1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139";
+    public const int Count = 73;
 
     public static Endpoint Get(OperationId operation) => operation switch
     {
@@ -149,6 +151,7 @@ public static class EndpointCatalog
         OperationId.TaskAttemptRead => new("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SessionBearer, false),
         OperationId.TaskBudgetConfigure => new("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SessionBearer, true),
         OperationId.TaskBudgetRead => new("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SessionBearer, false),
+        OperationId.TaskBudgetResume => new("task-budget-resume", "POST", "/v1/tasks/budget/resume", Authentication.SessionBearer, true),
         OperationId.TaskBudgetStop => new("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SessionBearer, true),
         OperationId.TaskClose => new("task-close", "POST", "/v1/tasks/close", Authentication.SessionBearer, true),
         OperationId.TaskEmbeddingExecute => new("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SessionBearer, true),
@@ -156,6 +159,7 @@ public static class EndpointCatalog
         OperationId.TaskList => new("task-list", "POST", "/v1/tasks/list", Authentication.SessionBearer, false),
         OperationId.TaskOpen => new("task-open", "POST", "/v1/tasks", Authentication.SessionBearer, true),
         OperationId.TaskRead => new("task-read", "POST", "/v1/tasks/read", Authentication.SessionBearer, false),
+        OperationId.TaskWorkerExecute => new("task-worker-execute", "POST", "/v1/tasks/worker/execute", Authentication.SessionBearer, true),
         OperationId.TransactionAbort => new("transaction-abort", "DELETE", "/v1/transactions/{transaction}", Authentication.SessionBearer, true),
         OperationId.TransactionBegin => new("transaction-begin", "POST", "/v1/transactions", Authentication.SessionBearer, true),
         OperationId.TransactionCommit => new("transaction-commit", "POST", "/v1/transactions/{transaction}/commit", Authentication.SessionBearer, true),

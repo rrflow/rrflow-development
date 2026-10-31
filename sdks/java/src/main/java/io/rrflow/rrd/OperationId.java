@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a
+// OpenAPI SHA-256: 1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139
 package io.rrflow.rrd;
 
 public enum OperationId {
@@ -54,6 +54,7 @@ public enum OperationId {
     TASK_ATTEMPT_READ("task-attempt-read", "POST", "/v1/tasks/attempt/read", Authentication.SESSION_BEARER, false),
     TASK_BUDGET_CONFIGURE("task-budget-configure", "POST", "/v1/tasks/budget/configure", Authentication.SESSION_BEARER, true),
     TASK_BUDGET_READ("task-budget-read", "POST", "/v1/tasks/budget/read", Authentication.SESSION_BEARER, false),
+    TASK_BUDGET_RESUME("task-budget-resume", "POST", "/v1/tasks/budget/resume", Authentication.SESSION_BEARER, true),
     TASK_BUDGET_STOP("task-budget-stop", "POST", "/v1/tasks/budget/stop", Authentication.SESSION_BEARER, true),
     TASK_CLOSE("task-close", "POST", "/v1/tasks/close", Authentication.SESSION_BEARER, true),
     TASK_EMBEDDING_EXECUTE("task-embedding-execute", "POST", "/v1/tasks/embedding/execute", Authentication.SESSION_BEARER, true),
@@ -61,6 +62,7 @@ public enum OperationId {
     TASK_LIST("task-list", "POST", "/v1/tasks/list", Authentication.SESSION_BEARER, false),
     TASK_OPEN("task-open", "POST", "/v1/tasks", Authentication.SESSION_BEARER, true),
     TASK_READ("task-read", "POST", "/v1/tasks/read", Authentication.SESSION_BEARER, false),
+    TASK_WORKER_EXECUTE("task-worker-execute", "POST", "/v1/tasks/worker/execute", Authentication.SESSION_BEARER, true),
     TRANSACTION_ABORT("transaction-abort", "DELETE", "/v1/transactions/{transaction}", Authentication.SESSION_BEARER, true),
     TRANSACTION_BEGIN("transaction-begin", "POST", "/v1/transactions", Authentication.SESSION_BEARER, true),
     TRANSACTION_COMMIT("transaction-commit", "POST", "/v1/transactions/{transaction}/commit", Authentication.SESSION_BEARER, true),
@@ -75,7 +77,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "f1856602eb3b5ba419f600b3be0e9626d62ad533032fe220a2728795bd28048a";
+    static final String OPENAPI_DOCUMENT_SHA256 = "1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 

@@ -1,0 +1,111 @@
+{
+  "sourceCommit": "75c26a80d5d1d07550070096df463d006aca6680",
+  "binarySha256": "c9f481103d6ba2a2cf1e0b42e386b084d92530bc42375b0039c7cf6722243636",
+  "acceptedProposal": {
+    "contract_version": 1,
+    "purpose": "experimental_proposal",
+    "scope": "instance:instance-2fb85fb227d44df093f866ed",
+    "task_id": "task-618f944b470036128b422adf0aa1fb73ebec4819abff9175dd8df75d99560863",
+    "attempt_id": "actual-proposal-7e1ff89c44f54d198b431aaf0633c23b",
+    "task_sha256": "7d37f4c4dab106071d6d14e35753efc7b17ffc7d217c9560db66c907be6d990e",
+    "packet_sha256": "3d650610446c66c45609dc1195927561cded4c124d2fe49cb0fcaf620988c06d",
+    "configuration_sha256": "93ce50923dd204784ff974dc0fda6648e381657f3ca9db4426e5345ea2413a59",
+    "allowance_sha256": "33b62b81458faada53939cc8bf8f69ac8600ed8bb9ab63a32324f56d66a513ba",
+    "controller_binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "request_sha256": "61e94bafe63e3db23f1fbe7fa0afe5fe0c59305545c57437a8f055f2958d4b74",
+    "response_sha256": "995b64982f3ac30ac3373953ecd4789c6fa4eade7d9fc5f2dcc0ec30a64d4d0e",
+    "content_sha256": "f00ec144e84b0093c575418c45be469717d1725ba11736e3f0070c2fa666e6a2",
+    "choice": {
+      "kind": "select",
+      "binding_id": "swag-custom-bf16",
+      "effort": null
+    },
+    "usage": {
+      "prompt_tokens": 1914,
+      "completion_tokens": 20,
+      "total_tokens": 1934
+    },
+    "elapsed_ms": 1944,
+    "http_status": 200
+  },
+  "acceptedWorkerDraft": {
+    "contract_version": 1,
+    "scope": "instance:instance-2fb85fb227d44df093f866ed",
+    "task_id": "task-618f944b470036128b422adf0aa1fb73ebec4819abff9175dd8df75d99560863",
+    "attempt_id": "actual-worker-aec4787f4dea4461a55b2e5da1445775",
+    "selection_attempt_id": "actual-proposal-7e1ff89c44f54d198b431aaf0633c23b",
+    "selection_sha256": "00008372a1514e019c52ebae2eb720a5553bfe4a9dc89e354546621447b12211",
+    "task_sha256": "7d37f4c4dab106071d6d14e35753efc7b17ffc7d217c9560db66c907be6d990e",
+    "configuration_sha256": "93ce50923dd204784ff974dc0fda6648e381657f3ca9db4426e5345ea2413a59",
+    "binding_id": "swag-custom-bf16",
+    "service_id": "swag-qwen3-coder-intent-20261028",
+    "packet_sha256": "1b90aadab49f6112c351dbbd8a30544cc7513de1e8532253ec0108a87b0c8b7e",
+    "request_sha256": "426614adb10421446bc0e32f0fe9a8adc36fc04fc09465eaaa74f2a0166bab44",
+    "response_sha256": "74deeb51d9fa9d4cb7fe6e6a232af577a610ada1621d0604b4903e0381ebc9bd",
+    "content_sha256": "099b5e051b5efe5950d138e771a5a61bebff1a69c57b6b0a9af680e13ceef84a",
+    "content": "{\n  \"implementation_steps\": [\n    \"Integrate bounded model-content HTTP transport with existing strict selector for worker execution.\",\n    \"Implement engine operation to authorize task/selection/configuration/context and manage attempt/budget ledger.\",\n    \"Add typed retained draft output and catalogue/SDK projections for generated content.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm worker response handling distinguishes not-dispatched, unknown, and completed states.\",\n    \"Validate that effort is charged and budget remains stopped for rejected outputs.\",\n    \"Ensure that unknown execution remains uncertain across reopen without automatic retry.\"\n  ],\n  \"unresolved_questions\": [\n    \"How will lost/malformed/mismatched/oversized outcomes be reconciled post-execution?\",\n    \"What is the plan for handling explicit retry mechanisms or lease reset for failed executions?\",\n    \"Will the current system support future integration with Claude/Codex subscription adapters?\"\n  ]\n}",
+    "read": {
+      "runtime_manifest_sha256": "b3a742d6762dc2764225e1fe5165f8af6e4b1693d7cf2d5081964eb009a6e425",
+      "runtime_cursor": 7,
+      "schema_revision": 3,
+      "catalogue_revision": 0
+    },
+    "context": null,
+    "usage": {
+      "prompt_tokens": 1413,
+      "completion_tokens": 185,
+      "total_tokens": 1598
+    },
+    "elapsed_ms": 14628,
+    "http_status": 200
+  },
+  "workerAttempt": {
+    "attempt": {
+      "attempt_id": "actual-worker-aec4787f4dea4461a55b2e5da1445775",
+      "ordinal": 2,
+      "status": "accepted",
+      "outcome_sha256": "3506ab1cff13c205193696c133c7af937d53efe60a93cae45c77e3b60da26b08",
+      "result": null,
+      "worker_output": {
+        "contract_version": 1,
+        "scope": "instance:instance-2fb85fb227d44df093f866ed",
+        "task_id": "task-618f944b470036128b422adf0aa1fb73ebec4819abff9175dd8df75d99560863",
+        "attempt_id": "actual-worker-aec4787f4dea4461a55b2e5da1445775",
+        "selection_attempt_id": "actual-proposal-7e1ff89c44f54d198b431aaf0633c23b",
+        "selection_sha256": "00008372a1514e019c52ebae2eb720a5553bfe4a9dc89e354546621447b12211",
+        "task_sha256": "7d37f4c4dab106071d6d14e35753efc7b17ffc7d217c9560db66c907be6d990e",
+        "configuration_sha256": "93ce50923dd204784ff974dc0fda6648e381657f3ca9db4426e5345ea2413a59",
+        "binding_id": "swag-custom-bf16",
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "packet_sha256": "1b90aadab49f6112c351dbbd8a30544cc7513de1e8532253ec0108a87b0c8b7e",
+        "request_sha256": "426614adb10421446bc0e32f0fe9a8adc36fc04fc09465eaaa74f2a0166bab44",
+        "response_sha256": "74deeb51d9fa9d4cb7fe6e6a232af577a610ada1621d0604b4903e0381ebc9bd",
+        "content_sha256": "099b5e051b5efe5950d138e771a5a61bebff1a69c57b6b0a9af680e13ceef84a",
+        "content": "{\n  \"implementation_steps\": [\n    \"Integrate bounded model-content HTTP transport with existing strict selector for worker execution.\",\n    \"Implement engine operation to authorize task/selection/configuration/context and manage attempt/budget ledger.\",\n    \"Add typed retained draft output and catalogue/SDK projections for generated content.\"\n  ],\n  \"verification_steps\": [\n    \"Confirm worker response handling distinguishes not-dispatched, unknown, and completed states.\",\n    \"Validate that effort is charged and budget remains stopped for rejected outputs.\",\n    \"Ensure that unknown execution remains uncertain across reopen without automatic retry.\"\n  ],\n  \"unresolved_questions\": [\n    \"How will lost/malformed/mismatched/oversized outcomes be reconciled post-execution?\",\n    \"What is the plan for handling explicit retry mechanisms or lease reset for failed executions?\",\n    \"Will the current system support future integration with Claude/Codex subscription adapters?\"\n  ]\n}",
+        "read": {
+          "runtime_manifest_sha256": "b3a742d6762dc2764225e1fe5165f8af6e4b1693d7cf2d5081964eb009a6e425",
+          "runtime_cursor": 7,
+          "schema_revision": 3,
+          "catalogue_revision": 0
+        },
+        "context": null,
+        "usage": {
+          "prompt_tokens": 1413,
+          "completion_tokens": 185,
+          "total_tokens": 1598
+        },
+        "elapsed_ms": 14628,
+        "http_status": 200
+      }
+    }
+  },
+  "runnerSha256": "1e7ce967fb5146faf28f046ffa5140bc2df41f8a04aaca206a9b07aac6236310",
+  "restartReadbackEqual": true,
+  "sameAttemptReplayRejected": true,
+  "ownedServersStopped": true,
+  "engineDispatchObserved": true,
+  "modelQualityQualified": false,
+  "trainingDataCreated": false,
+  "scope": "actual controller and worker draft admission, missing credentials, restart and replay; no project effects, source-edit plan proof or quality labels"
+}
