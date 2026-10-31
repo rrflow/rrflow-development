@@ -103,6 +103,23 @@ not be described as validated decisions before their named evidence exists.
 
 ## Impact
 
+### Protected replan receipt-test chronology
+
+The selected-plan dependency's protected run `41156697702` failed its
+optional-engine profile: the replan receipt test supplied fixed timestamps
+that could precede the previous effect's actual recorded completion. The engine
+correctly refused the non-advancing transition. The
+[candidate integration record](../../evidence/change-journals/gate-d/d-03-candidate-integration-clock.md)
+binds the exact job log, isolated build and correction to the test's chronology.
+Production time checks and all receipt/replay assertions remain intact; a local
+default-profile pass does not clear the protected failure. Native candidate and
+merge-group checks remain required, and POAM-006 stays open.
+
+The broader local profile also exposed four undeclared bounded change-page
+reads in the new Inventory tests. The same record classifies those exact
+test-only oracles in the existing source-closure allowlist; it does not permit
+runtime query/retrieval log replay or weaken the scanner's exact counts.
+
 ### Whole-repository Inventory publication and binary replacement
 
 At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected

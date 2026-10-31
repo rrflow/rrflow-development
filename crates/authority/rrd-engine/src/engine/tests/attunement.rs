@@ -1902,6 +1902,9 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
             BASE + 1_200,
         )
         .unwrap();
+    // Effects include real elapsed work. Continue from their committed time,
+    // rather than assuming the previous call finished within a fixed window.
+    let receipt_at = accepted.predecessor.job.updated_at_unix_ms + 1;
     let before = engine.storage.control().journal_since(0, 1024).unwrap();
     let receipt = engine
         .read_attunement_replan_receipt(
@@ -1909,7 +1912,7 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
             &session.token,
             &installed.job,
             &id("read-replan"),
-            BASE + 1_300,
+            receipt_at,
             "request-read-replan",
             "operation-read-replan",
         )
@@ -1924,7 +1927,7 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
             &id("bad-token"),
             &installed.job,
             &id("read-replan"),
-            BASE + 1_400,
+            receipt_at + 1,
             "request-bad-replan",
             "operation-bad-replan"
         )
@@ -1937,7 +1940,7 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
     };
     assert_eq!(count(&before), count(&after));
     assert_eq!(
-        installed.read(&engine, &session, BASE + 1_500).job,
+        installed.read(&engine, &session, receipt_at + 2).job,
         accepted.predecessor.job
     );
     let successor_start = AttunementCommand::Start {
@@ -1951,38 +1954,40 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
         &session,
         &successor_start,
         "receipt-successor-start",
-        BASE + 1_600,
+        receipt_at + 3,
     )
     .unwrap();
     std::fs::write(installed.root.path().join("README.md"), "later edit\n").unwrap();
+    let later_at = successor.status.job.updated_at_unix_ms + 1;
     let later = engine
         .preview_attunement_replan(
             &session.session_id,
             &session.token,
             &successor.status.job.id,
             successor.status.job.revision,
-            BASE + 1_700,
+            later_at,
             "request-later-preview",
             "operation-later-preview",
         )
         .unwrap();
-    engine
+    let later_accepted = engine
         .accept_attunement_replan(
             &session.session_id,
             &session.token,
             &later,
             &later.proposal_sha256,
             &context("later-replan"),
-            BASE + 1_800,
+            later_at + 1,
         )
         .unwrap();
+    let historical_at = later_accepted.predecessor.job.updated_at_unix_ms + 1;
     let historical = engine
         .read_attunement_replan_receipt(
             &session.session_id,
             &session.token,
             &installed.job,
             &id("read-replan"),
-            BASE + 1_900,
+            historical_at,
             "request-historical-replan-read",
             "operation-historical-replan-read",
         )
@@ -1990,15 +1995,15 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
         .unwrap();
     assert_eq!(historical, receipt);
     drop(engine);
-    let engine = installed.reopen(BASE + 2_000);
-    let renewed = installed.session(&engine, "replan-read-reopen", BASE + 2_100);
+    let engine = installed.reopen(historical_at + 1);
+    let renewed = installed.session(&engine, "replan-read-reopen", historical_at + 2);
     let reopened = engine
         .read_attunement_replan_receipt(
             &renewed.session_id,
             &renewed.token,
             &installed.job,
             &id("read-replan"),
-            BASE + 2_200,
+            historical_at + 3,
             "request-replan-reopen",
             "operation-replan-reopen",
         )
