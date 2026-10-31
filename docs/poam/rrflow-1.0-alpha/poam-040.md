@@ -10,6 +10,12 @@ it cannot close a roadmap gate independently.
 
 ## Observed deficiency
 
+The [installed-job discovery candidate](../../evidence/change-journals/gate-d/d-02-installed-job-discovery.md)
+adds a bounded authenticated public read over the installed initial job and
+committed successors. It is a prerequisite for client recovery without derived
+IDs, not completion of job journals, memory receipts, current-source verification
+or Connectome workflow acceptance. The parent gap remains open.
+
 The [draft replan receipt readback](../../evidence/change-journals/gate-d/d-02-replan-receipt-readback.md)
 adds principal-scoped embedded inspection of a committed successor receipt
 without replaying acceptance, and validates its lineage on both read and replay.

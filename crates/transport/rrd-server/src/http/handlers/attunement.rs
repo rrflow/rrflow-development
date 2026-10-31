@@ -382,4 +382,31 @@ impl AppState {
             },
         )
     }
+
+    pub(in crate::http) fn list_attunement_jobs(
+        &self,
+        headers: &HeaderMap,
+        body: &[u8],
+        now: u64,
+    ) -> HttpResponse {
+        self.with_authenticated_envelope::<rrd_contract::ListAttunementJobs, _, _>(
+            headers,
+            body,
+            now,
+            RrdOperation::EstateRead,
+            None,
+            |envelope, session, token| {
+                self.service
+                    .list_attunement_jobs(
+                        session,
+                        token,
+                        &envelope.payload,
+                        now,
+                        envelope.context.request_id.as_str(),
+                        envelope.context.operation_id.as_str(),
+                    )
+                    .map_err(api_error)
+            },
+        )
+    }
 }

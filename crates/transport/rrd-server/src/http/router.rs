@@ -49,6 +49,7 @@ macro_rules! http_dispatch_catalogue {
 http_dispatch_catalogue! {
     AttunementCancel => ("attunement-cancel", RrdOperation::EstateAdmin),
     AttunementRead => ("attunement-read", RrdOperation::EstateRead),
+    AttunementJobList => ("attunement-job-list", RrdOperation::EstateRead),
     AttunementReceiptRead => ("attunement-receipt-read", RrdOperation::EstateRead),
     AttunementStart => ("attunement-start", RrdOperation::EstateAdmin),
     AttunementStep => ("attunement-step", RrdOperation::EstateAdmin),
@@ -256,6 +257,9 @@ impl AppState {
                 self.replace_knowledge_trees(&headers, &body, now)
             }
             Some(HttpDispatch::AttunementRead) => self.read_attunement(&headers, &body, now),
+            Some(HttpDispatch::AttunementJobList) => {
+                self.list_attunement_jobs(&headers, &body, now)
+            }
             Some(HttpDispatch::AttunementReceiptRead) => {
                 self.read_attunement_receipt(&headers, &body, now)
             }

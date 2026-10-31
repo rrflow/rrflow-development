@@ -142,7 +142,7 @@ checked-in `Generated/OperationId.g.cs` contains:
   `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
 
 That audit describes an earlier projection. The current generated OpenAPI
-SHA-256 is `1344d5a23f04dc0a2cd9efb8743caaa945be0e3691c61868d2577d3f419c2139`.
+SHA-256 is `f3ab16d619759961c28fa5e4494c4431acd4213380db6b3ee5ffc093c251e7af`.
 
 An earlier flat record incorrectly said 34 routes when the generator, enum,
 unit assertion, public catalogue, and OpenAPI projection contained 33. The

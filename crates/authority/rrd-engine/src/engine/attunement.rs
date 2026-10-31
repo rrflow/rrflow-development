@@ -21,6 +21,7 @@ pub use rrd_contract::{
 };
 use std::time::Instant;
 
+mod discovery;
 mod inventory;
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
