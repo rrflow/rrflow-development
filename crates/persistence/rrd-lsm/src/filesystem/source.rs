@@ -68,6 +68,19 @@ impl SourceObservation {
         self.bytes
     }
 
+    /// Observed POSIX execute-mode bits. Windows has no POSIX execute bit;
+    /// this does not claim whether a process may execute a file under its ACL.
+    pub fn executable_mode(&self) -> bool {
+        #[cfg(unix)]
+        {
+            self.mode & 0o111 != 0
+        }
+        #[cfg(windows)]
+        {
+            false
+        }
+    }
+
     /// Digest grammar includes platform, object identity, size, mtime, ctime,
     /// permissions/attributes, ownership and links. Last-access time is omitted.
     pub fn revision_sha256(&self) -> io::Result<String> {

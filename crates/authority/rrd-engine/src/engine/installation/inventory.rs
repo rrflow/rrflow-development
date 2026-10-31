@@ -1,10 +1,10 @@
-//! Bounded installation preconditions, not a committed attunement snapshot.
+//! Bounded installation preconditions and read-only Inventory preparation.
 //!
 //! Version-three preconditions bind admitted policy/Git inputs and exclude safety paths
 //! before content reads. Enumeration admits entries before retaining them, and
 //! hashing reads at most the admitted file length. Metadata drift fails closed;
 //! this is not an atomic
-//! filesystem snapshot or the D-03 incremental inventory implementation.
+//! filesystem snapshot or evidence for metadata-only content reuse.
 
 use super::policy::CompiledPolicy;
 use super::DefaultInstallProfile;
@@ -17,8 +17,9 @@ use git_inputs::GitInputs;
 
 struct WalkEntry {
     path: AnchoredPath,
-    observed: SourceLeaf,
+    observed: Option<SourceLeaf>,
     gitlink: bool,
+    excluded: Option<String>,
 }
 
 use std::fs::Metadata;
@@ -26,19 +27,22 @@ use std::io::Read;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-struct WorkBudget {
+struct WorkBudget<'a> {
+    check_external: &'a dyn Fn() -> Result<()>,
     started: Instant,
     duration: Duration,
 }
 
-impl WorkBudget {
+impl WorkBudget<'_> {
     fn new(elapsed_ms: u64) -> Self {
         Self {
+            check_external: &|| Ok(()),
             started: Instant::now(),
             duration: Duration::from_millis(elapsed_ms),
         }
     }
     fn check(&self) -> Result<()> {
+        (self.check_external)()?;
         if self.started.elapsed() >= self.duration {
             return Err(ServiceError::DeadlineExceeded);
         }
@@ -58,21 +62,46 @@ pub(super) fn project_inventory_sha256_excluding(
     profile: &DefaultInstallProfile,
     excluded_relative: Option<&Path>,
 ) -> Result<String> {
+    scan_project(project, profile, excluded_relative, None, &|| Ok(())).map(|(digest, _)| digest)
+}
+
+mod proposal;
+pub(in crate::engine) use proposal::prepare_project_inventory;
+
+fn scan_project(
+    project: &AnchoredPath,
+    profile: &DefaultInstallProfile,
+    excluded_relative: Option<&Path>,
+    proposal: Option<(
+        rrd_attunement::inventory::SourceScope,
+        Option<&rrd_attunement::inventory::Proposal>,
+    )>,
+    check: &dyn Fn() -> Result<()>,
+) -> Result<(String, Option<rrd_attunement::inventory::Proposal>)> {
     let policy = profile.inventory_policy.compile()?;
-    let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+    let budget = WorkBudget {
+        check_external: check,
+        ..WorkBudget::new(policy.source.limits.elapsed_ms)
+    };
     let root_observation = project.source_observation().map_err(storage_error)?;
     let mut git = GitInputs::read(project, &policy, &budget)?;
     let mut entries = Vec::<WalkEntry>::new();
     let admitted_lease = super::lease::admit_existing(project)?;
     collect_project_entries(
         project,
-        excluded_relative,
-        admitted_lease.is_some(),
+        WalkOptions {
+            excluded_relative,
+            lease_admitted: admitted_lease.is_some(),
+            record_exclusions: proposal.is_some(),
+        },
         &policy,
         &budget,
         &mut git,
         &mut entries,
     )?;
+    let mut builder = proposal
+        .map(|(scope, prior)| proposal::builder(scope, prior, &policy, &git))
+        .transpose()?;
     entries.sort_by(|left, right| left.path.relative_path().cmp(right.path.relative_path()));
     let mut aggregate = IncrementalSha256::new();
     aggregate.update(b"rrflow-project-precondition-v3\0");
@@ -87,7 +116,22 @@ pub(super) fn project_inventory_sha256_excluding(
             .to_str()
             .ok_or(ServiceError::ProjectBindingMismatch)?
             .replace('\\', "/");
-        let (tag, file) = match &entry.observed {
+        if let Some(rule) = &entry.excluded {
+            if let Some(builder) = &mut builder {
+                builder
+                    .leaf(
+                        &relative,
+                        rrd_attunement::inventory::EntryKind::Excluded { rule: rule.clone() },
+                    )
+                    .map_err(storage_error)?;
+            }
+            continue;
+        }
+        let (tag, file) = match entry
+            .observed
+            .as_ref()
+            .ok_or(ServiceError::ProjectBindingMismatch)?
+        {
             _ if entry.gitlink => (b"g\0", false),
             SourceLeaf::Ordinary(obs) if obs.kind() == SourceKind::Directory => (b"d\0", false),
             SourceLeaf::Ordinary(_) => (b"f\0", true),
@@ -116,10 +160,23 @@ pub(super) fn project_inventory_sha256_excluding(
                 ));
             }
             aggregate.update(&metadata.len().to_be_bytes());
-            if path.source_leaf().map_err(storage_error)? != entry.observed {
+            if path.source_leaf().map_err(storage_error)?
+                != entry
+                    .observed
+                    .as_ref()
+                    .ok_or(ServiceError::ProjectBindingMismatch)?
+                    .clone()
+            {
                 return Err(ServiceError::ProjectBindingMismatch);
             }
-            aggregate.update(hash_inventory_file(path, &metadata, &budget)?.as_bytes());
+            let digest = if let Some(builder) = &mut builder {
+                proposal::ingest_file(builder, &relative, entry, &budget)?
+            } else {
+                hash_inventory_file(path, &metadata, &budget)?
+            };
+            aggregate.update(digest.as_bytes());
+        } else if let Some(builder) = &mut builder {
+            proposal::ingest_leaf(builder, &relative, entry)?;
         }
     }
     // Revalidate the whole admitted set, not just each file at the moment it
@@ -127,7 +184,14 @@ pub(super) fn project_inventory_sha256_excluding(
     // These observations are not an OS snapshot or a metadata-only reuse proof.
     for entry in &entries {
         budget.check()?;
-        if entry.path.source_leaf().map_err(storage_error)? != entry.observed {
+        if entry.excluded.is_none()
+            && entry.path.source_leaf().map_err(storage_error)?
+                != entry
+                    .observed
+                    .as_ref()
+                    .ok_or(ServiceError::ProjectBindingMismatch)?
+                    .clone()
+        {
             return Err(ServiceError::ProjectBindingMismatch);
         }
     }
@@ -136,18 +200,34 @@ pub(super) fn project_inventory_sha256_excluding(
         return Err(ServiceError::ProjectBindingMismatch);
     }
     budget.check()?;
-    Ok(aggregate.finalize_hex())
+    let proposed = builder
+        .map(|builder| builder.finish(true).map_err(storage_error))
+        .transpose()?;
+    if let Some(proposed) = &proposed {
+        proposal::require_output_bound(proposed, policy.source.limits.output_bytes)?;
+    }
+    Ok((aggregate.finalize_hex(), proposed))
+}
+
+struct WalkOptions<'a> {
+    excluded_relative: Option<&'a Path>,
+    lease_admitted: bool,
+    record_exclusions: bool,
 }
 
 fn collect_project_entries(
     root: &AnchoredPath,
-    excluded_relative: Option<&Path>,
-    lease_admitted: bool,
+    options: WalkOptions<'_>,
     policy: &CompiledPolicy<'_>,
     budget: &WorkBudget,
     git: &mut GitInputs,
     output: &mut Vec<WalkEntry>,
 ) -> Result<()> {
+    let WalkOptions {
+        excluded_relative,
+        lease_admitted,
+        record_exclusions,
+    } = options;
     let mut pending = vec![root.to_owned()];
     let mut visited = 0u64;
     let mut metadata_bytes = 0u64;
@@ -187,21 +267,56 @@ fn collect_project_entries(
                 .replace('\\', "/");
             // Non-directory-only rules can exclude a leaf without even opening
             // its metadata handle (important for locked secret files).
-            if policy.excluded(&normalized, false)?.is_some()
-                || git.excluded_without_metadata(&normalized)?
-            {
+            let excluded = policy.excluded(&normalized, false)?.map(str::to_owned);
+            let excluded = match excluded {
+                Some(rule) => Some(rule),
+                None if git.excluded_without_metadata(&normalized)? => Some("git-ignore".into()),
+                None => None,
+            };
+            if let Some(rule) = excluded {
+                if record_exclusions {
+                    account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+                    output.push(WalkEntry {
+                        path,
+                        observed: None,
+                        gitlink: false,
+                        excluded: Some(rule),
+                    });
+                }
                 continue;
             }
             let observed = path.source_leaf().map_err(storage_error)?;
             let directory = matches!(&observed, SourceLeaf::Ordinary(obs) if obs.kind() == SourceKind::Directory);
-            if policy.excluded(&normalized, directory)?.is_some()
-                || !git.admits(&normalized, directory)?
-            {
+            let excluded = policy.excluded(&normalized, directory)?.map(str::to_owned);
+            let excluded = match excluded {
+                Some(rule) => Some(rule),
+                None if !git.admits(&normalized, directory)? => Some("git-ignore".into()),
+                None => None,
+            };
+            if let Some(rule) = excluded {
+                if record_exclusions {
+                    account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+                    output.push(WalkEntry {
+                        path,
+                        observed: Some(observed),
+                        gitlink: false,
+                        excluded: Some(rule),
+                    });
+                }
                 continue;
             }
             let gitlink = git.is_submodule(&normalized);
             if let SourceLeaf::Ordinary(obs) = &observed {
                 if obs.kind() == SourceKind::File && obs.bytes() > policy.source.limits.file_bytes {
+                    if record_exclusions {
+                        account_metadata(&path, &mut metadata_bytes, remaining_metadata)?;
+                        output.push(WalkEntry {
+                            path,
+                            observed: Some(observed),
+                            gitlink: false,
+                            excluded: Some("file-byte-limit".into()),
+                        });
+                    }
                     continue;
                 }
             }
@@ -211,8 +326,9 @@ fn collect_project_entries(
             }
             output.push(WalkEntry {
                 path,
-                observed,
+                observed: Some(observed),
                 gitlink,
+                excluded: None,
             });
         }
     }
@@ -355,15 +471,18 @@ mod tests {
         let mut entries = Vec::new();
         let result = super::collect_project_entries(
             &root,
-            exclude,
-            false,
+            WalkOptions {
+                excluded_relative: exclude,
+                lease_admitted: false,
+                record_exclusions: false,
+            },
             &policy,
             &budget,
             &mut git,
             &mut entries,
         );
         output.extend(entries.into_iter().map(|entry| {
-            let directory = matches!(&entry.observed, SourceLeaf::Ordinary(obs) if obs.kind() == SourceKind::Directory);
+            let directory = matches!(&entry.observed, Some(SourceLeaf::Ordinary(obs)) if obs.kind() == SourceKind::Directory);
             (entry.path, directory)
         }));
         result
@@ -606,8 +725,11 @@ mod tests {
         let mut entries = Vec::new();
         super::collect_project_entries(
             &anchored,
-            None,
-            false,
+            WalkOptions {
+                excluded_relative: None,
+                lease_admitted: false,
+                record_exclusions: false,
+            },
             &policy,
             &budget,
             &mut git,
@@ -615,7 +737,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].observed, SourceLeaf::Symlink);
+        assert_eq!(entries[0].observed, Some(SourceLeaf::Symlink));
     }
 
     #[test]

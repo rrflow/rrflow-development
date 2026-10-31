@@ -5,6 +5,7 @@ use rrd_contract::{
     AttunementJob, AttunementJobState as State, AttunementPhase as Phase, AttunementStatus,
     CancelAttunement, InstallationTargetKind, ResumeAttunement, SessionLease,
 };
+use rrd_core::{RuntimeMutation, RuntimeValue, ScopeId};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Barrier};
 
@@ -30,6 +31,14 @@ impl Installed {
         proposal: Option<&crate::AttunementProposal>,
         setup: impl FnOnce(&Path),
     ) -> (Self, RrdEngine, SessionLease) {
+        Self::with_configuration(mode, proposal, setup, None)
+    }
+    fn with_configuration(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+        setup: impl FnOnce(&Path),
+        configuration: Option<&Path>,
+    ) -> (Self, RrdEngine, SessionLease) {
         let root = tempfile::tempdir().unwrap();
         setup(root.path());
         if mode == InstallationTargetKind::ExistingProject {
@@ -41,7 +50,7 @@ impl Installed {
             mode,
             &RrdEngine::generate_installation_identity().unwrap(),
             "default",
-            None,
+            configuration,
             proposal,
             &executable,
         )
@@ -187,6 +196,371 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
 #[test]
 fn publicly_selected_plan_replans_after_progress_and_reopens() {
     selected_plan_replans_after_progress_and_reopens(false);
+}
+
+#[test]
+fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
+    let proposal = crate::AttunementProposal {
+        format_version: crate::ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
+        steps: [Phase::Connect, Phase::Inventory, Phase::Verify]
+            .into_iter()
+            .map(|phase| crate::AttunementProposalStep {
+                phase,
+                description: format!("{phase:?}"),
+                estimated_items: 0,
+                estimated_input_bytes: 0,
+            })
+            .collect(),
+        estimated_min_duration_ms: 0,
+        estimated_max_duration_ms: 30_000,
+    };
+    let (installed, engine, session) = Installed::with_source(
+        InstallationTargetKind::ExistingProject,
+        Some(&proposal),
+        |root| {
+            std::fs::write(root.join("before.txt"), "rename content\n").unwrap();
+            std::fs::write(root.join("removed.txt"), "remove content\n").unwrap();
+        },
+    );
+    let running = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "inventory-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&running.status.job),
+        "inventory-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let inventoried = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory-step",
+        BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.state, State::Running);
+    assert_eq!(inventoried.status.job.checkpoints.len(), 2);
+    let checkpoint = inventoried.status.job.checkpoints.last().unwrap();
+    assert_eq!(checkpoint.phase, Phase::Inventory);
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    assert_eq!(checkpoint.coordinates.runtime_cursor, read.commit_cursor);
+    assert_eq!(
+        checkpoint.coordinates.runtime_manifest_sha256,
+        read.manifest_id
+    );
+    let replay = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory-step",
+        BASE + 3_100,
+    )
+    .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.status, inventoried.status);
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), read);
+    let changes = engine
+        .storage
+        .runtime()
+        .read_changes(&read, 0, 512)
+        .unwrap();
+    assert!(changes.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == "source-tree-snapshot")));
+    assert!(changes.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Relation { relation } if relation.reference.kind.as_str() == "source-tree-contains")));
+    drop(engine);
+    let engine = installed.reopen(BASE + 4_000);
+    let session = installed.session(&engine, "inventory-reopen", BASE + 4_100);
+    assert_eq!(
+        installed
+            .read(&engine, &session, BASE + 4_200)
+            .job
+            .checkpoints,
+        inventoried.status.job.checkpoints
+    );
+    std::fs::rename(
+        installed.root.path().join("before.txt"),
+        installed.root.path().join("after.txt"),
+    )
+    .unwrap();
+    std::fs::remove_file(installed.root.path().join("removed.txt")).unwrap();
+    std::fs::write(installed.root.path().join("added.txt"), "added content\n").unwrap();
+    std::fs::write(
+        installed.root.path().join("README.md"),
+        "edited after Inventory\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&inventoried.status.job),
+            "inventory-stale",
+            BASE + 5_000
+        ),
+        Err(ServiceError::AttunementSourceChanged)
+    ));
+    let replan = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            inventoried.status.job.revision,
+            BASE + 5_100,
+            "request-inventory-replan",
+            "operation-inventory-replan",
+        )
+        .unwrap();
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &replan,
+            &replan.proposal_sha256,
+            &context("inventory-accept"),
+            BASE + 5_200,
+        )
+        .unwrap();
+    let successor = &accepted.successor.job;
+    let started = call(
+        &engine,
+        &session,
+        &AttunementCommand::Start {
+            job_id: successor.id.clone(),
+            plan_sha256: successor.plan_sha256.clone(),
+            expected_revision: successor.revision,
+            lease_ms: 30_000,
+        },
+        "inventory-successor-start",
+        BASE + 6_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "inventory-successor-connect",
+        BASE + 7_000,
+    )
+    .unwrap();
+    let next = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory-successor-step",
+        BASE + 8_000,
+    )
+    .unwrap();
+    assert_eq!(next.status.job.checkpoints.len(), 2);
+    assert_ne!(
+        next.status.job.checkpoints[1].output_sha256,
+        checkpoint.output_sha256
+    );
+    let new_read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let delta = engine
+        .storage
+        .runtime()
+        .read_changes(&new_read, read.commit_cursor, 512)
+        .unwrap();
+    assert!(delta.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == "source-tree-change-set"
+            && matches!(record.properties.get("modified"), Some(RuntimeValue::List(values)) if !values.is_empty()))));
+    let change_set = delta
+        .changes
+        .iter()
+        .find_map(|change| match &change.mutation {
+            RuntimeMutation::Record { record }
+                if record.reference.kind.as_str() == "source-tree-change-set" =>
+            {
+                Some(record)
+            }
+            _ => None,
+        })
+        .unwrap();
+    for field in ["added", "removed"] {
+        assert!(
+            matches!(change_set.properties.get(field), Some(RuntimeValue::List(values)) if values.len() == 2)
+        );
+    }
+    assert!(
+        matches!(change_set.properties.get("rename_candidates"), Some(RuntimeValue::List(values)) if values.len() == 1)
+    );
+    let retired: Vec<_> = delta
+        .changes
+        .iter()
+        .filter_map(|change| match &change.mutation {
+            RuntimeMutation::Retire { retirement }
+                if retirement.reference.kind.as_str() == "source-tree-entry" =>
+            {
+                Some(retirement.reference.clone())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(retired.len(), 2);
+    for path in ["before.txt", "removed.txt"] {
+        let original = changes
+            .changes
+            .iter()
+            .find_map(|change| match &change.mutation {
+                RuntimeMutation::Record { record }
+                    if record.reference.kind.as_str() == "source-tree-entry"
+                        && record.properties.get("path")
+                            == Some(&RuntimeValue::String(path.into())) =>
+                {
+                    Some(&record.reference)
+                }
+                _ => None,
+            })
+            .unwrap();
+        assert!(retired.contains(original));
+    }
+}
+
+#[test]
+fn inventory_source_rejection_preserves_runtime_and_allows_retry() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "retry-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "retry-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let before = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let head = format!("server/state/{}/inventory/head", engine.instance_id());
+    let original = std::fs::read(installed.root.path().join("README.md")).unwrap();
+    std::fs::write(installed.root.path().join("README.md"), "changed input\n").unwrap();
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&connected.status.job),
+            "retry-inventory",
+            BASE + 3_000
+        ),
+        Err(ServiceError::AttunementSourceChanged)
+    ));
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
+    assert!(engine.storage.control().get(&head).unwrap().is_none());
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 3_100).job,
+        connected.status.job
+    );
+    std::fs::write(installed.root.path().join("README.md"), original).unwrap();
+    let accepted = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "retry-inventory",
+        BASE + 4_000,
+    )
+    .unwrap();
+    assert!(
+        !accepted.idempotent_replay,
+        "a failed attempt must not consume its receipt key"
+    );
+    assert_eq!(accepted.status.job.checkpoints.len(), 2);
+    assert!(engine.storage.control().get(&head).unwrap().is_some());
+}
+
+#[test]
+fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
+    let defaults = rrd_contract::EstateConfiguration::default();
+    let input = rrd_contract::EstateConfigurationInput {
+        format_version: defaults.format_version,
+        clock: defaults.clock,
+        storage: rrd_contract::StorageLimits {
+            transaction_admission_bytes: 16_384,
+            ..defaults.storage
+        },
+        reasoning: defaults.reasoning,
+        recall: defaults.recall,
+        query: defaults.query,
+    };
+    let file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(file.path(), toml::to_string(&input).unwrap()).unwrap();
+    let (installed, engine, session) = Installed::with_configuration(
+        InstallationTargetKind::ExistingProject,
+        None,
+        |root| {
+            for index in 0..64 {
+                std::fs::write(root.join(format!("source-{index}.txt")), "bounded source\n")
+                    .unwrap();
+            }
+        },
+        Some(file.path()),
+    );
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "bound-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "bound-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let before = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let head = format!("server/state/{}/inventory/head", engine.instance_id());
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&connected.status.job),
+            "bound-inventory",
+            BASE + 3_000
+        ),
+        Err(ServiceError::ConfigurationLimit(_))
+    ));
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
+    assert!(engine.storage.control().get(&head).unwrap().is_none());
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 3_100).job,
+        connected.status.job
+    );
+    assert_eq!(
+        engine
+            .transaction_admission_snapshot()
+            .unwrap()
+            .logical_bytes,
+        0
+    );
+    drop(engine);
+    let engine = installed.reopen(BASE + 4_000);
+    let session = installed.session(&engine, "bound-reopen", BASE + 4_100);
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
+    assert!(engine.storage.control().get(&head).unwrap().is_none());
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 4_200).job,
+        connected.status.job
+    );
 }
 
 #[test]
@@ -866,12 +1240,21 @@ fn replan_refuses_an_unreconciled_failure() {
         BASE + 2_000,
     )
     .unwrap();
-    let failed = call(
+    let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "unknown-failure",
         BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+    let failed = call(
+        &engine,
+        &session,
+        &step(&inventoried.status.job),
+        "unknown-parse",
+        BASE + 3_020,
     )
     .unwrap();
     assert!(engine
@@ -1502,12 +1885,21 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
     .unwrap();
     let command = step(&started.status.job);
     let connected = call(&engine, &session, &command, "connect", BASE + 2_000).unwrap();
-    let failed = call(
+    let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "inventory",
         BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+    let failed = call(
+        &engine,
+        &session,
+        &step(&inventoried.status.job),
+        "receipt-parse",
+        BASE + 3_020,
     )
     .unwrap();
     assert_eq!(failed.status.job.state, State::Failed);
@@ -1791,12 +2183,21 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
         BASE + 2_000,
     )
     .unwrap();
-    let failed = call(
+    let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "detail-inventory",
         BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+    let failed = call(
+        &engine,
+        &session,
+        &step(&inventoried.status.job),
+        "detail-parse",
+        BASE + 3_020,
     )
     .unwrap();
     std::fs::write(installed.root.path().join("README.md"), "changed source\n").unwrap();
@@ -1869,12 +2270,21 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             read.manifest_id
         );
         assert_eq!(checkpoint.coordinates.runtime_cursor, read.commit_cursor);
-        let failed = call(
+        let inventoried = call(
             &engine,
             &session,
             &step(&connected.status.job),
             "inventory",
             BASE + 3_000,
+        )
+        .unwrap();
+        assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+        let failed = call(
+            &engine,
+            &session,
+            &step(&inventoried.status.job),
+            "parse",
+            BASE + 3_020,
         )
         .unwrap();
         assert_eq!(failed.status.job.state, State::Failed);
@@ -1884,7 +2294,7 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
         );
         assert_eq!(
             failed.status.job.checkpoints,
-            connected.status.job.checkpoints
+            inventoried.status.job.checkpoints
         );
         assert!(failed.status.job.lease.is_none());
         drop(engine);
@@ -1908,7 +2318,7 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             BASE + 6_000,
         )
         .unwrap();
-        assert_eq!(resumed.status.job.current_phase, Some(Phase::Inventory));
+        assert_eq!(resumed.status.job.current_phase, Some(Phase::Parse));
         assert!(
             resumed.status.job.lease.as_ref().unwrap().generation
                 > start.status.job.lease.as_ref().unwrap().generation
@@ -1917,14 +2327,14 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             &engine,
             &renewed,
             &step(&resumed.status.job),
-            "inventory-again",
+            "parse-again",
             BASE + 7_000,
         )
         .unwrap();
         assert_eq!(
             failed_again.status.job.checkpoints.len(),
-            1,
-            "no fake inventory checkpoint"
+            2,
+            "unsupported Parse must not fabricate a checkpoint"
         );
         drop(engine);
         let report = RrdEngine::inspect_installed_with_clock(

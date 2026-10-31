@@ -1,7 +1,7 @@
 //! Explicit engine-owned attunement control. Bounded precondition observations
-//! do not activate background execution, source ingestion or external capabilities.
-//! The first worker phase verifies the installed connection; later phases fail
-//! explicitly until their real implementation is present.
+//! do not activate background execution or external capabilities. Connect verifies
+//! the installation; Inventory commits bounded source observations with its
+//! checkpoint. Other phases fail explicitly until their implementation is present.
 
 use super::installation::{
     attunement_job_key, attunement_plan_key, canonical_prefixed, estate_configuration_key,
@@ -20,6 +20,8 @@ pub use rrd_contract::{
     AttunementReplanPreview, AttunementReplanReceiptView, AttunementReplanResult,
 };
 use std::time::Instant;
+
+mod inventory;
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;
@@ -274,20 +276,21 @@ impl RrdEngine {
         job: &AttunementJob,
         old: &AttunementPlan,
     ) -> Result<AttunementReplanPreview> {
-        // Connect records a read-only observation. Other completed effects
+        // Connect and Inventory record read-only source observations. A successor
+        // retains their history and binds fresh source. Other completed effects
         // require explicit reconciliation before a successor can start.
-        if job
-            .checkpoints
-            .iter()
-            .any(|checkpoint| checkpoint.phase != AttunementPhase::Connect)
-            || !matches!(
-                job.state,
-                AttunementJobState::Pending
-                    | AttunementJobState::Running
-                    | AttunementJobState::Paused
-                    | AttunementJobState::Failed
+        if job.checkpoints.iter().any(|checkpoint| {
+            !matches!(
+                checkpoint.phase,
+                AttunementPhase::Connect | AttunementPhase::Inventory
             )
-        {
+        }) || !matches!(
+            job.state,
+            AttunementJobState::Pending
+                | AttunementJobState::Running
+                | AttunementJobState::Paused
+                | AttunementJobState::Failed
+        ) {
             return Err(ServiceError::StorageConflict(
                 "attunement replan requires an unresolved, locally fenced job".into(),
             ));
@@ -764,8 +767,34 @@ impl RrdEngine {
                 "attunement transition/receipt limit reached".into(),
             ));
         }
-        // This observes the installed precondition only. It is not an atomic
-        // source snapshot and cannot authorize a project-owned file mutation.
+        if let AttunementCommand::Step {
+            lease_generation, ..
+        } = command
+        {
+            if !cancelling && before.current_phase == Some(AttunementPhase::Inventory) {
+                require_worker(&before, &worker(session)?, *lease_generation, admitted_at)?;
+                return inventory::execute(
+                    self,
+                    inventory::Work {
+                        session,
+                        token,
+                        context,
+                        now,
+                        started,
+                        principal,
+                        operation_sha256,
+                        before_bytes,
+                        before,
+                        plan,
+                        receipt_key,
+                        lease_generation: *lease_generation,
+                    },
+                    _gate,
+                );
+            }
+        }
+        // Other controls still observe the installed precondition. This cannot
+        // authorize a project-owned file mutation.
         let requires_source = matches!(
             command,
             AttunementCommand::Start { .. } | AttunementCommand::Resume { .. }

@@ -53,8 +53,8 @@ mod lease;
 mod policy;
 pub(super) mod recovery;
 
-pub(super) use inventory::project_inventory_sha256;
 use inventory::project_inventory_sha256_excluding;
+pub(super) use inventory::{prepare_project_inventory, project_inventory_sha256};
 
 use recovery::{
     acknowledge_intent, load_or_create_intent, materialize_secret, read_existing_intent,
