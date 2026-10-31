@@ -103,6 +103,54 @@ not be described as validated decisions before their named evidence exists.
 
 ## Impact
 
+### Protected replan receipt-test chronology
+
+The selected-plan dependency's protected run `41156697702` failed its
+optional-engine profile: the replan receipt test supplied fixed timestamps
+that could precede the previous effect's actual recorded completion. The engine
+correctly refused the non-advancing transition. The
+[candidate integration record](../../evidence/change-journals/gate-d/d-03-candidate-integration-clock.md)
+binds the exact job log, isolated build and correction to the test's chronology.
+Production time checks and all receipt/replay assertions remain intact; a local
+default-profile pass does not clear the protected failure. Native candidate and
+merge-group checks remain required, and POAM-006 stays open.
+
+The broader local profile also exposed four undeclared bounded change-page
+reads in the new Inventory tests. The same record classifies those exact
+test-only oracles in the existing source-closure allowlist; it does not permit
+runtime query/retrieval log replay or weaken the scanner's exact counts.
+
+The subsequent candidate at `61bfe5a6` failed a different test in Linux
+engine-authority job `124415867194`: four Inventory-following fixtures assumed
+completion within 20 ms. The
+[completion-relative test correction](../../evidence/change-journals/gate-d/d-03-completion-relative-tests.md)
+binds subsequent effects and read/reopen times to returned job completion while
+preserving every original assertion and production enforcement. The native
+failure remains retained; local passes do not substitute for corrected
+candidate and protected qualification. No POA&M status changes.
+
+### Whole-repository Inventory publication and binary replacement
+
+At `2cfc0bd9`, an installed 1,870-path public RRFlow repository rejected
+Inventory at the native 16 MiB physical batch ceiling. Reopen preserved the
+Connect checkpoint and cursor; no Inventory completion was published. The
+[bounded publication repair](../../evidence/change-journals/gate-d/d-03-bounded-inventory-publication.md)
+uses engine-owned observation groups and private resumable progress, with the
+complete snapshot/head/checkpoint/receipt published only in the final atomic
+transaction. The same source revision in a separately installed candidate estate
+passes Inventory, restart, an ordinary-edit successor and second Inventory.
+Interruption and edits during partial publication cannot certify completion;
+the edited job can accept a successor. This is draft Windows evidence, not
+full D-03 acceptance. Final manifests/retirements still have a physical batch
+bound, and retention/scale/native-race qualification remain open.
+
+The rebuilt executable cannot reopen the original installed estate because its
+hash differs from the sealed binding. That denial is preserved; no locator or
+stored binding was rewritten. An authorized, recoverable binary replacement
+path is still required before public deployment can promise safe upgrades.
+The successful same-revision trial is a separate installation, not an upgrade
+or recovery of the old estate. D/J and POAM-006 remain open.
+
 The [D-01.3 real-process oracle](../../evidence/change-journals/gate-d/d-01-install-exclusion-oracle.md)
 reproduced concurrent recovery of a live install intent: a second process
 completed the same plan while its creator was paused before storage admission.

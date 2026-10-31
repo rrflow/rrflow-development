@@ -5,6 +5,7 @@ use rrd_contract::{
     AttunementJob, AttunementJobState as State, AttunementPhase as Phase, AttunementStatus,
     CancelAttunement, InstallationTargetKind, ResumeAttunement, SessionLease,
 };
+use rrd_core::{RuntimeMutation, RuntimeValue, ScopeId};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Barrier};
 
@@ -17,17 +18,40 @@ struct Installed {
 }
 impl Installed {
     fn new(mode: InstallationTargetKind) -> (Self, RrdEngine, SessionLease) {
+        Self::with_proposal(mode, None)
+    }
+    fn with_proposal(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+    ) -> (Self, RrdEngine, SessionLease) {
+        Self::with_source(mode, proposal, |_| {})
+    }
+    fn with_source(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+        setup: impl FnOnce(&Path),
+    ) -> (Self, RrdEngine, SessionLease) {
+        Self::with_configuration(mode, proposal, setup, None)
+    }
+    fn with_configuration(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+        setup: impl FnOnce(&Path),
+        configuration: Option<&Path>,
+    ) -> (Self, RrdEngine, SessionLease) {
         let root = tempfile::tempdir().unwrap();
+        setup(root.path());
         if mode == InstallationTargetKind::ExistingProject {
             std::fs::write(root.path().join("README.md"), "real project source\n").unwrap();
         }
         let executable = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
-        let preview = RrdEngine::plan_installation(
+        let preview = RrdEngine::plan_installation_with_proposal(
             root.path(),
             mode,
             &RrdEngine::generate_installation_identity().unwrap(),
             "default",
-            None,
+            configuration,
+            proposal,
             &executable,
         )
         .unwrap();
@@ -167,6 +191,842 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
             requested_at_unix_ms: at,
         },
     }
+}
+
+#[test]
+fn publicly_selected_plan_replans_after_progress_and_reopens() {
+    selected_plan_replans_after_progress_and_reopens(false);
+}
+
+#[test]
+fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
+    let proposal = crate::AttunementProposal {
+        format_version: crate::ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
+        steps: [Phase::Connect, Phase::Inventory, Phase::Verify]
+            .into_iter()
+            .map(|phase| crate::AttunementProposalStep {
+                phase,
+                description: format!("{phase:?}"),
+                estimated_items: 0,
+                estimated_input_bytes: 0,
+            })
+            .collect(),
+        estimated_min_duration_ms: 0,
+        estimated_max_duration_ms: 30_000,
+    };
+    let (installed, engine, session) = Installed::with_source(
+        InstallationTargetKind::ExistingProject,
+        Some(&proposal),
+        |root| {
+            std::fs::write(root.join("before.txt"), "rename content\n").unwrap();
+            std::fs::write(root.join("removed.txt"), "remove content\n").unwrap();
+        },
+    );
+    let running = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "inventory-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&running.status.job),
+        "inventory-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let inventoried = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory-step",
+        BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.state, State::Running);
+    assert_eq!(inventoried.status.job.checkpoints.len(), 2);
+    let checkpoint = inventoried.status.job.checkpoints.last().unwrap();
+    assert_eq!(checkpoint.phase, Phase::Inventory);
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    assert_eq!(checkpoint.coordinates.runtime_cursor, read.commit_cursor);
+    assert_eq!(
+        checkpoint.coordinates.runtime_manifest_sha256,
+        read.manifest_id
+    );
+    let replay = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory-step",
+        BASE + 3_100,
+    )
+    .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.status, inventoried.status);
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), read);
+    let changes = engine
+        .storage
+        .runtime()
+        .read_changes(&read, 0, 512)
+        .unwrap();
+    assert!(changes.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == "source-tree-snapshot")));
+    assert!(changes.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Relation { relation } if relation.reference.kind.as_str() == "source-tree-contains")));
+    drop(engine);
+    let engine = installed.reopen(BASE + 4_000);
+    let session = installed.session(&engine, "inventory-reopen", BASE + 4_100);
+    assert_eq!(
+        installed
+            .read(&engine, &session, BASE + 4_200)
+            .job
+            .checkpoints,
+        inventoried.status.job.checkpoints
+    );
+    std::fs::rename(
+        installed.root.path().join("before.txt"),
+        installed.root.path().join("after.txt"),
+    )
+    .unwrap();
+    std::fs::remove_file(installed.root.path().join("removed.txt")).unwrap();
+    std::fs::write(installed.root.path().join("added.txt"), "added content\n").unwrap();
+    std::fs::write(
+        installed.root.path().join("README.md"),
+        "edited after Inventory\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&inventoried.status.job),
+            "inventory-stale",
+            BASE + 5_000
+        ),
+        Err(ServiceError::AttunementSourceChanged)
+    ));
+    let replan = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            inventoried.status.job.revision,
+            BASE + 5_100,
+            "request-inventory-replan",
+            "operation-inventory-replan",
+        )
+        .unwrap();
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &replan,
+            &replan.proposal_sha256,
+            &context("inventory-accept"),
+            BASE + 5_200,
+        )
+        .unwrap();
+    let successor = &accepted.successor.job;
+    let started = call(
+        &engine,
+        &session,
+        &AttunementCommand::Start {
+            job_id: successor.id.clone(),
+            plan_sha256: successor.plan_sha256.clone(),
+            expected_revision: successor.revision,
+            lease_ms: 30_000,
+        },
+        "inventory-successor-start",
+        BASE + 6_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "inventory-successor-connect",
+        BASE + 7_000,
+    )
+    .unwrap();
+    let next = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "inventory-successor-step",
+        BASE + 8_000,
+    )
+    .unwrap();
+    assert_eq!(next.status.job.checkpoints.len(), 2);
+    assert_ne!(
+        next.status.job.checkpoints[1].output_sha256,
+        checkpoint.output_sha256
+    );
+    let new_read = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let delta = engine
+        .storage
+        .runtime()
+        .read_changes(&new_read, read.commit_cursor, 512)
+        .unwrap();
+    assert!(delta.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == "source-tree-change-set"
+            && matches!(record.properties.get("modified"), Some(RuntimeValue::List(values)) if !values.is_empty()))));
+    let change_set = delta
+        .changes
+        .iter()
+        .find_map(|change| match &change.mutation {
+            RuntimeMutation::Record { record }
+                if record.reference.kind.as_str() == "source-tree-change-set" =>
+            {
+                Some(record)
+            }
+            _ => None,
+        })
+        .unwrap();
+    for field in ["added", "removed"] {
+        assert!(
+            matches!(change_set.properties.get(field), Some(RuntimeValue::List(values)) if values.len() == 2)
+        );
+    }
+    assert!(
+        matches!(change_set.properties.get("rename_candidates"), Some(RuntimeValue::List(values)) if values.len() == 1)
+    );
+    let retired: Vec<_> = delta
+        .changes
+        .iter()
+        .filter_map(|change| match &change.mutation {
+            RuntimeMutation::Retire { retirement }
+                if retirement.reference.kind.as_str() == "source-tree-entry" =>
+            {
+                Some(retirement.reference.clone())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(retired.len(), 2);
+    for path in ["before.txt", "removed.txt"] {
+        let original = changes
+            .changes
+            .iter()
+            .find_map(|change| match &change.mutation {
+                RuntimeMutation::Record { record }
+                    if record.reference.kind.as_str() == "source-tree-entry"
+                        && record.properties.get("path")
+                            == Some(&RuntimeValue::String(path.into())) =>
+                {
+                    Some(&record.reference)
+                }
+                _ => None,
+            })
+            .unwrap();
+        assert!(retired.contains(original));
+    }
+}
+
+#[test]
+fn inventory_source_rejection_preserves_runtime_and_allows_retry() {
+    let (installed, engine, session) = Installed::new(InstallationTargetKind::ExistingProject);
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "retry-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "retry-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let before = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let head = format!("server/state/{}/inventory/head", engine.instance_id());
+    let original = std::fs::read(installed.root.path().join("README.md")).unwrap();
+    std::fs::write(installed.root.path().join("README.md"), "changed input\n").unwrap();
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&connected.status.job),
+            "retry-inventory",
+            BASE + 3_000
+        ),
+        Err(ServiceError::AttunementSourceChanged)
+    ));
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
+    assert!(engine.storage.control().get(&head).unwrap().is_none());
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 3_100).job,
+        connected.status.job
+    );
+    std::fs::write(installed.root.path().join("README.md"), original).unwrap();
+    let accepted = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "retry-inventory",
+        BASE + 4_000,
+    )
+    .unwrap();
+    assert!(
+        !accepted.idempotent_replay,
+        "a failed attempt must not consume its receipt key"
+    );
+    assert_eq!(accepted.status.job.checkpoints.len(), 2);
+    assert!(engine.storage.control().get(&head).unwrap().is_some());
+}
+
+#[test]
+fn inventory_larger_than_one_physical_batch_publishes_and_reopens() {
+    let (installed, engine, session) =
+        Installed::with_source(InstallationTargetKind::ExistingProject, None, |root| {
+            let source = root.join("src");
+            std::fs::create_dir(&source).unwrap();
+            for index in 0..2048 {
+                std::fs::write(
+                    source.join(format!("entry-{index:04}.txt")),
+                    format!("source entry {index}\n"),
+                )
+                .unwrap();
+            }
+        });
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(60_000),
+        "large-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "large-connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let inventoried = call(
+        &engine,
+        &session,
+        &step(&connected.status.job),
+        "large-inventory",
+        connected.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.checkpoints.len(), 2);
+    assert_eq!(
+        inventoried.status.job.checkpoints[1].phase,
+        Phase::Inventory
+    );
+    let groups = engine
+        .storage
+        .control()
+        .journal_since(0, 1024)
+        .unwrap()
+        .into_iter()
+        .filter(|entry| entry.action == "attunement.inventory_group_published")
+        .count();
+    assert!(
+        groups > 1,
+        "the whole input must cross the native atomic batch boundary"
+    );
+    let reopened_at = inventoried.status.job.updated_at_unix_ms + 1_000;
+    drop(engine);
+    let engine = installed.reopen(reopened_at);
+    let session = installed.session(&engine, "large-reopen", reopened_at + 100);
+    assert_eq!(
+        installed.read(&engine, &session, reopened_at + 200).job,
+        inventoried.status.job
+    );
+}
+
+#[test]
+fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
+    let defaults = rrd_contract::EstateConfiguration::default();
+    let input = rrd_contract::EstateConfigurationInput {
+        format_version: defaults.format_version,
+        clock: defaults.clock,
+        storage: rrd_contract::StorageLimits {
+            transaction_admission_bytes: 16_384,
+            ..defaults.storage
+        },
+        reasoning: defaults.reasoning,
+        recall: defaults.recall,
+        query: defaults.query,
+    };
+    let file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(file.path(), toml::to_string(&input).unwrap()).unwrap();
+    let (installed, engine, session) = Installed::with_configuration(
+        InstallationTargetKind::ExistingProject,
+        None,
+        |root| {
+            for index in 0..64 {
+                std::fs::write(root.join(format!("source-{index}.txt")), "bounded source\n")
+                    .unwrap();
+            }
+        },
+        Some(file.path()),
+    );
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "bound-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "bound-connect",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    let before = engine.storage.runtime().read_stamp(&scope).unwrap();
+    let head = format!("server/state/{}/inventory/head", engine.instance_id());
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&connected.status.job),
+            "bound-inventory",
+            BASE + 3_000
+        ),
+        Err(ServiceError::ConfigurationLimit(_))
+    ));
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
+    assert!(engine.storage.control().get(&head).unwrap().is_none());
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 3_100).job,
+        connected.status.job
+    );
+    assert_eq!(
+        engine
+            .transaction_admission_snapshot()
+            .unwrap()
+            .logical_bytes,
+        0
+    );
+    drop(engine);
+    let engine = installed.reopen(BASE + 4_000);
+    let session = installed.session(&engine, "bound-reopen", BASE + 4_100);
+    assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
+    assert!(engine.storage.control().get(&head).unwrap().is_none());
+    assert_eq!(
+        installed.read(&engine, &session, BASE + 4_200).job,
+        connected.status.job
+    );
+}
+
+#[test]
+fn inventory_interruption_preserves_incomplete_groups_and_resumes_after_reopen() {
+    partial_inventory_recovery(false);
+}
+
+#[test]
+fn inventory_edit_during_publication_rejects_stale_completion_and_allows_replan() {
+    partial_inventory_recovery(true);
+}
+
+fn partial_inventory_recovery(edit_source: bool) {
+    let (installed, engine, session) =
+        Installed::with_source(InstallationTargetKind::ExistingProject, None, |root| {
+            let source = root.join("src");
+            std::fs::create_dir(&source).unwrap();
+            for index in 0..2048 {
+                std::fs::write(
+                    source.join(format!("entry-{index:04}.txt")),
+                    format!("source entry {index}\n"),
+                )
+                .unwrap();
+            }
+        });
+    let started = call(
+        &engine,
+        &session,
+        &installed.start(60_000),
+        "interrupt-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let connected = call(
+        &engine,
+        &session,
+        &step(&started.status.job),
+        "interrupt-connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let at = connected.status.job.updated_at_unix_ms + 1;
+    let progress_key = format!(
+        "server/state/{}/inventory/progress/{}/1",
+        engine.instance_id(),
+        installed.job
+    );
+    let head_key = format!("server/state/{}/inventory/head", engine.instance_id());
+    let scope_id = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
+    std::thread::scope(|scope| {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let engine = &engine;
+        let session = &session;
+        let command = step(&connected.status.job);
+        let worker = scope.spawn(move || {
+            let authorized = engine
+                .begin_invocation(
+                    Invocation {
+                        context: context("interrupt-inventory"),
+                        resource: ResourcePath {
+                            segments: vec![rrd_contract::ResourceId::new(
+                                rrd_contract::ResourceKind::Instance,
+                                engine.instance_id().as_str(),
+                            )
+                            .unwrap()],
+                        },
+                        observed_at_unix_ms: at,
+                        attempt: 1,
+                        request_sha256: digest::sha256_hex(&serde_json::to_vec(&command).unwrap()),
+                    },
+                    RrdOperation::EstateAdmin,
+                    InvocationCredential::Session {
+                        session_id: &session.session_id,
+                        token: &session.token,
+                    },
+                )
+                .unwrap();
+            sender.send(authorized).unwrap();
+            call(engine, session, &command, "interrupt-inventory", at)
+        });
+        let authorized = receiver
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .unwrap();
+        let deadline = std::time::Instant::now();
+        while engine
+            .storage
+            .control()
+            .get(&progress_key)
+            .unwrap()
+            .is_none()
+        {
+            assert!(
+                !worker.is_finished(),
+                "Inventory finished before recording progress"
+            );
+            assert!(deadline.elapsed() < std::time::Duration::from_secs(60));
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        if edit_source {
+            std::fs::write(
+                installed.root.path().join("README.md"),
+                "edited during publication\n",
+            )
+            .unwrap();
+            assert!(matches!(
+                worker.join().unwrap(),
+                Err(ServiceError::AttunementSourceChanged)
+            ));
+        } else {
+            authorized.cancel_pending();
+            assert!(matches!(
+                worker.join().unwrap(),
+                Err(ServiceError::AdmissionCancelled)
+            ));
+        }
+    });
+    assert!(engine.storage.control().get(&head_key).unwrap().is_none());
+    let partial = engine.storage.runtime().read_stamp(&scope_id).unwrap();
+    assert!(
+        partial.commit_cursor
+            > connected.status.job.checkpoints[0]
+                .coordinates
+                .runtime_cursor
+    );
+    assert_eq!(
+        installed.read(&engine, &session, at + 30_000).job,
+        connected.status.job
+    );
+    let partial_rows = engine
+        .storage
+        .runtime()
+        .read_changes(&partial, 0, 10_000)
+        .unwrap();
+    assert!(!partial_rows.changes.iter().any(|change| matches!(&change.mutation,
+        RuntimeMutation::Record { record } if record.reference.kind.as_str() == "source-tree-snapshot")));
+    let reopened_at = connected
+        .status
+        .job
+        .lease
+        .as_ref()
+        .unwrap()
+        .expires_at_unix_ms
+        + 1_000;
+    drop(engine);
+    let engine = installed.reopen(reopened_at);
+    let session = installed.session(&engine, "interrupt-reopen", reopened_at + 100);
+    let recovered = call(
+        &engine,
+        &session,
+        &AttunementCommand::RecoverExpired {
+            job_id: installed.job.clone(),
+            expected_revision: connected.status.job.revision,
+        },
+        "interrupt-recover",
+        reopened_at + 200,
+    )
+    .unwrap();
+    let resumed = call(
+        &engine,
+        &session,
+        &resume(&recovered.status.job, reopened_at + 300),
+        "interrupt-resume",
+        reopened_at + 300,
+    );
+    if edit_source {
+        assert!(matches!(
+            resumed,
+            Err(ServiceError::AttunementSourceChanged)
+        ));
+        assert!(engine.storage.control().get(&head_key).unwrap().is_none());
+        let replan = engine
+            .preview_attunement_replan(
+                &session.session_id,
+                &session.token,
+                &installed.job,
+                recovered.status.job.revision,
+                reopened_at + 400,
+                "request-partial-replan",
+                "operation-partial-replan",
+            )
+            .unwrap();
+        let accepted = engine
+            .accept_attunement_replan(
+                &session.session_id,
+                &session.token,
+                &replan,
+                &replan.proposal_sha256,
+                &context("partial-accept"),
+                reopened_at + 500,
+            )
+            .unwrap();
+        assert_ne!(
+            accepted.successor.job.plan_sha256,
+            connected.status.job.plan_sha256
+        );
+        assert!(accepted.successor.job.checkpoints.is_empty());
+        assert!(engine.storage.control().get(&head_key).unwrap().is_none());
+        return;
+    }
+    let resumed = resumed.unwrap();
+    let complete = call(
+        &engine,
+        &session,
+        &step(&resumed.status.job),
+        "interrupt-continue",
+        resumed.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    assert_eq!(complete.status.job.checkpoints.len(), 2);
+    assert!(engine
+        .storage
+        .control()
+        .get(&progress_key)
+        .unwrap()
+        .is_none());
+    assert!(engine.storage.control().get(&head_key).unwrap().is_some());
+    let read = engine.storage.runtime().read_stamp(&scope_id).unwrap();
+    let changes = engine
+        .storage
+        .runtime()
+        .read_changes(&read, 0, 10_000)
+        .unwrap();
+    let identities: Vec<_> = changes
+        .changes
+        .iter()
+        .filter_map(|change| match &change.mutation {
+            RuntimeMutation::Record { record }
+                if record.reference.kind.as_str() == "source-tree-entry" =>
+            {
+                Some(record.reference.clone())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        identities.len(),
+        2052, // Root, src, README, the excluded .rrflow marker, and 2,048 files.
+        "resume must not republish already committed groups"
+    );
+    assert_eq!(
+        identities
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        identities.len()
+    );
+}
+
+#[test]
+fn git_selected_plan_ignores_irrelevant_edits_replans_tracked_edits_and_reopens() {
+    selected_plan_replans_after_progress_and_reopens(true);
+}
+
+fn selected_plan_replans_after_progress_and_reopens(git: bool) {
+    let configured = |phase, name: &str| crate::AttunementProposalStep {
+        phase,
+        description: name.into(),
+        estimated_items: 1,
+        estimated_input_bytes: 0,
+    };
+    let proposal = crate::AttunementProposal {
+        format_version: crate::ATTUNEMENT_PROPOSAL_FORMAT_VERSION,
+        steps: vec![
+            configured(Phase::Connect, "first"),
+            configured(Phase::Connect, "second"),
+            configured(Phase::Verify, "verify"),
+        ],
+        estimated_min_duration_ms: 0,
+        estimated_max_duration_ms: 1000,
+    };
+    let (installed, engine, session) = Installed::with_source(
+        InstallationTargetKind::ExistingProject,
+        Some(&proposal),
+        |root| {
+            if git {
+                std::fs::create_dir(root.join(".git")).unwrap();
+                std::fs::create_dir(root.join("src")).unwrap();
+                std::fs::write(
+                    root.join(".git/index"),
+                    include_bytes!(
+                        "../../../../../compute/rrd-attunement/tests/fixtures/git-index/sha1-v2.index"
+                    ),
+                )
+                .unwrap();
+                std::fs::write(root.join(".gitignore"), b"*.log\nsrc/\n").unwrap();
+                std::fs::write(root.join("src/main.rs"), b"tracked source\n").unwrap();
+            }
+        },
+    );
+    assert_eq!(installed.preview.attunement.phases.len(), 3);
+    if git {
+        std::fs::write(
+            installed.root.path().join("ignored.log"),
+            b"irrelevant edit\n",
+        )
+        .unwrap();
+        std::fs::write(
+            installed.root.path().join("src/untracked"),
+            b"ignored sibling\n",
+        )
+        .unwrap();
+    }
+    let running = call(
+        &engine,
+        &session,
+        &installed.start(30_000),
+        "public-start",
+        BASE + 1_000,
+    )
+    .unwrap();
+    let first = call(
+        &engine,
+        &session,
+        &step(&running.status.job),
+        "public-step-1",
+        BASE + 2_000,
+    )
+    .unwrap();
+    let second = call(
+        &engine,
+        &session,
+        &step(&first.status.job),
+        "public-step-2",
+        BASE + 3_000,
+    )
+    .unwrap();
+    assert_eq!(second.status.job.checkpoints.len(), 2);
+    std::fs::write(
+        installed
+            .root
+            .path()
+            .join(if git { "src/main.rs" } else { "README.md" }),
+        "source changed after progress\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&second.status.job),
+            "public-stale-step",
+            BASE + 3_500
+        ),
+        Err(ServiceError::AttunementSourceChanged)
+    ));
+    let proposed = engine
+        .preview_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &installed.job,
+            second.status.job.revision,
+            BASE + 4_000,
+            "request-public-preview",
+            "operation-public-preview",
+        )
+        .unwrap();
+    assert_ne!(
+        proposed.plan.source_sha256,
+        installed.preview.attunement.source_sha256
+    );
+    assert_eq!(proposed.plan.phases, installed.preview.attunement.phases);
+    let sequence = engine.storage.control().sequence().unwrap();
+    let accepted = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &proposed,
+            &proposed.proposal_sha256,
+            &context("public-accept"),
+            BASE + 4_100,
+        )
+        .unwrap();
+    assert_eq!(
+        accepted.predecessor.job.checkpoints,
+        second.status.job.checkpoints
+    );
+    assert!(accepted.successor.job.checkpoints.is_empty());
+    let journal = engine
+        .storage
+        .control()
+        .journal_since(sequence, 32)
+        .unwrap();
+    assert!(journal
+        .iter()
+        .any(|entry| entry.action == "attunement.replan_receipted"));
+    drop(engine);
+    let engine = installed.reopen(BASE + 5_000);
+    let session = installed.session(&engine, "public-reopen", BASE + 5_100);
+    let replay = engine
+        .accept_attunement_replan(
+            &session.session_id,
+            &session.token,
+            &proposed,
+            &proposed.proposal_sha256,
+            &context("public-accept"),
+            BASE + 5_200,
+        )
+        .unwrap();
+    assert!(replay.idempotent_replay);
+    assert_eq!(replay.successor, accepted.successor);
+    assert_eq!(replay.predecessor, accepted.predecessor);
 }
 
 #[test]
@@ -688,24 +1548,34 @@ fn replan_refuses_an_unreconciled_failure() {
         &session,
         &step(&started.status.job),
         "unknown-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
-    let failed = call(
+    let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "unknown-failure",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+    let failed = call(
+        &engine,
+        &session,
+        &step(&inventoried.status.job),
+        "unknown-parse",
+        inventoried.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let failure_at = failed.status.job.updated_at_unix_ms;
     assert!(engine
         .preview_attunement_replan(
             &session.session_id,
             &session.token,
             &installed.job,
             failed.status.job.revision,
-            BASE + 3_050,
+            failure_at + 1,
             "request-known-failure",
             "operation-known-failure"
         )
@@ -727,7 +1597,7 @@ fn replan_refuses_an_unreconciled_failure() {
             key,
             expected,
             replacement: Some(serde_json::to_vec(&unknown).unwrap()),
-            at: BASE + 3_100,
+            at: failure_at + 2,
             actor: "test-fixture".into(),
             action: "attunement.fixture_unknown".into(),
             request_id: "request-fixture-unknown".into(),
@@ -740,13 +1610,16 @@ fn replan_refuses_an_unreconciled_failure() {
             &session.token,
             &installed.job,
             unknown.revision,
-            BASE + 4_000,
+            failure_at + 3,
             "request-unknown",
             "operation-unknown"
         ),
         Err(ServiceError::StorageConflict(_))
     ));
-    assert_eq!(installed.read(&engine, &session, BASE + 4_100).job, unknown);
+    assert_eq!(
+        installed.read(&engine, &session, failure_at + 4).job,
+        unknown
+    );
 }
 
 #[test]
@@ -1033,6 +1906,9 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
             BASE + 1_200,
         )
         .unwrap();
+    // Effects include real elapsed work. Continue from their committed time,
+    // rather than assuming the previous call finished within a fixed window.
+    let receipt_at = accepted.predecessor.job.updated_at_unix_ms + 1;
     let before = engine.storage.control().journal_since(0, 1024).unwrap();
     let receipt = engine
         .read_attunement_replan_receipt(
@@ -1040,7 +1916,7 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
             &session.token,
             &installed.job,
             &id("read-replan"),
-            BASE + 1_300,
+            receipt_at,
             "request-read-replan",
             "operation-read-replan",
         )
@@ -1055,7 +1931,7 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
             &id("bad-token"),
             &installed.job,
             &id("read-replan"),
-            BASE + 1_400,
+            receipt_at + 1,
             "request-bad-replan",
             "operation-bad-replan"
         )
@@ -1068,7 +1944,7 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
     };
     assert_eq!(count(&before), count(&after));
     assert_eq!(
-        installed.read(&engine, &session, BASE + 1_500).job,
+        installed.read(&engine, &session, receipt_at + 2).job,
         accepted.predecessor.job
     );
     let successor_start = AttunementCommand::Start {
@@ -1082,38 +1958,40 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
         &session,
         &successor_start,
         "receipt-successor-start",
-        BASE + 1_600,
+        receipt_at + 3,
     )
     .unwrap();
     std::fs::write(installed.root.path().join("README.md"), "later edit\n").unwrap();
+    let later_at = successor.status.job.updated_at_unix_ms + 1;
     let later = engine
         .preview_attunement_replan(
             &session.session_id,
             &session.token,
             &successor.status.job.id,
             successor.status.job.revision,
-            BASE + 1_700,
+            later_at,
             "request-later-preview",
             "operation-later-preview",
         )
         .unwrap();
-    engine
+    let later_accepted = engine
         .accept_attunement_replan(
             &session.session_id,
             &session.token,
             &later,
             &later.proposal_sha256,
             &context("later-replan"),
-            BASE + 1_800,
+            later_at + 1,
         )
         .unwrap();
+    let historical_at = later_accepted.predecessor.job.updated_at_unix_ms + 1;
     let historical = engine
         .read_attunement_replan_receipt(
             &session.session_id,
             &session.token,
             &installed.job,
             &id("read-replan"),
-            BASE + 1_900,
+            historical_at,
             "request-historical-replan-read",
             "operation-historical-replan-read",
         )
@@ -1121,15 +1999,15 @@ fn replan_receipt_read_is_principal_scoped_and_does_not_replay() {
         .unwrap();
     assert_eq!(historical, receipt);
     drop(engine);
-    let engine = installed.reopen(BASE + 2_000);
-    let renewed = installed.session(&engine, "replan-read-reopen", BASE + 2_100);
+    let engine = installed.reopen(historical_at + 1);
+    let renewed = installed.session(&engine, "replan-read-reopen", historical_at + 2);
     let reopened = engine
         .read_attunement_replan_receipt(
             &renewed.session_id,
             &renewed.token,
             &installed.job,
             &id("read-replan"),
-            BASE + 2_200,
+            historical_at + 3,
             "request-replan-reopen",
             "operation-replan-reopen",
         )
@@ -1326,16 +2204,33 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
     )
     .unwrap();
     let command = step(&started.status.job);
-    let connected = call(&engine, &session, &command, "connect", BASE + 2_000).unwrap();
-    let failed = call(
+    let connected = call(
+        &engine,
+        &session,
+        &command,
+        "connect",
+        started.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "inventory",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+    let failed = call(
+        &engine,
+        &session,
+        &step(&inventoried.status.job),
+        "receipt-parse",
+        inventoried.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(failed.status.job.state, State::Failed);
+    let failure_at = failed.status.job.updated_at_unix_ms;
     let before = engine.storage.control().journal_since(0, 1024).unwrap();
     let count_receipts = |entries: &[rrd_store::ControlJournalEntry]| {
         entries
@@ -1349,7 +2244,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
             &session.token,
             &installed.job,
             &id("connect"),
-            BASE + 3_100,
+            failure_at + 1,
             "receipt-read",
             "receipt-read",
         )
@@ -1378,7 +2273,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
             &id("invalid-token"),
             &installed.job,
             &id("connect"),
-            BASE + 3_200,
+            failure_at + 2,
             "receipt-invalid",
             "receipt-invalid",
         )
@@ -1389,7 +2284,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
             &session.token,
             &CanonicalId::new("other-job").unwrap(),
             &id("connect"),
-            BASE + 3_300,
+            failure_at + 3,
             "receipt-foreign",
             "receipt-foreign",
         )
@@ -1398,19 +2293,19 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
     let after = engine.storage.control().journal_since(0, 1024).unwrap();
     assert_eq!(count_receipts(&before), count_receipts(&after));
     assert_eq!(
-        installed.read(&engine, &session, BASE + 3_500).job,
+        installed.read(&engine, &session, failure_at + 4).job,
         failed.status.job
     );
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
-    let renewed = installed.session(&engine, "receipt-renewed", BASE + 4_100);
+    let engine = installed.reopen(failure_at + 5);
+    let renewed = installed.session(&engine, "receipt-renewed", failure_at + 6);
     let reopened = engine
         .read_attunement_receipt(
             &renewed.session_id,
             &renewed.token,
             &installed.job,
             &id("connect"),
-            BASE + 5_000,
+            failure_at + 7,
             "receipt-reopened",
             "receipt-reopened",
         )
@@ -1418,7 +2313,7 @@ fn attunement_receipt_readback_preserves_original_result_after_reopen() {
         .unwrap();
     assert_eq!(reopened, receipt);
     assert_eq!(
-        installed.read(&engine, &renewed, BASE + 5_500).job,
+        installed.read(&engine, &renewed, failure_at + 8).job,
         failed.status.job
     );
 }
@@ -1613,24 +2508,34 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
         &session,
         &step(&started.status.job),
         "detail-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
-    let failed = call(
+    let inventoried = call(
         &engine,
         &session,
         &step(&connected.status.job),
         "detail-inventory",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+    let failed = call(
+        &engine,
+        &session,
+        &step(&inventoried.status.job),
+        "detail-parse",
+        inventoried.status.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let failure_at = failed.status.job.updated_at_unix_ms;
     std::fs::write(installed.root.path().join("README.md"), "changed source\n").unwrap();
     let read = engine
         .read_attunement_detail(
             &session.session_id,
             &session.token,
             &request,
-            BASE + 4_000,
+            failure_at + 1,
             "request-detail",
             "operation-detail",
         )
@@ -1652,7 +2557,7 @@ fn attunement_detail_reports_failure_and_does_not_claim_source_verification() {
             &session.session_id,
             &invalid_token,
             &request,
-            BASE + 4_001,
+            failure_at + 2,
             "request-denied",
             "operation-denied"
         )
@@ -1678,7 +2583,14 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
         .unwrap();
         assert_eq!(start.status.job.state, State::Running);
         let work = step(&start.status.job);
-        let connected = call(&engine, &session, &work, "connect", BASE + 2_000).unwrap();
+        let connected = call(
+            &engine,
+            &session,
+            &work,
+            "connect",
+            start.status.job.updated_at_unix_ms + 1,
+        )
+        .unwrap();
         assert_eq!(connected.status.job.current_phase, Some(Phase::Inventory));
         assert_eq!(connected.status.job.checkpoints.len(), 1);
         let checkpoint = &connected.status.job.checkpoints[0];
@@ -1694,12 +2606,21 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             read.manifest_id
         );
         assert_eq!(checkpoint.coordinates.runtime_cursor, read.commit_cursor);
-        let failed = call(
+        let inventoried = call(
             &engine,
             &session,
             &step(&connected.status.job),
             "inventory",
-            BASE + 3_000,
+            connected.status.job.updated_at_unix_ms + 1,
+        )
+        .unwrap();
+        assert_eq!(inventoried.status.job.current_phase, Some(Phase::Parse));
+        let failed = call(
+            &engine,
+            &session,
+            &step(&inventoried.status.job),
+            "parse",
+            inventoried.status.job.updated_at_unix_ms + 1,
         )
         .unwrap();
         assert_eq!(failed.status.job.state, State::Failed);
@@ -1709,31 +2630,32 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
         );
         assert_eq!(
             failed.status.job.checkpoints,
-            connected.status.job.checkpoints
+            inventoried.status.job.checkpoints
         );
         assert!(failed.status.job.lease.is_none());
+        let failure_at = failed.status.job.updated_at_unix_ms;
         drop(engine);
-        let engine = installed.reopen(BASE + 4_000);
-        let renewed = installed.session(&engine, "second-session", BASE + 4_100);
-        let replay = call(&engine, &renewed, &work, "connect", BASE + 5_000).unwrap();
+        let engine = installed.reopen(failure_at + 1);
+        let renewed = installed.session(&engine, "second-session", failure_at + 2);
+        let replay = call(&engine, &renewed, &work, "connect", failure_at + 3).unwrap();
         assert!(replay.idempotent_replay);
         assert_eq!(
             replay.status, connected.status,
             "replay returns the original receipt even after later failure"
         );
         assert_eq!(
-            installed.read(&engine, &renewed, BASE + 5_500).job,
+            installed.read(&engine, &renewed, failure_at + 4).job,
             failed.status.job
         );
         let resumed = call(
             &engine,
             &renewed,
-            &resume(&failed.status.job, BASE + 6_000),
+            &resume(&failed.status.job, failure_at + 5),
             "resume",
-            BASE + 6_000,
+            failure_at + 5,
         )
         .unwrap();
-        assert_eq!(resumed.status.job.current_phase, Some(Phase::Inventory));
+        assert_eq!(resumed.status.job.current_phase, Some(Phase::Parse));
         assert!(
             resumed.status.job.lease.as_ref().unwrap().generation
                 > start.status.job.lease.as_ref().unwrap().generation
@@ -1742,20 +2664,20 @@ fn attunement_installed_connect_failure_and_exact_receipts_survive_reopen() {
             &engine,
             &renewed,
             &step(&resumed.status.job),
-            "inventory-again",
-            BASE + 7_000,
+            "parse-again",
+            resumed.status.job.updated_at_unix_ms + 1,
         )
         .unwrap();
         assert_eq!(
             failed_again.status.job.checkpoints.len(),
-            1,
-            "no fake inventory checkpoint"
+            2,
+            "unsupported Parse must not fabricate a checkpoint"
         );
         drop(engine);
         let report = RrdEngine::inspect_installed_with_clock(
             installed.root.path(),
             &installed.executable,
-            &FixedClock::at(BASE + 8_000),
+            &FixedClock::at(failed_again.status.job.updated_at_unix_ms + 1),
         )
         .unwrap();
         assert_eq!(report.status, crate::InstallationVerificationStatus::Passed);
