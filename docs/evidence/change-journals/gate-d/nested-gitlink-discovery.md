@@ -45,6 +45,15 @@ prove ignored files unchanged. The isolated CLI oracle separately compares all
 files in its small project and verifies no `.rrflow` was created. No actual
 project plan was applied and no service, model or provider was started.
 
+A later read-only inspection narrowed the separate root-install failure recorded
+in PR232: the existing `.rrflow` directory has an unprotected inherited Windows
+DACL, and baseline `EstateFilesystem::admit` checks it first. The locator
+`.rrflow/config.toml` is absent, while `.rrflow/rrd/CURRENT` exists. Even after
+private admission, `reject_existing_estate` refuses an unrecognized `.rrflow`
+tree. No secret or database contents were read, no ACL changed, and no state
+was removed. These observations do not authorize adoption or deletion; a
+separate reviewed resolution must preserve the existing state.
+
 The real-process binary predates a later test-only fixture hardening and new
 CLI test; those edits did not change the production implementation. The source
 and test tree after those changes is `4da5324bf039e763722c46686fef996dbce1d63f`.
