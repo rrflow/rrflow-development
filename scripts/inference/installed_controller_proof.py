@@ -37,10 +37,20 @@ def main():
     parser.add_argument('--worker-terminal-rejection', action='store_true',
                         help='Require a real length-terminated worker rejection and prove capacity with another real task.')
     parser.add_argument('--capacity-task-source', help='Separate actual task source for the terminal-rejection capacity proof.')
+    parser.add_argument('--worker-terminal-resume', action='store_true',
+                        help='Resume the same actual task after terminal rejection and admit a fresh selector/worker.')
+    parser.add_argument('--resume-profile', help='Supplied profile restoring only the rejected worker output allowance.')
     parser.add_argument('--native-client', help='Use the task_model_call Rust example for admitted model calls.')
     parser.add_argument('--native-client-timeout-ms', type=int)
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
+    terminal_worker = args.worker_terminal_rejection or args.worker_terminal_resume
+    if args.worker_terminal_resume and (not args.worker or args.worker_terminal_rejection
+                                       or args.worker_interrupt or args.fault_case or args.native_client
+                                       or recovery or args.admission_only):
+        parser.error('Terminal resume requires --worker without other proof modes.')
+    if bool(args.resume_profile) != args.worker_terminal_resume:
+        parser.error('Terminal resume requires exactly one --resume-profile.')
     if args.worker_terminal_rejection and (not args.worker or args.worker_interrupt or args.fault_case
                                           or args.native_client or recovery or args.admission_only):
         parser.error('Terminal rejection requires --worker without interruption, fault, native, recovery or admission-only modes.')
@@ -111,6 +121,11 @@ def main():
             save('native-client-identity.json', {'binarySha256': client_digest, 'sourcePath': str(source_client)})
         profile = json.loads(Path(args.profile).read_text(encoding='utf-8'))
         task_source = json.loads(Path(args.task_source).read_text(encoding='utf-8'))
+        if args.worker_terminal_resume:
+            from installed_task_resume_proof import validate_resume_profiles
+            resume_profile = json.loads(Path(args.resume_profile).read_text(encoding='utf-8'))
+            validate_resume_profiles(profile, resume_profile)
+            save('resume-profile-input.json', resume_profile)
         if args.worker_terminal_rejection:
             capacity_source = json.loads(Path(args.capacity_task_source).read_text(encoding='utf-8'))
             assert capacity_source['url'] != task_source['url'], 'Capacity proof requires a different actual task source'
@@ -123,7 +138,7 @@ def main():
             assert profile.get('worker_policy'), 'Worker mode requires explicit operator worker policy'
         binding = next(b for b in profile['bindings'] if b['id'] == policy['controller_binding_id'])
         assert binding.get('credential'), 'Proof requires an explicitly credentialed binding'
-        if args.fault_case or args.worker_interrupt or args.worker_terminal_rejection:
+        if args.fault_case or args.worker_interrupt or terminal_worker:
             from installed_controller_fault_relay import FaultRelay
             fault_timeout = binding['limits']['timeout_ms'] / 1000
             response_limit = policy['limits']['maximum_response_bytes']
@@ -132,16 +147,20 @@ def main():
                                        if entry['binding_id'] == binding['id']), None)
                 assert worker_binding is not None, 'Relayed controller binding needs explicit worker policy'
                 response_limit = max(response_limit, worker_binding['maximum_response_bytes'])
-            if args.worker_terminal_rejection:
+            if terminal_worker:
                 assert binding['limits']['max_concurrency'] == 1, 'Capacity proof requires a one-call binding limit'
             relay = FaultRelay(binding['endpoint']['url'], out, fault_timeout,
                                binding['limits']['max_input_bytes'], response_limit,
-                               3 if args.worker_terminal_rejection else
+                               4 if args.worker_terminal_resume else 3 if args.worker_terminal_rejection else
                                2 if args.worker or args.fault_case == 'configuration' else 1,
                                args.worker_interrupt or args.fault_case == 'disconnect',
                                hold_call=2 if args.worker else 1)
             binding['endpoint']['url'] = relay.base_url
             save('effective-profile.json', profile)
+            if args.worker_terminal_resume:
+                next_binding = next(b for b in resume_profile['bindings'] if b['id'] == binding['id'])
+                next_binding['endpoint']['url'] = relay.base_url
+                save('effective-resume-profile.json', resume_profile)
 
         if not args.admission_only:
             mapping = {'format_version': 1, 'entries': [{
@@ -167,6 +186,7 @@ def main():
     worker_output = None
     worker_before_restart = None
     capacity_probe = None
+    resume_probe = None
     if recovery and (recovery / 'worker-request.json').exists():
         worker_request = json.loads((recovery / 'worker-request.json').read_text(encoding='utf-8'))
 
@@ -180,11 +200,14 @@ def main():
     if args.worker_terminal_rejection:
         phases = ['missing-credential', 'authorized', 'worker-missing-credential', 'worker-authorized',
                   'worker-terminal-reopened', 'capacity-authorized', 'capacity-reopened']
+    if args.worker_terminal_resume:
+        phases = ['missing-credential', 'authorized', 'worker-missing-credential', 'worker-authorized',
+                  'worker-terminal-reopened', 'resume-authorized', 'resume-reopened']
     for phase in phases:
         log_path = out / (phase + '-server.log')
         env = dict(os.environ)
         command = [str(binary), '--json', 'serve', '--project', str(project), '--bind', '127.0.0.1:0']
-        if phase in ['authorized', 'worker-authorized', 'reopened', 'capacity-authorized']:
+        if phase in ['authorized', 'worker-authorized', 'reopened', 'capacity-authorized', 'resume-authorized']:
             env[args.environment_name] = secret
             command += ['--endpoint-credentials', str(out / 'credential-mapping.json')]
         with log_path.open('xb') as log:
@@ -292,8 +315,15 @@ def main():
                     if worker_request is not None:
                         worker_before_restart = call('worker-attempt', 'task-attempt-read',
                             {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']})
+                    if (recovery / 'resume-worker-request.json').exists():
+                        from installed_task_resume_proof import read_resume_probe
+                        recorded = json.loads((recovery / 'result.json').read_text(encoding='utf-8'))
+                        resume_probe = read_resume_probe(call, recorded['resumeProbe'])
+                        assert budget == resume_probe['budget']
+                        assert attempt == recorded['selectorAttempt']
+                        assert worker_before_restart == recorded['workerAttempt']
                 elif phase in ['worker-interrupt-reopened', 'worker-fault-reopened',
-                               'worker-terminal-reopened', 'capacity-reopened']:
+                               'worker-terminal-reopened', 'capacity-reopened', 'resume-reopened']:
                     worker_selection = {key: worker_request[key] for key in ['scope', 'task_id', 'attempt_id']}
                     budget_selection = {key: worker_request[key] for key in ['scope', 'task_id']}
                     assert call('worker-attempt', 'task-attempt-read', worker_selection) == worker_before_restart
@@ -307,6 +337,16 @@ def main():
                                     {key: capacity_request[key] for key in ['scope', 'task_id', 'attempt_id']}) == capacity_probe['attempt']
                         assert call('capacity-budget', 'task-budget-read',
                                     {key: capacity_request[key] for key in ['scope', 'task_id']}) == capacity_probe['budget']
+                    if phase == 'resume-reopened':
+                        from installed_task_resume_proof import read_resume_probe
+                        assert read_resume_probe(call, resume_probe) == resume_probe
+                elif phase == 'resume-authorized':
+                    from installed_task_resume_proof import execute_resume_probe
+                    resume_probe = execute_resume_probe(
+                        call, save, out, args.contract_example, relay, resume_profile, configuration,
+                        task, request_payload, attempt_before_restart, worker_request,
+                        worker_before_restart, budget_before_restart, binding['id'])
+                    budget_before_restart = resume_probe['budget']
                 elif phase == 'capacity-authorized':
                     original_budget = {key: worker_request[key] for key in ['scope', 'task_id']}
                     call('original-worker-replay', 'task-worker-execute', worker_request, 412,
@@ -355,7 +395,7 @@ def main():
                         assert call('budget', 'task-budget-read', budget_selection) == budget_before_restart
                         missing = call('worker-attempt', 'task-attempt-read', worker_selection)
                         assert missing['attempt'] is None
-                    elif args.worker_terminal_rejection:
+                    elif terminal_worker:
                         with ThreadPoolExecutor(max_workers=1) as executor:
                             pending = executor.submit(call, 'terminal-worker', 'task-worker-execute', worker_request,
                                                       412, True, 'chat response is incomplete or requests unsupported effects')
@@ -373,6 +413,11 @@ def main():
                                 active = call('reserved-budget', 'task-budget-read', budget_selection)
                                 assert active['budget']['active_attempt'] == worker_request['attempt_id']
                                 assert active['budget']['reserved_steps'] == 2 and active['budget']['execution_may_continue']
+                                if args.worker_terminal_resume:
+                                    call('resume-inflight-denied', 'task-budget-resume',
+                                         {**budget_selection, 'expected_budget_sha256': active['budget_sha256']},
+                                         412, error_contains='UnresolvedAttempt')
+                                    assert call('after-denied-resume-budget', 'task-budget-read', budget_selection) == active
                             finally:
                                 relay.release.set()
                             pending.result(timeout=90)
@@ -672,7 +717,7 @@ def main():
                         attempt_before_restart, budget_before_restart = attempt, budget
                         if args.worker:
                             assert accepted['choice']['kind'] == 'select', 'Actual controller abstained; do not fabricate a selection'
-                            if args.worker_interrupt or args.fault_case or args.worker_terminal_rejection:
+                            if args.worker_interrupt or args.fault_case or terminal_worker:
                                 assert accepted['choice']['binding_id'] == binding['id'], 'Worker faults require the actual selected binding to be the relayed binding'
                             worker_request = {
                                 'scope': request_payload['scope'], 'task_id': request_payload['task_id'],
@@ -703,6 +748,24 @@ def main():
                     process.terminate()
                     process.wait(timeout=30)
                 save(phase + '-owned-process-stopped.json', {'pid': process.pid, 'exitCode': process.returncode})
+    if args.worker_terminal_resume:
+        relay.close()
+        assert relay.error is None and relay.calls == 4
+        save('result.json', {'sourceCommit': build['provenance']['source_commit'],
+             'binarySha256': build['executable_sha256'],
+             'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'resumeHelperSha256': hashlib.sha256(Path(__file__).with_name('installed_task_resume_proof.py').read_bytes()).hexdigest(),
+             'relaySha256': hashlib.sha256(Path(__file__).with_name('installed_controller_fault_relay.py').read_bytes()).hexdigest(),
+             'actualProviderCalls': relay.calls, 'acceptedProposal': accepted,
+             'selectorAttempt': attempt_before_restart, 'workerAttempt': worker_before_restart,
+             'budget': budget_before_restart, 'resumeProbe': resume_probe,
+             'sameTaskResumed': True, 'restartReadbackEqual': True,
+             'sameAttemptReplayRejected': True, 'originalDeadlinePreserved': True,
+             'spentEffortPreserved': True, 'ownedServersStopped': True,
+             'modelQualityQualified': False, 'trainingDataCreated': False,
+             'scope': 'actual rejected worker, explicit same-task resume and fresh authorized selection/worker; no project effect or unknown lease clearance'})
+        print(json.dumps({'output': str(out), 'status': 'installed same-task terminal recovery proof passed'}))
+        return
     if args.worker_terminal_rejection:
         relay.close()
         assert relay.error is None and relay.calls == 3
@@ -769,6 +832,7 @@ def main():
              'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
              'attempt': attempt, 'workerAttempt': worker_before_restart,
              'budget': budget, 'providerCallRequested': False,
+             **({'resumeProbe': resume_probe} if resume_probe is not None else {}),
              'ownedServersStopped': True, 'modelQualityQualified': False, 'trainingDataCreated': False})
         print(json.dumps({'output': str(out), 'status': 'existing attempt and budget read; no provider call'}))
         return
