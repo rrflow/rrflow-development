@@ -19,8 +19,8 @@
     "versions"
   ],
   "identity": {
-    "instance": "instance-73d0af55a12ccf5d12167911",
-    "estate": "estate-73d0af55a12ccf5d12167911",
+    "instance": "instance-e94433b2dad856172e39d9e9",
+    "estate": "estate-e94433b2dad856172e39d9e9",
     "principal": "sdk-conformance",
     "api_key": "sdk-conformance-key"
   },
@@ -106,7 +106,7 @@
     }
   },
   "query": {
-    "scope": "instance:instance-73d0af55a12ccf5d12167911",
+    "scope": "instance:instance-e94433b2dad856172e39d9e9",
     "query": "FROM record:document AT VALID 100 KNOWN HEAD WHERE id = \"sdk-conformance\" PROJECT id, title EXPLAIN CONTRACT",
     "parameters": {},
     "budget": {
@@ -121,7 +121,7 @@
   },
   "vector": {
     "ensure": {
-      "scope": "instance:instance-73d0af55a12ccf5d12167911",
+      "scope": "instance:instance-e94433b2dad856172e39d9e9",
       "collection_id": "documents",
       "vectors": [
         {
@@ -135,7 +135,7 @@
       ]
     },
     "search": {
-      "scope": "instance:instance-73d0af55a12ccf5d12167911",
+      "scope": "instance:instance-e94433b2dad856172e39d9e9",
       "valid_at": 100,
       "collection_id": "documents",
       "vector_name": "title",
@@ -154,7 +154,7 @@
     },
     "quantization": {
       "build": {
-        "scope": "instance:instance-73d0af55a12ccf5d12167911",
+        "scope": "instance:instance-e94433b2dad856172e39d9e9",
         "collection_id": "documents",
         "vector_name": "title",
         "method": {
@@ -165,12 +165,12 @@
         "max_storage_keys": 1000
       },
       "activate": {
-        "scope": "instance:instance-73d0af55a12ccf5d12167911",
+        "scope": "instance:instance-e94433b2dad856172e39d9e9",
         "artifact_id": "quant-turboquant-documents-title",
         "generation": 1
       },
       "search": {
-        "scope": "instance:instance-73d0af55a12ccf5d12167911",
+        "scope": "instance:instance-e94433b2dad856172e39d9e9",
         "valid_at": 100,
         "collection_id": "documents",
         "vector_name": "title",
@@ -193,7 +193,7 @@
   },
   "changefeed": {
     "read": {
-      "scope": "instance:instance-73d0af55a12ccf5d12167911",
+      "scope": "instance:instance-e94433b2dad856172e39d9e9",
       "after_cursor": 0,
       "limit": 128
     },
@@ -212,7 +212,7 @@
   },
   "estate": {},
   "expected": {
-    "endpoint_count": 62,
+    "endpoint_count": 71,
     "query_identity": "record:document:sdk-conformance",
     "vector_reference": "embedding:sdk-conformance-title",
     "quantized_access_path": "turboquant",
