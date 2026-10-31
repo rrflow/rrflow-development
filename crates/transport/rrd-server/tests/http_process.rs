@@ -901,6 +901,37 @@ fn initialized_security_authority_binds_sessions_and_denies_ungranted_routes() {
     assert!(!encoded.contains("local-api-key"));
     assert!(!encoded.contains("wrong"));
 
+    // Authorization adds later audit events. Compare only the stable prefix
+    // already observed, not the moving end of the journal.
+    for limit in 1..=14 {
+        let request = envelope(json!({"after_sequence": 0, "limit": limit}), None, None);
+        let (status, page) = post(&server, "/v1/audit/read", &request, Some((session, token)));
+        assert_eq!(status, 200, "limit {limit}: {page}");
+        let page = payload(&page);
+        assert_eq!(page["records"].as_array().unwrap(), &records[..limit]);
+        let (status, export) = post(
+            &server,
+            "/v1/audit/export",
+            &request,
+            Some((session, token)),
+        );
+        assert_eq!(status, 200, "limit {limit}: {export}");
+        let export = payload(&export);
+        let lines = export["json_lines"].as_str().unwrap();
+        let exported: Vec<serde_json::Value> = lines
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert_eq!(exported, records[..limit]);
+        assert_eq!(export["through_sequence"], page["through_sequence"]);
+        assert_eq!(export["chain_anchor_sha256"], page["chain_anchor_sha256"]);
+        assert_eq!(export["chain_head_sha256"], page["chain_head_sha256"]);
+        assert_eq!(
+            export["content_sha256"],
+            rrd_core::digest::sha256_hex(lines.as_bytes())
+        );
+    }
+
     let export = envelope(json!({"after_sequence": 0, "limit": 64}), None, None);
     let (status, exported) = post(&server, "/v1/audit/export", &export, Some((session, token)));
     assert_eq!(status, 200, "{exported}");

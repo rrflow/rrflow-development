@@ -10,6 +10,12 @@ independently.
 
 ## Observed deficiency
 
+The [candidate correction](../../evidence/change-journals/gate-h/h-05-audit-partial-page.md)
+tracks complete page consumption before declaring the control tail. Its local
+memory, persistent-reopen and engine read/export tests pass for the tested page
+sizes. Candidate CI and final closure reconciliation remain pending; this
+deficiency and the separate POAM-029 remain open.
+
 `SecurityRepository::audit_since` (`crates/authority/rrd-security/src/lib.rs`)
 reads control-journal pages of `limit` entries and keeps audit records until it
 holds `limit` of them. It marks the control tail as reached whenever the last
@@ -24,6 +30,19 @@ The `rrd-security` test
 reproduces it: over one valid 14-entry journal, a six-record read reaches the
 head and a five-record read fails. A one-record page cannot trigger it, because
 a non-empty one-record page is never partial.
+
+### Additional scan-bound deficiency (source review)
+
+The candidate corrects tail detection but does not independently bound the
+number of control-journal entries examined. `audit_since` continues fetching
+pages of `limit` control entries until it accumulates `limit` audit records or
+reaches the tail; a long sequence of other control entries therefore causes
+scan work to grow with journal length. The public `AuditPage` has a continuation
+sequence but no explicit completion flag. A scan budget that can return an
+empty nonterminal page requires a compatible continuation/completion contract
+and chain validation; it cannot be inferred from the record limit alone. This
+is a source-grounded finding, not a measured performance incident or a fix.
+The candidate's unbounded-paging stop condition is active.
 
 ## Impact
 
