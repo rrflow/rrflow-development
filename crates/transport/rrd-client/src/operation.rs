@@ -74,6 +74,23 @@ impl RequestOptions {
 }
 
 impl RrdClient {
+    /// Discover stored installed jobs without deriving engine identities locally.
+    pub async fn list_attunement_jobs(
+        &self,
+        session: &Session,
+        request: rrd_contract::ListAttunementJobs,
+        options: RequestOptions,
+    ) -> Result<rrd_contract::AttunementJobPage> {
+        request.validate().map_err(contract)?;
+        let result: rrd_contract::AttunementJobPage = self
+            .generated_attunement_call::<generated::AttunementJobList>(session, &request, options)
+            .await?;
+        result
+            .validate_for(&request, &self.instance)
+            .map_err(contract)?;
+        Ok(result)
+    }
+
     /// Request cancellation; the returned state does not imply worker termination.
     pub async fn cancel_attunement(
         &self,

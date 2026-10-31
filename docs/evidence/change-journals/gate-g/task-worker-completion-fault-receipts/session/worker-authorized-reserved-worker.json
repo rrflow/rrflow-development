@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "request": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "context": {
+      "request_id": "controller-proof-b980ddeec1334cadbc1382c68126bcab",
+      "operation_id": "controller-proof-b980ddeec1334cadbc1382c68126bcab",
+      "idempotency_key": null,
+      "deadline_unix_ms": null
+    },
+    "resource": {
+      "segments": [
+        {
+          "kind": "instance",
+          "id": "instance-d4bbcc5a2c33063d4be0129e"
+        }
+      ]
+    },
+    "payload": {
+      "scope": "instance:instance-d4bbcc5a2c33063d4be0129e",
+      "task_id": "task-b2990c9497341c43044a5232b21c7fb7027722cf9cc0d50f80b93a4762a30031",
+      "attempt_id": "actual-worker-ee4374b112154ca2b0756fbc266bcd4c"
+    }
+  },
+  "response": {
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "request_id": "controller-proof-b980ddeec1334cadbc1382c68126bcab",
+    "operation_id": "controller-proof-b980ddeec1334cadbc1382c68126bcab",
+    "outcome": {
+      "status": "ok",
+      "payload": {
+        "attempt": {
+          "attempt_id": "actual-worker-ee4374b112154ca2b0756fbc266bcd4c",
+          "ordinal": 2,
+          "status": "reserved",
+          "outcome_sha256": null,
+          "result": null
+        }
+      }
+    }
+  }
+}

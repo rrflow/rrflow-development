@@ -110,14 +110,29 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
     )
     .unwrap();
     let plan = preview.attunement;
-    let job_id =
-        rrd_contract::CanonicalId::new(format!("job-{}", &plan.plan_sha256[..24])).unwrap();
+    let (client, shutdown, server) = start(&project).await;
+    let session = login(&client, &project, "typed-session").await;
+    let discovery = rrd_contract::ListAttunementJobs {
+        contract_version: VERSION,
+        after_job_id: None,
+        limit: 1,
+    };
+    let initial = client
+        .list_attunement_jobs(
+            &session,
+            discovery.clone(),
+            read_options("typed-discover").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(initial.jobs.len(), 1);
+    assert_eq!(initial.jobs[0].plan_sha256, plan.plan_sha256);
+    assert_eq!(initial.next_after_job_id, None);
+    let job_id = initial.jobs[0].job_id.clone();
     let read = ReadAttunement {
         contract_version: VERSION,
         job_id: job_id.clone(),
     };
-    let (client, shutdown, server) = start(&project).await;
-    let session = login(&client, &project, "typed-session").await;
     let start_request = StartAttunement {
         contract_version: VERSION,
         job_id: job_id.clone(),
@@ -339,6 +354,30 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
         .await
         .unwrap();
     assert!(!accepted.idempotent_replay);
+    let predecessor_page = client
+        .list_attunement_jobs(
+            &session,
+            discovery.clone(),
+            read_options("typed-discover-predecessor").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(predecessor_page.next_after_job_id, Some(job_id.clone()));
+    let continuation = rrd_contract::ListAttunementJobs {
+        after_job_id: predecessor_page.next_after_job_id,
+        ..discovery
+    };
+    let successor_page = client
+        .list_attunement_jobs(
+            &session,
+            continuation.clone(),
+            read_options("typed-discover-successor").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(successor_page.jobs[0].job_id, accepted.successor.job.id);
+    assert_eq!(successor_page.jobs[0].generation, 1);
+    assert_eq!(successor_page.next_after_job_id, None);
     let receipt_request = ReadAttunementReceipt {
         contract_version: VERSION,
         job_id: job_id.clone(),
@@ -369,6 +408,19 @@ async fn installed_typed_attunement_controls_replan_and_reopen() {
     server.await.unwrap().unwrap();
     let (reopened, shutdown, server) = start(&project).await;
     let session = login(&reopened, &project, "typed-reopen-session").await;
+    let recovered_page = reopened
+        .list_attunement_jobs(
+            &session,
+            continuation,
+            read_options("typed-discover-reopen").unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(recovered_page.jobs, successor_page.jobs);
+    assert_eq!(
+        recovered_page.source_verification,
+        rrd_contract::AttunementSourceVerification::NotChecked
+    );
     let resume_replay = reopened
         .resume_attunement(
             &session,
