@@ -23,6 +23,7 @@ edge = [
 ]
 full = [
     "edge",
+    "rrd-inference/endpoint-chat",
     "dep:rrd-attunement",
     "dep:base64",
     "dep:rrd-cluster",
