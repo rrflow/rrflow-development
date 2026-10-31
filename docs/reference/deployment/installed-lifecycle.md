@@ -294,6 +294,31 @@ second credential, policy, estate, instance, audit outcome, or project edit.
 No listener becomes ready before authentication policy and the installed
 binding are committed.
 
+## Project source preconditions
+
+Installation and attunement replanning use a version-three bounded source
+precondition. The shipped profile owns safety exclusions and work limits. For
+an ordinary Git repository with `.git` inside the admitted project root, the
+engine reads bounded local configuration, index, `info/exclude`, and applicable
+`.gitignore` inputs. Tracked files remain eligible despite ignore patterns;
+safety exclusions still take precedence. Non-Git projects remain supported.
+Ignored edits do not invalidate a plan; eligible source or admitted Git-input
+changes require a fresh plan. The engine revalidates observed files, directories,
+and present/absent Git inputs before returning the precondition.
+
+Symbolic links, directory aliases, mounts, special objects and tracked submodule
+roots are non-followed leaves. No target content or nested repository is admitted
+by discovering one. Linked-worktree Git files, external ignore files/configuration
+includes, sparse/split indexes, unsupported repository extensions, conflicted
+entry kinds and non-ordinary Git metadata inputs fail explicitly. Supporting
+those arrangements requires additional admission and implementation; the engine
+does not consult ambient user/global Git configuration or run Git commands.
+
+This is still a read-only precondition, not a durable source-tree snapshot. It
+rereads eligible content, has no metadata-only reuse proof, and does not activate
+the Inventory executor. Canonical snapshot/change-set publication, cancellation,
+full resource accounting and installed Inventory restart evidence remain D-03 work.
+
 ## Current pre-release slice and rollout
 
 Packages `D01-02-canonical-estate-layout-and-configuration-v1`,

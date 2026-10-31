@@ -121,6 +121,7 @@ fn attunement_proposals_have_no_runtime_or_store_dependency() {
             "serde_json",
             "gix-index",
             "gix-ignore",
+            "gix-config",
             "filetime",
         ]),
         "attunement uses pure buffer parsing, kernel hashes and serialized observations",

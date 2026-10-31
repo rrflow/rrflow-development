@@ -15,6 +15,42 @@ fn limits() -> ParseLimits {
         allocation_bytes: 65536,
     }
 }
+
+#[test]
+fn local_configuration_is_parsed_without_following_external_inputs() {
+    let plain = RepositoryConfig::from_bytes(b"[core]\nignoreCase = true\n", limits()).unwrap();
+    assert!(plain.ignore_case);
+    assert_eq!(plain.object_format, ObjectFormat::Sha1);
+    let sha256 = RepositoryConfig::from_bytes(
+        b"[core]\nrepositoryFormatVersion = 1\n[extensions]\nobjectFormat = sha256\n",
+        limits(),
+    )
+    .unwrap();
+    assert_eq!(sha256.object_format, ObjectFormat::Sha256);
+    for bytes in [
+        b"[include]\npath = ../outside".as_slice(),
+        b"[includeIf \"gitdir:somewhere\"]\npath = ../outside",
+        b"[core]\nexcludesFile = ../outside",
+        b"[core]\nworktree = ../outside",
+        b"[core]\nbare = true",
+        b"[core]\nignoreCase = invalid",
+        b"[core]\nrepositoryFormatVersion = 9",
+        b"[extensions]\nobjectFormat = sha256",
+        b"[extensions]\nworktreeConfig = true",
+        b"[extensions]\nunknown = true",
+        b"[unterminated",
+        b"[INCLUDE]\nPATH=../outside",
+        b"[CORE]\nExcludesFile=../outside",
+        b"[extensions]\nobjectFormat",
+        b"[core]\nsparseCheckout=true",
+    ] {
+        assert!(
+            RepositoryConfig::from_bytes(bytes, limits()).is_err(),
+            "{:?}",
+            String::from_utf8_lossy(bytes)
+        );
+    }
+}
 fn ignore_limits() -> IgnoreLimits {
     IgnoreLimits {
         parse: limits(),

@@ -23,7 +23,15 @@ impl Installed {
         mode: InstallationTargetKind,
         proposal: Option<&crate::AttunementProposal>,
     ) -> (Self, RrdEngine, SessionLease) {
+        Self::with_source(mode, proposal, |_| {})
+    }
+    fn with_source(
+        mode: InstallationTargetKind,
+        proposal: Option<&crate::AttunementProposal>,
+        setup: impl FnOnce(&Path),
+    ) -> (Self, RrdEngine, SessionLease) {
         let root = tempfile::tempdir().unwrap();
+        setup(root.path());
         if mode == InstallationTargetKind::ExistingProject {
             std::fs::write(root.path().join("README.md"), "real project source\n").unwrap();
         }
@@ -178,6 +186,15 @@ fn cancel(job: &AttunementJob, at: u64) -> AttunementCommand {
 
 #[test]
 fn publicly_selected_plan_replans_after_progress_and_reopens() {
+    selected_plan_replans_after_progress_and_reopens(false);
+}
+
+#[test]
+fn git_selected_plan_ignores_irrelevant_edits_replans_tracked_edits_and_reopens() {
+    selected_plan_replans_after_progress_and_reopens(true);
+}
+
+fn selected_plan_replans_after_progress_and_reopens(git: bool) {
     let configured = |phase, name: &str| crate::AttunementProposalStep {
         phase,
         description: name.into(),
@@ -194,9 +211,38 @@ fn publicly_selected_plan_replans_after_progress_and_reopens() {
         estimated_min_duration_ms: 0,
         estimated_max_duration_ms: 1000,
     };
-    let (installed, engine, session) =
-        Installed::with_proposal(InstallationTargetKind::ExistingProject, Some(&proposal));
+    let (installed, engine, session) = Installed::with_source(
+        InstallationTargetKind::ExistingProject,
+        Some(&proposal),
+        |root| {
+            if git {
+                std::fs::create_dir(root.join(".git")).unwrap();
+                std::fs::create_dir(root.join("src")).unwrap();
+                std::fs::write(
+                    root.join(".git/index"),
+                    include_bytes!(
+                        "../../../../../compute/rrd-attunement/tests/fixtures/git-index/sha1-v2.index"
+                    ),
+                )
+                .unwrap();
+                std::fs::write(root.join(".gitignore"), b"*.log\nsrc/\n").unwrap();
+                std::fs::write(root.join("src/main.rs"), b"tracked source\n").unwrap();
+            }
+        },
+    );
     assert_eq!(installed.preview.attunement.phases.len(), 3);
+    if git {
+        std::fs::write(
+            installed.root.path().join("ignored.log"),
+            b"irrelevant edit\n",
+        )
+        .unwrap();
+        std::fs::write(
+            installed.root.path().join("src/untracked"),
+            b"ignored sibling\n",
+        )
+        .unwrap();
+    }
     let running = call(
         &engine,
         &session,
@@ -223,10 +269,23 @@ fn publicly_selected_plan_replans_after_progress_and_reopens() {
     .unwrap();
     assert_eq!(second.status.job.checkpoints.len(), 2);
     std::fs::write(
-        installed.root.path().join("README.md"),
+        installed
+            .root
+            .path()
+            .join(if git { "src/main.rs" } else { "README.md" }),
         "source changed after progress\n",
     )
     .unwrap();
+    assert!(matches!(
+        call(
+            &engine,
+            &session,
+            &step(&second.status.job),
+            "public-stale-step",
+            BASE + 3_500
+        ),
+        Err(ServiceError::AttunementSourceChanged)
+    ));
     let proposed = engine
         .preview_attunement_replan(
             &session.session_id,

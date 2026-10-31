@@ -9,6 +9,9 @@ use rrd_core::digest::sha256_hex;
 use serde::Serialize;
 use std::{collections::BTreeMap, fmt};
 
+mod configuration;
+pub use configuration::RepositoryConfig;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     InvalidLimits,
@@ -25,6 +28,8 @@ pub enum Error {
     DuplicateSource,
     PatternLimit,
     InvalidPatterns,
+    InvalidConfiguration,
+    UnsupportedConfiguration,
 }
 
 impl fmt::Display for Error {
