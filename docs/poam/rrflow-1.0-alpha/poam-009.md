@@ -10,6 +10,14 @@ independently.
 
 ## Observed deficiency
 
+The [selected-worker boundary observation](../../evidence/change-journals/gate-g/task-worker-model-boundary.md)
+confirms that the composed 71-operation controller can retain a routing proposal
+but exposes no selected-worker execution. Its transport currently decodes only
+endpoint choices. Reuse the task budget, authority guards and authorized context
+for a separately admitted model activity; draft text cannot become a project
+effect, correctness label or training consent. Implementation and real installed
+worker evidence remain pending.
+
 The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
 prove a real configured BF16 proposal, restart/replay and guarded completion under
 configuration replacement, session closure, Stop and response loss. A fresh
