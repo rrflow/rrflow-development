@@ -158,3 +158,49 @@ fn configured_effort_mapping_is_exact_and_default_is_never_inferred() {
     binding.allow_default_effort = true;
     assert_eq!(binding.wire_effort(None).unwrap(), None);
 }
+
+#[test]
+fn worker_operation_has_explicit_authority_and_closed_input_identity() {
+    let catalogue = endpoint_catalogue();
+    let operation = catalogue
+        .endpoints
+        .iter()
+        .find(|endpoint| endpoint.operation.as_str() == "task-worker-execute")
+        .unwrap();
+    assert_eq!(operation.path, "/v1/tasks/worker/execute");
+    assert!(operation.mutation);
+    assert_eq!(
+        operation.action.fixed_action(),
+        Some(SecurityAction::WorkerExecute)
+    );
+    let request = TaskWorkerRequest {
+        scope: "instance:worker-test".into(),
+        task_id: CanonicalId::new("worker-test-task").unwrap(),
+        attempt_id: CorrelationId::new("worker-test-attempt").unwrap(),
+        selection_attempt_id: CorrelationId::new("worker-test-selection").unwrap(),
+        expected_selection_sha256: "1".repeat(64),
+        expected_task_sha256: "2".repeat(64),
+        expected_configuration_sha256: "3".repeat(64),
+        max_storage_keys: 10_000,
+        context: None,
+    };
+    request.validate().unwrap();
+    let mut value = serde_json::to_value(&request).unwrap();
+    value["endpoint"] = "http://127.0.0.1:1".into();
+    assert!(serde_json::from_value::<TaskWorkerRequest>(value).is_err());
+    let mut same_attempt = request.clone();
+    same_attempt.selection_attempt_id = same_attempt.attempt_id.clone();
+    assert!(same_attempt.validate().is_err());
+    let mut foreign = request;
+    foreign.context = Some(AssembleContext {
+        scope: "instance:foreign".into(),
+        query: "test".into(),
+        valid_at: 1,
+        seeds: Vec::new(),
+        max_graph_depth: 0,
+        max_items: 1,
+        max_output_bytes: 1024,
+        max_storage_keys: 100,
+    });
+    assert!(foreign.validate().is_err());
+}

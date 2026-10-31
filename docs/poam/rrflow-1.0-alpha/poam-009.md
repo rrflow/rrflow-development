@@ -10,6 +10,15 @@ independently.
 
 ## Observed deficiency
 
+The [worker activity increment](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
+now composes a selected model call with existing task authority, effort, context,
+shared capacity and readback. Local controlled protocol checks cover success,
+denials, invalidation, Stop, response loss and reopen. Owning component/engine
+suites, strict lint and generated-surface/TypeScript checks pass; installed provider
+evidence, complete composed conformance and protected publication remain pending.
+The retained result is draft text, not a verified project effect or learning label.
+This does not close POAM-009 or the full UI-to-worker-to-observability journey.
+
 The [selected-worker boundary observation](../../evidence/change-journals/gate-g/task-worker-model-boundary.md)
 confirms that the composed 71-operation controller can retain a routing proposal
 but exposes no selected-worker execution. The

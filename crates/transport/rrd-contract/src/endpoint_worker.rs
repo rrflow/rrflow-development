@@ -10,6 +10,125 @@ use std::collections::BTreeMap;
 
 pub const ENDPOINT_WORKER_VERSION: u16 = 1;
 
+/// References an accepted routing attempt; carries no endpoint or credential.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TaskWorkerRequest {
+    pub scope: String,
+    pub task_id: CanonicalId,
+    pub attempt_id: crate::CorrelationId,
+    pub selection_attempt_id: crate::CorrelationId,
+    pub expected_selection_sha256: String,
+    pub expected_task_sha256: String,
+    pub expected_configuration_sha256: String,
+    pub max_storage_keys: u64,
+    /// Explicit historical context selection, not permission to mutate sources.
+    pub context: Option<crate::AssembleContext>,
+}
+
+impl TaskWorkerRequest {
+    pub fn validate(&self) -> Result<()> {
+        crate::ReadTask {
+            scope: self.scope.clone(),
+            task_id: self.task_id.clone(),
+            max_storage_keys: self.max_storage_keys,
+        }
+        .validate()?;
+        if self.attempt_id == self.selection_attempt_id {
+            return invalid("worker and selection attempts must differ");
+        }
+        for value in [
+            &self.expected_selection_sha256,
+            &self.expected_task_sha256,
+            &self.expected_configuration_sha256,
+        ] {
+            validate_sha256(value, "worker expected input digest")?;
+        }
+        if let Some(context) = &self.context {
+            context.validate()?;
+            if context.scope != self.scope {
+                return invalid("worker context scope mismatch");
+            }
+        }
+        bounded(self, MAX_ROUTE_REQUEST_BYTES)
+    }
+}
+
+/// Captured context provenance. Neither this stamp nor generated text attests
+/// current project-file freshness, correctness or permission to apply changes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TaskWorkerContext {
+    pub request_sha256: String,
+    pub packet_sha256: String,
+    pub read: crate::ContextReadStamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TaskWorkerOutput {
+    pub contract_version: u16,
+    pub scope: String,
+    pub task_id: CanonicalId,
+    pub attempt_id: crate::CorrelationId,
+    pub selection_attempt_id: crate::CorrelationId,
+    pub selection_sha256: String,
+    pub task_sha256: String,
+    pub configuration_sha256: String,
+    pub binding_id: CanonicalId,
+    /// Observed alias, not an attestation of loaded weights.
+    pub service_id: CanonicalId,
+    pub packet_sha256: String,
+    pub request_sha256: String,
+    pub response_sha256: String,
+    pub content_sha256: String,
+    /// Provider draft only; acceptance records transport/admission, not task success.
+    pub content: String,
+    pub read: crate::ContextReadStamp,
+    pub context: Option<TaskWorkerContext>,
+    pub usage: Option<crate::EndpointTokenUsage>,
+    pub elapsed_ms: Option<u64>,
+    pub http_status: Option<u16>,
+}
+
+impl TaskWorkerOutput {
+    pub fn validate(&self) -> Result<()> {
+        crate::task::validate_scope(&self.scope)?;
+        if self.contract_version != ENDPOINT_WORKER_VERSION
+            || self.attempt_id == self.selection_attempt_id
+        {
+            return invalid("invalid worker version or attempt identity");
+        }
+        for value in [
+            &self.selection_sha256,
+            &self.task_sha256,
+            &self.configuration_sha256,
+            &self.packet_sha256,
+            &self.request_sha256,
+            &self.response_sha256,
+            &self.content_sha256,
+        ] {
+            validate_sha256(value, "worker output digest")?;
+        }
+        if crate::sha256_bytes(self.content.as_bytes()) != self.content_sha256 {
+            return invalid("worker content digest mismatch");
+        }
+        self.read.validate()?;
+        if let Some(context) = &self.context {
+            context.read.validate()?;
+            validate_sha256(&context.request_sha256, "worker context request digest")?;
+            validate_sha256(&context.packet_sha256, "worker context packet digest")?;
+        }
+        if self.http_status.is_some_and(|status| status != 200) {
+            return invalid("accepted worker HTTP status must be 200");
+        }
+        if let Some(usage) = &self.usage {
+            usage.validate()?;
+        }
+        bounded(self, MAX_ROUTE_RESPONSE_BYTES)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EndpointWorkerBinding {

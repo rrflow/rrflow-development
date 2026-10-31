@@ -56,20 +56,29 @@ router execution port to the SWAG path.
 
 ## Endpoint-selection capability decision
 
-This is G-01b contract preparation, not a registered public operation or an
-implemented adapter. The current public endpoint operations read, preview and
-apply configuration. They do not invoke a selector or its selected provider.
+The G-01b controller operation `task-endpoint-propose` invokes the configured
+selector under initialized authority and the existing task budget. The selected
+worker operation `task-worker-execute` separately authorizes a bounded model
+call. Endpoint configuration reads and preview/apply do not invoke either.
 Embedding execution and `RouteStepDecision` cannot be overloaded to fill that
 gap. Keep the three recipe/branch/context decisions unchanged.
 
-The next public capability is **propose endpoint selection**, owned by
-`RrdEngine` and exposed through the executable operation catalogue when its
-handler and authorization are implemented together. Its proposed semantic
+The public capability **propose endpoint selection** is owned by
+`RrdEngine` and exposed through the executable operation catalogue with its
+handler and authorization. Its semantic
 types are `EndpointSelectionRequest`, `EndpointSelectionPacket` and
 `EndpointSelectionProposal`. Their Rust validators are implemented; the proposal
-schema is now exposed by existing task-attempt readback. No public operation
-creates a controller proposal yet. A separate admitted external activity executes
-a selected provider.
+schema is exposed by existing task-attempt readback. `TaskWorkerRequest` names
+the exact accepted selection receipt and current task/configuration digests.
+The engine resolves the selected binding and configured effort mapping, assembles
+optional authorized context, reserves the same task budget and shared endpoint
+capacity, then guards completion against current task/configuration/authority.
+`TaskWorkerOutput` is retained draft text, not an accepted project edit, task
+success, provider qualification or training consent. Historical context stamps
+do not attest current project-file freshness. Worker readback requires TaskRead
+and, for context-derived drafts, current MemoryContextRead permission.
+The [worker activity journal](../../evidence/change-journals/gate-g/task-worker-model-admission.md)
+separates local protocol checks from installed provider and public-release proof.
 Generating the proposal itself may invoke the configured controller, so it
 requires model-call authorization, egress admission and budget reservation;
 it must never masquerade as a free configuration read.
@@ -88,9 +97,10 @@ Unknown effort support cannot silently become permission to omit effort.
 unknown fields, foreign bindings, changed configuration, unsupported effort and
 contradictory no-candidate abstention. Supplied capability evidence digests are
 identifiers, not verified attestations. These pure types perform no network call
-and grant no authority. Engine-derived eligibility, task/source binding,
-authenticated admission, descriptor verification and dispatch remain missing.
-The existing three reasoning-tree decisions and public catalogue are unchanged.
+and grant no authority. The engine supplies configured eligibility, task identity,
+authenticated admission and bounded dispatch. Loaded-weight/descriptor verification,
+current project-source effects and comparative routing qualification remain open.
+The existing three reasoning-tree decisions are unchanged.
 
 The offline `endpoint_selection` example provides `schema`,
 `configuration-sha256 CONFIGURATION` and
@@ -129,11 +139,11 @@ provider execution or model-quality claim follows from those checks.
 
 ### Durable proposal completion in progress
 
-The existing task-attempt ledger can now retain a bounded typed proposal or
+The existing task-attempt ledger retains a bounded typed proposal, worker draft or
 embedding output, with an exclusive kind and exact outcome digest. Its public
 readback validates scope/task/attempt identity. Reopening the estate preserves
 the output and original consumed budget; replay cannot reserve the same attempt
-again. This is internal completion support, not a public proposal dispatcher.
+again. Both public model operations compose this same completion owner.
 
 Completion rechecks its supplied authority at the current runtime read stamp.
 Engine-owned control guards compare exact authority bytes atomically with the
@@ -461,8 +471,8 @@ until replay, prior-stop and allowance checks permit it. Identity preparation
 retains the original monotonic start. Invalid request/equivalence digests fail
 before budget publication. This internal input is neither serializable nor a
 public authorization API. Existing durable keys, records, completion type and
-Stop behavior remain unchanged; typed controller completion and dispatch still
-require implementation. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
+Stop behavior remain shared; typed controller and worker completion compose this
+owner. The [shared-admission journal](../../evidence/change-journals/gate-g/task-attempt-admission.md)
 records retained-input reservation/reopen evidence, not a controller call.
 
 The first admitted attempt fixes the configuration digest, original host-clock

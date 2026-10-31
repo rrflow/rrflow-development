@@ -256,11 +256,45 @@ impl RrdEngine {
             operation_id,
         )?;
         self.query_scope(&request.scope)?;
-        let bytes = self.storage.control().get(&self.attempt_key(
-            &request.scope,
-            &request.task_id,
-            &request.attempt_id,
-        ))?;
+        let (_, result) = self.read_task_attempt_record(request)?;
+        if let Some(output) = result
+            .attempt
+            .as_ref()
+            .and_then(|attempt| attempt.worker_output.as_ref())
+        {
+            self.authorize(
+                session,
+                token,
+                SecurityAction::TaskRead,
+                now,
+                request_id,
+                operation_id,
+            )?;
+            if output.context.is_some() {
+                self.authorize_resource_without_data_policy(
+                    session,
+                    token,
+                    SecurityAction::MemoryContextRead,
+                    &self.instance_resource(),
+                    now,
+                    request_id,
+                    operation_id,
+                )?;
+            }
+        }
+        Ok(result)
+    }
+
+    /// One control read supplies both validated output and its completion guard.
+    /// Callers must authorize access before using this internal helper.
+    pub(in crate::engine) fn read_task_attempt_record(
+        &self,
+        request: &ReadTaskAttempt,
+    ) -> Result<(Option<AttemptAuthorityGuard>, TaskAttemptView)> {
+        request.validate().map_err(contract)?;
+        self.query_scope(&request.scope)?;
+        let key = self.attempt_key(&request.scope, &request.task_id, &request.attempt_id);
+        let bytes = self.storage.control().get(&key)?;
         let record: Option<AttemptRecord> = bytes
             .as_deref()
             .map(serde_json::from_slice)
@@ -274,6 +308,9 @@ impl RrdEngine {
                     .is_some_and(|result| result.scope != request.scope)
                 || record.endpoint_proposal.as_ref().is_some_and(|proposal| {
                     proposal.scope != request.scope || proposal.task_id != request.task_id
+                })
+                || record.worker_output.as_ref().is_some_and(|output| {
+                    output.scope != request.scope || output.task_id != request.task_id
                 })
         }) {
             return Err(ServiceError::Storage(
@@ -293,6 +330,7 @@ impl RrdEngine {
                 outcome_sha256: record.outcome_sha256,
                 result: record.result,
                 endpoint_proposal: record.endpoint_proposal,
+                worker_output: record.worker_output,
                 invalidation: record.invalidation,
             }),
         };
@@ -304,7 +342,10 @@ impl RrdEngine {
         {
             return Err(ServiceError::Storage("attempt identity mismatch".into()));
         }
-        Ok(result)
+        Ok((
+            bytes.map(|expected| AttemptAuthorityGuard { key, expected }),
+            result,
+        ))
     }
 
     pub fn activate_builtin_embedding(

@@ -48,6 +48,8 @@ struct AttemptRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     endpoint_proposal: Option<rrd_contract::EndpointSelectionProposal>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    worker_output: Option<rrd_contract::TaskWorkerOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     invalidation: Option<rrd_contract::TaskAttemptInvalidation>,
 }
 
@@ -65,6 +67,7 @@ enum AttemptOutcome {
 pub(super) enum TaskAttemptOutput {
     Embedding(Box<GenerateEmbeddingsResult>),
     EndpointProposal(Box<rrd_contract::EndpointSelectionProposal>),
+    Worker(Box<rrd_contract::TaskWorkerOutput>),
 }
 
 impl From<rrd_contract::EndpointSelectionProposal> for TaskAttemptOutput {
@@ -78,12 +81,26 @@ impl TaskAttemptOutput {
         match self {
             Self::Embedding(output) => serde_json::to_vec(output),
             Self::EndpointProposal(output) => serde_json::to_vec(output),
+            Self::Worker(output) => serde_json::to_vec(output),
         }
         .map_err(contract_json)
     }
 
     fn validate_for(&self, budget: &TaskReasoningBudget, attempt: &AttemptRecord) -> Result<()> {
         match self {
+            Self::Worker(output) => {
+                output
+                    .validate()
+                    .map_err(|e| ServiceError::Contract(e.to_string()))?;
+                if output.scope != budget.scope
+                    || output.task_id != budget.task_id
+                    || output.attempt_id != attempt.attempt_id
+                {
+                    return Err(ServiceError::Contract(
+                        "task worker output identity mismatch".into(),
+                    ));
+                }
+            }
             Self::Embedding(output) => {
                 output
                     .validate()
@@ -417,6 +434,7 @@ impl RrdEngine {
             outcome_sha256: None,
             result: None,
             endpoint_proposal: None,
+            worker_output: None,
             invalidation: None,
         };
         self.commit_budget_controlled(
@@ -451,7 +469,7 @@ impl RrdEngine {
             context,
         )? {
             TaskAttemptOutput::Embedding(output) => Ok(*output),
-            TaskAttemptOutput::EndpointProposal(_) => {
+            TaskAttemptOutput::EndpointProposal(_) | TaskAttemptOutput::Worker(_) => {
                 Err(ServiceError::Storage("unexpected task output kind".into()))
             }
         }
@@ -603,6 +621,10 @@ impl RrdEngine {
             };
             attempt.endpoint_proposal = match &result {
                 Ok(TaskAttemptOutput::EndpointProposal(output)) => Some((**output).clone()),
+                _ => None,
+            };
+            attempt.worker_output = match &result {
+                Ok(TaskAttemptOutput::Worker(output)) => Some((**output).clone()),
                 _ => None,
             };
             match self.commit_budget_controlled(

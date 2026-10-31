@@ -129,6 +129,28 @@ async fn public_task_effort_executes_stops_and_replays_after_reopen() {
     }
     let session = &sessions[0];
     let scope = "instance:effort".to_string();
+    // The real HTTP route must enforce the distinct worker action before
+    // touching configuration or attempting any provider dispatch.
+    denied(
+        client
+            .execute_task_worker(
+                session,
+                TaskWorkerRequest {
+                    scope: scope.clone(),
+                    task_id: CanonicalId::new("unopened-worker-task").unwrap(),
+                    attempt_id: CorrelationId::new("denied-worker").unwrap(),
+                    selection_attempt_id: CorrelationId::new("absent-selection").unwrap(),
+                    expected_selection_sha256: "1".repeat(64),
+                    expected_task_sha256: "2".repeat(64),
+                    expected_configuration_sha256: "3".repeat(64),
+                    max_storage_keys: 100,
+                    context: None,
+                },
+                mutation("denied-worker"),
+            )
+            .await
+            .unwrap_err(),
+    );
     let task = client
         .open_task(
             session,
