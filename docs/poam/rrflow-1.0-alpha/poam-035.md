@@ -14,6 +14,14 @@ C-07 and the repository-wide review remain open.
 
 ## Observed deficiency
 
+The [immutable-object publication repair](../../evidence/change-journals/gate-c/c-07-object-publication-repair.md)
+first reproduces two deterministic failures, then preserves a verified
+reader-held winner through non-replacing publication and rejects corrupt
+collisions. Windows owner validation passes 257 storage tests and six native
+filesystem tests with strict lint. The original engine failure's exact operation
+is unproven; combined engine, native CI and installed qualification remain
+required. This component result does not close POAM-035.
+
 The [immutable-object collision observation](../../evidence/change-journals/gate-c/c-07-object-publication-observation.md)
 records a Windows concurrent quantization-build failure and a replacing-rename
 hazard with a reader-held winner. A passing focused rerun does not clear the
