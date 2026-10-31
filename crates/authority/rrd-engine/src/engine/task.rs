@@ -343,6 +343,24 @@ impl RrdEngine {
         Ok(reference)
     }
 
+    pub(super) fn read_task_record_at(
+        &self,
+        read: &ReadStamp,
+        request: &ReadTask,
+    ) -> Result<rrd_contract::TaskRecord> {
+        request
+            .validate()
+            .map_err(|e| ServiceError::Contract(e.to_string()))?;
+        self.read_task_versions(
+            read,
+            &request.scope,
+            &task_reference(&request.task_id)?,
+            request.max_storage_keys,
+        )?
+        .task
+        .ok_or(ServiceError::TaskNotFound)
+    }
+
     /// The row's own identity history at one stamp: at most two versions.
     fn read_task_versions(
         &self,

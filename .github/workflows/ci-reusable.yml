@@ -256,6 +256,8 @@ jobs:
         run: python3 scripts/check_version.py
       - name: Test build provenance and diagnostic profile policy
         run: python3 scripts/test_build_rrflow.py
+      - name: Test experimental controller archive rejection
+        run: python3 scripts/test_controller_trial_package.py
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
@@ -309,6 +311,8 @@ jobs:
           retention-days: 14
       - name: Enforce generated product-surface parity
         run: python3 scripts/ci/check_generated_surfaces.py
+      - name: Test catalogue-derived Rust client projection
+        run: cargo test --locked -p rrd-client --test generated_catalogue
       - name: Enforce RRFlow engine ownership
         run: cargo test -p rrd-engine --test workspace_architecture --locked
       - name: Verify controlled evaluation evidence

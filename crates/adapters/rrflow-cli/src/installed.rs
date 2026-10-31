@@ -25,6 +25,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 const MAX_INSTALLATION_PLAN_BYTES: u64 = 8 * 1024 * 1024;
 
 type BoxError = Box<dyn Error>;
+mod endpoint_credentials;
 
 #[derive(Debug, Serialize)]
 struct VersionReport {
@@ -78,10 +79,12 @@ pub fn execute(command: &Command, json: bool) -> Result<Execution, BoxError> {
         Command::Serve {
             project,
             bind,
+            endpoint_credentials,
             test_distribution_executable,
         } => serve(
             project,
             *bind,
+            endpoint_credentials.as_deref(),
             test_distribution_executable.as_deref(),
             json,
         ),
@@ -326,6 +329,7 @@ fn install(action: &InstallAction, json: bool) -> Result<Execution, BoxError> {
 fn serve(
     project: &Path,
     bind: std::net::SocketAddr,
+    endpoint_credentials: Option<&Path>,
     test_distribution_executable: Option<&Path>,
     json: bool,
 ) -> Result<Execution, BoxError> {
@@ -335,8 +339,11 @@ fn serve(
     let project_root = std::fs::canonicalize(project)?.display().to_string();
     #[cfg(feature = "crash-test")]
     rrd_engine::crash_test::configure_from_stdin(&project.join(&locator.storage_root))?;
-    let engine = RrdEngine::open_installed(project, &executable)
+    let mut engine = RrdEngine::open_installed(project, &executable)
         .map_err(|error| estate_open_elsewhere(project, error))?;
+    if let Some(path) = endpoint_credentials {
+        engine.install_endpoint_credentials(endpoint_credentials::load(path)?)?;
+    }
     // Issued while this engine holds the estate's writer lock, so a record
     // found at publication belongs to a process that no longer runs.
     let publisher = engine.serving_publisher()?;

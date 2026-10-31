@@ -272,6 +272,9 @@ impl RrdEngine {
                     .result
                     .as_ref()
                     .is_some_and(|result| result.scope != request.scope)
+                || record.endpoint_proposal.as_ref().is_some_and(|proposal| {
+                    proposal.scope != request.scope || proposal.task_id != request.task_id
+                })
         }) {
             return Err(ServiceError::Storage(
                 "attempt format or scope mismatch".into(),
@@ -285,9 +288,12 @@ impl RrdEngine {
                     AttemptOutcome::Reserved => TaskAttemptStatus::Reserved,
                     AttemptOutcome::Accepted => TaskAttemptStatus::Accepted,
                     AttemptOutcome::Stopped => TaskAttemptStatus::Stopped,
+                    AttemptOutcome::Invalidated => TaskAttemptStatus::Invalidated,
                 },
                 outcome_sha256: record.outcome_sha256,
                 result: record.result,
+                endpoint_proposal: record.endpoint_proposal,
+                invalidation: record.invalidation,
             }),
         };
         result.validate().map_err(contract)?;

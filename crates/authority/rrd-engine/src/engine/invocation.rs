@@ -56,6 +56,7 @@ pub enum RrdOperation {
     MemoryContextRead,
     ReasoningRead,
     ReasoningWrite,
+    EndpointPropose,
     KnowledgeTreeRead,
     KnowledgeTreeWrite,
 }
@@ -87,6 +88,7 @@ impl RrdOperation {
                 | Self::FlightLaunch
                 | Self::TaskWrite
                 | Self::ReasoningWrite
+                | Self::EndpointPropose
                 | Self::KnowledgeTreeWrite
         )
     }
@@ -142,6 +144,7 @@ impl RrdOperation {
             Self::MemoryContextRead => SecurityAction::MemoryContextRead,
             Self::ReasoningRead => SecurityAction::ReasoningRead,
             Self::ReasoningWrite => SecurityAction::ReasoningWrite,
+            Self::EndpointPropose => SecurityAction::EndpointPropose,
             Self::KnowledgeTreeRead => SecurityAction::KnowledgeTreeRead,
             Self::KnowledgeTreeWrite => SecurityAction::KnowledgeTreeWrite,
         }

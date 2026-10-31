@@ -10,6 +10,34 @@ independently.
 
 ## Observed deficiency
 
+The [optimized Windows artifact trial](../../evidence/change-journals/repository/controller-testing-bundle-artifact.md)
+passed actual proposal/reopen and three response-fault histories, but exposed a
+real model reliability gap: after configuration invalidation, the fresh provider
+response selected the unsupported effort `observed`. The engine rejected it;
+the success-expecting case failed. Recovery retained two charged steps and
+stopped/uncertain capacity. Preserve this failure for independent review; do not
+repair the response, clear uncertainty or label it qualified routing. Model
+qualification and public uncertainty reconciliation remain open.
+
+The later [installed live histories](../../evidence/change-journals/gate-g/controller-task-proposal-installed-live.md)
+prove a real configured BF16 proposal, restart/replay and guarded completion under
+configuration replacement, session closure, Stop and response loss. A fresh
+request after configuration invalidation succeeds without resetting the task's
+spent effort or deadline. These bounded task-text proofs do not close worker
+execution, repository-source successor planning, remote hard-stop, public
+uncertainty reconciliation or routing qualification. Candidate CI/landing remain.
+
+PR206's installed development trial at
+`d365d02891350590aa4495b46fc665ef313aec24` reached the new authenticated endpoint
+proposal operation but returned uncertain transport failure. Reopening the same
+estate retained charged effort and `execution_may_continue: true`; it did not
+produce a successful proposal. The
+[installed recovery journal](../../evidence/change-journals/gate-g/controller-task-proposal-installed-recovery.md)
+records actual readback. Durable uncertain capacity has no public reconciliation
+operation yet; restoring connectivity is not permission to clear it or repeat the
+unknown effect. Successful execution, remaining fault cases and explicit
+reconciliation semantics remain acceptance gaps. This does not close POAM-009.
+
 The [endpoint-selection capability decision](../../reference/inference/lfg-swag.md#endpoint-selection-capability-decision)
 now makes the missing public admission and selected-provider effect explicit.
 Endpoint configuration persistence cannot execute either. Descriptor/credential
