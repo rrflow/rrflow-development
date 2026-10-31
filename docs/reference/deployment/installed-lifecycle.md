@@ -207,8 +207,8 @@ configuration; the plan digest binds them and the selected order. Editing a
 project source after preview still requires a fresh plan or authorized replan.
 
 Without a proposal the bundled profile supplies its current eleven-step
-template; it is no longer the only allowed sequence. Only Connect currently
-executes; other steps fail explicitly as unavailable. This interface admits an
+template; it is no longer the only allowed sequence. Connect and Inventory can
+execute; other steps fail explicitly as unavailable. This interface admits an
 explicit proposal and does not yet automatically select a per-prompt schema,
 generate a handoff, invoke a model, or establish indexing completion.
 

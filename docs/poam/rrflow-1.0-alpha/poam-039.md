@@ -47,7 +47,8 @@ validated attunement sequence and seals it into an installation preview. Its
 schema is a mechanical proposal-shape projection; it does not select or generate
 per-prompt schemas. The installed plan retains selected kinds, positions,
 estimates and descriptor digests, while proposal descriptions remain in the
-preview and are not yet available through engine readback. Only Connect executes.
+preview and are not yet available through engine readback. In that candidate,
+only Connect executes.
 This candidate does not close the handoff, open-question, automatic planning or
 source-to-knowledge gaps, and requires candidate and merge-group evidence.
 
