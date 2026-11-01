@@ -3,6 +3,7 @@
 import json
 import copy
 import os
+import signal
 import subprocess
 from pathlib import Path
 import tempfile
@@ -14,12 +15,138 @@ from unittest.mock import patch
 import run_offline_lifecycle as runner
 
 
+def held_output_command(pid_file, stdout, stderr, status=1, message="hdiutil: create failed - Resource busy"):
+    """A child that ends (or, with no status, overruns) while its descendant keeps streams open."""
+    def stream(held, name):
+        return f"sys.{name}" if held else "subprocess.DEVNULL"
+    finish = "__import__('time').sleep(60)" if status is None else f"sys.exit({status})"
+    return (sys.executable, "-c",
+            "import pathlib,subprocess,sys; "
+            "holder=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],"
+            f"stdin=subprocess.DEVNULL,stdout={stream(stdout, 'stdout')},stderr={stream(stderr, 'stderr')}); "
+            "pathlib.Path(sys.argv[1]).write_text(str(holder.pid)); "
+            f"print({message!r},file=sys.stderr,flush=True); {finish}",
+            str(pid_file))
+
+
+def end_holder(pid_file):
+    # The test owns this descendant's lifetime, so no assertion races its timing.
+    if pid_file.exists():
+        try:
+            os.kill(int(pid_file.read_text()), signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+
+
+def recorded_popen(started):
+    """Record the group leader's PID without depending on the child having started."""
+    real = subprocess.Popen
+
+    def popen(*arguments, **kwargs):
+        child = real(*arguments, **kwargs)
+        started.append(child.pid)
+        return child
+    return patch.object(runner.subprocess, "Popen", side_effect=popen)
+
+
 class OfflineLifecyclePolicyTests(unittest.TestCase):
+    def assert_group_gone(self, group):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            try:
+                os.killpg(group, 0)
+            except (ProcessLookupError, PermissionError):
+                return  # Darwin reports EPERM once only zombies remain.
+            time.sleep(0.01)
+        self.fail(f"owned process group {group} outlived run()")
+
     def test_open_output_metadata_rejects_unrecognized_category_and_status(self):
         error = runner.CommandOutputNotClosed("private-path", "private-status", True, False)
         self.assertEqual(error.command_category, "other")
         self.assertIsNone(error.child_returncode)
         self.assertNotIn("private", str(error))
+
+    def test_failed_child_with_held_output_keeps_stderr_out_of_closed_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_file = Path(directory) / "holder.pid"
+            completed = []
+            try:
+                with self.assertRaises(runner.CommandOutputNotClosed) as caught:
+                    runner.run(*held_output_command(pid_file, True, False, 3, "private native detail"),
+                               check=False, timeout=30, on_completion=completed.append)
+            finally:
+                end_holder(pid_file)
+            error = caught.exception
+            self.assertEqual(error.child_returncode, 3)
+            self.assertEqual((error.stdout_open, error.stderr_open), (True, False))
+            self.assertEqual(error.captured.returncode, 3)
+            self.assertIn("private native detail", error.captured.stderr)
+            self.assertNotIn("private", str(error))
+            self.assertNotIn("private", repr(error))
+            self.assertEqual(completed, [])
+
+    @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
+    def test_successful_group_command_lets_its_descendant_finish(self):
+        finish = '(sleep 0.5; echo finished; : > "$1")'
+        for name, script, stdout in [("holding stdout", f"{finish} & exit 0", "finished\n"),
+                                     ("detached", f"{finish} >/dev/null 2>&1 & exit 0", "")]:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                marker = Path(directory) / "finished"
+                started = []
+                with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 30, create=True):
+                    result = runner.run("sh", "-c", script, "sh", str(marker), process_group=True, timeout=30)
+                self.assertEqual((result.returncode, result.stdout), (0, stdout))
+                self.assertTrue(marker.exists(), "descendant was killed because its parent exited")
+                self.assert_group_gone(started[0])
+
+    @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
+    def test_successful_group_command_without_descendant_does_not_wait(self):
+        begin = time.monotonic()
+        with patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 60, create=True):
+            runner.run("sh", "-c", "exit 0", process_group=True, timeout=30)
+        self.assertLess(time.monotonic() - begin, 20)
+
+    @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
+    def test_successful_group_command_kills_descendant_that_outlives_the_output_bound(self):
+        started = []
+        begin = time.monotonic()
+        with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 0.2, create=True):
+            result = runner.run("sh", "-c", "sleep 30 & exit 0", process_group=True, timeout=30)
+        self.assertEqual(result.returncode, 0)
+        self.assert_group_gone(started[0])
+        self.assertLess(time.monotonic() - begin, 20)
+
+    @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
+    def test_successful_group_command_wait_cannot_outlast_its_deadline(self):
+        started = []
+        begin = time.monotonic()
+        with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 60, create=True):
+            result = runner.run("sh", "-c", "sleep 30 & exit 0", process_group=True, timeout=2)
+        self.assertEqual(result.returncode, 0)
+        self.assert_group_gone(started[0])
+        self.assertLess(time.monotonic() - begin, 20)
+
+    @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
+    def test_failed_group_command_loses_its_descendant_at_once(self):
+        slow = '(sleep 5; : > "$1") >/dev/null 2>&1 &'
+        for name, script, kwargs, failure in [
+            ("exit status", f"{slow} exit 3", {"check": False, "timeout": 30}, None),
+            ("deadline", f"{slow} sleep 30", {"timeout": 0.3}, "deadline"),
+            ("output limit", f"{slow} printf %02000d 0; exit 0", {"timeout": 30, "output_limit": 1024}, "output"),
+        ]:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                marker = Path(directory) / "finished"
+                started = []
+                with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 30, create=True):
+                    if failure is None:
+                        self.assertEqual(runner.run("sh", "-c", script, "sh", str(marker), process_group=True,
+                                                    **kwargs).returncode, 3)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, failure):
+                            runner.run("sh", "-c", script, "sh", str(marker), process_group=True, **kwargs)
+                self.assertFalse(marker.exists(), "failed command's descendant was allowed to finish")
+                self.assert_group_gone(started[0])
+                self.assertFalse(marker.exists())
 
     @unittest.skipUnless(os.name == "posix", "requires a real inherited POSIX pipe")
     def test_exited_child_with_inherited_stdout_reports_bounded_closed_metadata(self):
