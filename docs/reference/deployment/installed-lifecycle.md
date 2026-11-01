@@ -567,9 +567,17 @@ does not silently retry with larger defaults. Configuration format 2 and locator
 format 1 are replaced pre-release shapes and are rejected, not migrated or
 silently defaulted. Product version remains 1.0.0.
 
-The implementation rejects any pre-existing `.rrflow` tree for a new install.
-It does not migrate, merge, or delete a user's pre-canonical
-`.rrflow/instance.toml` state; that collision remains a fail-closed diagnostic.
+A new install adopts a leftover `.rrflow` folder in place (owner decision,
+2026-10-31). The plan lists the folder's top-level entries in
+`adopted_estate_entries`; plans without a leftover folder keep their existing
+digest. Apply refuses the plan if those entries changed, makes the folder
+private (owner-only DACL on Windows, mode 0700 elsewhere) only when the current
+user owns it and it is a real folder, then moves each listed entry, including a
+pre-canonical `instance.toml`, into `.rrflow/previous/<plan id>/`. Nothing is
+deleted or merged, and moved entries keep their own permissions. An interrupted
+adoption changes the listed entries, so the stale plan is refused and a fresh
+plan adopts what remains. A project with a locator is an installed estate and
+is never adopted.
 The tracked development manifest has been deleted because no source path reads
 it. The clock substrate proves only relative rollback against a sealed anchor:
 it does not authenticate or correct UTC, detect every forward error or drift,

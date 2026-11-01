@@ -3,9 +3,9 @@ use super::clock::FixedClock;
 use super::clock::{assess, observe_required, require_accepted, ClockSource, HostSystemClock};
 use super::*;
 use crate::engine::estate_layout::{
-    create_estate_directories, reject_existing_estate, safe_join, validate_estate_directories,
-    validate_managed_relative, validate_recovery_estate, EstateFilesystem, EstateLayout,
-    LOCATOR_RELATIVE_PATH, STORAGE_DIRECTORY,
+    create_estate_directories, existing_estate_entries, reject_existing_estate, safe_join,
+    validate_estate_directories, validate_managed_relative, validate_recovery_estate,
+    EstateFilesystem, EstateLayout, LOCATOR_RELATIVE_PATH, STORAGE_DIRECTORY,
 };
 use crate::engine::memory_estate::build_memory_estate_plan;
 use crate::engine::token_key::{
@@ -554,7 +554,8 @@ impl RrdEngine {
             ));
         }
         let project = canonical_project(project, target_kind)?;
-        reject_existing_estate(&project)?;
+        let adopted_estate_entries = existing_estate_entries(&project)?;
+        reject_existing_estate(&project, adopted_estate_entries.as_deref())?;
         let (profile, profile_sha256) = DefaultInstallProfile::load(profile_id)?;
         let configuration = load_estate_configuration(configuration_path)?;
         let executable_sha256 = sha256_file(executable)?;
@@ -637,6 +638,7 @@ impl RrdEngine {
             attunement_plan_id: attunement.id.clone(),
             attunement_plan_sha256: attunement.plan_sha256.clone(),
             actions,
+            adopted_estate_entries,
             plan_sha256: zero_digest(),
         };
         installation.plan_sha256 = installation_plan_sha256(&installation)
@@ -861,6 +863,11 @@ impl RrdEngine {
                 *intent
             }
             admission::Admission::New(clock_anchor) => {
+                // Adoption precedes the intent: an interrupted move changes the
+                // listed entries, so the stale plan is refused and re-planned.
+                if let Some(entries) = &preview.installation.adopted_estate_entries {
+                    project.adopt_estate_directory(preview.installation.id.as_str(), entries)?;
+                }
                 let (intent, recovery_state) = load_or_create_intent(
                     &project,
                     &layout,
