@@ -7,12 +7,12 @@ import hashlib
 import json
 import os
 import shutil
-import stat
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
+
+from sdk_private_manifest import create_manifest_staging, private_workspace, verify_manifest
 
 ROOT = Path(__file__).resolve().parents[2]
 CORPUS = ROOT / "fixtures/rrd-sdk-conformance-v1.json"
@@ -90,7 +90,10 @@ def require_toolchains() -> None:
 
 def run(command: list[str], env: dict[str, str] | None = None) -> None:
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, env=env, check=True)
+    executable = shutil.which(command[0], path=None if env is None else env.get("PATH"))
+    if executable is None:
+        raise RuntimeError(f"SDK conformance executable is missing: {command[0]}")
+    subprocess.run([executable, *command[1:]], cwd=ROOT, env=env, check=True)
 
 
 def wait_for_manifest(
@@ -99,9 +102,7 @@ def wait_for_manifest(
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:
         if path.is_file():
-            mode = stat.S_IMODE(path.stat().st_mode)
-            if mode != 0o600:
-                raise RuntimeError(f"harness manifest mode is {mode:o}, expected 600")
+            verify_manifest(path)
             return json.loads(path.read_text(encoding="utf-8"))
         status = process.poll()
         if status is not None:
@@ -161,22 +162,21 @@ def main() -> None:
     )
     if not harness.is_file():
         raise RuntimeError(f"SDK conformance harness binary is absent: {harness}")
-    with tempfile.TemporaryDirectory(prefix="rrd-sdk-conformance-") as temporary:
-        temporary_path = Path(temporary)
+    with private_workspace() as temporary_path:
         manifest_path = temporary_path / "manifest.json"
         shutdown_path = temporary_path / "shutdown"
-        process = subprocess.Popen(
-            [
-                str(harness),
-                "--corpus",
-                str(CORPUS),
-                "--manifest",
-                str(manifest_path),
-                "--shutdown",
-                str(shutdown_path),
-            ],
-            cwd=ROOT,
-        )
+        command = [
+            str(harness),
+            "--corpus",
+            str(CORPUS),
+            "--manifest",
+            str(manifest_path),
+            "--shutdown",
+            str(shutdown_path),
+        ]
+        if os.name == "nt":
+            command.extend(["--manifest-staging", str(create_manifest_staging(temporary_path))])
+        process = subprocess.Popen(command, cwd=ROOT)
         try:
             manifest = wait_for_manifest(manifest_path, process)
             digest = hashlib.sha256(corpus_bytes).hexdigest()

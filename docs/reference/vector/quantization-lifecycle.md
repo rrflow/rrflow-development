@@ -99,13 +99,13 @@ generation's configuration:
 - **`inner_product`:** TurboQuant_prod ([arXiv:2504.19874](https://arxiv.org/abs/2504.19874),
   Algorithm 2). It stores codes one bit narrower (3-, 1- or 0-bit Lloyd-Max
   stages at 4, 2 and 1 total bits), the signs of the residual's projection by
-  a seeded dense Gaussian matrix S, and the residual's length. Its estimate is
-  unbiased: on the same vectors the slope is 1.00 within its standard error
-  at every width, and the mean squared error stays under the paper's bound.
-  - The residual is projected in the rotated space, which is distributed as
-    the paper's S·r.
-  - S is drawn from the seed, with a deterministic logarithm, so its bytes
-    are reproducible on every platform.
+  a seeded finite-precision approximation of a Gaussian matrix S, and the
+  residual's length. On the tested vectors, the estimate's slope is 1.00 within
+  its standard error at each width and mean squared error stays under the paper's
+  bound. Those observations do not prove the paper's unbiasedness assumptions
+  for this implementation or its cross-platform bitwise reproducibility.
+  - The residual is projected in the rotated space, following the paper's
+    construction under its independent Gaussian assumptions.
   - S is dense, so the estimator accepts at most 4096 padded dimensions, and
     a loaded generation keeps its S (at most 64 MiB).
   - It refuses 1.5 bits, which has no narrower stage, and Manhattan
@@ -154,10 +154,12 @@ uses. The build then:
 
 The codec encodes each vector on its own with the configuration's seed and
 fixed codebook, so the generation is byte for byte the one a full build makes
-from the same versions. What it reads and encodes follows the change, not the
-estate's size; only the stamp's accumulator proof grows, with the logarithm of
-the estate's leaves. The result reports the base generation and the versions the build
-encoded.
+from the same versions. Source-version reads and newly encoded versions follow
+the change; the stamp's accumulator proof grows with the logarithm of the
+estate's leaves. The build still copies retained codes and serializes a complete
+generation, so its total work can grow with the base. Total memory and latency
+are not qualified here. The result reports the base generation and the versions
+the build encoded.
 
 - **Without a base,** or when the base's object does not verify, the build
   encodes every version.
@@ -187,7 +189,7 @@ canonical full-precision vectors and the exact scorer remain authoritative.
 | Part | Current state | Owning gate and required behavior |
 |---|---|---|
 | Persistent vector search | The MSE codec and lifecycle above serve after explicit activation, through the generation plus the stamped delta (E-04b). A TurboQuant build extends its base with the change (E-04c); the catalogue still replays from cursor zero. | E-04 maintains TurboQuant generations incrementally and atomically with point commits. F-03 runs candidate generation and exact reranking in the stamped Arrow pipeline. Closing [POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md) removes the per-search catalogue rebuild. |
-| Inner-product variant | `estimator: inner_product` (E-04d) builds, serves, extends and replays through the lifecycle above. Its estimate is unbiased, and its recall, score error and bias are measured beside the MSE variant and exact search on the same corpus. | J-04 qualifies its quality, memory and latency on representative corpora. Larger dimensions need a projection the paper's analysis covers. |
+| Inner-product variant | `estimator: inner_product` (E-04d) builds, serves, extends and replays through the lifecycle above. Its recall, score error and empirical bias are measured beside the MSE variant and exact search on the same corpus. | J-04 qualifies its quality, memory and latency on representative corpora. Larger dimensions need a projection the paper's analysis covers. |
 | Model KV cache | Absent: RRFlow runs embedding models only, and attention caches belong to admitted model runtimes. | In Gate G, SWAG selects a TurboQuant KV-cache format only when an admitted runtime advertises it and qualification passes. The format joins the [cache identity](../inference/lfg-swag.md#cache-identity-and-sharing). This is inference acceleration, not rrflowKV compression. |
 | Sync transfer | Absent. | H-07 may offer a selected-data profile in which a device receives verified quantized artifacts instead of a family's full-precision vectors, which reduces transfer bytes. That device only proposes candidates: its returned hits are exact-reranked by a peer that holds the canonical vectors, or they are labelled approximate. Full synchronization still transfers canonical vectors. |
 
@@ -206,7 +208,7 @@ including TurboQuant's inner-product estimator at 4, 2 and 1 bits. It checks:
   least 0.80.
 
 Each row also reports its mean signed score error. On that cosine corpus, the
-inner-product rows trade recall for unbiasedness at equal width: Recall@10 is
+inner-product rows have the following recall at equal width: Recall@10 is
 1.00, 0.94 and 0.85 at 4, 2 and 1 bits, against MSE's 1.00, 1.00 and 0.975.
 The retained debug-host observation is
 [`docs/evidence/g04-w04-quantization-local-512x64.json`](../../evidence/g04-w04-quantization-local-512x64.json);

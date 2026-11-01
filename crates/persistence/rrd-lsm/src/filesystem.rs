@@ -15,7 +15,9 @@ use std::sync::Arc;
 #[path = "filesystem/io.rs"]
 pub(crate) mod file_io;
 mod native;
+mod source;
 pub(crate) use native::FileIdentity;
+pub use source::{SourceKind, SourceLeaf, SourceObservation};
 pub(crate) mod space;
 
 #[cfg(test)]
@@ -442,12 +444,19 @@ impl AnchoredPath {
         let (target_parent, target_name, _target_ancestors) = target.parent_handle()?;
         #[cfg(test)]
         let ticket = Ticket::begin(Kind::Rename, self.diagnostic_path())?;
-        native::rename_new(
+        #[cfg(all(feature = "crash-test", not(test)))]
+        crate::crash_test::before_io("rename", self.diagnostic_path());
+        let result = native::rename_new(
             &source_parent,
             Path::new(&source_name),
             &target_parent,
             Path::new(&target_name),
-        )?;
+        );
+        #[cfg(all(feature = "crash-test", not(test)))]
+        crate::crash_test::observe_native_error("rename", self.diagnostic_path(), &result);
+        result?;
+        #[cfg(all(feature = "crash-test", not(test)))]
+        crate::crash_test::after_io("rename", self.diagnostic_path());
         #[cfg(test)]
         ticket.renamed(target.diagnostic_path())?;
         self.parent()

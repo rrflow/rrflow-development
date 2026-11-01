@@ -23,6 +23,8 @@ edge = [
 ]
 full = [
     "edge",
+    "rrd-inference/endpoint-chat",
+    "dep:rrd-attunement",
     "dep:base64",
     "dep:rrd-cluster",
     "dep:rrd-contract",
@@ -44,6 +46,7 @@ full = [
 ]
 
 [dependencies]
+rrd-attunement = { path = "../../compute/rrd-attunement", optional = true }
 rrd-contract = { path = "../../transport/rrd-contract", optional = true }
 rrd-estate = { path = "../rrd-estate", optional = true }
 rrd-security = { path = "../rrd-security", optional = true }

@@ -58,6 +58,7 @@ fn profile_of(bindings: Vec<EndpointBinding>) -> rrd_contract::Result<EndpointPr
             contract_version: ENDPOINT_PROFILE_CONTRACT_VERSION,
             name: id("test"),
             bindings,
+            selection_policy: None,
         },
     )
 }

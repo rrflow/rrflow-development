@@ -365,7 +365,9 @@ Update only current owners/supporting records:
   row and remaining C-07/F/J gaps;
 - evidence/roadmap indexes, this implementation record, and execution journal;
   and
-- regenerate `docs/roadmap/rrflow-1.0-file-plan.jsonl` deterministically.
+- regenerate the current file inventory deterministically under `target/` using
+  `scripts/ci/build_execution_inventory.py`; the former tracked
+  `docs/roadmap/rrflow-1.0-file-plan.jsonl` is a stable descriptor.
 
 If any C-06 acceptance item remains unproved, leave C-06 open and name the
 exact missing evidence. Never close it because the package compiles.

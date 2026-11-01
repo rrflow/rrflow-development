@@ -340,7 +340,9 @@ path, stop and revise the machine plan before editing it.
 - `docs/research/rrflow-system-convergence-architecture-research.md` current
   implementation audit only;
 - `docs/roadmap/rrflow-1.0-execution-map.md` complete package journal; and
-- generated `docs/roadmap/rrflow-1.0-file-plan.jsonl`.
+- the generated file inventory (the former tracked
+  `docs/roadmap/rrflow-1.0-file-plan.jsonl` is now a descriptor; generate the
+  current view under `target/` with `scripts/ci/build_execution_inventory.py`).
 
 Documentation records only measured behavior and retained gaps. C-06g cannot
 check C-06, claim a DataFusion stream, or claim alpha readiness.

@@ -90,9 +90,29 @@ pub(crate) struct MemtableProjectedSeek {
     pub versions_examined: u64,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct ProfileCounters {
+    key_payload_bytes: usize,
+    value_payload_bytes: usize,
+    tombstones: usize,
+    spilled_chains: usize,
+    spilled_version_capacity: usize,
+}
+
+impl ProfileCounters {
+    fn add_version(&mut self, version: &VersionedValue) {
+        match &version.value {
+            Some(value) => {
+                self.value_payload_bytes = self.value_payload_bytes.saturating_add(value.len())
+            }
+            None => self.tombstones = self.tombstones.saturating_add(1),
+        }
+    }
+}
+
 /// Ordered MVCC reference memtable. Versions remain until snapshot-aware
 /// flush/compaction proves they are unreachable.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Default)]
 pub struct Memtable {
     // AI storage workloads overwhelmingly create one live version per logical
     // key. Keep that version inline in the tree node and spill only actual
@@ -101,7 +121,40 @@ pub struct Memtable {
     maximum_sequence: u64,
     version_count: usize,
     approximate_bytes: usize,
+    profile_counters: ProfileCounters,
 }
+
+// Vec::clone may reduce a spilled chain's capacity. Recompute that physical
+// property from the actual clone rather than copying the original count.
+impl Clone for Memtable {
+    fn clone(&self) -> Self {
+        let versions: BTreeMap<_, _> = self.versions.clone();
+        let mut profile_counters = self.profile_counters;
+        profile_counters.spilled_version_capacity = versions
+            .values()
+            .filter_map(VersionChain::spilled_capacity)
+            .fold(0usize, usize::saturating_add);
+        Self {
+            versions,
+            maximum_sequence: self.maximum_sequence,
+            version_count: self.version_count,
+            approximate_bytes: self.approximate_bytes,
+            profile_counters,
+        }
+    }
+}
+
+// Physical counters are derived, and vector capacity was never part of the
+// logical equality of the table.
+impl PartialEq for Memtable {
+    fn eq(&self, other: &Self) -> bool {
+        self.versions == other.versions
+            && self.maximum_sequence == other.maximum_sequence
+            && self.version_count == other.version_count
+            && self.approximate_bytes == other.approximate_bytes
+    }
+}
+impl Eq for Memtable {}
 
 impl Memtable {
     pub fn recover(batches: &[RecoveredBatch]) -> Result<Self> {
@@ -134,6 +187,7 @@ impl Memtable {
     ) -> Result<Self> {
         let mut approximate_bytes = 0usize;
         let mut version_count = 0usize;
+        let mut profile_counters = ProfileCounters::default();
         for (key, values) in &versions {
             if key.is_empty() || values.is_empty() {
                 return Err(Error::InvalidSegment(
@@ -141,6 +195,14 @@ impl Memtable {
                 ));
             }
             let mut previous = 0;
+            profile_counters.key_payload_bytes =
+                profile_counters.key_payload_bytes.saturating_add(key.len());
+            if values.len() > 1 {
+                profile_counters.spilled_chains = profile_counters.spilled_chains.saturating_add(1);
+                profile_counters.spilled_version_capacity = profile_counters
+                    .spilled_version_capacity
+                    .saturating_add(values.capacity());
+            }
             for value in values {
                 if value.sequence == 0
                     || value.sequence <= previous
@@ -151,6 +213,7 @@ impl Memtable {
                     ));
                 }
                 previous = value.sequence;
+                profile_counters.add_version(value);
                 approximate_bytes = approximate_bytes
                     .checked_add(version_charge(
                         key.len(),
@@ -172,6 +235,7 @@ impl Memtable {
             maximum_sequence,
             version_count,
             approximate_bytes,
+            profile_counters,
         })
     }
 
@@ -427,25 +491,13 @@ impl Memtable {
             key_handle_bytes: std::mem::size_of::<Box<[u8]>>(),
             version_chain_bytes: std::mem::size_of::<VersionChain>(),
             version_record_bytes: std::mem::size_of::<VersionedValue>(),
+            key_payload_bytes: self.profile_counters.key_payload_bytes,
+            value_payload_bytes: self.profile_counters.value_payload_bytes,
+            tombstones: self.profile_counters.tombstones,
+            spilled_chains: self.profile_counters.spilled_chains,
+            spilled_version_capacity: self.profile_counters.spilled_version_capacity,
             ..MemtableProfile::default()
         };
-        for (key, versions) in &self.versions {
-            profile.key_payload_bytes = profile.key_payload_bytes.saturating_add(key.len());
-            if let Some(capacity) = versions.spilled_capacity() {
-                profile.spilled_chains = profile.spilled_chains.saturating_add(1);
-                profile.spilled_version_capacity =
-                    profile.spilled_version_capacity.saturating_add(capacity);
-            }
-            for version in versions.iter() {
-                match &version.value {
-                    Some(value) => {
-                        profile.value_payload_bytes =
-                            profile.value_payload_bytes.saturating_add(value.len());
-                    }
-                    None => profile.tombstones = profile.tombstones.saturating_add(1),
-                }
-            }
-        }
         profile.owned_bytes_lower_bound = profile
             .key_count
             .saturating_mul(
@@ -489,11 +541,29 @@ impl Memtable {
     }
 
     fn insert_version(&mut self, key: Box<[u8]>, version: VersionedValue) {
+        self.profile_counters.add_version(&version);
         match self.versions.entry(key) {
             Entry::Vacant(entry) => {
+                self.profile_counters.key_payload_bytes = self
+                    .profile_counters
+                    .key_payload_bytes
+                    .saturating_add(entry.key().len());
                 entry.insert(VersionChain::One(version));
             }
-            Entry::Occupied(mut entry) => entry.get_mut().push(version),
+            Entry::Occupied(mut entry) => {
+                let chain = entry.get_mut();
+                let before = chain.spilled_capacity();
+                chain.push(version);
+                let after = chain.spilled_capacity().expect("multiple versions spill");
+                if before.is_none() {
+                    self.profile_counters.spilled_chains =
+                        self.profile_counters.spilled_chains.saturating_add(1);
+                }
+                self.profile_counters.spilled_version_capacity = self
+                    .profile_counters
+                    .spilled_version_capacity
+                    .saturating_add(after.saturating_sub(before.unwrap_or(0)));
+            }
         }
     }
 }
@@ -501,6 +571,129 @@ impl Memtable {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Deliberately traverse the physical representation rather than using
+    // the maintained counters. This also observes Vec capacity after cloning.
+    fn traversed_profile(table: &Memtable) -> MemtableProfile {
+        let mut result = MemtableProfile {
+            key_count: table.versions.len(),
+            version_count: table.versions.values().map(|v| v.as_slice().len()).sum(),
+            key_handle_bytes: std::mem::size_of::<Box<[u8]>>(),
+            version_chain_bytes: std::mem::size_of::<VersionChain>(),
+            version_record_bytes: std::mem::size_of::<VersionedValue>(),
+            ..MemtableProfile::default()
+        };
+        for (key, chain) in &table.versions {
+            result.key_payload_bytes = result.key_payload_bytes.saturating_add(key.len());
+            if let Some(capacity) = chain.spilled_capacity() {
+                result.spilled_chains = result.spilled_chains.saturating_add(1);
+                result.spilled_version_capacity =
+                    result.spilled_version_capacity.saturating_add(capacity);
+            }
+            for item in chain.as_slice() {
+                if let Some(value) = &item.value {
+                    result.value_payload_bytes =
+                        result.value_payload_bytes.saturating_add(value.len());
+                } else {
+                    result.tombstones = result.tombstones.saturating_add(1);
+                }
+            }
+        }
+        result.owned_bytes_lower_bound = result
+            .key_count
+            .saturating_mul(
+                result
+                    .key_handle_bytes
+                    .saturating_add(result.version_chain_bytes),
+            )
+            .saturating_add(result.key_payload_bytes)
+            .saturating_add(result.value_payload_bytes)
+            .saturating_add(
+                result
+                    .spilled_version_capacity
+                    .saturating_mul(result.version_record_bytes),
+            );
+        result
+    }
+
+    #[test]
+    fn profile_matches_physical_traversal_through_mutation_recovery_and_clone() {
+        let mut table = Memtable::default();
+        assert_eq!(table.profile(), traversed_profile(&table));
+        let mut recovered = Vec::new();
+        for sequence in 1..=67u64 {
+            let key = format!("key-{}", sequence % 4).into_bytes();
+            let mutation = if sequence % 3 == 0 {
+                Mutation::Delete { key }
+            } else {
+                Mutation::Put {
+                    key,
+                    value: vec![sequence as u8; sequence as usize % 13],
+                }
+            };
+            let batch = WriteBatch::new(vec![mutation]).unwrap();
+            recovered.push(RecoveredBatch {
+                offset: 0,
+                checksum: 0,
+                first_sequence: sequence,
+                last_sequence: sequence,
+                payload: batch.encode().unwrap(),
+            });
+            if sequence % 2 == 0 {
+                table.apply_write_batch(&batch, sequence, sequence).unwrap();
+            } else {
+                table
+                    .apply_owned_write_batch(batch, sequence, sequence)
+                    .unwrap();
+            }
+            assert_eq!(
+                table.profile(),
+                traversed_profile(&table),
+                "sequence {sequence}"
+            );
+            let cloned = table.clone();
+            assert_eq!(
+                cloned.profile(),
+                traversed_profile(&cloned),
+                "clone at sequence {sequence}"
+            );
+            assert_eq!(cloned, table);
+        }
+        let replayed = Memtable::recover(&recovered).unwrap();
+        assert_eq!(replayed.profile(), traversed_profile(&replayed));
+        let compacted = table
+            .versions
+            .iter()
+            .map(|(key, chain)| (key.to_vec(), chain.as_slice().to_vec()))
+            .collect();
+        let rebuilt = Memtable::from_versions(compacted, 67).unwrap();
+        assert_eq!(rebuilt.profile(), traversed_profile(&rebuilt));
+        let mut spare = Vec::with_capacity(64);
+        spare.push(VersionedValue {
+            sequence: 1,
+            value: None,
+        });
+        spare.push(VersionedValue {
+            sequence: 2,
+            value: Some(vec![7; 3].into_boxed_slice()),
+        });
+        let rebuilt_with_spare =
+            Memtable::from_versions(BTreeMap::from([(b"spare".to_vec(), spare)]), 2).unwrap();
+        assert_eq!(
+            rebuilt_with_spare.profile(),
+            traversed_profile(&rebuilt_with_spare)
+        );
+        let cloned_spare = rebuilt_with_spare.clone();
+        assert_eq!(cloned_spare.profile(), traversed_profile(&cloned_spare));
+        assert_eq!(rebuilt_with_spare, cloned_spare);
+        let before = table.profile();
+        let invalid = WriteBatch::new(vec![Mutation::Delete {
+            key: b"bad".to_vec(),
+        }])
+        .unwrap();
+        assert!(table.apply_write_batch(&invalid, 99, 99).is_err());
+        assert_eq!(table.profile(), before);
+    }
 
     #[test]
     fn profile_separates_attributable_bytes_from_rss() {

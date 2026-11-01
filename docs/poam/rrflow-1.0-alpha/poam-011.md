@@ -27,15 +27,22 @@ catalogue as semantic owner, but the complete one-invocation compiler and
 installed cross-surface corpus have not been implemented. Hand-maintained
 operation/model/reference/conformance copies can therefore still drift.
 
-On a native Windows Python probe, creating a temporary file and applying
-`os.chmod(path, 0o600)` still reports mode `0o666`. The shared SDK harness
-`scripts/ci/run_sdk_conformance.py::wait_for_manifest` unconditionally
-requires Unix mode `0600`, and its Rust manifest writer uses ordinary file
-creation on non-Unix platforms rather than establishing a protected Windows
-DACL. This prevents that readiness check from succeeding on the observed
-Windows host and does not establish Windows-private manifest creation. Fix and
-test the native permission boundary; do not merely skip the check. The probe
-is not a full SDK run or Windows/ARM qualification.
+The shared SDK conformance harness formerly applied a Unix `0600` mode check
+on Windows, where Python's native mode projection reports `0666` even after
+`chmod(0600)`. Its manifest writer also relied on inherited Windows security.
+The [native harness repair](../../evidence/change-journals/gate-h/h-04-sdk-native-private-manifest.md)
+created and validated a private Windows workspace, but its Windows candidate CI
+rejected the child manifest's ownership or DACL. The
+[staging correction](../../evidence/change-journals/gate-h/h-04-sdk-windows-manifest-ci-correction.md)
+creates an explicitly owned, protected staging file and publishes it after a
+complete write. Corrected candidate 137b90a1 passed the hosted Windows estate
+job and complete candidate CI; this integration must pass its own exact-head CI.
+The complete Windows six-SDK corpus, separate-principal denial, ARM and macOS qualification
+remain required; local descriptor inspection and a real harness startup do not
+establish them or close POAM-011.
+The same Windows review found that `shutil.which` resolves `pnpm.CMD` while a
+bare-name `subprocess.run` fails; the harness now launches the resolved fixed
+toolchain path. This is a test-runner correction, not SDK conformance proof.
 
 The owner's rrflowDB identity requires PostgreSQL compatibility. The new
 [core-profile contract](../../reference/protocol/postgresql.md) defines the
@@ -184,6 +191,7 @@ and never reports conformance.
 
 ## Evidence history
 
+- [D-02 draft public-operation review](../../evidence/change-journals/gate-h/h-04-attunement-rust-client-gap.md): the eight draft start, step, pause, resume, expired-lease recovery and replan operations have no typed Rust-client bindings. Generated endpoint maps and HTTP tests do not establish Rust-client support. Catalogue-owned Rust binding generation and installed-engine conformance remain open.
 - Structural SDK evidence:
   [Rust](../../evidence/change-journals/gate-a/a-07-1b-evidence-journal.md),
   [TypeScript](../../evidence/change-journals/gate-a/a-07-1c-evidence-journal.md),

@@ -14,13 +14,15 @@ impl RrdEngine {
             )
         })
     }
-    fn endpoint_configuration_key(&self) -> String {
+    pub(super) fn endpoint_configuration_key(&self) -> String {
         format!(
             "server/state/{}/endpoint-configuration/active",
             self.instance
         )
     }
-    fn load_endpoint_configuration(&self) -> Result<(Option<Vec<u8>>, EndpointConfiguration)> {
+    pub(super) fn load_endpoint_configuration(
+        &self,
+    ) -> Result<(Option<Vec<u8>>, EndpointConfiguration)> {
         let identity = self.endpoint_configuration_identity()?;
         let bytes = self
             .storage
