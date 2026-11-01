@@ -1,0 +1,2 @@
+# Preserve captured bytes and digests across platform checkout conventions.
+**/*.json -text whitespace=cr-at-eol

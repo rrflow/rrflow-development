@@ -1,6 +1,7 @@
 //! Engine-owned ephemeral physical readers; no durable or client lifecycle authority.
 use super::*;
 use rrd_contract::{InspectStorageCursor, StorageCursorAction, StorageCursorSnapshot};
+use rrd_core::{RuntimeType, ScopeId};
 use rrd_store::StorageInspectionCursor;
 
 pub(super) struct RetainedCursor {
@@ -79,12 +80,27 @@ impl RrdEngine {
                 page_sha256: digest::sha256_hex(b"rrflow-storage-cursor-released-v1"),
             });
         }
-        if let StorageCursorAction::Open {
-            batch_rows,
-            batch_bytes,
-            lifetime_ms,
-        } = request.action
-        {
+        let opening = match &request.action {
+            StorageCursorAction::Open {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+            }
+            | StorageCursorAction::OpenRange {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+                ..
+            }
+            | StorageCursorAction::OpenRecordKind {
+                batch_rows,
+                batch_bytes,
+                lifetime_ms,
+                ..
+            } => Some((*batch_rows, *batch_bytes, *lifetime_ms)),
+            _ => None,
+        };
+        if let Some((batch_rows, batch_bytes, lifetime_ms)) = opening {
             if let Some(entry) = registry.get(&key) {
                 if entry.opened != request.action {
                     return Err(ServiceError::IdempotencyConflict);
@@ -106,9 +122,32 @@ impl RrdEngine {
                     return Err(ServiceError::SessionNotFound);
                 }
                 let deadline = Instant::now() + Duration::from_millis(lifetime);
-                let cursor = store
-                    .inspect_storage(usize::from(batch_rows), batch_bytes as usize)
-                    .map_err(crate::engine::error::storage_read_error)?;
+                let cursor = match &request.action {
+                    StorageCursorAction::OpenRange { start, end, .. } => store
+                        .inspect_storage_range(
+                            usize::from(batch_rows),
+                            batch_bytes as usize,
+                            start.clone(),
+                            end.clone(),
+                        ),
+                    StorageCursorAction::OpenRecordKind { record_kind, .. } => {
+                        let scope = ScopeId::new(request.scope.clone())
+                            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                        let kind = RuntimeType::new(record_kind.as_str())
+                            .map_err(|error| ServiceError::Contract(error.to_string()))?;
+                        store.inspect_storage_record_kind(
+                            usize::from(batch_rows),
+                            batch_bytes as usize,
+                            &scope,
+                            &kind,
+                        )
+                    }
+                    StorageCursorAction::Open { .. } => {
+                        store.inspect_storage(usize::from(batch_rows), batch_bytes as usize)
+                    }
+                    _ => unreachable!("only opening actions enter this branch"),
+                }
+                .map_err(crate::engine::error::storage_read_error)?;
                 if Instant::now() >= deadline {
                     return Err(ServiceError::Contract(
                         "storage cursor lifetime elapsed during capture".into(),

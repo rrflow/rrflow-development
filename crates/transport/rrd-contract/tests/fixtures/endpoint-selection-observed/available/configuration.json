@@ -1,0 +1,46 @@
+{
+  "format_version": 1,
+  "identity": {
+    "project_id": "project-2b4792120ffea2ac0293ff12",
+    "estate_id": "estate-2b4792120ffea2ac0293ff12",
+    "instance_id": "instance-2b4792120ffea2ac0293ff12"
+  },
+  "revision": 3,
+  "profile": {
+    "contract_version": 1,
+    "name": "swag-bf16-development",
+    "revision": 3,
+    "bindings": [
+      {
+        "id": "swag-custom-bf16",
+        "class": "large_model_serving",
+        "kind": "self_hosted",
+        "endpoint": {
+          "kind": "url",
+          "url": "http://127.0.0.1:8084/v1"
+        },
+        "service_id": "swag-qwen3-coder-intent-20261028",
+        "manifest_sha256": "ba7bede9963d469f312e06b337cb9241de524bdf77c7fe2ee30e09dd9b126252",
+        "credential": {
+          "provider": "operator-local",
+          "name": "swag-custom-bf16"
+        },
+        "placement": "clyffy-02",
+        "footprint": {
+          "memory_bytes": 107374182400,
+          "gpu": {
+            "kind": "required",
+            "memory_bytes": 107374182400
+          }
+        },
+        "limits": {
+          "max_concurrency": 1,
+          "timeout_ms": 60000,
+          "max_input_bytes": 16384
+        }
+      }
+    ],
+    "profile_sha256": "8ae001f1dc8a3311d414e9e622085eed45cae00457cd941af35a2e122569e39b"
+  },
+  "last_applied_plan_sha256": "b999681a7e3be1ed041481579f37b6f9245958731aef1b54a2453a6a53f1b881"
+}

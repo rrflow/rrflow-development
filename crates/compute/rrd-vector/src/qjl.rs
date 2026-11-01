@@ -1,11 +1,8 @@
-//! The Quantized Johnson-Lindenstrauss projection behind TurboQuant's
-//! inner-product estimator (arXiv:2504.19874, Section 3.2): a dense matrix S
-//! of independent standard normal entries, drawn from a seed.
-//!
-//! Every entry comes from its own hash of the seed, row and column. It is a
-//! standard normal draw by the polar method, with a logarithm built from basic
-//! IEEE operations only, so a projection, and the sign bits a build stores
-//! with it, are the same on every platform.
+//! The Quantized Johnson-Lindenstrauss projection used by TurboQuant's
+//! inner-product estimator (arXiv:2504.19874, Section 3.2). The paper uses a
+//! dense matrix of independent standard normal entries. This implementation
+//! deterministically approximates those draws from a seed using finite precision.
+//! Cross-platform bitwise reproducibility requires native qualification.
 
 use crate::contract::invalid;
 use rrd_core::Result;
@@ -20,6 +17,7 @@ const QJL_SALT: u64 = 0x514a_4c5f_7475_7262;
 #[derive(Debug, Clone)]
 pub struct QjlProjection {
     dimensions: usize,
+    seed: u64,
     entries: Vec<f32>,
 }
 
@@ -38,6 +36,7 @@ impl QjlProjection {
         }
         Ok(Self {
             dimensions,
+            seed,
             entries,
         })
     }
@@ -46,23 +45,33 @@ impl QjlProjection {
         self.dimensions
     }
 
-    /// S·values.
-    pub fn project(&self, values: &[f64]) -> Vec<f64> {
-        debug_assert_eq!(values.len(), self.dimensions);
-        self.entries
+    pub(crate) fn matches_seed(&self, seed: u64) -> bool {
+        self.seed == seed
+    }
+
+    /// Project finite values of the configured dimension.
+    pub fn project(&self, values: &[f64]) -> Result<Vec<f64>> {
+        if values.len() != self.dimensions || values.iter().any(|value| !value.is_finite()) {
+            return invalid("QJL projection requires finite values with matching dimensions");
+        }
+        let projected = self
+            .entries
             .chunks_exact(self.dimensions)
             .map(|row| {
                 row.iter()
                     .zip(values)
                     .map(|(entry, value)| f64::from(*entry) * value)
-                    .sum()
+                    .sum::<f64>()
             })
-            .collect()
+            .collect::<Vec<_>>();
+        if projected.iter().any(|value| !value.is_finite()) {
+            return invalid("QJL projection produced non-finite values");
+        }
+        Ok(projected)
     }
 }
 
-/// S's entry at `row`, `column`: a standard normal draw by the polar method,
-/// each attempt from the next hash of the entry's own state.
+/// Approximate a normal draw by the polar method using the entry's seeded state.
 fn normal(seed: u64, row: usize, column: usize) -> f64 {
     let mut state = mix(mix(seed ^ QJL_SALT, row as u64 + 1), column as u64 + 1);
     let mut attempt = 0u64;
@@ -129,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    fn entries_are_standard_normal_and_reproducible() {
+    fn sampled_entries_have_expected_moments_and_repeat_for_the_same_seed() {
         let projection = QjlProjection::new(256, 7).unwrap();
         assert_eq!(
             projection.entries,
@@ -163,8 +172,44 @@ mod tests {
         assert!(mean.abs() < 0.02, "mean {mean}");
         assert!((variance - 1.0).abs() < 0.02, "variance {variance}");
         assert!((kurtosis - 3.0).abs() < 0.1, "kurtosis {kurtosis}");
-        let projected = projection.project(&vec![1.0; 256]);
+        let projected = projection.project(&vec![1.0; 256]).unwrap();
         assert_eq!(projected.len(), 256);
+    }
+
+    #[test]
+    fn projection_rejects_mismatched_or_non_finite_inputs() {
+        let projection = QjlProjection::new(8, 11).unwrap();
+        assert!(projection.project(&[1.0; 7]).is_err());
+        assert!(projection.project(&[1.0; 9]).is_err());
+        assert!(projection.project(&[f64::NAN; 8]).is_err());
+        assert!(projection.project(&[f64::INFINITY; 8]).is_err());
+        let overflowing = projection.entries[..8]
+            .iter()
+            .map(|entry| if *entry >= 0.0 { f64::MAX } else { -f64::MAX })
+            .collect::<Vec<_>>();
+        assert!(projection.project(&overflowing).is_err());
+        assert_eq!(projection.project(&[1.0; 8]).unwrap().len(), 8);
+    }
+
+    #[test]
+    fn mismatched_projection_seed_is_rejected_by_encoder_and_query() {
+        let projection = QjlProjection::new(8, 11).unwrap();
+        let input = [1.0_f32; 8];
+        assert!(crate::TurboQuantInnerProductCode::encode(
+            &input,
+            crate::TurboQuantBits::Bits4,
+            12,
+            &projection,
+        )
+        .is_err());
+        assert!(crate::TurboQuantQuery::inner_product(
+            &input,
+            crate::ScoreMetric::Cosine,
+            crate::TurboQuantBits::Bits4,
+            12,
+            &projection,
+        )
+        .is_err());
     }
 
     #[test]

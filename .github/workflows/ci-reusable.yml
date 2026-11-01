@@ -86,6 +86,14 @@ jobs:
         run: python3 scripts/ci/run_filesystem_containment.py
       - name: Test the real install, serve, authenticate, stop, reopen lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+      - name: Build and exercise the standalone rrflowDB example
+        shell: bash
+        run: |
+          cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+          suffix=""
+          python_command=python3
+          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi
+          "$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"
       - name: Test bounded native lifecycle capture
         run: cargo test -p rrflow-cli --test lifecycle_process --locked
       - name: Require native foreign-owner denial
@@ -134,6 +142,8 @@ jobs:
         run: cargo test -p rrd-server --bin rrd-server --locked
       - name: Test native secret file permissions and handle identity
         run: cargo test -p rrd-engine --lib engine::token_key --locked
+      - name: Test SDK harness native manifest privacy
+        run: python -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
       - name: Test native filesystem containment and publication
         run: cargo test -p rrd-lsm --test filesystem --test manifest --locked
       - name: Test encoded admission accounting boundaries
@@ -200,6 +210,14 @@ jobs:
           retention-days: 14
       - name: Test native installed primary lifecycle
         run: cargo test -p rrflow-cli --test installed_lifecycle --locked -- --nocapture
+      - name: Build and exercise the standalone rrflowDB example
+        shell: bash
+        run: |
+          cargo build --locked -p rrflow-cli --bin rrflow -p rrd-client --example rrflowdb
+          suffix=""
+          python_command=python3
+          if [ "$RUNNER_OS" = Windows ]; then suffix=".exe"; python_command=python; fi
+          "$python_command" scripts/ci/run_rrflowdb_standalone.py "target/debug/rrflow${suffix}" "target/debug/examples/rrflowdb${suffix}"
       - name: Deny installed lifecycle test warnings
         run: cargo clippy -p rrflow-cli --test installed_lifecycle --test lifecycle_process --locked -- -D warnings
       - name: Build cross-package controller fixture
@@ -241,12 +259,17 @@ jobs:
       - name: Enforce repository CI policy
         run: |
           python3 scripts/ci/test_candidate_admission.py
+          python3 scripts/ci/test_native_sample_policy.py
+          python3 scripts/ci/test_sdk_attunement_policy.py
+          python3 scripts/ci/test_rrflowdb_standalone.py
+          python3 scripts/ci/test_cache_warm_policy.py
           python3 scripts/ci/check_workflow.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
       - name: Test offline controller outcome review exchange
         run: |
           python3 scripts/inference/test_review_outcomes.py
+          python3 scripts/inference/test_capture_observations.py
           python3 scripts/inference/test_review_decisions.py
       - name: Enforce documentation authority and local links
         run: python3 scripts/ci/check_documentation.py
@@ -262,12 +285,28 @@ jobs:
           python3 scripts/knowledge/test_export.py
       - name: Enforce exhaustive RRFlow 1.0 file planning
         run: |
+          set -euo pipefail
           python3 scripts/ci/test_execution_inventory.py
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
+          python3 scripts/ci/build_execution_inventory.py
+          git rev-parse --verify HEAD > target/rrflow-inventory-revision.txt
+          test "$(cat target/rrflow-inventory-revision.txt)" = "$GITHUB_SHA"
           python3 scripts/ci/build_execution_inventory.py --check
           python3 scripts/knowledge/render_capacity_profiles.py --check
           python3 scripts/knowledge/test_capacity_profiles.py
           python3 scripts/ci/test_collect_storage_acceptance.py
           python3 scripts/ci/test_sustained_launch.py
+      - name: Retain revision-bound execution inventory
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: execution-inventory-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            target/rrflow-1.0-file-plan.jsonl
+            target/rrflow-inventory-revision.txt
+          if-no-files-found: error
+          retention-days: 14
       - name: Enforce generated product-surface parity
         run: python3 scripts/ci/check_generated_surfaces.py
       - name: Enforce RRFlow engine ownership
@@ -303,7 +342,7 @@ jobs:
           - name: kernel-storage
             packages: "-p rrd-core -p rrd-lsm -p rrd-store -p rrd-maintenance"
           - name: query-retrieval
-            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-operator-knowledge"
+            packages: "-p rrd-query -p rrd-vector -p rrd-inference -p rrd-attunement -p rrd-operator-knowledge"
           - name: engine-authority
             packages: "-p rrd-contract -p rrd-cluster -p rrd-engine -p rrd-estate -p rrd-security"
           - name: service-protocol
@@ -402,6 +441,18 @@ jobs:
           printf '%s  %s\n' "$MAVEN_SHA512" "$archive" | sha512sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP"
           printf '%s\n' "$maven_root/bin" >> "$GITHUB_PATH"
+      - name: Test SDK harness native manifest privacy
+        run: python3 -m unittest discover -s scripts/ci -p test_sdk_private_manifest.py -v
+      - name: Exercise installed Python attunement recovery
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p rrflow-cli --bin rrflow --profile test --locked
+          export RRFLOW_TEST_BINARY="$GITHUB_WORKSPACE/target/debug/rrflow"
+          test -x "$RRFLOW_TEST_BINARY"
+          uv --directory sdks/python run --frozen pytest -o addopts= --color=no -q tests/test_installed_attunement.py | tee "$RUNNER_TEMP/rrflow-python-attunement.txt"
+          grep -Eq '^2 passed in [0-9.]+s[[:space:]]*$' "$RUNNER_TEMP/rrflow-python-attunement.txt"
       - name: Qualify all supported SDKs against one live corpus
         run: python3 scripts/ci/run_sdk_conformance.py
 
@@ -513,6 +564,24 @@ jobs:
       - name: Exercise installed capacity workload and backup readback
         timeout-minutes: 10
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_capacity_workload_smoke --exact --ignored --nocapture
+      - name: Require bounded native sampler failure
+        timeout-minutes: 5
+        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::acquisition_deadline_keeps_unfinished_cleanup_owned_and_blocks_reuse --exact --nocapture
+      - name: Verify owned Windows native sampler lifecycle
+        if: runner.os == 'Windows'
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/test_windows_harness_image.py --profile release
+          python scripts/ci/test_native_sample_worker.py --profile release
+      - name: Verify Linux native sampler running image
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::native_worker::tests::replaced_harness_path_cannot_redirect_linux_worker_or_receipt_digest --exact --nocapture
+      - name: Correlate installed sampler and storage traces
+        timeout-minutes: 10
+        run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::installed_sampler_trace_matches_server_and_store --exact --ignored --nocapture
       - name: Independent installed estates under concurrent load
         run: cargo test -p rrflow-cli --test installed_reopen --release --locked -- sustained::fleet::installed_two_estate_isolation_under_concurrent_load --exact --ignored --nocapture
       - name: Require fresh and existing installed damage denial
@@ -671,14 +740,26 @@ jobs:
           retention-days: 14
       - name: Qualify installed native capacity failure and recovery
         timeout-minutes: 30
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
         run: python3 scripts/ci/run_native_capacity.py
       - name: Require repeated APFS exhaustion and recovery
         if: matrix.os == 'macos-latest'
         timeout-minutes: 15
+        env:
+          RRFLOW_CAPACITY_DIAGNOSTICS: ${{ runner.temp }}/rrflow-capacity-diagnostics
         run: >-
           python3 scripts/ci/run_native_capacity.py
           --mode fresh --mode existing --mode fresh --mode existing
           --mode fresh --mode existing
+      - name: Retain native capacity create diagnostics
+        if: always() && matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-capacity-create-diagnostics-${{ matrix.os }}
+          path: ${{ runner.temp }}/rrflow-capacity-diagnostics/*.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Deny diagnostic-primary and oracle warnings
         run: cargo clippy -p rrflow-cli --bin rrflow --test installed_crash --test lifecycle_process --features crash-test --locked -- -D warnings
 
