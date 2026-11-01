@@ -73,7 +73,7 @@ def require(condition: bool, message: str) -> None:
         raise SurfaceError(message)
 
 
-def contract_export() -> tuple[bytes, dict[str, Any]]:
+def contract_export(*arguments: str) -> tuple[bytes, dict[str, Any]]:
     result = subprocess.run(
         [
             "cargo",
@@ -84,6 +84,7 @@ def contract_export() -> tuple[bytes, dict[str, Any]]:
             "rrd-contract",
             "--bin",
             "rrd-contract-export",
+            *(["--", *arguments] if arguments else []),
         ],
         cwd=ROOT,
         check=False,

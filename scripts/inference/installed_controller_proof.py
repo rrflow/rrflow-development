@@ -15,6 +15,7 @@ import time
 import tomllib
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from urllib.parse import urlparse
 from uuid import uuid4
 
 
@@ -28,8 +29,16 @@ def main():
     parser.add_argument('--recover-proof', help='Read an existing attempt and budget; never dispatch or replay.')
     parser.add_argument('--admission-only', action='store_true', help='Exercise installed denials without provider credentials or dispatch.')
     parser.add_argument('--fault-case', choices=['configuration', 'session', 'stop', 'disconnect'])
+    parser.add_argument('--native-client', help='Use the native Rust example for the baseline proposal only.')
+    parser.add_argument('--native-client-timeout-ms', type=int)
     args = parser.parse_args()
     recovery = Path(args.recover_proof).resolve() if args.recover_proof else None
+    if args.native_client and (recovery or args.admission_only or args.fault_case):
+        parser.error('Native client mode is a new baseline proof, not recovery, admission-only or a fault case.')
+    if bool(args.native_client) != (args.native_client_timeout_ms is not None):
+        parser.error('Native client mode requires both the executable and explicit timeout.')
+    if args.native_client_timeout_ms is not None and args.native_client_timeout_ms <= 0:
+        parser.error('Native client timeout must be positive.')
     if args.fault_case and (recovery or args.admission_only):
         parser.error('A live fault case excludes recovery and admission-only modes.')
     relay = None
@@ -342,7 +351,24 @@ def main():
                                 assert fresh_attempt['attempt']['endpoint_proposal'] == accepted
                         continue
                     if phase == 'authorized':
-                        accepted = call('proposal', 'task-endpoint-propose', request_payload)
+                        if args.native_client:
+                            executable = Path(args.native_client).resolve()
+                            save('native-client-identity.json', {'binarySha256': hashlib.sha256(executable.read_bytes()).hexdigest()})
+                            parsed = urlparse(base)
+                            assert parsed.scheme == 'http' and parsed.hostname in ['127.0.0.1', 'localhost']
+                            command = [str(executable), str(project), parsed.netloc,
+                                       str(out / 'proposal-request.json'), str(args.native_client_timeout_ms)]
+                            completed = subprocess.run(command, capture_output=True, timeout=args.native_client_timeout_ms / 1000 * 4)
+                            (out / 'native-client.stdout.json').write_bytes(completed.stdout)
+                            (out / 'native-client.stderr.log').write_bytes(completed.stderr)
+                            save('native-client-exit.json', {'exitCode': completed.returncode})
+                            assert completed.returncode == 0, 'Native proposal failed; preserve its output and recover without redispatch.'
+                            native = json.loads(completed.stdout)
+                            assert native['request'] == request_payload and native['sessionCloseError'] is None
+                            assert native['outcome']['status'] == 'ok'
+                            accepted = native['outcome']['proposal']
+                        else:
+                            accepted = call('proposal', 'task-endpoint-propose', request_payload)
                     else:
                         call('replay', 'task-endpoint-propose', request_payload, 412)
                     attempt = call('attempt', 'task-attempt-read', selection)
