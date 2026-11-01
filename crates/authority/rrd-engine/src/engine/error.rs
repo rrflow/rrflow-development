@@ -30,6 +30,11 @@ pub enum ServiceError {
     ReasoningAttemptRecorded {
         outcome_sha256: Option<String>,
     },
+    TaskAttemptInvalidated(rrd_contract::TaskAttemptInvalidation),
+    EndpointCallFailed {
+        reason: &'static str,
+        execution_may_continue: bool,
+    },
     InferenceCancelled {
         execution_may_continue: bool,
     },
@@ -130,6 +135,8 @@ impl ServiceError {
             | Self::InferenceCancelled { .. }
             | Self::ReasoningBudgetStopped(_)
             | Self::ReasoningAttemptRecorded { .. }
+            | Self::TaskAttemptInvalidated(_)
+            | Self::EndpointCallFailed { .. }
             | Self::ProjectBindingMismatch
             | Self::AttunementSourceChanged
             | Self::EstateInUse(_) => ServiceErrorKind::FailedPrecondition,

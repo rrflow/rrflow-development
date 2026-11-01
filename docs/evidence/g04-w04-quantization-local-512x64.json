@@ -1,7 +1,7 @@
 {
   "schema": "rrflow.quantization-evidence.v1",
-  "recorded_at": "2026-08-29",
-  "source_revision": "d55a9e622cceb17bc282a538ba0b1a695a5ff3cc+g04-w04-uncommitted",
+  "recorded_at": "2026-10-29",
+  "source_revision": "02f72aa69bfa3e2a1a0edfa1a297b854e94b508a+e04d-uncommitted",
   "profile": {
     "vectors": 512,
     "dimensions": 64,
@@ -10,149 +10,203 @@
     "exact_rerank": 96,
     "build_profile": "cargo-test-debug",
     "kernel": "runtime-dispatched-avx2-with-scalar-differential",
-    "memory_placements": ["owned", "mmap"]
+    "memory_placements": [
+      "owned",
+      "mmap"
+    ]
   },
   "environment": {
-    "rustc": "1.98.0 (88d9e12ae 2026-08-18)",
-    "target": "x86_64-unknown-linux-gnu",
-    "os": "Linux 7.0.0-30-generic x86_64",
-    "cpu": "Intel Xeon E5-2699 v4 @ 2.20GHz",
-    "logical_cpus": 8
+    "rustc": "1.99.1 (58cf8f9c3 2026-10-13)",
+    "target": "x86_64-pc-windows-msvc",
+    "os": "Microsoft Windows 11 Pro 10.0.26200",
+    "cpu": "Intel(R) Core(TM) Ultra 9 275HX",
+    "logical_cpus": 24
   },
   "rows": [
     {
+      "artifact_bytes": 138624,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 9119400,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.00045616452488709126,
+      "mean_signed_score_error": 9.167195735939999e-07,
       "method": "scalar",
       "packed_compression_ratio": 4,
       "packed_vector_bytes": 32768,
-      "auxiliary_bytes": 0,
-      "artifact_bytes": 105856,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.00045616452488709126,
       "recall_at_10_after_exact_rerank_96": 1.0,
-      "build_nanoseconds": 42234853,
-      "search_matrix_nanoseconds": 154415099
+      "search_matrix_nanoseconds": 67963900
     },
     {
+      "artifact_bytes": 331008,
+      "auxiliary_bytes": 65536,
+      "build_nanoseconds": 307492700,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.0012855476056131867,
+      "mean_signed_score_error": 8.912911004919015e-05,
       "method": "product_4x",
       "packed_compression_ratio": 4,
       "packed_vector_bytes": 32768,
-      "auxiliary_bytes": 65536,
-      "artifact_bytes": 298240,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.0012855476056131867,
       "recall_at_10_after_exact_rerank_96": 1.0,
-      "build_nanoseconds": 664589256,
-      "search_matrix_nanoseconds": 176499813
+      "search_matrix_nanoseconds": 79709300
     },
     {
+      "artifact_bytes": 314560,
+      "auxiliary_bytes": 65536,
+      "build_nanoseconds": 260285100,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.006064488962498153,
+      "mean_signed_score_error": 0.0003806562224416014,
       "method": "product_8x",
       "packed_compression_ratio": 8,
       "packed_vector_bytes": 16384,
-      "auxiliary_bytes": 65536,
-      "artifact_bytes": 281792,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.006064488962498153,
       "recall_at_10_after_exact_rerank_96": 1.0,
-      "build_nanoseconds": 585818617,
-      "search_matrix_nanoseconds": 160016685
+      "search_matrix_nanoseconds": 71463800
     },
     {
+      "artifact_bytes": 306368,
+      "auxiliary_bytes": 65536,
+      "build_nanoseconds": 236589200,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.014873129528445992,
+      "mean_signed_score_error": 0.0001748672882257364,
       "method": "product_16x",
       "packed_compression_ratio": 16,
       "packed_vector_bytes": 8192,
-      "auxiliary_bytes": 65536,
-      "artifact_bytes": 273600,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.014873129528445992,
       "recall_at_10_after_exact_rerank_96": 1.0,
-      "build_nanoseconds": 570537748,
-      "search_matrix_nanoseconds": 156858685
+      "search_matrix_nanoseconds": 69123600
     },
     {
+      "artifact_bytes": 302272,
+      "auxiliary_bytes": 65536,
+      "build_nanoseconds": 230922400,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.03073492755910274,
+      "mean_signed_score_error": 0.0008768739528543764,
       "method": "product_32x",
       "packed_compression_ratio": 32,
       "packed_vector_bytes": 4096,
-      "auxiliary_bytes": 65536,
-      "artifact_bytes": 269504,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.03073492755910274,
       "recall_at_10_after_exact_rerank_96": 0.975,
-      "build_nanoseconds": 522462326,
-      "search_matrix_nanoseconds": 160454014
+      "search_matrix_nanoseconds": 71718900
     },
     {
+      "artifact_bytes": 300224,
+      "auxiliary_bytes": 65536,
+      "build_nanoseconds": 230086900,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.04241240246930466,
+      "mean_signed_score_error": 0.0008719600358460832,
       "method": "product_64x",
       "packed_compression_ratio": 64,
       "packed_vector_bytes": 2048,
-      "auxiliary_bytes": 65536,
-      "artifact_bytes": 267456,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.04241240246930466,
       "recall_at_10_after_exact_rerank_96": 0.9000000000000001,
-      "build_nanoseconds": 508211023,
-      "search_matrix_nanoseconds": 148008167
+      "search_matrix_nanoseconds": 68798600
     },
     {
+      "artifact_bytes": 109888,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 8225200,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.07215651949696576,
+      "mean_signed_score_error": 0.0010867880435357245,
       "method": "binary",
       "packed_compression_ratio": 32,
       "packed_vector_bytes": 4096,
-      "auxiliary_bytes": 0,
-      "artifact_bytes": 77120,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.07215651949696576,
       "recall_at_10_after_exact_rerank_96": 0.9500000000000001,
-      "build_nanoseconds": 32779265,
-      "search_matrix_nanoseconds": 140751326
+      "search_matrix_nanoseconds": 55129700
     },
     {
+      "artifact_bytes": 145971,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 21946400,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.00938487902958596,
+      "mean_signed_score_error": 0.0001471481561859414,
       "method": "turboquant_4bit",
       "packed_compression_ratio": 8,
       "packed_vector_bytes": 16384,
-      "auxiliary_bytes": 0,
-      "artifact_bytes": 113203,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.00938487902958596,
       "recall_at_10_after_exact_rerank_96": 1.0,
-      "build_nanoseconds": 90052391,
-      "search_matrix_nanoseconds": 419651726
+      "search_matrix_nanoseconds": 65106500
     },
     {
+      "artifact_bytes": 137777,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 20903800,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.03372828750410836,
+      "mean_signed_score_error": -0.000984188134829544,
       "method": "turboquant_2bit",
       "packed_compression_ratio": 16,
       "packed_vector_bytes": 8192,
-      "auxiliary_bytes": 0,
-      "artifact_bytes": 105009,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.03372828750410836,
       "recall_at_10_after_exact_rerank_96": 1.0,
-      "build_nanoseconds": 79171131,
-      "search_matrix_nanoseconds": 423429862
+      "search_matrix_nanoseconds": 65694000
     },
     {
+      "artifact_bytes": 136155,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 24940200,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.053601511637252484,
+      "mean_signed_score_error": -0.001616802974103029,
       "method": "turboquant_1_5bit",
       "packed_compression_ratio": 21,
       "packed_vector_bytes": 6144,
-      "auxiliary_bytes": 0,
-      "artifact_bytes": 103387,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.053601511637252484,
       "recall_at_10_after_exact_rerank_96": 0.975,
-      "build_nanoseconds": 92305507,
-      "search_matrix_nanoseconds": 555498800
+      "search_matrix_nanoseconds": 68754300
     },
     {
+      "artifact_bytes": 134102,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 20526800,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.06297425016329712,
+      "mean_signed_score_error": -0.0007092965676865552,
       "method": "turboquant_1bit",
       "packed_compression_ratio": 32,
       "packed_vector_bytes": 4096,
-      "auxiliary_bytes": 0,
-      "artifact_bytes": 101334,
-      "full_precision_vector_bytes": 131072,
-      "mean_absolute_score_error": 0.06297425016329712,
       "recall_at_10_after_exact_rerank_96": 0.9750000000000001,
-      "build_nanoseconds": 75053924,
-      "search_matrix_nanoseconds": 424124516
+      "search_matrix_nanoseconds": 66204700
+    },
+    {
+      "artifact_bytes": 159757,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 43247400,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.02343258857813303,
+      "mean_signed_score_error": -0.00018319579585497403,
+      "method": "turboquant_prod_4bit",
+      "packed_compression_ratio": 8,
+      "packed_vector_bytes": 16384,
+      "recall_at_10_after_exact_rerank_96": 1.0,
+      "search_matrix_nanoseconds": 77015300
+    },
+    {
+      "artifact_bytes": 151705,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 42144600,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.07707946655556618,
+      "mean_signed_score_error": 0.0010074913293162333,
+      "method": "turboquant_prod_2bit",
+      "packed_compression_ratio": 16,
+      "packed_vector_bytes": 8192,
+      "recall_at_10_after_exact_rerank_96": 0.9375000000000001,
+      "search_matrix_nanoseconds": 77391200
+    },
+    {
+      "artifact_bytes": 141822,
+      "auxiliary_bytes": 0,
+      "build_nanoseconds": 38442400,
+      "full_precision_vector_bytes": 131072,
+      "mean_absolute_score_error": 0.13119946705298144,
+      "mean_signed_score_error": -0.0009658273700586109,
+      "method": "turboquant_prod_1bit",
+      "packed_compression_ratio": 32,
+      "packed_vector_bytes": 4096,
+      "recall_at_10_after_exact_rerank_96": 0.85,
+      "search_matrix_nanoseconds": 66877300
     }
   ],
+  "scope": "One deterministic debug-profile local observation. Packed-code ratios exclude metadata and codebooks. Timings are diagnostics, not release SLOs or a Qdrant superiority claim. Re-recorded on 2026-10-29 with TurboQuant's inner-product rows (E-04d) and each row's mean signed score error; the 2026-08-29 Linux observation is in Git history.",
   "qualification": {
     "minimum_recall_at_10_after_exact_rerank_96": 0.8,
     "observed_minimum_recall": 0.9000000000000001,
@@ -164,6 +218,5 @@
     "simd_scalar_rank_parity": true,
     "mmap_reopen_all_methods": true
   },
-  "command": "cargo test -p rrd-vector --test quantization_matrix --locked -- --nocapture",
-  "scope": "One deterministic debug-profile local observation. Packed-code ratios exclude metadata and codebooks. Timings are diagnostics, not release SLOs or a Qdrant superiority claim."
+  "command": "cargo test -p rrd-vector --test quantization_matrix --locked -- --nocapture"
 }

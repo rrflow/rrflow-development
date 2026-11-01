@@ -127,6 +127,7 @@ fn turboquant(candidates: Vec<VectorCandidate>) -> TurboQuantSegment {
             seed: 13,
             embedding_model: None,
             filter_properties: BTreeSet::new(),
+            estimator: rrd_vector::TurboQuantEstimator::Mse,
         },
         1,
         3,

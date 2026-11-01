@@ -1,4 +1,4 @@
-// OpenAPI SHA-256: 17370b53bc27e385e37eb049099846e35ece2ee22956a8ad94030100f60999c0
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
 export interface paths {
     "/v1/attunement/cancel": {
         parameters: {
@@ -990,8 +990,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Read one embedding attempt of a task
-         * @description Returns the recorded attempt for a scope, task_id, and attempt_id: its ordinal, its status (reserved, accepted, or stopped), and for an accepted attempt the outcome digest and retained embedding result. attempt is null when no attempt has that id. Reading never re-executes the attempt.
+         * Read one durable attempt of a task
+         * @description Returns the recorded attempt for scope, task_id, and attempt_id: ordinal, reserved/accepted/stopped/invalidated status, and the accepted embedding result or endpoint proposal and digest. Invalidation identifies changed inputs or authorization. attempt is null for an unknown id. Reading never re-executes an effect.
          */
         post: operations["task-attempt-read"];
         delete?: never;
@@ -1094,6 +1094,26 @@ export interface paths {
          * @description Reserves one budget step for attempt_id, embeds up to 16 inputs (64 KiB total, at most 4,096 output values) with an activated backend, and keeps the result in the attempt record, not as vector points. Requires an open task, a configured budget, and the EmbeddingGenerate action. A reused attempt_id never re-executes. Exhausted steps or time, a failed attempt, or repeated work stop the budget.
          */
         post: operations["task-embedding-execute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tasks/endpoint/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request an experimental endpoint proposal for a task
+         * @description Requires EndpointPropose, TaskRead and ReasoningWrite under initialized authority. Binds expected task and endpoint configuration digests, reserves task effort and configured concurrency, and calls the configured controller once. Changed authority or inputs withhold acceptance. Uncertain remote work retains capacity across reopen. Read task-attempt-read for recovery; a reused attempt_id never dispatches again. A proposal grants no worker effect or model qualification.
+         */
+        post: operations["task-endpoint-propose"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8333,7 +8353,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -8423,7 +8443,7 @@ export interface operations {
                                 chain_head_sha256?: string | null;
                                 records: {
                                     /** @enum {string} */
-                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                     /** Format: uint64 */
                                     at_unix_ms: number;
                                     /**
@@ -13978,6 +13998,9 @@ export interface operations {
                                  *     capability evidence, intersect permission and reserve the task's budget.
                                  */
                                 selection_policy?: {
+                                    allow_network: boolean;
+                                    /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                    allow_unverified_identity: boolean;
                                     candidates: {
                                         /**
                                          * @description A canonical public identifier component.
@@ -14034,8 +14057,19 @@ export interface operations {
                                         /** Format: uint64 */
                                         maximum_response_bytes: number;
                                     };
+                                    /**
+                                     * Format: uint32
+                                     * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                     */
+                                    maximum_concurrent_proposals: number;
                                     /** Format: uint32 */
                                     maximum_output_tokens: number;
+                                    /**
+                                     * @description A proposal can describe a choice without qualifying that choice for execution.
+                                     *     Adding another purpose requires its own admission semantics and evidence.
+                                     * @enum {string}
+                                     */
+                                    purpose: "experimental_proposal";
                                     system_prompt: string;
                                     /**
                                      * Format: uint16
@@ -14229,6 +14263,9 @@ export interface operations {
                                      *     capability evidence, intersect permission and reserve the task's budget.
                                      */
                                     selection_policy?: {
+                                        allow_network: boolean;
+                                        /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                        allow_unverified_identity: boolean;
                                         candidates: {
                                             /**
                                              * @description A canonical public identifier component.
@@ -14285,8 +14322,19 @@ export interface operations {
                                             /** Format: uint64 */
                                             maximum_response_bytes: number;
                                         };
+                                        /**
+                                         * Format: uint32
+                                         * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                         */
+                                        maximum_concurrent_proposals: number;
                                         /** Format: uint32 */
                                         maximum_output_tokens: number;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
                                         system_prompt: string;
                                         /**
                                          * Format: uint16
@@ -14482,6 +14530,9 @@ export interface operations {
                                      *     capability evidence, intersect permission and reserve the task's budget.
                                      */
                                     selection_policy?: {
+                                        allow_network: boolean;
+                                        /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                        allow_unverified_identity: boolean;
                                         candidates: {
                                             /**
                                              * @description A canonical public identifier component.
@@ -14538,8 +14589,19 @@ export interface operations {
                                             /** Format: uint64 */
                                             maximum_response_bytes: number;
                                         };
+                                        /**
+                                         * Format: uint32
+                                         * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                         */
+                                        maximum_concurrent_proposals: number;
                                         /** Format: uint32 */
                                         maximum_output_tokens: number;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
                                         system_prompt: string;
                                         /**
                                          * Format: uint16
@@ -14713,6 +14775,9 @@ export interface operations {
                             name: string;
                             /** @description Absent means no configured selector; never synthesize routing defaults. */
                             selection_policy?: {
+                                allow_network: boolean;
+                                /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                allow_unverified_identity: boolean;
                                 candidates: {
                                     /**
                                      * @description A canonical public identifier component.
@@ -14769,8 +14834,19 @@ export interface operations {
                                     /** Format: uint64 */
                                     maximum_response_bytes: number;
                                 };
+                                /**
+                                 * Format: uint32
+                                 * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                 */
+                                maximum_concurrent_proposals: number;
                                 /** Format: uint32 */
                                 maximum_output_tokens: number;
+                                /**
+                                 * @description A proposal can describe a choice without qualifying that choice for execution.
+                                 *     Adding another purpose requires its own admission semantics and evidence.
+                                 * @enum {string}
+                                 */
+                                purpose: "experimental_proposal";
                                 system_prompt: string;
                                 /**
                                  * Format: uint16
@@ -14970,6 +15046,9 @@ export interface operations {
                                      *     capability evidence, intersect permission and reserve the task's budget.
                                      */
                                     selection_policy?: {
+                                        allow_network: boolean;
+                                        /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                        allow_unverified_identity: boolean;
                                         candidates: {
                                             /**
                                              * @description A canonical public identifier component.
@@ -15026,8 +15105,19 @@ export interface operations {
                                             /** Format: uint64 */
                                             maximum_response_bytes: number;
                                         };
+                                        /**
+                                         * Format: uint32
+                                         * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                         */
+                                        maximum_concurrent_proposals: number;
                                         /** Format: uint32 */
                                         maximum_output_tokens: number;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
                                         system_prompt: string;
                                         /**
                                          * Format: uint16
@@ -15225,6 +15315,9 @@ export interface operations {
                                      *     capability evidence, intersect permission and reserve the task's budget.
                                      */
                                     selection_policy?: {
+                                        allow_network: boolean;
+                                        /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                        allow_unverified_identity: boolean;
                                         candidates: {
                                             /**
                                              * @description A canonical public identifier component.
@@ -15281,8 +15374,19 @@ export interface operations {
                                             /** Format: uint64 */
                                             maximum_response_bytes: number;
                                         };
+                                        /**
+                                         * Format: uint32
+                                         * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                         */
+                                        maximum_concurrent_proposals: number;
                                         /** Format: uint32 */
                                         maximum_output_tokens: number;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
                                         system_prompt: string;
                                         /**
                                          * Format: uint16
@@ -15519,6 +15623,9 @@ export interface operations {
                                      *     capability evidence, intersect permission and reserve the task's budget.
                                      */
                                     selection_policy?: {
+                                        allow_network: boolean;
+                                        /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                        allow_unverified_identity: boolean;
                                         candidates: {
                                             /**
                                              * @description A canonical public identifier component.
@@ -15575,8 +15682,19 @@ export interface operations {
                                             /** Format: uint64 */
                                             maximum_response_bytes: number;
                                         };
+                                        /**
+                                         * Format: uint32
+                                         * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                         */
+                                        maximum_concurrent_proposals: number;
                                         /** Format: uint32 */
                                         maximum_output_tokens: number;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
                                         system_prompt: string;
                                         /**
                                          * Format: uint16
@@ -15772,6 +15890,9 @@ export interface operations {
                                      *     capability evidence, intersect permission and reserve the task's budget.
                                      */
                                     selection_policy?: {
+                                        allow_network: boolean;
+                                        /** @description Explicit experimental permission; a reported alias is not weight attestation. */
+                                        allow_unverified_identity: boolean;
                                         candidates: {
                                             /**
                                              * @description A canonical public identifier component.
@@ -15828,8 +15949,19 @@ export interface operations {
                                             /** Format: uint64 */
                                             maximum_response_bytes: number;
                                         };
+                                        /**
+                                         * Format: uint32
+                                         * @description Aggregate outstanding controller calls, including unresolved remote work.
+                                         */
+                                        maximum_concurrent_proposals: number;
                                         /** Format: uint32 */
                                         maximum_output_tokens: number;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
                                         system_prompt: string;
                                         /**
                                          * Format: uint16
@@ -16980,7 +17112,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -19668,7 +19800,7 @@ export interface operations {
                                     chain_head_sha256?: string | null;
                                     records: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** Format: uint64 */
                                         at_unix_ms: number;
                                         /**
@@ -29626,7 +29758,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -29675,7 +29807,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -29729,7 +29861,7 @@ export interface operations {
                                 endpoints: {
                                     action: {
                                         /** @enum {string} */
-                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                        action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                         /** @constant */
                                         source: "fixed";
                                     };
@@ -29778,7 +29910,7 @@ export interface operations {
                                     /** @enum {string} */
                                     authentication: "public" | "api_key" | "session_bearer";
                                     /** @enum {string} */
-                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "knowledge_tree_read" | "knowledge_tree_write";
+                                    connect_action: "service_inspect" | "unknown_request" | "session_create" | "session_renew" | "session_close" | "query_execute" | "query_live_poll" | "query_index_ensure" | "query_index_list" | "transaction_begin" | "transaction_preview" | "transaction_commit" | "transaction_abort" | "changefeed_read" | "changefeed_follow" | "web_socket_connect" | "subscription_open" | "subscription_connect" | "subscription_ack" | "subscription_close" | "vector_collection_ensure" | "vector_collection_list" | "vector_collection_delete" | "vector_payload_index_ensure" | "vector_payload_index_list" | "vector_payload_index_delete" | "vector_point_retrieve" | "vector_point_scroll" | "vector_search" | "embedding_model_list" | "embedding_generate" | "embedding_search" | "backup_create" | "backup_list" | "restore_create" | "estate_read" | "estate_admin" | "audit_read" | "audit_export" | "function_catalogue_read" | "function_catalogue_write" | "function_execute" | "diagnostics_read" | "flight_launch" | "flight_read" | "task_write" | "task_read" | "security_admin" | "memory_context_read" | "reasoning_read" | "reasoning_write" | "endpoint_propose" | "knowledge_tree_read" | "knowledge_tree_write";
                                     description: string;
                                     /**
                                      * @description The reference group an operation belongs to.
@@ -31047,6 +31179,85 @@ export interface operations {
                             payload: {
                                 attempt?: {
                                     attempt_id: string;
+                                    /**
+                                     * @description A typed proposal receipt, not a selected-worker admission or artifact attestation.
+                                     *     Construction alone is not evidence that an engine admitted or observed it.
+                                     */
+                                    endpoint_proposal?: {
+                                        allowance_sha256: string;
+                                        attempt_id: string;
+                                        /**
+                                         * @description Only the model's observable choice. The engine owns request/source identity,
+                                         *     authorization, timestamps, raw-output digest, usage and any accepted receipt.
+                                         */
+                                        choice: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            effort?: string | null;
+                                            /** @constant */
+                                            kind: "select";
+                                        } | {
+                                            /** @constant */
+                                            kind: "abstain";
+                                            /** @enum {string} */
+                                            reason: "no_eligible_candidate" | "insufficient_evidence" | "cannot_decide";
+                                        };
+                                        configuration_sha256: string;
+                                        content_sha256: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms?: number | null;
+                                        /** Format: uint16 */
+                                        http_status?: number | null;
+                                        packet_sha256: string;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        scope: string;
+                                        /** @description Observed service alias; it does not prove the bytes loaded by that service. */
+                                        service_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                        task_sha256: string;
+                                        /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                        usage?: {
+                                            /** Format: uint64 */
+                                            completion_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            prompt_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            total_tokens?: number | null;
+                                        } | null;
+                                    } | null;
+                                    /**
+                                     * @description An affected attempt is no longer admissible. This does not reset spent
+                                     *     effort or permanently stop otherwise eligible work under the same budget.
+                                     * @enum {string|null}
+                                     */
+                                    invalidation?: "inputs_changed" | "authorization_changed" | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -31184,7 +31395,7 @@ export interface operations {
                                         scope: string;
                                     } | null;
                                     /** @enum {string} */
-                                    status: "reserved" | "accepted" | "stopped";
+                                    status: "reserved" | "accepted" | "stopped" | "invalidated";
                                 } | null;
                             };
                             /** @constant */
@@ -31221,6 +31432,85 @@ export interface operations {
                             payload: {
                                 attempt?: {
                                     attempt_id: string;
+                                    /**
+                                     * @description A typed proposal receipt, not a selected-worker admission or artifact attestation.
+                                     *     Construction alone is not evidence that an engine admitted or observed it.
+                                     */
+                                    endpoint_proposal?: {
+                                        allowance_sha256: string;
+                                        attempt_id: string;
+                                        /**
+                                         * @description Only the model's observable choice. The engine owns request/source identity,
+                                         *     authorization, timestamps, raw-output digest, usage and any accepted receipt.
+                                         */
+                                        choice: {
+                                            /**
+                                             * @description A canonical public identifier component.
+                                             *
+                                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                             *     labels are separate data and may use arbitrary Unicode.
+                                             */
+                                            binding_id: string;
+                                            effort?: string | null;
+                                            /** @constant */
+                                            kind: "select";
+                                        } | {
+                                            /** @constant */
+                                            kind: "abstain";
+                                            /** @enum {string} */
+                                            reason: "no_eligible_candidate" | "insufficient_evidence" | "cannot_decide";
+                                        };
+                                        configuration_sha256: string;
+                                        content_sha256: string;
+                                        /** Format: uint16 */
+                                        contract_version: number;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        controller_binding_id: string;
+                                        /** Format: uint64 */
+                                        elapsed_ms?: number | null;
+                                        /** Format: uint16 */
+                                        http_status?: number | null;
+                                        packet_sha256: string;
+                                        /**
+                                         * @description A proposal can describe a choice without qualifying that choice for execution.
+                                         *     Adding another purpose requires its own admission semantics and evidence.
+                                         * @enum {string}
+                                         */
+                                        purpose: "experimental_proposal";
+                                        request_sha256: string;
+                                        response_sha256: string;
+                                        scope: string;
+                                        /** @description Observed service alias; it does not prove the bytes loaded by that service. */
+                                        service_id: string;
+                                        /**
+                                         * @description A canonical public identifier component.
+                                         *
+                                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                         *     labels are separate data and may use arbitrary Unicode.
+                                         */
+                                        task_id: string;
+                                        task_sha256: string;
+                                        /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                        usage?: {
+                                            /** Format: uint64 */
+                                            completion_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            prompt_tokens?: number | null;
+                                            /** Format: uint64 */
+                                            total_tokens?: number | null;
+                                        } | null;
+                                    } | null;
+                                    /**
+                                     * @description An affected attempt is no longer admissible. This does not reset spent
+                                     *     effort or permanently stop otherwise eligible work under the same budget.
+                                     * @enum {string|null}
+                                     */
+                                    invalidation?: "inputs_changed" | "authorization_changed" | null;
                                     /** Format: uint64 */
                                     ordinal: number;
                                     outcome_sha256?: string | null;
@@ -31358,7 +31648,7 @@ export interface operations {
                                         scope: string;
                                     } | null;
                                     /** @enum {string} */
-                                    status: "reserved" | "accepted" | "stopped";
+                                    status: "reserved" | "accepted" | "stopped" | "invalidated";
                                 } | null;
                             };
                             /** @constant */
@@ -32748,6 +33038,275 @@ export interface operations {
                                 /** Format: uint64 */
                                 registry_revision: number;
                                 scope: string;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+        };
+    };
+    "task-endpoint-propose": {
+        parameters: {
+            query?: never;
+            header: {
+                "X-RRD-Session": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    context: {
+                        /** Format: uint64 */
+                        deadline_unix_ms?: number | null;
+                        idempotency_key?: string | null;
+                        operation_id: string;
+                        request_id: string;
+                    };
+                    /** @description No endpoint, credential, prompt or client-authored candidate facts enter this request. */
+                    payload: {
+                        attempt_id: string;
+                        expected_configuration_sha256: string;
+                        expected_task_sha256: string;
+                        /** Format: uint64 */
+                        max_storage_keys: number;
+                        scope: string;
+                        /**
+                         * @description A canonical public identifier component.
+                         *
+                         *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                         *     labels are separate data and may use arbitrary Unicode.
+                         */
+                        task_id: string;
+                    };
+                    protocol: string;
+                    /** Format: uint16 */
+                    protocol_version: number;
+                    /**
+                     * @description A fully explicit hierarchical identity. No field is inferred from process
+                     *     cwd, connection state, or a human label.
+                     */
+                    resource: {
+                        segments: {
+                            /**
+                             * @description A canonical public identifier component.
+                             *
+                             *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                             *     labels are separate data and may use arbitrary Unicode.
+                             */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "organization" | "estate" | "project" | "instance" | "tenant" | "namespace" | "database" | "table" | "collection" | "record" | "point" | "relation" | "alias" | "cluster" | "node" | "shard" | "replica" | "segment" | "transaction" | "snapshot" | "backup" | "operation";
+                        }[];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Typed RRD response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            /**
+                             * @description A typed proposal receipt, not a selected-worker admission or artifact attestation.
+                             *     Construction alone is not evidence that an engine admitted or observed it.
+                             */
+                            payload: {
+                                allowance_sha256: string;
+                                attempt_id: string;
+                                /**
+                                 * @description Only the model's observable choice. The engine owns request/source identity,
+                                 *     authorization, timestamps, raw-output digest, usage and any accepted receipt.
+                                 */
+                                choice: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    binding_id: string;
+                                    effort?: string | null;
+                                    /** @constant */
+                                    kind: "select";
+                                } | {
+                                    /** @constant */
+                                    kind: "abstain";
+                                    /** @enum {string} */
+                                    reason: "no_eligible_candidate" | "insufficient_evidence" | "cannot_decide";
+                                };
+                                configuration_sha256: string;
+                                content_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                controller_binding_id: string;
+                                /** Format: uint64 */
+                                elapsed_ms?: number | null;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                packet_sha256: string;
+                                /**
+                                 * @description A proposal can describe a choice without qualifying that choice for execution.
+                                 *     Adding another purpose requires its own admission semantics and evidence.
+                                 * @enum {string}
+                                 */
+                                purpose: "experimental_proposal";
+                                request_sha256: string;
+                                response_sha256: string;
+                                scope: string;
+                                /** @description Observed service alias; it does not prove the bytes loaded by that service. */
+                                service_id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                                task_sha256: string;
+                                /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                usage?: {
+                                    /** Format: uint64 */
+                                    completion_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    prompt_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    total_tokens?: number | null;
+                                } | null;
+                            };
+                            /** @constant */
+                            status: "ok";
+                        } | {
+                            error: {
+                                /** @enum {string} */
+                                code: "invalid_argument" | "not_found" | "already_exists" | "conflict" | "failed_precondition" | "unauthenticated" | "permission_denied" | "resource_exhausted" | "deadline_exceeded" | "cancelled" | "unavailable" | "corruption" | "unsupported_version" | "internal";
+                                details?: {
+                                    [key: string]: string;
+                                };
+                                message: string;
+                                retryable: boolean;
+                            };
+                            /** @constant */
+                            status: "error";
+                        };
+                        protocol: string;
+                        /** Format: uint16 */
+                        protocol_version: number;
+                        request_id: string;
+                    };
+                };
+            };
+            /** @description Typed RRD error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        operation_id: string;
+                        outcome: {
+                            /**
+                             * @description A typed proposal receipt, not a selected-worker admission or artifact attestation.
+                             *     Construction alone is not evidence that an engine admitted or observed it.
+                             */
+                            payload: {
+                                allowance_sha256: string;
+                                attempt_id: string;
+                                /**
+                                 * @description Only the model's observable choice. The engine owns request/source identity,
+                                 *     authorization, timestamps, raw-output digest, usage and any accepted receipt.
+                                 */
+                                choice: {
+                                    /**
+                                     * @description A canonical public identifier component.
+                                     *
+                                     *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                     *     labels are separate data and may use arbitrary Unicode.
+                                     */
+                                    binding_id: string;
+                                    effort?: string | null;
+                                    /** @constant */
+                                    kind: "select";
+                                } | {
+                                    /** @constant */
+                                    kind: "abstain";
+                                    /** @enum {string} */
+                                    reason: "no_eligible_candidate" | "insufficient_evidence" | "cannot_decide";
+                                };
+                                configuration_sha256: string;
+                                content_sha256: string;
+                                /** Format: uint16 */
+                                contract_version: number;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                controller_binding_id: string;
+                                /** Format: uint64 */
+                                elapsed_ms?: number | null;
+                                /** Format: uint16 */
+                                http_status?: number | null;
+                                packet_sha256: string;
+                                /**
+                                 * @description A proposal can describe a choice without qualifying that choice for execution.
+                                 *     Adding another purpose requires its own admission semantics and evidence.
+                                 * @enum {string}
+                                 */
+                                purpose: "experimental_proposal";
+                                request_sha256: string;
+                                response_sha256: string;
+                                scope: string;
+                                /** @description Observed service alias; it does not prove the bytes loaded by that service. */
+                                service_id: string;
+                                /**
+                                 * @description A canonical public identifier component.
+                                 *
+                                 *     IDs are lowercase ASCII and intentionally URL/path safe. Human-facing
+                                 *     labels are separate data and may use arbitrary Unicode.
+                                 */
+                                task_id: string;
+                                task_sha256: string;
+                                /** @description Provider-reported counts only. Absence is unknown, not zero or an estimate. */
+                                usage?: {
+                                    /** Format: uint64 */
+                                    completion_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    prompt_tokens?: number | null;
+                                    /** Format: uint64 */
+                                    total_tokens?: number | null;
+                                } | null;
                             };
                             /** @constant */
                             status: "ok";
@@ -42051,6 +42610,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42152,6 +42713,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42245,6 +42808,8 @@ export interface operations {
                         } | {
                             /** @enum {string} */
                             bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                            /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                            estimator?: "mse" | "inner_product";
                             /** @constant */
                             method: "turbo_quant";
                             /** Format: uint64 */
@@ -42338,6 +42903,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42360,6 +42927,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -42490,6 +43069,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42512,6 +43093,18 @@ export interface operations {
                                      */
                                     vector_name: string;
                                 };
+                                /**
+                                 * Format: uint64
+                                 * @description The generation this build extended with the vectors changed since it;
+                                 *     absent when the build encoded every version.
+                                 */
+                                base_generation?: number | null;
+                                /**
+                                 * Format: uint64
+                                 * @description Vector versions this build encoded. An extended generation carries the
+                                 *     rest from its base; a replay encodes none.
+                                 */
+                                encoded_versions: number;
                                 idempotent_replay: boolean;
                                 /** @description Complete logical I/O evidence for normal semantic reads at one stamp. */
                                 read_evidence: {
@@ -42706,6 +43299,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42809,6 +43404,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -42969,6 +43566,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
@@ -43070,6 +43669,8 @@ export interface operations {
                                     } | {
                                         /** @enum {string} */
                                         bits: "bits4" | "bits2" | "bits1_5" | "bits1";
+                                        /** @description Absent means `mse`, as before the inner-product estimator existed. */
+                                        estimator?: "mse" | "inner_product";
                                         /** @constant */
                                         method: "turbo_quant";
                                         /** Format: uint64 */
