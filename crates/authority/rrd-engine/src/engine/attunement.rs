@@ -22,6 +22,8 @@ pub use rrd_contract::{
 use std::time::Instant;
 
 mod inventory;
+#[allow(unused_imports)] // The installed Parse executor will consume this binding.
+pub(in crate::engine) use inventory::load_parse_inventory;
 
 const MAX_CONTROL_BYTES: usize = 64 * 1024;
 const MAX_JOB_TRANSITIONS: u64 = 1024;

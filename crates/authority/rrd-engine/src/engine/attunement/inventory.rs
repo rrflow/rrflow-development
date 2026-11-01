@@ -6,6 +6,46 @@ mod publication;
 mod records;
 mod reuse;
 
+/// Resolve only the committed Inventory immediately preceding a Parse step.
+/// The caller must authorize the session and fence the loaded job and lease.
+#[allow(dead_code)] // Consumed by the installed Parse executor after worker admission.
+pub(in crate::engine) fn load_parse_inventory(
+    engine: &RrdEngine,
+    job: &AttunementJob,
+    plan: &AttunementPlan,
+    remaining_keys: &mut u64,
+) -> Result<Proposal> {
+    job.validate(plan).map_err(contract)?;
+    if job.state != AttunementJobState::Running || job.current_phase != Some(AttunementPhase::Parse)
+    {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    let checkpoint = job
+        .checkpoints
+        .last()
+        .filter(|checkpoint| checkpoint.phase == AttunementPhase::Inventory)
+        .ok_or(ServiceError::ProjectBindingMismatch)?;
+    let installed = engine.attunement_installed_record()?;
+    let (profile, digest) =
+        DefaultInstallProfile::load(installed.installation.profile_id.as_str())?;
+    if digest != installed.installation.profile_sha256 {
+        return Err(ServiceError::ProjectBindingMismatch);
+    }
+    records::load_for_parse(
+        engine,
+        plan,
+        checkpoint,
+        profile.inventory_policy.limits.output_bytes.min(
+            engine
+                .estate_configuration
+                .storage
+                .transaction_admission_bytes,
+        ),
+        profile.inventory_policy.limits.entries,
+        remaining_keys,
+    )
+}
+
 pub(super) struct Work<'a> {
     pub session: &'a CorrelationId,
     pub token: &'a CorrelationId,

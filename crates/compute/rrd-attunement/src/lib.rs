@@ -3,3 +3,4 @@
 
 pub mod git;
 pub mod inventory;
+pub mod parse;
