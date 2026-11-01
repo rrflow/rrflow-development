@@ -510,6 +510,7 @@ fn installation_plan(attunement: &AttunementPlan) -> InstallationPlan {
                 estimated_write_bytes: 256,
             },
         ],
+        adopted_estate_entries: None,
         plan_sha256: digest(0),
     };
     plan.plan_sha256 = installation_plan_sha256(&plan).unwrap();
@@ -854,6 +855,45 @@ fn install_and_attunement_contract_matches_golden_json() {
     );
     let reopened: GoldenAttunementContract = serde_json::from_value(expected).unwrap();
     assert_eq!(reopened, fixture);
+}
+
+#[test]
+fn adopted_estate_entries_are_bound_only_when_present() {
+    let plan = installation_plan(&attunement_plan());
+    let value = serde_json::to_value(&plan).unwrap();
+    assert!(value.get("adopted_estate_entries").is_none());
+
+    let mut adopted = plan.clone();
+    adopted.adopted_estate_entries = Some(vec!["dev".into(), "instance.toml".into()]);
+    adopted.plan_sha256 = installation_plan_sha256(&adopted).unwrap();
+    assert_ne!(adopted.plan_sha256, plan.plan_sha256);
+    adopted.validate().unwrap();
+    let reopened: InstallationPlan =
+        serde_json::from_value(serde_json::to_value(&adopted).unwrap()).unwrap();
+    assert_eq!(reopened, adopted);
+
+    let mut empty = plan.clone();
+    empty.adopted_estate_entries = Some(Vec::new());
+    empty.plan_sha256 = installation_plan_sha256(&empty).unwrap();
+    assert_ne!(empty.plan_sha256, plan.plan_sha256);
+    empty.validate().unwrap();
+
+    let mut changed = adopted.clone();
+    changed.adopted_estate_entries = Some(vec!["dev".into()]);
+    assert!(changed.validate().is_err());
+
+    for entries in [
+        vec!["previous".to_owned()],
+        vec!["..".to_owned()],
+        vec!["a/b".to_owned()],
+        vec!["b".to_owned(), "a".to_owned()],
+        vec!["a".to_owned(), "a".to_owned()],
+    ] {
+        let mut invalid = plan.clone();
+        invalid.adopted_estate_entries = Some(entries);
+        invalid.plan_sha256 = installation_plan_sha256(&invalid).unwrap();
+        assert!(invalid.validate().is_err());
+    }
 }
 
 #[test]
