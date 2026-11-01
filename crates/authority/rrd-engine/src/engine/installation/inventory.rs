@@ -7,11 +7,14 @@
 
 use super::DefaultInstallProfile;
 use crate::engine::{Result, ServiceError};
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use ignore::Match;
 use rrd_core::digest::Sha256 as IncrementalSha256;
 use rrd_store::filesystem::AnchoredPath;
 use std::fs::Metadata;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
 
 pub(in crate::engine) fn project_inventory_sha256(
     project: &AnchoredPath,
@@ -66,15 +69,60 @@ pub(super) fn project_inventory_sha256_excluding(
     Ok(aggregate.finalize_hex())
 }
 
-fn collect_project_entries(
+/// The project's own `.gitignore` files decide what is part of the project:
+/// generated folders such as `node_modules/` or `target/` are neither walked
+/// nor counted. Only checked-in rule files apply, never per-machine ones.
+const MAX_GITIGNORE_BYTES: u64 = 1024 * 1024;
+
+fn load_gitignore(directory: &AnchoredPath) -> Result<Option<Gitignore>> {
+    let file = directory.join(".gitignore");
+    let metadata = match file.metadata() {
+        Ok(metadata) if metadata.is_file() => metadata,
+        Ok(_) => return Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(storage_error(error)),
+    };
+    if metadata.len() > MAX_GITIGNORE_BYTES {
+        return Err(ServiceError::Contract(
+            "a .gitignore file exceeds the inventory's 1 MiB rule bound".into(),
+        ));
+    }
+    let bytes = file.read().map_err(storage_error)?;
+    let mut builder = GitignoreBuilder::new(directory.relative_path());
+    for line in String::from_utf8_lossy(&bytes).lines() {
+        // Git skips a malformed pattern; so does the inventory.
+        let _ = builder.add_line(None, line);
+    }
+    builder
+        .build()
+        .map(Some)
+        .map_err(|error| ServiceError::Contract(format!("invalid .gitignore: {error}")))
+}
+
+fn is_ignored(rules: &[Arc<Gitignore>], relative: &Path, directory: bool) -> bool {
+    // The deepest rule file that matches decides, as in Git.
+    for rule in rules.iter().rev() {
+        match rule.matched(relative, directory) {
+            Match::Ignore(_) => return true,
+            Match::Whitelist(_) => return false,
+            Match::None => {}
+        }
+    }
+    false
+}
+
+pub(in crate::engine) fn collect_project_entries(
     root: &AnchoredPath,
     excluded_relative: Option<&Path>,
     lease_admitted: bool,
     max_entries: u64,
     output: &mut Vec<(AnchoredPath, bool)>,
 ) -> Result<()> {
-    let mut pending = vec![root.to_owned()];
-    while let Some(current) = pending.pop() {
+    let mut pending = vec![(root.to_owned(), Vec::<Arc<Gitignore>>::new())];
+    while let Some((current, mut rules)) = pending.pop() {
+        if let Some(local) = load_gitignore(&current)? {
+            rules.push(Arc::new(local));
+        }
         let entries = current.entries().map_err(storage_error)?;
         // Do not collect or sort a whole directory before applying the bound.
         // The admitted output is sorted once, by the digest builder.
@@ -89,17 +137,20 @@ fn collect_project_entries(
             {
                 continue;
             }
+            let metadata = path.metadata().map_err(storage_error)?;
+            if is_ignored(&rules, relative, metadata.is_dir()) {
+                continue;
+            }
             if output.len() as u64 >= max_entries {
                 return Err(ServiceError::Contract(
                     "project inventory exceeds the configured file bound".into(),
                 ));
             }
-            let metadata = path.metadata().map_err(storage_error)?;
             if metadata.file_type().is_symlink() {
                 return Err(ServiceError::ProjectBindingMismatch);
             }
             if metadata.is_dir() {
-                pending.push(path.clone());
+                pending.push((path.clone(), rules.clone()));
                 output.push((path, true));
             } else if metadata.is_file() {
                 output.push((path, false));
@@ -211,6 +262,62 @@ mod tests {
         assert_eq!(
             project_inventory_sha256(root.path(), &profile).unwrap(),
             "a1a2f8baba5c66694e08b3263eb9e4df589451ef7d65d00891a26bd201937514"
+        );
+    }
+
+    #[test]
+    fn gitignored_folders_are_neither_walked_counted_nor_hashed() {
+        let root = tempfile::tempdir().unwrap();
+        let write = |relative: &str, bytes: &[u8]| {
+            let path = root.path().join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        };
+        write(
+            ".gitignore",
+            b"node_modules/\n*.log\n!keep.log\n# comment\n[\n",
+        );
+        write("src/main.rs", b"fn main() {}\n");
+        write("src/.gitignore", b"generated/\n");
+        write("src/generated/out.rs", b"generated\n");
+        write("debug.log", b"noise\n");
+        write("keep.log", b"kept\n");
+        for index in 0..500 {
+            write(&format!("node_modules/pkg/file-{index}.js"), b"x\n");
+        }
+        let (mut profile, _) = DefaultInstallProfile::load("default").unwrap();
+        profile.inventory_max_files = 6;
+
+        let mut entries = Vec::new();
+        collect_project_entries(root.path(), None, 6, &mut entries).unwrap();
+        let mut names: Vec<_> = entries
+            .iter()
+            .map(|(path, _)| path.relative_path().to_str().unwrap().replace('\\', "/"))
+            .collect();
+        names.sort();
+        assert_eq!(
+            names,
+            [
+                ".gitignore",
+                "keep.log",
+                "src",
+                "src/.gitignore",
+                "src/main.rs"
+            ]
+        );
+
+        let before = project_inventory_sha256(root.path(), &profile).unwrap();
+        write("node_modules/pkg/file-0.js", b"changed\n");
+        write("src/generated/out.rs", b"changed\n");
+        write("debug.log", b"changed\n");
+        assert_eq!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            before
+        );
+        write("keep.log", b"changed\n");
+        assert_ne!(
+            project_inventory_sha256(root.path(), &profile).unwrap(),
+            before
         );
     }
 

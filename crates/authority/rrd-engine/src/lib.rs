@@ -31,10 +31,10 @@ pub use engine::{
     InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
     InstalledEstateRecord, InstalledTailRepairPlan, InstalledTailRepairReceipt, Invocation,
     InvocationCompletion, InvocationCredential, PreparedDistributedAuthority, ProjectLocator,
-    ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError, ServiceErrorKind,
-    ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
+    ProjectMapSummary, ReasoningBudgetStop, Result, RrdEngine, RrdOperation, ServiceError,
+    ServiceErrorKind, ServingPublisher, ServingRecord, ServingRegistration, TaskEmbeddingAttempt,
     TaskReasoningBudget, TransactionAdmissionSnapshot, CLOCK_OBSERVATION_FORMAT_VERSION,
-    MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES, TOKEN_KEY_BYTES,
+    MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES, PROJECT_MAP_RELATIVE_PATH, TOKEN_KEY_BYTES,
 };
 #[cfg(feature = "full")]
 pub use operator::{

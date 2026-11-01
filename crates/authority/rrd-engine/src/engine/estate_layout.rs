@@ -315,6 +315,8 @@ pub(super) fn validate_recovery_estate(
             "credentials",
             "config.toml",
             "bootstrap.md",
+            "project-map.md",
+            ".project-map.pending",
             locator_pending,
             bootstrap_pending,
         ],
