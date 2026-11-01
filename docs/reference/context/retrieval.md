@@ -45,7 +45,7 @@ RrdEngine authorization + one ReadStamp + collection catalogue
 whole vector-version read -> in-memory collection vectors
         |
         +--> nearest ------> search_vectors_at -> another whole vector-version
-        |                    read plus two catalogue replays from cursor zero
+        |                    read plus two direct stamped catalogue reads
         |                    (POAM-028)
         |
         +--> keyword ------> stamped rrflowQL pipeline -> materialized batches
@@ -62,7 +62,7 @@ result + plan digest + ordered stage evidence
 Multiple leaves still share the same validated stamp, but the old claim that
 canonical changes were reduced only once was incorrect. Each nearest branch
 invokes the current vector search path, which reads every vector version again
-and replays both vector catalogues from cursor zero
+and reads both vector catalogues directly at its stamp
 ([POAM-028](../../poam/rrflow-1.0-alpha/poam-028.md)); the keyword branch
 performs its own stamped query. Structural request bounds do not yet
 constitute one cross-operator physical I/O budget.

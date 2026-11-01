@@ -152,6 +152,18 @@ preserving every original assertion and production enforcement. The native
 failure remains retained; local passes do not substitute for corrected
 candidate and protected qualification. No POA&M status changes.
 
+The same defect then failed protected run `41258683845` (PR190's queue entry,
+job `124707222954`) in `replan_rechecks_inputs_and_fences_the_old_worker`; a later
+queue run for that pull request, `41263871154`, passed. Earlier repairs had
+corrected one test at a time. The
+[file-wide chronology repair](../../evidence/change-journals/gate-d/attunement-test-time-chronology.md)
+audits every supplied time in the attunement tests and derives each one that
+follows a committed transition from the completion it returned, preserving every
+assertion, the call order and production enforcement. A temporary delay in every
+transition path now fails none of the 34 tests, where the prior tests failed 16;
+at 3 s two tests still fail on real lease and session budgets, recorded there.
+Protected qualification remains required, and no POA&M status changes.
+
 ### Whole-repository Inventory publication and binary replacement
 
 PR226's [incremental publication record](../../evidence/change-journals/gate-d/d-03-incremental-publication.md)

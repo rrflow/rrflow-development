@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import secrets
 import shutil
 import sys
@@ -20,7 +21,7 @@ import tempfile
 import time
 
 from run_filesystem_containment import detach_owned_image
-from run_offline_lifecycle import filesystem_profile, require, run, sha256
+from run_offline_lifecycle import CommandOutputNotClosed, filesystem_profile, require, run, sha256
 
 CASE = "capacity::installed_native_capacity_recovers_acknowledged_history"
 POINTS = ("wal_before_write", "segment_before_create", "manifest_before_create", "current_before_create")
@@ -46,7 +47,7 @@ class NativeCommandFailure(RuntimeError):
 
 
 def retain_native_failure(config, fixture, mode, point, case_index, error):
-    """Retain only controlled hdiutil create output, never product or image data."""
+    """Retain closed capture metadata or controlled create output, never product data."""
     directory = os.environ.get("RRFLOW_CAPACITY_DIAGNOSTICS")
     runner_temp = os.environ.get("RUNNER_TEMP")
     if not directory or not runner_temp:
@@ -64,6 +65,28 @@ def retain_native_failure(config, fixture, mode, point, case_index, error):
         if source is None or id(source) in seen:
             break
         seen.add(id(source))
+        if isinstance(source, CommandOutputNotClosed):
+            def closed(value, pattern):
+                return value if isinstance(value, str) and re.fullmatch(pattern, value) else None
+            size = config.get("size_mib")
+            receipt = {"version": 1, "kind": "command-output-not-closed",
+                       "mode": mode if mode in ("fresh", "existing") else "unknown",
+                       "point": point if point in POINTS else "unknown",
+                       "case_index": case_index if type(case_index) is int and 0 < case_index <= 1000 else None,
+                       "size_mib": size if type(size) is int and 128 <= size <= 2048 else None,
+                       "harness_sha256": closed(config.get("harness_sha256"), r"[0-9a-f]{64}"),
+                       "github_sha": closed(os.environ.get("GITHUB_SHA"), r"[0-9a-f]{40}"),
+                       "github_run_id": closed(os.environ.get("GITHUB_RUN_ID"), r"[0-9]{1,20}"),
+                       "github_run_attempt": closed(os.environ.get("GITHUB_RUN_ATTEMPT"), r"[0-9]{1,8}"),
+                       "command_category": source.command_category,
+                       "child_returncode": source.child_returncode,
+                       "stdout_open": source.stdout_open, "stderr_open": source.stderr_open,
+                       "cleanup_state": "unknown"}
+            encoded = json.dumps(receipt, ensure_ascii=False).encode("utf-8", errors="replace")
+            require(len(encoded) <= 16 * 1024, "capacity capture diagnostic exceeds output bound")
+            with (path / f"failure-{secrets.token_hex(16)}.json").open("xb") as output:
+                output.write(encoded)
+            return
         if isinstance(source, NativeCommandFailure) and (source.tool, source.verb) == ("hdiutil", "create"):
             receipt = {"version": 1, "mode": mode, "point": point, "case_index": case_index,
                        "fixture": fixture.name, "size_mib": config["size_mib"],

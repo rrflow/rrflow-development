@@ -259,6 +259,26 @@ def storage_history_receipts(output: str, durable: list[dict]) -> list[dict]:
     return receipts
 
 
+_CAPTURE_COMMANDS = {
+    ("hdiutil", "create"): "hdiutil-create",
+    ("hdiutil", "attach"): "hdiutil-attach",
+    ("hdiutil", "detach"): "hdiutil-detach",
+    ("hdiutil", "info"): "hdiutil-info",
+    ("diskutil", "info"): "diskutil-info",
+}
+
+
+class CommandOutputNotClosed(RuntimeError):
+    """Closed metadata only; no arguments, paths or captured product output."""
+    def __init__(self, command_category, child_returncode, stdout_open, stderr_open):
+        self.command_category = command_category if command_category in _CAPTURE_COMMANDS.values() else "other"
+        self.child_returncode = (child_returncode if type(child_returncode) is int
+                                 and -(2 ** 31) <= child_returncode < 2 ** 31 else None)
+        self.stdout_open = bool(stdout_open)
+        self.stderr_open = bool(stderr_open)
+        super().__init__("command output did not close")
+
+
 def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
     """Capture a finite amount without communicate()'s unbounded allocation.
 
@@ -320,7 +340,12 @@ def run(*arguments: str, **kwargs: object) -> subprocess.CompletedProcess:
         child.wait(timeout=10)
         for reader in readers:
             reader.join(timeout=2)
-    require(not any(reader.is_alive() for reader in readers), "command output did not close")
+    open_streams = [reader.is_alive() for reader in readers]
+    if any(open_streams):
+        tool = Path(arguments[0]).name
+        verb = arguments[1] if len(arguments) > 1 else ""
+        category = _CAPTURE_COMMANDS.get((tool, verb), "other")
+        raise CommandOutputNotClosed(category, child.returncode, *open_streams)
     result = subprocess.CompletedProcess(arguments, child.returncode,
                                          streams[0].decode("utf-8", errors="replace"),
                                          streams[1].decode("utf-8", errors="replace"))

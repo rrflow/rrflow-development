@@ -9,6 +9,9 @@ use rrd_core::{RuntimeMutation, RuntimeValue, ScopeId};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Barrier};
 
+// Fixture times start from BASE, but a committed transition records its supplied
+// time plus real elapsed work. Every time after one follows the completion it
+// returned, never a fixed later offset that assumes how long the call took.
 const BASE: u64 = 1_800_000_000_000;
 mod inventory_delta;
 mod startup_binding;
@@ -571,7 +574,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
         &session,
         &step(&running.status.job),
         "inventory-connect",
-        BASE + 2_000,
+        running.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     let inventoried = call(
@@ -579,9 +582,10 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
         &session,
         &step(&connected.status.job),
         "inventory-step",
-        BASE + 3_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let inventoried_at = inventoried.status.job.updated_at_unix_ms;
     assert_eq!(inventoried.status.job.state, State::Running);
     assert_eq!(inventoried.status.job.checkpoints.len(), 2);
     let checkpoint = inventoried.status.job.checkpoints.last().unwrap();
@@ -598,7 +602,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
         &session,
         &step(&connected.status.job),
         "inventory-step",
-        BASE + 3_100,
+        inventoried_at + 1,
     )
     .unwrap();
     assert!(replay.idempotent_replay);
@@ -614,11 +618,11 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
     assert!(changes.changes.iter().any(|change| matches!(&change.mutation,
         RuntimeMutation::Relation { relation } if relation.reference.kind.as_str() == "source-tree-contains")));
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
-    let session = installed.session(&engine, "inventory-reopen", BASE + 4_100);
+    let engine = installed.reopen(inventoried_at + 2);
+    let session = installed.session(&engine, "inventory-reopen", inventoried_at + 3);
     assert_eq!(
         installed
-            .read(&engine, &session, BASE + 4_200)
+            .read(&engine, &session, inventoried_at + 4)
             .job
             .checkpoints,
         inventoried.status.job.checkpoints
@@ -641,7 +645,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
             &session,
             &step(&inventoried.status.job),
             "inventory-stale",
-            BASE + 5_000
+            inventoried_at + 5
         ),
         Err(ServiceError::AttunementSourceChanged)
     ));
@@ -651,7 +655,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
             &session.token,
             &installed.job,
             inventoried.status.job.revision,
-            BASE + 5_100,
+            inventoried_at + 6,
             "request-inventory-replan",
             "operation-inventory-replan",
         )
@@ -663,7 +667,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
             &replan,
             &replan.proposal_sha256,
             &context("inventory-accept"),
-            BASE + 5_200,
+            inventoried_at + 7,
         )
         .unwrap();
     let successor = &accepted.successor.job;
@@ -677,7 +681,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
             lease_ms: 30_000,
         },
         "inventory-successor-start",
-        BASE + 6_000,
+        successor.updated_at_unix_ms + 1,
     )
     .unwrap();
     let connected = call(
@@ -685,7 +689,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
         &session,
         &step(&started.status.job),
         "inventory-successor-connect",
-        BASE + 7_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     let next = call(
@@ -693,7 +697,7 @@ fn inventory_checkpoint_and_source_records_commit_reopen_and_replan_together() {
         &session,
         &step(&connected.status.job),
         "inventory-successor-step",
-        BASE + 8_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(next.status.job.checkpoints.len(), 2);
@@ -778,9 +782,10 @@ fn inventory_source_rejection_preserves_runtime_and_allows_retry() {
         &session,
         &step(&started.status.job),
         "retry-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let connected_at = connected.status.job.updated_at_unix_ms;
     let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
     let before = engine.storage.runtime().read_stamp(&scope).unwrap();
     let head = format!("server/state/{}/inventory/head", engine.instance_id());
@@ -792,14 +797,14 @@ fn inventory_source_rejection_preserves_runtime_and_allows_retry() {
             &session,
             &step(&connected.status.job),
             "retry-inventory",
-            BASE + 3_000
+            connected_at + 1
         ),
         Err(ServiceError::AttunementSourceChanged)
     ));
     assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
     assert!(engine.storage.control().get(&head).unwrap().is_none());
     assert_eq!(
-        installed.read(&engine, &session, BASE + 3_100).job,
+        installed.read(&engine, &session, connected_at + 2).job,
         connected.status.job
     );
     std::fs::write(installed.root.path().join("README.md"), original).unwrap();
@@ -808,7 +813,7 @@ fn inventory_source_rejection_preserves_runtime_and_allows_retry() {
         &session,
         &step(&connected.status.job),
         "retry-inventory",
-        BASE + 4_000,
+        connected_at + 3,
     )
     .unwrap();
     assert!(
@@ -924,9 +929,10 @@ fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
         &session,
         &step(&started.status.job),
         "bound-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let connected_at = connected.status.job.updated_at_unix_ms;
     let scope = ScopeId::new(format!("instance:{}", engine.instance_id())).unwrap();
     let before = engine.storage.runtime().read_stamp(&scope).unwrap();
     let head = format!("server/state/{}/inventory/head", engine.instance_id());
@@ -936,14 +942,14 @@ fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
             &session,
             &step(&connected.status.job),
             "bound-inventory",
-            BASE + 3_000
+            connected_at + 1
         ),
         Err(ServiceError::ConfigurationLimit(_))
     ));
     assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
     assert!(engine.storage.control().get(&head).unwrap().is_none());
     assert_eq!(
-        installed.read(&engine, &session, BASE + 3_100).job,
+        installed.read(&engine, &session, connected_at + 2).job,
         connected.status.job
     );
     assert_eq!(
@@ -954,12 +960,12 @@ fn inventory_output_bound_preserves_runtime_checkpoint_and_head_after_reopen() {
         0
     );
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
-    let session = installed.session(&engine, "bound-reopen", BASE + 4_100);
+    let engine = installed.reopen(connected_at + 3);
+    let session = installed.session(&engine, "bound-reopen", connected_at + 4);
     assert_eq!(engine.storage.runtime().read_stamp(&scope).unwrap(), before);
     assert!(engine.storage.control().get(&head).unwrap().is_none());
     assert_eq!(
-        installed.read(&engine, &session, BASE + 4_200).job,
+        installed.read(&engine, &session, connected_at + 5).job,
         connected.status.job
     );
 }
@@ -1119,12 +1125,13 @@ fn partial_inventory_recovery(edit_source: bool) {
         reopened_at + 200,
     )
     .unwrap();
+    let recovered_at = recovered.status.job.updated_at_unix_ms;
     let resumed = call(
         &engine,
         &session,
-        &resume(&recovered.status.job, reopened_at + 300),
+        &resume(&recovered.status.job, recovered_at + 1),
         "interrupt-resume",
-        reopened_at + 300,
+        recovered_at + 1,
     );
     if edit_source {
         assert!(matches!(
@@ -1138,7 +1145,7 @@ fn partial_inventory_recovery(edit_source: bool) {
                 &session.token,
                 &installed.job,
                 recovered.status.job.revision,
-                reopened_at + 400,
+                recovered_at + 2,
                 "request-partial-replan",
                 "operation-partial-replan",
             )
@@ -1150,7 +1157,7 @@ fn partial_inventory_recovery(edit_source: bool) {
                 &replan,
                 &replan.proposal_sha256,
                 &context("partial-accept"),
-                reopened_at + 500,
+                recovered_at + 3,
             )
             .unwrap();
         assert_ne!(
@@ -1278,7 +1285,7 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
         &session,
         &step(&running.status.job),
         "public-step-1",
-        BASE + 2_000,
+        running.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     let second = call(
@@ -1286,9 +1293,10 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
         &session,
         &step(&first.status.job),
         "public-step-2",
-        BASE + 3_000,
+        first.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let second_at = second.status.job.updated_at_unix_ms;
     assert_eq!(second.status.job.checkpoints.len(), 2);
     std::fs::write(
         installed
@@ -1304,7 +1312,7 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
             &session,
             &step(&second.status.job),
             "public-stale-step",
-            BASE + 3_500
+            second_at + 1
         ),
         Err(ServiceError::AttunementSourceChanged)
     ));
@@ -1314,7 +1322,7 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
             &session.token,
             &installed.job,
             second.status.job.revision,
-            BASE + 4_000,
+            second_at + 2,
             "request-public-preview",
             "operation-public-preview",
         )
@@ -1332,9 +1340,10 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
             &proposed,
             &proposed.proposal_sha256,
             &context("public-accept"),
-            BASE + 4_100,
+            second_at + 3,
         )
         .unwrap();
+    let accepted_at = accepted.predecessor.job.updated_at_unix_ms;
     assert_eq!(
         accepted.predecessor.job.checkpoints,
         second.status.job.checkpoints
@@ -1349,8 +1358,8 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
         .iter()
         .any(|entry| entry.action == "attunement.replan_receipted"));
     drop(engine);
-    let engine = installed.reopen(BASE + 5_000);
-    let session = installed.session(&engine, "public-reopen", BASE + 5_100);
+    let engine = installed.reopen(accepted_at + 1);
+    let session = installed.session(&engine, "public-reopen", accepted_at + 2);
     let replay = engine
         .accept_attunement_replan(
             &session.session_id,
@@ -1358,7 +1367,7 @@ fn selected_plan_replans_after_progress_and_reopens(git: bool) {
             &proposed,
             &proposed.proposal_sha256,
             &context("public-accept"),
-            BASE + 5_200,
+            accepted_at + 3,
         )
         .unwrap();
     assert!(replay.idempotent_replay);
@@ -1432,7 +1441,7 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
         &session,
         &step(&running.status.job),
         "variable-first",
-        BASE + 2_000,
+        running.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(first.status.job.current_phase, Some(Phase::Connect));
@@ -1445,18 +1454,19 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
             lease_generation: first.status.job.lease.as_ref().unwrap().generation,
         },
         "variable-pause",
-        BASE + 3_000,
+        first.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
+    let paused_at = paused.status.job.updated_at_unix_ms;
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
-    let renewed = installed.session(&engine, "variable-reopened", BASE + 4_100);
+    let engine = installed.reopen(paused_at + 1);
+    let renewed = installed.session(&engine, "variable-reopened", paused_at + 2);
     let read = engine
         .read_attunement(
             &renewed.session_id,
             &renewed.token,
             &job_id,
-            BASE + 4_500,
+            paused_at + 3,
             "variable-read",
             "variable-read",
         )
@@ -1465,9 +1475,9 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
     let running = call(
         &engine,
         &renewed,
-        &resume(&read.job, BASE + 5_000),
+        &resume(&read.job, paused_at + 4),
         "variable-resume",
-        BASE + 5_000,
+        paused_at + 4,
     )
     .unwrap();
     let second = call(
@@ -1475,7 +1485,7 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
         &renewed,
         &step(&running.status.job),
         "variable-second",
-        BASE + 6_000,
+        running.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(second.status.job.current_phase, Some(Phase::Verify));
@@ -1492,7 +1502,7 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
         &renewed,
         &step(&second.status.job),
         "variable-verify",
-        BASE + 7_000,
+        second.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(unavailable.status.job.state, State::Failed);
@@ -1522,7 +1532,7 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
             &renewed.token,
             &job_id,
             unavailable.status.job.revision,
-            BASE + 8_000,
+            unavailable.status.job.updated_at_unix_ms + 1,
             "request-variable-replan",
             "operation-variable-replan",
         )
@@ -1536,9 +1546,10 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
             &preview,
             &preview.proposal_sha256,
             &context("variable-replan"),
-            BASE + 8_100,
+            unavailable.status.job.updated_at_unix_ms + 2,
         )
         .unwrap();
+    let accepted_at = result.predecessor.job.updated_at_unix_ms;
     assert_eq!(
         result.predecessor.job.checkpoints,
         unavailable.status.job.checkpoints
@@ -1546,8 +1557,8 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
     assert_eq!(result.successor.job.state, State::Pending);
     assert!(result.successor.job.checkpoints.is_empty());
     drop(engine);
-    let engine = installed.reopen(BASE + 9_000);
-    let renewed = installed.session(&engine, "variable-replan-reopen", BASE + 9_100);
+    let engine = installed.reopen(accepted_at + 1);
+    let renewed = installed.session(&engine, "variable-replan-reopen", accepted_at + 2);
     let replay = engine
         .accept_attunement_replan(
             &renewed.session_id,
@@ -1555,7 +1566,7 @@ fn attunement_follows_a_bound_repeated_step_plan_after_reopen() {
             &preview,
             &preview.proposal_sha256,
             &context("variable-replan"),
-            BASE + 9_200,
+            accepted_at + 3,
         )
         .unwrap();
     assert!(replay.idempotent_replay);
@@ -1627,11 +1638,19 @@ fn stale_attunement_can_be_replanned_without_reinstalling_or_losing_receipts() {
         plan_sha256: accepted.plan.plan_sha256.clone(),
         lease_ms: 30_000,
     };
-    let running = call(&engine, &session, &start, "new-start", BASE + 2_000).unwrap();
+    let running = call(
+        &engine,
+        &session,
+        &start,
+        "new-start",
+        accepted.successor.job.updated_at_unix_ms + 1,
+    )
+    .unwrap();
+    let running_at = running.status.job.updated_at_unix_ms;
     std::fs::write(installed.root.path().join("README.md"), "second edit\n").unwrap();
     let work = step(&running.status.job);
     assert!(matches!(
-        call(&engine, &session, &work, "stale-connect", BASE + 3_000),
+        call(&engine, &session, &work, "stale-connect", running_at + 1),
         Err(ServiceError::AttunementSourceChanged)
     ));
     let current = engine
@@ -1639,7 +1658,7 @@ fn stale_attunement_can_be_replanned_without_reinstalling_or_losing_receipts() {
             &session.session_id,
             &session.token,
             &accepted.successor.job.id,
-            BASE + 3_100,
+            running_at + 2,
             "request-new-read",
             "operation-new-read",
         )
@@ -1651,15 +1670,15 @@ fn stale_attunement_can_be_replanned_without_reinstalling_or_losing_receipts() {
             &session.token,
             &accepted.successor.job.id,
             &id("stale-connect"),
-            BASE + 3_110,
+            running_at + 3,
             "request-no-stale-receipt",
             "operation-no-stale-receipt"
         )
         .unwrap()
         .is_none());
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
-    let renewed = installed.session(&engine, "replan-reopened", BASE + 4_100);
+    let engine = installed.reopen(running_at + 4);
+    let renewed = installed.session(&engine, "replan-reopened", running_at + 5);
     let replay = engine
         .accept_attunement_replan(
             &renewed.session_id,
@@ -1667,7 +1686,7 @@ fn stale_attunement_can_be_replanned_without_reinstalling_or_losing_receipts() {
             &proposal,
             &proposal.proposal_sha256,
             &context("accept"),
-            BASE + 4_200,
+            running_at + 6,
         )
         .unwrap();
     assert!(replay.idempotent_replay);
@@ -1686,6 +1705,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
         BASE + 1_000,
     )
     .unwrap();
+    let running_at = running.status.job.updated_at_unix_ms;
     let old_step = step(&running.status.job);
     std::fs::write(installed.root.path().join("README.md"), "new source\n").unwrap();
     let preview = engine
@@ -1694,7 +1714,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &session.token,
             &installed.job,
             running.status.job.revision,
-            BASE + 1_100,
+            running_at + 1,
             "request-preview-1",
             "operation-preview-1",
         )
@@ -1707,12 +1727,12 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &preview,
             &preview.proposal_sha256,
             &context("stale-accept"),
-            BASE + 1_200
+            running_at + 2
         ),
         Err(ServiceError::AttunementSourceChanged)
     ));
     assert_eq!(
-        installed.read(&engine, &session, BASE + 1_250).job,
+        installed.read(&engine, &session, running_at + 3).job,
         running.status.job
     );
     assert!(matches!(
@@ -1721,7 +1741,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &id("wrong-token"),
             &installed.job,
             running.status.job.revision,
-            BASE + 1_300,
+            running_at + 4,
             "request-denied",
             "operation-denied"
         ),
@@ -1733,7 +1753,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &session.token,
             &installed.job,
             running.status.job.revision,
-            BASE + 1_400,
+            running_at + 5,
             "request-preview-2",
             "operation-preview-2",
         )
@@ -1747,7 +1767,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &malformed,
             &malformed.proposal_sha256,
             &context("invalid-proposal"),
-            BASE + 1_450
+            running_at + 6
         ),
         Err(ServiceError::OperationDigestMismatch)
     ));
@@ -1759,9 +1779,10 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &replacement,
             &replacement.proposal_sha256,
             &context("replacement"),
-            BASE + 1_500,
+            running_at + 7,
         )
         .unwrap();
+    let accepted_at = accepted.predecessor.job.updated_at_unix_ms;
     let journal = engine
         .storage
         .control()
@@ -1784,7 +1805,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
         );
     }
     assert!(matches!(
-        call(&engine, &session, &old_step, "old-worker", BASE + 1_600),
+        call(&engine, &session, &old_step, "old-worker", accepted_at + 1),
         Err(ServiceError::StorageConflict(_))
     ));
     let mut changed = replacement.clone();
@@ -1796,7 +1817,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
             &changed,
             &changed.proposal_sha256,
             &context("replacement"),
-            BASE + 1_700
+            accepted_at + 2
         ),
         Err(ServiceError::IdempotencyConflict)
     ));
@@ -1805,7 +1826,7 @@ fn replan_rechecks_inputs_and_fences_the_old_worker() {
         &session,
         &step(&accepted.predecessor.job),
         "cancel-old",
-        BASE + 1_800,
+        accepted_at + 3,
     )
     .unwrap();
     assert_eq!(cancellation.status.job.state, State::Cancelled);
@@ -1861,7 +1882,7 @@ fn competing_replan_acceptances_publish_one_successor() {
             &first.session_id,
             &first.token,
             &winner.successor.job.id,
-            BASE + 2_000,
+            winner.successor.job.updated_at_unix_ms + 1,
             "request-winning-job",
             "operation-winning-job",
         )
@@ -1976,7 +1997,7 @@ fn replan_keeps_historical_control_receipt_after_restart() {
         &session,
         &old_step,
         "historical-connect",
-        BASE + 2_000,
+        started.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     std::fs::write(
@@ -1990,7 +2011,7 @@ fn replan_keeps_historical_control_receipt_after_restart() {
             &session.token,
             &installed.job,
             connected.status.job.revision,
-            BASE + 2_100,
+            connected.status.job.updated_at_unix_ms + 1,
             "request-historical-preview",
             "operation-historical-preview",
         )
@@ -2002,19 +2023,20 @@ fn replan_keeps_historical_control_receipt_after_restart() {
             &preview,
             &preview.proposal_sha256,
             &context("historical-replan"),
-            BASE + 2_200,
+            connected.status.job.updated_at_unix_ms + 2,
         )
         .unwrap();
+    let accepted_at = accepted.predecessor.job.updated_at_unix_ms;
     assert_eq!(accepted.predecessor.job.state, State::CancelRequested);
     drop(engine);
-    let engine = installed.reopen(BASE + 3_000);
-    let renewed = installed.session(&engine, "historical-reopened", BASE + 3_100);
+    let engine = installed.reopen(accepted_at + 1);
+    let renewed = installed.session(&engine, "historical-reopened", accepted_at + 2);
     let replay = call(
         &engine,
         &renewed,
         &old_step,
         "historical-connect",
-        BASE + 3_200,
+        accepted_at + 3,
     )
     .unwrap();
     assert!(replay.idempotent_replay);
@@ -2025,7 +2047,7 @@ fn replan_keeps_historical_control_receipt_after_restart() {
             &renewed.token,
             &installed.job,
             &id("historical-connect"),
-            BASE + 3_300,
+            accepted_at + 4,
             "request-historical-receipt",
             "operation-historical-receipt",
         )
@@ -2193,12 +2215,13 @@ fn replan_lost_response_survives_process_kill_and_replays() {
         .unwrap();
     assert!(replay.idempotent_replay);
     assert_eq!(replay.predecessor.job.state, State::CancelRequested);
+    // The killed child committed this job, so its completion first returns here.
     let successor = engine
         .read_attunement(
             &renewed.session_id,
             &renewed.token,
             &replay.successor.job.id,
-            BASE + 4_300,
+            (BASE + 4_300).max(replay.successor.job.updated_at_unix_ms + 1),
             "request-after-kill",
             "operation-after-kill",
         )
@@ -2367,7 +2390,7 @@ fn replan_receipt_and_replay_reject_a_corrupt_successor_link() {
             "operation-corrupt-preview",
         )
         .unwrap();
-    engine
+    let accepted = engine
         .accept_attunement_replan(
             &session.session_id,
             &session.token,
@@ -2377,6 +2400,7 @@ fn replan_receipt_and_replay_reject_a_corrupt_successor_link() {
             BASE + 1_200,
         )
         .unwrap();
+    let accepted_at = accepted.predecessor.job.updated_at_unix_ms;
     let link = format!(
         "{}/successor",
         crate::engine::installation::attunement_job_key(engine.instance_id(), &installed.job)
@@ -2391,7 +2415,7 @@ fn replan_receipt_and_replay_reject_a_corrupt_successor_link() {
             key: link,
             expected,
             replacement: Some(serde_json::to_vec(&changed).unwrap()),
-            at: BASE + 1_300,
+            at: accepted_at + 1,
             actor: "test-fixture".into(),
             action: "attunement.fixture_corrupt_link".into(),
             request_id: "request-corrupt-link".into(),
@@ -2404,7 +2428,7 @@ fn replan_receipt_and_replay_reject_a_corrupt_successor_link() {
             &session.token,
             &installed.job,
             &id("corrupt-replan"),
-            BASE + 1_400,
+            accepted_at + 2,
             "request-corrupt-read",
             "operation-corrupt-read"
         )
@@ -2416,7 +2440,7 @@ fn replan_receipt_and_replay_reject_a_corrupt_successor_link() {
             &preview,
             &preview.proposal_sha256,
             &context("corrupt-replan"),
-            BASE + 1_500
+            accepted_at + 3
         )
         .is_err());
 }
@@ -2435,7 +2459,7 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
             "operation-private-preview",
         )
         .unwrap();
-    engine
+    let accepted = engine
         .accept_attunement_replan(
             &owner.session_id,
             &owner.token,
@@ -2445,6 +2469,7 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
             BASE + 1_200,
         )
         .unwrap();
+    let accepted_at = accepted.predecessor.job.updated_at_unix_ms;
     let repository = SecurityRepository::new(&engine.storage, engine.instance_id().clone());
     let mut authority = repository.load().unwrap().unwrap();
     let revision = authority.revision;
@@ -2480,7 +2505,7 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
         .replace(
             revision,
             authority,
-            BASE + 1_300,
+            accepted_at + 1,
             "test",
             "reader-update",
             "reader-update",
@@ -2498,7 +2523,7 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
                 },
             },
             &id("other-replan-session"),
-            BASE + 1_400,
+            accepted_at + 2,
             "request-other-replan-session",
             "operation-other-replan-session",
         )
@@ -2509,7 +2534,7 @@ fn replan_receipt_is_not_visible_to_another_authorized_principal() {
             &reader.token,
             &installed.job,
             &id("private-replan"),
-            BASE + 1_500,
+            accepted_at + 3,
             "request-foreign-replan",
             "operation-foreign-replan"
         )
@@ -2707,7 +2732,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
         )
         .unwrap();
     let owner = installed.session(&engine, "receipt-owner", BASE + 500);
-    call(
+    let started = call(
         &engine,
         &owner,
         &installed.start(30_000),
@@ -2715,6 +2740,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
         BASE + 1_000,
     )
     .unwrap();
+    let started_at = started.status.job.updated_at_unix_ms;
     let make_session = |name: &str| {
         engine
             .create_authenticated_session(
@@ -2728,7 +2754,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
                     },
                 },
                 &id(name),
-                BASE + 1_500,
+                started_at + 1,
                 &format!("request-{name}"),
                 &format!("operation-{name}"),
             )
@@ -2742,7 +2768,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
             &other.token,
             &installed.job,
             &id("owner-receipt"),
-            BASE + 2_000,
+            started_at + 2,
             "other-read",
             "other-read"
         )
@@ -2754,7 +2780,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
             &denied.token,
             &installed.job,
             &id("owner-receipt"),
-            BASE + 2_100,
+            started_at + 3,
             "denied-read",
             "denied-read"
         ),
@@ -2766,7 +2792,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
             &owner.token,
             &installed.job,
             &id("owner-receipt"),
-            BASE + 2_200,
+            started_at + 4,
             "owner-read",
             "owner-read"
         )
@@ -2777,7 +2803,7 @@ fn attunement_receipt_readback_is_principal_scoped_and_authorized() {
 #[test]
 fn attunement_receipt_readback_rejects_corrupt_identity() {
     let (installed, engine, session) = Installed::new(InstallationTargetKind::FreshProject);
-    call(
+    let started = call(
         &engine,
         &session,
         &installed.start(30_000),
@@ -2785,6 +2811,7 @@ fn attunement_receipt_readback_rejects_corrupt_identity() {
         BASE + 1_000,
     )
     .unwrap();
+    let started_at = started.status.job.updated_at_unix_ms;
     let key = engine
         .storage
         .control()
@@ -2804,7 +2831,7 @@ fn attunement_receipt_readback_rejects_corrupt_identity() {
             key,
             expected: Some(original),
             replacement: Some(serde_json::to_vec(&value).unwrap()),
-            at: BASE + 1_500,
+            at: started_at + 1,
             actor: "test".into(),
             action: "test.receipt-corruption".into(),
             request_id: "corrupt-request".into(),
@@ -2817,7 +2844,7 @@ fn attunement_receipt_readback_rejects_corrupt_identity() {
             &session.token,
             &installed.job,
             &id("receipt-corrupt"),
-            BASE + 2_000,
+            started_at + 2,
             "corrupt-read",
             "corrupt-read"
         ),
@@ -3046,24 +3073,31 @@ fn attunement_competing_workers_only_one_claims_and_foreign_worker_cannot_publis
     assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
     let winner = if results[0].is_ok() { &first } else { &second };
     let loser = if results[0].is_ok() { &second } else { &first };
-    let running = installed.read(&engine, winner, BASE + 2_000).job;
+    let claimed_at = results
+        .iter()
+        .find_map(|result| result.as_ref().ok())
+        .unwrap()
+        .status
+        .job
+        .updated_at_unix_ms;
+    let running = installed.read(&engine, winner, claimed_at + 1).job;
     assert!(matches!(
         call(
             &engine,
             loser,
             &step(&running),
             "foreign-step",
-            BASE + 3_000
+            claimed_at + 2
         ),
         Err(ServiceError::StorageConflict(_))
     ));
-    assert_eq!(installed.read(&engine, winner, BASE + 3_500).job, running);
+    assert_eq!(installed.read(&engine, winner, claimed_at + 3).job, running);
     assert!(call(
         &engine,
         winner,
         &step(&running),
         "winner-step",
-        BASE + 4_000
+        claimed_at + 4
     )
     .is_ok());
 }
@@ -3085,22 +3119,39 @@ fn attunement_expiry_recovery_and_pause_fence_prior_workers() {
         job_id: installed.job.clone(),
         expected_revision: 2,
     };
-    assert!(call(&engine, &second, &recovery, "early-recovery", BASE + 2_000).is_err());
-    assert!(call(&engine, &first, &old_work, "expired-step", BASE + 4_000).is_err());
-    let paused = call(&engine, &second, &recovery, "recovery", BASE + 5_000).unwrap();
+    let started_at = started.status.job.updated_at_unix_ms;
+    let expires_at = started
+        .status
+        .job
+        .lease
+        .as_ref()
+        .unwrap()
+        .expires_at_unix_ms;
+    assert!(call(
+        &engine,
+        &second,
+        &recovery,
+        "early-recovery",
+        started_at + 1
+    )
+    .is_err());
+    assert!(call(&engine, &first, &old_work, "expired-step", expires_at + 1).is_err());
+    let paused = call(&engine, &second, &recovery, "recovery", expires_at + 2).unwrap();
     assert_eq!(paused.status.job.state, State::Paused);
     assert!(paused.status.job.checkpoints.is_empty());
+    let paused_at = paused.status.job.updated_at_unix_ms;
     drop(engine);
-    let engine = installed.reopen(BASE + 5_500);
+    let engine = installed.reopen(paused_at + 1);
     let resumed = call(
         &engine,
         &second,
-        &resume(&paused.status.job, BASE + 6_000),
+        &resume(&paused.status.job, paused_at + 2),
         "resume",
-        BASE + 6_000,
+        paused_at + 2,
     )
     .unwrap();
-    assert!(call(&engine, &first, &old_work, "zombie", BASE + 7_000).is_err());
+    let resumed_at = resumed.status.job.updated_at_unix_ms;
+    assert!(call(&engine, &first, &old_work, "zombie", resumed_at + 1).is_err());
     let mut forged = step(&resumed.status.job);
     if let AttunementCommand::Step {
         lease_generation, ..
@@ -3108,7 +3159,7 @@ fn attunement_expiry_recovery_and_pause_fence_prior_workers() {
     {
         *lease_generation = 2;
     }
-    assert!(call(&engine, &second, &forged, "old-generation", BASE + 8_000).is_err());
+    assert!(call(&engine, &second, &forged, "old-generation", resumed_at + 2).is_err());
     let lease = resumed.status.job.lease.as_ref().unwrap();
     let paused = call(
         &engine,
@@ -3119,7 +3170,7 @@ fn attunement_expiry_recovery_and_pause_fence_prior_workers() {
             lease_generation: lease.generation,
         },
         "pause",
-        BASE + 9_000,
+        resumed_at + 3,
     )
     .unwrap();
     assert_eq!(paused.status.job.state, State::Paused);
@@ -3128,7 +3179,7 @@ fn attunement_expiry_recovery_and_pause_fence_prior_workers() {
         &second,
         &step(&resumed.status.job),
         "paused-worker",
-        BASE + 10_000
+        paused.status.job.updated_at_unix_ms + 1
     )
     .is_err());
 }
@@ -3144,36 +3195,39 @@ fn attunement_cancel_wins_over_stale_work_and_is_durable() {
         BASE + 1_000,
     )
     .unwrap();
+    let running_at = running.status.job.updated_at_unix_ms;
     let old_work = step(&running.status.job);
-    let command = cancel(&running.status.job, BASE + 2_000);
-    let requested = call(&engine, &session, &command, "cancel", BASE + 2_000).unwrap();
+    let command = cancel(&running.status.job, running_at + 1);
+    let requested = call(&engine, &session, &command, "cancel", running_at + 1).unwrap();
+    let requested_at = requested.status.job.updated_at_unix_ms;
     assert_eq!(requested.status.job.state, State::CancelRequested);
     assert!(call(
         &engine,
         &session,
         &old_work,
         "stale-after-cancel",
-        BASE + 3_000
+        requested_at + 1
     )
     .is_err());
     drop(engine);
-    let engine = installed.reopen(BASE + 4_000);
+    let engine = installed.reopen(requested_at + 2);
     let complete = call(
         &engine,
         &session,
         &step(&requested.status.job),
         "ack-cancel",
-        BASE + 5_000,
+        requested_at + 3,
     )
     .unwrap();
+    let complete_at = complete.status.job.updated_at_unix_ms;
     assert_eq!(complete.status.job.state, State::Cancelled);
     assert!(complete.status.job.lease.is_none());
     assert!(complete.status.job.checkpoints.is_empty());
-    let replay = call(&engine, &session, &command, "cancel", BASE + 6_000).unwrap();
+    let replay = call(&engine, &session, &command, "cancel", complete_at + 1).unwrap();
     assert_eq!(replay.status, requested.status);
     assert!(replay.idempotent_replay);
     assert_eq!(
-        installed.read(&engine, &session, BASE + 7_000).job,
+        installed.read(&engine, &session, complete_at + 2).job,
         complete.status.job
     );
     assert!(call(
@@ -3181,7 +3235,7 @@ fn attunement_cancel_wins_over_stale_work_and_is_durable() {
         &session,
         &installed.start(30_000),
         "restart-cancelled",
-        BASE + 8_000
+        complete_at + 3
     )
     .is_err());
 }
@@ -3240,7 +3294,7 @@ fn attunement_rejects_invalid_identity_auth_budget_and_changed_idempotency() {
         installed.read(&engine, &session, BASE + 3_500).job,
         original
     );
-    call(
+    let accepted = call(
         &engine,
         &session,
         &installed.start(30_000),
@@ -3248,13 +3302,14 @@ fn attunement_rejects_invalid_identity_auth_budget_and_changed_idempotency() {
         BASE + 4_000,
     )
     .unwrap();
+    let accepted_at = accepted.status.job.updated_at_unix_ms;
     assert!(matches!(
         call(
             &engine,
             &session,
             &installed.start(29_000),
             "accepted-key",
-            BASE + 5_000
+            accepted_at + 1
         ),
         Err(ServiceError::IdempotencyConflict)
     ));
@@ -3265,7 +3320,7 @@ fn attunement_rejects_invalid_identity_auth_budget_and_changed_idempotency() {
                 &id("invalid-token"),
                 &installed.start(30_000),
                 &context("accepted-key"),
-                BASE + 6_000
+                accepted_at + 2
             )
             .is_err(),
         "receipt cannot bypass auth"
@@ -3295,6 +3350,7 @@ fn attunement_control_encoding_is_bounded_and_cancel_remains_available_at_limit(
         BASE + 2_000,
     )
     .unwrap();
+    let running_at = running.status.job.updated_at_unix_ms;
     // Characterize the finite lifetime limit without manufacturing 1023 writes.
     // Only fixture setup writes this canonical control record directly.
     let key = crate::engine::installation::attunement_job_key(
@@ -3312,7 +3368,7 @@ fn attunement_control_encoding_is_bounded_and_cancel_remains_available_at_limit(
             key,
             expected,
             replacement: Some(serde_json::to_vec(&exhausted).unwrap()),
-            at: BASE + 2_500,
+            at: running_at + 1,
             actor: "test-fixture".into(),
             action: "attunement.fixture_limit".into(),
             request_id: "fixture-limit".into(),
@@ -3325,16 +3381,16 @@ fn attunement_control_encoding_is_bounded_and_cancel_remains_available_at_limit(
             &session,
             &step(&exhausted),
             "limited-work",
-            BASE + 3_000
+            running_at + 2
         ),
         Err(ServiceError::ConfigurationLimit(_))
     ));
     let requested = call(
         &engine,
         &session,
-        &cancel(&exhausted, BASE + 4_000),
+        &cancel(&exhausted, running_at + 3),
         "cancel-limit",
-        BASE + 4_000,
+        running_at + 3,
     )
     .unwrap();
     let cancelled = call(
@@ -3342,7 +3398,7 @@ fn attunement_control_encoding_is_bounded_and_cancel_remains_available_at_limit(
         &session,
         &step(&requested.status.job),
         "ack-limit",
-        BASE + 5_000,
+        requested.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(cancelled.status.job.state, State::Cancelled);
@@ -3350,9 +3406,12 @@ fn attunement_control_encoding_is_bounded_and_cancel_remains_available_at_limit(
     assert!(call(
         &engine,
         &session,
-        &cancel(&cancelled.status.job, BASE + 6_000),
+        &cancel(
+            &cancelled.status.job,
+            cancelled.status.job.updated_at_unix_ms + 1
+        ),
         "cancel-terminal",
-        BASE + 6_000
+        cancelled.status.job.updated_at_unix_ms + 1
     )
     .is_err());
 }
@@ -3507,6 +3566,8 @@ fn attunement_native_worker_kill_recovers_claim_and_replays_lost_response() {
     .unwrap();
     assert!(replay.idempotent_replay);
     assert_eq!(replay.status.job, running);
+    // The killed child claimed this lease, so its expiry first returns in this read.
+    let recover_at = (BASE + 43_000).max(running.lease.as_ref().unwrap().expires_at_unix_ms + 1);
     let paused = call(
         &engine,
         &session,
@@ -3515,15 +3576,15 @@ fn attunement_native_worker_kill_recovers_claim_and_replays_lost_response() {
             expected_revision: 2,
         },
         "recover-kill",
-        BASE + 43_000,
+        recover_at,
     )
     .unwrap();
     let running = call(
         &engine,
         &session,
-        &resume(&paused.status.job, BASE + 44_000),
+        &resume(&paused.status.job, paused.status.job.updated_at_unix_ms + 1),
         "resume-kill",
-        BASE + 44_000,
+        paused.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     let connected = call(
@@ -3531,7 +3592,7 @@ fn attunement_native_worker_kill_recovers_claim_and_replays_lost_response() {
         &session,
         &step(&running.status.job),
         "connect-after-kill",
-        BASE + 45_000,
+        running.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert_eq!(connected.status.job.checkpoints.len(), 1);
@@ -3541,7 +3602,7 @@ fn attunement_native_worker_kill_recovers_claim_and_replays_lost_response() {
         &session,
         &step(&running.status.job),
         "connect-after-kill",
-        BASE + 46_000,
+        connected.status.job.updated_at_unix_ms + 1,
     )
     .unwrap();
     assert!(replay.idempotent_replay);
