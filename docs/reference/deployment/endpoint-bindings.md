@@ -1,6 +1,6 @@
 # RRFlow endpoint bindings, profiles, and hardware inventory
 
-**Status:** active implementation reference; contract and validation only, runtime resolution and governed activation remain open
+**Status:** active implementation reference; configured experimental calls exist, release qualification remains open
 **Coordinate:** `rrflow://rrflow-instance/data/reference/deployment/endpoint-bindings`
 **Owner:** the endpoint binding, endpoint profile, and hardware inventory contracts in `rrd-contract`
 
@@ -18,7 +18,8 @@ machine identities exist.
 ## Contract
 
 Binding types live in `crates/transport/rrd-contract/src/endpoint_binding.rs`;
-the optional selector policy lives in `endpoint_policy.rs`. Both derive
+the optional selector policy lives in `endpoint_policy.rs`, and observation
+delivery policy lives in `observation_delivery.rs`. These derive
 `JsonSchema` and reject unknown fields.
 
 | Type | Meaning | Rules |
@@ -30,7 +31,7 @@ the optional selector policy lives in `endpoint_policy.rs`. Both derive
 | `DeclaredFootprint` | Memory a binding declares on its placement machine, and a GPU requirement with its memory. | Nonzero; replaced by measured values once observation exists. |
 | `BindingLimits` | `max_concurrency`, `timeout_ms`, `max_input_bytes`. | Nonzero within the contract ceilings. Class-specific limits stay with their class contracts. |
 | `EndpointBinding` | One configured endpoint serving one class: `id`, `class`, `kind`, `endpoint`, `service_id`, optional `manifest_sha256`, optional `credential`, optional `placement`, `footprint`, `limits`. | Local and self-hosted bindings name a placement machine; subscription and API bindings carry a credential reference, use a URL, and have no placement. `manifest_sha256`, when present, pins the manifest or artifact the service must present. |
-| `EndpointProfileInput` | Operator-authored: `contract_version`, `name`, `bindings` in declaration order, and optional `selection_policy`. | Within one class, declaration order is fallback order; the first binding is primary. Ids are unique; a class has at most sixteen bindings. No policy means no configured selector. |
+| `EndpointProfileInput` | Operator-authored: `contract_version`, `name`, `bindings` in declaration order, and optional `selection_policy` and `observation_policy`. | Within one class, declaration order is fallback order; the first binding is primary. Ids are unique; a class has at most sixteen bindings. Absent policies configure neither selection nor observation delivery. |
 | `EndpointProfile` | The effective profile: the input plus an engine-assigned `revision` and `profile_sha256`. | The digest binds version, name, revision, bindings and every present policy field; drift fails validation. `fallbacks(class)` and `primary(class)` read the order. |
 | `EndpointSelectionPolicy` | Explicit controller binding, workload, candidates and declared effort evidence, selection limits, system prompt, output-token ceiling and temperature in thousandths. | Bounded and closed; candidate identities must match the profile. No provider, model, prompt or ranking defaults. Configuration grants no permission to invoke it. |
 | `HardwareInventory` and `MachineCapacity` | Declared `memory_bytes`, optional GPU `memory_bytes`, and `disk_bytes` per machine. | Unique machine ids; nonzero values. On unified-memory hardware the GPU pool and machine memory are the same bytes, declared in both places. |
@@ -58,6 +59,52 @@ records approval and embedded persistence/reopen tests using proposals derived
 from retained actual settings. It does not establish installed-binary execution,
 provider qualification or engine-admitted selector calls.
 
+## Governed observation delivery
+
+`observation_policy` selects a `behavior_updates` URL binding with a process-owned
+credential reference, expected devspace and protocol-evidence digest. It explicitly
+grants metadata export and network access for listed scopes. The policy bounds
+retained records, retention, attempts, cooldown and response size; the binding
+bounds request size and timeout. One dispatch may be admitted at a time.
+HTTPS is required except for literal loopback HTTP. Redirects, URL credentials,
+query/fragment-bearing endpoints and implicit proxy configuration are refused.
+
+The public `observation-prepare`, `observation-deliver` and `observation-read`
+operations use the existing endpoint profile and engine control transaction
+boundary. Preparation reads an authorized terminal task attempt or installed job
+and guards its durable source bytes alongside current authorization and endpoint
+configuration. Job revision and plan digest identify a source independently of
+the public read's observation timestamp. Later edits do not reinterpret retained
+observations or execute the source task again.
+
+The engine saves exact source-response bytes locally. Authorized readback returns
+those bytes and their digest, including after the job advances. The RROFLOW capture
+packet contains bounded references and digests only. Its configured receiver's
+acknowledgement proves storage, not engine attestation, task success, model quality
+or permission to use an observation for training.
+
+Before I/O, delivery commits a lease and attempt fence. Only an exact event-ID and
+devspace acknowledgement under unchanged authority/configuration can publish an
+acknowledged receipt. Lost replies, expired leases and rejected completion fences
+remain uncertain. A fresh authorized retry reuses the retained event and payload;
+an acknowledged delivery never dispatches again. Credentials are resolved from the
+existing immutable process registry and are neither stored nor returned.
+
+Expired uncertain records remain visible by default and can fill the export
+history. An operator may explicitly approve `retire_expired_uncertain: true` in
+a new profile to permit audited retirement during subsequent preparation. This
+does not resolve their outcomes. Retired IDs are outside the idempotency window;
+a new preparation gets a fresh remote identity. Queue pressure affects export,
+not the source project's lifecycle. Public integration and release acceptance
+require the package's engine, transport and deployed-service evidence.
+
+When an approved edit reduces the history cap, preparation can retire eligible
+expired records in at most three control transactions. Each batch checks the
+same source, configuration, authority and index identities. A concurrent change
+may leave audited retirement progress while rejecting the new preparation;
+retry requires current inputs. No uncertain record becomes acknowledged through
+cleanup, and source tasks remain independent of export capacity.
+
 ## Fixture
 
 `crates/transport/rrd-contract/tests/fixtures/endpoint-profile-v1.json` is the
@@ -75,8 +122,10 @@ no value in it is a secret.
 
 ## What this record does not cover
 
-- Runtime resolution. The engine reads and persists profiles through governed
-  endpoint-configuration operations, but it does not activate selector execution.
+- General runtime resolution. The engine reads and persists profiles through
+  governed endpoint-configuration operations. Saving a profile does not dispatch
+  work. Explicit experimental proposal and observation-delivery operations can
+  call their configured bindings under current authorization and limits.
   The embedding registry remains process-local, and `rrflow install` seals
   [`EstateConfiguration`](../../../crates/transport/rrd-contract/src/deployment.rs)
   limits. Admitted runtime resolution on configuration changes remains separate

@@ -12,6 +12,7 @@ members = [
     "crates/persistence/rrd-store",
     "crates/compute/rrd-vector",
     "crates/operations/rrd-operator-knowledge",
+    "crates/operations/rrd-observation",
     "crates/compute/rrd-inference",
     "crates/compute/rrd-attunement",
     "crates/adapters/rrflow-edge",

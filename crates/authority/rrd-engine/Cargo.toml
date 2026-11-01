@@ -30,6 +30,7 @@ full = [
     "dep:rrd-contract",
     "dep:rrd-estate",
     "dep:rrd-operator-knowledge",
+    "dep:rrd-observation",
     "dep:rrd-query",
     "dep:rrd-security",
     "dep:rrd-store",
@@ -56,6 +57,7 @@ rrd-store = { path = "../../persistence/rrd-store", optional = true }
 rrd-vector = { path = "../../compute/rrd-vector", optional = true }
 rrd-inference = { path = "../../compute/rrd-inference", optional = true }
 rrd-operator-knowledge = { path = "../../operations/rrd-operator-knowledge", optional = true }
+rrd-observation = { path = "../../operations/rrd-observation", optional = true }
 rrd-cluster = { path = "../../operations/rrd-cluster", features = ["object-transfer"], optional = true }
 base64 = { version = "0.22", optional = true }
 serde = { workspace = true, optional = true }

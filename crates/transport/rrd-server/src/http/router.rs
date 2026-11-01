@@ -100,6 +100,9 @@ http_dispatch_catalogue! {
     TaskBudgetStop => ("task-budget-stop", RrdOperation::ReasoningWrite),
     TaskEmbeddingExecute => ("task-embedding-execute", RrdOperation::ReasoningWrite),
     TaskEndpointPropose => ("task-endpoint-propose", RrdOperation::EndpointPropose),
+    ObservationPrepare => ("observation-prepare", RrdOperation::ObservationPrepare),
+    ObservationDeliver => ("observation-deliver", RrdOperation::ObservationDeliver),
+    ObservationRead => ("observation-read", RrdOperation::ObservationRead),
     TaskAttemptRead => ("task-attempt-read", RrdOperation::ReasoningRead),
     TaskClose => ("task-close", RrdOperation::TaskWrite),
     TaskList => ("task-list", RrdOperation::TaskRead),
@@ -316,6 +319,15 @@ impl AppState {
             Some(HttpDispatch::FlightList) => self.list_prompt_flights(&headers, &body, now),
             Some(HttpDispatch::FlightRead) => self.read_prompt_flight(&headers, &body, now),
             Some(HttpDispatch::TaskOpen) => self.open_task(&headers, &body, now),
+            Some(HttpDispatch::ObservationPrepare) => {
+                self.prepare_observation_delivery(&headers, &body, now)
+            }
+            Some(HttpDispatch::ObservationDeliver) => {
+                self.deliver_observation(&headers, &body, now)
+            }
+            Some(HttpDispatch::ObservationRead) => {
+                self.read_observation_delivery(&headers, &body, now)
+            }
             Some(HttpDispatch::EmbeddingBuiltinActivate) => {
                 self.activate_builtin_embedding(&headers, &body, now)
             }

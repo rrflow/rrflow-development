@@ -1,5 +1,5 @@
 // Generated from rrd-contract; do not edit.
-// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
+// OpenAPI SHA-256: fefbaa7fb31b733a731b48f884fb3adaddc4942aed2882c31a6efc1d8b65af69
 package io.rrflow.rrd;
 
 public enum OperationId {
@@ -39,6 +39,9 @@ public enum OperationId {
     HEALTH_READY("health-ready", "GET", "/v1/health/ready", Authentication.PUBLIC, false),
     KNOWLEDGE_TREE_LIST("knowledge-tree-list", "POST", "/v1/knowledge/trees/list", Authentication.SESSION_BEARER, false),
     KNOWLEDGE_TREE_REPLACE("knowledge-tree-replace", "POST", "/v1/knowledge/trees/replace", Authentication.SESSION_BEARER, true),
+    OBSERVATION_DELIVER("observation-deliver", "POST", "/v1/observations/deliver", Authentication.SESSION_BEARER, true),
+    OBSERVATION_PREPARE("observation-prepare", "POST", "/v1/observations/prepare", Authentication.SESSION_BEARER, true),
+    OBSERVATION_READ("observation-read", "POST", "/v1/observations/read", Authentication.SESSION_BEARER, false),
     OPENAPI_READ("openapi-read", "GET", "/v1/schema/openapi", Authentication.PUBLIC, false),
     QUERY_EXECUTE("query-execute", "POST", "/v1/query", Authentication.SESSION_BEARER, false),
     QUERY_EXPORT("query-export", "POST", "/v1/query/export", Authentication.SESSION_BEARER, false),
@@ -75,7 +78,7 @@ public enum OperationId {
     VECTOR_QUANTIZATION_RETIRE("vector-quantization-retire", "POST", "/v1/vector/quantizations/retire", Authentication.SESSION_BEARER, true),
     VECTOR_SEARCH("vector-search", "POST", "/v1/vector/search", Authentication.SESSION_BEARER, false);
 
-    static final String OPENAPI_DOCUMENT_SHA256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5";
+    static final String OPENAPI_DOCUMENT_SHA256 = "fefbaa7fb31b733a731b48f884fb3adaddc4942aed2882c31a6efc1d8b65af69";
 
     public enum Authentication { PUBLIC, API_KEY, SESSION_BEARER }
 
