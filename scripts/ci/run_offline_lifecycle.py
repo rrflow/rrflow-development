@@ -117,6 +117,7 @@ REQUIRED_CASES = frozenset({
     "primary_help_exposes_only_the_installed_product_lifecycle",
     "raw_database_and_development_commands_fail_during_argument_parsing",
     "install_requires_an_explicit_plan_digest_and_verify_is_read_only_by_shape",
+    "installed_plan_accepts_selected_attunement_and_rejects_tampering",
     "fresh_installed_engine_survives_restart_and_restore",
     "installed_engine_plans_applies_serves_discovers_authenticates_and_reopens",
     "a_served_estate_is_found_proved_and_not_served_twice",
@@ -126,6 +127,15 @@ REQUIRED_CASES = frozenset({
 def require_lifecycle_tests(output: str) -> None:
     cases = [line.removesuffix(": test") for line in output.splitlines() if line.endswith(": test")]
     require(len(cases) == len(REQUIRED_CASES) and set(cases) == REQUIRED_CASES, "harness must contain exactly the required lifecycle cases")
+
+
+def preflight_lifecycle_harness(harness: Path) -> dict:
+    """Check a compiled harness early; isolated execution remains mandatory."""
+    harness = harness.resolve(strict=True)
+    require(harness.is_file(), "lifecycle harness must be a regular file")
+    listed = run(str(harness), "--list", "--format=terse", timeout=30, output_limit=1024 * 1024)
+    require_lifecycle_tests(listed.stdout)
+    return {"harness_sha256": sha256(harness), "required_cases": len(REQUIRED_CASES)}
 
 
 def require_lifecycle_results(output: str) -> list[str]:
@@ -525,8 +535,12 @@ def main() -> None:
     parser.add_argument("--windows-inside", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--probe", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--receipt", type=Path)
+    parser.add_argument("--check-harness", type=Path, help="validate a compiled lifecycle harness without running isolation")
     parser.add_argument("--cleanup-owned", type=Path, help=argparse.SUPPRESS)
     arguments = parser.parse_args()
+    if arguments.check_harness:
+        print(json.dumps(preflight_lifecycle_harness(arguments.check_harness)))
+        return
     require(sys.platform in {"linux", "darwin", "win32"}, "native offline enforcement unavailable; it cannot skip")
     if arguments.cleanup_owned:
         stage = arguments.cleanup_owned.resolve(strict=True)
@@ -559,6 +573,7 @@ def main() -> None:
     build = run("cargo", "test", "--locked", "-p", "rrflow-cli", "--test",
                 "installed_lifecycle", "--no-run", "--message-format=json", cwd=root, timeout=900)
     binary, harness = artifact_paths(build.stdout)
+    print(json.dumps({"offline_harness_preflight": preflight_lifecycle_harness(harness)}))
     stage_parent = "/tmp" if sys.platform == "linux" else os.environ["PUBLIC"] if sys.platform == "win32" else None
     with tempfile.TemporaryDirectory(prefix="rrflow-offline-", dir=stage_parent) as temporary, ExitStack() as probes:
         stage = Path(temporary).resolve()

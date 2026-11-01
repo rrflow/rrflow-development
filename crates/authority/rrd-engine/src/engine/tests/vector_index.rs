@@ -894,6 +894,7 @@ fn quantization_build_list_activate_retire_update_and_recovery_share_exact_truth
         VectorQuantizationMethod::TurboQuant {
             bits: VectorQuantizationBits::Bits1,
             seed: 91,
+            estimator: rrd_contract::VectorQuantizationEstimator::Mse,
         },
     ];
     let mut built = Vec::new();
@@ -1374,6 +1375,7 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
             &quantization_build(VectorQuantizationMethod::TurboQuant {
                 bits: VectorQuantizationBits::Bits2,
                 seed: 23,
+                estimator: rrd_contract::VectorQuantizationEstimator::Mse,
             }),
             &mutation_context(
                 &id("request-turboquant-build"),
@@ -1388,6 +1390,7 @@ fn persistent_retrieval_indexes_and_hybrid_fusion_survive_reopen_and_staleness()
         VectorQuantizationMethod::TurboQuant {
             bits: VectorQuantizationBits::Bits2,
             seed: 23,
+            estimator: rrd_contract::VectorQuantizationEstimator::Mse,
         }
     );
     assert_eq!(turboquant_build.artifact.generation, 1);
@@ -1643,6 +1646,7 @@ fn application_backup_restores_turboquant_payload_before_instance_activation() {
             &quantization_build(VectorQuantizationMethod::TurboQuant {
                 bits: VectorQuantizationBits::Bits2,
                 seed: 23,
+                estimator: rrd_contract::VectorQuantizationEstimator::Mse,
             }),
             &mutation_context(
                 &id("request-backup-turboquant-build"),

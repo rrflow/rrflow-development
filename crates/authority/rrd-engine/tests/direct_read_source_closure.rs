@@ -44,6 +44,12 @@ struct AllowedUse {
 
 const ALLOWED_USES: &[AllowedUse] = &[
     AllowedUse {
+        path: "crates/authority/rrd-engine/src/engine/tests/attunement.rs",
+        kind: SensitiveReadUse::CausalLogPage,
+        count: 4,
+        operation: "bounded Inventory mutation, partial-publication and resume-uniqueness oracles",
+    },
+    AllowedUse {
         path: "crates/operations/rrd-cluster/src/artifact_transfer.rs",
         kind: SensitiveReadUse::CausalLogPage,
         count: 1,

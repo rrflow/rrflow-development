@@ -149,6 +149,7 @@ fn fixture(unrelated: usize) -> (tempfile::TempDir, RrdEngine, SessionLease) {
                 method: VectorQuantizationMethod::TurboQuant {
                     bits: VectorQuantizationBits::Bits4,
                     seed: 29,
+                    estimator: rrd_contract::VectorQuantizationEstimator::Mse,
                 },
                 filter_properties: vec![CanonicalId::new("bucket").unwrap()],
                 max_storage_keys: 100_000,
