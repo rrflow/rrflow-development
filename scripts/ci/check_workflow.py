@@ -246,10 +246,25 @@ def verify_macos_reopen_cache_warm(workflow: str, reopen: str) -> None:
             "shared-key: installed-reopen-${{ matrix.os }}" in reopen and
             "cache-on-failure: false" in job and "cache-on-failure: false" in reopen,
             "cache warmer key or failure behavior differs from reopen")
+    isolation = """      - name: Isolate macOS reopen toolchain
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain_home="${RUNNER_TEMP}/rrflow-reopen-rustup"
+          test ! -e "$toolchain_home"
+          printf 'RUSTUP_HOME=%s\\n' "$toolchain_home" >> "$GITHUB_ENV"
+"""
+    for surface in (job, reopen):
+        require(surface.count(isolation) == 1,
+                "macOS reopen toolchain isolation must match exactly")
+        require(surface.index(isolation) < surface.index("- uses: dtolnay/rust-toolchain@") <
+                surface.index("- uses: Swatinem/rust-cache@"),
+                "toolchain isolation must precede installation and cache lookup")
     actions = lambda text: re.findall(r"(?m)^\s*- uses: ([^\s#]+)", text)
     require(actions(job) == actions(reopen)[:3], "cache warmer actions differ from reopen")
     expected = "cargo test -p rrflow-cli --test installed_reopen --release --locked --no-run"
-    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == [expected] and
+    require(re.findall(r"(?m)^\s*(?:-\s*)?run: (.+)$", job) == ["|", expected] and
             f"run: {expected}" in reopen, "cache warmer build differs from reopen")
     for _, body in checkout_steps(workflow):
         require(not any(re.match(r"(?:ref|repository|path)\s*:", item) for item in body),

@@ -36,6 +36,44 @@ class CacheWarmPolicyTests(unittest.TestCase):
                 with self.assertRaises(policy.PolicyError):
                     policy.verify_macos_reopen_cache_warm(self.warmer.replace(before, after), self.reopen)
 
+    def test_rejects_missing_or_unsafe_toolchain_isolation(self):
+        marker = "      - name: Isolate macOS reopen toolchain\n"
+        for surface, value in (("warmer", self.warmer), ("reopen", self.reopen)):
+            self.assertIn(marker, value)
+            mutations = (
+                (marker, "      - name: Toolchain setup removed\n"),
+                ('toolchain_home="${RUNNER_TEMP}/rrflow-reopen-rustup"',
+                 'toolchain_home="${RUNNER_TEMP}/different"'),
+                ('test ! -e "$toolchain_home"', 'true'),
+                ("printf 'RUSTUP_HOME=%s\\n'", "printf 'OTHER_HOME=%s\\n'"),
+                ("if: runner.os == 'macOS'", "if: runner.os != 'macOS'"),
+            )
+            for before, after in mutations:
+                with self.subTest(surface=surface, before=before):
+                    self.assertIn(before, value)
+                    changed = value.replace(before, after)
+                    with self.assertRaises(policy.PolicyError):
+                        policy.verify_macos_reopen_cache_warm(
+                            changed if surface == "warmer" else self.warmer,
+                            changed if surface == "reopen" else self.reopen,
+                        )
+
+    def test_rejects_isolation_after_toolchain_installation(self):
+        marker = "      - name: Isolate macOS reopen toolchain\n"
+        install = "      - uses: dtolnay/rust-toolchain@"
+        for surface, value in (("warmer", self.warmer), ("reopen", self.reopen)):
+            start = value.index(marker)
+            end = value.index("      - uses:", start)
+            block = value[start:end]
+            changed = value[:start] + value[end:]
+            install_end = changed.index("      - uses:", changed.index(install) + len(install))
+            changed = changed[:install_end] + block + changed[install_end:]
+            with self.subTest(surface=surface), self.assertRaises(policy.PolicyError):
+                policy.verify_macos_reopen_cache_warm(
+                    changed if surface == "warmer" else self.warmer,
+                    changed if surface == "reopen" else self.reopen,
+                )
+
     def test_rejects_drift_in_the_candidate_cache_key(self):
         old = "shared-key: installed-reopen-${{ matrix.os }}"
         self.assertIn(old, self.reopen)
