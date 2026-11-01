@@ -467,3 +467,26 @@ all 47 package tests and `python scripts/knowledge/render_navigation.py`
 reported 18 indexes with no updates, 912 nodes and 3270 edges. This is a
 draft push for review; the existing installed-process failure and native
 isolation prerequisites prevent marking the PR ready or merging it.
+
+## Parent-side worker response admission
+
+After draft head `77fd7e8fde316cfd22ec1c367aaf75de50db5539` was pushed, the
+PR brief was extended before this change. A worker response is now decoded
+only against an admitted request and checked for proposal version, source ID,
+content digest, language, the exact linked parser revision, node count, byte
+ranges, serialized output budget and recognized fixed rejection codes. Invalid
+request identity, malformed digest or zero limits are refused before response
+body allocation. Grammar revision selection is shared with the parser rather
+than maintained in a second mapping. These checks do not authorize the
+request, establish freshness or prove that a worker computed a correct tree.
+
+The new focused test first failed to compile because `validate_response` was
+absent. On Windows, `cargo test --offline --locked -p rrd-attunement` then
+passed 49 tests, including six worker tests with forged-source, forged-revision,
+out-of-range and over-budget responses; strict `cargo clippy --offline --locked
+-p rrd-attunement --all-targets -- -D warnings` passed. After the final
+request-validation edit, `cargo test --offline --locked -p rrflow-cli --test
+parser_worker` passed both primary-executable tests. Native process limits,
+cancellation/reaping, source rechecks and
+installed publication remain open, so this remains a draft and the earlier
+real installed-process Parse failure is unresolved.

@@ -5,7 +5,9 @@
 //! selected source, and discard its output on any failed source recheck.
 //! Neither a successful frame nor a parsed proposal authorizes publication.
 
-use crate::parse::{parse_source, ParseError, ParseLimits, ParseProposal};
+use crate::parse::{
+    parse_source, parser_revision, ParseError, ParseLimits, ParseProposal, PARSE_PROPOSAL_VERSION,
+};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read, Write};
 
@@ -62,6 +64,19 @@ fn write_frame<W: Write>(writer: &mut W, bytes: &[u8]) -> io::Result<()> {
 
 fn validate_request(request: &WorkerRequest) -> io::Result<()> {
     if request.format_version != WORKER_PROTOCOL_VERSION
+        || request.source_id.is_empty()
+        || request.source_id.len() > 256
+        || request.source_id.as_bytes().contains(&0)
+        || request.content_sha256.len() != 64
+        || !request
+            .content_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        || request.limits.input_bytes == 0
+        || request.limits.nodes == 0
+        || request.limits.depth == 0
+        || request.limits.output_bytes == 0
+        || request.limits.elapsed_micros == 0
         || request.source_bytes > request.limits.input_bytes
         || request.source_bytes > u64::from(u32::MAX)
     {
@@ -97,12 +112,67 @@ pub fn write_request<W: Write>(
 
 /// Read one response, refusing a frame larger than the admitted output budget
 /// plus bounded protocol overhead before allocating its body.
-pub fn read_response<R: Read>(reader: &mut R, output_bytes: u64) -> io::Result<WorkerResponse> {
-    let max = output_bytes
+pub fn read_response<R: Read>(
+    reader: &mut R,
+    request: &WorkerRequest,
+) -> io::Result<WorkerResponse> {
+    validate_request(request)?;
+    let max = request
+        .limits
+        .output_bytes
         .checked_add(RESPONSE_OVERHEAD_BYTES)
         .ok_or_else(|| invalid("worker response limit overflow"))?;
     let bytes = frame(reader, max)?;
-    serde_json::from_slice(&bytes).map_err(|_| invalid("invalid worker response"))
+    let response =
+        serde_json::from_slice(&bytes).map_err(|_| invalid("invalid worker response"))?;
+    validate_response(request, &response)?;
+    Ok(response)
+}
+
+/// Check a decoded, bounded response against the exact admitted request.
+/// This is not authorization, source freshness, or proof of parser correctness.
+pub fn validate_response(request: &WorkerRequest, response: &WorkerResponse) -> io::Result<()> {
+    validate_request(request)?;
+    match response {
+        WorkerResponse::Parsed { proposal } => {
+            if proposal.format_version != PARSE_PROPOSAL_VERSION
+                || proposal.source_id != request.source_id
+                || proposal.content_sha256 != request.content_sha256
+                || proposal.language != request.language
+                || parser_revision(&request.language) != Some(proposal.parser_revision.as_str())
+                || proposal.nodes.len() as u64 > request.limits.nodes
+                || proposal.nodes.iter().any(|node| {
+                    node.kind.is_empty()
+                        || node.start_byte > node.end_byte
+                        || node.end_byte > request.source_bytes
+                })
+            {
+                return Err(invalid("parser response does not match request"));
+            }
+            let bytes =
+                serde_json::to_vec(proposal).map_err(|_| invalid("invalid parser proposal"))?;
+            if bytes.len() as u64 > request.limits.output_bytes {
+                return Err(invalid("parser proposal exceeds output limit"));
+            }
+            Ok(())
+        }
+        WorkerResponse::Rejected { code } => {
+            if matches!(
+                code.as_str(),
+                "unsupported_language"
+                    | "source_digest_mismatch"
+                    | "invalid_source_identity"
+                    | "invalid_encoding"
+                    | "limit_exceeded"
+                    | "cancelled"
+                    | "parser_unavailable"
+            ) {
+                Ok(())
+            } else {
+                Err(invalid("unknown parser rejection"))
+            }
+        }
+    }
 }
 
 /// Handle one framed request on supplied pipes. The child opens no source path

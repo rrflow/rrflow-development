@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tree_sitter::{Language, Parser};
 
+pub const PARSE_PROPOSAL_VERSION: u16 = 1;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ParseLimits {
@@ -50,6 +52,29 @@ pub struct ParseProposal {
     pub nodes: Vec<SyntaxNode>,
 }
 
+fn grammar(language: &str) -> Option<(Language, &'static str)> {
+    match language {
+        "rust" => Some((
+            tree_sitter_rust::LANGUAGE.into(),
+            "tree-sitter-0.24.7/rust-0.23.3",
+        )),
+        "python" => Some((
+            tree_sitter_python::LANGUAGE.into(),
+            "tree-sitter-0.24.7/python-0.23.6",
+        )),
+        "go" => Some((
+            tree_sitter_go::LANGUAGE.into(),
+            "tree-sitter-0.24.7/go-0.23.4",
+        )),
+        _ => None,
+    }
+}
+
+/// Identity of the linked grammar, or None when no such parser is installed.
+pub fn parser_revision(language: &str) -> Option<&'static str> {
+    grammar(language).map(|(_, revision)| revision)
+}
+
 /// The selected language is explicit; this function never guesses from a path.
 /// Grammars are linked build inputs and are not fetched during execution.
 pub fn parse_source(
@@ -81,21 +106,7 @@ pub fn parse_source(
         return Err(ParseError::SourceDigestMismatch);
     }
     std::str::from_utf8(source).map_err(|_| ParseError::InvalidEncoding)?;
-    let (grammar, revision): (Language, &str) = match language {
-        "rust" => (
-            tree_sitter_rust::LANGUAGE.into(),
-            "tree-sitter-0.24.7/rust-0.23.3",
-        ),
-        "python" => (
-            tree_sitter_python::LANGUAGE.into(),
-            "tree-sitter-0.24.7/python-0.23.6",
-        ),
-        "go" => (
-            tree_sitter_go::LANGUAGE.into(),
-            "tree-sitter-0.24.7/go-0.23.4",
-        ),
-        _ => return Err(ParseError::UnsupportedLanguage),
-    };
+    let (grammar, revision) = grammar(language).ok_or(ParseError::UnsupportedLanguage)?;
     let deadline = Duration::from_micros(limits.elapsed_micros);
     if started.elapsed() >= deadline {
         return Err(ParseError::LimitExceeded);
@@ -151,7 +162,7 @@ pub fn parse_source(
     let mut depth = 1u64;
     let mut visited = 0u64;
     let mut output = ParseProposal {
-        format_version: 1,
+        format_version: PARSE_PROPOSAL_VERSION,
         source_id: source_id.into(),
         content_sha256: expected_sha256.into(),
         language: language.into(),
