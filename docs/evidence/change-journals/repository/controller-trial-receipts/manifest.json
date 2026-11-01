@@ -1,0 +1,93 @@
+{
+  "format_version": 1,
+  "archiveSha256": "46b85f824d712cd8e8cceda4a6b0cd01bb1585f3f25a1f8c64ef8b7657f05b6f",
+  "archiveBytes": 33850986,
+  "files": [
+    {
+      "file": "trial-manifest.json",
+      "bytes": 1956,
+      "sha256": "69350b2e0cc5a57e93d44ef9e33bff0c35d2308623920a2c7aa6e57e5dced690",
+      "source": ".swag/controller-trial/54fb845d/trial-manifest.json"
+    },
+    {
+      "file": "build-receipt.json",
+      "bytes": 7187,
+      "sha256": "049d17b1665c6dbdd888b663d3b84d16dcc5d28a3ad9836b61dcc653c08ecef8",
+      "source": ".swag/controller-trial/54fb845d/build-receipt.json"
+    },
+    {
+      "file": "release-build-independent-check.json",
+      "bytes": 440,
+      "sha256": "a33e607d3bf3d1166a6475e45b42edfae35a46729a200ba06cba322abe7d0110",
+      "source": ".swag/evidence/20261029/controller-operation-plan/testing-release-build-independent-check.json"
+    },
+    {
+      "file": "archive-checks.log",
+      "bytes": 1759,
+      "sha256": "07db1b33c5577e1f638d068154d8ed00ee2cacf92dbd334ea503fc4d3079b5a2",
+      "source": ".swag/evidence/20261029/controller-operation-plan/testing-bundle-artifact-checks.log"
+    },
+    {
+      "file": "baseline-result.json",
+      "bytes": 1914,
+      "sha256": "9a27e7a7ee40a620a46943f2d91786877f025ffa7ee917098a3e183bac4001b2",
+      "source": ".swag/evidence/20261029/installed-controller-release-trial/result.json"
+    },
+    {
+      "file": "primary-result.json",
+      "bytes": 308,
+      "sha256": "37f1686803630be79e432f96657a095b64b699ce8838a39cb63e72efb7adb1bb",
+      "source": ".swag/evidence/20261029/controller-release-primary-checks/result.json"
+    },
+    {
+      "file": "primary-verify-quick.json",
+      "bytes": 4443,
+      "sha256": "ef062ad19111ab094e3897757d7c7a731102cde03e3ff3143410c0f22f74461b",
+      "source": ".swag/evidence/20261029/controller-release-primary-checks/verify-quick.json"
+    },
+    {
+      "file": "configuration-fresh-failure.json",
+      "bytes": 1530,
+      "sha256": "f36dbecbbe4fe8fcfb6377a77b24dc229c557c570f377849bfbba3c238d50555",
+      "source": ".swag/evidence/20261029/installed-controller-release-fault-configuration/authorized-fresh-proposal.json"
+    },
+    {
+      "file": "configuration-invalid-response.json",
+      "bytes": 677,
+      "sha256": "5d03a020ac04a2c82dc7d6cc0354e66e2eae7c6a78af1c217d7441680bbf915d",
+      "source": ".swag/evidence/20261029/installed-controller-release-fault-configuration/relay-2-provider-response.json"
+    },
+    {
+      "file": "configuration-response-observation.json",
+      "bytes": 308,
+      "sha256": "68fc31a8b57a86a73840a40d56b8af57bda7989075f9f342d0c850e6f11c6cac",
+      "source": ".swag/evidence/20261029/installed-controller-release-fault-configuration/relay-2-observation.json"
+    },
+    {
+      "file": "configuration-recovered-state.json",
+      "bytes": 1703,
+      "sha256": "a67f454ff65cc7c643f1b15a3fca52f048f8be56c99536e0f79f812193c709cf",
+      "source": ".swag/evidence/20261029/installed-controller-release-configuration-readback/result.json"
+    },
+    {
+      "file": "session-result.json",
+      "bytes": 1864,
+      "sha256": "408b218a66fe99af6b225b9ce7d05f3eef7962c77d87027ca22ac76d32f59b24",
+      "source": ".swag/evidence/20261029/installed-controller-release-fault-session/result.json"
+    },
+    {
+      "file": "stop-result.json",
+      "bytes": 1877,
+      "sha256": "592a5b7779043543d43a839e5ffd14bb7f480bcd9cacc61224da44ff611664d1",
+      "source": ".swag/evidence/20261029/installed-controller-release-fault-stop/result.json"
+    },
+    {
+      "file": "disconnect-result.json",
+      "bytes": 1826,
+      "sha256": "481057685058d1b055e077c2e8f5674e83a690d9471ba8e06d08bd17a5540f4a",
+      "source": ".swag/evidence/20261029/installed-controller-release-fault-disconnect/result.json"
+    }
+  ],
+  "copiesPreserveExactBytes": true,
+  "providerSecretAndTokenFieldsCheckedAbsent": true
+}

@@ -1,0 +1,15 @@
+{
+  "command": [
+    "python",
+    "scripts/test_controller_trial_package.py",
+    "--archive",
+    "D:\\projects\\swag\\files\\distributions\\rrflow-controller-trial-windows-x64-8cf235ac.zip",
+    "--sha256",
+    "8fc7a5056bde73f29ffb435393d6254cac152ff0f30aea4158e597fb9749f9a3",
+    "-v"
+  ],
+  "exit_code": 0,
+  "seconds": 16.05,
+  "archive_bytes": 33976833,
+  "archive_sha256": "8fc7a5056bde73f29ffb435393d6254cac152ff0f30aea4158e597fb9749f9a3"
+}

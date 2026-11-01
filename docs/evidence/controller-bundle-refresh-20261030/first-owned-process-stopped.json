@@ -1,0 +1,5 @@
+{
+  "pid": 65376,
+  "exit_code": 1,
+  "method": "terminate owned child; not graceful-shutdown proof"
+}
