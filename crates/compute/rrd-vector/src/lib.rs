@@ -49,8 +49,8 @@ pub use contract::{
     SearchRequest, VectorCandidate, VectorQuery, VectorVisibilityRequest,
 };
 pub use exact::{
-    candidates_from_changes, materialize_visible, score_query, search_changes_exact, search_exact,
-    search_exact_ref,
+    candidates_from_changes, latest_versions, materialize_visible, score_query,
+    search_changes_exact, search_exact, search_exact_ref,
 };
 pub use filter::{FilterCondition, FilterExpression, FilterOperator};
 pub use hnsw::{

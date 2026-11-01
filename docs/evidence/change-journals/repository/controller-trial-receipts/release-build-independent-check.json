@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-30T00:42:21.316684+00:00",
+  "binarySha256": "fb9b5727e6ea0de668c723e63d008bfd976a02ca020aad218b122b61142afee0",
+  "bytes": 113481216,
+  "sourceCommit": "54fb845dffd702e1504c7f9a0cc2a3c5757d2bf2",
+  "sourceClean": true,
+  "versionExitCode": 0,
+  "reportMatchesReceipt": true,
+  "profile": "release",
+  "outerBuildShellExitCode": 1,
+  "buildLogEndsWithAcceptedReceipt": true,
+  "qualification": "unqualified"
+}

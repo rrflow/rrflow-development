@@ -1,0 +1,250 @@
+{
+  "binary": "rrflow.exe",
+  "format_version": 1,
+  "report": {
+    "build": {
+      "compiler": {
+        "debug_assertions": false,
+        "opt_level": "3",
+        "panic": "unwind",
+        "root_profile": "release",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "target": "x86_64-pc-windows-msvc"
+      },
+      "executable_sha256": "fb9b5727e6ea0de668c723e63d008bfd976a02ca020aad218b122b61142afee0",
+      "format_version": 1,
+      "metadata_sha256": "c9a058b6ae49d89f13b9bddc97e6078af854890e37b462fd622d3700914fa469",
+      "provenance": {
+        "build_environment_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "cargo_lock_sha256": "2e8fb6850eeddb068bbcd4c3bbec2c7d35b5f9cfeef73da3a1d887761ef0c8c9",
+        "cargo_profile": "release",
+        "dirty": false,
+        "first_party_units": [
+          {
+            "debug_assertions": false,
+            "features": [
+              "default",
+              "edge",
+              "full"
+            ],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-engine",
+            "target": "rrd_engine",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [
+              "default",
+              "endpoint-chat"
+            ],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-inference",
+            "target": "rrd_inference",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [
+              "default",
+              "object-transfer"
+            ],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-cluster",
+            "target": "rrd_cluster",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [
+              "default"
+            ],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-lsm",
+            "target": "rrd_lsm",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [
+              "default"
+            ],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-operator-knowledge",
+            "target": "rrd_operator_knowledge",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [
+              "default"
+            ],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-vector",
+            "target": "rrd_vector",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "bin"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrflow-cli",
+            "target": "rrflow",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "custom-build"
+            ],
+            "opt_level": "0",
+            "overflow_checks": false,
+            "package": "rrflow-cli",
+            "target": "build-script-build",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-client",
+            "target": "rrd_client",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-contract",
+            "target": "rrd_contract",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-core",
+            "target": "rrd_core",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-estate",
+            "target": "rrd_estate",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-query",
+            "target": "rrd_query",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-security",
+            "target": "rrd_security",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-server",
+            "target": "rrd_server",
+            "version": "1.0.0"
+          },
+          {
+            "debug_assertions": false,
+            "features": [],
+            "kind": [
+              "lib"
+            ],
+            "opt_level": "3",
+            "overflow_checks": false,
+            "package": "rrd-store",
+            "target": "rrd_store",
+            "version": "1.0.0"
+          }
+        ],
+        "format_version": 1,
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "source_commit": "54fb845dffd702e1504c7f9a0cc2a3c5757d2bf2",
+        "source_content_sha256": "34283e528390f76e094435ce7f980989265a61e5c0aa351877d91d2db1a3e868",
+        "source_tree": "e410aebf5123ed591eb230b0dff523c986d13518",
+        "target": "x86_64-pc-windows-msvc"
+      },
+      "public_contract_sha256": "f1b416c877da92ad3319840eefb679d867dade64b23f01f04ca5cc3229281508",
+      "qualification": "unqualified",
+      "signal_catalogue_sha256": "239df2ced5974d4351ca01565369646964cb65c63d0fbae01dddccb4c3ac5a07"
+    },
+    "installation_plan_contract_version": 4,
+    "product": "RRFlow",
+    "product_version": "1.0.0",
+    "protocol": "rrd",
+    "protocol_version": 1,
+    "release_stage": "pre-release"
+  }
+}
