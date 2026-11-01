@@ -503,6 +503,9 @@ installed database lifecycle. The security boundary remains intact. The
 [standalone database journey journal](../../evidence/change-journals/gate-h/h-04-standalone-rrflowdb-journey.md)
 records the guide correction and test; Linux/macOS hosted results, candidate
 CI and merge qualification remain pending. This does not close D-01 or H-04.
+The D-04 developer journey independently reproduced the same Windows Cargo
+hard-link denial; its retained fixture uses a separate executable copy. That
+workaround does not establish a fixed direct source-build workflow.
 
 ## Endpoint and task contract integration
 
@@ -513,3 +516,23 @@ parsed values. Explicit sorted rendering in the existing test/refresher fixes
 that representation ambiguity without changing runtime hashing or weakening
 byte assertions. Both public feature flows remain at the existing engine
 boundary; combined candidate qualification and the wider lifecycle remain open.
+
+## Draft Parse memory admission
+
+The [D-04 parsing draft](../../evidence/change-journals/gate-d/d-04-source-parsing-in-progress.md)
+identifies a resource-admission gap before engine activation. Its pinned
+Tree-sitter 0.24.7 default allocator aborts the hosting process on allocation
+failure and its allocator hooks are process-wide. Input, output, node and time
+limits alone do not prove a per-project native-parser memory ceiling. The
+draft is not invoked by main's Parse phase. Keep that phase unavailable until
+an authorized, isolated or otherwise demonstrably bounded execution path and
+failure/cleanup behavior are tested on the supported native platforms; neither
+the policy field nor a passing syntax fixture is that proof.
+The draft Parse input also reuses a reader that reconstructs the complete
+Inventory proposal and bounds it by one transaction's admission size. It must
+not be treated as a scalable multi-group snapshot reader: implement and measure
+bounded validation/readback for larger snapshots before claiming that path
+works at the selected project scale. No 100,000-file Parse result is implied.
+Before this draft, the installed-lifecycle reference still said only Connect
+executed after bounded Inventory had landed in PR #224; the draft corrects that
+sentence while retaining the unimplemented Parse and indexing limitations.

@@ -229,6 +229,7 @@ fn attunement_plan() -> AttunementPlan {
                     configuration_sha256: digest(100 + u64::from(sequence)),
                     estimated_items: u64::from(sequence) * 10,
                     estimated_input_bytes: u64::from(sequence) * 1_024,
+                    parse_policy: None,
                 }
             })
             .collect(),
@@ -238,6 +239,172 @@ fn attunement_plan() -> AttunementPlan {
     };
     plan.plan_sha256 = attunement_plan_sha256(&plan).unwrap();
     plan
+}
+
+#[test]
+fn parse_policy_is_optional_versioned_and_bound_to_the_selected_plan() {
+    use rrd_contract::{SourceParseBinding, SourceParsePolicy};
+
+    let original = attunement_plan();
+    let original_wire = serde_json::to_value(&original).unwrap();
+    let restored: AttunementPlan = serde_json::from_value(original_wire.clone()).unwrap();
+    assert_eq!(restored.plan_sha256, original.plan_sha256);
+    assert_eq!(serde_json::to_value(&restored).unwrap(), original_wire);
+    assert!(restored
+        .phases
+        .iter()
+        .all(|step| step.parse_policy.is_none()));
+
+    let policy = SourceParsePolicy {
+        format_version: 1,
+        bindings: vec![SourceParseBinding {
+            extension: "rs".into(),
+            language: canonical_id("rust"),
+        }],
+        max_files: 64,
+        max_file_bytes: 1024,
+        max_input_bytes: 4096,
+        max_nodes: 512,
+        max_depth: 64,
+        max_output_bytes: 65536,
+        max_commit_bytes: 32768,
+        max_elapsed_ms: 5000,
+        max_memory_bytes: 1048576,
+    };
+    let mut selected = original.clone();
+    let index = selected
+        .phases
+        .iter()
+        .position(|step| step.phase == AttunementPhase::Parse)
+        .unwrap();
+    selected.phases[index].parse_policy = Some(policy.clone());
+    assert!(
+        selected.validate().is_err(),
+        "old digest cannot approve new policy"
+    );
+    selected.plan_sha256 = attunement_plan_sha256(&selected).unwrap();
+    assert_ne!(selected.plan_sha256, original.plan_sha256);
+    selected.validate().unwrap();
+    let mut streamed = selected.clone();
+    let streamed_policy = streamed.phases[index].parse_policy.as_mut().unwrap();
+    streamed_policy.max_output_bytes = streamed_policy.max_memory_bytes + 1;
+    streamed_policy.max_input_bytes = u64::from(u32::MAX) + 1;
+    streamed_policy.max_memory_bytes = u64::from(u32::MAX) + 1;
+    streamed.plan_sha256 = attunement_plan_sha256(&streamed).unwrap();
+    streamed.validate().unwrap();
+    let mut max_wire = streamed.clone();
+    max_wire.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .max_memory_bytes = (1_u64 << 53) - 1;
+    max_wire.plan_sha256 = attunement_plan_sha256(&max_wire).unwrap();
+    max_wire.validate().unwrap();
+    max_wire.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .max_memory_bytes = 1_u64 << 53;
+    max_wire.plan_sha256 = attunement_plan_sha256(&max_wire).unwrap();
+    assert!(
+        max_wire.validate().is_err(),
+        "wire integer must be exact in JavaScript"
+    );
+    let mut invalid_file = streamed.clone();
+    invalid_file.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .max_file_bytes = u64::from(u32::MAX) + 1;
+    invalid_file.plan_sha256 = attunement_plan_sha256(&invalid_file).unwrap();
+    assert!(
+        invalid_file.validate().is_err(),
+        "parser byte offsets are u32"
+    );
+    let mut invalid = selected.clone();
+    invalid.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .bindings
+        .push(policy.bindings[0].clone());
+    invalid.plan_sha256 = attunement_plan_sha256(&invalid).unwrap();
+    assert!(
+        invalid.validate().is_err(),
+        "duplicate extension must be rejected"
+    );
+    let mut invalid_limit = selected.clone();
+    invalid_limit.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .max_nodes = 0;
+    invalid_limit.plan_sha256 = attunement_plan_sha256(&invalid_limit).unwrap();
+    assert!(
+        invalid_limit.validate().is_err(),
+        "zero node budget must be rejected"
+    );
+    let mut invalid_commit = selected.clone();
+    let bounds = invalid_commit.phases[index].parse_policy.as_mut().unwrap();
+    bounds.max_commit_bytes = bounds.max_output_bytes + 1;
+    invalid_commit.plan_sha256 = attunement_plan_sha256(&invalid_commit).unwrap();
+    assert!(
+        invalid_commit.validate().is_err(),
+        "a transaction group cannot exceed total output"
+    );
+    let mut invalid_extension = selected.clone();
+    invalid_extension.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .bindings[0]
+        .extension = "../rs".into();
+    invalid_extension.plan_sha256 = attunement_plan_sha256(&invalid_extension).unwrap();
+    assert!(
+        invalid_extension.validate().is_err(),
+        "path-like extension must be rejected"
+    );
+    let mut too_many = selected.clone();
+    too_many.phases[index]
+        .parse_policy
+        .as_mut()
+        .unwrap()
+        .bindings = (0..65)
+        .map(|number| SourceParseBinding {
+            extension: format!("x{number:02}"),
+            language: canonical_id("rust"),
+        })
+        .collect();
+    too_many.plan_sha256 = attunement_plan_sha256(&too_many).unwrap();
+    assert!(
+        too_many.validate().is_err(),
+        "binding count must be bounded"
+    );
+    let mut misplaced = original;
+    misplaced.phases[0].parse_policy = Some(policy);
+    misplaced.plan_sha256 = attunement_plan_sha256(&misplaced).unwrap();
+    assert!(
+        misplaced.validate().is_err(),
+        "a non-Parse step cannot carry a parse policy"
+    );
+}
+
+#[test]
+fn parse_policy_schema_exposes_structural_admission_bounds() {
+    let policy = serde_json::to_value(schema_for!(rrd_contract::SourceParsePolicy)).unwrap();
+    assert_eq!(policy["properties"]["format_version"]["const"], 1);
+    assert_eq!(policy["properties"]["bindings"]["minItems"], 1);
+    assert_eq!(policy["properties"]["bindings"]["maxItems"], 64);
+    assert_eq!(policy["properties"]["max_nodes"]["minimum"], 1);
+    assert_eq!(
+        policy["properties"]["max_nodes"]["maximum"],
+        (1_u64 << 53) - 1
+    );
+    assert_eq!(policy["properties"]["max_file_bytes"]["maximum"], u32::MAX);
+    let binding = serde_json::to_value(schema_for!(rrd_contract::SourceParseBinding)).unwrap();
+    assert_eq!(binding["properties"]["extension"]["minLength"], 1);
+    assert_eq!(binding["properties"]["extension"]["maxLength"], 32);
+    assert_eq!(binding["additionalProperties"], false);
 }
 
 #[test]

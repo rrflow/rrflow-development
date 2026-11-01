@@ -123,6 +123,10 @@ fn attunement_proposals_have_no_runtime_or_store_dependency() {
             "gix-ignore",
             "gix-config",
             "filetime",
+            "tree-sitter",
+            "tree-sitter-rust",
+            "tree-sitter-python",
+            "tree-sitter-go",
         ]),
         "attunement uses pure buffer parsing, kernel hashes and serialized observations",
     );
