@@ -1,0 +1,52 @@
+{
+  "assembly_source_commit": "98d0de932fecce1a3103c31cb9bab75712a62d48",
+  "assembly_source_content_sha256": "7c0fb6f42e9b9b6581d5d3f2e5ccce43533960d80da1058fede16ba662753d6e",
+  "binary_source_commit": "54fb845dffd702e1504c7f9a0cc2a3c5757d2bf2",
+  "credentials_included": false,
+  "files": {
+    "LICENSE": {
+      "bytes": 4945,
+      "sha256": "26c4346e84823ffe4e8734f86d3baca3a8ace6ce2061015c65d501f2a1d5219f"
+    },
+    "README.txt": {
+      "bytes": 5563,
+      "sha256": "c59a3b0aa706905582a464a86db8313eae9fe3a9098fc7a33848246c74dc5942"
+    },
+    "build-receipt.json": {
+      "bytes": 7187,
+      "sha256": "049d17b1665c6dbdd888b663d3b84d16dcc5d28a3ad9836b61dcc653c08ecef8"
+    },
+    "contracts/endpoint-selection.schema.json": {
+      "bytes": 1026,
+      "sha256": "554bb22c05d9fc58829794deb8fa38d2e96a1cbd0150da847663c4fd27fabe4f"
+    },
+    "rrflow.exe": {
+      "bytes": 113481216,
+      "sha256": "fb9b5727e6ea0de668c723e63d008bfd976a02ca020aad218b122b61142afee0"
+    },
+    "tools/endpoint_selection.exe": {
+      "bytes": 784896,
+      "sha256": "7548c6d2bdc059f8608fc34fb2047b4afc926c2524851e465c735f7e61604c24"
+    },
+    "tools/installed_controller_fault_relay.py": {
+      "bytes": 5477,
+      "sha256": "92e4d85c0080e4d9012ddf5d9a8b0790d2e41f264c874b8daca8202fb84ada4e"
+    },
+    "tools/installed_controller_proof.py": {
+      "bytes": 28906,
+      "sha256": "117bbad37a70de1e55d64f85e4714ef0a4d069686523645e0445552897805c34"
+    },
+    "verify_controller_trial.py": {
+      "bytes": 6098,
+      "sha256": "acbec86cd39031cb3f41a1dd39ac0727865299cfaa6694c92981cd70437a9f68"
+    }
+  },
+  "format_version": 1,
+  "kind": "experimental-controller-trial",
+  "model_weights_included": false,
+  "original_build_receipt_sha256": "ba2d3058a5d8dca913ce302d780dd04eecc9e96dd18ca5050376ca865e95b894",
+  "platform": "x86_64-pc-windows-msvc",
+  "product_version": "1.0.0",
+  "qualification": "unqualified",
+  "runtime_source_compatible": true
+}

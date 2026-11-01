@@ -1,0 +1,16 @@
+{
+  "source": "8cf235ac06a92bc16ae74e746ff1928fb8415b47",
+  "command": [
+    "python",
+    "scripts/build_rrflow.py",
+    "--profile",
+    "release",
+    "--target-dir",
+    "D:/localdev/devlabs/rrflow/target/controller-testing-release-build",
+    "--output",
+    "D:\\projects\\swag\\.swag\\evidence\\20261030\\controller-bundle-refresh\\release-build-receipt.json"
+  ],
+  "exit_code": 0,
+  "seconds": 1162.08,
+  "build_jobs": 2
+}

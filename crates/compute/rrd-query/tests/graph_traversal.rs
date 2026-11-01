@@ -373,6 +373,50 @@ fn rows(execution: &QueryExecution) -> Rows {
         .collect()
 }
 
+#[test]
+fn quoted_digest_start_reaches_the_persisted_graph_after_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let start = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    let query = format!("FROM traverse:link START node:\"{start}\" DIRECTION OUTGOING DEPTH 1 AT VALID 10 KNOWN HEAD PROJECT node_id, depth");
+    {
+        let engine = RrflowKvStore::open(root.path()).unwrap();
+        commit(
+            &engine,
+            1,
+            vec![
+                RuntimeMutation::Schema { registry: schema() },
+                record(start, None),
+                record("child", None),
+                RuntimeMutation::Relation {
+                    relation: RuntimeRelation {
+                        reference: RuntimeRef::new("link", "edge").unwrap(),
+                        from: node(start),
+                        to: node("child"),
+                        valid_from: 0,
+                        valid_to: None,
+                        properties: RuntimeProperties::new(),
+                    },
+                },
+            ],
+        );
+        let read = engine.runtime().read_stamp(&scope()).unwrap();
+        let values = rows(&run(&engine, &read, &query));
+        assert_eq!(values.len(), 1);
+        assert_eq!(
+            values.values().next().unwrap()["node_id"],
+            RuntimeValue::String("child".into())
+        );
+    }
+    let reopened = RrflowKvStore::open(root.path()).unwrap();
+    let read = reopened.runtime().read_stamp(&scope()).unwrap();
+    let values = rows(&run(&reopened, &read, &query));
+    assert_eq!(values.len(), 1);
+    assert_eq!(
+        values.values().next().unwrap()["node_id"],
+        RuntimeValue::String("child".into())
+    );
+}
+
 fn exercise<E: StorageEngine>(engine: &E, seed: u64) -> Vec<QueryExecution> {
     let cursors = commit_random_graph(engine, seed);
     let head = engine.runtime().read_stamp(&scope()).unwrap();

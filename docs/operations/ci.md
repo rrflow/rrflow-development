@@ -100,6 +100,35 @@ check for branch protection:
   on those same three native platforms; and
 - one always-evaluated gate which fails unless every partition succeeded.
 
+### Inspect candidate failures while jobs are running
+
+Use the existing authenticated GitHub CLI to examine one explicit Actions run
+or compare two attempts' current snapshots:
+
+```sh
+python3 scripts/ci/inspect_candidate_runs.py 40991825021 40996295111 --pr 208
+```
+
+When a candidate or protected merge group fails, inspect its exact run and, if
+available, the preceding candidate before deciding whether to rerun or repair.
+Record the failed command and native platform, run and attempt IDs, tested
+source/tree, job link and any retained artifact in the owning package journal.
+Use the result to choose a focused reproduction; do not infer a root cause from
+a duration or replace the original failure with a later unrelated pass.
+
+The report identifies the event head, tested reusable-workflow revision and
+tree, attempt, incomplete or failed jobs and steps, matching named failure
+durations, and up to ten longest completed steps with valid timestamps. The
+timing list includes successful steps and is a snapshot, not a diagnosis. It
+compares event heads with the current PR head, so a merge-group
+head will normally differ. A shared tree does not establish identical execution
+environment or PR association. Inspect the run and job links and logs before
+diagnosis; timestamps and unfinished job inventories can be incomplete. The
+tool refuses inconsistent source/attempt metadata and incomplete paginated
+inventories. Its JSON is an informational snapshot, not a CI receipt, acceptance
+decision, root-cause diagnosis, or authority to skip a gate. The existing
+`rrflow-eval storage acceptance ci-receipt` remains the evidence boundary.
+
 The Linux lifecycle and Windows/macOS portability lanes also build the native
 `rrflow` primary and Rust `rrflowdb` example, stage separate digest-checked
 copies, and run the installed example over authenticated loopback HTTP. The
@@ -194,8 +223,8 @@ Its child guards retain the fixture until the process is reaped.
 
 All three native lanes require `python scripts/ci/run_offline_lifecycle.py
 --receipt <runner-temp>/rrflow-offline.json` (Linux uses `python3`). The runner
-requires exactly five declared cases and exactly five passing results with no
-ignored or filtered cases. Fresh/existing receipts bind the actual executable,
+requires exactly the cases in its `REQUIRED_CASES` set, each passing once with
+no ignored or filtered cases. Fresh/existing receipts bind the actual executable,
 build metadata, public-contract and signal digests, installation/restore plans,
 backup, read manifest and asserted durable cursors. Unknown receipt fields are
 rejected. Retained artifacts contain these bounded, non-secret receipts and
@@ -240,7 +269,7 @@ power loss, hard resource limits, disk exhaustion or a 24-hour soak.
 The existing `lifecycle_process` target also qualifies the relay with forced
 nonblocking accepted sockets, fragmented header/body input, interrupted I/O,
 native read expiry, bounded malformed-input denial, redacted errors and idle
-guard cleanup. These helper cases preserve the five-case installed corpus.
+guard cleanup. These helper cases preserve the required installed lifecycle corpus.
 
 Preflight failures retain a bounded failed receipt even before build hashes are
 available; cleanup failure always overrides any prior passed receipt.
@@ -385,7 +414,7 @@ outputs remain temporary and are never editable documentation authority.
 The five engine suites cover every workspace package exactly once, but package
 names do not define product ownership. The partitioning avoids one
 workspace-wide test/link target graph on the hosted fallback without turning
-all 20 implementation packages into separate product checks.
+each implementation package into a separate product check.
 
 The installed-reopen release build is bounded to two Cargo workers on
 `windows-latest` and one on Linux/macOS. In PR150 candidate run 40503118473
