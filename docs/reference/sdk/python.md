@@ -114,7 +114,10 @@ The current generated projection contains:
 - method, route template, first authentication scheme, and mutation flag for
   each operation; and
 - OpenAPI SHA-256
-  `fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46`.
+  `7efde511a5ba3b1cad630d2c63c473a966fb871182c8bd3a5fb85c3673924a11`.
+
+That audit describes an earlier projection. The current generated OpenAPI
+SHA-256 is `8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5`.
 
 It does not generate request models, response models, error-code constraints,
 path-parameter sets, security actions, exact success statuses, media types,
@@ -146,8 +149,12 @@ mutable lease dictionary, and missing lease keys surface as ordinary Python
 key errors rather than closed client errors.
 
 The current response path validates a common envelope whose successful
-payload is `Any`. It then checks only that the payload is a dictionary. The
-remaining defects are concrete:
+payload is `Any`. It then checks only that the payload is a dictionary. For an
+API error, `RrdApiError.details` preserves a copied mapping of server-provided
+string details, or an empty mapping when omitted. A stale attunement error can
+therefore expose `reason` and `next-action` without parsing its message; the
+client does not automatically accept or execute a replan. The remaining defects
+are concrete:
 
 - response `Content-Type` is ignored;
 - any successful `2xx` agrees with an `ok` outcome, rather than the exact
@@ -155,7 +162,7 @@ remaining defects are concrete:
 - GET response request and operation identities are not checked;
 - successful payload schemas and semantic validators are not applied;
 - error codes and strings are not closed or length bounded;
-- error details are parsed but discarded from `RrdApiError`;
+- error detail keys and values lack independent SDK bounds beyond the response limit;
 - protocol, instance, catalogue, OpenAPI, schema, stamp, resource, digest,
   and receipt bindings are incomplete; and
 - decoding materializes chunk objects, their joined bytes, decoded text, JSON,

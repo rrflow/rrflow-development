@@ -761,7 +761,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
         "D-01",
         "J-02",
     ),
-    "crates/authority/rrd-engine/assets/install/default-profile-v2.json": (
+    "crates/authority/rrd-engine/assets/install/default-profile-v3.json": (
         "D-01",
         "J-03",
         "J-05",
@@ -1553,7 +1553,7 @@ PLANNED_PATHS: dict[str, tuple[str, ...]] = {
     ),
     "crates/adapters/rrflow-cli/tests/repair_conformance.rs": ("D-11", "J-02"),
     "crates/adapters/rrflow-cli/tests/automation_install_conformance.rs": ("I-06",),
-    "crates/authority/rrd-engine/assets/install/clyffy-profile-v2.json": ("D-01",),
+    "crates/authority/rrd-engine/assets/install/clyffy-profile-v3.json": ("D-01",),
     "crates/authority/rrd-engine/assets/install/templates/generic-project-v1.md": ("D-01",),
     "crates/authority/rrd-engine/assets/install/.gitattributes": ("D-01", "J-05"),
     "crates/adapters/rrflow-cli/tests/fixtures/install-empty/.keep": ("D-01",),
