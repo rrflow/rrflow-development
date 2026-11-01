@@ -1,0 +1,11 @@
+# C-07g: shared-generation Windows characterization retry
+
+**Status:** active characterization launch evidence; terminal result pending
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-shared-pins-windows-retry-launch`
+**Owner:** OBJ-02 / C-07g / POAM-035 / [PR151](https://github.com/rrflow/rrflow-development/pull/151)
+
+This continuation starts from `7a00946b5e47be8bee3e5bab45567d298edb7fce`. The first launch of frozen unmerged candidate `90bb821ee360b4979f61f1e8203efff8569594ad` failed before any native allocation or workload, as recorded in [its separate journal](c-07g-shared-pins-windows-launch.md). The failing subcommand was not identified by its redacted summary. A direct subsequent `cargo test --release --locked -p rrflow-cli --test installed_reopen --no-run` completed, and the resulting harness listed `sustained::installed_sustained_capacity`; this does not establish why the first attempt failed.
+
+The retry used the identical campaign and configuration, in a new `target/c07-windows-shared-pins-90bb821e-retry2/` evidence directory. Launcher PID 72748 reported native Windows Job enforcement with 2147483648 engine bytes and four CPUs on a 68719476736-byte host with 24 logical CPUs. Its harness SHA-256 is `2a7c3de58a0764f1cbde8a0a1ed9a4ea61b5ce47bb014d2999e2efed4e0b86ff`. A read-only progress sample observed 4352 corpus intents and 4288 acknowledgements, with no verification events at that sample. The launcher was alive; no terminal result or cleanup receipt had been observed. These are partial setup observations and must not be represented as a completed corpus, readback, recovery, measured segment or soak.
+
+The campaign identity, exact source/tree, executable and configuration digests, warm-only scope and nonqualification limitations are recorded in the first launch journal. This retry does not change the candidate, corpus, budgets, deadlines, status or acceptance criteria. Reviewed the frozen identities, native enforcement output, process and progress sample; no upstream adaptation or runtime mutation was made for this evidence continuation. The terminal result must be retained as a later separate journal. Full candidate CI, integration, native capacity, cold profile and 24-hour soak remain open.

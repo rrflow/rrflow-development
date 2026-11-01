@@ -55,6 +55,40 @@ claim parsing or retrieval; a configured embedding provider alone does not prove
 vectors were generated. The complete journey requires all relevant package
 receipts and does not erase remaining release qualification.
 
+## Nested repository setup
+
+The owner's 2026-10-31 direction makes a discovered nested repository a user
+choice. Offer exclude, separate project/instance (recommended), and one project
+instance containing both selected repositories. Explain that independent
+instances retain separate stores and authentication and that any cross-project
+read requires its own explicit link. The one-instance choice is one bounded
+project with independently identified source repositories and one estate, not
+a silent merge of pre-existing estates. The
+[topology owner](../../architecture/instance-topology.md#user-selected-repository-boundaries)
+defines the semantics.
+
+D-01/D-03 must expose source-bound repository candidates in a no-effect preview,
+carry the selected membership and every admitted Git metadata root into the
+exact plan, and revalidate them before apply and during inventory. An assistant
+may explain the choices and ask the user, but cannot accept a choice or expand
+its own filesystem authority. Gitfile, parent index, configuration, ignore and
+back-reference inputs need explicit bounded admission and identity/race checks;
+external metadata is not followed merely because an untrusted file names it.
+The selected repositories remain source inputs, not engine dependencies or an
+excuse to execute Git or fetch during installation.
+
+Acceptance must use the real RRFlow repository and its pinned Connectome
+submodule as well as adverse inputs. Verify each of exclude, separate and
+shared choices; exact preview and stale-plan denial; no changes before apply;
+independent authenticated instances and read isolation for separate projects;
+one transaction/read-stamp authority and source-specific provenance for the
+shared project; edit/delete, restart and readback; wrong Gitfile target,
+changed parent index, symlink/mount escape, missing metadata and cancellation.
+Run the installed primary binary and the public client path; report unsupported
+choices explicitly until they work. The [real-checkout gap](../../poam/rrflow-1.0-alpha/poam-006.md#nested-repository-setup-gap)
+remains open. This requirement does not by itself qualify later graph/vector
+indexing, project links, UI or cloud behavior.
+
 ## Project-workflow build packages
 
 These refine D-02 through D-05, not a second roadmap. At audit baseline
@@ -89,7 +123,7 @@ owns exact tests and remaining qualification.
 |---|---|---|
 | D-02a admission decision; before executor implementation | Existing `rrd-contract/src/attunement.rs` job/plan/resume/cancel validators, `src/lib.rs::endpoint_catalogue`, CLI installed command dispatch and installation preview. Map each public action to authorization and actual engine dispatch. | The initial audit found only contract types. The embedded package above adds authenticated engine dispatch; public HTTP/SDK dispatch remains absent. Installation previews `CreateAttunementJob`, not unlimited execution. Publish the exact operation/permission/activation decision before source effects. Preserve existing APIs. On 2026-10-26 the owner allowed adding the missing planned job list, read, status, resume, cancel, receipt-read and job-transition journal operations to the operation catalogue under existing grants ([OBJ-14](../../objectives/rrflow-1.0-alpha.md#required-outcomes), [POAM-040](../../poam/rrflow-1.0-alpha/poam-040.md)); global configuration operations remain undecided. Do not reinterpret task-open, readiness, install or arbitrary query as an ingestion command. |
 | D-02b durable worker; after D-02a | Extend `RrdEngine` at `engine/attunement.rs`, using the existing installed job, `AttunementJob::validate_transition`, lease generation and canonical transaction authority. Input binds job revision, plan, principal, configuration and source identity; output is the job transition and checkpoint with effect evidence. | Two workers compete for one revision; only the fenced winner publishes. Crash before effect, after effect and before ACK; retry resolves the same receipt. Expired generation cannot commit. Cancel releases owned resources and never publishes a false success. An unimplemented phase stops explicitly, never gets a fabricated checkpoint. Planned `tests/attunement_resume.rs` plus real installed-process proof. |
-| D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. |
+| D-02c bounded scheduling and settings; required before unattended work | Existing estate configuration, reasoning/query budgets and phase estimates. Engine owns effective limits and field origins; pure preference resolution cannot grant effects. State the exact configuration apply operation and how changed settings affect pending/running jobs. | Estimated item/byte/duration fields are not enforcement. Admit memory/input/output/elapsed/retry/worker limits before work; one remaining budget is charged across retries. Blocked/paused/rejected states identify the exhausted limit. Global changes do not silently rewrite projects; concurrent changes use revision checks. Public settings controls remain blocked until their admission mapping is resolved. On 2026-10-31 the owner asked that unattended relationship and index maintenance run only inside operator-set idle windows and budgets, adjusted from Connectome ([first complete cycle](executable-dependency-spine.md#first-complete-cycle)). |
 | D-03 source snapshot; after durable worker and bounded filesystem admission | Planned `rrd-attunement/src/inventory.rs` builds pure proposals from engine-authorized reads; existing `installation/inventory.rs` remains installation precondition logic. Commit stable root-relative source identities, content digests, containment, exclusions and a change set through engine transactions. | Ordered/shuffled traversal gives identical snapshot; unchanged rerun reads zero content bytes. Git tracked/ignored rules, non-Git roots, secrets, symlink/mount escape and concurrent source edits have explicit outcomes. Interrupt/restart never exposes a partial snapshot as complete. Planned inventory test target; real repository fixture after small authored adversarial fixtures. |
 | D-04 parse and source spans; after D-03 | Planned `rrd-attunement/src/parse.rs`; pinned parser/language revisions consume one committed change set. Output is source-linked syntax/symbol/chunk proposals with byte ranges and parse errors. | One-file edit reparses only affected inputs; delete invalidates their spans. Unsupported languages remain explicit and incomplete syntax retains errors. Parser/model guesses cannot overwrite source facts. Planned incremental-parse target and installed readback prove digest/range identity after restart. |
 | D-05a normalize and entity links; after D-04 and consumed E-01/E-02 paths | Planned `normalize.rs`/`entity_link.rs` plus canonical schema/data/relation commits. Deterministic source facts and inferred relationships carry distinct method/source/configuration identities. | Duplicate source or ambiguous symbol names cannot merge unrelated identities. Reprocessing is idempotent; source change/delete retires dependents at a new cursor, old-stamp reads remain valid. Semantic effects and checkpoint are atomically visible or explicitly staged then published. |

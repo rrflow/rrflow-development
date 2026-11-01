@@ -1,0 +1,14 @@
+{
+  "command": [
+    "python",
+    "scripts/package_controller_trial.py",
+    "--build-receipt",
+    "D:\\projects\\swag\\.swag\\evidence\\20261030\\controller-bundle-refresh\\release-build-receipt.json",
+    "--target-dir",
+    "D:/localdev/devlabs/rrflow/target/controller-testing-release-build",
+    "--output",
+    "D:/projects/swag/files/distributions/rrflow-controller-trial-windows-x64-8cf235ac.zip"
+  ],
+  "exit_code": 0,
+  "seconds": 43.08
+}

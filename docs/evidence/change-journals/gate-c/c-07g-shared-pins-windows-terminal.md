@@ -1,0 +1,11 @@
+# C-07g: shared-generation Windows characterization terminal failure
+
+**Status:** active failed characterization evidence; qualification incomplete
+**Coordinate:** `rrflow://rrflow-instance/data/evidence/change-journal/gate-c/c-07g-shared-pins-windows-terminal`
+**Owner:** OBJ-02 / C-07g / POAM-035 / [PR151](https://github.com/rrflow/rrflow-development/pull/151)
+
+The [retry launch](c-07g-shared-pins-windows-retry-launch.md), [host-interference observation](c-07g-shared-pins-windows-host-interference.md), and [initial readback observation](c-07g-shared-pins-windows-seed-observation.md) bind this separately frozen warm-only Windows characterization of unmerged PR158 candidate `90bb821ee360b4979f61f1e8203efff8569594ad`. After its brief was updated, the terminal progress and result were read without modifying the retained artifacts.
+
+The stream reports 100000 corpus intents, 100000 acknowledgements, 100000 initial independent verifications, two lifecycle intents and acknowledgements, two reopen events, and 47016 post-reopen corpus verifications. The driver then failed with `api-resourceexhausted-read-pinned-bytes:41feda70c1a37f113f9e891755455c51938d5359eaa1c138753243edfca1ed17`. It produced zero measured segments or operating points and `qualification_passed=false`. The launcher receipt reports exit 101 and `cleanup_confirmed=true`. The error identifies the admission category, not the actual denied numerical charge, live owner count or underlying cause. The shared-generation repair did not eliminate this observed failure and must not be represented as a proven 100k fix.
+
+Local retained paths are under `target/c07-windows-shared-pins-90bb821e-retry2/evidence/`: `progress.jsonl` SHA-256 `a2c0a3e8b71c6775736ab0a04f05355b4c6ee9d9ce5e1a874251172fbad49029`; `result.json` SHA-256 `e225997b8a0e07e081188cc69072cbf2fb73ed71d3e892b057846e77d123c396`; `launch.json` SHA-256 `a8eb7c40e41a4916f1cb03dd8d16c5c777d4c2687c4510b6fa633c7b84181512`. It is a characterization on a 64-GiB host with concurrent compilation, not the required isolated Desktop profile, cold lane or 24-hour soak. Preserve the previous failure and both attempts separately. No objective, roadmap or POA&M completion status changes.
