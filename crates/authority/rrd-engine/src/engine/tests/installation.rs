@@ -837,6 +837,66 @@ fn rehashed_profile_field_forgery_fails_before_any_project_effect() {
 }
 
 #[test]
+fn the_project_map_describes_the_project_and_keeps_the_owners_notes() {
+    let project = tempfile::tempdir().unwrap();
+    let executable = test_executable();
+    let write = |relative: &str, bytes: &[u8]| {
+        let path = project.path().join(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, bytes).unwrap();
+    };
+    write(".gitignore", b"node_modules/\n");
+    write("README.md", b"# demo\n");
+    write("package.json", b"{}\n");
+    write("src/app.ts", &[b'x'; 300]);
+    write("src/util.ts", &[b'x'; 100]);
+    write("docs/guide.md", &[b'x'; 50]);
+    write("node_modules/pkg/index.js", b"ignored\n");
+    let preview = plan(project.path());
+    RrdEngine::apply_installation_at(
+        project.path(),
+        InstallationTargetKind::ExistingProject,
+        &preview,
+        &preview.installation.plan_sha256,
+        1_800_000_000_000,
+        &executable,
+    )
+    .unwrap();
+
+    let first = RrdEngine::refresh_project_map(project.path()).unwrap();
+    assert!(first.changed);
+    assert_eq!(first.files, 6);
+    let path = project.path().join(crate::PROJECT_MAP_RELATIVE_PATH);
+    let map = std::fs::read_to_string(&path).unwrap();
+    let name = project.path().file_name().unwrap().to_str().unwrap();
+    assert!(map.starts_with(&format!("# Project map: {name}\n")));
+    assert!(map.contains("- **Kind:** JavaScript/TypeScript (npm)"));
+    assert!(map.contains("- `README.md`: the project's own introduction"));
+    assert!(map.contains("| `src/` | 2 | 400 B | TypeScript |"));
+    assert!(map.contains("| `docs/` | 1 | 50 B | Markdown |"));
+    assert!(!map.contains("node_modules"));
+
+    // The owner's notes survive; an unchanged project is not rewritten.
+    let edited = map.replace(
+        "RRFlow keeps this section exactly as you leave it.",
+        "Ship the checkout flow first.",
+    );
+    std::fs::write(&path, &edited).unwrap();
+    let unchanged = RrdEngine::refresh_project_map(project.path()).unwrap();
+    assert!(!unchanged.changed);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), edited);
+
+    // The map evolves with the project and still keeps the notes.
+    write("src/cart.ts", &[b'x'; 100]);
+    let evolved = RrdEngine::refresh_project_map(project.path()).unwrap();
+    assert!(evolved.changed);
+    let map = std::fs::read_to_string(&path).unwrap();
+    assert!(map.contains("| `src/` | 3 | 500 B | TypeScript |"));
+    assert!(map.contains("Ship the checkout flow first."));
+    assert!(!project.path().join(".rrflow/.project-map.pending").exists());
+}
+
+#[test]
 fn fresh_project_apply_and_exact_replay_are_supported() {
     let project = tempfile::tempdir().unwrap();
     let executable = test_executable();

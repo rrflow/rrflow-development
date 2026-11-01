@@ -117,6 +117,7 @@ mod function;
 mod inference;
 mod installation;
 mod observation_source;
+mod project_map;
 pub use attunement::{
     AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,
     AttunementReplanReceiptView, AttunementReplanResult,
@@ -174,6 +175,7 @@ pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,
 };
 use model::*;
+pub use project_map::{ProjectMapSummary, PROJECT_MAP_RELATIVE_PATH};
 pub use security::{MAX_AUDIT_PAGE_RECORDS, MAX_JWT_CREDENTIAL_BYTES};
 pub use serving::{ServingPublisher, ServingRecord, ServingRegistration};
 use session::*;

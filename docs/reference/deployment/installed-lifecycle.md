@@ -613,6 +613,25 @@ D-01's installed foundation is accepted; wider operational and release gates rem
 
 ## Open, serve, and readiness
 
+### Project map
+
+`rrflow install apply` and every `rrflow serve` regenerate
+`.rrflow/project-map.md` (owner decision, 2026-10-31), a plain-language map of
+the project for its owner and their AI tools:
+- what kind of project it is, from its build manifests;
+- its size and main languages;
+- the files to start with;
+- a folder table.
+
+The map uses the installed profile's inventory policy and the project's Git
+ignore rules, so it covers exactly what installation admits, without reading
+file contents. It holds no timestamps and is rewritten, through
+`.rrflow/.project-map.pending`, only when its content changes. Text between the
+`rrflow:notes` markers belongs to the owner and is carried forward unchanged.
+
+The map is a replaceable projection with no authority. A failed refresh is
+reported in the command output and never blocks install or serve.
+
 ### Private estate-directory admission
 
 The four engine-owned boundaries `.rrflow`, `.rrflow/rrd`,

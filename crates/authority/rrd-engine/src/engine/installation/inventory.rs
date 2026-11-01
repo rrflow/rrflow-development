@@ -68,6 +68,59 @@ pub(super) fn project_inventory_sha256_excluding(
 mod proposal;
 pub(in crate::engine) use proposal::prepare_project_inventory;
 
+/// One admitted project entry for read-only projections such as the project
+/// map. Admission uses the same policy and Git inputs as the precondition.
+pub(in crate::engine) struct ProjectEntry {
+    pub relative: String,
+    pub directory: bool,
+    pub bytes: u64,
+}
+
+/// The project's admitted ordinary files and folders, without reading any
+/// content. Ignored, excluded and oversized entries are absent; a submodule
+/// appears as a folder that is not entered.
+pub(in crate::engine) fn project_entries(
+    project: &AnchoredPath,
+    profile: &DefaultInstallProfile,
+) -> Result<Vec<ProjectEntry>> {
+    let policy = profile.inventory_policy.compile()?;
+    let budget = WorkBudget::new(policy.source.limits.elapsed_ms);
+    let mut git = GitInputs::read(project, &policy, &budget)?;
+    let admitted_lease = super::lease::admit_existing(project)?;
+    let mut entries = Vec::new();
+    collect_project_entries(
+        project,
+        WalkOptions {
+            excluded_relative: None,
+            lease_admitted: admitted_lease.is_some(),
+            record_exclusions: false,
+        },
+        &policy,
+        &budget,
+        &mut git,
+        &mut entries,
+    )?;
+    let mut admitted = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let Some(SourceLeaf::Ordinary(observed)) = &entry.observed else {
+            continue;
+        };
+        let directory = entry.gitlink || observed.kind() == SourceKind::Directory;
+        admitted.push(ProjectEntry {
+            relative: entry
+                .path
+                .relative_path()
+                .to_str()
+                .ok_or(ServiceError::ProjectBindingMismatch)?
+                .replace('\\', "/"),
+            directory,
+            bytes: if directory { 0 } else { observed.bytes() },
+        });
+    }
+    admitted.sort_by(|left, right| left.relative.cmp(&right.relative));
+    Ok(admitted)
+}
+
 fn scan_project(
     project: &AnchoredPath,
     profile: &DefaultInstallProfile,

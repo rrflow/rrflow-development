@@ -54,7 +54,9 @@ mod policy;
 pub(super) mod recovery;
 
 use inventory::project_inventory_sha256_excluding;
-pub(super) use inventory::{prepare_project_inventory, project_inventory_sha256};
+pub(super) use inventory::{
+    prepare_project_inventory, project_entries, project_inventory_sha256, ProjectEntry,
+};
 
 use recovery::{
     acknowledge_intent, load_or_create_intent, materialize_secret, read_existing_intent,
