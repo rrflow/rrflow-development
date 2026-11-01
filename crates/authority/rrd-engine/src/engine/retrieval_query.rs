@@ -1,6 +1,6 @@
 use super::vector::{
-    core_vector, internal_vector_filter, internal_vector_query, public_data_ref,
-    read_vector_versions, validate_collection_query, vector_collection_error,
+    collection_versions, core_vector, internal_vector_filter, internal_vector_query,
+    public_data_ref, read_vector_versions, validate_collection_query, vector_collection_error,
 };
 use super::*;
 use std::collections::BTreeSet;
@@ -87,11 +87,19 @@ impl RrdEngine {
             }
         }
         let direct = read_vector_versions(self, &read, request.max_storage_keys)?;
-        let vectors = rrd_vector::candidates_from_changes(&direct.changes, &scope)
-            .into_iter()
+        // The complete history of every identity with a version in this
+        // collection, so each named vector resolves where it moved.
+        let all = rrd_vector::candidates_from_changes(&direct.changes, &scope);
+        let addressed = all
+            .iter()
             .filter(|candidate| {
                 candidate.vector.collection.collection_id == request.collection_id.as_str()
             })
+            .map(|candidate| candidate.vector.reference.clone())
+            .collect::<BTreeSet<_>>();
+        let vectors = all
+            .into_iter()
+            .filter(|candidate| addressed.contains(&candidate.vector.reference))
             .collect();
         let mut context = RetrievalExecutionContext {
             engine: self,
@@ -810,7 +818,13 @@ impl RetrievalExecutionContext<'_> {
             embedding_model: config.embedding_model.clone(),
             filter: filter.map(internal_vector_filter).transpose()?,
         };
-        rrd_vector::materialize_visible(&visibility, self.vectors.clone()).map_err(core_vector)
+        let held = collection_versions(
+            &visibility,
+            self.vectors.clone(),
+            &self.request.collection_id,
+            using,
+        )?;
+        rrd_vector::materialize_visible(&visibility, held).map_err(core_vector)
     }
 
     fn visible_by_subject(
