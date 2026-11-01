@@ -267,6 +267,7 @@ jobs:
           python3 scripts/ci/test_cache_warm_policy.py
           python3 scripts/ci/test_inspect_merge_conflicts.py
           python3 scripts/ci/check_workflow.py
+          python3 scripts/ci/test_inspect_candidate_runs.py
       - name: Test offline qualification input and artifact policy
         run: python3 scripts/ci/test_offline_lifecycle.py
       - name: Test offline controller outcome review exchange
