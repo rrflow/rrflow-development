@@ -41,36 +41,58 @@ Cross-surface proof must compare the result,
 denial, stamp, digest, receipt, and causal identity produced by the engine—not
 merely compare JSON shapes.
 
-## Audited current surface
+## Catalogue-derived controller proposal binding
 
-The executable `endpoint_catalogue()` contains 55 HTTP operations and one
-generic authenticated `/v1/ws` descriptor. `RrdClient` currently supplies
-typed HTTP methods for 50 of those 55 operations, while `RrdWebSocket`
-implements the bounded B-04 multiplexed protocol. The current boundary is:
+The Cargo build projects all HTTP operation types from `endpoint_catalogue()`
+through `rrd-client/build_support.rs`. The same markers carry metadata for
+fixed-path session POST operations; there is no separately checked-in Rust
+projection. Generator and compiled-catalogue tests verify complete coverage,
+metadata changes and malformed-input rejection.
+It carries method/path/type/mutation metadata, not semantic validation or engine
+authority. Only `operations::TaskEndpointPropose` currently implements the sealed
+`ValidatedOperation` interface. Other markers cannot be passed to this API;
+existing legacy methods retain their documented behavior.
 
-| Family | Catalogued HTTP operations | Rust methods now | Missing now |
-|---|---:|---:|---|
-| Service health | 2 | 0 | `health-live`, `health-ready` |
-| Capability and schema discovery | 3 | 3 | none |
-| Sessions | 3 | 3 | none |
-| Transactions | 4 | 4 | none |
-| Native schema discovery | 1 | 1 | none |
-| rrflowQL query and Parquet export | 2 | 2 | none |
-| Query indexes and live polling | 3 | 0 | `query-index-ensure`, `query-index-list`, `query-live-poll` |
-| Vector collections, points, and search | 5 | 5 | none |
-| Changefeeds | 2 | 2 | none |
-| Durable-subscription administration | 2 | 2 | none |
-| Backup and restore | 3 | 3 | none |
-| Estate | 1 | 1 | none |
-| Audit | 2 | 2 | none |
-| Diagnostics | 3 | 3 | none |
-| Prompt flights | 3 | 3 | none |
-| Tasks | 4 | 4 | none |
-| Task effort and explicit reference inference | 6 | 6 | none |
-| Context | 1 | 1 | none |
-| Endpoint configuration | 3 | 3 | none |
-| Knowledge-tree configuration | 2 | 2 | none |
-| **Total** | **55** | **50** | **5** |
+```rust,ignore
+let proposal = client
+    .call_operation::<rrd_client::operations::TaskEndpointPropose>(
+        &session, request, options,
+    )
+    .await?;
+```
+
+The caller supplies the existing `EndpointSelectionRequest`, a native `Session`
+and mutation `RequestOptions`. The binding validates the request before network
+work and checks response scope, task, attempt and expected task/configuration
+digests, protocol/correlation, status and JSON media type. Full candidate/packet
+admission remains in the engine. A successful proposal permits no worker effect.
+Credentials never need to enter the renderer.
+
+This call sends once even when general client retries exceed one. After timeout
+or response loss, use `read_task_attempt` to inspect durable state; do not submit
+a new attempt automatically. Validation tests using archived actual responses
+are transport evidence, not fresh model results or routing qualification. The
+complete generated-client migration and installed cross-surface H-04 corpus
+remain open at [POAM-011](../../poam/rrflow-1.0-alpha/poam-011.md).
+
+## Catalogue-derived attunement bindings
+
+The executable `endpoint_catalogue()` owns the available HTTP operations and
+generic authenticated WebSocket descriptor. The Rust client now derives a
+typed request/response marker for each HTTP descriptor at build time; the
+compiled projection is checked against the live catalogue. A marker proves a
+type association, not that an idiomatic public method or full semantic
+conformance exists for every operation. H-04's complete method coverage,
+single compiler, transport validation and cross-language corpus remain open.
+
+The attunement bindings expose read, cancel, control-receipt read, start,
+step, pause, resume, expired-lease recovery, replan preview, replan acceptance,
+and replan-receipt read. Control responses are checked against the supplied
+engine-owned plan and job; replan responses and receipts also validate their
+source-bound proposal, successor lineage and principal/instance identity.
+Resume replay uses the original typed request and idempotency key without
+requiring an obsolete local job snapshot. Source observation is still not the
+atomic project snapshot required by D-03.
 
 The [task effort flow](../inference/lfg-swag.md#public-task-effort-flow) uses
 `configure_task_budget`, `activate_builtin_embedding`,

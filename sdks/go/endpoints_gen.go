@@ -2,16 +2,24 @@
 
 package rrd
 
-// OpenAPI SHA-256: fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46
+// OpenAPI SHA-256: 8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5
 
-const EndpointOpenAPIDocumentSHA256 = "fae1001937d962419fb2ce610fe7617705678cc73fe3ce2247ebbbf8a8f39a46"
+const EndpointOpenAPIDocumentSHA256 = "8bc8cbdba9d90ab1239ea91624e639886971e58977c0f23a31007d1b2878a9c5"
 
 type OperationID string
 
 const (
 	OperationAttunementCancel             OperationID = "attunement-cancel"
+	OperationAttunementPause              OperationID = "attunement-pause"
 	OperationAttunementRead               OperationID = "attunement-read"
 	OperationAttunementReceiptRead        OperationID = "attunement-receipt-read"
+	OperationAttunementRecoverExpired     OperationID = "attunement-recover-expired"
+	OperationAttunementReplanAccept       OperationID = "attunement-replan-accept"
+	OperationAttunementReplanPreview      OperationID = "attunement-replan-preview"
+	OperationAttunementReplanReceiptRead  OperationID = "attunement-replan-receipt-read"
+	OperationAttunementResume             OperationID = "attunement-resume"
+	OperationAttunementStart              OperationID = "attunement-start"
+	OperationAttunementStep               OperationID = "attunement-step"
 	OperationAuditExport                  OperationID = "audit-export"
 	OperationAuditRead                    OperationID = "audit-read"
 	OperationBackupCreate                 OperationID = "backup-create"
@@ -55,6 +63,7 @@ const (
 	OperationTaskBudgetStop               OperationID = "task-budget-stop"
 	OperationTaskClose                    OperationID = "task-close"
 	OperationTaskEmbeddingExecute         OperationID = "task-embedding-execute"
+	OperationTaskEndpointPropose          OperationID = "task-endpoint-propose"
 	OperationTaskList                     OperationID = "task-list"
 	OperationTaskOpen                     OperationID = "task-open"
 	OperationTaskRead                     OperationID = "task-read"
@@ -75,8 +84,16 @@ const (
 
 var endpoints = map[OperationID]Endpoint{
 	OperationAttunementCancel:             {Method: "POST", Path: "/v1/attunement/cancel", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementPause:              {Method: "POST", Path: "/v1/attunement/pause", Authentication: "session_bearer", Mutation: true},
 	OperationAttunementRead:               {Method: "POST", Path: "/v1/attunement/read", Authentication: "session_bearer", Mutation: false},
 	OperationAttunementReceiptRead:        {Method: "POST", Path: "/v1/attunement/receipt/read", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementRecoverExpired:     {Method: "POST", Path: "/v1/attunement/recover-expired", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementReplanAccept:       {Method: "POST", Path: "/v1/attunement/replan/accept", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementReplanPreview:      {Method: "POST", Path: "/v1/attunement/replan/preview", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementReplanReceiptRead:  {Method: "POST", Path: "/v1/attunement/replan/receipt/read", Authentication: "session_bearer", Mutation: false},
+	OperationAttunementResume:             {Method: "POST", Path: "/v1/attunement/resume", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementStart:              {Method: "POST", Path: "/v1/attunement/start", Authentication: "session_bearer", Mutation: true},
+	OperationAttunementStep:               {Method: "POST", Path: "/v1/attunement/step", Authentication: "session_bearer", Mutation: true},
 	OperationAuditExport:                  {Method: "POST", Path: "/v1/audit/export", Authentication: "session_bearer", Mutation: false},
 	OperationAuditRead:                    {Method: "POST", Path: "/v1/audit/read", Authentication: "session_bearer", Mutation: false},
 	OperationBackupCreate:                 {Method: "POST", Path: "/v1/backups", Authentication: "session_bearer", Mutation: true},
@@ -120,6 +137,7 @@ var endpoints = map[OperationID]Endpoint{
 	OperationTaskBudgetStop:               {Method: "POST", Path: "/v1/tasks/budget/stop", Authentication: "session_bearer", Mutation: true},
 	OperationTaskClose:                    {Method: "POST", Path: "/v1/tasks/close", Authentication: "session_bearer", Mutation: true},
 	OperationTaskEmbeddingExecute:         {Method: "POST", Path: "/v1/tasks/embedding/execute", Authentication: "session_bearer", Mutation: true},
+	OperationTaskEndpointPropose:          {Method: "POST", Path: "/v1/tasks/endpoint/propose", Authentication: "session_bearer", Mutation: true},
 	OperationTaskList:                     {Method: "POST", Path: "/v1/tasks/list", Authentication: "session_bearer", Mutation: false},
 	OperationTaskOpen:                     {Method: "POST", Path: "/v1/tasks", Authentication: "session_bearer", Mutation: true},
 	OperationTaskRead:                     {Method: "POST", Path: "/v1/tasks/read", Authentication: "session_bearer", Mutation: false},

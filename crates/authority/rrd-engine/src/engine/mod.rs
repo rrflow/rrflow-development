@@ -106,6 +106,8 @@ mod data;
 mod diagnostic;
 mod distributed;
 mod endpoint_configuration;
+mod endpoint_proposal;
+pub use endpoint_proposal::EndpointCredentials;
 mod error;
 mod estate;
 mod estate_control;
@@ -115,7 +117,10 @@ mod function;
 mod inference;
 mod installation;
 mod observation_source;
-pub use attunement::{AttunementCommand, AttunementControlResult, AttunementReceiptView};
+pub use attunement::{
+    AttunementCommand, AttunementControlResult, AttunementReceiptView, AttunementReplanPreview,
+    AttunementReplanReceiptView, AttunementReplanResult,
+};
 mod invocation;
 mod knowledge;
 mod maintenance;
@@ -159,9 +164,11 @@ pub use estate_control::{
     EstateAdminAction, EstateAdminResult, EstateBackupReconcileOutcome, EstateReconcileOutcome,
 };
 pub use installation::{
-    load_estate_configuration, DefaultAttunementPhase, DefaultInstallProfile, InstallationPreview,
-    InstallationVerificationCheck, InstallationVerificationReport, InstallationVerificationStatus,
-    InstalledEstateRecord, ProjectLocator,
+    attunement_proposal_schema, load_attunement_proposal, load_estate_configuration,
+    AttunementProposal, AttunementProposalStep, DefaultAttunementPhase, DefaultInstallProfile,
+    InstallationPreview, InstallationVerificationCheck, InstallationVerificationReport,
+    InstallationVerificationStatus, InstalledEstateRecord, ProjectLocator,
+    ATTUNEMENT_PROPOSAL_FORMAT_VERSION, INSTALLATION_PREVIEW_FORMAT_VERSION,
 };
 pub use invocation::{
     AuthorizedInvocation, Invocation, InvocationCompletion, InvocationCredential, RrdOperation,

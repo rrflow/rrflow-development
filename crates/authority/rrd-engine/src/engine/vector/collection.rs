@@ -844,3 +844,30 @@ pub(in crate::engine) fn vector_matches_collection(
     vector.collection.collection_id == collection_id.as_str()
         && vector.collection.vector_name == vector_name.as_str()
 }
+
+/// The versions in `collection_id`/`vector_name` of every identity the
+/// collection holds at `visibility`'s valid time and read cursor: those whose
+/// latest version there names this address. An identity whose latest version
+/// names another collection or named vector has moved, and none of its
+/// versions here may answer (POAM-045). `candidates` must hold each
+/// identity's complete history.
+pub(in crate::engine) fn collection_versions(
+    visibility: &rrd_vector::VectorVisibilityRequest,
+    candidates: Vec<rrd_vector::VectorCandidate>,
+    collection_id: &CanonicalId,
+    vector_name: &CanonicalId,
+) -> Result<Vec<rrd_vector::VectorCandidate>> {
+    let held = rrd_vector::latest_versions(visibility, &candidates)
+        .map_err(core_vector)?
+        .into_values()
+        .filter(|latest| vector_matches_collection(&latest.vector, collection_id, vector_name))
+        .map(|latest| latest.vector.reference.clone())
+        .collect::<std::collections::BTreeSet<_>>();
+    Ok(candidates
+        .into_iter()
+        .filter(|candidate| {
+            held.contains(&candidate.vector.reference)
+                && vector_matches_collection(&candidate.vector, collection_id, vector_name)
+        })
+        .collect())
+}

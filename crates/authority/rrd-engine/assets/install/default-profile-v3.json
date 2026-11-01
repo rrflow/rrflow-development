@@ -1,5 +1,5 @@
 {
-  "format_version": 2,
+  "format_version": 3,
   "id": "default",
   "configuration_asset": "default-estate-configuration-v3.toml",
   "deployment": {
@@ -87,8 +87,6 @@
   ],
   "estimated_min_duration_ms": 0,
   "estimated_max_duration_ms": 0,
-  "inventory_max_files": 100000,
-  "inventory_max_bytes": 1073741824,
   "template_asset": "templates/generic-project-v1.md",
   "specialization": {
     "format_version": 1,
@@ -101,5 +99,121 @@
     },
     "instructions": "Use the project instructions and the user's explicit preferences. Preserve uncertainty in provisional observations. Validate authorized changes and report actual evidence.",
     "endpoint_profile": null
+  },
+  "inventory_policy": {
+    "format_version": 1,
+    "logical_root": "project-source",
+    "git": "detect_at_root",
+    "symlinks": "record_without_following",
+    "mounts": "record_without_following",
+    "reuse": "conservative_native_observation",
+    "limits": {
+      "entries": 100000,
+      "depth": 128,
+      "path_bytes": 4096,
+      "metadata_bytes": 67108864,
+      "file_bytes": 8388608,
+      "content_bytes": 1073741824,
+      "output_bytes": 134217728,
+      "elapsed_ms": 30000,
+      "open_files": 32,
+      "workers": 1,
+      "attempts": 1,
+      "git_input_bytes": 16777216,
+      "git_entries": 100000,
+      "git_allocation_bytes": 33554432,
+      "ignore_sources": 4096,
+      "ignore_patterns": 100000
+    },
+    "exclusions": [
+      {
+        "id": "vcs-internals",
+        "pattern": ".git"
+      },
+      {
+        "id": "estate-state",
+        "pattern": ".rrflow"
+      },
+      {
+        "id": "swag-local-state",
+        "pattern": ".swag"
+      },
+      {
+        "id": "rust-build",
+        "pattern": "target/"
+      },
+      {
+        "id": "node-dependencies",
+        "pattern": "node_modules/"
+      },
+      {
+        "id": "vendor-dependencies",
+        "pattern": "vendor/"
+      },
+      {
+        "id": "build-output",
+        "pattern": "build/"
+      },
+      {
+        "id": "distribution-output",
+        "pattern": "dist/"
+      },
+      {
+        "id": "coverage-output",
+        "pattern": "coverage/"
+      },
+      {
+        "id": "cache-directory",
+        "pattern": ".cache/"
+      },
+      {
+        "id": "python-cache",
+        "pattern": "__pycache__/"
+      },
+      {
+        "id": "python-test-cache",
+        "pattern": ".pytest_cache/"
+      },
+      {
+        "id": "python-environment",
+        "pattern": ".venv/"
+      },
+      {
+        "id": "next-build",
+        "pattern": ".next/"
+      },
+      {
+        "id": "turbo-cache",
+        "pattern": ".turbo/"
+      },
+      {
+        "id": "temporary-files",
+        "pattern": "*.tmp"
+      },
+      {
+        "id": "environment-suffix",
+        "pattern": "*.env"
+      },
+      {
+        "id": "environment-secrets",
+        "pattern": ".env"
+      },
+      {
+        "id": "environment-variants",
+        "pattern": ".env.*"
+      },
+      {
+        "id": "private-keys",
+        "pattern": "*.key"
+      },
+      {
+        "id": "pem-secrets",
+        "pattern": "*.pem"
+      },
+      {
+        "id": "pkcs-secrets",
+        "pattern": "*.p12"
+      }
+    ]
   }
 }
