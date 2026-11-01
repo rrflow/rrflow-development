@@ -206,7 +206,7 @@ impl Source {
             } => format!(
                 "traverse:{relation} START {}:{} DIRECTION {} DEPTH {max_depth}",
                 start.kind,
-                start.id,
+                traversal_id(start.id.as_str()),
                 direction.canonical()
             ),
             Self::Claim {
@@ -831,7 +831,7 @@ impl Parser {
         self.keyword("START")?;
         let start_kind = self.word("traversal start kind")?;
         self.punctuation(TokenKind::Colon, "':' in traversal start")?;
-        let start_id = self.word("traversal start ID")?;
+        let start_id = self.traversal_id()?;
         let start = RuntimeRef::new(start_kind, start_id)
             .map_err(|error| ParseError::new(offset, error.to_string()))?;
         self.keyword("DIRECTION")?;
@@ -1019,6 +1019,17 @@ impl Parser {
         }
     }
 
+    fn traversal_id(&mut self) -> Result<String, ParseError> {
+        let token = self.next("traversal start ID")?;
+        match &token.kind {
+            TokenKind::Word(value) | TokenKind::String(value) => Ok(value.clone()),
+            _ => Err(ParseError::new(
+                token.offset,
+                format!("expected traversal start ID, found {}", token.describe()),
+            )),
+        }
+    }
+
     fn number(&mut self, description: &str) -> Result<u64, ParseError> {
         let token = self.next(description)?;
         match token.kind {
@@ -1086,6 +1097,20 @@ fn validate_field(value: &str, offset: usize) -> Result<(), ParseError> {
         ));
     }
     Ok(())
+}
+
+fn traversal_id(value: &str) -> String {
+    let bytes = value.as_bytes();
+    if bytes.first().is_none_or(u8::is_ascii_digit)
+        || bytes.iter().any(|byte| {
+            byte.is_ascii_whitespace()
+                || matches!(byte, b':' | b',' | b'=' | b'!' | b'<' | b'>' | b'*' | b'"')
+        })
+    {
+        quote(value)
+    } else {
+        value.to_owned()
+    }
 }
 
 fn quote(value: &str) -> String {
