@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 import sys
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -25,7 +26,7 @@ def held_output_command(pid_file, stdout, stderr, status=1, message="hdiutil: cr
             "holder=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],"
             f"stdin=subprocess.DEVNULL,stdout={stream(stdout, 'stdout')},stderr={stream(stderr, 'stderr')}); "
             "pathlib.Path(sys.argv[1]).write_text(str(holder.pid)); "
-            f"print({message!r},file=sys.stderr,flush=True); {finish}",
+            f"print({message!r},flush=True); print({message!r},file=sys.stderr,flush=True); {finish}",
             str(pid_file))
 
 
@@ -66,24 +67,26 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
         self.assertIsNone(error.child_returncode)
         self.assertNotIn("private", str(error))
 
-    def test_failed_child_with_held_output_keeps_stderr_out_of_closed_metadata(self):
-        with tempfile.TemporaryDirectory() as directory:
-            pid_file = Path(directory) / "holder.pid"
-            completed = []
-            try:
-                with self.assertRaises(runner.CommandOutputNotClosed) as caught:
-                    runner.run(*held_output_command(pid_file, True, False, 3, "private native detail"),
-                               check=False, timeout=30, on_completion=completed.append)
-            finally:
-                end_holder(pid_file)
-            error = caught.exception
-            self.assertEqual(error.child_returncode, 3)
-            self.assertEqual((error.stdout_open, error.stderr_open), (True, False))
-            self.assertEqual(error.captured.returncode, 3)
-            self.assertIn("private native detail", error.captured.stderr)
-            self.assertNotIn("private", str(error))
-            self.assertNotIn("private", repr(error))
-            self.assertEqual(completed, [])
+    def test_failed_child_with_held_output_keeps_its_text_out_of_closed_metadata(self):
+        for stdout, stderr in [(True, False), (False, True), (True, True)]:
+            with self.subTest(stdout=stdout, stderr=stderr), tempfile.TemporaryDirectory() as directory:
+                pid_file = Path(directory) / "holder.pid"
+                completed = []
+                try:
+                    with self.assertRaises(runner.CommandOutputNotClosed) as caught:
+                        runner.run(*held_output_command(pid_file, stdout, stderr, 3, "private native detail"),
+                                   check=False, timeout=30, on_completion=completed.append)
+                finally:
+                    end_holder(pid_file)
+                error = caught.exception
+                self.assertEqual(error.child_returncode, 3)
+                self.assertEqual((error.stdout_open, error.stderr_open), (stdout, stderr))
+                self.assertEqual(error.captured.returncode, 3)
+                self.assertIn("private native detail", error.captured.stdout)
+                self.assertIn("private native detail", error.captured.stderr)
+                self.assertNotIn("private", str(error))
+                self.assertNotIn("private", repr(error))
+                self.assertEqual(completed, [])
 
     @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
     def test_successful_group_command_lets_its_descendant_finish(self):
@@ -93,7 +96,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             with self.subTest(name), tempfile.TemporaryDirectory() as directory:
                 marker = Path(directory) / "finished"
                 started = []
-                with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 30, create=True):
+                with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 30):
                     result = runner.run("sh", "-c", script, "sh", str(marker), process_group=True, timeout=30)
                 self.assertEqual((result.returncode, result.stdout), (0, stdout))
                 self.assertTrue(marker.exists(), "descendant was killed because its parent exited")
@@ -102,7 +105,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
     def test_successful_group_command_without_descendant_does_not_wait(self):
         begin = time.monotonic()
-        with patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 60, create=True):
+        with patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 60):
             runner.run("sh", "-c", "exit 0", process_group=True, timeout=30)
         self.assertLess(time.monotonic() - begin, 20)
 
@@ -110,7 +113,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
     def test_successful_group_command_kills_descendant_that_outlives_the_output_bound(self):
         started = []
         begin = time.monotonic()
-        with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 0.2, create=True):
+        with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 0.2):
             result = runner.run("sh", "-c", "sleep 30 & exit 0", process_group=True, timeout=30)
         self.assertEqual(result.returncode, 0)
         self.assert_group_gone(started[0])
@@ -120,10 +123,19 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
     def test_successful_group_command_wait_cannot_outlast_its_deadline(self):
         started = []
         begin = time.monotonic()
-        with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 60, create=True):
-            result = runner.run("sh", "-c", "sleep 30 & exit 0", process_group=True, timeout=2)
+        with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 60):
+            result = runner.run("sh", "-c", "sleep 30 & exit 0", process_group=True, timeout=5)
         self.assertEqual(result.returncode, 0)
         self.assert_group_gone(started[0])
+        self.assertLess(time.monotonic() - begin, 20)
+
+    @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
+    def test_output_failure_ends_the_group_wait_at_once(self):
+        # The reader can see an overflow after the child has already exited.
+        failed = threading.Event()
+        failed.set()
+        begin = time.monotonic()
+        runner._await_process_group_exit(os.getpgrp(), time.monotonic() + 60, failed)
         self.assertLess(time.monotonic() - begin, 20)
 
     @unittest.skipUnless(os.name == "posix", "requires a real POSIX process group")
@@ -137,7 +149,7 @@ class OfflineLifecyclePolicyTests(unittest.TestCase):
             with self.subTest(name), tempfile.TemporaryDirectory() as directory:
                 marker = Path(directory) / "finished"
                 started = []
-                with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 30, create=True):
+                with recorded_popen(started), patch.object(runner, "_OUTPUT_CLOSE_SECONDS", 30):
                     if failure is None:
                         self.assertEqual(runner.run("sh", "-c", script, "sh", str(marker), process_group=True,
                                                     **kwargs).returncode, 3)
