@@ -100,7 +100,30 @@ pub(in crate::http) fn json_response<T: Serialize>(status: StatusCode, body: &T)
     response
 }
 
+fn stale_transaction_error(expected: u64, actual: u64) -> ApiError {
+    let mut response = ApiError::new(
+        ErrorCode::Conflict,
+        "The transaction snapshot is stale. Abort it and reexecute its reads and writes from a fresh snapshot.",
+        false,
+    );
+    for (key, value) in [
+        ("reason", "transaction-snapshot-stale".to_owned()),
+        ("next-action", "abort-and-reexecute-transaction".to_owned()),
+        ("expected-cursor", expected.to_string()),
+        ("actual-cursor", actual.to_string()),
+    ] {
+        response
+            .body
+            .details
+            .insert(CanonicalId::new(key).expect("constant detail key"), value);
+    }
+    response
+}
+
 pub(in crate::http) fn api_error(error: ServiceError) -> ApiError {
+    if let ServiceError::TransactionSnapshotStale { expected, actual } = error {
+        return stale_transaction_error(expected, actual);
+    }
     if matches!(error, ServiceError::AttunementSourceChanged) {
         let mut response = ApiError::new(
             ErrorCode::FailedPrecondition,
@@ -134,6 +157,9 @@ pub(in crate::http) fn api_error(error: ServiceError) -> ApiError {
 }
 
 pub(in crate::http) fn websocket_error(error: ServiceError) -> ErrorBody {
+    if let ServiceError::TransactionSnapshotStale { expected, actual } = error {
+        return stale_transaction_error(expected, actual).body;
+    }
     let message = error.to_string();
     let retryable = error.retryable();
     let code = match error.kind() {
@@ -179,5 +205,41 @@ pub(in crate::http) fn status_for(code: ErrorCode) -> StatusCode {
         ErrorCode::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
         ErrorCode::DeadlineExceeded => StatusCode::GATEWAY_TIMEOUT,
         ErrorCode::UnsupportedVersion => StatusCode::HTTP_VERSION_NOT_SUPPORTED,
+    }
+}
+
+#[cfg(test)]
+mod stale_transaction_tests {
+    use super::*;
+
+    #[test]
+    fn http_and_websocket_preserve_the_same_nonretryable_recovery_details() {
+        let http = api_error(ServiceError::TransactionSnapshotStale {
+            expected: 7,
+            actual: 9,
+        });
+        let websocket = websocket_error(ServiceError::TransactionSnapshotStale {
+            expected: 7,
+            actual: 9,
+        });
+        assert_eq!(http.status, StatusCode::CONFLICT);
+        assert_eq!(http.body, websocket);
+        assert_eq!(websocket.code, ErrorCode::Conflict);
+        assert!(!websocket.retryable);
+        assert_eq!(
+            websocket
+                .details
+                .get(&CanonicalId::new("reason").unwrap())
+                .map(String::as_str),
+            Some("transaction-snapshot-stale")
+        );
+        assert_eq!(
+            websocket
+                .details
+                .get(&CanonicalId::new("next-action").unwrap())
+                .map(String::as_str),
+            Some("abort-and-reexecute-transaction")
+        );
+        assert!(websocket.validate().is_ok());
     }
 }
