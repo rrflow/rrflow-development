@@ -71,3 +71,11 @@ Formatting and `git diff --check` passed; generated navigation and execution
 inventory were regenerated and checked. No candidate CI, merge-group CI,
 native non-Windows test or full installed prompt cycle has been run for this
 revision. The owning roadmap and POA&M lifecycle statuses are unchanged.
+
+Public main advanced to `db2a8d04fc4c3b24b2b7ba33a04434d8d7c5d6a2` after
+the local tests. The repository conflict inspector reported a clean merge; the
+ordinary merge produced `d468d967cb8b2cfd2d23dabf10ee5c8711e00d1e` and changed
+no `rrd-query` source or test. Navigation passed. The execution-inventory
+check initially reported drift from the newly merged files; regenerating it
+and repeating `--check` passed for 2,276 paths. Workflow policy passed again.
+This integration does not stand in for candidate CI or protected merge.
